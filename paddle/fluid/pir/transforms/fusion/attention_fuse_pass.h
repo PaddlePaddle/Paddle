@@ -21,6 +21,6 @@
 
 namespace pir {
 
-IR_API std::unique_ptr<Pass> CreateDeadCodeEliminationPass();
+IR_API std::unique_ptr<Pass> CreateAttentionFusePass();
 
 }  // namespace pir

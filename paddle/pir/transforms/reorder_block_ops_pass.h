@@ -15,11 +15,11 @@
 #pragma once
 
 #include <memory>
+
 #include "paddle/pir/core/dll_decl.h"
+#include "paddle/pir/pass/pass.h"
 
 namespace pir {
-
-class Pass;
 
 IR_API std::unique_ptr<Pass> CreateReorderBlockOpsPass();
 

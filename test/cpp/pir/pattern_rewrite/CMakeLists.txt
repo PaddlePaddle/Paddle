@@ -1,5 +1,6 @@
 set(PATTERN_REWRITE_TEST_DEPS
-    _constant_folding_pass transform_general_functions gtest pd_op_dialect pir)
+    pd_constant_folding_pass transform_general_functions gtest pd_op_dialect
+    pir)
 
 if(WITH_DISTRIBUTE)
   set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor
@@ -36,15 +37,8 @@ cc_test_old(
   gtest
   pd_op_dialect
   pir)
-cc_test_old(
-  drr_attention_fuse_test
-  SRCS
-  drr_attention_fuse_test.cc
-  DEPS
-  drr
-  gtest
-  pd_op_dialect
-  pir)
+cc_test_old(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc DEPS gtest
+            attention_fuse_pass)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
