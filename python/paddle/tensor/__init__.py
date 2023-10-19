@@ -614,7 +614,7 @@ tensor_method_func = [
     'digamma',
     'digamma_',
     'diagonal',
-    'diag_embed' 'trunc',
+    'trunc',
     'trunc_',
     'frac',
     'frac_',
