@@ -48,7 +48,7 @@ class TestSignFP16Op(TestSignOp):
             'X': np.random.uniform(-10, 10, (10, 10)).astype("float16")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
-        
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
