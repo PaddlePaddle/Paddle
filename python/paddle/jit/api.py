@@ -240,24 +240,29 @@ def to_static(
     **kwargs,
 ):
     """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    Converts dynamic graph APIs into static graph function APIs. Decorator
     @to_static handles the Program and Executor of static graph mode and returns
-    the result as dygraph Tensor(s). Users could use the returned dygraph
-    Tensor(s) to do imperative training, inference, or other operations. If the
-    decorated function calls other imperative function, the called one will be
-    converted into declarative function as well.
+    the result as dynamic graph Tensor(s). Users could use the returned dynamic
+    graph Tensor(s) to do dynamic graph training, inference, or other operations.
+    If the decorated function calls other dynamic graph function, the called one
+    will be converted into static graph function as well.
+
     Args:
-        function (callable): callable imperative function.
-        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
-            information of each input Tensor.
-        build_strategy(BuildStrategy|None): This argument is used to compile the
+        function (callable): Callable dynamic graph function. If it used as a
+            decorator, the decorated function will be parsed as this parameter.
+        input_spec (list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to
+            specific the shape/dtype/name information of each input Tensor.
+        build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
+            None. When backend is `CINN`, CINN compiler will be used to speed up
+            training and inference.
+        kwargs: Support keys including `property`.
 
+            - property: It indicates whether the decorated function is a python property.
 
     Returns:
         Tensor(s): containing the numerical result.
