@@ -1020,14 +1020,47 @@ def remainder_(x, y, name=None):
     return _C_ops.remainder_(x, y)
 
 
-mod = remainder  # noqa: F841
-floor_mod = remainder  # noqa: F841
-mod_ = remainder_  # noqa: F841
+mod = remainder
+mod.__doc__ = r"""
+    Mod two tensors element-wise. The equation is:
+
+    .. math::
+
+        out = x \% y
+
+    Note:
+        ``paddle.mod`` supports broadcasting. If you want know more about broadcasting, please refer to `Introduction to Tensor`_ .
+
+        .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
+
+    Args:
+        x (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        y (Tensor): the input tensor, it's data type should be float16, float32, float64, int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        N-D Tensor. A location into which the result is stored. If x, y have different shapes and are "broadcastable", the resulting tensor shape is the shape of x and y after broadcasting. If x, y have the same shape,  its shape is the same as x and y.
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> x = paddle.to_tensor([2, 3, 8, 7])
+            >>> y = paddle.to_tensor([1, 5, 3, 3])
+            >>> z = paddle.mod(x, y)
+            >>> print(z)
+            Tensor(shape=[4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 3, 2, 1])
+"""
+floor_mod = remainder
+mod_ = remainder_
 mod_.__doc__ = r"""
     Inplace version of ``mod`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_mod`.
     """
-floor_mod_ = remainder_  # noqa: F841
+floor_mod_ = remainder_
 floor_mod_.__doc__ = r"""
     Inplace version of ``floor_mod_`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_floor_mod_`.
