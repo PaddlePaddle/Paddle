@@ -24,11 +24,11 @@ from dist_api_gen import DistForwardAPI
 
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
-  if (use_dist_branch) {{
+  if (run_auto_parallel) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    if (!computation_clip_for_pp){{
+    if (rank_is_in_current_mesh){{
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}

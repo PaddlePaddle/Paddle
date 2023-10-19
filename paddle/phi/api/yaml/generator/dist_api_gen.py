@@ -44,11 +44,11 @@ PADDLE_THROW(phi::errors::Unimplemented(
 # TODO(chenweihang): add view support later
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
-  if (use_dist_branch) {{
+  if (run_auto_parallel) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    if (!computation_clip_for_pp){{
+    if (rank_is_in_current_mesh){{
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
@@ -65,15 +65,15 @@ MAIN_DIST_BRANCH_TEMPLATE = """
 # 1. Non computation rank clip
 GET_MESH_TEMPLATE = """
     auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>({}impl())->dist_attr().process_mesh();
-    computation_clip_for_pp = !phi::distributed::IsCurRankInMesh(mesh);"""
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);"""
 
 # Auto Parallel condition
 AUTO_PARALLEL_COND_TEMPLATE = """
-  bool use_dist_branch = AllInputsAreDistTensor({input_args});
-  bool computation_clip_for_pp = false;
-  if (use_dist_branch) {{{mesh}
+  bool run_auto_parallel = AllInputsAreDistTensor({input_args});
+  bool rank_is_in_current_mesh = true;
+  if (run_auto_parallel) {{{mesh}
   }}
-  if (!computation_clip_for_pp) {{{kernel_code}
+  if (rank_is_in_current_mesh) {{{kernel_code}
   }}
 """
 
@@ -102,7 +102,7 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput(&api_output);
     auto dense_out = dist_out->unsafe_mutable_value();
-    if (computation_clip_for_pp) {{
+    if (!rank_is_in_current_mesh) {{
       *dense_out = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
@@ -111,7 +111,7 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({out});
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
-    if (computation_clip_for_pp) {{
+    if (!rank_is_in_current_mesh) {{
       *dense_out_{idx} = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
@@ -120,7 +120,7 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
     auto dense_out = dist_out->unsafe_mutable_value();
-    if (computation_clip_for_pp) {{
+    if (!rank_is_in_current_mesh) {{
       *dense_out = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
@@ -129,7 +129,7 @@ SINGLE_OUT_CREATION_TEMPLATE = """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput({out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
-    if (computation_clip_for_pp) {{
+    if (!rank_is_in_current_mesh) {{
       *dense_out_{idx} = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
@@ -140,7 +140,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i = 0; i < dist_out.size(); ++i) {{
       dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
-      if (computation_clip_for_pp) {{
+      if (!rank_is_in_current_mesh) {{
         *dense_out[i] = phi::DenseTensor(
                 std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
                 phi::DenseTensorMeta());
@@ -152,7 +152,7 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
     for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value());
-        if (computation_clip_for_pp) {{
+        if (!rank_is_in_current_mesh) {{
           *dense_out_{out_name}[i] = phi::DenseTensor(
                   std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
                   phi::DenseTensorMeta());
