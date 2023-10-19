@@ -89,7 +89,12 @@ if(WITH_CINN AND NOT CINN_ONLY)
 
 endif()
 
+# cc_library(
+#   drr
+#   SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
+#   DEPS pd_op_dialect pir)
+
 cc_library(
   drr
-  SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
+  SRCS ${DRR_SRCS} ${op_creator_file}
   DEPS pd_op_dialect pir)
