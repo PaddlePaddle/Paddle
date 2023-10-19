@@ -166,7 +166,7 @@ class ProcessGroup {
       phi::DenseTensor* out_tensor UNUSED,
       const phi::DenseTensor& in_tensor UNUSED,
       const BroadcastOptions& opts UNUSED,
-      bool sync_op UNUSED UNUSED) {
+      bool sync_op UNUSED) {
     PADDLE_THROW(phi::errors::Unimplemented(
         "ProcessGroup%s does not support broadcast with sync_op flag",
         GetBackendName()));
