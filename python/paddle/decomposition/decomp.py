@@ -405,11 +405,17 @@ def decompose_fwd_op(block, fwd_op, grad_var_to_var_map):
         op_name = fwd_op.name()
         orig_outs = fwd_op.results()
         decom_rule = register.get_decomp_rule(op_name)
+        has_sink_decomp_rule = has_decomp(fwd_op)
+        lower = decom_rule or has_sink_decomp_rule
 
-        if decom_rule:
+        if lower:
             input_args = _prepare_python_api_arguments(fwd_op)
             pir.set_insertion_point(fwd_op)
-            new_outs = _build_tensor_tuple(decom_rule(*input_args))
+            if has_sink_decomp_rule:
+                decomp_outs = call_decomp(fwd_op)
+                new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
+            else:
+                new_outs = _build_tensor_tuple(decom_rule(*input_args))
 
             _check_op_results(op_name, orig_outs, new_outs)
 
