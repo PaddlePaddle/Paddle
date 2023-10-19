@@ -1877,6 +1877,18 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   trace_op_body_str += trace_op_str;
   trace_op_body_str += "\n";
 
+  // [Generation] Log memory infomation
+  const char* LOG_MEMORY_INFO_TEMPLATE =
+      " // Log memory information\n"
+      "  "
+      "paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance()."
+      "GetExpectedPlace(), \"%s\");\n";
+  std::string log_memory_info_str =
+      paddle::string::Sprintf(LOG_MEMORY_INFO_TEMPLATE, op_type);
+
+  trace_op_body_str += log_memory_info_str;
+  trace_op_body_str += "\n";
+
   VLOG(6) << "Generated AttrMap & TraceOp";
 
   // [Generation] Convert output VarBase to Vector/Tensor
@@ -2968,6 +2980,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#pragma once\n"
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
+      "#include \"paddle/fluid/memory/stats.h\"\n"
       "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"
