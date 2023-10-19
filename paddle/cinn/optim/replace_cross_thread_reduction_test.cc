@@ -30,6 +30,7 @@ namespace cinn {
 namespace optim {
 
 TEST(CrossThreadReductionReplacer, basic) {
+#ifdef CINN_WITH_CUDA
   Context::Global().ResetNameId();
   Placeholder<float> A("A", {Expr(64), Expr(128)});
   Target target = common::DefaultNVGPUTarget();
@@ -77,6 +78,7 @@ TEST(CrossThreadReductionReplacer, basic) {
   }
 }
 )ROC"));
+#endif
 }
 
 }  // namespace optim
