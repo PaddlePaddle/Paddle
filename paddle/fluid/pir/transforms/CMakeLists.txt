@@ -16,6 +16,11 @@ cc_library(
   DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
 
 cc_library(
+  fused_gemm_epilogue_pass
+  SRCS fused_gemm_epilogue_pass.cc
+  DEPS drr)
+
+cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)

@@ -2485,7 +2485,7 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )

@@ -259,6 +259,9 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
       continue;
     }
     VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+    IR_ENFORCE(var != nullptr,
+               "Can't find var recursively from current block.");
+
     if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
       need_inputs_sig.emplace_back("dense");
     } else if (var->GetType() ==
