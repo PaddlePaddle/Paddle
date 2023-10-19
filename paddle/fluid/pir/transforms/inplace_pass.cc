@@ -53,7 +53,22 @@ static bool CanBeDeleted(pir::Value value) {
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
                          pir::Value output) {
-  if (input.type() != output.type()) {
+  if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+      output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    auto input_alloc_tensor_type =
+        input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    auto output_alloc_tensor_type =
+        output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    if (input_alloc_tensor_type.place() != output_alloc_tensor_type.place() ||
+        input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype() ||
+        input_alloc_tensor_type.data_layout() !=
+            output_alloc_tensor_type.data_layout() ||
+        input_alloc_tensor_type.lod() != output_alloc_tensor_type.lod() ||
+        input_alloc_tensor_type.offset() != output_alloc_tensor_type.offset()) {
+      VLOG(9) << "     -- input's meta != output's meta, can't do inplace";
+      return false;
+    }
+  } else if (input.type() != output.type()) {
     VLOG(9) << "     -- input's type != output's type, can't do inplace";
     return false;
   }
@@ -248,7 +263,12 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     pir::OpInfo upper_inplace_op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
-    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
+    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info) ||
+        upper_op_name == "pd_op.transpose" ||
+        upper_op_name == "pd_op.unsqueeze") {
+      // NOTE(wanghuancoder): pd_op.transpose and pd_op.unsqueeze is not an
+      // inplace op, only strided transpose and strided unsqueeze support
+      // inplace in dygraph
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
                  "can't do inplace.";
