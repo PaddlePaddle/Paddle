@@ -13,7 +13,6 @@
 # limitations under the License
 
 import hashlib
-import os
 from collections import OrderedDict
 
 import paddle
@@ -158,10 +157,10 @@ class ProcessGroup:
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                use_new_comm = os.getenv(
-                    "FLAGS_dynamic_static_unified_comm", "0"
-                )
-                if use_new_comm in ["1", "True", "true"]:
+                use_new_comm = paddle.get_flags(
+                    "FLAGS_dynamic_static_unified_comm"
+                )["FLAGS_dynamic_static_unified_comm"]
+                if use_new_comm:
                     store = core.create_or_get_global_tcp_store()
                     endpoints_str = ""
                     for endpoint in strategy.trainer_endpoints:

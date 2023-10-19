@@ -46,7 +46,7 @@ using VarDesc = ::paddle::framework::VarDesc;
 
 using TCKey = TranslationContext::Key;
 using TCValue = TranslationContext::Value;
-using TCConatiner = TranslationContext::Conatiner;
+using TCContainer = TranslationContext::Container;
 
 const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
     "feed",
@@ -55,7 +55,6 @@ const std::unordered_set<std::string> ProgramTranslator::no_cast_var_names = {
 
 const std::unordered_set<std::string> ProgramTranslator::unsupported_ops = {
     "conditional_block_grad",
-    "while",
     "while_grad",
 };
 
@@ -228,6 +227,9 @@ const TCValue& TranslationContext::operator[](const TCKey& key) const {
 
 const TCValue& TranslationContext::at(const TCKey& key) const {
   auto it = container_.find(key);
+  if (it == container_.end() && parent_) {
+    return parent_->at(key);
+  }
   PADDLE_ENFORCE_NE(it,
                     container_.end(),
                     platform::errors::InvalidArgument(
@@ -244,19 +246,28 @@ const TCValue& TranslationContext::at(const TCKey& key) const {
 size_t TranslationContext::count(const TCKey& key) const {
   auto it = container_.find(key);
   if (it == container_.end()) {
+    if (parent_) return parent_->count(key);
     return 0u;
   }
   const auto& values = it->second;
   PADDLE_ENFORCE_NE(
       values.size(),
-      0,
+      0u,
       platform::errors::InvalidArgument(
           "param %s should have size > 0, but get:%d", key, values.size()));
   return values.size();
 }
 
-void TranslationContext::insert(const TCKey& key, const TCValue& value) {
+void TranslationContext::PushValue(const Key& key, const Value& value) {
   container_[key].push_back(value);
+}
+void TranslationContext::PopValue(const Key& key) {
+  container_[key].pop_back();
+}
+
+TranslationContext* TranslationContext::CreateInnerContext() {
+  sons_.emplace_back(std::make_unique<TranslationContext>(this));
+  return sons_.back().get();
 }
 
 ProgramTranslator::ProgramTranslator(const ProgramDesc* legacy_program,
@@ -272,6 +283,7 @@ void ProgramTranslator::Translate() {
   TranslateBlock(legacy_program_->Block(0),
                  0,
                  legacy_program_->Block(0).OpSize(),
+                 &param_map_,
                  program_->block());
 
   SetParameterFromSingleBlock(legacy_program_->Block(0));
@@ -291,6 +303,7 @@ void ProgramTranslator::TranslateBlock(
     const BlockDesc& src_block,
     uint64_t start_id,
     uint64_t end_id,
+    TranslationContext* translation_ctx,
     pir::Block* dest_block,
     bool for_cond_block,
     std::vector<std::string> skip_cond_assign) {
@@ -323,12 +336,14 @@ void ProgramTranslator::TranslateBlock(
       std::vector<const OpDesc*> cond_op_list = {op};
       std::vector<uint64_t> cond_op_ids = GetCondOpIds(src_block, op_id);
       ConditionBlockCombination cond_op_combination(src_block, cond_op_ids);
-      pir::Operation* if_op =
-          TranslateCondIfOperation(cond_op_combination, dest_block);
+      pir::Operation* if_op = TranslateCondIfOperation(
+          cond_op_combination, translation_ctx, dest_block);
       for (auto cond_id : cond_op_ids) {
         translate_completed[cond_id] = true;
       }
       VLOG(10) << "[op translated][conditional_block]" << if_op;
+    } else if (op->Type() == "while") {
+      TranslateWhileOperation(op, translation_ctx, dest_block);
     } else {
       if (for_cond_block && op->Type() == "assign" &&
           std::count(skip_cond_assign.begin(),
@@ -337,7 +352,7 @@ void ProgramTranslator::TranslateBlock(
         assign_inputs.push_back(op->Input("X")[0]);
         translate_completed[op_id] = true;
       } else {
-        TranslateGeneralOperation(op, dest_block);
+        TranslateGeneralOperation(op, translation_ctx, dest_block);
         translate_completed[op_id] = true;
       }
     }
@@ -347,7 +362,7 @@ void ProgramTranslator::TranslateBlock(
   if (for_cond_block) {
     std::vector<pir::Value> yeild_inputs;
     for (size_t id = 0; id < assign_inputs.size(); id++) {
-      yeild_inputs.emplace_back(param_map_[assign_inputs[id]].value);
+      yeild_inputs.emplace_back((*translation_ctx)[assign_inputs[id]].value);
     }
     pir::AttributeMap attribute_map;
     auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
@@ -358,11 +373,13 @@ void ProgramTranslator::TranslateBlock(
 }
 
 pir::Operation* ProgramTranslator::TranslateCondIfOperation(
-    const ConditionBlockCombination& cond_ops, pir::Block* dest_block) {
+    const ConditionBlockCombination& cond_ops,
+    TranslationContext* translation_ctx,
+    pir::Block* dest_block) {
   auto& type_translator = TypeTranslator::instance();
   auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::IfOp::name());
   std::vector<pir::Value> op_inputs = {
-      param_map_[cond_ops.CondVarName()].value};
+      (*translation_ctx)[cond_ops.CondVarName()].value};
 
   // NOTE(zhangbo): Now paddle::dialect::IfOp has 0 attribute
   pir::AttributeMap attribute_map;
@@ -382,8 +399,8 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
       op_inputs, attribute_map, op_output_types, op_info, 2);
 
   for (size_t i = 0; i < output_vardescs.size(); i++) {
-    param_map_.insert(output_vardescs[i]->Name(),
-                      VariableDefiningInfo(operation->result(i)));
+    translation_ctx->PushValue(output_vardescs[i]->Name(),
+                               VariableDefiningInfo(operation->result(i)));
   }
 
   dest_block->push_back(operation);
@@ -394,9 +411,13 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
         legacy_program_->Block(cond_ops.TrueBlockId());
     pir::Region& true_region = operation->region(0);
     if (true_region.empty()) true_region.emplace_back();
+
+    auto* true_block_context = translation_ctx->CreateInnerContext();
+
     TranslateBlock(true_sub_block,
                    0,
                    true_sub_block.OpSize(),
+                   true_block_context,
                    true_region.front(),
                    true,
                    cond_ops.TrueBlockOutputVarNames());
@@ -408,9 +429,11 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
         legacy_program_->Block(cond_ops.FalseBlockId());
     pir::Region& false_region = operation->region(1);
     if (false_region.empty()) false_region.emplace_back();
+    auto* false_block_context = translation_ctx->CreateInnerContext();
     TranslateBlock(false_sub_block,
                    0,
                    false_sub_block.OpSize(),
+                   false_block_context,
                    false_region.front(),
                    true,
                    cond_ops.FalseBlockOutputVarNames());
@@ -422,17 +445,89 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
   return operation;
 }
 
-void ProgramTranslator::TranslateGeneralOperation(const OpDesc* src_op,
-                                                  pir::Block* dest_block) {
+void ProgramTranslator::TranslateWhileOperation(
+    const OpDesc* op,
+    TranslationContext* translation_ctx,
+    pir::Block* dest_block) {
+  VLOG(8) << "=============>Start to translate while op:" << op;
+  auto& sub_block = legacy_program_->Block(op->GetBlockAttrId("sub_block"));
+  int index = static_cast<int>(sub_block.OpSize()) - 1;
+  std::vector<std::pair<std::string, std::string>> loop_vars_reverse;
+  while (index >= 0) {
+    auto sub_op = sub_block.Op(index);
+    if (sub_op->Type() == "assign" &&
+        translation_ctx->count(sub_op->Output("Out")[0]) > 0) {
+      loop_vars_reverse.emplace_back(sub_op->Output("Out")[0],
+                                     sub_op->Input("X")[0]);
+      --index;
+    } else {
+      break;
+    }
+  }
+  PADDLE_ENFORCE(!loop_vars_reverse.empty(),
+                 platform::errors::PreconditionNotMet(
+                     "While op must has condition value input"));
+  PADDLE_ENFORCE(loop_vars_reverse.front().first == op->Input("Condition")[0],
+                 platform::errors::PreconditionNotMet(
+                     "The last op in sub_block of While op must used to assign "
+                     "condition var"));
+  auto op_info = ctx_->GetRegisteredOpInfo(paddle::dialect::WhileOp::name());
+  std::vector<pir::Value> op_inputs{
+      translation_ctx->at(loop_vars_reverse[0].first).value};
+  std::vector<pir::Type> op_outputs_type;
+  auto body_block = new pir::Block();
+  std::vector<TCValue> param_status;
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].first;
+    auto& tc_value = translation_ctx->at(name);
+    auto val_type = tc_value.value.type();
+    op_inputs.push_back(tc_value.value);
+    op_outputs_type.push_back(val_type);
+    param_status.emplace_back(tc_value);
+    translation_ctx->PushValue(name, body_block->AddArgument(val_type));
+  }
+  pir::Operation* while_op =
+      pir::Operation::Create(op_inputs, {}, op_outputs_type, op_info, 1);
+  dest_block->push_back(while_op);
+  while_op->region(0).push_back(body_block);
+  TranslateBlock(sub_block, 0, index + 1, translation_ctx, body_block);
+
+  auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
+  std::vector<pir::Value> yeild_inputs{
+      translation_ctx->at(loop_vars_reverse[0].second).value};
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].second;
+    yeild_inputs.push_back(translation_ctx->at(name).value);
+  }
+  body_block->push_back(
+      pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+
+  index = 0;
+  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
+    auto& name = loop_vars_reverse[idx].first;
+    translation_ctx->PushValue(name, param_status[index++]);
+  }
+  auto name_iter = loop_vars_reverse.rbegin();
+  for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
+    translation_ctx->PushValue(name_iter++->first, while_op->result(idx));
+  }
+  while_op->Verify();
+  VLOG(8) << "=============>end to translate while op:" << op;
+}
+
+void ProgramTranslator::TranslateGeneralOperation(
+    const OpDesc* src_op,
+    TranslationContext* translation_ctx,
+    pir::Block* dest_block) {
   auto& op_translator = OpTranslator::instance();
   OpTranslateFn& fn = op_translator[src_op->Type()];
   if (src_op->Type() == "shadow_output") {
-    if (!param_map_.count(src_op->Input("x")[0])) {
+    if (!translation_ctx->count(src_op->Input("x")[0])) {
       return;
     }
   }
-  pir::Operation* operation = fn(ctx_, &param_map_, *src_op, dest_block);
-  VLOG(10) << "[op translated][special]" << operation << "end";
+  pir::Operation* operation = fn(ctx_, translation_ctx, *src_op, dest_block);
+  VLOG(10) << "[op translated][general]" << operation << "end";
 }
 
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
@@ -451,7 +546,7 @@ inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
 }
 
 inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
-                                            pir::OpResult defining_op_result,
+                                            pir::Value defining_op_result,
                                             const VarDesc* var) {
   std::string set_parameter_op_name(pir::SetParameterOp::name());
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(set_parameter_op_name);
@@ -502,7 +597,7 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
                   "VarDesc of [%s] can not be nullptr", var_name));
           pir::Operation* op = InsertGetParamaterOp(ctx_, var_desc);
           program_->block()->push_back(op);
-          param_map_.insert(var_name, VariableDefiningInfo(op->result(0)));
+          param_map_.PushValue(var_name, VariableDefiningInfo(op->result(0)));
           VLOG(10) << "[op translated][get parameter]" << var_name;
 
           program_->SetParameter(var_name, nullptr);
@@ -517,20 +612,6 @@ void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {
         inner_defining_variables.insert(var_name);
       }
     }
-  }
-}
-
-void ProgramTranslator::InsertOperationToSingleBlock(const BlockDesc& block) {
-  auto& op_translator = OpTranslator::instance();
-  for (auto op : block.AllOps()) {
-    OpTranslateFn& fn = op_translator[op->Type()];
-    if (op->Type() == "shadow_output") {
-      if (!param_map_.count(op->Input("x")[0])) {
-        continue;
-      }
-    }
-    pir::Operation* operation = fn(ctx_, &param_map_, *op, program_->block());
-    VLOG(10) << "[op translated][special]" << operation;
   }
 }
 
@@ -554,7 +635,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
         need_set_parameter_op &= (param_map_.count(var_name) != 0);
         need_set_parameter_op &= (!set_input_var_names.count(var_name));
         if (need_set_parameter_op) {
-          pir::OpResult defining_op_result = param_map_[var_name].value;
+          pir::OpResult defining_op_result =
+              param_map_[var_name].value.dyn_cast<pir::OpResult>();
           if (!defining_op_result) {
             continue;
           }
@@ -565,7 +647,8 @@ void ProgramTranslator::SetParameterFromSingleBlock(const BlockDesc& block) {
                                           program_->block(),
                                           param_map_[var_name],
                                           var_name);
-            defining_op_result = param_map_.at(var_name).value;
+            defining_op_result =
+                param_map_.at(var_name).value.dyn_cast<pir::OpResult>();
           }
 
           pir::Operation* op = InsertSetParamaterOp(
@@ -604,11 +687,8 @@ void ProgramTranslator::SetStopGradientAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value;
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,
@@ -645,11 +725,8 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
       continue;
     }
     for (const auto& value_info : value_list) {
-      pir::OpResult value = value_info.value;
-      if (!value) {
-        PADDLE_THROW(phi::errors::PreconditionNotMet(
-            "Value of [%s] can not ber None", var_name));
-      }
+      pir::OpResult value = value_info.value.dyn_cast<pir::OpResult>();
+      if (!value) continue;
       auto* defining_op = value.owner();
       PADDLE_ENFORCE_NOT_NULL(
           defining_op,

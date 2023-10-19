@@ -36,6 +36,7 @@ from ..base.param_attr import ParamAttr
 from ..framework import (
     LayerHelper,
     _current_expected_place,
+    _current_expected_place_,
     _get_paddle_place,
     convert_np_dtype_to_dtype_,
     core,
@@ -651,10 +652,11 @@ def _to_tensor_non_static(data, dtype=None, place=None, stop_gradient=True):
 
 
 def _to_tensor_static(data, dtype=None, stop_gradient=None):
-    if isinstance(data, Variable):
+    if isinstance(data, (Variable, paddle.pir.OpResult)):
         output = data
         if dtype is not None and dtype != data.dtype:
             output = paddle.cast(output, dtype)
+
     else:
         if isinstance(data, np.number):  # Special case for numpy scalars
             data = np.array(data)
@@ -785,8 +787,7 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     """
     place = _get_paddle_place(place)
     if place is None:
-        place = _current_expected_place()
-
+        place = _current_expected_place_()
     if in_dynamic_mode():
         return _to_tensor_non_static(data, dtype, place, stop_gradient)
 
@@ -794,7 +795,6 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
     else:
         re_exp = re.compile(r'[(](.+?)[)]', re.S)
         place_str = re.findall(re_exp, str(place))[0]
-
         with paddle.static.device_guard(place_str):
             return _to_tensor_static(data, dtype, stop_gradient)
 

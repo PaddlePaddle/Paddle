@@ -48,8 +48,8 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
             removed_op_idx.append(idx)
 
             # del op from dist_context
-            if dist_context:
-                dist_context.del_dist_op_for_program(op)
+            # if dist_context:
+            #     dist_context.del_dist_op_for_program(op)
 
     for idx in removed_op_idx[::-1]:
         main_block._remove_op(idx, sync=False)
@@ -229,6 +229,7 @@ def _create_cond_block_and_update_optimizer(
     optimize_ops_block,
     k_steps,
     avg,
+    dist_context,
 ):
     def true_apply_gradient():
         cur_block_idx = main_program.current_block_idx
@@ -285,6 +286,14 @@ def _create_cond_block_and_update_optimizer(
         main_program.global_block()._sync_with_cpp()
         cur_block._sync_with_cpp()
 
+        # update serial op
+        for idx, op in enumerate(cur_block.ops):
+            if is_optimize_op(op):
+                dist_op = dist_context.get_dist_op_for_program(op)
+                if dist_op:
+                    # dist_op.set_input_dist_attr
+                    dist_op._serial_op = op
+
         # clear gradient_merge_vars
         for param, new_grad in new_params_to_grads:
             paddle.tensor.fill_constant(
@@ -331,6 +340,7 @@ def parse_program(
         optimize_ops_block,
         k_steps,
         avg,
+        dist_context,
     )
 
 
