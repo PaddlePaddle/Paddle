@@ -59,7 +59,7 @@ def get_fwd_op(bwd_op, grad_var_to_var_map):
     return None
 
 
-def get_layer_norm_pir_program_and_param_map():
+def get_pir_program_and_param_map():
     shape = [2, 3]
     mp = paddle.static.Program()
     with paddle.static.program_guard(mp):
@@ -72,14 +72,15 @@ def get_layer_norm_pir_program_and_param_map():
         z.stop_gradient = False
         tmp1 = paddle.add(x, y)
         tmp2 = paddle.multiply(tmp1, z)
+        tmp3 = paddle.mean(tmp2, axis=-1, keepdim=True)
         scale = paddle.tensor.fill_constant(
-            shape=tmp2.shape[1:],
-            dtype=tmp2.dtype,
+            shape=tmp3.shape[1:],
+            dtype=tmp3.dtype,
             value=1.0,
         )
         scale.stop_gradient = False
         out = paddle.nn.functional.layer_norm(
-            tmp2, tmp2.shape[1:], scale, None, 1e-5
+            tmp3, tmp3.shape[1:], scale, None, 1e-5
         )
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
@@ -87,7 +88,6 @@ def get_layer_norm_pir_program_and_param_map():
     newir_program, param_mappings = pir.translate_to_new_ir_with_param_map(
         mp.desc
     )
-
     check_param_mappings(param_mappings)
 
     return newir_program, param_mappings
@@ -103,11 +103,11 @@ class TestDecomposeOp(unittest.TestCase):
         self.shape_z = [2, 3]
         self.z = np.random.random(self.shape_z).astype("float32")
 
-    def layer_norm_net(self, flag=None):
+    def net(self, flag=None):
         (
             newir_program,
             param_mappings,
-        ) = get_layer_norm_pir_program_and_param_map()
+        ) = get_pir_program_and_param_map()
 
         newir_ops = newir_program.global_block().ops
         global_outputs = [newir_ops[7].result(0)]
@@ -127,6 +127,7 @@ class TestDecomposeOp(unittest.TestCase):
                 # get the old_ir_grad_var_to_var map
                 old_ir_grad_var_to_var_map = {
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
+                    'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
                     "fill_constant_3.tmp_0@GRAD": "fill_constant_3.tmp_0",
                     'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'elementwise_add_1@GRAD': 'elementwise_add_1',
@@ -155,10 +156,10 @@ class TestDecomposeOp(unittest.TestCase):
 
                 decompose_bwd_ops_names = [
                     "pd_op.layer_norm_grad",
+                    "pd_op.mean_grad",
                     "pd_op.add_grad",
                     "pd_op.multiply_grad",
                 ]
-
                 for bwd_op in newir_ops:
                     if (
                         flag == "decompose"
@@ -259,8 +260,8 @@ class TestDecomposeOp(unittest.TestCase):
         return outs
 
     def test_decompose_layer_norm_op(self):
-        res_ref = self.layer_norm_net()
-        res = self.layer_norm_net("decompose")
+        res_ref = self.net()
+        res = self.net("decompose")
         for ref, actual in zip(res_ref, res):
             np.testing.assert_allclose(ref, actual, atol=1e-4)
 
