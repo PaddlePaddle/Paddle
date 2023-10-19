@@ -20,6 +20,7 @@
 #include <fstream>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/auto_schedule/search_space/search_state.h"
 #include "paddle/cinn/auto_schedule/task/task_registry.h"
 #include "paddle/cinn/cinn.h"
@@ -47,8 +48,8 @@ std::vector<ir::LoweredFunc> LowerCompute(const std::vector<int>& shape,
   C = Compute(
       domain, [&B](Var i, Var j) { return B(i, j); }, "C");
 
-  return cinn::lang::LowerVec(
-      "test_func", CreateStages({A, B}), {A, B}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({A, B});
+  return cinn::lang::LowerToAstVec("test_func", {A, B}, &tensor_group, target);
 }
 
 // Create a new IRSchedule with copied ir::LoweredFunc AST
