@@ -19,6 +19,7 @@
 #include "paddle/cinn/adt/igroup.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/kgroup.h"
+#include "paddle/cinn/adt/map_expr_ctx.h"
 #include "paddle/cinn/adt/naive_bidirection_equation_generator.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
@@ -256,7 +257,7 @@ std::unordered_map<Variable, const Value> MakeSdIterator2Iterator(
   return ret;
 }
 
-std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
+std::shared_ptr<IndexExprInferContext> SolveEquationsThenReturnCtx(
     const std::shared_ptr<IGroup>& igroup, const ScheduleMesh& sched_mesh) {
   const auto& sd_equation_graph_view =
       GenerateSdEquationGraphView(igroup, sched_mesh);
@@ -273,10 +274,29 @@ std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
     starts.emplace_back(loop_iterator);
   }
   SolveEquations(merged_view, starts, ctx.get());
+  return ctx;
+}
+
+std::function<TensorIndexExpr(const Tensor&)> MakeGetterTensorIndexExpr(
+    const std::shared_ptr<IndexExprInferContext>& ctx,
+    const std::shared_ptr<IGroup>& igroup) {
   return [ctx, igroup](const Tensor& tensor) {
     // All indexes of same tensor have the same Value.
-    const auto index = igroup->GetIndexes(tensor).at(0);
+    const auto& index = igroup->GetIndexes(tensor).at(0);
     return ctx->GetValue(index);
+  };
+}
+
+TensorIteratorExpr4TensorT MakeGetterTensorIteratorExpr4Tensor(
+    const std::shared_ptr<IndexExprInferContext>& ctx,
+    const std::shared_ptr<IGroup>& igroup) {
+  return [ctx, igroup](const Tensor& tensor) -> List<TensorIteratorExpr> {
+    const auto& iterators = igroup->GetTensorIterators(tensor);
+    List<TensorIteratorExpr> ret{};
+    for (const auto& iterator : *iterators) {
+      ret->emplace_back(ctx->GetValue(iterator));
+    }
+    return ret;
   };
 }
 
@@ -360,7 +380,8 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
     const LoopIterators& loop_iters,
     const ScheduleMesh& sched_mesh,
     const LoopDescriptors& sd,
-    const TensorIndexExpr4TensorT& TensorIndexExpr4Tensor) {
+    const TensorIndexExpr4TensorT& TensorIndexExpr4Tensor,
+    const TensorIteratorExpr4TensorT& TensorIteratorExpr4Tensor) {
   const auto& LoopDescriptor4IterVar =
       MakeGetterLoopDescriptor4IterVar(loop_iters, sd);
 
@@ -370,6 +391,7 @@ AnchoredMapStmt GenerateAnchoredMapStmt(
                          sched_mesh,
                          GetAnchorTensor(igroup),
                          TensorIndexExpr4Tensor,
+                         TensorIteratorExpr4Tensor,
                          LoopDescriptor4IterVar};
 }
 
@@ -379,13 +401,19 @@ AnchoredMapStmt GenerateAnchoredMapStmt(const std::shared_ptr<IGroup>& igroup) {
 
   const auto& sd = CreateScheduleDescriptor(sched_mesh, loop_types);
 
-  const auto& TensorIndexExpr4Tensor =
-      MakeGetterTensorIndexExpr(igroup, sched_mesh);
+  const auto& ctx = SolveEquationsThenReturnCtx(igroup, sched_mesh);
+  const auto& TensorIndexExpr4Tensor = MakeGetterTensorIndexExpr(ctx, igroup);
+  const auto& TensorIteratorExpr4Tensor =
+      MakeGetterTensorIteratorExpr4Tensor(ctx, igroup);
 
   const auto& schedule_iters = igroup->loop_iterators();
 
-  return GenerateAnchoredMapStmt(
-      igroup, schedule_iters, sched_mesh, sd, TensorIndexExpr4Tensor);
+  return GenerateAnchoredMapStmt(igroup,
+                                 schedule_iters,
+                                 sched_mesh,
+                                 sd,
+                                 TensorIndexExpr4Tensor,
+                                 TensorIteratorExpr4Tensor);
 }
 
 List<AnchoredMapStmt> MakeAnchoredMapStmts(
@@ -426,6 +454,7 @@ void TryGenerateMapExprFromGraph(
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
     PrintMapExpr(map_expr, fusion_group->group_id);
+    fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
   }
 }
 

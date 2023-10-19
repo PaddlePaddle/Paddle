@@ -70,11 +70,11 @@ void IGroup::InitAnchorScheduleDims() {
       *this, Value4Iterator, loop_size, this->GetAnchorIterators());
 }
 
-List<Iterator> IGroup::GetAnchorIterators() const {
+List<Iterator> IGroup::GetIndexIterators(const Index& index) const {
   List<Iterator> ret{};
   for (const auto& op_stmt : *op_stmts_) {
     const auto& ctx = EquationCtx4OpStmt_(op_stmt);
-    const OpArgPos& arg_pos = ctx->GetOpArgPos(anchor_index());
+    const OpArgPos& arg_pos = ctx->GetOpArgPos(index);
     if (arg_pos.Has<tIn<std::size_t>>()) {
       return ctx->GetInIteratorTuple(arg_pos.Get<tIn<std::size_t>>().value());
     } else if (arg_pos.Has<tOut<std::size_t>>()) {
