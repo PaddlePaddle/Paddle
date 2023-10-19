@@ -313,6 +313,7 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
     const List<OpStmt>& op_stmts,
     const std::shared_ptr<DirectionEquationGenerator>&
         direction_equation_generator) {
+  CHECK(!op_stmts->empty());
   std::unordered_map<AnchorIndex, AnchorGroup> anchor_index2igroup_spec{};
 
   const auto& OpStmt4OpPlaceHolder =

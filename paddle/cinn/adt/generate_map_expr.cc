@@ -129,7 +129,7 @@ void VisitEachOpStmt(
     const std::shared_ptr<hlir::framework::Graph::Group>& group,
     const DoEachT& DoEach) {
   // Note
-  for (const auto* op : group->nodes) {
+  for (const auto* op : group->CollectNodes()) {
     DoEach(OpStmt{MakeOp(op),
                   MakeOpStmtInputList(op, group->graph_),
                   MakeOpStmtOutputList(op, group->graph_)});
@@ -217,6 +217,7 @@ std::vector<std::shared_ptr<IGroup>> GenerateIGroups(
   std::vector<std::shared_ptr<IGroup>> ret{};
 
   List<OpStmt> op_stmts = MakeOpStmts(group);
+  CHECK(!op_stmts->empty());
 
   PartitionIGroupOpStmts(op_stmts, [&](const auto& igroup_spec) {
     ret.push_back(MakeIGroup(igroup_spec));

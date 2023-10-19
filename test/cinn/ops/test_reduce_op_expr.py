@@ -39,3 +39,19 @@ target = DefaultHostTarget()
 result = prog.build_and_get_output(
     target, [x, y], [inputs["x"], inputs["y"]], [out], passes=[], scope=None
 )
+
+import numpy as np
+
+import paddle
+
+pd_x = paddle.to_tensor(inputs["x"])
+pd_y = paddle.to_tensor(inputs["y"])
+pd_out = paddle.sum(pd_x + pd_y, axis=0)
+
+np.testing.assert_allclose(
+    result[0].numpy(target),
+    pd_out.numpy(),
+    err_msg="PrecisionTest failed!",
+)
+
+print("Test Success")
