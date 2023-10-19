@@ -15,7 +15,7 @@
 import paddle
 from .graphs import CUDAGraph
 
-class cudaGraphContext:
+class CUDAGraphContext:
     def __init__(self, layer, num_warmup_steps):
         self.step = 0
         self.layer = layer
@@ -37,7 +37,7 @@ def get_grad(x):
     else:
         return x
 
-class _cudaGraphedLayer(paddle.autograd.PyLayer):
+class _CUDAGraphedLayer(paddle.autograd.PyLayer):
     @staticmethod
     def forward(ctx, context, *args):
         args = [detach(x) for x in args]
@@ -92,10 +92,10 @@ class _cudaGraphedLayer(paddle.autograd.PyLayer):
         context.step += 1
         return args_grad
 
-class cudaGraphedLayer(paddle.nn.Layer):
+class CUDAGraphedLayer(paddle.nn.Layer):
     def __init__(self, layer: paddle.nn.Layer, num_warmup_steps=3):
         super().__init__()
-        self.context = cudaGraphContext(layer, num_warmup_steps)
+        self.context = CUDAGraphContext(layer, num_warmup_steps)
 
     def forward(self, *args):
-        return _cudaGraphedLayer.apply(self.context, *args)
+        return _CUDAGraphedLayer.apply(self.context, *args)
