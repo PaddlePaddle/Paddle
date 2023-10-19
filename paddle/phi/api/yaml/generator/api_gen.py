@@ -379,6 +379,7 @@ def source_include(header_file_path):
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);

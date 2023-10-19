@@ -24,16 +24,18 @@ from dist_api_gen import DistForwardAPI
 
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
-  if ({}) {{
+  if (use_dist_branch) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    // 4. Select Kernel{}
-    // 5. Reshard Input{}\n
-    // 6. PrepareData (DataTransform & Prepare Dense Input){}
-    // 7. Infer Local DenseTensor Meta{}
-    // 8. DenseTensor Kernel Call{}
-    // 9. Reshard Output{}\n
+    if (!computation_clip_for_pp){{
+      // 4. Select Kernel{}
+      // 5. Reshard Input{}\n
+      // 6. PrepareData (DataTransform & Prepare Dense Input){}
+      // 7. Infer Local DenseTensor Meta{}
+      // 8. DenseTensor Kernel Call{}
+      // 9. Reshard Partial Output to Replicated (Temporary){}\n
+    }}
     // 10. Return
     {}
   }}
@@ -99,9 +101,9 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
 
 # 9. Reshard Output
 RESHARD_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out, {});"""
 RESHARD_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
+      ReshardKernelOutputToApiOutput(dev_ctx, shared_dist_out_{}, {});"""
 
 
 class DistBackwardAPI(DistForwardAPI, BackwardAPI):
@@ -260,7 +262,6 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         if len(self.inputs['names']) == 0:
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_if_condition_code(),
             self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),
@@ -308,6 +309,7 @@ def source_include(header_file_path, fw_header_file_path):
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
