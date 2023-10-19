@@ -784,6 +784,13 @@ class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
         return paddle.multigammaln(var, self.p)
 
 
+class TestDygraphInplaceMutilgammalnCase1(TestDygraphInplaceMutilgammaln):
+    def init_data(self):
+        self.input_var_numpy = np.random.rand(10, 20).astype('float64') + 1.0
+        self.dtype = "float64"
+        self.p = 2
+
+
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
         return paddle.neg_(var)
