@@ -10,4 +10,13 @@ if(NOT CINN_ONLY)
     pd_op_dialect
     pir_compiler
     cinn_runtime_dialect)
+
+  cinn_cc_library(
+    pd_op_to_cinn_op_convert_pass
+    SRCS
+    pd_op_to_cinn_op_convert_pass.cc
+    DEPS
+    drr
+    pd_op_dialect
+    cinn_op_dialect)
 endif()
