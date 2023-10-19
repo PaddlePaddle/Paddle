@@ -26,6 +26,9 @@ set(fused_op_backward_yaml_file
 set(cinn_op_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
 
+set(cinn_op_yaml_source_file
+    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
+
 set(parsed_op_dir
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 
@@ -73,7 +76,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
-          ${cinn_op_yaml_file}
+          ${cinn_op_yaml_source_file}
           pd_op_dialect_op
           cinn_op_dialect
   VERBATIM)
