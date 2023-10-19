@@ -118,10 +118,10 @@ class TestWithNestedOutput(Dy2StTestBase):
 
     @test_and_compare_with_new_ir(False)
     def test_nest(self):
-        dygraph_res = self._run(to_static=False, fullgraph=True)
+        dygraph_res = self._run(to_static=False)
         dygraph_res = paddle.utils.flatten(dygraph_res)
 
-        static_res = self._run(to_static=True, fullgraph=True)
+        static_res = self._run(to_static=True)
         static_res = paddle.utils.flatten(static_res)
 
         self.assertTrue(len(dygraph_res) == len(static_res))
