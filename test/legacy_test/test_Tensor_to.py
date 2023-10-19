@@ -1,0 +1,128 @@
+# Copyright (c) 2019 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import unittest
+
+import paddle
+from paddle import base
+
+
+class TensorToTest(unittest.TestCase):
+    def test_Tensor_to_dtype(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        for dtype in valid_dtypes:
+            tensorx = tensorx.to(dtype)
+            typex_str = str(tensorx.dtype)
+            self.assertEqual((typex_str == "paddle." + dtype), True)
+
+    def test_Tensor_to_device(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        places = ["cpu"]
+        if base.core.is_compiled_with_cuda():
+            places.append("gpu:0")
+            places.append("gpu")
+
+        for place in places:
+            tensorx = tensorx.to(place)
+            placex_str = str(tensorx.place)
+            if place == "gpu":
+                self.assertEqual((placex_str == "Place(" + place + ":0)"), True)
+            else:
+                self.assertEqual((placex_str == "Place(" + place + ")"), True)
+
+    def test_Tensor_to_device_dtype(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        places = ["cpu"]
+        if base.core.is_compiled_with_cuda():
+            places.append("gpu:0")
+            places.append("gpu")
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        for dtype in valid_dtypes:
+            for place in places:
+                tensorx = tensorx.to(place, dtype)
+                placex_str = str(tensorx.place)
+                if place == "gpu":
+                    self.assertEqual(
+                        (placex_str == "Place(" + place + ":0)"), True
+                    )
+                else:
+                    self.assertEqual(
+                        (placex_str == "Place(" + place + ")"), True
+                    )
+                typex_str = str(tensorx.dtype)
+                self.assertEqual((typex_str == "paddle." + dtype), True)
+
+    def test_Tensor_to_blocking(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        tensorx = tensorx.to("cpu", "int32", False)
+        placex_str = str(tensorx.place)
+        self.assertEqual((placex_str == "Place(cpu)"), True)
+        typex_str = str(tensorx.dtype)
+        self.assertEqual((typex_str == "paddle.int32"), True)
+
+    def test_Tensor_to_other(self):
+        tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
+        tensor2 = paddle.to_tensor([1, 2, 3])
+        tensor2 = tensor2.to(tensor1)
+        self.assertEqual((tensor2.dtype == tensor1.dtype), True)
+        self.assertEqual((type(tensor2.place) == type(tensor1.place)), True)
+
+    def test_error(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        # device value error
+        try:
+            tensorx = tensorx.to("error_device")
+        except Exception as error:
+            self.assertIsInstance(error, ValueError)
+        # to many augments
+        try:
+            tensorx = tensorx.to("cpu", "int32", False, "test_aug")
+        except Exception as error:
+            self.assertIsInstance(error, TypeError)
+        # invalid key
+        try:
+            tensorx = tensorx.to("cpu", "int32", test_key=False)
+        except Exception as error:
+            self.assertIsInstance(error, TypeError)
+
+
+if __name__ == '__main__':
+    unittest.main()

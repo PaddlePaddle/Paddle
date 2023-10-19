@@ -514,6 +514,47 @@ def monkey_patch_tensor():
 
     @framework.dygraph_only
     def to(self, *args, **kwargs):
+        """
+        Performs Tensor dtype and/or device conversion. A torch.dtype and torch.device
+        are inferred from the arguments of self.to(*args, **kwargs).There are three ways
+        to call `to`
+            to(dtype, blocking=True)
+            to(device, dtype=None, blocking=True)
+            to(other, blocking=True)
+
+        Returns:
+            Tensor: self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> tensorx = paddle.to_tensor([1,2,3])
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+
+                >>> tensorx = tensorx.to("cpu")
+                >>> print(tensorx.place)
+                Place(cpu)
+
+                >>> tensorx = tensorx.to("float32")
+                >>> print(tensorx.dtype)
+                paddle.float32
+
+                >>> tensorx = tensorx.to("gpu", "int16")
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+                >>> tensor2 = paddle.to_tensor([4,5,6])
+                >>> tensor2
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+                >>> tensor2 = tensor2.to(tensorx)
+                >>> print(tensor2)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+        """
         device = None
         dtype = None
         blocking = None
@@ -530,7 +571,7 @@ def monkey_patch_tensor():
 
         if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
             raise TypeError(
-                "to() received too mant arguments - expected one of:\n* (Union[str,paddle.fluid.libpaddle.Place] device, Union[str, paddle.dtype] dtype, bool blocking)\n* (Union[str, paddle.dtype] dtype, bool blocking)\n* (paddle.Tensor other, bool blocking) "
+                "to() received too mant arguments - expected one of:\n* (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] device, Union[str, paddle.dtype] dtype, bool blocking)\n* (Union[str, paddle.dtype] dtype, bool blocking)\n* (paddle.Tensor other, bool blocking) "
             )
         valid_keys = set(["device", "dtype", "non_blocking", "other"])
         valid_dtypes = [
@@ -543,7 +584,6 @@ def monkey_patch_tensor():
             "int32",
             "int64",
             "uint8",
-            "uint16",
             "complex64",
             "complex128",
             "bool",
