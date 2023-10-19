@@ -14,6 +14,7 @@
 
 import itertools
 import warnings
+from functools import reduce
 
 import numpy as np
 
