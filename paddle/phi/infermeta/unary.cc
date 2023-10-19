@@ -3255,17 +3255,6 @@ void ReduceInferMetaBase(const MetaTensor& x,
   out->set_layout(x.layout());
 }
 
-void ReduceInferMetaBaseFN(const MetaTensor& x,
-                           const IntArray& axis,
-                           bool keep_dim,
-                           bool reduce_all,
-                           MetaTensor* out) {
-  DDim out_dim = ReduceInferDim(x, axis.GetData(), keep_dim, reduce_all);
-  out->set_dims(out_dim);
-  out->set_dtype(x.dtype());
-  out->set_layout(x.layout());
-}
-
 void ReduceInferMeta(const MetaTensor& x,
                      const std::vector<int64_t>& axis,
                      bool keep_dim,

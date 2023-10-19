@@ -471,12 +471,6 @@ void ReduceInferMetaBase(const MetaTensor& x,
                          bool reduce_all,
                          MetaTensor* out);
 
-void ReduceInferMetaBaseFN(const MetaTensor& x,
-                           const IntArray& axis,
-                           bool keep_dim,
-                           bool reduce_all,
-                           MetaTensor* out);
-
 void ReduceIntArrayAxisInferMetaBase(const MetaTensor& x,
                                      const IntArray& axis,
                                      bool keep_dim,
