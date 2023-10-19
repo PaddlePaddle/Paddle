@@ -29,6 +29,7 @@ function collect_failed_tests() {
 
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
+^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
 ^test_dygraph_sharding_stage2_bf16$|\
 ^test_dygraph_sharding_stage3_bf16$|\

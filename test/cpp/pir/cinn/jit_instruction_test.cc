@@ -78,12 +78,11 @@ namespace framework {
 TEST(CinnJitInstruction, Run) {
   // Step 1: Construct pir::Program
   std::unique_ptr<::pir::Program> program = BuildProgram();
-  // EXPECT_EQ(program->block()->size(), 2u);
+  EXPECT_EQ(program->block()->size(), 7u);
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  // ASSERT_EQ(scope->var_names().size(), 2);
 
   std::vector<cinn::hlir::framework::NewIRCompiler*> compiler_list;
 

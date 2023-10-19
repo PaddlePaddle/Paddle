@@ -3673,10 +3673,10 @@ class TestSquare(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.007)
+        self.check_grad(['X'], 'Out', max_relative_error=0.007, check_pir=True)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestSquare_ZeroDim(TestSquare):
@@ -3708,11 +3708,13 @@ class TestSquareBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.5)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.5, check_pir=True
+        )
 
 
 class TestPow(TestActivation):
@@ -4736,7 +4738,7 @@ else:
     create_test_act_fp16_class(TestLog2)
 create_test_act_fp16_class(TestLog10)
 create_test_act_fp16_class(TestLog1p)
-create_test_act_fp16_class(TestSquare)
+create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
@@ -4884,7 +4886,7 @@ else:
     create_test_act_bf16_class(TestLog2)
 create_test_act_bf16_class(TestLog10)
 create_test_act_bf16_class(TestLog1p)
-create_test_act_bf16_class(TestSquare)
+create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
