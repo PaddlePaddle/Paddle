@@ -1488,6 +1488,14 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     false_var, true_var = inputs
 
+    def start_select_input():
+        try:
+            return select_input(inputs, mask)
+        except Exception as e:
+            raise RuntimeError(
+                f"Exceptions throwed while doing select_input on {name}:\n{e}"
+            )
+
     if isinstance(false_var, UndefinedVar) and isinstance(
         true_var, UndefinedVar
     ):
@@ -1495,15 +1503,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         return None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
-
-        def start_select_input():
-            try:
-                return select_input(inputs, mask)
-            except Exception as e:
-                raise RuntimeError(
-                    f"Exceptions throwed while doing select_input on {name}:\n{e}"
-                )
-
         return start_select_input
 
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
@@ -1554,15 +1553,6 @@ def select_input_with_buildin_type(inputs, mask, name):
                 type(false_var), type(true_var)
             )
         )
-
-    def start_select_input():
-        try:
-            return select_input(inputs, mask)
-        except Exception as e:
-            raise RuntimeError(
-                f"Exceptions throwed while doing select_input on {name}:\n{e}"
-            )
-
     return start_select_input
 
 
