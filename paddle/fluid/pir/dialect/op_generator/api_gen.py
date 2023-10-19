@@ -512,7 +512,10 @@ class CodeGen:
     def _gen_check_input_dtype(self, op_info, op_name):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        if op_name.endswith(('_grad', '_grad_')) or len(name_list) == 0:
+        if (
+            op_name.endswith(('_grad', '_grad_', '_grad_dense', '_grad_sparse'))
+            or len(name_list) == 0
+        ):
             return ''
         data_type_candidates = None
         if (
