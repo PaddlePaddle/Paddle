@@ -12,8 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <string>
 
-#include "paddle/cinn/adt/equation_value.h"
+namespace cinn::adt {
 
-namespace cinn::adt {}  // namespace cinn::adt
+class LoopDescriptor;
+
+std::string ToTxtString(const LoopDescriptor& loop_descriptor);
+
+}  // namespace cinn::adt

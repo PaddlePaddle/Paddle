@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/equation_solver.h"
 #include "paddle/cinn/adt/equation_value.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
-#include "paddle/cinn/adt/print_value.h"
+#include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/adt/simplify_value.h"
 #include "paddle/cinn/adt/tags.h"
 #include "paddle/cinn/common/equation_graph_topo_walker.h"
@@ -186,14 +186,6 @@ void SolveEquations(
       });
 }
 
-std::string GetDebugString(const std::optional<Value>& opt_old_value) {
-  if (opt_old_value.has_value()) {
-    return DebugString(opt_old_value.value());
-  } else {
-    return "";
-  }
-}
-
 void CheckEquationsSolvable(
     const EquationGraphTopoWalker<Variable, const Function*>& walker,
     const Variable& start,
@@ -203,8 +195,8 @@ void CheckEquationsSolvable(
         function,
         ctx,
         [&](const auto& opt_old_value, const auto& simplified_value) {
-          LOG(ERROR) << "old_value: " << GetDebugString(opt_old_value);
-          LOG(ERROR) << "simplified_value: " << DebugString(simplified_value);
+          LOG(ERROR) << "old_value: " << ToTxtString(opt_old_value);
+          LOG(ERROR) << "simplified_value: " << ToTxtString(simplified_value);
           LOG(FATAL) << "CheckEquationsSolvable Failed";
           return tValueInferSuccess<bool>{false};
         });

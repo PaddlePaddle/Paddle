@@ -111,12 +111,6 @@ inline bool IsSpatial(const LoopType& loop_type) {
                     loop_type.variant());
 }
 
-std::string DebugStringImpl(const LoopDescriptor& loop_descriptor);
-
-inline std::string DebugString(const LoopDescriptor& loop_descriptor) {
-  return DebugStringImpl(loop_descriptor);
-}
-
 List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd);
 
 class KGroup;

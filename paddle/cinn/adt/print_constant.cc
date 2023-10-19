@@ -13,10 +13,12 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_constant.h"
+#include "paddle/cinn/adt/equation_constant.h"
 
 namespace cinn::adt {
 
 namespace {
+
 struct ToTxtStringStruct {
   std::string operator()(const std::int64_t constant) {
     return std::to_string(constant);
@@ -27,39 +29,38 @@ struct ToTxtStringStruct {
     return "dim_" + std::to_string(constant_unique_id);
   }
 
-  std::string operator()(const List<Constant>& constant_list) {
+  std::string operator()(const List<Constant>& constants) {
     std::string ret;
-    ret += "(";
+    ret += "[";
 
-    for (std::size_t idx = 0; idx < constant_list->size(); ++idx) {
+    for (std::size_t idx = 0; idx < constants->size(); ++idx) {
       if (idx != 0) {
         ret += ", ";
       }
-      ret += ToTxtString(constant_list.Get(idx));
+      ret += ToTxtString(constants.Get(idx));
     }
 
-    ret += ")";
+    ret += "]";
     return ret;
   }
 
-  std::string operator()(const Neg<Constant>& constant) {
+  std::string operator()(const Neg<Constant>& neg) {
     std::string ret;
-    const auto& [constant_] = constant.tuple();
-    ret += ToTxtString(constant_);
+    ret += std::string("-") + ToTxtString(std::get<0>(neg.tuple()));
     return ret;
   }
 
   std::string operator()(const Add<Constant, Constant>& constant) {
     std::string ret;
     const auto& [left, right] = constant.tuple();
-    ret += "add(" + ToTxtString(left) + ", " + ToTxtString(right) + ")";
+    ret += "(" + ToTxtString(left) + " + " + ToTxtString(right) + ")";
     return ret;
   }
 
   std::string operator()(const Mul<Constant, Constant>& constant) {
     std::string ret;
     const auto& [left, right] = constant.tuple();
-    ret += "mul(" + ToTxtString(left) + ", " + ToTxtString(right) + ")";
+    ret += "(" + ToTxtString(left) + " * " + ToTxtString(right) + ")";
     return ret;
   }
 };

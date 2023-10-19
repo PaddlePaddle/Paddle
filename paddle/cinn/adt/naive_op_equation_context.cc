@@ -18,14 +18,14 @@
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/op_arg_pos.h"
-#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print.h"
 
 #include "glog/logging.h"
 
 namespace cinn::adt::config {
 
 void NaiveOpEquationContext::Print() {
-  VLOG(3) << "equations : \n" << ToTxtString(equations(), "\n");
+  VLOG(1) << "Equations : \n" << ToTxtString(equations());
 }
 
 std::vector<std::uint64_t> MakeTensorRanks(const List<Arg>& arg_lists) {
