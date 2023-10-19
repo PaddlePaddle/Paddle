@@ -172,11 +172,8 @@ class FCMKLDNNHandler
 
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
-      auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
-      auto residual_data_md =
-          dnnl::memory::desc({MB, OC},
-                             phi::funcs::OneDNNGetDataType<float>(),
-                             dnnl::memory::format_tag::ab);
+      auto residual_data_md = dnnl::memory::desc(
+          {MB, OC}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
     }
@@ -303,10 +300,13 @@ class FCMKLDNNHandler
     auto memory_p = std::static_pointer_cast<dnnl::memory>(
         this->dev_ctx_.GetBlob(residual_key));
     if (!memory_p) {
+      auto dims = this->fwd_pd_->dst_desc().get_dims();
       if (phi::funcs::is_int8<T_in>()) {
-        auto dims = this->fwd_pd_->dst_desc().get_dims();
-        auto src_0_md = dnnl::memory::desc(
-            dims, dnnl::memory::data_type::s8, dnnl::memory::format_tag::ab);
+        auto data_type = residual->dtype() == phi::DataType::INT8
+                             ? dnnl::memory::data_type::s8
+                             : dnnl::memory::data_type::u8;
+        auto src_0_md =
+            dnnl::memory::desc(dims, data_type, dnnl::memory::format_tag::ab);
         auto src_1_md = dnnl::memory::desc(
             dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
         auto dst_md = dnnl::memory::desc(
@@ -314,17 +314,24 @@ class FCMKLDNNHandler
         std::vector<float> src_data(phi::product(residual->dims()),
                                     1.f / scale_data);
 
-        const int8_t* input_data = residual->data<int8_t>();
-        // const float* scale = scale_tensor->data<float>();
-        auto src_0_mem =
-            dnnl::memory(src_0_md,
-                         this->dev_ctx_.GetEngine(),
-                         phi::funcs::to_void_cast<int8_t>(input_data));
+        dnnl::memory src_0_mem;
+        if (residual->dtype() == phi::DataType::INT8) {
+          const int8_t* input_data = residual->data<int8_t>();
+          src_0_mem =
+              dnnl::memory(src_0_md,
+                           this->dev_ctx_.GetEngine(),
+                           phi::funcs::to_void_cast<int8_t>(input_data));
+        } else {
+          const uint8_t* input_data = residual->data<uint8_t>();
+          src_0_mem =
+              dnnl::memory(src_0_md,
+                           this->dev_ctx_.GetEngine(),
+                           phi::funcs::to_void_cast<uint8_t>(input_data));
+        }
         auto src_1_mem =
             dnnl::memory(src_1_md,
                          this->dev_ctx_.GetEngine(),
                          phi::funcs::to_void_cast<float>(src_data.data()));
-        // src_1_mem.set_data_handle(phi::funcs::to_void_cast(src_data.data()));
 
         auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
 
@@ -345,21 +352,16 @@ class FCMKLDNNHandler
 
         auto& astream = OneDNNContext::tls().get_stream();
         binary_prim.execute(astream, binary_args);
-
         astream.wait();
 
         memory_p = std::make_shared<dnnl::memory>(dst_memory);
-        // memory_p = std::make_shared<dnnl::memory>(this->fwd_pd_->src_desc(),
-        //                                           this->dev_ctx_.GetEngine(),
-        //                                           dst_memory.get_data_handle());
       } else {
-        // memory_p = this->AcquireSrcMemory(residual);
         const float* input_data = residual->data<float>();
-        for (size_t i = 0; i < 10; ++i) {
-          LOG(INFO) << input_data[i];
-        }
+        auto residual_md = dnnl::memory::desc(
+            dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+
         memory_p = std::make_shared<dnnl::memory>(
-            this->fwd_pd_->src_desc(),
+            residual_md,
             this->dev_ctx_.GetEngine(),
             phi::funcs::to_void_cast<float>(input_data));
       }
@@ -513,7 +515,6 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
     std::shared_ptr<dnnl::memory> bias_memory_p;
     std::shared_ptr<dnnl::memory> dst_memory_p;
     std::shared_ptr<dnnl::memory> residual_data_memory_p;
-    std::shared_ptr<phi::DenseTensor> residual_data_cache;
     auto* residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
 
     std::string cache_key;
@@ -533,93 +534,104 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
 
     std::unordered_map<int, dnnl::memory> fc_args;
 
-    // if (inner_product_cache) {
-    //   fc_p = std::make_shared<dnnl::inner_product_forward>(
-    //       inner_product_cache->inner_product_p);
-    //   src_memory_p =
-    //       std::make_shared<dnnl::memory>(inner_product_cache->src_mem);
-    //   PrepareSrcMem(fc_p, src_memory_p, x, onednn_engine);
+    if (inner_product_cache) {
+      fc_p = std::make_shared<dnnl::inner_product_forward>(
+          inner_product_cache->inner_product_p);
+      src_memory_p =
+          std::make_shared<dnnl::memory>(inner_product_cache->src_mem);
+      PrepareSrcMem(fc_p, src_memory_p, x, onednn_engine);
 
-    //   weights_memory_p =
-    //       std::make_shared<dnnl::memory>(inner_product_cache->weights_mem);
+      weights_memory_p =
+          std::make_shared<dnnl::memory>(inner_product_cache->weights_mem);
 
-    //   dst_memory_p =
-    //       std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
+      dst_memory_p =
+          std::make_shared<dnnl::memory>(inner_product_cache->dst_mem);
 
-    //   if (ctx.HasAttr("fuse_residual_connection") &&
-    //       ctx.Attr<bool>("fuse_residual_connection")) {
-    //     residual_data_cache = std::make_shared<phi::DenseTensor>(
-    //         inner_product_cache->residual_data);
-    //   }
+      auto out_ptr = out->mutable_data<T_out>(
+          ctx.GetPlace(), dst_memory_p->get_desc().get_size());
+      dst_memory_p->set_data_handle(out_ptr);
 
-    //   auto out_ptr = out->mutable_data<T_out>(
-    //       ctx.GetPlace(), dst_memory_p->get_desc().get_size());
-    //   dst_memory_p->set_data_handle(out_ptr);
+      fc_args.insert({DNNL_ARG_SRC, *src_memory_p});
+      fc_args.insert({DNNL_ARG_WEIGHTS, *weights_memory_p});
+      fc_args.insert({DNNL_ARG_DST, *dst_memory_p});
 
-    //   fc_args.insert({DNNL_ARG_SRC, *src_memory_p});
-    //   fc_args.insert({DNNL_ARG_WEIGHTS, *weights_memory_p});
-    //   fc_args.insert({DNNL_ARG_DST, *dst_memory_p});
+      if (bias) {
+        bias_memory_p =
+            std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
+        fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+      }
+      if (residual_data) {
+        residual_data_memory_p =
+            std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
+        if (phi::funcs::is_int8<T_in>()) {
+          if (residual_data->dtype() == phi::DataType::INT8) {
+            auto residual_ptr = residual_data->data<int8_t>();
+            residual_data_memory_p->set_data_handle(
+                to_void_cast<int8_t>(residual_ptr));
+          } else {
+            auto residual_ptr = residual_data->data<uint8_t>();
+            residual_data_memory_p->set_data_handle(
+                to_void_cast<uint8_t>(residual_ptr));
+          }
+        } else {
+          auto residual_ptr = residual_data->data<T_in>();
+          residual_data_memory_p->set_data_handle(
+              to_void_cast<T_in>(residual_ptr));
+        }
 
-    //   if (bias) {
-    //     bias_memory_p =
-    //         std::make_shared<dnnl::memory>(inner_product_cache->bias_mem);
-    //     fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
-    //   }
-    //   if (residual_data && inner_product_cache->residual_mem) {
-    //     residual_data_memory_p =
-    //         std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
-    //     fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-    //                     *residual_data_memory_p});
-    //   }
-    //   if (inner_product_cache->src_scales_mem.get(true)) {
-    //     fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC,
-    //                     inner_product_cache->src_scales_mem});
-    //     fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS,
-    //                     inner_product_cache->wei_scales_mem});
-    //   }
-    //   if (inner_product_cache->dst_scales_mem.get(true)) {
-    //     fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST,
-    //                     inner_product_cache->dst_scales_mem});
-    //   }
-    // } else {
-    auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
+        fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
+                        *residual_data_memory_p});
+      }
 
-    FCMKLDNNHandler<T_in, T_w, T_out> handler(ctx,
-                                              dev_ctx,
-                                              x,
-                                              weights,
-                                              bias,
-                                              out,
-                                              in_col_dims,
-                                              onednn_engine,
-                                              ctx.GetPlace());
+      if (inner_product_cache->src_scales_mem.get(true)) {
+        fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC,
+                        inner_product_cache->src_scales_mem});
+        fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_WEIGHTS,
+                        inner_product_cache->wei_scales_mem});
+      }
+      if (inner_product_cache->dst_scales_mem.get(true)) {
+        fc_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST,
+                        inner_product_cache->dst_scales_mem});
+      }
+    } else {
+      auto in_col_dims = ctx.Attr<int>("in_num_col_dims");
 
-    src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
-    weights_memory_p =
-        handler.AcquireWeightsMemoryWithReorder(weights, scale_weights);
-    dst_memory_p = handler.AcquireCustomDstMemory(ctx, out);
-    fc_args.insert({DNNL_ARG_SRC, *src_memory_p});
-    fc_args.insert({DNNL_ARG_WEIGHTS, *weights_memory_p});
-    fc_args.insert({DNNL_ARG_DST, *dst_memory_p});
+      FCMKLDNNHandler<T_in, T_w, T_out> handler(ctx,
+                                                dev_ctx,
+                                                x,
+                                                weights,
+                                                bias,
+                                                out,
+                                                in_col_dims,
+                                                onednn_engine,
+                                                ctx.GetPlace());
 
-    if (bias) {
-      bias_memory_p = handler.AcquireBiasMemoryWithReorder(ctx, bias);
-      fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+      src_memory_p = handler.AcquireSrcMemoryWithReorder(x);
+      weights_memory_p =
+          handler.AcquireWeightsMemoryWithReorder(weights, scale_weights);
+      dst_memory_p = handler.AcquireCustomDstMemory(ctx, out);
+      fc_args.insert({DNNL_ARG_SRC, *src_memory_p});
+      fc_args.insert({DNNL_ARG_WEIGHTS, *weights_memory_p});
+      fc_args.insert({DNNL_ARG_DST, *dst_memory_p});
+
+      if (bias) {
+        bias_memory_p = handler.AcquireBiasMemoryWithReorder(ctx, bias);
+        fc_args.insert({DNNL_ARG_BIAS, *bias_memory_p});
+      }
+
+      if (phi::funcs::is_int8<T_in>()) {
+        handler.SetScalesIfNeeded(&fc_args);
+      }
+
+      if (residual_data) {
+        residual_data_memory_p =
+            handler.AcquireResidualMemory(residual_data, scale_in_eltwise_data);
+        fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
+                        *residual_data_memory_p});
+      }
+
+      fc_p = handler.AcquireForwardPrimitive();
     }
-
-    if (phi::funcs::is_int8<T_in>()) {
-      handler.SetScalesIfNeeded(&fc_args);
-    }
-
-    if (residual_data) {
-      residual_data_memory_p =
-          handler.AcquireResidualMemory(residual_data, scale_in_eltwise_data);
-      fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
-                      *residual_data_memory_p});
-    }
-
-    fc_p = handler.AcquireForwardPrimitive();
-    // }
 
     auto& astream = OneDNNContext::tls().get_stream();
     fc_p->execute(astream, fc_args);
