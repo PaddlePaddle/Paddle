@@ -171,8 +171,7 @@ void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
 
 std::vector<OpDesc *> BlockDesc::AllOps() const {
   std::vector<OpDesc *> res;
-  res.reserve(ops_.size());
-  for (const auto &op : ops_) {
+  for (const auto &op : ops_) {  // NOLINT
     res.push_back(op.get());
   }
   return res;
