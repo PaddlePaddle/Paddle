@@ -1350,7 +1350,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     def merge_every_var_list(false_vars, true_vars, name):
         return map_structure(partial(merge_func, name), false_vars, true_vars)
 
-    merged_output = list(
+    merged_output_fns = list(
         map(
             merge_every_var_list,
             _to_sequence_except_dict(false_output),
@@ -1358,6 +1358,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
+    merged_output = [fn() for fn in merged_output_fns]
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1495,7 +1496,7 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
         try:
-            return select_input(inputs, mask)
+            return lambda: select_input(inputs, mask)
         except Exception as e:
             raise RuntimeError(
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
@@ -1550,7 +1551,7 @@ def select_input_with_buildin_type(inputs, mask, name):
             )
         )
     try:
-        return select_input(inputs, mask)
+        return lambda: select_input(inputs, mask)
     except Exception as e:
         raise RuntimeError(
             f"Exceptions throwed while doing select_input on {name}:\n{e}"
