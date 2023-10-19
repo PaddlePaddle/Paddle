@@ -17,7 +17,7 @@ import sys
 
 import httpx
 
-import paddle
+# import paddle
 
 
 def download_file():
@@ -29,8 +29,8 @@ def download_file():
     else:
         url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut')
 
-    if paddle.is_compiled_with_rocm():
-        url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
+    # if paddle.is_compiled_with_rocm():
+    #     url = "https://sys-p0.bj.bcebos.com/prec/{}".format('disable_ut_rocm')
 
     f = httpx.get(url, timeout=None, follow_redirects=True)
     data = f.text
