@@ -6987,7 +6987,7 @@ def hypot_(x, y, name=None):
     return out
 
 
- def signbit(x, name=None):
+def signbit(x, name=None):
     r"""
     Tests if each element of input has its sign bit set or not.
 
