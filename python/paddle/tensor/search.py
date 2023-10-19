@@ -59,42 +59,45 @@ def argsort(x, axis=-1, descending=False, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[[5,8,9,5],
-                                   [0,0,1,7],
-                                   [6,9,2,4]],
-                                  [[5,2,4,2],
-                                   [4,7,7,9],
-                                   [1,7,0,6]]],
-                                dtype='float32')
-            out1 = paddle.argsort(x, axis=-1)
-            out2 = paddle.argsort(x, axis=0)
-            out3 = paddle.argsort(x, axis=1)
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.argsort(x, axis=-1)
+            >>> out2 = paddle.argsort(x, axis=0)
+            >>> out3 = paddle.argsort(x, axis=1)
 
-            print(out1)
-            #[[[0 3 1 2]
-            #  [0 1 2 3]
-            #  [2 3 0 1]]
-            # [[1 3 2 0]
-            #  [0 1 2 3]
-            #  [2 0 3 1]]]
+            >>> print(out1)
+            Tensor(shape=[2, 3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 3, 1, 2],
+              [0, 1, 2, 3],
+              [2, 3, 0, 1]],
+             [[1, 3, 2, 0],
+              [0, 1, 2, 3],
+              [2, 0, 3, 1]]])
 
-            print(out2)
-            #[[[0 1 1 1]
-            #  [0 0 0 0]
-            #  [1 1 1 0]]
-            # [[1 0 0 0]
-            #  [1 1 1 1]
-            #  [0 0 0 1]]]
+            >>> print(out2)
+            Tensor(shape=[2, 3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 1, 1, 1],
+              [0, 0, 0, 0],
+              [1, 1, 1, 0]],
+             [[1, 0, 0, 0],
+              [1, 1, 1, 1],
+              [0, 0, 0, 1]]])
 
-            print(out3)
-            #[[[1 1 1 2]
-            #  [0 0 2 0]
-            #  [2 2 0 1]]
-            # [[2 0 2 0]
-            #  [1 1 0 2]
-            #  [0 2 1 1]]]
+            >>> print(out3)
+            Tensor(shape=[2, 3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[1, 1, 1, 2],
+              [0, 0, 2, 0],
+              [2, 2, 0, 1]],
+             [[2, 0, 2, 0],
+              [1, 1, 0, 2],
+              [0, 2, 1, 1]]])
     """
     if in_dynamic_mode():
         _, ids = _C_ops.argsort(x, axis, descending)
@@ -154,22 +157,23 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[5,8,9,5],
-                                 [0,0,1,7],
-                                 [6,9,2,4]])
-            out1 = paddle.argmax(x)
-            print(out1) # 2
-            out2 = paddle.argmax(x, axis=0)
-            print(out2)
-            # [2, 2, 0, 1]
-            out3 = paddle.argmax(x, axis=-1)
-            print(out3)
-            # [2, 3, 1]
-            out4 = paddle.argmax(x, axis=0, keepdim=True)
-            print(out4)
-            # [[2, 2, 0, 1]]
+            >>> x = paddle.to_tensor([[5,8,9,5],
+            ...                       [0,0,1,7],
+            ...                       [6,9,2,4]])
+            >>> out1 = paddle.argmax(x)
+            >>> print(out1.numpy())
+            2
+            >>> out2 = paddle.argmax(x, axis=0)
+            >>> print(out2.numpy())
+            [2 2 0 1]
+            >>> out3 = paddle.argmax(x, axis=-1)
+            >>> print(out3.numpy())
+            [2 3 1]
+            >>> out4 = paddle.argmax(x, axis=0, keepdim=True)
+            >>> print(out4.numpy())
+            [[2 2 0 1]]
     """
     if axis is not None and not isinstance(
         axis, (int, Variable, paddle.pir.OpResult)
@@ -246,22 +250,23 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x =  paddle.to_tensor([[5,8,9,5],
-                                     [0,0,1,7],
-                                     [6,9,2,4]])
-            out1 = paddle.argmin(x)
-            print(out1) # 4
-            out2 = paddle.argmin(x, axis=0)
-            print(out2)
-            # [1, 1, 1, 2]
-            out3 = paddle.argmin(x, axis=-1)
-            print(out3)
-            # [0, 0, 2]
-            out4 = paddle.argmin(x, axis=0, keepdim=True)
-            print(out4)
-            # [[1, 1, 1, 2]]
+            >>> x =  paddle.to_tensor([[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]])
+            >>> out1 = paddle.argmin(x)
+            >>> print(out1.numpy())
+            4
+            >>> out2 = paddle.argmin(x, axis=0)
+            >>> print(out2.numpy())
+            [1 1 1 2]
+            >>> out3 = paddle.argmin(x, axis=-1)
+            >>> print(out3.numpy())
+            [0 0 2]
+            >>> out4 = paddle.argmin(x, axis=0, keepdim=True)
+            >>> print(out4.numpy())
+            [[1 1 1 2]]
     """
     if axis is not None and not isinstance(
         axis, (int, Variable, paddle.pir.OpResult)
@@ -335,20 +340,22 @@ def index_select(x, index, axis=0, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-                                  [5.0, 6.0, 7.0, 8.0],
-                                  [9.0, 10.0, 11.0, 12.0]])
-            index = paddle.to_tensor([0, 1, 1], dtype='int32')
-            out_z1 = paddle.index_select(x=x, index=index)
-            #[[1. 2. 3. 4.]
-            # [5. 6. 7. 8.]
-            # [5. 6. 7. 8.]]
-            out_z2 = paddle.index_select(x=x, index=index, axis=1)
-            #[[ 1.  2.  2.]
-            # [ 5.  6.  6.]
-            # [ 9. 10. 10.]]
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+            ...                       [5.0, 6.0, 7.0, 8.0],
+            ...                       [9.0, 10.0, 11.0, 12.0]])
+            >>> index = paddle.to_tensor([0, 1, 1], dtype='int32')
+            >>> out_z1 = paddle.index_select(x=x, index=index)
+            >>> print(out_z1.numpy())
+            [[1. 2. 3. 4.]
+             [5. 6. 7. 8.]
+             [5. 6. 7. 8.]]
+            >>> out_z2 = paddle.index_select(x=x, index=index, axis=1)
+            >>> print(out_z2.numpy())
+            [[ 1.  2.  2.]
+             [ 5.  6.  6.]
+             [ 9. 10. 10.]]
     """
 
     if in_dynamic_mode():
@@ -409,35 +416,43 @@ def nonzero(x, as_tuple=False):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
-                                   [0.0, 2.0, 0.0],
-                                   [0.0, 0.0, 3.0]])
-            x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
-            out_z1 = paddle.nonzero(x1)
-            print(out_z1)
-            #[[0 0]
-            # [1 1]
-            # [2 2]]
-            out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
-            for out in out_z1_tuple:
-                print(out)
-            #[[0]
-            # [1]
-            # [2]]
-            #[[0]
-            # [1]
-            # [2]]
-            out_z2 = paddle.nonzero(x2)
-            print(out_z2)
-            #[[1]
-            # [3]]
-            out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
-            for out in out_z2_tuple:
-                print(out)
-            #[[1]
-            # [3]]
+            >>> x1 = paddle.to_tensor([[1.0, 0.0, 0.0],
+            ...                        [0.0, 2.0, 0.0],
+            ...                        [0.0, 0.0, 3.0]])
+            >>> x2 = paddle.to_tensor([0.0, 1.0, 0.0, 3.0])
+            >>> out_z1 = paddle.nonzero(x1)
+            >>> print(out_z1)
+            Tensor(shape=[3, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0],
+             [1, 1],
+             [2, 2]])
+
+            >>> out_z1_tuple = paddle.nonzero(x1, as_tuple=True)
+            >>> for out in out_z1_tuple:
+            ...     print(out)
+            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0],
+             [1],
+             [2]])
+            Tensor(shape=[3, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0],
+             [1],
+             [2]])
+
+            >>> out_z2 = paddle.nonzero(x2)
+            >>> print(out_z2)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1],
+             [3]])
+
+            >>> out_z2_tuple = paddle.nonzero(x2, as_tuple=True)
+            >>> for out in out_z2_tuple:
+            ...     print(out)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1],
+             [3]])
 
     """
     list_out = []
@@ -507,39 +522,39 @@ def sort(x, axis=-1, descending=False, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[[5,8,9,5],
-                                   [0,0,1,7],
-                                   [6,9,2,4]],
-                                  [[5,2,4,2],
-                                   [4,7,7,9],
-                                   [1,7,0,6]]],
-                                 dtype='float32')
-            out1 = paddle.sort(x=x, axis=-1)
-            out2 = paddle.sort(x=x, axis=0)
-            out3 = paddle.sort(x=x, axis=1)
-            print(out1)
-            #[[[5. 5. 8. 9.]
-            #  [0. 0. 1. 7.]
-            #  [2. 4. 6. 9.]]
-            # [[2. 2. 4. 5.]
-            #  [4. 7. 7. 9.]
-            #  [0. 1. 6. 7.]]]
-            print(out2)
-            #[[[5. 2. 4. 2.]
-            #  [0. 0. 1. 7.]
-            #  [1. 7. 0. 4.]]
-            # [[5. 8. 9. 5.]
-            #  [4. 7. 7. 9.]
-            #  [6. 9. 2. 6.]]]
-            print(out3)
-            #[[[0. 0. 1. 4.]
-            #  [5. 8. 2. 5.]
-            #  [6. 9. 9. 7.]]
-            # [[1. 2. 0. 2.]
-            #  [4. 7. 4. 6.]
-            #  [5. 7. 7. 9.]]]
+            >>> x = paddle.to_tensor([[[5,8,9,5],
+            ...                        [0,0,1,7],
+            ...                        [6,9,2,4]],
+            ...                       [[5,2,4,2],
+            ...                        [4,7,7,9],
+            ...                        [1,7,0,6]]],
+            ...                      dtype='float32')
+            >>> out1 = paddle.sort(x=x, axis=-1)
+            >>> out2 = paddle.sort(x=x, axis=0)
+            >>> out3 = paddle.sort(x=x, axis=1)
+            >>> print(out1.numpy())
+            [[[5. 5. 8. 9.]
+              [0. 0. 1. 7.]
+              [2. 4. 6. 9.]]
+             [[2. 2. 4. 5.]
+              [4. 7. 7. 9.]
+              [0. 1. 6. 7.]]]
+            >>> print(out2.numpy())
+            [[[5. 2. 4. 2.]
+              [0. 0. 1. 7.]
+              [1. 7. 0. 4.]]
+             [[5. 8. 9. 5.]
+              [4. 7. 7. 9.]
+              [6. 9. 2. 6.]]]
+            >>> print(out3.numpy())
+            [[[0. 0. 1. 4.]
+              [5. 8. 2. 5.]
+              [6. 9. 9. 7.]]
+             [[1. 2. 0. 2.]
+              [4. 7. 4. 6.]
+              [5. 7. 7. 9.]]]
     """
     if in_dynamic_or_pir_mode():
         outs, _ = _C_ops.argsort(x, axis, descending)
@@ -580,16 +595,16 @@ def mode(x, axis=-1, keepdim=False, name=None):
 
         .. code-block:: python
 
-           import paddle
+            >>> import paddle
 
-           tensor = paddle.to_tensor([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]], dtype=paddle.float32)
-           res = paddle.mode(tensor, 2)
-           print(res)
-           # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-           #   [[2., 3.],
-           #    [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-           #   [[2, 2],
-           #    [2, 1]]))
+            >>> tensor = paddle.to_tensor([[[1,2,2],[2,3,3]],[[0,5,5],[9,9,0]]], dtype=paddle.float32)
+            >>> res = paddle.mode(tensor, 2)
+            >>> print(res)
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 3.],
+             [5., 9.]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 2],
+             [2, 1]]))
 
     """
     if in_dynamic_mode():
@@ -642,20 +657,21 @@ def where(condition, x=None, y=None, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
-            y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
+            >>> x = paddle.to_tensor([0.9383, 0.1983, 3.2, 1.2])
+            >>> y = paddle.to_tensor([1.0, 1.0, 1.0, 1.0])
 
-            out = paddle.where(x>1, x, y)
-            print(out)
-            #out: [1.0, 1.0, 3.2, 1.2]
+            >>> out = paddle.where(x>1, x, y)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.        , 1.        , 3.20000005, 1.20000005])
 
-            out = paddle.where(x>1)
-            print(out)
-            #out: (Tensor(shape=[2, 1], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #            [[2],
-            #             [3]]),)
+            >>> out = paddle.where(x>1)
+            >>> print(out)
+            (Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2],
+             [3]]),)
     """
     if np.isscalar(x):
         x = paddle.full([1], x, np.array([x]).dtype.name)
@@ -796,41 +812,41 @@ def index_sample(x, index):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-                                  [5.0, 6.0, 7.0, 8.0],
-                                  [9.0, 10.0, 11.0, 12.0]], dtype='float32')
-            index = paddle.to_tensor([[0, 1, 2],
-                                      [1, 2, 3],
-                                      [0, 0, 0]], dtype='int32')
-            target = paddle.to_tensor([[100, 200, 300, 400],
-                                       [500, 600, 700, 800],
-                                       [900, 1000, 1100, 1200]], dtype='int32')
-            out_z1 = paddle.index_sample(x, index)
-            print(out_z1)
-            #[[1. 2. 3.]
-            # [6. 7. 8.]
-            # [9. 9. 9.]]
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+            ...                       [5.0, 6.0, 7.0, 8.0],
+            ...                       [9.0, 10.0, 11.0, 12.0]], dtype='float32')
+            >>> index = paddle.to_tensor([[0, 1, 2],
+            ...                           [1, 2, 3],
+            ...                           [0, 0, 0]], dtype='int32')
+            >>> target = paddle.to_tensor([[100, 200, 300, 400],
+            ...                            [500, 600, 700, 800],
+            ...                            [900, 1000, 1100, 1200]], dtype='int32')
+            >>> out_z1 = paddle.index_sample(x, index)
+            >>> print(out_z1.numpy())
+            [[1. 2. 3.]
+             [6. 7. 8.]
+             [9. 9. 9.]]
 
-            # Use the index of the maximum value by topk op
-            # get the value of the element of the corresponding index in other tensors
-            top_value, top_index = paddle.topk(x, k=2)
-            out_z2 = paddle.index_sample(target, top_index)
-            print(top_value)
-            #[[ 4.  3.]
-            # [ 8.  7.]
-            # [12. 11.]]
+            >>> # Use the index of the maximum value by topk op
+            >>> # get the value of the element of the corresponding index in other tensors
+            >>> top_value, top_index = paddle.topk(x, k=2)
+            >>> out_z2 = paddle.index_sample(target, top_index)
+            >>> print(top_value.numpy())
+            [[ 4.  3.]
+             [ 8.  7.]
+             [12. 11.]]
 
-            print(top_index)
-            #[[3 2]
-            # [3 2]
-            # [3 2]]
+            >>> print(top_index.numpy())
+            [[3 2]
+             [3 2]
+             [3 2]]
 
-            print(out_z2)
-            #[[ 400  300]
-            # [ 800  700]
-            # [1200 1100]]
+            >>> print(out_z2.numpy())
+            [[ 400  300]
+             [ 800  700]
+             [1200 1100]]
 
     """
     if in_dynamic_mode():
@@ -885,16 +901,17 @@ def masked_select(x, mask, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
-                                  [5.0, 6.0, 7.0, 8.0],
-                                  [9.0, 10.0, 11.0, 12.0]])
-            mask = paddle.to_tensor([[True, False, False, False],
-                                     [True, True, False, False],
-                                     [True, False, False, False]])
-            out = paddle.masked_select(x, mask)
-            #[1.0 5.0 6.0 9.0]
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
+            ...                       [5.0, 6.0, 7.0, 8.0],
+            ...                       [9.0, 10.0, 11.0, 12.0]])
+            >>> mask = paddle.to_tensor([[True, False, False, False],
+            ...                          [True, True, False, False],
+            ...                          [True, False, False, False]])
+            >>> out = paddle.masked_select(x, mask)
+            >>> print(out.numpy())
+            [1. 5. 6. 9.]
     """
 
     if in_dynamic_mode():
@@ -945,25 +962,45 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            data_1 = paddle.to_tensor([1, 4, 5, 7])
-            value_1, indices_1 = paddle.topk(data_1, k=1)
-            print(value_1) # [7]
-            print(indices_1) # [3]
+            >>> data_1 = paddle.to_tensor([1, 4, 5, 7])
+            >>> value_1, indices_1 = paddle.topk(data_1, k=1)
+            >>> print(value_1)
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [7])
+            >>> print(indices_1)
+            Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [3])
 
-            data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
-            value_2, indices_2 = paddle.topk(data_2, k=1)
-            print(value_2) # [[7], [6]]
-            print(indices_2) # [[3], [1]]
+            >>> data_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
+            >>> value_2, indices_2 = paddle.topk(data_2, k=1)
+            >>> print(value_2)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[7],
+             [6]])
+            >>> print(indices_2)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3],
+             [1]])
 
-            value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
-            print(value_3) # [[7], [6]]
-            print(indices_3) # [[3], [1]]
+            >>> value_3, indices_3 = paddle.topk(data_2, k=1, axis=-1)
+            >>> print(value_3)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[7],
+             [6]])
+            >>> print(indices_3)
+            Tensor(shape=[2, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3],
+             [1]])
 
-            value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
-            print(value_4) # [[2, 6, 5, 7]]
-            print(indices_4) # [[1, 1, 0, 0]]
+            >>> value_4, indices_4 = paddle.topk(data_2, k=1, axis=0)
+            >>> print(value_4)
+            Tensor(shape=[1, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 6, 5, 7]])
+            >>> print(indices_4)
+            Tensor(shape=[1, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 1, 0, 0]])
 
 
     """
@@ -1018,30 +1055,30 @@ def bucketize(x, sorted_sequence, out_int32=False, right=False, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            sorted_sequence = paddle.to_tensor([2, 4, 8, 16], dtype='int32')
-            x = paddle.to_tensor([[0, 8, 4, 16], [-1, 2, 8, 4]], dtype='int32')
-            out1 = paddle.bucketize(x, sorted_sequence)
-            print(out1)
-            # Tensor(shape=[2, 4], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #        [[0, 2, 1, 3],
-            #         [0, 0, 2, 1]])
-            out2 = paddle.bucketize(x, sorted_sequence, right=True)
-            print(out2)
-            # Tensor(shape=[2, 4], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #        [[0, 3, 2, 4],
-            #         [0, 1, 3, 2]])
-            out3 = x.bucketize(sorted_sequence)
-            print(out3)
-            # Tensor(shape=[2, 4], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #        [[0, 2, 1, 3],
-            #         [0, 0, 2, 1]])
-            out4 = x.bucketize(sorted_sequence, right=True)
-            print(out4)
-            # Tensor(shape=[2, 4], dtype=int64, place=CPUPlace, stop_gradient=True,
-            #        [[0, 3, 2, 4],
-            #         [0, 1, 3, 2]])
+            >>> sorted_sequence = paddle.to_tensor([2, 4, 8, 16], dtype='int32')
+            >>> x = paddle.to_tensor([[0, 8, 4, 16], [-1, 2, 8, 4]], dtype='int32')
+            >>> out1 = paddle.bucketize(x, sorted_sequence)
+            >>> print(out1)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 2, 1, 3],
+             [0, 0, 2, 1]])
+            >>> out2 = paddle.bucketize(x, sorted_sequence, right=True)
+            >>> print(out2)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 3, 2, 4],
+             [0, 1, 3, 2]])
+            >>> out3 = x.bucketize(sorted_sequence)
+            >>> print(out3)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 2, 1, 3],
+             [0, 0, 2, 1]])
+            >>> out4 = x.bucketize(sorted_sequence, right=True)
+            >>> print(out4)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 3, 2, 4],
+             [0, 1, 3, 2]])
 
     """
     check_variable_and_dtype(
@@ -1078,27 +1115,27 @@ def searchsorted(
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9, 11],
-                                                [2, 4, 6, 8, 10, 12]], dtype='int32')
-            values = paddle.to_tensor([[3, 6, 9, 10], [3, 6, 9, 10]], dtype='int32')
-            out1 = paddle.searchsorted(sorted_sequence, values)
-            print(out1)
-            # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[1, 3, 4, 5],
-            #         [1, 2, 4, 4]])
-            out2 = paddle.searchsorted(sorted_sequence, values, right=True)
-            print(out2)
-            # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[2, 3, 5, 5],
-            #         [1, 3, 4, 5]])
-            sorted_sequence_1d = paddle.to_tensor([1, 3, 5, 7, 9, 11, 13])
-            out3 = paddle.searchsorted(sorted_sequence_1d, values)
-            print(out3)
-            # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #        [[1, 3, 4, 5],
-            #         [1, 3, 4, 5]])
+            >>> sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9, 11],
+            ...                                     [2, 4, 6, 8, 10, 12]], dtype='int32')
+            >>> values = paddle.to_tensor([[3, 6, 9, 10], [3, 6, 9, 10]], dtype='int32')
+            >>> out1 = paddle.searchsorted(sorted_sequence, values)
+            >>> print(out1)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 3, 4, 5],
+             [1, 2, 4, 4]])
+            >>> out2 = paddle.searchsorted(sorted_sequence, values, right=True)
+            >>> print(out2)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2, 3, 5, 5],
+             [1, 3, 4, 5]])
+            >>> sorted_sequence_1d = paddle.to_tensor([1, 3, 5, 7, 9, 11, 13])
+            >>> out3 = paddle.searchsorted(sorted_sequence_1d, values)
+            >>> print(out3)
+            Tensor(shape=[2, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[1, 3, 4, 5],
+             [1, 3, 4, 5]])
 
     """
     if in_dynamic_mode():
@@ -1150,23 +1187,28 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.randn((2,3,2))
-            # Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #       [[[ 0.22954939, -0.01296274],
-            #         [ 1.17135799, -0.34493217],
-            #         [-0.19550551, -0.17573971]],
-            #
-            #        [[ 0.15104349, -0.93965352],
-            #         [ 0.14745511,  0.98209465],
-            #         [ 0.10732264, -0.55859774]]])
-            y = paddle.kthvalue(x, 2, 1)
-            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            # [[ 0.22954939, -0.17573971],
-            #  [ 0.14745511, -0.55859774]]), Tensor(shape=[2, 2], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
-            #  [[0, 2],
-            #  [1, 2]]))
+            >>> x = paddle.randn((2,3,2))
+            >>> print(x)
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            Tensor(shape=[2, 3, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.11855337, -0.30557564],
+              [-0.09968963,  0.41220093],
+              [ 1.24004936,  1.50014710]],
+             [[ 0.08612321, -0.92485696],
+              [-0.09276631,  1.15149164],
+              [-1.46587241,  1.22873247]]])
+            >>> # doctest: -SKIP
+            >>> y = paddle.kthvalue(x, 2, 1)
+            >>> print(y)
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            (Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[ 0.11855337,  0.41220093],
+             [-0.09276631,  1.15149164]]), Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1],
+             [1, 1]]))
+            >>> # doctest: -SKIP
     """
     if in_dynamic_mode():
         if axis is not None:
