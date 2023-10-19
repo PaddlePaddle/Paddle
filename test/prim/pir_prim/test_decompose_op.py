@@ -78,14 +78,8 @@ def get_layer_norm_pir_program_and_param_map():
             value=1.0,
         )
         scale.stop_gradient = False
-        bias = paddle.tensor.fill_constant(
-            shape=tmp2.shape[1:],
-            dtype=tmp2.dtype,
-            value=2.0,
-        )
-        bias.stop_gradient = False
         out = paddle.nn.functional.layer_norm(
-            tmp2, tmp2.shape[1:], scale, bias, 1e-5
+            tmp2, tmp2.shape[1:], scale, None, 1e-5
         )
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
@@ -93,6 +87,7 @@ def get_layer_norm_pir_program_and_param_map():
     newir_program, param_mappings = pir.translate_to_new_ir_with_param_map(
         mp.desc
     )
+
     check_param_mappings(param_mappings)
 
     return newir_program, param_mappings
@@ -132,8 +127,7 @@ class TestDecomposeOp(unittest.TestCase):
                 # get the old_ir_grad_var_to_var map
                 old_ir_grad_var_to_var_map = {
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
-                    "fill_constant_5.tmp_0@GRAD": "fill_constant_5.tmp_0",
-                    "fill_constant_7.tmp_0@GRAD": "fill_constant_7.tmp_0",
+                    "fill_constant_3.tmp_0@GRAD": "fill_constant_3.tmp_0",
                     'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'elementwise_add_1@GRAD': 'elementwise_add_1',
                     'z@GRAD': 'z',
