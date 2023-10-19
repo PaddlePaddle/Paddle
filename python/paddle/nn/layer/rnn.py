@@ -1003,14 +1003,14 @@ class LSTMCell(RNNCellBase):
                 (4 * hidden_size,),
                 bias_ih_attr,
                 is_bias=True,
-                default_initializer=I.Constant(0.0),
+                default_initializer=I.Uniform(-std, std),
             )
         else:
             self.bias_ih = self.create_parameter(
                 (4 * hidden_size,),
                 None,
                 is_bias=True,
-                default_initializer=I.Uniform(-std, std),
+                default_initializer=I.Constant(0.0),
             )
             self.bias_ih.stop_gradient = True
         if bias_hh_attr is not False:
@@ -1018,14 +1018,14 @@ class LSTMCell(RNNCellBase):
                 (4 * hidden_size,),
                 bias_hh_attr,
                 is_bias=True,
-                default_initializer=I.Constant(0.0),
+                default_initializer=I.Uniform(-std, std),
             )
         else:
             self.bias_hh = self.create_parameter(
                 (4 * hidden_size,),
                 None,
                 is_bias=True,
-                default_initializer=I.Uniform(-std, std),
+                default_initializer=I.Constant(0.0),
             )
             self.bias_hh.stop_gradient = True
 
@@ -1195,14 +1195,14 @@ class GRUCell(RNNCellBase):
         if bias_ih_attr is not False:
             self.bias_ih = self.create_parameter(
                 (3 * hidden_size,),
-                None,
+                bias_ih_attr,
                 is_bias=True,
                 default_initializer=I.Uniform(-std, std),
             )
         else:
             self.bias_ih = self.create_parameter(
                 (3 * hidden_size,),
-                bias_ih_attr,
+                None,
                 is_bias=True,
                 default_initializer=I.Constant(0.0),
             )
@@ -1211,14 +1211,14 @@ class GRUCell(RNNCellBase):
         if bias_hh_attr is not False:
             self.bias_hh = self.create_parameter(
                 (3 * hidden_size,),
-                None,
+                bias_hh_attr,
                 is_bias=True,
                 default_initializer=I.Uniform(-std, std),
             )
         else:
             self.bias_hh = self.create_parameter(
                 (3 * hidden_size,),
-                bias_hh_attr,
+                None,
                 is_bias=True,
                 default_initializer=I.Constant(0.0),
             )
