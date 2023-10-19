@@ -6933,15 +6933,19 @@ def ldexp_(x, y, name=None):
     two = paddle.to_tensor(2, dtype=out_dtype)
     return paddle.multiply_(x, paddle.pow(two, y))
 
+
 def copysign(x, y, name=None):
-    """
+    r"""
     Create a new floating-point tensor with the magnitude of input and the sign of other, elementwise.
 
-
-
     .. math::
-         $ out_{i} $ = $ \begin{cases}-|input_{i}|&ifother_{i}\leqslant-0.0\\|input_{i}|&ifother_{i}\geqslant0.0\end{cases} $ 
-
+         out_{i}=
+            \left\{
+                \begin{array}{lcl}
+                -|input_{i}|&ifother_{i}\le-0.0 \\
+                |input_{i}|&ifother_{i}\ge0.0\
+                \end{array}
+            \right.
 
     Args:
         x (Tensor): The input Tensor, magnitudes, the data type is float32, float64, int32 or int64.
@@ -6975,13 +6979,13 @@ def copysign(x, y, name=None):
 
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != 'float32': x = x.astype('float32')
+    if x.dtype != 'float32':
+        x = x.astype('float32')
     if isinstance(y, (int, float, bool)):
         y = paddle.to_tensor([y], dtype='float32')
     y = y.astype(x.dtype)
     x = paddle.broadcast_to(x, out_shape)
     y = paddle.broadcast_to(y, out_shape)
-
 
     if in_dynamic_mode():
         return _C_ops.copysign(x, y)
@@ -6993,6 +6997,7 @@ def copysign(x, y, name=None):
         )
         return out
 
+
 @inplace_apis_in_dygraph_only
 def copysign_(x, y):
     r"""
@@ -7000,12 +7005,12 @@ def copysign_(x, y):
     Please refer to :ref:`api_paddle_copysign`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
-    if x.dtype != 'float32': x = x.astype('float32')
+    if x.dtype != 'float32':
+        x = x.astype('float32')
     if isinstance(y, (int, float, bool)):
         y = paddle.to_tensor([y], dtype='float32')
     y = y.astype(x.dtype)
     x = paddle.broadcast_to(x, out_shape)
     y = paddle.broadcast_to(y, out_shape)
 
-        
     return _C_ops.copysign_(x, y)

@@ -12,20 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
 import unittest
+
 import numpy as np
 from op_test import OpTest
+
+import paddle
 
 np.random.seed(100)
 paddle.seed(100)
 
+
 def ref_copysign(x, y):
     return np.copysign(x, y)
+
 
 def ref_grad_copysign(x, y, dout):
     out = np.copysign(x, y)
     return dout * out / x
+
 
 class TestCopySignOp(OpTest):
     def setUp(self):
@@ -41,7 +46,7 @@ class TestCopySignOp(OpTest):
 
     def test_check_grad(self):
         self.check_grad(['x'], ['out'])
-    
+
     def init_config(self):
         self.x = np.random.randn(20, 6).astype('float64')
         self.y = np.random.randn(20, 6).astype('float64')
@@ -54,11 +59,15 @@ class TestCopySignAPI(unittest.TestCase):
 
     def input_init(self):
         self.x = np.random.randn(20, 6).astype('float64')
-        self.y = np.random.randn(20, 6).astype('float64')  
+        self.y = np.random.randn(20, 6).astype('float64')
 
     def place_init(self):
-        self.place=paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() else paddle.CPUPlace() 
-    
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -85,22 +94,20 @@ class TestCopySignAPI(unittest.TestCase):
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
         out = paddle.copysign(x, y)
-        
+
         out_ref = ref_copysign(self.x, self.y)
         np.testing.assert_allclose(out_ref, out.numpy())
         paddle.enable_static()
-        
+
 
 class TestCopySignCPU(TestCopySignAPI):
     def place_init(self):
-        self.place=paddle.CPUPlace()
+        self.place = paddle.CPUPlace()
+
 
 class TestCopySignGPU(TestCopySignAPI):
     def place_init(self):
-        self.place=paddle.CUDAPlace(0)
-
-
-
+        self.place = paddle.CUDAPlace(0)
 
 
 class TestCopySignInt32(TestCopySignAPI):
@@ -109,11 +116,13 @@ class TestCopySignInt32(TestCopySignAPI):
         self.x = np.zeros(shape=(10, 20)).astype(dtype)
         self.y = np.zeros(shape=(10, 20)).astype(dtype)
 
+
 class TestCopySignInt64(TestCopySignAPI):
     def input_init(self):
         dtype = np.int64
         self.x = np.zeros(shape=(10, 20)).astype(dtype)
         self.y = np.zeros(shape=(10, 20)).astype(dtype)
+
 
 class TestCopySignFloat32(TestCopySignAPI):
     def input_init(self):
@@ -121,25 +130,25 @@ class TestCopySignFloat32(TestCopySignAPI):
         self.x = np.zeros(shape=(10, 20)).astype(dtype)
         self.y = np.zeros(shape=(10, 20)).astype(dtype)
 
+
 class TestCopySignFloat64(TestCopySignAPI):
     def input_init(self):
         dtype = np.float64
         self.x = np.zeros(shape=(10, 20)).astype(dtype)
         self.y = np.zeros(shape=(10, 20)).astype(dtype)
 
-    
-
-
 
 class TestCopySignZeroCase1(TestCopySignAPI):
     def input_init(self):
         self.x = np.zeros(shape=(10, 20))
         self.y = np.zeros(shape=(10, 20))
-    
+
+
 class TestCopySignZeroCase2(TestCopySignAPI):
     def input_init(self):
         self.x = np.zeros(shape=(10, 20))
         self.y = np.random.randn(10, 20)
+
 
 class TestCopySignZeroCase3(TestCopySignAPI):
     def input_init(self):
@@ -147,13 +156,11 @@ class TestCopySignZeroCase3(TestCopySignAPI):
         self.y = np.zeros(shape=(10, 20))
 
 
-
-
-
 class TestCopySignZeroDimCase1(TestCopySignAPI):
     def input_init(self):
         self.x = np.random.randn(0, 0)
         self.y = np.random.randn(0, 0)
+
 
 class TestCopySignZeroDimCase2(TestCopySignAPI):
     def input_init(self):
@@ -161,20 +168,18 @@ class TestCopySignZeroDimCase2(TestCopySignAPI):
         self.y = np.random.randn(0, 5, 10)
 
 
-
-
-
 class TestCopySignSpecialZeroCase1(TestCopySignAPI):
     def input_init(self):
         self.x = np.array([1, 2, 3])
         self.y = np.array([0, +0, -0])
+
 
 class TestCopySignSpecialZeroCase2(TestCopySignAPI):
     def input_init(self):
         self.x = np.array([0, +0, -0])
         self.y = np.array([1, 2, 3])
 
-        
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
