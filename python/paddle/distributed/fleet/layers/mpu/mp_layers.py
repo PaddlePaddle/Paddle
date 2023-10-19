@@ -71,14 +71,6 @@ class GatherBackwardLinear(PyLayer):
         group = ctx.group
         axis = ctx.axis
 
-        tmp_grad = grad.reshape([-1, grad.shape[-1]])
-        dw = paddle.matmul(
-            x.reshape([-1, x.shape[-1]]),
-            tmp_grad,
-            transpose_x=True,
-        )
-        dbias = paddle.sum(tmp_grad, axis=0)
-
         weights = []
         grads = []
         paddle.distributed.all_gather(weights, weight, group=group)
@@ -86,6 +78,20 @@ class GatherBackwardLinear(PyLayer):
         weight = paddle.concat(weights, axis=axis)
         grad = paddle.concat(grads, axis=axis)
         dx = paddle.matmul(grad, weight, transpose_y=True)
+
+        grad = grad.reshape([-1, grad.shape[-1]])
+        dw = paddle.matmul(
+            x.reshape([-1, x.shape[-1]]),
+            grad,
+            transpose_x=True,
+        )
+        dbias = paddle.sum(grad, axis=0)
+        dw = paddle.split(
+            dw, paddle.distributed.get_world_size(group), axis=axis
+        )[paddle.distributed.get_rank(group)]
+        dbias = paddle.split(
+            dbias, paddle.distributed.get_world_size(group), axis=axis
+        )[paddle.distributed.get_rank(group)]
 
         return dx, dw, dbias
 
