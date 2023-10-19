@@ -52,22 +52,14 @@ set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
 set(cinn_dialect_name cinn_op)
 
 add_custom_command(
-  OUTPUT ${op_creator_file} ${cinn_op_creator_file}
+  OUTPUT ${op_creator_file}
   COMMAND
     ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --dialect_name ${dialect_name}
     --op_creator_file ${op_creator_file_tmp}
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
-    ${cinn_op_yaml_file} --op_compat_yaml_file ${op_compat_yaml_file}
-    --dialect_name ${cinn_dialect_name} --op_creator_file
-    ${cinn_op_creator_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${op_creator_file_tmp}
           ${op_creator_file}
-  COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_creator_file_tmp}
-          ${cinn_op_creator_file}
   COMMENT "copy_if_different ${op_creator_file}"
-  COMMENT "copy_if_different ${cinn_op_creator_file}"
   DEPENDS ${op_creator_gen_file}
           ${op_forward_yaml_file1}
           ${op_forward_yaml_file2}
@@ -76,12 +68,28 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
-          ${cinn_op_yaml_source_file}
           pd_op_dialect_op
-          cinn_op_dialect
   VERBATIM)
+
+if(WITH_CINN AND NOT CINN_ONLY)
+  add_custom_command(
+    OUTPUT ${cinn_op_creator_file}
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
+      ${cinn_op_yaml_file} --op_compat_yaml_file ${op_compat_yaml_file}
+      --dialect_name ${cinn_dialect_name} --op_creator_file
+      ${cinn_op_creator_file_tmp}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_creator_file_tmp}
+            ${cinn_op_creator_file}
+    COMMENT "copy_if_different ${cinn_op_creator_file}"
+    DEPENDS ${op_creator_gen_file} ${op_compat_yaml_file}
+            ${cinn_op_yaml_source_file} pd_op_dialect_op cinn_op_dialect
+    VERBATIM)
+  set(CINN_SOURCE_FILE ${cinn_op_creator_file})
+
+endif()
 
 cc_library(
   drr
-  SRCS ${DRR_SRCS} ${op_creator_file} ${cinn_op_creator_file}
+  SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
   DEPS pd_op_dialect pir)
