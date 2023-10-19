@@ -89,3 +89,58 @@ TEST(GroupOp, TestBuild) {
     ++i;
   }
 }
+
+std::shared_ptr<::pir::Program> BuildGroupProgramByBlock() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
+
+  auto program = std::make_shared<::pir::Program>(ctx);
+  ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+  // ------- Group op 1 ---------
+  const float value_one = 1.0;
+  const std::vector<int64_t> shape = {64, 128};
+  std::unique_ptr<::pir::Block> block1(new ::pir::Block());
+  builder.SetInsertionPointToEnd(block1.get());
+  auto full_op_x = builder.Build<paddle::dialect::FullOp>(
+      shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace());
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{full_op_x.out()});
+
+  builder.SetInsertionPointToEnd(program->block());
+  auto group_op1 = builder.Build<cinn::dialect::GroupOp>(std::move(block1));
+
+  // ------- Group op 2 ---------
+  std::unique_ptr<::pir::Block> block2(new ::pir::Block());
+  builder.SetInsertionPointToEnd(block2.get());
+  auto tan_op_x = builder.Build<paddle::dialect::TanOp>(group_op1->result(0));
+  auto relu_op_x = builder.Build<paddle::dialect::ReluOp>(tan_op_x->result(0));
+  auto tan_op_y = builder.Build<paddle::dialect::TanOp>(relu_op_x->result(0));
+  auto relu_op_y = builder.Build<paddle::dialect::ReluOp>(tan_op_y->result(0));
+  builder.Build<::pir::YieldOp>(std::vector<::pir::Value>{relu_op_y.out()});
+
+  builder.SetInsertionPointToEnd(program->block());
+  auto group_op2 = builder.Build<cinn::dialect::GroupOp>(std::move(block2));
+
+  return program;
+}
+
+TEST(GroupOp, TestBuildByBlock) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgramByBlock();
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
+
+  EXPECT_EQ(program->block()->size(), 2u);
+  LOG(INFO) << program->block()->size();
+  std::vector<uint32_t> op_num = {2, 5};
+  int i = 0;
+  for (auto* sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+              op_num[i]);
+    ++i;
+  }
+}
