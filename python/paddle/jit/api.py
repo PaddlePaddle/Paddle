@@ -21,7 +21,6 @@ from __future__ import annotations
 import os
 import pickle
 import warnings
-import contextlib
 from collections import OrderedDict
 import inspect
 import threading
@@ -1971,14 +1970,3 @@ def get_ast_static_function(function):
             )
             return ast_static_function
     return function
-
-
-@contextlib.contextmanager
-def fallback_guard(enable):
-    flag = os.environ.get("ENABLE_FALL_BACK", None)
-    os.environ["ENABLE_FALL_BACK"] = str(enable)
-    yield
-    if flag is not None:
-        os.environ["ENABLE_FALL_BACK"] = flag
-    else:
-        del os.environ["ENABLE_FALL_BACK"]

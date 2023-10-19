@@ -87,7 +87,7 @@ class TestTrainStepTinyModel(unittest.TestCase):
             self.train_step_func, self.steps
         )
         reset_seed()
-        static_func = paddle.jit.to_static(self.train_step_func)
+        static_func = paddle.jit.to_static(self.train_step_func, fullgraph=True)
         static_losses = self.get_train_step_losses(static_func, self.steps)
         self.assertEqual(len(dygraph_losses), len(static_losses))
         for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):
