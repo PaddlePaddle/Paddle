@@ -284,9 +284,6 @@ def _test_and_compare_with_new_ir(fn):
         outs = fn(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        # Disable SOT + PIR test temprorily
-        if in_sot_mode():
-            return outs
         ir_outs = to_pir_test(fn)(*args, **kwargs)
         np.testing.assert_equal(
             outs,

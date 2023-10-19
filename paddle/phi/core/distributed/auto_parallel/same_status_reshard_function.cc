@@ -80,6 +80,19 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // kernel execution.
   bool dynamic_shape = true;
 
+  // TODO(GhostScreaming): After cross-mesh reshard, current device may
+  // needs to execute next layer. When it construct next layer's backward
+  // graph, out->place() will be called such as in SetGradOutMeta method. As
+  // a result, out can't be undefined. Try to allocate a zero-memory value
+  // for out. Following send/recv will cover this empty DenseTensor
+  // construction.
+  VLOG(3) << "Same_status_reshard_function create an empty DenseTensor for "
+             "cross-mesh DistTensor.";
+  *(out->unsafe_mutable_value()) =
+      phi::DenseTensor(std::make_shared<phi::Allocation>(
+                           nullptr, 0, phi::distributed::GetDefaultPlace()),
+                       in.value().meta());
+
   std::vector<std::pair<int64_t, int64_t>> p2p_pair;
   for (size_t i = 0; i < out_process_ids.size(); ++i) {
     p2p_pair.emplace_back(

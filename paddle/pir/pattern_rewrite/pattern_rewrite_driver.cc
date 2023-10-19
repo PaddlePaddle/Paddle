@@ -131,6 +131,7 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     for (uint32_t i = 0; i < op->num_operands(); ++i) {
       AddOperandToWorklist(op->operand_source(i));
     }
+
     if (op->num_regions() == 0) {
       RemoveFromWorklist(op);
     } else {
