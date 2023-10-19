@@ -138,8 +138,8 @@ GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
 void GroupScheduler::operator()() {
   feasible_conditions_.emplace_back(&GroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
-  OptimizeReduction();
   DoComputeInline();
+  OptimizeReduction();
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
 #ifdef CINN_WITH_CUDA
@@ -493,6 +493,7 @@ void GroupScheduler::DoVerticalLoopFusion() {
         } else if (target_for_type == ir::ForType::GPUThread) {
           thread_axis += "threadIdx.";
         } else {
+          original_loop_infos.push_back(std::make_pair(thread_axis, extent));
           continue;
         }
         int offset = stmt.As<ir::For>()->bind_info().offset;
@@ -554,6 +555,9 @@ void GroupScheduler::DoVerticalLoopFusion() {
       VLOG(6) << "after compute at: " << ir_sch_->GetModule().GetExprs()[0];
       std::vector<ir::Expr> new_stmts = node->ControlStmts();
       for (int idx = 0; idx < original_loop_infos.size(); ++idx) {
+        if (original_loop_infos[idx].first.empty()) {
+          continue;
+        }
         if (idx < new_stmts.size()) {
           CHECK(new_stmts[idx].As<ir::For>());
           if (new_stmts[idx].As<ir::For>()->is_serial()) {
@@ -598,7 +602,7 @@ void GroupScheduler::BindCudaAxis() {
             << ir_sch_->GetModule().GetExprs().front();
   };
 
-  schedule_block_graph_->NodesWalk(BindFunc);
+  schedule_block_graph_->DFSTopoWalk(BindFunc);
 
   VLOG(5) << "[After BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -858,6 +862,10 @@ void GroupScheduler::AllocateStorage() {
         store_indice_value, ir::ForType::GPUThread, store_block_name);
     auto load_thread_coefficient_and_range = GetCoefficientAndRange(
         load_indice_value, ir::ForType::GPUThread, load_block_name);
+    VLOG(6) << "store_indice_value: " << store_indice_value;
+    VLOG(6) << "load_indice_value: " << load_indice_value;
+    VLOG(6) << "store_block_name: " << store_block_name;
+    VLOG(6) << "load_block_name: " << load_block_name;
     VLOG(6) << "store_thread_overall_range = ("
             << store_thread_overall_range.min << ", "
             << store_thread_overall_range.max << ")";
@@ -938,6 +946,10 @@ void GroupScheduler::AllocateStorage() {
         store_indice_value, ir::ForType::GPUBlock, store_block_name);
     auto load_block_coefficient_and_range = GetCoefficientAndRange(
         load_indice_value, ir::ForType::GPUBlock, load_block_name);
+    VLOG(6) << "store_indice_value: " << store_indice_value;
+    VLOG(6) << "load_indice_value: " << load_indice_value;
+    VLOG(6) << "store_block_name: " << store_block_name;
+    VLOG(6) << "load_block_name: " << load_block_name;
     VLOG(6) << "store_block_overall_range = (" << store_block_overall_range.min
             << ", " << store_block_overall_range.max << ")";
     VLOG(6) << "load_block_overall_range = (" << load_block_overall_range.min
@@ -1076,12 +1088,7 @@ void GroupScheduler::AllocateStorage() {
       ir_sch_->SetBuffer(cur_block, "shared");
       std::vector<ir::Expr> loops = ir_sch_->GetLoops(cur_block);
       if (sync_mark.count(ir::GetOriginalReduceTensorName(node->id())) == 0) {
-        for (int i = loops.size() - 1; i >= 0; --i) {
-          if (loops[i].As<ir::For>()->is_binded()) {
-            ir_sch_->SyncThreads(loops[i], true);
-            break;
-          }
-        }
+        ir_sch_->SyncThreads(loops.back(), true);
         sync_mark.insert(ir::GetOriginalReduceTensorName(node->id()));
       }
     } else if (memory_type == ir::MemoryType::GPULocal) {

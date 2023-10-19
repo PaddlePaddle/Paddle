@@ -18,6 +18,7 @@
 
 #include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
+#include "paddle/cinn/ir/schedule_block_graph.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
 
@@ -103,6 +104,17 @@ void BindGPUIndex(ir::IRSchedule* ir_schedule,
   bool gpu_thread_has_binded =
       num_loops_to_bind < all_loops.size() &&
       all_loops[num_loops_to_bind].As<ir::For>()->is_gpu_thread_binded();
+  ir::BlockOrderConstructor block_order_constructor;
+  std::map<std::vector<int>, ir::Expr> blocks_order_with_ctrl_stmt =
+      block_order_constructor(&all_loops[num_loops_to_bind - 1]);
+  for (auto& pair : blocks_order_with_ctrl_stmt) {
+    if (pair.first.size() == 2) {
+      ir::Expr stmt = pair.second;
+      if (stmt.As<ir::For>() && stmt.As<ir::For>()->is_gpu_thread_binded()) {
+        gpu_thread_has_binded = true;
+      }
+    }
+  }
   Expr fused_loop = ir_schedule->Fuse(
       {all_loops.begin(), all_loops.begin() + num_loops_to_bind});
   int32_t extent = fused_loop.As<ir::For>()->extent.as_int32();
