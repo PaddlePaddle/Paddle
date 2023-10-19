@@ -19,8 +19,8 @@ cc_library(
   DEPS drr)
 
 cc_library(
-  conv2d_bn_fuse_pass
-  SRCS conv2d_bn_fuse_pass.cc
+  conv2d_fuse_pass
+  SRCS conv2d_fuse_pass.cc
   DEPS transform_general_functions)
 
 cc_library(

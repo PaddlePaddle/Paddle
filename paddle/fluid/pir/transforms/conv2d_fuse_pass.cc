@@ -30,7 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-#include "paddle/fluid/pir/transforms/conv2d_bn_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/conv2d_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -137,9 +137,9 @@ class Conv2dBnFusePattern
   }
 };
 
-class Conv2dBnFusePass : public pir::Pass {
+class Conv2dFusePass : public pir::Pass {
  public:
-  Conv2dBnFusePass() : pir::Pass("Conv2dBnFusePass", 1) {}
+  Conv2dFusePass() : pir::Pass("Conv2dFusePass", 1) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -182,10 +182,10 @@ class Conv2dBnFusePass : public pir::Pass {
 
 namespace pir {
 
-std::unique_ptr<Pass> CreateConv2dBnFusePass() {
-  return std::make_unique<Conv2dBnFusePass>();
+std::unique_ptr<Pass> CreateConv2dFusePass() {
+  return std::make_unique<Conv2dFusePass>();
 }
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_bn_fuse, Conv2dBnFusePass);
+REGISTER_IR_PASS(conv2d_fuse, Conv2dFusePass);
