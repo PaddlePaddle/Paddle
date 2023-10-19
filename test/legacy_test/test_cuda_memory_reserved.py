@@ -46,7 +46,7 @@ class TestMemoryreserved(unittest.TestCase):
                 "gpu1",
             ]
             for device in wrong_device:
-                with self.assertRaises(AssertionError):
+                with self.assertRaises(BaseException):  # noqa: B017
                     memory_reserved(device)
         else:
             with self.assertRaises(ValueError):

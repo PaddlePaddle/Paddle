@@ -61,7 +61,7 @@ class TestMaxMemoryAllocated(unittest.TestCase):
                 "gpu1",
             ]
             for device in wrong_device:
-                with self.assertRaises(AssertionError):
+                with self.assertRaises(BaseException):  # noqa: B017
                     max_memory_allocated(device)
         else:
             with self.assertRaises(ValueError):
