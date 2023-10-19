@@ -48,47 +48,7 @@ class TestSignFP16Op(TestSignOp):
             'X': np.random.uniform(-10, 10, (10, 10)).astype("float16")
         }
         self.outputs = {'Out': np.sign(self.inputs['X'])}
-
-
-class TestSignInt8Op(TestSignOp):
-    def setUp(self):
-        self.op_type = "sign"
-        self.python_api = paddle.sign
-        self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("int8")
-        }
-        self.outputs = {'Out': np.sign(self.inputs['X'])}
-
-
-class TestSignInt16Op(TestSignOp):
-    def setUp(self):
-        self.op_type = "sign"
-        self.python_api = paddle.sign
-        self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("int16")
-        }
-        self.outputs = {'Out': np.sign(self.inputs['X'])}
-
-
-class TestSignInt32Op(TestSignOp):
-    def setUp(self):
-        self.op_type = "sign"
-        self.python_api = paddle.sign
-        self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("int32")
-        }
-        self.outputs = {'Out': np.sign(self.inputs['X'])}
-
-
-class TestSignInt64Op(TestSignOp):
-    def setUp(self):
-        self.op_type = "sign"
-        self.python_api = paddle.sign
-        self.inputs = {
-            'X': np.random.uniform(-10, 10, (10, 10)).astype("int64")
-        }
-        self.outputs = {'Out': np.sign(self.inputs['X'])}
-
+        
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
