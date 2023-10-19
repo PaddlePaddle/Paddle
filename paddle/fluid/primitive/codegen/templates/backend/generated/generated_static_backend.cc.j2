@@ -12,9 +12,9 @@ namespace backend {
 
 using LazyTensor = paddle::primitive::LazyTensor;
 
-{%- macro sig(name, inputs, outputs, attrs, inplace_map, mutable_attribute_as_inputs=False) -%}
+{%- macro sig(name, inputs, outputs, attrs, mutable_attribute_as_inputs=False) -%}
 template <>
-{{common.ret(outputs, inplace_map)}} {{name}}<LazyTensor>({{common.params(inputs, attrs, mutable_attribute_as_inputs, False)}})
+{{common.ret(outputs)}} {{name}}<LazyTensor>({{common.params(inputs, attrs, mutable_attribute_as_inputs, False)}})
 {%- endmacro -%}
 
 {%- macro prepare_ir_api_inputs(inputs)-%}
@@ -48,13 +48,13 @@ if({{input.name}}) {
 
 {%- macro get_static_backend_outputs(outputs)-%}
   {%- if outputs|length == 1 -%}
-    {%- if outputs[0].typename == 'Tensor' and not outputs[0].optional-%}
+    {%- if outputs[0].typename == 'Tensor' and not outputs[0].optional -%}
 Tensor {{outputs[0].name}}(std::make_shared<LazyTensor>(op_res));
 return {{outputs[0].name}};
     {%- elif outputs[0].typename == 'Tensor' and outputs[0].optional -%}
 paddle::optional<Tensor> {{outputs[0].name}};
 if(op_res){
-  {{outputs[0].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res.get()));
+  {{outputs[0].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res.get())));
 }
 return {{outputs[0].name}};
     {%- elif outputs[0].typename == 'Tensor[]' and not outputs[0].optional -%}
@@ -80,7 +80,7 @@ return {{outputs[0].name}};
 auto op_res_{{i}} = std::get<{{i}}>(op_res);
       {% if outputs[i].typename == 'Tensor' and not outputs[i].optional %}
 Tensor {{outputs[i].name}}(std::make_shared<LazyTensor>(op_res_{{i}}));
-      {% elif outputs[i].typename == 'Tensor' and  outputs[i].optional %}
+      {% elif outputs[i].typename == 'Tensor' and outputs[i].optional %}
 paddle::optional<Tensor> {{outputs[i].name}};
 if(op_res_{{i}}){
   {{outputs[i].name}} = paddle::make_optional<Tensor>(Tensor(std::make_shared<LazyTensor>(op_res_{{i}}.get())));
@@ -139,28 +139,26 @@ auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}}
 
 
 {% for api in apis %}
-{% if api.name in backend_white_list %}
+{%- if api is only_composite_op or "infer_meta" not in api and "composite" not in api and "invoke" not in api -%}{#- render nothing -#}
+{% elif api.name not in backend_black_list %}
+  {%- if 'invoke' not in api or 'invoke' in api and api.is_fwd-%}
   {% set api_outputs = api.outputs | trip_intermediate %}
-  {% set inplace_map = {} %}
-  {% if 'inplace' in api and api.inplace != None %}
-    {% for source, target in api.inplace.items() %}
-      {% do inplace_map.update({source: target}) %}
-    {% endfor %}
-  {% endif %}
-{{sig(api.name, api.inputs, api_outputs, api.attrs, inplace_map)}} {
+{{sig(api.name, api.inputs, api_outputs, api.attrs)}} {
   {% filter indent(2, True) %}
 {{body(api.name, api.inputs, api_outputs, api.attrs)}} 
   {% endfilter %}
 }
 
-  {% if api.attrs is exist_mutable_attribute %}
-{{sig(api.name, api.inputs, api_outputs, api.attrs, inplace_map, True)}} {
+    {% if api.attrs is exist_mutable_attribute %}
+{{sig(api.name, api.inputs, api_outputs, api.attrs, True)}} {
   {% filter indent(2, True) %}
 {{body(api.name, api.inputs, api_outputs, api.attrs, True)}} 
   {% endfilter %}
 }
 
+    {% endif %}
   {% endif %}
+{% else %}{#- render nothing -#}
 {% endif %}
 {% endfor %}
 

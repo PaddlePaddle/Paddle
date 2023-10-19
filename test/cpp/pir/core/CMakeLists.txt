@@ -65,6 +65,11 @@ file(
   ${CMAKE_CURRENT_BINARY_DIR}/conditional_block_test.prog
   EXPECTED_MD5 cf9dc869ca7f69e2d57b38dbf8427134)
 
+file(
+  DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/while_op_test.prog
+  ${CMAKE_CURRENT_BINARY_DIR}/while_op_test.prog
+  EXPECTED_MD5 290164ae52a496332b0be5829fc93bcd)
+
 copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
                   ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)
 

@@ -28,19 +28,19 @@ CLASS_NUM = 10
 
 # TODO(chenweihang): update to MLP Layer later
 class DemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1):
+    def __init__(self, np_w0, np_w1, param_suffix=""):
         super().__init__()
         self.w0 = self.create_parameter(
             shape=[IMAGE_SIZE, IMAGE_SIZE],
             attr=paddle.framework.ParamAttr(
-                name="demo_weight_1",
+                name="demo_weight_1" + param_suffix,
                 initializer=paddle.nn.initializer.Assign(np_w0),
             ),
         )
         self.w1 = self.create_parameter(
             shape=[IMAGE_SIZE, CLASS_NUM],
             attr=paddle.framework.ParamAttr(
-                name="nemo_weight_2",
+                name="nemo_weight_2" + param_suffix,
                 initializer=paddle.nn.initializer.Assign(np_w1),
             ),
         )
@@ -52,38 +52,32 @@ class DemoNet(nn.Layer):
 
 
 class DPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh):
+    def __init__(self, np_w0, np_w1, mesh, param_suffix=""):
         super().__init__()
-        self.replicate_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None, None]
-        )
-        self.shard_axis0_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="dp_demo_weight_1",
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
+        self.mesh = mesh
+        self.w0 = self.create_parameter(
+            shape=[IMAGE_SIZE, IMAGE_SIZE],
+            attr=paddle.framework.ParamAttr(
+                name="dp_demo_weight_1" + param_suffix,
+                initializer=paddle.nn.initializer.Assign(np_w0),
             ),
-            dist_attr=self.replicate_dist_attr,
         )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="dp_nemo_weight_2",
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
+        self.w1 = self.create_parameter(
+            shape=[IMAGE_SIZE, CLASS_NUM],
+            attr=paddle.framework.ParamAttr(
+                name="dp_nemo_weight_2" + param_suffix,
+                initializer=paddle.nn.initializer.Assign(np_w1),
             ),
-            dist_attr=self.replicate_dist_attr,
         )
 
     def forward(self, x):
         y = paddle.matmul(
-            dist.shard_tensor(x, dist_attr=self.shard_axis0_dist_attr),
+            dist.shard_tensor(
+                x,
+                dist_attr=dist.DistAttr(
+                    mesh=self.mesh, sharding_specs=['x', None]
+                ),
+            ),
             self.w0,
         )
         z = paddle.matmul(y, self.w1)
@@ -91,42 +85,31 @@ class DPDemoNet(nn.Layer):
 
 
 class MPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh):
+    def __init__(self, np_w0, np_w1, mesh, param_suffix=""):
         super().__init__()
-        self.replicate_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=[None, None]
-        )
-        self.shard_axis0_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
-        self.shard_axis1_dist_attr = dist.DistAttr(
-            mesh=mesh, sharding_specs=['x', None]
-        )
         self.w0 = dist.shard_tensor(
             self.create_parameter(
                 shape=[IMAGE_SIZE, IMAGE_SIZE],
                 attr=paddle.framework.ParamAttr(
-                    name="mp_demo_weight_1",
+                    name="mp_demo_weight_1" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w0),
                 ),
             ),
-            dist_attr=self.shard_axis1_dist_attr,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
         )
         self.w1 = dist.shard_tensor(
             self.create_parameter(
                 shape=[IMAGE_SIZE, CLASS_NUM],
                 attr=paddle.framework.ParamAttr(
-                    name="mp_nemo_weight_2",
+                    name="mp_nemo_weight_2" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w1),
                 ),
             ),
-            dist_attr=self.shard_axis0_dist_attr,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['x', None]),
         )
 
     def forward(self, x):
-        y = paddle.matmul(
-            dist.shard_tensor(x, dist_attr=self.replicate_dist_attr), self.w0
-        )
+        y = paddle.matmul(x, self.w0)
         z = paddle.matmul(y, self.w1)
         return z
 
@@ -135,6 +118,7 @@ class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
@@ -144,8 +128,8 @@ class TestSimpleNetForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def init_input_data(self):
-        paddle.seed(2023)
-        np.random.seed(2023)
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
 
         self.image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype(
             'float32'
@@ -155,23 +139,16 @@ class TestSimpleNetForSemiAutoParallel:
         self.w1 = np.random.random([IMAGE_SIZE, CLASS_NUM]).astype('float32')
 
     # TODO(chenweihang): optimizer cannot run auto-parallel now
-    def run_dynamic(self, layer, parallel=False):
+    def run_dynamic(self, layer):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
         image = paddle.to_tensor(self.image)
         out = layer(image)
-        label = (
-            dist.shard_tensor(
-                self.label,
-                dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=[None, None]
-                ),
-            )
-            if parallel is True
-            else paddle.to_tensor(self.label)
-        )
+
+        label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
+
         loss.backward()
         return loss, layer.w0.grad, layer.w1.grad
 
@@ -187,7 +164,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def test_dp_demo_net(self):
         self.dp_loss, self.dp_w0_grad, self.dp_w1_grad = self.run_dynamic(
-            DPDemoNet(self.w0, self.w1, self._mesh), parallel=True
+            DPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.dp_loss, self.base_loss)
         self.check_tensor_eq(self.dp_w0_grad, self.base_w0_grad)
@@ -195,7 +172,7 @@ class TestSimpleNetForSemiAutoParallel:
 
     def test_mp_demo_net(self):
         self.mp_loss, self.mp_w0_grad, self.mp_w1_grad = self.run_dynamic(
-            MPDemoNet(self.w0, self.w1, self._mesh), parallel=True
+            MPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.mp_loss, self.base_loss)
         self.check_tensor_eq(self.mp_w0_grad, self.base_w0_grad)
