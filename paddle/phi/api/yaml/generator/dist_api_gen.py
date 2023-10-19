@@ -63,7 +63,9 @@ AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
 
 # 1. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
-    auto meta_dist_input_{} = MakeDistMetaTensor(*{}.impl());"""
+    auto meta_dist_input_{name} = MakeDistMetaTensor(*{name}.impl());"""
+OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE = """
+    auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*(*{name}).impl()) : phi::distributed::DistMetaTensor();"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
@@ -169,12 +171,13 @@ INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
 # Dist Branch will not generated in the API that doesn't have input tensor.
-SET_SINGLE_OUT_REPLICATED_DIST_ATTR = """
-    SetReplicatedDistAttrForOutput({}, spmd_info.first[0].process_mesh());"""
-SET_VECTOR_OUT_REPLICATED_DIST_ATTR = """
-    auto current_process_mesh = spmd_info.first[0].process_mesh();
-    for (size_t i = 0; i < dist_out.size(); ++i) {{
-        SetReplicatedDistAttrForOutput(dist_out[i], current_process_mesh);
+CURRENT_PROCESS_MESH_TEMPLATE = """
+    auto current_process_mesh = spmd_info.first[0].process_mesh();"""
+SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
+    SetReplicatedDistAttrForOutput({}, current_process_mesh);"""
+SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
+    for (size_t i = 0; i < {name}.size(); ++i) {{
+        SetReplicatedDistAttrForOutput({name}[i], current_process_mesh);
     }}
 """
 
@@ -219,6 +222,10 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
     }}
 """
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
+    dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+    paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
+"""
+OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
     auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
     paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
 """
@@ -423,7 +430,7 @@ class DistForwardAPI(ForwardAPI):
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
-                        param, param
+                        name=param
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
                 else:
@@ -464,14 +471,20 @@ class DistForwardAPI(ForwardAPI):
             if param in input_names:
                 if self.inputs['input_info'][param] == "const Tensor&":
                     input_decl_code += SINGLE_DIST_META_IN_TEMPLATE.format(
-                        param, param
+                        name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
-                    or self.inputs['input_info'][param]
-                    == "const paddle::optional<Tensor>&"
                     or self.inputs['input_info'][param]
                     == "const paddle::optional<std::vector<Tensor>>&"
                 ):
@@ -680,6 +693,8 @@ class DistForwardAPI(ForwardAPI):
         output_decl_code = ""
         output_args_code = ""
         set_out_dist_attr_code = ""
+        if self.generate_general_infer_spmd is True:
+            set_out_dist_attr_code += CURRENT_PROCESS_MESH_TEMPLATE
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
                 output_decl_code += VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE.format(
@@ -688,7 +703,9 @@ class DistForwardAPI(ForwardAPI):
                 output_args_code += f"{out_name}_meta_ptr_vec, "
                 if self.generate_general_infer_spmd is True:
                     set_out_dist_attr_code += (
-                        SET_VECTOR_OUT_REPLICATED_DIST_ATTR
+                        SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
+                            name=out_name
+                        )
                     )
             else:
                 output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
@@ -702,7 +719,9 @@ class DistForwardAPI(ForwardAPI):
                     )
                 if self.generate_general_infer_spmd is True:
                     set_out_dist_attr_code += (
-                        SET_SINGLE_OUT_REPLICATED_DIST_ATTR.format(out_name)
+                        SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
+                            out_name
+                        )
                     )
         output_args_code = output_args_code[:-2]
 
@@ -733,7 +752,11 @@ class DistForwardAPI(ForwardAPI):
 
             for i, param in enumerate(kernel_params):
                 if param in input_names:
-                    if self.inputs['input_info'][param] == "const Tensor&":
+                    if (
+                        self.inputs['input_info'][param] == "const Tensor&"
+                        or self.inputs['input_info'][param]
+                        == "const paddle::optional<Tensor>&"
+                    ):
                         if self.generate_general_infer_spmd is True:
                             input_reshard_code += (
                                 SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE.format(
@@ -819,11 +842,20 @@ class DistForwardAPI(ForwardAPI):
         if kernel_param is None:
             kernel_param = input_names + attr_names
 
-        input_tensor_code += OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE.format(
-            name=input_name,
-            index=kernel_param.index(input_name),
-            trans_flag=trans_flag,
-        )
+        if self.generate_infer_spmd is True:
+            input_tensor_code += OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE.format(
+                name=input_name,
+                index=kernel_param.index(input_name),
+                trans_flag=trans_flag,
+            )
+        else:
+            input_tensor_code += (
+                OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD.format(
+                    name=input_name,
+                    index=kernel_param.index(input_name),
+                    trans_flag=trans_flag,
+                )
+            )
 
         return input_tensor_code
 
