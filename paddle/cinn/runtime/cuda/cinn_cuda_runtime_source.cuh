@@ -530,15 +530,15 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf, int offset, 
 
 #define CINN_BLOCK_REDUCE_INTERNAL_IMPL(TYPE, value, init_value, cinn_warp_shuffle_internal) \
   int warp_id = threadIdx.x / 32;                                                            \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
+  if (blockDim.x <= 32) {                                                                    \
+    return tmp_val;                                                                          \
+  }                                                                                          \
   __shared__ TYPE tmp[32];                                                                   \
   if (warp_id == 0) {                                                                        \
     tmp[threadIdx.x] = init_value;                                                           \
   }                                                                                          \
   __syncthreads();                                                                           \
-  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
-  if (blockDim.x <= 32) {                                                                    \
-    return tmp_val;                                                                          \
-  }                                                                                          \
   if ((threadIdx.x & 31) == 0) {                                                             \
     tmp[warp_id] = tmp_val;                                                                  \
   }                                                                                          \
