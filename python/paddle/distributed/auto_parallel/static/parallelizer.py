@@ -45,7 +45,7 @@ from .process_group import (
     get_world_process_group,
 )
 from .reshard import Resharder
-from .utils import SerialProgramInfo, make_data_unshard, set_grad_var_shape
+from .utils import SerialProgramInfo, make_data_unshard
 
 _logger = get_logger(logging.INFO)
 
@@ -259,8 +259,6 @@ class AutoParallelizer:
         dist_optimize_ops = self._apply_optimize(
             dist_main_prog, dist_startup_prog, dist_params_grads
         )
-
-        set_grad_var_shape(dist_main_prog, self._dist_context)
 
         make_data_unshard(dist_main_prog, dist_startup_prog, self._dist_context)
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,20 +14,22 @@
 
 #pragma once
 
-#include <memory>
+#include "paddle/cinn/hlir/dialect/operator/transforms/tensor_node.h"
 
-namespace pir {
-class Program;
-}  // namespace pir
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_node.h"
 
 namespace cinn {
-namespace hlir {
-namespace framework {
-class Program;
+namespace dialect {
+namespace ir {
 
-std::unique_ptr<::pir::Program> ConvertToRuntimeDialect(
-    const hlir::framework::Program& program);
+OpNode TensorNode::producer() const {
+  return OpNode(node_data_.dyn_cast<pir::OpResult>().owner());
+}
 
-}  // namespace framework
-}  // namespace hlir
+OpNode TensorNode::ConsumerOpListView::Iterator::operator*() const {
+  return OpNode(iter_.owner());
+}
+
+}  // namespace ir
+}  // namespace dialect
 }  // namespace cinn
