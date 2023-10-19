@@ -1687,11 +1687,10 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.nn.functional as F
 
             >>> diag_embed_input = paddle.arange(6)
 
-            >>> diag_embed_output1 = F.diag_embed(diag_embed_input)
+            >>> diag_embed_output1 = paddle.diag_embed(diag_embed_input)
             >>> print(diag_embed_output1)
             Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0, 0, 0, 0, 0],
@@ -1701,7 +1700,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
              [0, 0, 0, 0, 4, 0],
              [0, 0, 0, 0, 0, 5]])
 
-            >>> diag_embed_output2 = F.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
+            >>> diag_embed_output2 = paddle.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
             >>> print(diag_embed_output2)
             Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 0, 0, 0, 0, 0, 0],
@@ -1717,7 +1716,7 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 2],
             [3, 4, 5]])
-            >>> diag_embed_output3 = F.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
+            >>> diag_embed_output3 = paddle.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
             >>> print(diag_embed_output3)
             Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[[0, 0, 0],
