@@ -24,7 +24,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
@@ -54,18 +54,24 @@ std::vector<pir::Value> GetBlockOutsideInput(
 }
 
 std::vector<pir::Value> GetBlockOutsideOutput(
-    const std::vector<pir::Operation*> op_list) {
+    const std::vector<pir::Operation*> op_list,
+    const std::unordered_set<::pir::Operation*>& output_node,
+    pir::YieldOp yield_op) {
   std::vector<pir::Value> vec_res;
-  std::unordered_set<::pir::Value> block_inner_output;
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
-      block_inner_output.insert(op_list[k]->operand_source(i));
+  std::unordered_set<::pir::Value> used_value;
+  for (auto it = output_node.begin(); it != output_node.end(); ++it) {
+    for (size_t i = 0; i < (*it)->num_operands(); ++i) {
+      used_value.insert((*it)->operand_source(i));
     }
+  }
+
+  for (size_t i = 0; i < yield_op.num_operands(); ++i) {
+    used_value.insert(yield_op.operand_source(i));
   }
 
   for (size_t k = 0; k < op_list.size(); ++k) {
     for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
-      if (!block_inner_output.count(op_list[k]->result(i))) {
+      if (used_value.count(op_list[k]->result(i))) {
         vec_res.push_back(op_list[k]->result(i));
       }
     }
@@ -97,7 +103,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
-  std::vector<cinn::hlir::framework::NewIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
 
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
@@ -121,17 +127,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
                         phi::errors::Unimplemented(
                             "Only support one group after group fusion"));
       for (auto group : group_list) {
-        auto ir_compiler =
-            new cinn::hlir::framework::NewIRCompiler(*program, target, scope);
-        auto group1 =
-            std::make_shared<cinn::hlir::framework::newir::Group>(group->nodes);
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
-        compiler_list.push_back(ir_compiler);
-        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-            {cinn::dialect::JitKernelOp::kAttrName,
-             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
-        };
-
         // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->nodes);
 
@@ -140,12 +135,29 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        auto vec_outs = GetBlockOutsideOutput(group->nodes);
+        auto vec_outs = GetBlockOutsideOutput(
+            group->nodes,
+            group->output_nodes,
+            group_op.ops().back()->dyn_cast<pir::YieldOp>());
 
         std::vector<pir::Type> vec_types;
         for (auto& out : vec_outs) {
           vec_types.push_back(out.type());
         }
+
+        auto ir_compiler =
+            new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+        auto group1 =
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
+        group1->input_values = vec_ins;
+        group1->output_values = vec_outs;
+
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        compiler_list.push_back(ir_compiler);
+        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+            {cinn::dialect::JitKernelOp::kAttrName,
+             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+        };
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);

@@ -106,8 +106,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
-  group->input_names.clear();
-  group->output_names.clear();
+  // group->input_names.clear();
+  // group->output_names.clear();
   switch (group->op_pattern_kind) {
     case framework::kElementWise:
     case framework::kBroadcast:
@@ -238,37 +238,41 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     ir::IRSchedule* ir_sch,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
   // 1.Prepare function args
-  group->input_names.clear();
+  // group->input_names.clear();
   std::vector<ir::Argument> group_func_args;
   std::unordered_set<std::string> arg_name_set;
-  for (auto& arg_tensor : *group_func_arg_tensors) {
+  // for (auto& arg_tensor : *group_func_arg_tensors) {
+  for (auto& val : group->input_values) {
+    assert(tensor_map.count(val));
+    auto arg_tensor = tensor_map.at(val);
     // input data name.
-    group->input_names.push_back(arg_tensor->name);
+    // group->input_names.push_back(arg_tensor->name);
     // input args
     group_func_args.emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
 
-  group->output_names.clear();
+  // group->output_names.clear();
   // FIXME(Aurelius84): Do we need to use output_ops?
   // Currently we regards all ops as output_ops.
-  for (auto& op : group->ops) {
-    // collect all output tensor.
-    for (auto opresult : op->results()) {
-      if (tensor_map.count(opresult) == 0) {
-        continue;
-      }
-      auto tensor = tensor_map.at(opresult);
-      if (arg_name_set.count(tensor->buffer->name) != 0) {
-        continue;
-      }
-      // output arg tensors
-      group_func_arg_tensors->push_back(tensor);
-      // output args
-      group->output_names.push_back(tensor->name);
-      group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
-      arg_name_set.insert(tensor->buffer->name);
+  for (auto& val : group->output_values) {
+    // for (auto& op : group->ops) {
+    //  collect all output tensor.
+    //  for (auto opresult : op->results()) {
+    if (tensor_map.count(val) == 0) {
+      continue;
     }
+    auto tensor = tensor_map.at(val);
+    if (arg_name_set.count(tensor->buffer->name) != 0) {
+      continue;
+    }
+    // output arg tensors
+    group_func_arg_tensors->push_back(tensor);
+    // output args
+    // group->output_names.push_back(tensor->name);
+    group_func_args.emplace_back(tensor->buffer, ir::Argument::IO::kOutput);
+    arg_name_set.insert(tensor->buffer->name);
+    //}
   }
   if (!done_op_schedule) {
     std::unordered_set<std::string> args_set;
@@ -283,7 +287,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       group_func_arg_tensors->push_back(tensor_pair.second);
       // use the underlying tensor name to be consistent with the argument name
       // in the lowered function
-      group->output_names.push_back(tensor_pair.second->name);
+      // group->output_names.push_back(tensor_pair.second->name);
       group_func_args.emplace_back(tensor_pair.second->buffer,
                                    ir::Argument::IO::kOutput);
     }

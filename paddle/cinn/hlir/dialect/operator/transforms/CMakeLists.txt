@@ -8,6 +8,6 @@ if(NOT CINN_ONLY)
     tensor_node.cc
     DEPS
     pd_op_dialect
-    new_ir_compiler
+    pir_compiler
     cinn_runtime_dialect)
 endif()

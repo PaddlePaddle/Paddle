@@ -116,8 +116,6 @@ struct Group {
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
   // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
