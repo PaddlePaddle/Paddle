@@ -33,6 +33,63 @@ __all__ = []
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
 
+class ConcatInput(PyLayer):
+    @staticmethod
+    def forward(ctx, inp, group=None, axis=-1):
+        inputs = []
+        paddle.distributed.all_gather(inputs, inp, group=group)
+        with paddle.no_grad():
+            cat = paddle.concat(inputs, axis=axis)
+        ctx.cat_args = group
+        ctx.axis = axis
+        return cat
+
+    @staticmethod
+    def backward(ctx, grad):
+        group = ctx.cat_args
+        axis = ctx.axis
+        with paddle.no_grad():
+            grads = paddle.split(
+                grad, paddle.distributed.get_world_size(group), axis=axis
+            )
+        grad = grads[paddle.distributed.get_rank(group)]
+        return grad
+
+
+class GatherBackwardLinear(PyLayer):
+    @staticmethod
+    def forward(ctx, x, weight=None, bias=None, group=None, axis=-1):
+        ctx.save_for_backward(x, weight, bias)
+        ctx.group = group
+        ctx.axis = axis
+        rst = paddle._C_ops.linear(x, weight, bias)
+        return rst
+
+    @staticmethod
+    def backward(ctx, grad):
+        x, weight, bias = ctx.saved_tensor()
+        group = ctx.group
+        axis = ctx.axis
+
+        tmp_grad = grad.reshape([-1, grad.shape[-1]])
+        dw = paddle.matmul(
+            x.reshape([-1, x.shape[-1]]),
+            tmp_grad,
+            transpose_x=True,
+        )
+        dbias = paddle.sum(tmp_grad, axis=0)
+
+        weights = []
+        grads = []
+        paddle.distributed.all_gather(weights, weight, group=group)
+        paddle.distributed.all_gather(grads, grad, group=group)
+        weight = paddle.concat(weights, axis=axis)
+        grad = paddle.concat(grads, axis=axis)
+        dx = paddle.matmul(grad, weight, transpose_y=True)
+
+        return dx, dw, dbias
+
+
 def is_fused_matmul_bias_supported():
     return hasattr(core.eager.ops.legacy, 'fused_gemm_epilogue')
 
@@ -497,17 +554,25 @@ class ColumnParallelLinear(paddle.nn.Layer):
         if self.mp_async_allreduce:
             output_parallel = _overlap_linear()
         else:
-            if self.is_mp:
-                input_parallel = mp_ops._c_identity(
-                    x,
-                    group=self.model_parallel_group,
-                    skip_c_identity_dynamic=self.mp_skip_c_identity,
-                )
-            else:
-                input_parallel = x
+            # if self.is_mp:
+            #     input_parallel = mp_ops._c_identity(
+            #         x,
+            #         group=self.model_parallel_group,
+            #         skip_c_identity_dynamic=self.mp_skip_c_identity,
+            #     )
+            # else:
+            #     input_parallel = x
 
-            output_parallel = self.linear(
-                input_parallel, self.weight, self.bias, name=self._name
+            # output_parallel = self.linear(
+            #     input_parallel, self.weight, self.bias, name=self._name
+            # )
+            output_parallel = GatherBackwardLinear.apply(
+                x,
+                self.weight,
+                self.bias,
+                self.model_parallel_group,
+                -1,
+                self.fuse_matmul_bias,
             )
 
         if self.gather_output and self.is_mp:
@@ -690,11 +755,12 @@ class RowParallelLinear(paddle.nn.Layer):
         self.fuse_matmul_bias = fuse_matmul_bias
 
     def forward(self, x):
-        if self.input_is_parallel or (not self.is_mp):
-            input_parallel = x
-        else:
-            # split last dim
-            input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
+        # if self.input_is_parallel or (not self.is_mp):
+        #     input_parallel = x
+        # else:
+        #     # split last dim
+        #     input_parallel = mp_ops._c_split(x, group=self.model_parallel_group)
+        input_parallel = x
 
         if self.is_mp:
             if self.fuse_matmul_bias:
@@ -710,16 +776,20 @@ class RowParallelLinear(paddle.nn.Layer):
                     skip_c_identity_dynamic=self.mp_skip_c_identity,
                 )
             else:
-                output_parallel = self.linear(
-                    input_parallel, self.weight, name=self._name
+                # output_parallel = self.linear(
+                #     input_parallel, self.weight, name=self._name
+                # )
+                # output_ = mp_ops._mp_allreduce(
+                #     output_parallel,
+                #     group=self.model_parallel_group,
+                #     use_calc_stream=True,
+                #     use_model_parallel=True,
+                #     skip_c_identity_dynamic=self.mp_skip_c_identity,
+                # )
+                weight = ConcatInput.apply(
+                    self.weight, group=self.model_parallel_group, axis=0
                 )
-                output_ = mp_ops._mp_allreduce(
-                    output_parallel,
-                    group=self.model_parallel_group,
-                    use_calc_stream=True,
-                    use_model_parallel=True,
-                    skip_c_identity_dynamic=self.mp_skip_c_identity,
-                )
+                output_ = self.linear(input_parallel, weight, name=self._name)
                 output = (
                     output_ + self.bias if self.bias is not None else output_
                 )
