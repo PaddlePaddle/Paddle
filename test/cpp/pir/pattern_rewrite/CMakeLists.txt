@@ -20,16 +20,6 @@ cc_test_old(
   pd_op_dialect
   pir)
 cc_test_old(
-  drr_fuse_linear_test
-  SRCS
-  drr_fuse_linear_test.cc
-  DEPS
-  fused_gemm_epilogue_pass
-  drr
-  gtest
-  pd_op_dialect
-  pir)
-cc_test_old(
   drr_same_type_binding_test
   SRCS
   drr_same_type_binding_test.cc
@@ -38,8 +28,27 @@ cc_test_old(
   gtest
   pd_op_dialect
   pir)
-cc_test_old(drr_attention_fuse_test SRCS drr_attention_fuse_test.cc DEPS gtest
-            attention_fuse_pass)
+
+cc_test_old(
+  drr_fuse_linear_test
+  SRCS
+  drr_fuse_linear_test.cc
+  DEPS
+  fusion_passes
+  drr
+  gtest
+  pd_op_dialect
+  pir)
+cc_test_old(
+  drr_attention_fuse_test
+  SRCS
+  drr_attention_fuse_test.cc
+  DEPS
+  fusion_passes
+  drr
+  gtest
+  pd_op_dialect
+  pir)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT

@@ -1,4 +1,9 @@
-add_subdirectory(fusion)
+file(GLOB FUSION_PASS_SRCS "fusion/*.cc")
+
+cc_library(
+  fusion_passes
+  SRCS ${FUSION_PASS_SRCS}
+  DEPS drr)
 
 cc_library(
   transform_general_functions
@@ -14,11 +19,6 @@ cc_library(
   pd_constant_folding_pass
   SRCS constant_folding_pass.cc
   DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
-
-cc_library(
-  fused_gemm_epilogue_pass
-  SRCS fused_gemm_epilogue_pass.cc
-  DEPS drr)
 
 cc_library(
   pd_inplace_pass
