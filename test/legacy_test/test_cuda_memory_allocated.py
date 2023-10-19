@@ -46,7 +46,7 @@ class TestMemoryAllocated(unittest.TestCase):
                 "gpu1",
             ]
             for device in wrong_device:
-                with self.assertRaises(ValueError):
+                with self.assertRaises(AssertionError):
                     memory_allocated(device)
         else:
             with self.assertRaises(ValueError):

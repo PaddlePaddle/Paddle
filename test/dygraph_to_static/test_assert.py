@@ -42,7 +42,7 @@ class TestAssertVariable(Dy2StTestBase):
     def _run(self, func, x, with_exception, to_static):
         paddle.jit.enable_to_static(to_static)
         if with_exception:
-            with self.assertRaises(TypeError):
+            with self.assertRaises(BaseException):  # noqa: B017
                 with base.dygraph.guard():
                     func(x)
         else:

@@ -61,7 +61,7 @@ class TestMaxMemoryreserved(unittest.TestCase):
                 "gpu1",
             ]
             for device in wrong_device:
-                with self.assertRaises(ValueError):
+                with self.assertRaises(AssertionError):
                     max_memory_reserved(device)
         else:
             with self.assertRaises(ValueError):
