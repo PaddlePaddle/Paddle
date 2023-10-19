@@ -16,6 +16,7 @@
 
 
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode, tensor
+from paddle.utils import deprecated
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -25,6 +26,12 @@ from ...framework import convert_np_dtype_to_dtype_, core
 __all__ = []
 
 
+@deprecated(
+    since="2.5.2",
+    update_to="paddle.diag_embed",
+    level=1,
+    reason="diag_embed in paddle.nn.functional will be removed in future",
+)
 def diag_embed(input, offset=0, dim1=-2, dim2=-1):
     return tensor.diag_embed(input, offset, dim1, dim2)
 
