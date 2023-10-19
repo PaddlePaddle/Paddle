@@ -136,6 +136,32 @@ class MapStmt final : public Tuple<LoopIterators, List<T>> {
 // Stmt = OpStmt | MapStmt Stmt
 using Stmt = Tree<MapStmt, OpStmt>;
 
+template <typename OutT, typename InT>
+class Store final : public Tuple<OutT, InT> {
+ public:
+  using Tuple<OutT, InT>::Tuple;
+};
+
+template <typename T>
+class Load final : public Tuple<T> {
+ public:
+  using Tuple<T>::Tuple;
+};
+
+// OpCall T = (Op, [T])
+template <typename T>
+class OpCall final : public Tuple<Op, List<T>> {
+ public:
+  using Tuple<Op, List<T>>::Tuple;
+};
+
+// OpExpr = Tree OpCall (Load Tensor)
+using OpExpr = Tree<OpCall, Load<Tensor>>;
+// OpExprStmt = Store Tensor OpExpr
+using OpExprStmt = Store<Tensor, OpExpr>;
+
+using InlineStmt = Tree<MapStmt, OpExprStmt>;
+
 using TensorIndexExpr = Value;
 using TensorIndexExpr4TensorT = std::function<TensorIndexExpr(const Tensor&)>;
 using TensorIteratorExpr = Value;

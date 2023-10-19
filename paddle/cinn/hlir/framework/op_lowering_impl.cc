@@ -474,7 +474,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (auto fun : funcs) {
     VLOG(4) << fun;
   }
-  group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(node, funcs);
+  if (FLAGS_cinn_enable_map_expr) {
+    group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(node, funcs);
+  }
 
   op_func_arg_tensors->clear();
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
