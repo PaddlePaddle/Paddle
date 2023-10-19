@@ -1016,7 +1016,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
-      interpreter::LogDeviceMemoryStats(place_);
+      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
     }
 
     instr_node.RecordEvent(place_);

@@ -551,7 +551,6 @@ void ReplaceWithGroupOp(pir::Block* block,
   // step 1: Ensure the insert point and create GroupOp here.
   auto* laste_input_op = group_ops.back();
   builder.SetInsertionPointAfter(laste_input_op);
-  // TODO(Aurelius84): Need confirm how many YieldOps we need.
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
   for (auto& value : outputs) {

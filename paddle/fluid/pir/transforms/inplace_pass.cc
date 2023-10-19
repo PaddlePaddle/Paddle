@@ -349,7 +349,7 @@ class InplacePass : public pir::Pass {
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
     }
     LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::ir::Program to Kernel Dialect.";
+        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
