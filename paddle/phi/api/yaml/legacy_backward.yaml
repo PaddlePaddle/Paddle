@@ -86,7 +86,7 @@
   kernel :
     func : batch_norm_double_grad
     data_type : x
-  optional : out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
+  optional : scale, out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
   inplace : (grad_out -> grad_out_grad)
 
 - backward_op : batch_norm_grad
