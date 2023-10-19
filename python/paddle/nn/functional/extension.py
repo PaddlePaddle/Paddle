@@ -283,7 +283,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
     if data_format not in ["NCHW", "NHWC"]:
         raise ValueError(
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
-            "Received Attr(data_format): {}.".format(data_format)
+            f"Received Attr(data_format): {data_format}."
         )
     if in_dynamic_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)

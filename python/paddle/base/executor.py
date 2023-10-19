@@ -12,38 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import logging
 import os
 import sys
 import warnings
-import numpy as np
-
-from . import set_flags, get_flags
-from .framework import Program, default_main_program
-
-from ..ir import OpResult
-from .wrapped_decorator import signature_safe_contextmanager
-from .data_feeder import convert_dtype
-from .framework import Variable, Operator, in_pir_mode
-
-from .framework import (
-    convert_np_dtype_to_dtype_,
-    _apply_pass,
-    paddle_type_to_proto_type,
-)
-
-from . import core
-from . import unique_name
-from . import compiler
-from .trainer_factory import TrainerFactory
-from .trainer_factory import FetchHandlerMonitor
-import copy
-from . import framework
-from .incubate.checkpoint import auto_checkpoint as acp
-
 from functools import lru_cache
 
-__all__ = ['Executor', 'global_scope', 'scope_guard']
+import numpy as np
+
+from ..pir import OpResult
+from . import compiler, core, framework, get_flags, set_flags, unique_name
+from .data_feeder import convert_dtype
+from .framework import (
+    Operator,
+    Program,
+    Variable,
+    _apply_pass,
+    convert_np_dtype_to_dtype_,
+    default_main_program,
+    in_pir_mode,
+    paddle_type_to_proto_type,
+)
+from .incubate.checkpoint import auto_checkpoint as acp
+from .trainer_factory import FetchHandlerMonitor, TrainerFactory
+from .wrapped_decorator import signature_safe_contextmanager
+
+__all__ = []
 
 g_scope = core.Scope()
 InferNativeConfig = core.NativeConfig
@@ -261,8 +256,9 @@ def check_feed_shape_type(var, feed, num_places=1):
                 else feed._dtype()
             )
             raise ValueError(
-                'The data type of fed Variable %r must be %r, but received %r'
-                % (var.name, var_dtype_format, feed_dtype_format)
+                'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                    var.name, var_dtype_format, feed_dtype_format
+                )
             )
     return True
 
@@ -310,8 +306,9 @@ def pir_check_feed_shape_type(feed, name, target_shape, dtype, num_places=1):
             else feed._dtype()
         )
         raise ValueError(
-            'The data type of fed Variable %r must be %r, but received %r'
-            % (name, var_dtype_format, feed_dtype_format)
+            'The data type of fed Variable {!r} must be {!r}, but received {!r}'.format(
+                name, var_dtype_format, feed_dtype_format
+            )
         )
     return True
 
@@ -345,9 +342,7 @@ def has_feed_operators(block, feed_targets, feed_holder_name):
             feed_target_name = op.desc.output('Out')[0]
             if feed_target_name not in feed_targets:
                 raise Exception(
-                    "'feed_targets' does not have {} variable".format(
-                        feed_target_name
-                    )
+                    f"'feed_targets' does not have {feed_target_name} variable"
                 )
         else:
             break
@@ -392,9 +387,7 @@ def has_fetch_operators(
                 var.desc.name() for var in fetch_targets
             ]:
                 raise Exception(
-                    "'fetch_targets' does not have {} variable".format(
-                        fetch_target_name
-                    )
+                    f"'fetch_targets' does not have {fetch_target_name} variable"
                 )
             idx = op.desc.attr('col')
             assert fetch_target_name == fetch_targets[idx].desc.name()
@@ -496,7 +489,7 @@ def _add_feed_fetch_ops(
         for i, var in enumerate(fetch_list):
             assert isinstance(
                 var, (Variable, str)
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+            ), f"Wrong type for fetch_list[{i}]: {type(var)}"
             global_block.append_op(
                 type=fetch_op,
                 inputs={'X': [var]},
@@ -515,11 +508,12 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
     if not has_fetch_operations(
         global_block, fetch_list, fetch_var_name, fetch_op
     ):
-        for i, fetch_input in enumerate(fetch_list):
-            assert isinstance(
-                fetch_input, OpResult
-            ), "Wrong type for fetch_list[%s]: %s" % (i, type(fetch_input))
-            paddle._ir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
+        with paddle.static.program_guard(program):
+            for i, fetch_input in enumerate(fetch_list):
+                assert isinstance(
+                    fetch_input, OpResult
+                ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
+                paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
 
 def _merge_tensors(tensor, micro_batch_num):
@@ -613,8 +607,8 @@ def _to_name_str(var):
 
 
 def _prepare_fleet_executor():
-    from ..distributed.fleet.proto import fleet_executor_desc_pb2
     from ..distributed.backup_env import getenv_or_backup
+    from ..distributed.fleet.proto import fleet_executor_desc_pb2
 
     trainer_endpoints_str = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS", "")
     trainer_endpoints = trainer_endpoints_str.split(',')
@@ -714,9 +708,7 @@ def _as_lodtensor(data, place, dtype=None):
             data = data.astype(dtype)
         else:
             raise TypeError(
-                "Convert data of type {} to Tensor is not supported".format(
-                    type(data)
-                )
+                f"Convert data of type {type(data)} to Tensor is not supported"
             )
 
     # convert numpy.ndarray to tensor
@@ -756,7 +748,7 @@ class FetchHandler:
     def handler(self, res_dict):
         for key in res_dict:
             if type(res_dict[key]) is np.ndarray:
-                sys.stdout.write("{}[0]: {} ".format(key, res_dict[key][0]))
+                sys.stdout.write(f"{key}[0]: {res_dict[key][0]} ")
         sys.stdout.write("\n")
 
     @staticmethod
@@ -944,7 +936,7 @@ class _ExecutorCache:
             # print(f"Program after convert:\n {inner_program}", flush=True)
         else:
             build_strategy = None
-            from paddle.incubate.autograd import prim_enabled, prim2orig
+            from paddle.incubate.autograd import prim2orig, prim_enabled
 
             if prim_enabled() and program == default_main_program():
                 prim2orig()
@@ -1095,22 +1087,22 @@ class Executor:
 
     def __init__(self, place=None):
         if place is None:
-            expected_place = framework._current_expected_place()
+            expected_place = framework._current_expected_place_()
             self.place = expected_place
         else:
             self.place = framework._get_paddle_place(place)
-        self.program_caches = dict()
-        self.ctx_caches = dict()
-        self.trainer_caches = dict()
-        self.scope_caches = dict()
-        self.micro_scope_cache = dict()
-        self.var_caches = dict()
-        self.pruned_program_caches = dict()
+        self.program_caches = {}
+        self.ctx_caches = {}
+        self.trainer_caches = {}
+        self.scope_caches = {}
+        self.micro_scope_cache = {}
+        self.var_caches = {}
+        self.pruned_program_caches = {}
         p = core.Place()
         p.set_place(self.place)
         self._default_executor = core.Executor(p)
         self._closed = False
-        self.pruned_program_scope_caches = dict()
+        self.pruned_program_scope_caches = {}
         self._prepare_to_run_called = False
 
         self._auto_checkpoint_name = unique_name.generate(
@@ -1256,7 +1248,7 @@ class Executor:
                 pir_check_feed_shape_type(
                     cur_feed, feed_target_name, var_shape, var_type
                 )
-                # the last arg of set_feed_variable has no effect in new ir, we pass 0 by default.
+                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
                 break
@@ -1879,8 +1871,8 @@ class Executor:
     ):
         import paddle
 
-        Program = paddle.ir.Program
-        default_main_program = paddle.ir.core.default_main_program
+        Program = paddle.pir.Program
+        default_main_program = paddle.pir.core.default_main_program
 
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
@@ -1902,13 +1894,7 @@ class Executor:
                     "Please ensure you create model correctly or you can pass "
                     "the Program or the CompiledProgram manually."
                 )
-            else:
-                error_info = (
-                    "There are no operators in the program to be executed. "
-                    "If you pass Program manually, please use base.program_guard "
-                    "to ensure the current Program is being used."
-                )
-            warnings.warn(error_info)
+                warnings.warn(error_info)
 
         if scope is None:
             scope = global_scope()
@@ -2802,7 +2788,7 @@ class Executor:
             for i, var in enumerate(fetch_list):
                 assert isinstance(
                     var, (Variable, str)
-                ), "Wrong type for fetch_list[%s]: %s" % (i, type(var))
+                ), f"Wrong type for fetch_list[{i}]: {type(var)}"
                 global_block.append_op(
                     type=fetch_op,
                     inputs={'X': [var]},

@@ -757,9 +757,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
     auto *autograd_meta = tensors_[var_index].get_autograd_meta();
     auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
-    if (!HasGrad(var_index)) {
-      group_tensor.ShareDataWith(phi::DenseTensor());
-    } else {
+    if (HasGrad(var_index)) {
       auto grad_dense_tensor =
           *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
       group_tensor.ShareDataWith(grad_dense_tensor);
@@ -1109,7 +1107,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
 
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
+  auto *dev_ctx =
+      platform::DeviceContextPool::Instance().Get(inner_place_);  // NOLINT
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     dev_ctx = static_cast<phi::GPUContext *>(

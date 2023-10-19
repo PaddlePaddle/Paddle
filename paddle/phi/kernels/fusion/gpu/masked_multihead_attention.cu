@@ -609,6 +609,11 @@ __global__ void masked_multihead_attention_kernel(
     //    bi * (params.timestep + 1) + params.timestep];
     // qk += static_cast<float>(mask);
     qk *= params.inv_sqrt_dh;
+    if (params.attn_mask) {
+      auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
     qk_max = qk;
     qk_smem[act_time_step] = qk;
   }
@@ -962,6 +967,11 @@ void fmha_impl(const phi::GPUContext &dev_ctx,
       break;
     case 64:
       fmha_launch_kernel<T, 64, 64>(
+          params, dev_ctx.stream(), load_func, store_func);
+      break;
+    // for opt model
+    case 80:
+      fmha_launch_kernel<T, 80, 128>(
           params, dev_ctx.stream(), load_func, store_func);
       break;
     case 96:

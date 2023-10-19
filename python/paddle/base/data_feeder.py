@@ -12,22 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import warnings
 import struct
 
+import numpy as np
+
+from ..pir import OpResult
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
     in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
 
-from ..ir import OpResult
-
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
@@ -47,7 +47,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
 _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
-    core.DataType.UINT16: 'uint16',
+    core.DataType.BFLOAT16: 'uint16',
     core.DataType.FLOAT32: 'float32',
     core.DataType.FLOAT64: 'float64',
     core.DataType.INT8: 'int8',
@@ -183,8 +183,9 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '%s' in %s must be %s, but received %s. %s"
-            % (input_name, op_name, expected_type, type(input), extra_message)
+            "The type of '{}' in {} must be {}, but received {}. {}".format(
+                input_name, op_name, expected_type, type(input), extra_message
+            )
         )
 
 
@@ -194,24 +195,10 @@ def check_dtype(
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
-    if convert_dtype(input_dtype) in ['float16']:
-        warnings.warn(
-            "The data type of '%s' in %s only support float16 in GPU now. %s"
-            % (input_name, op_name, extra_message)
-        )
-    if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-        'reshape',
-        'lookup_table',
-        'scale',
-    ]:
-        warnings.warn(
-            "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
-            % (input_name, op_name, extra_message)
-        )
+
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '%s' in %s must be %s, but received %s. %s"
-            % (
+            "The data type of '{}' in {} must be {}, but received {}. {}".format(
                 input_name,
                 op_name,
                 expected_dtype,
@@ -363,7 +350,7 @@ class DataFeeder:
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
             please using :code:`base.CPUPlace()`.
-        program (:ref:`api_base_Program` , optional): The Program that will
+        program (:ref:`api_paddle_static_Program` , optional): The Program that will
             feed data into, if program is None, it will use default_main_program().
             Default None.
 

@@ -955,9 +955,7 @@ class AdaptiveMaxPool1D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}, return_mask={}'.format(
-            self.output_size, self.return_mask
-        )
+        return f'output_size={self.output_size}, return_mask={self.return_mask}'
 
 
 class AdaptiveMaxPool2D(Layer):
@@ -1041,8 +1039,8 @@ class AdaptiveMaxPool2D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}, return_mask={}'.format(
-            self._output_size, self._return_mask
+        return (
+            f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
 
 
@@ -1138,8 +1136,8 @@ class AdaptiveMaxPool3D(Layer):
         )
 
     def extra_repr(self):
-        return 'output_size={}, return_mask={}'.format(
-            self._output_size, self._return_mask
+        return (
+            f'output_size={self._output_size}, return_mask={self._return_mask}'
         )
 
 

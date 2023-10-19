@@ -165,7 +165,7 @@ from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
 
-__all__ = [  # noqa
+__all__ = [
     'BatchNorm',
     'CELU',
     'GroupNorm',

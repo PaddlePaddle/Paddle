@@ -44,14 +44,14 @@ class LarsMomentumOptimizer(Optimizer):
             This parameter is required in dygraph mode. \
             The default value is None in static graph mode, at this time all parameters will be updated.
         regularization (WeightDecayRegularizer, optional): The strategy of regularization. There are two method: \
-             :ref:`api_base_regularizer_L1Decay` , :ref:`api_base_regularizer_L2Decay` . If a parameter has set \
-            regularizer using :ref:`api_base_ParamAttr` already, the regularization setting here in optimizer will be \
+             :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If a parameter has set \
+            regularizer using :ref:`api_paddle_ParamAttr` already, the regularization setting here in optimizer will be \
             ignored for this parameter. Otherwise, the regularization setting here in optimizer will take effect.  \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): This parameter is used by developers to print debugging information. \
             For details, please refer to :ref:`api_guide_Name`. Default is None.
         exclude_from_weight_decay (list[str], optional): Name string of layers which will be exclude from lars weight decay. Default is None.

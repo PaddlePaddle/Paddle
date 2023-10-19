@@ -16,6 +16,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/gpu/reduce.h"
+#include "paddle/phi/kernels/legacy/reduce_max_kernel.h"
 #include "paddle/phi/kernels/prod_kernel.h"
 #include "paddle/phi/kernels/reduce_all_kernel.h"
 #include "paddle/phi/kernels/reduce_amin_kernel.h"
@@ -102,9 +103,7 @@ void MaxKernel(const Context& dev_ctx,
                bool keep_dim,
                DenseTensor* out) {
   bool reduce_all = recompute_reduce_all(x, dims);
-  auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::MaxFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
+  phi::MaxRawKernel<T, Context>(dev_ctx, x, dims, keep_dim, reduce_all, out);
 }
 
 template <typename T, typename Context>
@@ -116,8 +115,8 @@ void MeanRawKernel(const Context& dev_ctx,
                    DenseTensor* out) {
   reduce_all = recompute_reduce_all(x, dims, reduce_all);
   auto out_dtype = x.dtype();
-  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor>(
-      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out, true);
+  phi::Reduce<T, kps::AddFunctor, kps::IdentityFunctor, true>(
+      dev_ctx, x, reduce_all, dims.GetData(), keep_dim, out_dtype, out);
 }
 
 template <typename T, typename Context>

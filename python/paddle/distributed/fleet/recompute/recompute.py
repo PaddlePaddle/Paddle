@@ -13,11 +13,13 @@
 # limitations under the License.
 
 import contextlib
+import copy
 import weakref
 
 import paddle
 from paddle import framework
 from paddle.autograd import PyLayer
+from paddle.base.framework import EagerParamBase
 from paddle.distributed.fleet.meta_parallel.parallel_layers.random import (
     get_rng_state_tracker,
 )
@@ -26,6 +28,15 @@ from paddle.framework import core, in_dynamic_mode
 from ..utils.log_util import logger
 
 __all__ = []
+
+
+def _varbase_help(param):
+    state = copy.deepcopy(param.__dict__)
+    new_param = EagerParamBase(
+        shape=param.shape, dtype=param.dtype, name=param.name, **state
+    )
+    param._share_buffer_to(new_param)
+    return new_param
 
 
 def detach_variable(inputs):
@@ -38,14 +49,23 @@ def detach_variable(inputs):
             out.append(inp)
             continue
 
+        if isinstance(inp, EagerParamBase):
+            out.append(_varbase_help(inp))
+            continue
+
         if type(inp) is tuple:
             detach_inp = []
             for i in inp:
                 # detach all tensors in the tuple
                 assert isinstance(i, core.eager.Tensor)
-                tmp_i = i.detach()
-                tmp_i.stop_gradient = i.stop_gradient
-                detach_inp.append(tmp_i)
+
+                if isinstance(i, EagerParamBase):
+                    detach_inp.append(_varbase_help(i))
+                else:
+                    tmp_i = i.detach()
+                    tmp_i.stop_gradient = i.stop_gradient
+                    detach_inp.append(tmp_i)
+
             out.append(tuple(detach_inp))
             continue
 

@@ -338,7 +338,7 @@ static int compute_thread_batch_nccl(
   auto& offset = (*nccl_offsets);
   // split data avg by thread num
   compute_batch_num(total_instance_num, minibatch_size, thr_num, &offset);
-  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);
+  thread_avg_batch_num = static_cast<int>(offset.size() / thr_num);  // NOLINT
 #ifdef PADDLE_WITH_GLOO
   auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
   if (gloo_wrapper->Size() > 1) {
