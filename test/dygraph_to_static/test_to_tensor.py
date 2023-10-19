@@ -208,7 +208,6 @@ class TestInt16(unittest.TestCase):
 
         paddle.enable_static()
         data = np.array([1, 2], dtype="int16")
-        paddle.enable_static()
         x = paddle.to_tensor(data)
         self.assertTrue(x.dtype == paddle.framework.core.VarDesc.VarType.INT16)
 
