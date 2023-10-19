@@ -706,6 +706,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             target_dtype = paddle.get_default_dtype()
         target_dtype = convert_dtype(target_dtype)
 
+        if data.dtype == "int16":
+            data = data.astype("int32")
         output = assign(data)
 
         if convert_dtype(output.dtype) != target_dtype:
