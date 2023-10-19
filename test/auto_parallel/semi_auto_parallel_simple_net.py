@@ -115,7 +115,7 @@ class MPDemoNet(nn.Layer):
 
 
 class PPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh0, mesh1):
+    def __init__(self, np_w0, np_w1, mesh0, mesh1, param_suffix=""):
         super().__init__()
         self.replicate_dist_attr0 = dist.DistAttr(
             mesh=mesh0, sharding_specs=[None, None]
@@ -127,7 +127,7 @@ class PPDemoNet(nn.Layer):
             self.create_parameter(
                 shape=[IMAGE_SIZE, IMAGE_SIZE],
                 attr=paddle.framework.ParamAttr(
-                    name="pp_demo_weight_0",
+                    name="pp_demo_weight_0" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w0),
                 ),
             ),
@@ -137,7 +137,7 @@ class PPDemoNet(nn.Layer):
             self.create_parameter(
                 shape=[IMAGE_SIZE, CLASS_NUM],
                 attr=paddle.framework.ParamAttr(
-                    name="pp_nemo_weight_1",
+                    name="pp_nemo_weight_1" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w1),
                 ),
             ),
