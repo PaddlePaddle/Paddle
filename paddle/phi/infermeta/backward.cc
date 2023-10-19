@@ -357,8 +357,8 @@ void EigvalshGradInferMeta(const MetaTensor& out_v,
   }
 }
 
-void EmbeddingGradInferMeta(const MetaTensor& x,
-                            const MetaTensor& weight,
+void EmbeddingGradInferMeta(const MetaTensor& weight,
+                            const MetaTensor& x,
                             MetaTensor* out) {
   (void)x;
   if (weight) {
