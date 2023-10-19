@@ -12,8 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
+
 # generator interfaces
-from vjp_interface_gen_op_list import vjp_interface_declare_gen_op_list
+from vjp_interface_black_list import vjp_interface_black_list
 
 OP_INFER_SHAPE_TEMPLATE = """
 void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
@@ -26,18 +28,31 @@ OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
     {input_type} {input_name}(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}()));"""
 
 OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
-    pir::CombineOp combine_op_obj =
+    pir::CombineOp combine_op_obj_{input_name} =
       op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
     std::vector<Tensor> {input_name};
-    for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
+    for (size_t idx = 0; idx < combine_op_obj_{input_name}.inputs().size(); idx++) {{
         {input_name}.emplace_back(
-            std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
+            std::make_shared<primitive::LazyTensor>(combine_op_obj_{input_name}.inputs()[idx]));
     }}"""
 
 OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
     paddle::optional<Tensor> {input_name};
-    if (op_obj.{input_name}() && op_obj.{input_name}().type().storage()){{
+    if (!IsEmptyValue(op_obj.{input_name}())){{
         {input_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(op_obj.{input_name}())));
+    }}"""
+
+OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE = """
+    paddle::optional<std::vector<Tensor>> {input_name};
+    if (!IsEmptyValue(op_obj.{input_name}())){{
+        pir::CombineOp combine_op_obj =
+            op_obj.{input_name}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
+        std::vector<Tensor> optional_{input_name};
+        for (size_t idx = 0; idx < combine_op_obj.inputs().size(); idx++) {{
+            optional_{input_name}.emplace_back(
+                std::make_shared<primitive::LazyTensor>(combine_op_obj.inputs()[idx]));
+        }}
+        {input_name} = paddle::make_optional<std::vector<Tensor>>(optional_{input_name});
     }}"""
 
 OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
@@ -48,6 +63,23 @@ OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
     for (size_t idx = 0; idx < out_grads[{index}].size(); idx++) {{
         {output_grad_name}.emplace_back(
             std::make_shared<primitive::LazyTensor>(out_grads[{index}][idx]));
+    }}"""
+
+OP_VJP_FORWARD_OPTIONAL_OUTPUT_GRAD_TEMPLATE = """
+    paddle::optional<Tensor> {output_grad_name};
+    if (!IsEmptyValue(out_grads[{idx1}][{idx2}])){{
+        {output_grad_name} = paddle::make_optional<Tensor>(Tensor(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}])));
+    }}"""
+
+OP_VJP_FORWARD_OPTIONAL_VECTOR_OUTPUT_GRAD_TEMPLATE = """
+    paddle::optional<std::vector<Tensor>> {output_grad_name};
+    std::vector<Tensor> optional_{output_grad_name};
+    if (!IsEmptyValue(out_grads[{index}])){{
+        for (size_t idx = 0; idx < out_grads[{index}].size(); idx++) {{
+            optional_{output_grad_name}.emplace_back(
+                std::make_shared<primitive::LazyTensor>(out_grads[{index}][idx]));
+        }}
+        {output_grad_name} = paddle::make_optional<std::vector<Tensor>>(optional_{output_grad_name});
     }}"""
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
@@ -118,18 +150,25 @@ def gen_op_vjp_str(
     grad_idx = -1
     for idx in range(len(bw_input_list)):
         build_args_str += bw_input_list[idx] + ", "
-        if op_grad_info.input_optional_list[idx] == 'true':
-            forward_input_output_code += (
-                OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
-                    input_name=bw_input_list[idx],
-                )
-            )
-        else:
-            if (
-                bw_input_list[idx] in op_info.input_name_list
-                or bw_input_list[idx] in op_info.output_name_list
-            ):
-                input_type = input_types_map[op_grad_info.input_type_list[idx]]
+        input_type = input_types_map[op_grad_info.input_type_list[idx]]
+        if (
+            bw_input_list[idx] in op_info.input_name_list
+            or bw_input_list[idx] in op_info.output_name_list
+        ):
+            if op_grad_info.input_optional_list[idx] == 'true':
+                if input_type == 'Tensor':
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
+                            input_name=bw_input_list[idx],
+                        )
+                    )
+                else:
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE.format(
+                            input_name=bw_input_list[idx],
+                        )
+                    )
+            else:
                 if input_type == 'Tensor':
                     forward_input_output_code += (
                         OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE.format(
@@ -143,9 +182,22 @@ def gen_op_vjp_str(
                             input_name=bw_input_list[idx],
                         )
                     )
+        else:
+            grad_idx += 1
+            if op_grad_info.input_optional_list[idx] == 'true':
+                if input_type == 'Tensor':
+                    forward_input_output_code += (
+                        OP_VJP_FORWARD_OPTIONAL_OUTPUT_GRAD_TEMPLATE.format(
+                            output_grad_name=bw_input_list[idx],
+                            idx1=grad_idx,
+                            idx2=0,
+                        )
+                    )
+                else:
+                    forward_input_output_code += OP_VJP_FORWARD_OPTIONAL_VECTOR_OUTPUT_GRAD_TEMPLATE.format(
+                        output_grad_name=bw_input_list[idx], index=grad_idx
+                    )
             else:
-                grad_idx += 1
-                input_type = input_types_map[op_grad_info.input_type_list[idx]]
                 if input_type == 'Tensor':
                     forward_output_grad_code += (
                         OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE.format(
@@ -214,9 +266,7 @@ def gen_op_vjp_str(
             )
             build_attr_str += op_attribute_list[idx] + ", "
     build_args_str += build_attr_str
-    op_phi_name_format = op_phi_name
-    if op_phi_name[-1] == '_':
-        op_phi_name_format = op_phi_name[:-1]
+    op_phi_name_format = op_info.op_yaml_item['name']
     call_vjp_code = OP_VJP_CALL_VJP_TEMPLATE.format(
         op_phi_name=op_phi_name_format,
         inputs_list=build_args_str,
@@ -266,6 +316,8 @@ def gen_exclusive_interface_str(op_info, op_info_items):
             exclusive_interface_str += (
                 "  static void InferMeta( phi::InferMetaContext *infer_meta );"
             )
-    if op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list:
+    if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+    if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
     return exclusive_interface_str

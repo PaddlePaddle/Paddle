@@ -16,7 +16,7 @@
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.base.framework import _current_expected_place, in_dygraph_mode
+from paddle.base.framework import _current_expected_place
 from paddle.common_ops_import import Variable
 from paddle.framework import (
     in_dynamic_mode,
@@ -796,17 +796,17 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
 
     if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
-        if in_dygraph_mode():
-            place = _current_expected_place()
-        else:
-            place = core.Place()
+        if in_pir_mode() and paddle.utils._contain_var(shape):
+            shape = paddle.utils.get_int_tensor_list(
+                shape, _current_expected_place()
+            )
         return _C_ops.uniform(
             shape,
             dtype,
             float(min),
             float(max),
             seed,
-            place,
+            _current_expected_place(),
         )
     else:
         check_type(shape, 'shape', (list, tuple, Variable), 'uniform/rand')

@@ -65,6 +65,7 @@ class NoGradLinearLayer(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestGrad(unittest.TestCase):
     def setUp(self):
         self.func = paddle.jit.to_static(GradLayer())

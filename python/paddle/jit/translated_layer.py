@@ -512,6 +512,11 @@ class _ProgramHolder:
 
     @switch_to_static_graph
     def _append_scale_to_output(self, program):
+        # 0. scale don't support bool output, we skip append scale for it
+        for out_desc in self._output_descs:
+            if out_desc.dtype() == core.VarDesc.VarType.BOOL:
+                return
+
         # 1. append scale & save var
         scale_output_vars = []
         with framework.program_guard(program):
@@ -1316,7 +1321,7 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
             >>> import numpy as np
             >>> import paddle
             >>> import paddle.nn as nn
@@ -1526,7 +1531,7 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
-                >>> # doctest: +SKIP
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
                 >>> import numpy as np
                 >>> import paddle
                 >>> from paddle import nn

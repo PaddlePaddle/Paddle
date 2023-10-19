@@ -52,18 +52,12 @@ set(op_source_file_tmp ${op_source_file}.tmp)
 set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${op_yaml_file3} ${op_yaml_file4}
+execute_process(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
-  COMMENT "Generate pd_ops.parsed.yaml"
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward
-  COMMENT "Generate pd_ops_backward.parsed.yaml"
-  DEPENDS ${op_gen_parsed_yaml_file} ${pd_op_forward_yaml_file}
-          ${pd_op_backward_yaml_file}
-  VERBATIM)
+          ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward)
 
 add_custom_command(
   OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
@@ -190,8 +184,8 @@ cc_library(
   DEPS phi pd_interface pd_trait type_info)
 cc_library(
   pd_op_dialect_op
-  SRCS ${op_source_file} manual_op.cc
-  DEPS pd_op_dialect_core)
+  SRCS ${op_source_file} manual_op.cc control_flow_op.cc
+  DEPS pd_op_dialect_core pir_control_flow)
 cc_library(
   api_builder
   SRCS api_builder.cc
@@ -209,6 +203,6 @@ target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_op_dialect
-  SRCS op_dialect.cc manual_op_vjp.cc ${op_vjp_source_file}
+  SRCS op_dialect.cc manual_op_decomp.cc manual_op_vjp.cc ${op_vjp_source_file}
   DEPS pd_op_dialect_api param_to_variable primitive_vjp_experimental
        pd_op_dialect_utils op_yaml_info_parser)

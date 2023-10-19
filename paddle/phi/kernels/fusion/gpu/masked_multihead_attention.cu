@@ -609,6 +609,11 @@ __global__ void masked_multihead_attention_kernel(
     //    bi * (params.timestep + 1) + params.timestep];
     // qk += static_cast<float>(mask);
     qk *= params.inv_sqrt_dh;
+    if (params.attn_mask) {
+      auto mask_bhi = params.mask_broadcast_num_heads ? bi : bhi;
+      T mask = params.attn_mask[mask_bhi * params.mask_length + act_time_step];
+      qk += static_cast<float>(mask);
+    }
     qk_max = qk;
     qk_smem[act_time_step] = qk;
   }

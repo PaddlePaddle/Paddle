@@ -16,7 +16,10 @@ import inspect
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base, to_tensor
@@ -69,6 +72,7 @@ def dyfunc_bool_to_tensor(x):
     return paddle.to_tensor(True)
 
 
+@dy2static_unittest
 class TestDygraphBasicApi_ToVariable(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
@@ -230,6 +234,7 @@ def dyfunc_Prelu(input):
     return res
 
 
+@dy2static_unittest
 class TestDygraphBasicApi(unittest.TestCase):
     # Compare results of dynamic graph and transformed static graph function which only
     # includes basic Api.
@@ -396,6 +401,7 @@ def dyfunc_PolynomialDecay():
     return paddle.to_tensor(lr)
 
 
+@dy2static_unittest
 class TestDygraphBasicApi_CosineDecay(unittest.TestCase):
     def setUp(self):
         self.dygraph_func = dyfunc_CosineDecay
@@ -539,6 +545,7 @@ def _dygraph_fn():
         np.random.random(1)
 
 
+@dy2static_unittest
 class TestDygraphApiRecognition(unittest.TestCase):
     def setUp(self):
         self.src = inspect.getsource(_dygraph_fn)

@@ -1143,7 +1143,7 @@ def dot(x, y, name=None):
             [32, 64])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dot(x, y)
     else:
         op_type = 'dot'
@@ -2581,9 +2581,9 @@ def eig(x, name=None):
     Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
     Note:
-        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
-        - If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
-        - If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.
+        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`api_paddle_linalg_eigh` instead, which is much faster.
+        - If only eigenvalues is needed, please use :ref:`api_paddle_linalg_eigvals` instead.
+        - If the matrix is of any shape, please use :ref:`api_paddle_linalg_svd`.
         - This API is only supported on CPU device.
         - The output datatype is always complex for both real and complex input.
 
@@ -2621,7 +2621,7 @@ def eig(x, name=None):
               (-0.21026138961315155+0j)])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2692,7 +2692,7 @@ def eigvals(x, name=None):
             )
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(

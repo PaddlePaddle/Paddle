@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
-from paddle.base.framework import _global_flags
+from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
     is_compiled_with_cuda,
@@ -126,7 +126,7 @@ def _conv_nd(
     name=None,
 ):
     # Due to the poor performance of NHWC, we transpose the input to NCHW.
-    if in_dynamic_mode() and op_type == "conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "conv2d":
         pre_bias = _C_ops.conv2d(
             x,
             weight,
@@ -155,7 +155,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dynamic_mode() and op_type == "depthwise_conv2d":
+    if in_dynamic_or_pir_mode() and op_type == "depthwise_conv2d":
         pre_bias = _C_ops.depthwise_conv2d(
             x,
             weight,
@@ -174,7 +174,7 @@ def _conv_nd(
         else:
             return pre_bias
 
-    if in_dynamic_mode() and op_type == "conv3d":
+    if in_dynamic_or_pir_mode() and op_type == "conv3d":
         pre_bias = _C_ops.conv3d(
             x,
             weight,
@@ -1067,7 +1067,7 @@ def conv2d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose2d` .
+    See more detail in :ref:`api_paddle_nn_Conv2DTranspose` .
 
     For each input :math:`X`, the equation is:
 
@@ -1555,7 +1555,7 @@ def conv3d_transpose(
     If bias attribution and activation type are provided, bias is added to
     the output of the convolution, and the corresponding activation function
     is applied to the final result.
-    See more detail in :ref:`api_nn_conv_ConvTranspose3d` .
+    See more detail in :ref:`api_paddle_nn_Conv3DTranspose` .
 
     For each input :math:`X`, the equation is:
 

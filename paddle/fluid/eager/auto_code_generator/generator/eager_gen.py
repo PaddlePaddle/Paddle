@@ -241,7 +241,7 @@ paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize> {}:
 """
 
 FORWARD_FUNCTION_TEMPLATE = """
-{} {}({}) {{
+TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -270,6 +270,8 @@ FORWARD_FUNCTION_TEMPLATE = """
 {}
 
   // Forward API Call
+{}
+  // Log memory infomation
 {}
   // Check NaN and Inf if needed
 {}
@@ -307,7 +309,7 @@ BEFORE_LOG_PRINT_TEMPLATE = """
 """
 
 FORWARD_ONLY_FUNCTION_TEMPLATE = """
-{} {}({}) {{
+TEST_API {} {}({}) {{
   FLAGS_tensor_operants_mode = "eager";
   VLOG(3) << \"Running AD API: \" << \"{}\";
   // Dygraph Record Event
@@ -320,6 +322,8 @@ FORWARD_ONLY_FUNCTION_TEMPLATE = """
   // Before log info
 {}
   // Forward API Call
+{}
+  // Log memory infomation
 {}
   // Check NaN and Inf if needed
 {}
@@ -412,6 +416,7 @@ NODE_CC_FILE_TEMPLATE = """
 #include "paddle/fluid/prim/api/all.h"
 #include "paddle/fluid/prim/utils/utils.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/api/lib/data_transform.h"
 PHI_DECLARE_bool(check_nan_inf);
 {}
@@ -457,6 +462,7 @@ FORWARD_H_FILE_TEMPLATE = """
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
+#include "paddle/utils/test_macros.h"
 
 using CPUPlace = phi::CPUPlace;
 {}
@@ -1741,6 +1747,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 forward_call_str = f"{indent}{api_out_type} api_result = paddle::experimental::{namespace}{function_name}({inputs_call_args_str_tmp});"
 
         dygraph_event_str = f"{indent}paddle::platform::RecordEvent dygraph_entrance_record_event(\"{forward_api_name} dygraph\", paddle::platform::TracerEventType::Operator, 1);\n"
+        log_memory_info_str = f"{indent}paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance().GetExpectedPlace(), \"{forward_api_name}\");"
         forward_ad_function_name = GetDygraphForwardFunctionName(
             forward_api_name
         )
@@ -1827,6 +1834,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                     forward_api_name,
                     before_log_str,
                     forward_call_str,
+                    log_memory_info_str,
                     check_nan_inf_str,
                     get_outputs_str,
                     forward_api_name,
@@ -1853,6 +1861,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 node_creation_pre_contiguous_str,
                 node_creation_before_call_str,
                 forward_call_str,
+                log_memory_info_str,
                 check_nan_inf_str,
                 get_outputs_str,
                 outputs_autograd_meta_str,
@@ -1864,7 +1873,7 @@ class DygraphForwardFunctionGenerator(DygraphFunctionGeneratorBase):
                 returns_str,
             )
 
-        self.forward_declaration_str += f"{returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
+        self.forward_declaration_str += f"TEST_API {returns_type_str} {forward_ad_function_name}({inputs_args_declaration_str});\n"
 
     def GenerateInplacedForwardDygraphFunctions(self):
         # Inplaced Version Dygraph Function Generation
