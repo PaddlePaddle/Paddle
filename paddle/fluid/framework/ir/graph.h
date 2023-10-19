@@ -177,7 +177,11 @@ class Graph {
         platform::errors::AlreadyExists(
             "The attribute %s to be set already exists in the graph.",
             attr_name));
+    VLOG(1) << "set attribute " << attr_name;
     attrs_[attr_name] = attr;
+    VLOG(1) << "attrs_ size " << attrs_.size();
+    std::vector<std::string> attr_names = AttrNames();
+    VLOG(1) << "attr_names size " << attr_names.size();
     attr_dels_[attr_name] = [attr, attr_name]() {
       VLOG(3) << "deleting " << attr_name;
       delete attr;
@@ -410,6 +414,23 @@ class Graph {
         true,
         platform::errors::InvalidArgument("This graph is not main_graph"));
     return sub_graphs_.size();
+  }
+
+  std::vector<std::string> AttrNames() const {
+    VLOG(1) << "graph addr:" << this;
+    if (FLAGS_convert_all_blocks) {
+      if (IsMainGraph()) {
+        return GetSubGraph(0)->AttrNames();
+      }
+    }
+    std::vector<std::string> res;
+    res.reserve(attrs_.size());
+    VLOG(1) << "AttrNames attr size: " << attrs_.size();
+    for (auto &attr : attrs_) {
+      res.push_back(attr.first);
+      VLOG(1) << "AttrNames: " << attr.first;
+    }
+    return res;
   }
 
  private:

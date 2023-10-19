@@ -17,12 +17,13 @@
 #include <string>
 
 #include "paddle/fluid/framework/ir/graph_helper.h"
+#include "paddle/fluid/framework/ir/pass.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-static void SaveInfoInTheTmpOp(
+static inline void SaveInfoInTheTmpOp(
     ir::Graph* graph,
     const std::string& flag,
     const std::string& key_suffix,
@@ -40,6 +41,20 @@ static void SaveInfoInTheTmpOp(
   }
 }
 
+static inline void SaveQuantInfoInTheGraph(
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
+    const std::unordered_map<std::string, std::vector<float>>& info_map) {
+  VLOG(1) << "Save quant info in the graph!";
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  graph->Set(flag, new bool(true));
+  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
+    VLOG(1) << "SaveQuantInfoInTheGraph set attr: " << iter->first + suffix;
+    graph->Set(iter->first + suffix, new std::vector<float>(iter->second));
+  }
+}
+
 static void GetInfoFromTheTmpOp(
     ir::Graph* graph,
     const std::string& flag,
@@ -51,32 +66,102 @@ static void GetInfoFromTheTmpOp(
   for (auto* op_node :
        ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
     if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
-    VLOG(5) << "Come in save op";
+    VLOG(1) << "Come in save op";
     auto* op_desc = op_node->Op();
     if (op_desc->GetAttrIfExists<bool>(flag)) {
-      VLOG(5) << "flag is true";
+      VLOG(1) << "flag is true";
       op_desc->RemoveAttr(flag);
       std::vector<std::string> attr_names = op_desc->AttrNames();
+      VLOG(1) << "attr_names size:" << attr_names.size();
       for (auto fake_name : attr_names) {
-        VLOG(5) << "fake_name:" << fake_name;
+        VLOG(1) << "fake_name:" << fake_name;
         size_t pos = fake_name.find(suffix);
         if (pos != std::string::npos) {
           std::string name = fake_name.substr(0, pos);
-          VLOG(5) << "name:" << name;
+          VLOG(1) << "name:" << name;
           auto scales_vector =
               PADDLE_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
-          VLOG(5) << "scales_vector:" << scales_vector[0];
+          VLOG(1) << "scales_vector:" << scales_vector[0];
           info_map->insert(std::make_pair(name, scales_vector));
-          VLOG(5) << "insert success:";
+          VLOG(1) << "insert success:";
           op_desc->RemoveAttr(fake_name);
-          VLOG(5) << "remove success:";
+          VLOG(1) << "remove success:";
         }
       }
       graph->RemoveNode(op_node);
-      VLOG(5) << "remove op node success:";
+      VLOG(1) << "remove op node success:";
       break;
     }
   }
+}
+
+static inline void GetQuantInfoFromTheGraph(
+    ir::Graph* graph,
+    const std::string& flag,
+    const std::string& key_suffix,
+    std::unordered_map<std::string, std::vector<float>>* info_map) {
+  VLOG(1) << "Get quant info from the graph attrs!";
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  VLOG(1) << "flag:" << (graph->Has(flag) ? 1 : 0);
+  if (graph->Has(flag)) {
+    std::vector<std::string> attr_names = graph->AttrNames();
+    VLOG(1) << "attr_names size:" << attr_names.size();
+    for (auto fake_name : attr_names) {
+      VLOG(1) << "fake_name:" << fake_name;
+      size_t pos = fake_name.find(suffix);
+      if (pos != std::string::npos) {
+        std::string name = fake_name.substr(0, pos);
+        VLOG(1) << "name:" << name;
+        auto scales_vector = graph->Get<std::vector<float>>(fake_name);
+        VLOG(1) << "scales_vector:" << scales_vector[0];
+        info_map->insert(std::make_pair(name, scales_vector));
+      }
+    }
+  }
+}
+
+static inline std::unordered_map<std::string, std::vector<float>>
+GetQuantInfoFromTheGraph(ir::Graph* graph,
+                         const std::string& flag,
+                         const std::string& key_suffix) {
+  std::unordered_map<std::string, std::vector<float>> info_map;
+  VLOG(1) << "Get quant info from the graph attrs!";
+  const std::string suffix = "_" + key_suffix + "_" + flag;
+  VLOG(1) << "flag:" << (graph->Has(flag) ? 1 : 0);
+  if (graph->Has(flag)) {
+    std::vector<std::string> attr_names = graph->AttrNames();
+    VLOG(1) << "attr_names size:" << attr_names.size();
+    for (auto fake_name : attr_names) {
+      VLOG(1) << "fake_name:" << fake_name;
+      size_t pos = fake_name.find(suffix);
+      if (pos != std::string::npos) {
+        std::string name = fake_name.substr(0, pos);
+        VLOG(1) << "name:" << name;
+        auto scales_vector = graph->Get<std::vector<float>>(fake_name);
+        VLOG(1) << "scales_vector:" << scales_vector[0];
+        info_map.insert(std::make_pair(name, scales_vector));
+      }
+    }
+  }
+  return info_map;
+}
+
+static inline bool AreScalesPresentForNodes(
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+    std::initializer_list<Node*> nodes) {
+  bool present = true;
+  for (auto node : nodes) {
+    if (var_quant_scales->count(node->Name()) == 0) {
+      present = false;
+    }
+  }
+  return present;
+}
+
+static inline float GetScaleValueForNode(
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+    Node* node) {
+  return var_quant_scales->at(node->Name())[0];
 }
 
 }  // namespace ir

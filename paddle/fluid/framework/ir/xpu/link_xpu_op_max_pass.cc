@@ -80,9 +80,10 @@ LinkConv2dPattern::LinkConv2dPattern(PDPattern* pattern,
   auto* fusion_op = pattern->NewNode(fusion_op_repr())
                         ->assert_is_op("conv2d_xpu")
                         ->assert_more([&](Node* node) {
-                          bool enable_int8 =
-                              node->Op()->GetAttrIfExists<bool>("enable_int8");
-                          return !enable_int8;
+                          std::string op_weights_precision =
+                              node->Op()->GetAttrIfExists<std::string>(
+                                  "op_weights_precision");
+                          return op_weights_precision != "int8";
                         });
 
   auto* x = pattern->NewNode(x_repr())->assert_is_op_input("conv2d_xpu", "x");
@@ -109,9 +110,10 @@ LinkFcPattern::LinkFcPattern(PDPattern* pattern, const std::string& name_scope)
   auto* fusion_op = pattern->NewNode(fusion_op_repr())
                         ->assert_is_op("fc_xpu")
                         ->assert_more([&](Node* node) {
-                          bool enable_int8 =
-                              node->Op()->GetAttrIfExists<bool>("enable_int8");
-                          return !enable_int8;
+                          std::string op_weights_precision =
+                              node->Op()->GetAttrIfExists<std::string>(
+                                  "op_weights_precision");
+                          return op_weights_precision != "int8";
                         });
   auto* x = pattern->NewNode(x_repr())->assert_is_op_input("fc_xpu", "x");
 

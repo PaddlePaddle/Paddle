@@ -524,7 +524,6 @@ void AutoMixedPrecisionPass::UpdateOpPrecision() const {
             vars_should_not_low_precision.insert(in_var_node->Var()->Name());
           }
         }
-
         // when op_1 only support cpu kernel. if op_2's intput var is op_1's
         // output var, then op_2 should not run at low precision.
         if (GetOpOriginalType(op_type) != "feed" &&
@@ -685,6 +684,16 @@ bool AutoMixedPrecisionPass::InputVarsNotConvert(
         return true;
       }
       vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+    } else if (GetOpOriginalType(op_desc->Type()) == "quantize_linear" ||
+               GetOpOriginalType(op_desc->Type()) == "dequantize_linear") {
+      auto vecs = op_desc->Input("Scale");
+      if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
+        return true;
+      }
+      vecs = op_desc->Input("ZeroPoint");
       if (std::find(vecs.begin(), vecs.end(), var_name) != vecs.end()) {
         return true;
       }

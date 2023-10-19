@@ -32,29 +32,34 @@ static void UnlinkNodes(ir::Node* a, ir::Node* b) {
                   b->inputs.end());
 }
 
+static void MarkAndLogCannotQuantizeOp(Node* op,
+                                       const char* details = nullptr) {
+  std::stringstream msg_ss;
+  msg_ss << "Cannot quantize operator " << op->Name()
+         << " (type: " << op->Op()->Type() << ", id: " << op->id() << ").";
+  if (details) msg_ss << " " << details;
+  VLOG(2) << msg_ss.str().c_str();
+  op->Op()->SetAttr("xpu_op_calc_data_type", std::string("float32"));
+}
 void XPUQuantizeOpPass::GetQuantInfo(Graph* graph) const {
-  GetInfoFromTheTmpOp(
-      graph,
-      "has_quant_info",
-      "var_quant_scales",
-      const_cast<std::unordered_map<std::string, std::vector<float>>*>(
-          &var_quant_scales_));
+  var_quant_scales_ =
+      GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
 }
 
-bool XPUQuantizeOpPass::AreScalesPresentForNodes(
-    std::initializer_list<Node*> nodes) const {
-  bool present = true;
-  for (auto node : nodes) {
-    if (var_quant_scales_.count(node->Name()) == 0) {
-      present = false;
-    }
-  }
-  return present;
-}
+// bool XPUQuantizeOpPass::AreScalesPresentForNodes(
+//     std::initializer_list<Node*> nodes) const {
+//   bool present = true;
+//   for (auto node : nodes) {
+//     if (var_quant_scales_.count(node->Name()) == 0) {
+//       present = false;
+//     }
+//   }
+//   return present;
+// }
 
-float XPUQuantizeOpPass::GetScaleValueForNode(Node* node) const {
-  return var_quant_scales_.at(node->Name())[0];
-}
+// float XPUQuantizeOpPass::GetScaleValueForNode(Node* node) const {
+//   return var_quant_scales_.at(node->Name())[0];
+// }
 
 void XPUQuantizeOpPass::QuantizeInput(Graph* g,
                                       Node* op,
@@ -78,7 +83,7 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
       proto::VarType::Type::VarType_Type_INT8);
   // Create quantize max_ptr node
 
-  float scale = GetScaleValueForNode(input);
+  float scale = GetScaleValueForNode(&var_quant_scales_, input);
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   std::string input_max_name = input->Name() + "_quantize_max";
   VarDesc input_max_desc(input_max_name);
@@ -144,7 +149,7 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
       proto::VarType::Type::VarType_Type_INT8);
 
   // Create dequantize max_ptr node
-  float scale = GetScaleValueForNode(output);
+  float scale = GetScaleValueForNode(&var_quant_scales_, output);
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   std::string input_max_name = output->Name() + "_dequantize_max";
   VarDesc input_max_desc(input_max_name);
@@ -221,16 +226,15 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
           out_var_node = output_node;
         }
       }
-      if (!AreScalesPresentForNodes({x_var_node})) {
-        // MarkAndLogCannotQuantizeOp(conv_op,
-        //                        "No scale available for the operator");
+      if (!AreScalesPresentForNodes(&var_quant_scales_, {x_var_node})) {
+        MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
         return;
       }
 
       QuantizeInput(graph, n, x_var_node, "x");
       // Branch input
       if (branch_var_node != nullptr) {
-        if (AreScalesPresentForNodes({branch_var_node})) {
+        if (AreScalesPresentForNodes(&var_quant_scales_, {branch_var_node})) {
           QuantizeInput(graph, n, branch_var_node, "branch");
         } else {
           n->Op()->SetAttr("xpu_op_force_output_precision",
@@ -238,7 +242,61 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
         }
       }
 
-      auto has_output_scale = AreScalesPresentForNodes({out_var_node});
+      auto has_output_scale =
+          AreScalesPresentForNodes(&var_quant_scales_, {out_var_node});
+      if (has_output_scale) {
+        DequantizeOutput(graph, n, out_var_node, "out");
+        n->Op()->SetAttr(
+            "out_dtype",
+            static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
+      } else {
+        n->Op()->SetAttr("xpu_op_force_output_precision",
+                         x_var_node->Var()->GetDataType());
+        n->Op()->SetAttr("out_dtype", x_var_node->Var()->GetDataType());
+      }
+    }
+  }
+}
+
+void XPUQuantizeOpPass::QuantizeFC(ir::Graph* graph) const {
+  for (auto* n : graph->Nodes()) {
+    if (n->IsOp()) {
+      auto* op = n->Op();
+      if (op->Type() != "fc_xpu") {
+        continue;
+      }
+      Node* w_var_node = nullptr;
+      Node* x_var_node = nullptr;
+      Node* out_var_node = nullptr;
+
+      for (auto* input_node : n->inputs) {
+        if (!input_node->IsVar()) {
+          continue;
+        }
+        if (input_node->Var()->Name() == op->Input("x")[0]) {
+          x_var_node = input_node;
+        } else if (input_node->Var()->Name() == op->Input("w")[0]) {
+          w_var_node = input_node;
+        }
+      }
+
+      for (auto* output_node : n->outputs) {
+        if (!output_node->IsVar()) {
+          continue;
+        }
+        if (output_node->Var()->Name() == op->Output("out")[0]) {
+          out_var_node = output_node;
+        }
+      }
+      if (!AreScalesPresentForNodes(&var_quant_scales_, {x_var_node})) {
+        MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
+        return;
+      }
+
+      QuantizeInput(graph, n, x_var_node, "x");
+
+      auto has_output_scale =
+          AreScalesPresentForNodes(&var_quant_scales_, {out_var_node});
       if (has_output_scale) {
         DequantizeOutput(graph, n, out_var_node, "out");
         n->Op()->SetAttr(
@@ -266,6 +324,8 @@ void XPUQuantizeOpPass::ApplyImpl(ir::Graph* graph) const {
   VLOG(1) << "Get quant info from graph success.";
   QuantizeConv(graph);
   VLOG(1) << "Quantize conv of the graph success.";
+  QuantizeFC(graph);
+  VLOG(1) << "Quantize fc of the graph success.";
 }
 
 }  // namespace ir

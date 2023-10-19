@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -253,7 +254,7 @@ class FcXPUFusePass : public FusePassBase {
       std::map<std::string, Node*>* fusion_nodes_map,
       bool with_bias,
       bool with_bn,
-      bool enable_int8) const;
+      std::string op_weights_precision) const;
 
   void CreateFusionOutputs(
       ir::Graph* graph,
@@ -261,7 +262,9 @@ class FcXPUFusePass : public FusePassBase {
       BlockDesc* block,
       const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
       std::map<std::string, Node*>* fusion_nodes_map,
-      bool enable_int8) const;
+      std::string op_weights_precision,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+      const;
 
   void CreateFusionInputs(
       ir::Graph* graph,
@@ -269,7 +272,9 @@ class FcXPUFusePass : public FusePassBase {
       BlockDesc* block,
       const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
       std::map<std::string, Node*>* fusion_nodes_map,
-      bool enable_int8) const;
+      std::string op_weights_precision,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+      const;
 
   Node* GetNodeFromNodesMap(
       const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
@@ -337,7 +342,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     std::map<std::string, Node*>* fusion_nodes_map,
     bool with_bias,
     bool with_bn,
-    bool enable_int8) const {
+    std::string op_weights_precision) const {
   // Get Node
   auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
   PADDLE_ENFORCE_EQ(
@@ -449,7 +454,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
     }
     // recompute the weights
-    if (!enable_int8) {
+    if (op_weights_precision != "int8") {
       float* filter_ptr =
           filter_t->mutable_data<float>(paddle::platform::CPUPlace());
       for (int i = 0; i < mean_len; ++i) {
@@ -495,7 +500,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
-  if (!enable_int8) {
+  if (op_weights_precision != "int8") {
     PrepareWeight<float, int16_t>(graph,
                                   scope,
                                   block,
@@ -561,7 +566,9 @@ void FcXPUFusePass::CreateFusionOutputs(
     BlockDesc* block,
     const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
     std::map<std::string, Node*>* fusion_nodes_map,
-    bool enable_int8) const {
+    std::string op_weights_precision,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+    const {
   auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
   PADDLE_ENFORCE_EQ(
       mul != nullptr,
@@ -617,7 +624,8 @@ void FcXPUFusePass::CreateFusionOutputs(
   (*fusion_nodes_map)["out"] = fc_out_var_node;
 
   // Create out max in
-  if (enable_int8) {
+  if (op_weights_precision == "int8" &&
+      AreScalesPresentForNodes(var_quant_scales, {fc_out_var_node})) {
     std::string fc_out_max_in_name = fc_xpu_out_name + "_max_in";
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     VarDesc fc_out_max_in_desc(fc_out_max_in_name);
@@ -630,24 +638,8 @@ void FcXPUFusePass::CreateFusionOutputs(
     block_out_max_in_desc->SetShape(fc_out_max_in_desc.GetShape());
     block_out_max_in_desc->SetDataType(fc_out_max_in_desc.GetDataType());
 
-    auto GetOutputScale = [&](Node* var_node, std::string name) -> float {
-      int nums_any_ops = var_node->outputs.size();
-      for (size_t i = 0; i < nums_any_ops; ++i) {
-        auto* any_op_desc = fc_out_var_node->outputs[i]->Op();
-        VLOG(1) << "any_op_desc: " << any_op_desc->Type();
-        if (any_op_desc->HasAttr("Input_scale_" + name)) {
-          VLOG(1) << "find it: "
-                  << "Input_scale_" + name;
-          return any_op_desc->GetAttrIfExists<float>("Input_scale_" + name);
-        }
-      }
-      return 0;
-    };
-    float output_scale = GetOutputScale(fc_out_var_node, fc_xpu_out_name);
-    mul->Op()->SetAttr("Input_scale_" + fc_xpu_out_name, output_scale);
-    VLOG(1) << "fc_xpu_out_name:" << fc_xpu_out_name
-            << " output_scale: " << output_scale
-            << "fc_out_var_node name:" << fc_out_var_node->Name();
+    float output_scale =
+        GetScaleValueForNode(var_quant_scales, fc_out_var_node);
     phi::DenseTensor out_max_in_cpu_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
@@ -675,7 +667,9 @@ void FcXPUFusePass::CreateFusionInputs(
     BlockDesc* block,
     const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
     std::map<std::string, Node*>* fusion_nodes_map,
-    bool enable_int8) const {
+    std::string op_weights_precision,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+    const {
   // Get Node
   auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
   PADDLE_ENFORCE_EQ(
@@ -690,9 +684,13 @@ void FcXPUFusePass::CreateFusionInputs(
   // x max
   std::string mul_x_max_name = mul_x->Name() + "_max";
   Node* mul_x_max = nullptr;
-  if (enable_int8) {
-    float input_scale =
-        mul->Op()->GetAttrIfExists<float>("Input_scale_" + mul_x->Name());
+  if (op_weights_precision == "int8") {
+    PADDLE_ENFORCE_EQ(AreScalesPresentForNodes(var_quant_scales, {mul_x}),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "When fc op is running in int8 precision, the scales "
+                          "of input var should be present in!"));
+    float input_scale = GetScaleValueForNode(var_quant_scales, mul_x);
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     VarDesc x_max_desc(mul_x_max_name);
     x_max_desc.SetPersistable(
@@ -729,6 +727,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                  with_bn,
                                  act_type);
   auto* scope = param_scope();
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales =
+      GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -784,10 +784,12 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
-
-    bool enable_int8 = mul->Op()->GetAttrIfExists<bool>("enable_int8");
-    std::string op_precision_str = enable_int8 ? "int8" : "fp32";
-    VLOG(1) << "FC fusion fuse pass is running on " << op_precision_str
+    std::string op_weights_precision = "float32";
+    if (mul->Op()->HasAttr("op_weights_precision")) {
+      op_weights_precision =
+          mul->Op()->GetAttrIfExists<std::string>("op_weights_precision");
+    }
+    VLOG(4) << "FC fusion fuse pass is running on " << op_weights_precision
             << " precision!";
     auto* block = mul->Op()->Block();
     CreateFusionWeightsAndBias(graph,
@@ -798,12 +800,21 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                &fusion_nodes_map,
                                with_bias,
                                with_bn,
-                               enable_int8);
-    CreateFusionInputs(
-        graph, scope, block, nodes_map, &fusion_nodes_map, enable_int8);
-    CreateFusionOutputs(
-        graph, scope, block, nodes_map, &fusion_nodes_map, enable_int8);
-    VLOG(1) << "CreateFusionOutputs success!";
+                               op_weights_precision);
+    CreateFusionInputs(graph,
+                       scope,
+                       block,
+                       nodes_map,
+                       &fusion_nodes_map,
+                       op_weights_precision,
+                       &var_quant_scales);
+    CreateFusionOutputs(graph,
+                        scope,
+                        block,
+                        nodes_map,
+                        &fusion_nodes_map,
+                        op_weights_precision,
+                        &var_quant_scales);
 
     // Generate fc_xpu op
     framework::OpDesc fc_xpu_op_desc(block);
@@ -854,22 +865,10 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
+    fc_xpu_op_desc.SetAttr("op_weights_precision", op_weights_precision);
     // out_dtype is same to input precision
     fc_xpu_op_desc.SetAttr("out_dtype",
                            fusion_nodes_map["x"]->Var()->GetDataType());
-    fc_xpu_op_desc.SetAttr("enable_int8",
-                           mul->Op()->GetAttrIfExists<bool>("enable_int8"));
-    if (enable_int8) {
-      fc_xpu_op_desc.SetAttr(
-          "Input_scale_" + fusion_nodes_map["out"]->Name(),
-          mul->Op()->GetAttrIfExists<float>("Input_scale_" +
-                                            fusion_nodes_map["out"]->Name()));
-      fc_xpu_op_desc.SetAttr(
-          "Input_scale_" + fusion_nodes_map["x"]->Name(),
-          mul->Op()->GetAttrIfExists<float>("Input_scale_" +
-                                            fusion_nodes_map["x"]->Name()));
-    }
-
     auto* fc_xpu = graph->CreateOpNode(&fc_xpu_op_desc);
     IR_NODE_LINK_TO(fusion_nodes_map["x"], fc_xpu);
     if (fusion_nodes_map["x_max"]) {

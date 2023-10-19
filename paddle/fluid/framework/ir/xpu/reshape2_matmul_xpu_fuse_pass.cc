@@ -286,35 +286,12 @@ void MapMatmulV2ToMatmulXPUPass::MapMatmulV2ToMatmul(ir::Graph* graph) const {
     desc.SetAttr("transpose_X", matmul_v2->Op()->GetAttr("trans_x"));
     desc.SetAttr("transpose_Y", matmul_v2->Op()->GetAttr("trans_y"));
     desc.SetAttr("alpha", 1.0f);
-    if (matmul_v2->Op()->HasAttr("enable_int8")) {
-      desc.SetAttr("enable_int8", matmul_v2->Op()->GetAttr("enable_int8"));
-    }
-    if (matmul_v2->Op()->HasAttr("Input_scale_" + matmul_x->Name())) {
-      desc.SetAttr("Input_scale_" + matmul_x->Name(),
-                   matmul_v2->Op()->GetAttr("Input_scale_" + matmul_x->Name()));
-    }
-    if (matmul_v2->Op()->HasAttr("Input_scale_" + matmul_y->Name())) {
-      desc.SetAttr("Input_scale_" + matmul_y->Name(),
-                   matmul_v2->Op()->GetAttr("Input_scale_" + matmul_y->Name()));
-    }
-    if (matmul_v2->Op()->HasAttr("Input_scale_" + matmul_out->Name())) {
-      desc.SetAttr(
-          "Input_scale_" + matmul_out->Name(),
-          matmul_v2->Op()->GetAttr("Input_scale_" + matmul_out->Name()));
+    if (matmul_v2->Op()->HasAttr("op_weights_precision")) {
+      desc.SetAttr("op_weights_precision",
+                   matmul_v2->Op()->GetAttr("op_weights_precision"));
     }
     if (matmul_v2->Op()->HasAttr("weight_scale")) {
       desc.SetAttr("weight_scale", matmul_v2->Op()->GetAttr("weight_scale"));
-    }
-    if (matmul_v2->Op()->HasAttr("weight_bit_length")) {
-      desc.SetAttr("weight_bit_length",
-                   matmul_v2->Op()->GetAttr("weight_bit_length"));
-    }
-    if (matmul_v2->Op()->HasAttr("weight_quant_axis")) {
-      desc.SetAttr("weight_quant_axis",
-                   matmul_v2->Op()->GetAttr("weight_quant_axis"));
-    }
-    if (matmul_v2->Op()->HasAttr("use_mkldnn")) {
-      desc.SetAttr("use_mkldnn", matmul_v2->Op()->GetAttr("use_mkldnn"));
     }
     auto matmul_node = graph->CreateOpNode(&desc);
     IR_NODE_LINK_TO(matmul_x, matmul_node);

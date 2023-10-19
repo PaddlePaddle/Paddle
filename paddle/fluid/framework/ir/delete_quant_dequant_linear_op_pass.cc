@@ -91,6 +91,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
   GraphPatternDetector gpd;
   auto* scope = param_scope();
+  BlockDesc* block = nullptr;
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument(
@@ -113,6 +114,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
+    block = quantize_linear_op->Op()->Block();
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor
@@ -140,15 +142,10 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
     int nums_any_ops =
         static_cast<int>(dequantize_linear_op_out->outputs.size());
-    int bit_length =
-        PADDLE_GET_CONST(int, quantize_linear_op->Op()->GetAttr("bit_length"));
     for (int i = 0; i < nums_any_ops; ++i) {
       auto* any_op_desc = dequantize_linear_op_out->outputs[i]->Op();
       any_op_desc->SetAttr("Input_scale_" + quantize_linear_op_x->Var()->Name(),
                            input_scale);
-      any_op_desc->SetAttr(
-          "Input_bit_length_" + quantize_linear_op_x->Var()->Name(),
-          bit_length);
       if (!var_quant_scales.count(quantize_linear_op_x->Var()->Name())) {
         var_quant_scales.insert(
             std::make_pair(quantize_linear_op_x->Var()->Name(),
@@ -174,8 +171,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   gpd(graph, handler);
   AddStatis(found_count);
 
-  // save var_quant_scales in the temporary save op's attr01
-  SaveInfoInTheTmpOp(
+  SaveQuantInfoInTheGraph(
       graph, "has_quant_info", "var_quant_scales", var_quant_scales);
 }
 

@@ -38,6 +38,7 @@ class XPUQuantizeOpPass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const override;
   void QuantizeConv(Graph* graph) const;
+  void QuantizeFC(Graph* graph) const;
 
  private:
   void QuantizeInput(Graph* g,
@@ -52,11 +53,11 @@ class XPUQuantizeOpPass : public FusePassBase {
 
   void GetQuantInfo(Graph* graph) const;
 
-  bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
+  // bool AreScalesPresentForNodes(std::initializer_list<Node*> nodes) const;
 
-  float GetScaleValueForNode(Node* node) const;
+  // float GetScaleValueForNode(Node* node) const;
 
-  std::unordered_map<std::string, std::vector<float>> var_quant_scales_;
+  mutable std::unordered_map<std::string, std::vector<float>> var_quant_scales_;
   const std::string name_scope_{"xpu_quantize_op_pass"};
 };
 

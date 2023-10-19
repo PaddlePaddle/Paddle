@@ -35,7 +35,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     true,
                     platform::errors::InvalidArgument(
                         "Graph must have kParamScopeAttr attribute."));
-  VLOG(1) << "Handle delete weight dequant linear op pass ...";
+  VLOG(3) << "Handle delete weight dequant linear op pass ...";
   auto& scope = graph->Get<framework::Scope>(kParamScopeAttr);
   bool is_int8 = false;
 
@@ -44,10 +44,10 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
       auto* op = n->Op();
-      VLOG(1) << "Dequantize linear op Type: " << op->Type();
       if (op->Type() == "dequantize_linear") {
-        VLOG(1) << "Dequantize linear op is come in: " << op->Type();
-        Node *weight_var_node, *calcu_op_node, *while_op_node;
+        Node* weight_var_node = nullptr;
+        Node* calcu_op_node = nullptr;
+        Node* while_op_node = nullptr;
         Node *dequantized_weight_var_node = nullptr, *scale_var_node = nullptr;
         // 1. Judge whether for dequant weight and find
         // weight_var_node/scale_var_node
@@ -60,8 +60,11 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
               scale_var_node = input_node;
             }
           } else {
-            return;
+            break;
           }
+        }
+        if (weight_var_node == nullptr || scale_var_node == nullptr) {
+          continue;
         }
         // 2. Find next_op_node
         // For while op: delete its input which is related to dequantized
@@ -107,7 +110,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                     }
                   } else {
                     PADDLE_THROW(platform::errors::Unimplemented(
-                        "The dtype of quantization scale must be FP32/16, "
+                        "The dtype of quantization scale must be FP32/FP16, "
                         "but received %d, which is not supported.",
                         weight_scale_tensor->dtype()));
                   }
@@ -147,13 +150,12 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                             weight_scale_nums));
                     calcu_op_desc->SetAttr("weight_scale", weight_scale);
                   }
-                  calcu_op_desc->SetAttr("weight_quant_axis", quant_axis);
-                  calcu_op_desc->SetAttr("weight_bit_length", bit_length);
-                  calcu_op_desc->SetAttr("enable_int8", true);
-                  VLOG(1) << "dequantized_weight_var_node->Var()->Name():"
-                          << dequantized_weight_var_node->Var()->Name();
-                  VLOG(1) << "weight_var_node->Var()->Name(): "
-                          << weight_var_node->Var()->Name();
+                  if (bit_length == 8) {
+                    // Current 8-bit quantization only supports int8
+                    calcu_op_desc->SetAttr("op_weights_precision",
+                                           std::string("int8"));
+                  }
+
                   calcu_op_desc->RenameInput(
                       dequantized_weight_var_node->Var()->Name(),
                       weight_var_node->Var()->Name());
