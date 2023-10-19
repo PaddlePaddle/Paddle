@@ -941,7 +941,7 @@ def floor_divide(x, y, name=None):
             [2, 0, 2, 2])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.floor_divide(x, y)
     else:
         return _elementwise_op(LayerHelper('elementwise_floordiv', **locals()))
