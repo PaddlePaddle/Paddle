@@ -17,10 +17,10 @@ import abc
 import numpy as np
 
 import paddle
-from paddle import _legacy_C_ops
+from paddle import _C_ops, _legacy_C_ops
 
 from ..base.data_feeder import check_variable_and_dtype
-from ..base.framework import _create_tensor
+from ..base.framework import _create_tensor, in_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..framework import in_dynamic_mode
 
@@ -806,6 +806,10 @@ def accuracy(input, label, k=1, correct=None, total=None, name=None):
             topk_out, topk_indices, label, correct, total
         )
 
+        return _acc
+    elif in_pir_mode():
+        topk_out, topk_indices = paddle.topk(input, k=k)
+        _acc, _, _ = _C_ops.accuracy(topk_out, topk_indices, label)
         return _acc
 
     helper = LayerHelper("accuracy", **locals())

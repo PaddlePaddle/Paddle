@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def accuracy_wrapper(infer, indices, label):
@@ -53,7 +54,7 @@ class TestAccuracyOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAccuracyOpFp16(TestAccuracyOp):
@@ -61,7 +62,7 @@ class TestAccuracyOpFp16(TestAccuracyOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
 
 @unittest.skipIf(
@@ -103,7 +104,7 @@ class TestAccuracyOpBf16(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-2)
+            self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
 
 class TestAccuracyOpError(unittest.TestCase):
@@ -160,6 +161,7 @@ class TestAccuracyAPI1(unittest.TestCase):
             self.input_labels = np.array([[2], [0]], dtype="int64")
             self.expect_value = np.array([0.5], dtype='float32')
 
+    @test_with_pir_api
     def test_api(self):
         with paddle_static_guard():
             exe = paddle.static.Executor()
