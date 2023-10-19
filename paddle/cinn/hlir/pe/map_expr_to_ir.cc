@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/map_expr_ctx.h"
-#include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -58,7 +58,7 @@ class MapExprToIrTranslator {
 
   ir::Expr Translate() const {
     VLOG(1) << "Translate MapExpr: ";
-    PrintMapExpr(map_expr_, "");
+    VLOG(1) << ToTxtString(map_expr_, "");
     return ir::Block::Make({Translate(map_expr_)});
   }
 
