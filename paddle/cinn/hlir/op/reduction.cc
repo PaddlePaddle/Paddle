@@ -29,6 +29,9 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/runtime/flags.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace hlir {
@@ -128,7 +131,17 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
             << "The type of input argument " << x->name << " of " << op_name
             << " should be bool, but get " << x->type() << "! Please check.";
 
-        if (target == common::DefaultNVGPUTarget()) {
+        const auto &NaiveCompute = [&]() {
+          VLOG(3) << "Do Reduce Compute!";
+          auto out = cpu_reduce_func(x, reduce_axes, keep_dim, tensor_name);
+          auto stages = CreateStages({out});
+
+          std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
+          *ret = CINNValuePack{cinn_values};
+        };
+        if (FLAGS_cinn_enable_map_expr) {
+          NaiveCompute();
+        } else if (target == common::DefaultNVGPUTarget()) {
           if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
             VLOG(3) << "Do Two Step Block Reduce Compute!";
             auto res = gpu_reduce_with_last_axis_func(
@@ -155,12 +168,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
             *ret = CINNValuePack{cinn_values};
           }
         } else {
-          VLOG(3) << "Do Reduce Compute!";
-          auto out = cpu_reduce_func(x, reduce_axes, keep_dim, tensor_name);
-          auto stages = CreateStages({out});
-
-          std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
-          *ret = CINNValuePack{cinn_values};
+          NaiveCompute();
         }
       });
 
