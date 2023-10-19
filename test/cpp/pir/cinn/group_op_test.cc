@@ -149,19 +149,13 @@ TEST(GroupOp, CINNLowering) {
   // Step 1: Construct pir::Program
   std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
 
-  program->Print(std::cout);
-
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
-  std::cerr << "fin lowering" << std::endl;
-
-  res->Print(std::cout);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
 
-  kernel_program->Print(std::cout);
   paddle::framework::Scope exe_scope;
 
   paddle::framework::InterpreterCore executor(
@@ -179,8 +173,6 @@ TEST(GroupOp, CINNLowering) {
 
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-  std::cerr << out_tensor << std::endl;
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 3.88455);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 3.88455);

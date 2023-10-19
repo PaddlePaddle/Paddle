@@ -37,7 +37,6 @@ std::vector<pir::Value> GetBlockOutsideInput(
   std::vector<pir::Value> vec_res;
   std::unordered_set<::pir::Value> block_inner_output;
   for (size_t k = 0; k < op_list.size(); ++k) {
-    std::cerr << " op name  " << op_list[k]->name() << std::endl;
     for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
       block_inner_output.insert(op_list[k]->result(i));
     }
@@ -110,10 +109,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
-      for (auto it1 = group_op.block()->begin(); it1 != group_op.block()->end();
-           ++it1) {
-        std::cerr << "it1  " << (*it1)->name() << std::endl;
-      }
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
 
@@ -168,33 +163,26 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       }
 
     } else {
-      std::cerr << "process op  " << (*it)->name() << std::endl;
       std::vector<pir::Value> vec_ins;
 
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         vec_ins.push_back(value_map.at((*it)->operand_source(i)));
       }
 
-      std::cerr << "fin build input" << std::endl;
-
       std::vector<pir::Type> vec_types;
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         vec_types.push_back((*it)->result(i).type());
       }
-      std::cerr << "fin build output" << std::endl;
+
       ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
       ::pir::Operation* op = ::pir::Operation::Create(
           vec_ins, (*it)->attributes(), vec_types, info1);
 
-      std::cerr << "after create op" << std::endl;
       ir_program->block()->push_back(op);
 
-      std::cerr << "after insert op" << std::endl;
       value_map[(*it)->result(0)] = op->result(0);
-      std::cerr << "fin 11" << std::endl;
     }
   }
-  std::cerr << "fin pass" << std::endl;
   return ir_program;
 }
 
