@@ -2097,7 +2097,6 @@ class GeneralFusionMergePassHelper {
     }
   }
 
-  // const ::pir::Program* graph_;
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
   std::unordered_set<const ::pir::Operation*> output_nodes_set_;
