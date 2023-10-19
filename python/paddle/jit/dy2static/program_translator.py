@@ -680,7 +680,7 @@ class StaticFunction:
 def raise_error_template(func_str):
     def _raise_error(*args, **kwargs):
         error_template = (
-            "Can't call {func} when fullgraph=False."
+            "Can't call {func} when fullgraph=False. "
             "Use paddle.jit.to_static(fullgraph=True) instead."
         )
         raise RuntimeError(error_template.format(func=func_str))
@@ -692,8 +692,8 @@ class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
             warnings.warn(
-                "\nSymbolic Trace don't support input_spec arguments. It will not produce any effect.\n"
-                "1. You can disable fallback mode by `paddle.jit.to_static(fullgraph=True)` to switch to AST to static, then you can assign input spec.\n"
+                "\nNon-fullgraph mode don't support input_spec arguments. It will not produce any effect.\n"
+                "1. You can enable fullgraph mode by `paddle.jit.to_static(fullgraph=True)`, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None

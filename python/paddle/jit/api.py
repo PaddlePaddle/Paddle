@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import pickle
 import warnings
+import sys
 from collections import OrderedDict
 import inspect
 import threading
@@ -299,7 +300,13 @@ def to_static(
             else:  # False
                 fullgraph = True
 
-        StaticClass = StaticFunctionClass = {
+        if sys.version_info >= (3, 12) and not fullgraph:
+            warnings.warn(
+                "Non-fullgraph mode is not supported in Python 3.12+. Fallback to fullgraph mode."
+            )
+            fullgraph = True
+
+        StaticClass = {
             False: SymbolicStaticFunction,
             True: ASTStaticFunction,
         }[fullgraph]
