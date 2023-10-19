@@ -886,7 +886,7 @@ class TestDygraphInplaceNanToNum(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{3} != wrapper_version_snapshot:{0}",
+                "received tensor_version:3 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
@@ -975,7 +975,7 @@ class TestDygraphInplaceLdexp(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
+                "received tensor_version:2 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
@@ -1051,7 +1051,7 @@ class TestDygraphInplaceWhereBroadcast(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
+                "received tensor_version:2 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
@@ -1347,7 +1347,7 @@ class TestDygraphInplaceCumsum(TestDygraphInplaceWithContinuous):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
+                "received tensor_version:2 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
@@ -1389,7 +1389,7 @@ class TestDygraphInplaceCumprod(TestDygraphInplace):
             loss = paddle.nn.functional.relu(var_c)
             with self.assertRaisesRegex(
                 RuntimeError,
-                f"received tensor_version:{2} != wrapper_version_snapshot:{0}",
+                "received tensor_version:2 != wrapper_version_snapshot:0",
             ):
                 loss.backward()
 
