@@ -5094,8 +5094,7 @@ def multigammaln_(x, p, name=None):
     c = 0.25 * p * (p - 1) * math.log(math.pi)
     c = paddle.to_tensor(c, dtype=x.dtype)
     b = 0.5 * paddle.arange(start=(1 - p), end=1, step=1, dtype=x.dtype)
-    b = b.add(x.unsqueeze(-1))
-    x[:] = b.lgamma_().sum(-1).add_(c)
+    x[:] = (b + x.unsqueeze(-1)).lgamma_().sum(-1).add_(c)
     return x
 
 

@@ -63,6 +63,11 @@ class TestMultigammalnAPI(unittest.TestCase):
         paddle.enable_static()
 
 
+class TestMultigammalnAPICase1(TestMultigammalnAPI):
+    def init_input(self):
+        self.x = np.random.rand(10, 20).astype('float64') + 1.0
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

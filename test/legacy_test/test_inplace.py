@@ -771,7 +771,7 @@ class TestDygraphInplaceDigamma(TestDygraphInplaceWithContinuous):
         return paddle.digamma(var)
 
 
-class TestDygraphInplaceMutilgammaln(TestDygraphInplace):
+class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
     def init_data(self):
         self.input_var_numpy = np.random.rand(10, 20).astype('float32') + 1.0
         self.dtype = "float32"
