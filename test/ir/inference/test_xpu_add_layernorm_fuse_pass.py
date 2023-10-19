@@ -60,7 +60,13 @@ class TestAddLayernormXPUFusePass(PassAutoScanTest):
             begin_norm_axis=begin_norm_axis,
             epsilon=epsilon,
         )
-        mini_graph = [elementwise_op, layer_norm_op]
+        act_op = OpConfig(
+            "leaky_relu",
+            inputs={"X": ["layer_norm_out"]},
+            outputs={"Out": ["act_out"]},
+            alpha=draw(st.floats(min_value=0.1, max_value=1.0)),
+        )
+        mini_graph = [elementwise_op, layer_norm_op, act_op]
 
         program_config = ProgramConfig(
             ops=mini_graph,
@@ -72,7 +78,7 @@ class TestAddLayernormXPUFusePass(PassAutoScanTest):
                 "eltwise_X": TensorConfig(shape=x_shape),
                 "eltwise_Y": TensorConfig(shape=y_shape),
             },
-            outputs=mini_graph[-1].outputs["Y"],
+            outputs=mini_graph[-1].outputs["Out"],
         )
         return program_config
 
