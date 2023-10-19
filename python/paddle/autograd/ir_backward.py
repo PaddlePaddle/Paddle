@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import collections
+import logging
 from collections.abc import Sequence
 
 import paddle.pir
@@ -363,8 +364,8 @@ def append_backward_ops(
         for i, value in enumerate(op.results()):
             if (
                 value in state.value_to_valuegrad
-                and len(state.value_to_valuegrad[value])
-            ) > 1:
+                and len(state.value_to_valuegrad[value]) > 1
+            ):
                 # one value is input of more than one fwd_op,
                 # so more than one bwd_op create input_grad,
                 # need add sum op to accumulate gradient
@@ -556,7 +557,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
                 if state.value_to_valuegrad[item] != []:
                     outputs_set.add(state.value_to_valuegrad[item][0][0])
         else:
-            raise ValueError("input privided by inputs has no use")
+            logging.warning("input privided by inputs has no use")
 
     inputs_set = set()
     for output in outputs:

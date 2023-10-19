@@ -312,11 +312,11 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                emb = paddle.nn.Embedding(10, 10)
+                >>> import paddle
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                state_dict = adam.state_dict()
+                >>> adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                >>> state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -1243,7 +1243,7 @@ class Optimizer:
             loss (Tensor): ``loss`` tensor to run optimizations.
             startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1306,6 +1306,16 @@ class Optimizer:
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
                 if in_pir_mode():
+                    if parameter_list is None:
+                        # all parameters will be updated.
+                        program_all_params = (
+                            program.global_block().all_parameters()
+                        )
+                        parameter_list = [
+                            param
+                            for param in program_all_params
+                            if param.stop_gradient is False
+                        ]
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
@@ -1604,7 +1614,7 @@ class Optimizer:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.

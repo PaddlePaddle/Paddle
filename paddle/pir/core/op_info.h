@@ -54,6 +54,10 @@ class IR_API OpInfo {
 
   void Verify(Operation *) const;
 
+  void VerifySig(Operation *) const;
+
+  void VerifyRegion(Operation *) const;
+
   template <typename Trait>
   bool HasTrait() const {
     return HasTrait(TypeId::get<Trait>());
@@ -71,9 +75,8 @@ class IR_API OpInfo {
   template <typename InterfaceT>
   typename InterfaceT::Concept *GetInterfaceImpl() const;
 
-  operator const void *() const { return impl_; }
-  void *AsOpaquePointer() const { return impl_; }
-  static OpInfo RecoverFromOpaquePointer(void *pointer) {
+  operator void *() const { return impl_; }
+  static OpInfo RecoverFromVoidPointer(void *pointer) {
     return OpInfo(static_cast<OpInfoImpl *>(pointer));
   }
 
@@ -105,7 +108,7 @@ namespace std {
 template <>
 struct hash<pir::OpInfo> {
   std::size_t operator()(const pir::OpInfo &obj) const {
-    return std::hash<const void *>()(obj);
+    return std::hash<void *>()(obj);
   }
 };
 }  // namespace std

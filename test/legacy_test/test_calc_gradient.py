@@ -85,7 +85,11 @@ class TestDoubleGrad(unittest.TestCase):
         self.assertEqual(12, out[0])
 
 
+from paddle.pir_utils import test_with_pir_api
+
+
 class TestGradientWithPrune(unittest.TestCase):
+    @test_with_pir_api
     def test_prune(self):
         with paddle.base.scope_guard(paddle.static.Scope()):
             x = paddle.static.data(name='x', shape=[3], dtype='float32')
@@ -95,8 +99,8 @@ class TestGradientWithPrune(unittest.TestCase):
             x1_grad = base.gradients(y, x)
 
             exe = base.Executor(base.CPUPlace())
-            main = base.default_main_program()
-            exe.run(base.default_startup_program())
+            main = paddle.static.default_main_program()
+            exe.run(paddle.static.default_startup_program())
             out = exe.run(
                 main,
                 feed={'x': np.ones([3]).astype('float32')},

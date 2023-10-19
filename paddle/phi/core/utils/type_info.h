@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <string>
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -40,7 +41,7 @@ class TypeInfo {
 };
 
 template <typename BaseT, typename DerivedT>
-class TypeInfoTraits {
+class TEST_API TypeInfoTraits {
  public:
   static const TypeInfo<BaseT> kType;
   TypeInfoTraits();

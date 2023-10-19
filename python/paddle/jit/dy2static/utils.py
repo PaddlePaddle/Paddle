@@ -40,16 +40,18 @@ from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
-from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
-from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
-from .utils_helper import PADDLE_MODULE_PREFIX  # noqa: F401
-from .utils_helper import NodeVarType  # noqa: F401
-from .utils_helper import _is_api_in_module_helper  # noqa: F401
-from .utils_helper import index_in_list  # noqa: F401
-from .utils_helper import is_api_in_module  # noqa: F401
-from .utils_helper import is_dygraph_api  # noqa: F401
-from .utils_helper import is_numpy_api  # noqa: F401;
-from .utils_helper import is_paddle_api  # noqa: F401
+from .utils_helper import (  # noqa: F401
+    DYGRAPH_MODULE_PREFIX,
+    DYGRAPH_TO_STATIC_MODULE_PREFIX,
+    PADDLE_MODULE_PREFIX,
+    NodeVarType,
+    _is_api_in_module_helper,
+    index_in_list,
+    is_api_in_module,
+    is_dygraph_api,
+    is_numpy_api,
+    is_paddle_api,
+)
 
 __all__ = []
 
@@ -174,6 +176,21 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
         is_data=True,
         need_check_feed=False,
     )
+
+
+def create_undefined_variable_local():
+    helper = LayerHelper('create_undefined_variable', **locals())
+    var = helper.create_variable(
+        name=unique_name.generate("undefined_var"),
+        shape=[1],
+        dtype="float64",
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        stop_gradient=False,
+        is_data=True,
+        need_check_feed=False,
+    )
+    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
+    return var
 
 
 def create_undefined_variable():

@@ -1549,7 +1549,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
             img[0, 0, 0, 0] = -1
             print(out[0, 0, 0]) # [-1]
     """
-    if not (isinstance(x, Variable)):
+    if not (isinstance(x, (Variable, paddle.pir.OpResult))):
         raise ValueError("The input x should be a Tensor")
 
     x_dim = len(x.shape)
@@ -1586,7 +1586,7 @@ def flatten(x, start_axis=0, stop_axis=-1, name=None):
         if start_axis > stop_axis:
             raise ValueError("The stop_axis should be larger than stat_axis")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.flatten(x, start_axis, stop_axis)
     else:
         check_variable_and_dtype(
@@ -1844,7 +1844,7 @@ def stack(x, axis=0, name=None):
     """
     axis = 0 if axis is None else axis
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stack(x, axis)
     else:
         if not isinstance(x, list) and not isinstance(x, tuple):
@@ -2485,7 +2485,7 @@ def unique(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, indices, inverse, counts = _C_ops.unique(
             x, return_index, return_inverse, return_counts, axis, attr_dtype
         )
@@ -3170,25 +3170,21 @@ def tile(x, repeat_times, name=None):
             # Tensor(shape=[1, 6], dtype=int32, place=Place(gpu:0), stop_gradient=True,
             #        [[1, 2, 3, 1, 2, 3]])
     """
-    if in_dynamic_or_pir_mode():
-        if isinstance(repeat_times, core.eager.Tensor):
-            assert (
-                repeat_times.ndim == 1
-            ), "Only support ndim == 1 while repeat_times is a Tensor."
-            repeat_times = repeat_times.tolist()
 
-        return _C_ops.tile(x, repeat_times)
-    else:
+    def check_input(x, repeat_times):
         check_type(
-            repeat_times, 'repeat_times', (list, tuple, Variable), 'tile'
+            repeat_times,
+            'repeat_times',
+            (list, tuple, Variable, paddle.pir.OpResult),
+            'tile',
         )
-        if isinstance(repeat_times, Variable):
+        if isinstance(repeat_times, (Variable, paddle.pir.OpResult)):
             assert (
-                repeat_times.numel() == 1
-            ), 'repeat_times must be a Tensor with one element.'
+                len(repeat_times.shape) == 1
+            ), 'repeat_times must be a Tensor with ndim == 1.'
         else:
             for elem in repeat_times:
-                if isinstance(elem, Variable):
+                if isinstance(elem, (Variable, paddle.pir.OpResult)):
                     assert (
                         elem.numel() == 1
                     ), 'Elements in repeat_times must be Tensor with one element or integers.'
@@ -3219,15 +3215,29 @@ def tile(x, repeat_times, name=None):
                 "some_var.stop_gradient == True supporting some_var is the input."
             )
 
-        helper = LayerHelper('tile', **locals())
+    if in_dynamic_mode():
+        if isinstance(repeat_times, core.eager.Tensor):
+            assert (
+                repeat_times.ndim == 1
+            ), "Only support ndim == 1 while repeat_times is a Tensor."
+            repeat_times = repeat_times.tolist()
 
-        inputs = {"X": [x]}
-        attrs = {}
+        return _C_ops.tile(x, repeat_times)
+    elif in_pir_mode():
+        check_input(x, repeat_times)
+        if isinstance(repeat_times, (list, tuple)):
+            if paddle.utils._contain_var(repeat_times):
+                repeat_times = paddle.utils._convert_to_tensor_list(
+                    repeat_times
+                )
+        return _C_ops.tile(x, repeat_times)
+    else:
+        check_input(x, repeat_times)
 
         def get_attr_repeat_times(list_repeat_times):
             attrs_repeat_times = []
             for idx, times in enumerate(list_repeat_times):
-                if isinstance(times, Variable):
+                if isinstance(times, (Variable, paddle.pir.OpResult)):
                     attrs_repeat_times.append(-1)
                 else:
                     attrs_repeat_times.append(times)
@@ -3235,6 +3245,11 @@ def tile(x, repeat_times, name=None):
                         times > 0
                     ), "All elements in repeat_times must be positive for tile."
             return attrs_repeat_times
+
+        helper = LayerHelper('tile', **locals())
+
+        inputs = {"X": [x]}
+        attrs = {}
 
         if isinstance(repeat_times, Variable):
             repeat_times.stop_gradient = True

@@ -22,6 +22,8 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+from dygraph_to_static_util import dy2static_unittest
+
 import paddle
 from paddle import _legacy_C_ops, base
 from paddle.base.dygraph import to_variable
@@ -513,6 +515,7 @@ def create_dataloader(reader, place):
     return data_loader
 
 
+@dy2static_unittest
 class TestLACModel(unittest.TestCase):
     def setUp(self):
         self.args = Args()

@@ -19,13 +19,17 @@ import ctypes
 import paddle
 from paddle.base import core
 from paddle.base import framework
-from paddle.base.framework import is_compiled_with_cinn  # noqa: F401
-from paddle.base.framework import is_compiled_with_cuda  # noqa: F401
-from paddle.base.framework import is_compiled_with_rocm  # noqa: F401
-from . import cuda
-from . import xpu
+from paddle.base.framework import (
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
+from . import (  # noqa: F401
+    cuda,
+    xpu,
+)
 
-__all__ = [  # noqa
+__all__ = [
     'get_cudnn_version',
     'set_device',
     'get_device',
