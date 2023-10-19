@@ -679,7 +679,6 @@ phi::KernelKey GetKernelKey(
     VLOG(6) << "MemcpyOp need a special handle";
     int dst_place_type =
         op->attribute("dst_place_type").dyn_cast<pir::Int32Attribute>().data();
-    std::cout << dst_place_type << std::endl;
     if (dst_place_type == 1) {
       res.set_backend(phi::Backend::GPU);
     }
