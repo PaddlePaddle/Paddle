@@ -4833,7 +4833,7 @@ def any(x, axis=None, keepdim=False, name=None):
              [True]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.any(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis(axis, x)
