@@ -20,7 +20,6 @@
 #include "paddle/cinn/adt/get_sub_reshape_dim_ranges.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/match.h"
-#include "paddle/cinn/adt/print_value.h"
 #include "paddle/cinn/adt/simplify_value.h"
 
 namespace cinn::adt {

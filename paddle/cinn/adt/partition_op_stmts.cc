@@ -20,7 +20,7 @@
 #include "paddle/cinn/adt/equation_util.h"
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
-#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print.h"
 
 namespace cinn::adt {
 
@@ -354,9 +354,9 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
 
 void AnchorGroup::PrintEquations() const {
   const auto& ctx = EquationCtx4OpStmt(op_stmt);
-  VLOG(3) << "anchor_index: ";
-  VLOG(3) << ToTxtString(anchor_index);
-  VLOG(3) << "AnchorGroup.equations: ";
+  VLOG(1) << "anchor_index: ";
+  VLOG(1) << ToTxtString(anchor_index);
+  VLOG(1) << "AnchorGroup.equations: ";
   ctx->Print();
 }
 

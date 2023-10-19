@@ -12,8 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <string>
+#pragma once
 
-#include "paddle/cinn/adt/equation_value.h"
-
-namespace cinn::adt {}  // namespace cinn::adt
+#include "paddle/cinn/adt/print_constant.h"
+#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print_loop_size.h"
+#include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/print_schedule_descriptor.h"
+#include "paddle/cinn/adt/print_schedule_dim.h"
+#include "paddle/cinn/adt/print_schedule_mesh.h"
+#include "paddle/cinn/adt/print_value.h"

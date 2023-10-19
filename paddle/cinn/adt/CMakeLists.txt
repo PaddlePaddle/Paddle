@@ -23,6 +23,10 @@ gather_srcs(
   schedule_dim.cc
   schedule_mesh.cc
   simplify_value.cc
+  print_equations.cc
+  print_constant.cc
+  print_value.cc
+  print_schedule_descriptor.cc
   write_broadcast_disabled_bidirection_equation_generator.cc
   print_schedule_mesh.cc
   print_schedule_dim.cc

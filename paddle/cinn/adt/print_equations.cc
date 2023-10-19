@@ -13,8 +13,6 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_equations.h"
-#include "paddle/cinn/adt/print_constant.h"
-
 #include <sstream>
 #include <string>
 
@@ -25,6 +23,16 @@ namespace {
 std::string ToTxtString(const tDim<UniqueId>& constant) {
   std::size_t constant_unique_id = constant.value().unique_id();
   return "dim_" + std::to_string(constant_unique_id);
+}
+
+std::string OpImpl(const hlir::framework::Node* op) { return op->op()->name; }
+
+std::string OpImpl(const tReduceInit<const hlir::framework::Node*>& op) {
+  return op.value()->op()->name + "_init";
+}
+
+std::string OpImpl(const tReduceAcc<const hlir::framework::Node*>& op) {
+  return op.value()->op()->name + "_acc";
 }
 
 }  // namespace
@@ -44,61 +52,61 @@ std::string ToTxtString(const FakeOpPlaceHolder& op) {
   return "op_" + std::to_string(op_unique_id);
 }
 
-std::string ToTxtString(const List<Index>& index_list) {
+std::string ToTxtString(const List<Index>& indexes) {
   std::string ret;
-  ret += "List(";
+  ret += "[";
 
-  for (std::size_t idx = 0; idx < index_list->size(); ++idx) {
+  for (std::size_t idx = 0; idx < indexes->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
-    ret += ToTxtString(index_list.Get(idx));
+    ret += ToTxtString(indexes.Get(idx));
   }
 
-  ret += ")";
+  ret += "]";
   return ret;
 }
 
-std::string ToTxtString(const List<std::optional<Index>>& index_list) {
+std::string ToTxtString(const List<std::optional<Index>>& indexes) {
   std::string ret;
-  ret += "List(";
+  ret += "[";
 
-  for (std::size_t idx = 0; idx < index_list->size(); ++idx) {
+  for (std::size_t idx = 0; idx < indexes->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
-    if (index_list->at(idx).has_value()) {
-      ret += ToTxtString(index_list.Get(idx).value());
+    if (indexes->at(idx).has_value()) {
+      ret += ToTxtString(indexes.Get(idx).value());
     }
   }
 
-  ret += ")";
+  ret += "]";
   return ret;
 }
 
-std::string ToTxtString(const List<Iterator>& iterator_list) {
+std::string ToTxtString(const List<Iterator>& iterators) {
   std::string ret;
-  ret += "List(";
-  for (std::size_t idx = 0; idx < iterator_list->size(); ++idx) {
+  ret += "[";
+  for (std::size_t idx = 0; idx < iterators->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
-    ret += ToTxtString(iterator_list.Get(idx));
+    ret += ToTxtString(iterators.Get(idx));
   }
-  ret += ")";
+  ret += "]";
   return ret;
 }
 
 std::string ToTxtString(const List<Dim>& dim_list) {
   std::string ret;
-  ret += "List(";
+  ret += "[";
   for (std::size_t idx = 0; idx < dim_list->size(); ++idx) {
     if (idx != 0) {
       ret += ", ";
     }
     ret += ToTxtString(dim_list.Get(idx));
   }
-  ret += ")";
+  ret += "]";
   return ret;
 }
 
@@ -115,25 +123,56 @@ std::string ToTxtString(const tOutMsg<List<Index>>& out_msg_indexes) {
   ret += ToTxtString(index_list);
   return ret;
 }
+
+std::string ToTxtString(const std::vector<Index>& indexes) {
+  std::string ret;
+  ret += "vector(";
+  for (std::size_t idx = 0; idx < indexes.size(); ++idx) {
+    if (idx != 0) {
+      ret += ", ";
+    }
+    ret += ToTxtString(indexes.at(idx));
+  }
+
+  ret += ")";
+  return ret;
+}
+
+std::string ToTxtString(const List<OpStmt>& op_stmts,
+                        const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
+  std::string ret;
+  std::size_t count = 0;
+  for (const auto& op_stmt : *op_stmts) {
+    if (count++ != 0) {
+      ret += "\n";
+    }
+    const auto& [op, _0, _1] = op_stmt.tuple();
+    ret += std::visit([&](const auto& op_impl) { return OpImpl(op_impl); },
+                      op.variant());
+    ret += ": \n";
+    const auto& ctx = EquationCtx4OpStmt(op_stmt);
+    ret += ToTxtString(ctx->equations(), "\n");
+  }
+
+  return ret;
+}
+
 namespace {
 
 struct ToTxtStringStruct {
   std::string operator()(
       const Identity<tOut<Iterator>, tIn<Iterator>>& id) const {
     std::string ret;
-    const auto& [out_iter_tag, in_iter_tag] = id.tuple();
-    const Iterator& out_iter = out_iter_tag.value();
-    const Iterator& in_iter = in_iter_tag.value();
-    ret += ToTxtString(out_iter) + " = " + ToTxtString(in_iter);
+    const auto& [out_iter, in_iter] = id.tuple();
+    ret += ToTxtString(out_iter.value()) + " = " + ToTxtString(in_iter.value());
     return ret;
   }
 
   std::string operator()(const Identity<tOut<Index>, tIn<Index>>& id) const {
     std::string ret;
-    const auto& [out_index_tag, in_index_tag] = id.tuple();
-    const Index& out_index = out_index_tag.value();
-    const Index& in_index = in_index_tag.value();
-    ret += ToTxtString(out_index) + " = " + ToTxtString(in_index);
+    const auto& [out_index, in_index] = id.tuple();
+    ret +=
+        ToTxtString(out_index.value()) + " = " + ToTxtString(in_index.value());
     return ret;
   }
 
@@ -165,11 +204,10 @@ struct ToTxtStringStruct {
                          tOut<OpArgIndexes<std::optional<Index>>>,
                          tIn<OpArgIndexes<Index>>>& in_msg2out_msg) const {
     std::string ret;
-    const auto& [out_op_tag, out_index_list_tag, in_index_list_tag] =
-        in_msg2out_msg.tuple();
-    const FakeOpPlaceHolder& op = out_op_tag.value();
-    const auto& out_index_tuple = out_index_list_tag.value();
-    const auto& in_index_tuple = in_index_list_tag.value();
+    const auto& [out_op, out_indexs, in_indexs] = in_msg2out_msg.tuple();
+    const FakeOpPlaceHolder& op = out_op.value();
+    const auto& out_index_tuple = out_indexs.value();
+    const auto& in_index_tuple = in_indexs.value();
     const auto& [out_msg_list_in, out_msg_list_out] = out_index_tuple.tuple();
     const auto& [in_msg_list_in, in_msg_list_out] = in_index_tuple.tuple();
     ret += ToTxtString(op) + ", ";
@@ -207,25 +245,6 @@ std::string ToTxtString(const Equations& equations,
     ret << ToTxtString(equation);
   }
   return ret.str();
-}
-
-void PrintEquations(const Equations& equations, const std::string& separator) {
-  VLOG(3) << ToTxtString(equations, separator);
-}
-
-void PrintOpStmtsEquations(const List<OpStmt>& op_stmts,
-                           const EquationCtx4OpStmtT& EquationCtx4OpStmt) {
-  for (const auto& op_stmt : *op_stmts) {
-    const auto& ctx = EquationCtx4OpStmt(op_stmt);
-    ctx->Print();
-  }
-}
-
-void PrintIndexVector(const std::vector<Index>& indexes) {
-  VLOG(3) << "tensor_indexes.size():" << indexes.size();
-  for (const auto& index : indexes) {
-    VLOG(3) << ToTxtString(index);
-  }
 }
 
 }  // namespace cinn::adt

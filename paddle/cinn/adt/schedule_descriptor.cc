@@ -66,27 +66,4 @@ List<LoopSize> GenerateLoopSizeFromSd(const LoopDescriptors& sd) {
   return sd_sizes;
 }
 
-std::string DebugStringImpl(const LoopDescriptor& loop_descriptor) {
-  const auto& [loop_type, loop_size] = loop_descriptor.tuple();
-  std::string ret{};
-  auto* string = &ret;
-  loop_type >>
-      match{[&](const S0x&) { *string += "blockIdx.x"; },
-            [&](const S0y&) { *string += "blockIdx.y"; },
-            [&](const S0z&) { *string += "blockIdx.z"; },
-            [&](const S1x&) { *string += "threadIdx.x"; },
-            [&](const S1y&) { *string += "threadIdx.y"; },
-            [&](const S1z&) { *string += "threadIdx.z"; },
-            [&](const Temporal& temporal) {
-              *string += temporal.iter_var_name();
-            },
-            [&](const Vectorize& vectorize) {
-              *string += vectorize.iter_var_name();
-            },
-            [&](const Unroll& unroll) { *string += unroll.iter_var_name(); }};
-  CHECK(loop_size.Has<std::int64_t>());
-  *string += "=0.." + std::to_string(loop_size.Get<std::int64_t>());
-  return ret;
-}
-
 }  // namespace cinn::adt

@@ -21,7 +21,7 @@
 #include "paddle/cinn/adt/index_expr_infer_context.h"
 #include "paddle/cinn/adt/m_ir.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
-#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print.h"
 
 namespace cinn::adt {
 

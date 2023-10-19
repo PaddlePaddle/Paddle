@@ -109,7 +109,4 @@ using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
-std::string DebugString(const Constant& c);
-std::string DebugString(const Value& value);
-
 }  // namespace cinn::adt

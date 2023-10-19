@@ -23,7 +23,7 @@
 #include "paddle/cinn/adt/naive_bidirection_equation_generator.h"
 #include "paddle/cinn/adt/naive_op_equation_context.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
-#include "paddle/cinn/adt/print_map_expr.h"
+#include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 #include "paddle/cinn/adt/tree.h"
 #include "paddle/cinn/runtime/flags.h"
@@ -453,7 +453,7 @@ void TryGenerateMapExprFromGraph(
   }
   for (const auto& fusion_group : graph->fusion_groups) {
     const auto& map_expr = GenerateMapExpr(fusion_group);
-    PrintMapExpr(map_expr, fusion_group->group_id);
+    VLOG(1) << ToTxtString(map_expr, fusion_group->group_id);
     fusion_group->set_map_expr_ctx(std::make_shared<MapExprCtx>(map_expr));
   }
 }
