@@ -940,6 +940,7 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
 
     Examples:
         .. code-block:: python
+
             >>> import paddle
             >>> x = paddle.ones((4, 3)) * 2
             >>> x.fill_diagonal_(1.0)
