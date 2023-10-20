@@ -98,6 +98,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   bool IsStaticBuild() const override { return static_build_; }
 
+  std::tuple<double, double> InterpreterRunTime() override;
+
  private:
   // build graph
   void Convert(std::vector<paddle::framework::OpFuncNode>* op_func_nodes);
@@ -213,7 +215,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
-  std::vector<phi::GpuTimer> gpu_stream_timer_;
+  std::vector<phi::GpuTimer> stream_timers_;
 };
 
 }  // namespace framework

@@ -79,6 +79,8 @@ class InterpreterCore {
 
   bool IsStaticBuild() const;
 
+  std::tuple<double, double> InterpreterRunTime();
+
  private:
   DISABLE_COPY_AND_ASSIGN(InterpreterCore);
 

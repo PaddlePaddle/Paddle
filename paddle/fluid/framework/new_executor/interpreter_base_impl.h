@@ -104,6 +104,8 @@ class InterpreterBaseImpl {
       std::vector<paddle::framework::OpFuncNode>* op_func_nodes) = 0;
 
   virtual bool IsStaticBuild() const = 0;
+
+  virtual std::tuple<double, double> InterpreterRunTime() = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

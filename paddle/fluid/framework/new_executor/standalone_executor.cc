@@ -30,6 +30,7 @@
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(auto_parallel_profiler);
 
 namespace paddle {
 namespace framework {
@@ -202,6 +203,21 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       interpretercores_[job_idx]->Run(tmp_feed_names, /*need_fetch = */ false);
     } else {
       interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+    }
+  }
+
+  // record each job's run time
+  if (FLAGS_auto_parallel_profiler) {
+    for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
+      const auto& job = jobs[job_idx];
+      const std::string& job_type = job->Type();
+      double start_time, end_time;
+      std::tie(start_time, end_time) =
+          interpretercores_[job_idx]->InterpreterRunTime();
+      VLOG(3) << "Profiler Info: Job (" << job_idx << "), type = " << job_type
+              << ", micro_batch_id = " << job->MicroBatchId()
+              << ", job_start_time = " << std::to_string(start_time)
+              << ", job_end_time = " << std::to_string(end_time);
     }
   }
 

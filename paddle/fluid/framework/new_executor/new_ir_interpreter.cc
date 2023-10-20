@@ -276,6 +276,11 @@ void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
+std::tuple<double, double> NewIRInterpreter::InterpreterRunTime() {
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "NewIRInterpreter::InterpreterRunTime is not implemented."));
+}
+
 const interpreter::NewIrDependencyBuilder&
 NewIRInterpreter::GetNewIrDependencyBuilder() const {
   return ir_dependency_builder_;

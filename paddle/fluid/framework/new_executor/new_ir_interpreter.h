@@ -60,6 +60,8 @@ class NewIRInterpreter : public InterpreterBaseImpl {
 
   void ShareBuildResultsFrom(const InterpreterBaseImpl& src) override;
 
+  std::tuple<double, double> InterpreterRunTime() override;
+
   std::shared_ptr<std::vector<size_t>> GetDependencyCount() const override;
 
   bool IsSharedResultsBuild() const override;

@@ -105,8 +105,10 @@ ProgramInterpreter::~ProgramInterpreter() {
 
 void ProgramInterpreter::RunImpl() {
   if (FLAGS_auto_parallel_profiler) {
-    for (auto& timer : gpu_stream_timer_) {
-      timer.Start();
+    // Note(sonder): Record the start time of the each stream.
+    for (size_t i = 0; i < stream_timers_.size(); ++i) {
+      auto& stream_timer = stream_timers_[i];
+      stream_timer.Start();
     }
   }
 
@@ -135,8 +137,9 @@ void ProgramInterpreter::RunImpl() {
   }
 #endif
   if (FLAGS_auto_parallel_profiler) {
-    for (auto& timer : gpu_stream_timer_) {
-      timer.Stop();
+    for (size_t i = 0; i < stream_timers_.size(); ++i) {
+      auto& stream_timer = stream_timers_[i];
+      stream_timer.Stop();
     }
   }
 }
@@ -163,12 +166,6 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
 
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
-  }
-
-  if (FLAGS_auto_parallel_profiler) {
-    for (auto& timer : gpu_stream_timer_) {
-      VLOG(3) << "GPU stream event time: " << timer.ElapsedTime();
-    }
   }
 
   // return Fetch Tensors
@@ -642,23 +639,55 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 
 void ProgramInterpreter::AddGpuStreamEvents() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  for (auto& instr : vec_instruction_) {
-    if (instr.KernelType() != OpFuncType::kGpuAsync) {
-      return;
-    }
+  stream_timers_.clear();
+  std::vector<gpuStream_t> streams;
+  bool has_default_stream = false;
 
-    if (instr.DeviceContext().GetPlace().GetType() ==
-        phi::AllocationType::CUSTOM) {
-      return;
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    auto& instr = vec_instruction_[i];
+    if ((instr.KernelType() != OpFuncType::kGpuAsync) ||
+        (instr.DeviceContext().GetPlace().GetType() ==
+         phi::AllocationType::CUSTOM)) {
+      continue;
     }
 
     gpuStream_t stream =
         reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext())
             .stream();
 
-    gpu_stream_timer_.emplace_back(stream);
+    if (stream != nullptr) {
+      has_default_stream = true;
+    }
   }
+  size_t timers_size = has_default_stream ? streams.size() + 1 : streams.size();
+  stream_timers_.resize(timers_size);
+  for (size_t i = 0; i < streams.size(); ++i) {
+    stream_timers_[i].SetStream(streams[i]);
+  }
+  if (has_default_stream) {
+    stream_timers_.back().SetStream(nullptr);
+  }
+
 #endif
+}
+
+std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
+  double min_start_time = DBL_MAX, max_end_time = DBL_MIN;
+  for (size_t i = 0; i < stream_timers_.size(); ++i) {
+    auto& stream_timer = stream_timers_[i];
+    double start_time = stream_timer.StartTime();
+    double end_time = stream_timer.EndTime();
+
+    min_start_time = std::min(min_start_time, start_time);
+    max_end_time = std::max(max_end_time, end_time);
+
+    VLOG(3) << "ProgramInterpreter::InterpreterRunTime:"
+            << "start_time: " << std::to_string(start_time)
+            << ", end_time: " << std::to_string(end_time) << ", min_start_time"
+            << std::to_string(min_start_time)
+            << ", max_end_time: " << std::to_string(max_end_time);
+  }
+  return std::make_tuple(min_start_time, max_end_time);
 }
 
 void ProgramInterpreter::Convert(

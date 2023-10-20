@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <sys/time.h>
+
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -29,20 +31,6 @@ namespace phi {
 class GpuTimer {
  public:
   GpuTimer() {
-#ifdef PADDLE_WITH_HIP
-    hipEventCreate(&start_);
-    hipEventCreate(&stop_);
-#else
-    cudaEventCreate(&start_);
-    cudaEventCreate(&stop_);
-#endif
-    PADDLE_ENFORCE_NOT_NULL(
-        start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
-    PADDLE_ENFORCE_NOT_NULL(
-        stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
-  }
-
-  explicit GpuTimer(gpuStream_t stream) : stream_(stream) {
 #ifdef PADDLE_WITH_HIP
     hipEventCreate(&start_);
     hipEventCreate(&stop_);
@@ -82,10 +70,18 @@ class GpuTimer {
 #endif
   }
 
-  void Start() { Start(stream_); }
+  void Start() {
+    struct timeval time_now {};
+    gettimeofday(&time_now, nullptr);
+    start_time_ = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000);
+    Start(stream_);
+  }
+
   void Stop() { Stop(stream_); }
 
-  float ElapsedTime() {
+  void SetStream(gpuStream_t stream) { stream_ = stream; }
+
+  double ElapsedTime() {
     float milliseconds = 0;
 #ifdef PADDLE_WITH_HIP
     hipEventSynchronize(stop_);
@@ -97,10 +93,15 @@ class GpuTimer {
     return milliseconds;
   }
 
+  double StartTime() { return start_time_; }
+
+  double EndTime() { return ElapsedTime() + start_time_; }
+
  private:
   gpuEvent_t start_;
   gpuEvent_t stop_;
   gpuStream_t stream_;
+  double start_time_;
 };
 
 }  // namespace phi

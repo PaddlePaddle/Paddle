@@ -133,5 +133,9 @@ void InterpreterCore::Build(
 
 bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
 
+std::tuple<double, double> InterpreterCore::InterpreterRunTime() {
+  return impl_->InterpreterRunTime();
+}
+
 }  // namespace framework
 }  // namespace paddle
