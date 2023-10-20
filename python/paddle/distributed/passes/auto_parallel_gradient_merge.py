@@ -33,6 +33,15 @@ from .pass_base import PassBase, PassType, register_pass
 world_process_group = get_world_process_group()
 
 
+def get_pp_stage(dist_context, rank):
+    pp_idx = None
+    for idx, process_mesh in enumerate(dist_context.process_meshes):
+        if rank in process_mesh.process_ids:
+            pp_idx = idx
+            break
+    return pp_idx
+
+
 def _remove_and_get_optimizer_op(main_program, dist_context):
     # 1 create tmp block
     # 2 mv optimizer op from global program to tmp block
@@ -48,8 +57,8 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
             removed_op_idx.append(idx)
 
             # del op from dist_context
-            # if dist_context:
-            #     dist_context.del_dist_op_for_program(op)
+            if dist_context:
+                dist_context.del_dist_op_for_program(op)
 
     for idx in removed_op_idx[::-1]:
         main_block._remove_op(idx, sync=False)
@@ -168,6 +177,10 @@ def _append_gradient_merge_backward_op(
     new_params_to_grads = []
 
     # step2: create gradient_merge var and init with 0
+    pp_stage = get_pp_stage(dist_context, paddle.distributed.get_rank())
+    keep_grad_count = 10
+    last_send_idx = -1
+    # last_grad_op_idx = -1
     main_program_clone = main_program.clone()
     main_block_clone = main_program_clone.global_block()
     grad_to_param_names = {}
@@ -175,6 +188,9 @@ def _append_gradient_merge_backward_op(
         grad_to_param_names[grad.name] = param.name
 
     for index, op in reversed(list(enumerate(main_block_clone.ops))):
+        if op.type == "send_v2" and last_send_idx == -1:
+            last_send_idx = index
+            continue
         output_var_names = op.desc.output_arg_names()
         if len(grad_to_param_names) == 0:
             break
@@ -226,8 +242,16 @@ def _append_gradient_merge_backward_op(
                 # Accumulate persistable gradient variables in main_program
                 grad_var = main_block.var(output_var_name)
                 assert grad_var is not None
+
+                if pp_stage != 0 and keep_grad_count >= 0:
+                    new_idx = last_send_idx + 1
+                    keep_grad_count -= 1
+                else:
+                    new_idx = index + 1
+
+                # new_idx = index + 1
                 new_grad_op = main_block._insert_op_without_sync(
-                    index + 1,
+                    new_idx,
                     type="elementwise_add",
                     inputs={'X': grad_var, 'Y': gradient_merge_var},
                     outputs={'Out': gradient_merge_var},
@@ -237,6 +261,16 @@ def _append_gradient_merge_backward_op(
                         OP_ROLE_KEY: OpRole.Backward,
                     },
                 )
+
+                # if last_grad_op_idx == -1:
+                #     last_grad_op_idx = 1
+                #     _ = main_block._insert_op_without_sync(
+                #     index=new_idx+1,
+                #     type="c_sync_calc_stream",
+                #     inputs={'X': [gradient_merge_var]},
+                #     outputs={'Out': [gradient_merge_var]},
+                #     attrs={'op_role': OpRole.Backward},
+                # )
 
                 # Construct new_params_to_grads and grad_to_gradient_merge
                 new_params_to_grads.append([param_var, gradient_merge_var])
@@ -268,7 +302,6 @@ def _create_cond_block_and_update_optimizer(
     optimize_ops_block,
     k_steps,
     avg,
-    dist_context,
 ):
     def true_apply_gradient():
         cur_block_idx = main_program.current_block_idx
@@ -325,14 +358,6 @@ def _create_cond_block_and_update_optimizer(
         main_program.global_block()._sync_with_cpp()
         cur_block._sync_with_cpp()
 
-        # update serial op
-        for idx, op in enumerate(cur_block.ops):
-            if is_optimize_op(op):
-                dist_op = dist_context.get_dist_op_for_program(op)
-                if dist_op:
-                    # dist_op.set_input_dist_attr
-                    dist_op._serial_op = op
-
         # clear gradient_merge_vars
         for param, new_grad in new_params_to_grads:
             paddle.tensor.fill_constant(
@@ -379,7 +404,6 @@ def parse_program(
         optimize_ops_block,
         k_steps,
         avg,
-        dist_context,
     )
 
 
