@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
