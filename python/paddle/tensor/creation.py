@@ -1369,9 +1369,9 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
 
     out_shape = None
     is_value_input = (
-        not isinstance(start, paddle.pir.OpResult)
-        and not isinstance(end, paddle.pir.OpResult)
-        and not isinstance(step, paddle.pir.OpResult)
+        not isinstance(start, (Variable, paddle.pir.OpResult))
+        and not isinstance(end, (Variable, paddle.pir.OpResult))
+        and not isinstance(step, (Variable, paddle.pir.OpResult))
     )
 
     if not in_dynamic_mode() and is_value_input:

@@ -82,14 +82,15 @@ void ArangeNullaryKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void ArangeValueKernel(const Context& dev_ctx,
-                       const Scalar& start_value,
-                       const Scalar& end_value,
-                       const Scalar& step_value,
+                       const Scalar& start,
+                       const Scalar& end,
+                       const Scalar& step,
                        DenseTensor* out) {
-  T start_value = start.to<T>();
-  T end_value = end.to<T>();
-  T step_value = step.to<T>();
-  ArangeNullaryKernel<T, Context>(
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
+  MPType start_value = start.to<MPType>();
+  MPType end_value = end.to<MPType>();
+  MPType step_value = step.to<MPType>();
+  ArangeNullaryKernel<MPType, Context>(
       dev_ctx, start_value, end_value, step_value, out);
 }
 

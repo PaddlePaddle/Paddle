@@ -15,7 +15,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
+from paddle.framework import LayerHelper, in_dynamic_mode, in_pir_mode
 
 
 def fused_rms_norm(
@@ -64,7 +64,7 @@ def fused_rms_norm(
             >>> epsilon = 1e-6
             >>> paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.rms_norm(
             x,
             bias,
@@ -78,7 +78,21 @@ def fused_rms_norm(
             quant_max_bound,
             quant_min_bound,
         )
-
+    if in_pir_mode():
+        out, residual_out = _C_ops.rms_norm(
+            x,
+            bias,
+            residual,
+            norm_weight,
+            norm_bias,
+            epsilon,
+            begin_norm_axis,
+            quant_scale,
+            quant_round_type,
+            quant_max_bound,
+            quant_min_bound,
+        )
+        return (out, residual_out) if residual is not None else out
     helper = LayerHelper('rms_norm', **locals())
     out = None
     if quant_scale <= 0:
