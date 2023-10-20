@@ -424,10 +424,11 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    if (value_exe_info->GetScope()->FindVar(var_name) == nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope())
-          ->Rename(orig_name, var_name);
+    if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
+      const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
+      LOG(WARNING) << "var " << var_name << " has been removed from scope";
     }
+    const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
 
     value_exe_info->Rename(value, var_name, orig_name);
   }

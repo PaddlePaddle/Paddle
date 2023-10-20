@@ -399,11 +399,15 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::DenseTensor>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
       auto& variable_array =
@@ -423,6 +427,8 @@ void BuildPhiContext(pir::Operation* op,
               variable_array[i]->Type()));
         }
       }
+      VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
+              << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
       PADDLE_THROW(
