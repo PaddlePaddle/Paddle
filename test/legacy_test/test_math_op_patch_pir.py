@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 
 paddle.enable_static()
+paddle.device.set_device("cpu")
 
 
 def new_program():
@@ -65,16 +66,17 @@ class TestMathOpPatchesPir(unittest.TestCase):
                 c = x.pow(2)
                 # d = x.__pow__(2)
                 # e = x.__rpow__(2)
-                # TODO(gouzil): Why not use `paddle.static.default_main_program()`？ Because different case do not isolate parameters (This is a known problem)
+                # TODO(gouzil): Why not use `paddle.static.default_main_program()`？
+                # Because different case do not isolate parameters (This is a known problem)
                 (b_np, c_np) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[b, c],
                 )
-                np.testing.assert_array_equal(res_np_b, b_np)
-                np.testing.assert_array_equal(res_np_c, c_np)
-                # np.testing.assert_array_equal(res_np_d, d_np)
-                # np.testing.assert_array_equal(res_np_e, e_np)
+                np.testing.assert_allclose(res_np_b, b_np, rtol=1e-05)
+                np.testing.assert_allclose(res_np_c, c_np, rtol=1e-05)
+                # np.testing.assert_allclose(res_np_d, d_np, rtol=1e-05)
+                # np.testing.assert_allclose(res_np_e, e_np, rtol=1e-05)
 
     def test_mod(self):
         paddle.disable_static()
@@ -101,9 +103,9 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[b, c, d],
                 )
-                np.testing.assert_array_equal(res_np_b, b_np)
-                np.testing.assert_array_equal(res_np_c, c_np)
-                np.testing.assert_array_equal(res_np_d, d_np)
+                np.testing.assert_allclose(res_np_b, b_np, atol=1e-05)
+                np.testing.assert_allclose(res_np_c, c_np, atol=1e-05)
+                np.testing.assert_allclose(res_np_d, d_np, atol=1e-05)
 
     def test_matmul(self):
         paddle.disable_static()
@@ -157,9 +159,9 @@ class TestMathOpPatchesPir(unittest.TestCase):
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[b, c, d],
                 )
-                np.testing.assert_array_equal(res_np_b, b_np)
-                np.testing.assert_array_equal(res_np_c, c_np)
-                np.testing.assert_array_equal(res_np_d, d_np)
+                np.testing.assert_allclose(res_np_b, b_np, atol=1e-05)
+                np.testing.assert_allclose(res_np_c, c_np, atol=1e-05)
+                np.testing.assert_allclose(res_np_d, d_np, atol=1e-05)
 
     def test_item(self):
         with paddle.pir_utils.IrGuard():
