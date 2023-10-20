@@ -2461,8 +2461,8 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
         for block in cloned_program.blocks:
             all_var_names += block.vars
         for var_name in all_var_names:
-            if var_name == 'feed':
-                continue  # skip special variable
+            if var_name in ['feed', 'fetch']:
+                continue  # skip special variables
             var = cloned_main_block.var(var_name)
             var: Variable
             if var.persistable or var.is_parameter:
@@ -2585,6 +2585,7 @@ def measure_real_op_cost_wrt_program_and_place(
     >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
     >>> place: str = paddle.device.get_device() # here we assume place = "cuda:0"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
+    >>> # here "program" can be an member variable of a class instance
     >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose=True)
     >>> save_log = "./profile.log.%d" % os.getpid()
     >>> with open(save_log, 'w') as f:
