@@ -50,7 +50,8 @@ if(WITH_TESTING)
     env
     TEST cinn_instruction_run_op_test
     PROPERTY ENVIRONMENT)
-  set_tests_properties(
-    cinn_instruction_run_op_test PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-                                            "${CINN_RUN_ENVIRONMENT}" ${env})
+  set_property(TEST cinn_instruction_run_op_test
+               PROPERTY ENVIRONMENT "${CINN_RUN_ENVIRONMENT}" ${env})
+  set_tests_properties(cinn_instruction_run_op_test PROPERTIES LABELS
+                                                               "RUN_TYPE=CINN")
 endif()
