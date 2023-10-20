@@ -15,13 +15,13 @@
 # limitations under the License.
 
 
-from cinn.common import DefaultHostTarget, Float
+from cinn.common import DefaultNVGPUTarget, Float
 from cinn.frontend import NetBuilder
 from op_test import OpTest
 
 inputs = {
-    "x": OpTest.random([32, 1024], "float32", -1.0, 1.0),
-    "y": OpTest.random([32, 1024], "float32", -1.0, 1.0),
+    "x": OpTest.random([32, 2048], "float32", -1.0, 1.0),
+    "y": OpTest.random([32, 2048], "float32", -1.0, 1.0),
 }
 
 builder = NetBuilder("ReduceMapExprTest")
@@ -33,8 +33,8 @@ out = builder.reduce_sum(t, [0], False)
 
 prog = builder.build()
 
-# target = DefaultNVGPUTarget()
-target = DefaultHostTarget()
+target = DefaultNVGPUTarget()
+# target = DefaultHostTarget()
 
 result = prog.build_and_get_output(
     target, [x, y], [inputs["x"], inputs["y"]], [out], passes=[], scope=None
