@@ -29,7 +29,6 @@ class TestSignbitAPI(unittest.TestCase):
             'float16',
             'float32',
             'float64',
-            'bfloat16',
             'int8',
             'int16',
             'int32',

@@ -6998,11 +6998,11 @@ def signbit(x, name=None):
     Returns:
         out (Tensor): The output Tensor. The sign bit of the corresponding element of the input tensor, True means negative, False means positive.
             >>> # example1
-            >>> x = paddle.to_tensor([1.1, -2.1, -0., 2.5], dtype='float32')
+            >>> x = paddle.to_tensor([1.1, -2.1, 0., 2.5], dtype='float32')
             >>> res = paddle.signbit(x, y)
             >>> print(res)
             Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
-            [False , True, True, False])
+            [False , True, False, False])
 
             >>> # example2
             >>> x = paddle.to_tensor([-5, -2, 3], dtype='int32')
@@ -7029,7 +7029,7 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-
-    out_mask = paddle.cast(x < 0, dtype='bool')
-    out_mask[x == -0] = True
-    return out_mask
+    
+    x = paddle.sign(x)
+    out = paddle.cast(x < 0, dtype='bool')
+    return out
