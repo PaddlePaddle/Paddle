@@ -32,6 +32,9 @@ cc_test(
   SRCS drr_attention_fuse_test.cc
   DEPS fusion_passes drr gtest pd_op_dialect pir)
 
-set_tests_properties(
+# set_tests_properties(
+#   pattern_rewrite_test PROPERTIES ENVIRONMENT
+#                                   "FLAGS_enable_new_ir_in_executor=true")
+set_source_files_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
-                                  "FLAGS_enable_new_ir_in_executor=true")
+                                     "FLAGS_enable_new_ir_in_executor=true")
