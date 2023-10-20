@@ -18,8 +18,8 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNumelOp(OpTest):
@@ -148,10 +148,11 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_numel_static(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
             x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
@@ -188,9 +189,9 @@ class TestNumelAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        main_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
 
             def test_x_type():
                 shape = [1, 4, 5]
@@ -198,6 +199,16 @@ class TestNumelAPI(unittest.TestCase):
                 out_1 = paddle.numel(input_1)
 
             self.assertRaises(TypeError, test_x_type)
+
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+
+            def test_x_type():
+                shape = [1, 4, 5]
+                input_1 = np.random.random(shape).astype("int32")
+                out_1 = paddle.numel(input_1)
+
+            self.assertRaises(ValueError, test_x_type)
 
 
 if __name__ == '__main__':

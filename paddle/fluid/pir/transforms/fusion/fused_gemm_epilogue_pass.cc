@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/fused_gemm_epilogue_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_gemm_epilogue_pass.h"
 
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/pass/pass.h"
@@ -254,7 +254,7 @@ class FusedLinearReluGradPattern
 
 class FusedGemmEpiloguePass : public pir::Pass {
  public:
-  FusedGemmEpiloguePass() : pir::Pass("FusedGemmEpiloguePass", 1) {}
+  FusedGemmEpiloguePass() : pir::Pass("fused_gemm_epilogue_pass", 1) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
@@ -292,4 +292,4 @@ std::unique_ptr<Pass> CreateFusedGemmEpiloguePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_gemm_epilogue, FusedGemmEpiloguePass);
+REGISTER_IR_PASS(fused_gemm_epilogue_pass, FusedGemmEpiloguePass);
