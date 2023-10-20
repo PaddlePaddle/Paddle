@@ -82,7 +82,7 @@ class TestCastBase(Dy2StTestBase):
         self.cast_dtype = 'bool'
 
     def set_func(self):
-        self.func = to_static(fullgraph=True)(test_bool_cast)
+        self.func = to_static(full_graph=True)(test_bool_cast)
 
     def do_test(self):
         with base.dygraph.guard():
@@ -121,7 +121,7 @@ class TestIntCast(TestCastBase):
         self.cast_dtype = 'int32'
 
     def set_func(self):
-        self.func = to_static(fullgraph=True)(test_int_cast)
+        self.func = to_static(full_graph=True)(test_int_cast)
 
 
 class TestFloatCast(TestCastBase):
@@ -136,7 +136,7 @@ class TestFloatCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = to_static(fullgraph=True)(test_float_cast)
+        self.func = to_static(full_graph=True)(test_float_cast)
 
 
 class TestMixCast(TestCastBase):
@@ -154,7 +154,7 @@ class TestMixCast(TestCastBase):
         self.cast_dtype = 'float32'
 
     def set_func(self):
-        self.func = to_static(fullgraph=True)(test_mix_cast)
+        self.func = to_static(full_graph=True)(test_mix_cast)
 
     @ast_only_test  # TODO: add new symbolic only test.
     @test_and_compare_with_new_ir(False)
@@ -186,7 +186,7 @@ class TestNotVarCast(TestCastBase):
         self.cast_dtype = 'int'
 
     def set_func(self):
-        self.func = to_static(fullgraph=True)(test_not_var_cast)
+        self.func = to_static(full_graph=True)(test_not_var_cast)
 
     @ast_only_test
     @test_and_compare_with_new_ir(False)

@@ -60,7 +60,7 @@ class TestCondWithInplace(unittest.TestCase):
         legacy_program = paddle.jit.to_static(
             cond_with_inplace,
             input_spec=[],
-            fullgraph=True,
+            full_graph=True,
         )
 
         l = pir.translate_to_new_ir(legacy_program.main_program.desc)
@@ -97,7 +97,7 @@ class TestCondWithInplace(unittest.TestCase):
         legacy_program = paddle.jit.to_static(
             cond_with_inplace,
             input_spec=[],
-            fullgraph=True,
+            full_graph=True,
         )
 
         l = pir.translate_to_new_ir(legacy_program.main_program.desc)

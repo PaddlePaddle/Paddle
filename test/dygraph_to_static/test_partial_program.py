@@ -81,7 +81,7 @@ class TestWithNestedInput(Dy2StTestBase):
                 self.fake_input()
 
             if to_static:
-                out = paddle.jit.to_static(nested_input, fullgraph=True)(
+                out = paddle.jit.to_static(nested_input, full_graph=True)(
                     self.x, self.y
                 )
             else:
@@ -108,7 +108,7 @@ class TestWithNestedOutput(Dy2StTestBase):
                 self.y = fake_data([10, 16])
 
             if to_static:
-                out = paddle.jit.to_static(nested_output, fullgraph=True)(
+                out = paddle.jit.to_static(nested_output, full_graph=True)(
                     self.x, self.y
                 )
             else:
@@ -141,7 +141,7 @@ class TestWithTrainAndEval(Dy2StTestBase):
     def test_switch_eval_and_train(self):
         with base.dygraph.guard():
             linear_net = Linear()
-            linear_net = paddle.jit.to_static(linear_net, fullgraph=True)
+            linear_net = paddle.jit.to_static(linear_net, full_graph=True)
             x_data = np.random.random((4, 10)).astype('float32')
             x = base.dygraph.to_variable(x_data)
             linear_net(x)
@@ -174,7 +174,7 @@ class TestWithNoGrad(Dy2StTestBase):
     def test_with_no_grad(self):
         with base.dygraph.guard():
             linear_net = Linear()
-            linear_net = paddle.jit.to_static(linear_net, fullgraph=True)
+            linear_net = paddle.jit.to_static(linear_net, full_graph=True)
             x_data = np.random.random((5, 10)).astype('float32')
             x = base.dygraph.to_variable(x_data)
 
@@ -197,7 +197,7 @@ class GPT2LMHeadModel(paddle.nn.Layer):
             np.random.rand(2, 3).astype('float32')
         )
 
-    @to_static(fullgraph=True)
+    @to_static(full_graph=True)
     def forward(self, x):
         x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = paddle.split(x=x, axis=1, num_or_sections=3)

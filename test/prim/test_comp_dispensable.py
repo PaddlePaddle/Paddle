@@ -28,7 +28,7 @@ class TestDispensable(unittest.TestCase):
         def f(x):
             return paddle.split(x, num_or_sections=2)
 
-        f = paddle.jit.to_static(fullgraph=True)(f)
+        f = paddle.jit.to_static(full_graph=True)(f)
         x = paddle.rand((8,))
         x.stop_gradient = False
 

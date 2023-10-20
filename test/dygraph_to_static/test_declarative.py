@@ -43,13 +43,13 @@ class SimpleNet(Layer):
 
     @to_static(
         input_spec=[InputSpec(shape=[None, 10], dtype='float32')],
-        fullgraph=True,
+        full_graph=True,
     )
     def forward(self, x, a=1, b=2):
         y = self.inner_function(x)
         return y
 
-    @to_static(fullgraph=True)
+    @to_static(full_graph=True)
     def inner_function(self, x):
         y = self.linear(x)
         return y
@@ -60,7 +60,7 @@ class SimpleNet(Layer):
 
     @to_static(
         input_spec=[[InputSpec([None, 10]), InputSpec([None, 10])]],
-        fullgraph=True,
+        full_graph=True,
     )
     def func_with_list(self, l, int_val=1):
         x, y = l
@@ -70,7 +70,7 @@ class SimpleNet(Layer):
 
     @to_static(
         input_spec=[{'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])}],
-        fullgraph=True,
+        full_graph=True,
     )
     def func_with_dict(self, d):
         x = d['x']
@@ -86,7 +86,7 @@ class SimpleNet(Layer):
                 {'x': InputSpec([None, 10]), 'y': InputSpec([None, 10])},
             ]
         ],
-        fullgraph=True,
+        full_graph=True,
     )
     def func_with_list_dict(self, dl):
         bias = dl[0]
@@ -438,7 +438,7 @@ class CallNonForwardFuncNet(paddle.nn.Layer):
         super().__init__()
         self.sub = CallNonForwardFuncSubNet()
 
-    @paddle.jit.to_static(fullgraph=True)
+    @paddle.jit.to_static(full_graph=True)
     def forward(self):
         return self.sub.func()
 
@@ -468,7 +468,7 @@ class SetBuffersNet1(paddle.nn.Layer):
         super().__init__()
         self.a = paddle.to_tensor([1])
 
-    @paddle.jit.to_static(fullgraph=True)
+    @paddle.jit.to_static(full_graph=True)
     def forward(self):
         self.a = self.a + 1
         return self.a
@@ -479,7 +479,7 @@ class SetBuffersNet2(paddle.nn.Layer):
         super().__init__()
         self.b = paddle.to_tensor([2])
 
-    @paddle.jit.to_static(fullgraph=True)
+    @paddle.jit.to_static(full_graph=True)
     def forward(self):
         self.b = None
         self.b = paddle.to_tensor([3])

@@ -285,31 +285,31 @@ def to_static(
 
     """
     property = kwargs.get("property", False)
-    fullgraph = kwargs.get("fullgraph", None)
+    full_graph = kwargs.get("full_graph", None)
 
     def decorated(python_func):
         """
         Decorates a python function into a ASTStaticFunction object.
         """
 
-        nonlocal fullgraph
-        if fullgraph is None:
+        nonlocal full_graph
+        if full_graph is None:
             flag = os.environ.get("ENABLE_FALL_BACK", None)
             if flag == "True" or flag is None:
-                fullgraph = False
+                full_graph = False
             else:  # False
-                fullgraph = True
+                full_graph = True
 
-        if sys.version_info >= (3, 12) and not fullgraph:
+        if sys.version_info >= (3, 12) and not full_graph:
             warnings.warn(
-                "Non-fullgraph mode is not supported in Python 3.12+. Fallback to fullgraph mode."
+                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
             )
-            fullgraph = True
+            full_graph = True
 
         StaticClass = {
             False: SymbolicStaticFunction,
             True: ASTStaticFunction,
-        }[fullgraph]
+        }[full_graph]
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -1115,7 +1115,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_forward = to_static(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
-                    fullgraph=True,
+                    full_graph=True,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1153,7 +1153,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_function = to_static(
                     static_func,
                     input_spec=inner_input_spec,
-                    fullgraph=True,
+                    full_graph=True,
                 )
                 concrete_program = static_function.concrete_program
 
