@@ -39,6 +39,44 @@ std::unique_ptr<Program> NewIRCompiler::Build() {
   return std::move(Build(groups));
 }
 
+std::vector<newir::CUDAJITInfo> NewIRCompiler::BuildCUDAJITInfo(
+    const std::vector<newir::GroupPtr>& groups) {
+  std::vector<newir::CUDAJITInfo> vec_res;
+
+  auto op_lowerer = CreateOpLowerer<newir::GroupPtr>(target_);
+
+  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+  for (int i = 0; i < groups.size(); ++i) {
+    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+  }
+
+  for (auto&& lowered_func : lowered_funcs) {
+    ProcessFunction(lowered_func);
+  }
+
+  compiler_ = backends::Compiler::Create(target_);
+  auto build_module = m_builder_.Build();
+  compiler_->Build(build_module, "");
+
+  auto instructions = BuildInstructions(groups);
+
+  auto fn_ptrs = compiler_->GetFnPtr();
+
+  for (int idx = 0; idx < groups.size(); ++idx) {
+    newir::CUDAJITInfo jit_info;
+    jit_info.fn_ptr = fn_ptrs[idx];
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
+        &(jit_info.block_dims));
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
+
+    vec_res.push_back(jit_info);
+  }
+
+  return vec_res;
+}
+
 std::unique_ptr<Program> NewIRCompiler::Build(
     const std::vector<newir::GroupPtr>& groups) {
   auto op_lowerer = CreateOpLowerer<newir::GroupPtr>(target_);

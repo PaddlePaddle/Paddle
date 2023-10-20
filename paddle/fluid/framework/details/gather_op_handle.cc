@@ -45,7 +45,7 @@ void GatherOpHandle::RunImpl() {
           in_var_handles.size(),
           places_.size()));
 
-  VarHandle *out_var_handle;
+  VarHandle *out_var_handle = nullptr;
   {
     auto out_var_handles = DynamicCast<VarHandle>(this->Outputs());
     PADDLE_ENFORCE_EQ(

@@ -34,6 +34,8 @@ class CondInstruction : public InstructionBase {
                   ::pir::Operation* op,
                   ValueExecutionInfo* value_exe_info);
 
+  ~CondInstruction();
+
   void Run() override;
 
   const std::string& Name() const override { return cond_name_; }
@@ -55,6 +57,10 @@ class CondInstruction : public InstructionBase {
   NewIRInterpreter* true_branch_inter_;
 
   NewIRInterpreter* false_branch_inter_;
+
+  std::vector<std::string> true_branch_outputs_;
+
+  std::vector<std::string> false_branch_outputs_;
 
   // TODO(zhangbo): Currently, only the output of IfOp is included. In the
   // future, need to consider how to support IfGradOp using IfOp value.

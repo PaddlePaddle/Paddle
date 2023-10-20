@@ -28,6 +28,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.framework import grad_var_name
+from paddle.pir_utils import test_with_pir_api
 
 _set_use_system_allocator(True)
 
@@ -857,6 +858,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             y2 = compute(x, True, True)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
@@ -866,7 +868,9 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             shape = [4, 10, 16, 16]
 
             def compute(x_np, is_test, trainable_statistics):
-                with program_guard(Program(), Program()):
+                main_program = paddle.static.Program()
+                startup_program = paddle.static.Program()
+                with paddle.static.program_guard(main_program, startup_program):
                     bn = paddle.nn.BatchNorm(
                         shape[1],
                         is_test=is_test,
@@ -876,7 +880,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
                         name='x', shape=x_np.shape, dtype=x_np.dtype
                     )
                     y = bn(x)
-                    exe.run(base.default_startup_program())
+                    exe.run(startup_program)
                     r = exe.run(feed={'x': x_np}, fetch_list=[y])[0]
                 return r
 
@@ -887,8 +891,11 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
 
 
 class TestDygraphBatchNormOpenReserveSpace(unittest.TestCase):
+    @test_with_pir_api
     def test_reservespace(self):
-        with program_guard(Program(), Program()):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             paddle.enable_static()
             x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
             x = paddle.static.data(name='x', shape=x.shape, dtype=x.dtype)

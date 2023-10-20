@@ -126,7 +126,7 @@ TEST(DDim, Print) {
 
 TEST(DDim, Hash) {
   // hash a DDim
-  std::size_t h;
+  std::size_t h = 0;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   h = std::hash<phi::DDim>()(ddim);
   EXPECT_EQ(h, 0xa16fb2b2967ul);

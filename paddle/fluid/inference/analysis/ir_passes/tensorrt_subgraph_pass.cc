@@ -379,6 +379,23 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   std::vector<int> origin_outputs_dtype;
   std::map<std::string, int> map_origin_outputs_dtype;
 
+  // rename output names in trt_ops_run_float
+  auto trt_ops_run_float =
+      Get<std::unordered_set<std::string>>("trt_ops_run_float");
+  for (auto node : subgraph) {
+    if (node->NodeType() == Node::Type::kOperation) {
+      for (auto *x : node->outputs) {
+        if (std::count(parameters.begin(), parameters.end(), x->Name()) > 0)
+          continue;
+        if (trt_ops_run_float.count(x->Name()) > 0) {
+          trt_ops_run_float.erase(x->Name());
+          trt_ops_run_float.insert(
+              RenameVarBeUnique(x->Name(), std::to_string(x->id())));
+        }
+      }
+    }
+  }
+
   // Mark TensorRT output nodes as trt outputs
   auto mark_output = Get<bool>("mark_output");
   auto output_tensor_name =
@@ -393,7 +410,7 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
             continue;
           if ((std::count(output_tensor_name.begin(),
                           output_tensor_name.end(),
-                          x->Name()) > 0) ||
+                          x->Name()) > 0) &&
               !x->outputs.empty()) {
             VLOG(3) << "output " << x->Name() << " has been marked";
             output_names.insert(x->Name());
@@ -569,6 +586,13 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
+  if (context_memory_sharing && TRT_VERSION < 7200) {
+    // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
+    // when trt version less than 7.2,
+    // createExecutionContextWithoutDeviceMemory() has bug.
+    // so, we cannot enable engine context memory sharing.
+    context_memory_sharing = false;
+  }
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");
@@ -782,6 +806,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id), params);
+
+  // support force ops to run in FP32 precision
+  trt_engine->SetRunFloat(trt_ops_run_float);
 
   if (use_static_engine) {
     trt_engine_serialized_data = GetTrtEngineSerializedData(
