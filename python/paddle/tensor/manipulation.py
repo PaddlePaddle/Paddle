@@ -5220,7 +5220,7 @@ def _index_fill_impl(x, index, axis, value, inplace):
 def index_fill(x, index, axis, value, name=None):
     """
     Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_paddle_index_fill`.
+    Please refer to :ref:`api_paddle_index_fill_`.
 
     Examples:
         .. code-block:: python
