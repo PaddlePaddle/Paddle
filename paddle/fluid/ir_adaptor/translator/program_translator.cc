@@ -84,14 +84,32 @@ static std::vector<uint64_t> GetCondOpIds(const BlockDesc& src_block,
     temp_id++;
   }
   // Note(zhangbo): Some output variables are input, without select_input op.
-  while (
-      (temp_id < src_block.OpSize()) &&
-      ((src_block.Op(static_cast<int>(temp_id))->Type() == "fill_constant") ||
-       (src_block.Op(static_cast<int>(temp_id))->Type() == "assign_value") ||
-       (src_block.Op(static_cast<int>(temp_id))->Type() == "select_input"))) {
-    op_list.emplace_back(temp_id);
-    temp_id++;
+  std::vector<uint64_t> init_op_list;
+  while (temp_id < src_block.OpSize()) {
+    if ((src_block.Op(static_cast<int>(temp_id))->Type() == "fill_constant") ||
+        (src_block.Op(static_cast<int>(temp_id))->Type() == "assign_value")) {
+      init_op_list.emplace_back(temp_id);
+      temp_id++;
+    } else {
+      break;
+    }
   }
+  std::vector<uint64_t> select_input_op_list;
+  while (temp_id < src_block.OpSize()) {
+    if (src_block.Op(static_cast<int>(temp_id))->Type() == "select_input") {
+      select_input_op_list.emplace_back(temp_id);
+      temp_id++;
+    } else {
+      break;
+    }
+  }
+
+  if (select_input_op_list.size() > 0) {
+    op_list.insert(op_list.end(), init_op_list.begin(), init_op_list.end());
+  }
+  op_list.insert(
+      op_list.end(), select_input_op_list.begin(), select_input_op_list.end());
+
   return op_list;
 }
 
@@ -150,7 +168,7 @@ ConditionBlockCombination::TrueBlockInitOps() const {
   std::vector<::paddle::framework::OpDesc*> init_ops;
   std::vector<std::string> output_names = TrueBlockOutputVarNames();
   for (::paddle::framework::OpDesc* op : op_list_) {
-    if ((op->Type() != "fill_constant") || (op->Type() != "assign_value")) {
+    if ((op->Type() == "fill_constant") || (op->Type() == "assign_value")) {
       auto out_name = op->Output("Out")[0];
       if (std::find(output_names.begin(), output_names.end(), out_name) !=
           output_names.end()) {
@@ -181,7 +199,7 @@ ConditionBlockCombination::FalseBlockInitOps() const {
   std::vector<::paddle::framework::OpDesc*> init_ops;
   std::vector<std::string> output_names = FalseBlockOutputVarNames();
   for (::paddle::framework::OpDesc* op : op_list_) {
-    if ((op->Type() != "fill_constant") || (op->Type() != "assign_value")) {
+    if ((op->Type() == "fill_constant") || (op->Type() == "assign_value")) {
       auto out_name = op->Output("Out")[0];
       if (std::find(output_names.begin(), output_names.end(), out_name) !=
           output_names.end()) {
@@ -351,7 +369,6 @@ void ProgramTranslator::TranslateBlock(
                           "Not support translated %s op", op->Type()));
 
     if (op->Type() == "conditional_block") {
-      std::vector<const OpDesc*> cond_op_list = {op};
       std::vector<uint64_t> cond_op_ids = GetCondOpIds(src_block, op_id);
       ConditionBlockCombination cond_op_combination(src_block, cond_op_ids);
       pir::Operation* if_op = TranslateCondIfOperation(
