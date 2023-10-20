@@ -261,7 +261,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
     if (eager_dels.count(op) == 0 || (!upper_inplace_op_info) ||
         upper_op_name == "pd_op.transpose" ||
-        upper_op_name == "pd_op.unsqueeze") {
+        upper_op_name == "pd_op.unsqueeze" ||
+        upper_op_name == "pd_op.squeeze") {
       // NOTE(wanghuancoder): pd_op.transpose and pd_op.unsqueeze is not an
       // inplace op, only strided transpose and strided unsqueeze support
       // inplace in dygraph
