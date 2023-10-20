@@ -25,6 +25,10 @@
 #include "paddle/pir/core/region.h"
 #include "paddle/pir/core/utils.h"
 
+#include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/phi/api/all.h"
+
 namespace pir {
 using detail::OpInlineResultImpl;
 using detail::OpOperandImpl;
@@ -123,7 +127,12 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.VerifySig(op);
+    try {
+      op_info.VerifySig(op);
+    } catch (const std::exception &e) {
+      op->Destroy();
+      throw e.what();
+    }
   }
   return op;
 }
