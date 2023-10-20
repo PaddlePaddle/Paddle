@@ -133,7 +133,7 @@ void FcXPUKernel(const Context& ctx,
                  DenseTensor* out,
                  DenseTensor* out_max) {
   // Dont use template T param
-  VLOG(1) << "Kernel type: " << x.dtype() << " ," << w.dtype() << " ,"
+  VLOG(4) << "Fc kernel type: " << x.dtype() << " ," << w.dtype() << " ,"
           << out_dtype;
   if (x.dtype() == DataType::FLOAT32) {
     // float32/float16 kernel

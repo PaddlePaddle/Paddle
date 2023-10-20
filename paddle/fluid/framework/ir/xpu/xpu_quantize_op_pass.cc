@@ -39,27 +39,11 @@ static void MarkAndLogCannotQuantizeOp(Node* op,
          << " (type: " << op->Op()->Type() << ", id: " << op->id() << ").";
   if (details) msg_ss << " " << details;
   VLOG(2) << msg_ss.str().c_str();
-  op->Op()->SetAttr("xpu_op_calc_data_type", std::string("float32"));
 }
 void XPUQuantizeOpPass::GetQuantInfo(Graph* graph) const {
   var_quant_scales_ =
       GetQuantInfoFromTheGraph(graph, "has_quant_info", "var_quant_scales");
 }
-
-// bool XPUQuantizeOpPass::AreScalesPresentForNodes(
-//     std::initializer_list<Node*> nodes) const {
-//   bool present = true;
-//   for (auto node : nodes) {
-//     if (var_quant_scales_.count(node->Name()) == 0) {
-//       present = false;
-//     }
-//   }
-//   return present;
-// }
-
-// float XPUQuantizeOpPass::GetScaleValueForNode(Node* node) const {
-//   return var_quant_scales_.at(node->Name())[0];
-// }
 
 void XPUQuantizeOpPass::QuantizeInput(Graph* g,
                                       Node* op,
@@ -232,27 +216,37 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
       }
 
       QuantizeInput(graph, n, x_var_node, "x");
-      // Branch input
-      if (branch_var_node != nullptr) {
-        if (AreScalesPresentForNodes(&var_quant_scales_, {branch_var_node})) {
-          QuantizeInput(graph, n, branch_var_node, "branch");
-        } else {
-          n->Op()->SetAttr("xpu_op_force_output_precision",
-                           branch_var_node->Var()->GetDataType());
-        }
-      }
-
       auto has_output_scale =
           AreScalesPresentForNodes(&var_quant_scales_, {out_var_node});
-      if (has_output_scale) {
-        DequantizeOutput(graph, n, out_var_node, "out");
-        n->Op()->SetAttr(
-            "out_dtype",
-            static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
+      bool has_branch = branch_var_node != nullptr;
+
+      // Note: Conv2d fusion requres branch datatype is same as output datatype,
+      // so we should consider branch/output together.
+      if (has_branch) {
+        bool has_branch_scale =
+            AreScalesPresentForNodes(&var_quant_scales_, {branch_var_node});
+        if (has_output_scale && has_branch_scale) {
+          QuantizeInput(graph, n, branch_var_node, "branch");
+          DequantizeOutput(graph, n, out_var_node, "out");
+          // Note: out_dtype attr must be set, because if dequantize_output, we
+          // consider the kernel out_dtype as int8.
+          n->Op()->SetAttr(
+              "out_dtype",
+              static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
+        } else {
+          n->Op()->SetAttr("out_dtype", x_var_node->Var()->GetDataType());
+        }
       } else {
-        n->Op()->SetAttr("xpu_op_force_output_precision",
-                         x_var_node->Var()->GetDataType());
-        n->Op()->SetAttr("out_dtype", x_var_node->Var()->GetDataType());
+        if (has_output_scale) {
+          DequantizeOutput(graph, n, out_var_node, "out");
+          // Note: out_dtype attr must be set, because if dequantize_output, we
+          // consider the kernel out_dtype as int8.
+          n->Op()->SetAttr(
+              "out_dtype",
+              static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
+        } else {
+          n->Op()->SetAttr("out_dtype", x_var_node->Var()->GetDataType());
+        }
       }
     }
   }
@@ -303,8 +297,6 @@ void XPUQuantizeOpPass::QuantizeFC(ir::Graph* graph) const {
             "out_dtype",
             static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
       } else {
-        n->Op()->SetAttr("xpu_op_force_output_precision",
-                         x_var_node->Var()->GetDataType());
         n->Op()->SetAttr("out_dtype", x_var_node->Var()->GetDataType());
       }
     }
@@ -321,11 +313,8 @@ void XPUQuantizeOpPass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::InvalidArgument("Scope cannot be nullptr."));
 
   GetQuantInfo(graph);
-  VLOG(1) << "Get quant info from graph success.";
   QuantizeConv(graph);
-  VLOG(1) << "Quantize conv of the graph success.";
   QuantizeFC(graph);
-  VLOG(1) << "Quantize fc of the graph success.";
 }
 
 }  // namespace ir

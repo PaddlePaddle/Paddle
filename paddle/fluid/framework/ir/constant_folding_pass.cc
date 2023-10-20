@@ -64,7 +64,8 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       platform::errors::Fatal(
           "scope must not be null when applying constant folding."));
 
-  std::vector<std::string> blacklist{"feed", "matrix_multiply", "save"};
+  std::vector<std::string> blacklist{
+      "feed", "matrix_multiply", "save", "dequantize_linear"};
   int folded_op_num = 0;
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(

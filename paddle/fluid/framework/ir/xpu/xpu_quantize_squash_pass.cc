@@ -104,7 +104,6 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
                      dequant_in->Name());
         next_op_desc->SetInput(input_name, input_names);
       }
-
       if (keep_dequant)
         GraphSafeRemoveNodes(graph, {quant_op, quant_out});
       else
@@ -114,30 +113,6 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
       IR_NODE_LINK_TO(dequant_in, next_op);
 
       found_dequant_quant_count++;
-    } else {
-      // squash dequantize-quantize to requantize op
-      //   OpDesc desc;
-      //   desc.SetType("requantize");
-      //   desc.SetInput("Input",
-      //   std::vector<std::string>({dequant_in->Name()}));
-      //   desc.SetOutput("Output",
-      //   std::vector<std::string>({quant_out->Name()}));
-      //   desc.SetAttr("Scale_in", dequant_scale);
-      //   desc.SetAttr("Shift_in", dequant_shift);
-      //   desc.SetAttr("Scale_out", quant_scale);
-      //   desc.SetAttr("Shift_out", quant_shift);
-
-      //   auto requant_op = g->CreateOpNode(&desc);
-
-      //   if (keep_dequant)
-      //     GraphSafeRemoveNodes(graph, {quant_op});
-      //   else
-      //     GraphSafeRemoveNodes(graph, {dequant_op, quant_op, dequant_out});
-
-      //   IR_NODE_LINK_TO(dequant_in, requant_op);
-      //   IR_NODE_LINK_TO(requant_op, quant_out);
-
-      //   found_dequant_quant_count++;
     }
   };
   gpd(graph, handler);

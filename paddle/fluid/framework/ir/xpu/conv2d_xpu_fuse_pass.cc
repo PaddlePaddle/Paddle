@@ -1084,10 +1084,14 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
 
+    auto filter_data_type = scope->FindVar(conv_filter->Name())
+                                ->GetMutable<phi::DenseTensor>()
+                                ->dtype();
     std::string op_weights_precision = "float32";
-    if (conv->Op()->HasAttr("op_weights_precision")) {
-      op_weights_precision =
-          conv->Op()->GetAttrIfExists<std::string>("op_weights_precision");
+    if (filter_data_type == phi::DataType::INT8) {
+      op_weights_precision = "int8";
+    } else if (filter_data_type == phi::DataType::FLOAT16) {
+      op_weights_precision = "float16";
     }
     VLOG(4) << "Conv2d fusion fuse pass is running on " << op_weights_precision
             << " precision!";

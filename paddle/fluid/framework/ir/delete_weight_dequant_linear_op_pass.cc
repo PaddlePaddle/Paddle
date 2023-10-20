@@ -117,8 +117,6 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                         weight_scale_tensor->dtype()));
                   }
 
-                  int bit_length =
-                      PADDLE_GET_CONST(int, op->GetAttr("bit_length"));
                   int quant_axis =
                       PADDLE_GET_CONST(int, op->GetAttr("quant_axis"));
                   if (quant_axis == -1) {  // per_layer quant_dequant: all OP
