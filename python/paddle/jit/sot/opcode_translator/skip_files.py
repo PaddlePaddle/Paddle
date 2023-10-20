@@ -19,7 +19,6 @@ import contextlib
 import copy
 import copyreg
 import dataclasses
-import distutils
 import enum
 import functools
 import importlib
@@ -94,7 +93,6 @@ NEED_SKIP_THIRD_PARTIY_MODULES = {
     codecs,
     uuid,
     setuptools,
-    distutils,
     warnings,
 }
 
@@ -104,6 +102,11 @@ if sys.version_info < (3, 11):
 
     NEED_SKIP_THIRD_PARTIY_MODULES.add(sre_compile)
     NEED_SKIP_THIRD_PARTIY_MODULES.add(sre_parse)
+
+if sys.version_info < (3, 12):
+    import distutils
+
+    NEED_SKIP_THIRD_PARTIY_MODULES.add(distutils)
 
 
 def _strip_init_py(s):

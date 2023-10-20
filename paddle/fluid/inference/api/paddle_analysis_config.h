@@ -1291,7 +1291,7 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
 
   std::unordered_set<std::string> trt_ops_run_float_;

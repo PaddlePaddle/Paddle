@@ -221,7 +221,7 @@ void GetInputIds(pir::Operation* op,
   }
 }
 
-void GetOutsideOpInputs(
+std::vector<pir::Value> GetOutsideOpInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
@@ -232,6 +232,7 @@ void GetOutsideOpInputs(
     }
   }
 
+  std::vector<pir::Value> outside_op_inputs;
   for (auto op : (*block)) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       pir::Value value = op->operand_source(i);
@@ -244,9 +245,11 @@ void GetOutsideOpInputs(
                 i,
                 op->name()));
         input_ids->emplace(value, GetValueIds(value, value_exec_info));
+        outside_op_inputs.push_back(value);
       }
     }
   }
+  return outside_op_inputs;
 }
 
 }  // namespace framework
