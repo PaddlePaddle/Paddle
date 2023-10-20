@@ -3394,6 +3394,9 @@ function build_pr_and_develop() {
     rm -rf ${PADDLE_ROOT}/build/*
     if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
         tar  --use-compress-program="pigz -1" -xpf ${PADDLE_ROOT}/build.tar.gz -C ${PADDLE_ROOT}/build
+        rm -rf ${PADDLE_ROOT}/build.tar.gz
+        ls ${PADDLE_ROOT}/build
+        ls ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py -lh
     else
         echo "build.tar.gz of pr branch not exist"
         exit 123
