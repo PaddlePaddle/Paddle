@@ -260,9 +260,8 @@ def to_static(
         backend(str, Optional): Specifies compilation backend, which can be `CINN` or
             None. When backend is `CINN`, CINN compiler will be used to speed up
             training and inference.
-        kwargs: Support keys including `property`.
-
-            - property: It indicates whether the decorated function is a python property.
+        kwargs: Support keys including `property`, set `property` to True if the function
+            is python property.
 
     Returns:
         Tensor(s): containing the numerical result.
