@@ -228,10 +228,8 @@ SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
                                    "dims_mapping size [%d] are not matched.",
                                    out_ndim,
                                    out_dims_mapping.size()));
-  VLOG(4) << "ReshapeInferSpmdReverse: X shape: [" << str_join(x_shape) << "]";
-  VLOG(4) << "Out shape: [" << str_join(out_shape) << "]";
-  // VLOG(4) << "ReshapeInferSpmdReverse: Out shape: [" << str_join(out_shape)
-  //         << "], X shape: [" << str_join(x_shape) << "]";
+  VLOG(4) << "ReshapeInferSpmdReverse: Out shape: [" << str_join(out_shape)
+          << "], X shape: [" << str_join(x_shape) << "]";
 
   // Step1: Build the transformation from the output shape
   // to original shape. This function infers the dims mapping
