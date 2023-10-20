@@ -29,6 +29,7 @@
 
 namespace cinn {
 namespace optim {
+namespace {
 
 struct CrossThreadReductionReplacer : public ir::IRMutator<Expr*> {
   void operator()(ir::Expr* expr) { Visit(expr); }
@@ -147,6 +148,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<Expr*> {
  private:
   std::vector<ir::Expr> cur_loops_;
 };
+
+}  // namespace
 
 void ReplaceCrossThreadReduction(Expr* e) { CrossThreadReductionReplacer()(e); }
 
