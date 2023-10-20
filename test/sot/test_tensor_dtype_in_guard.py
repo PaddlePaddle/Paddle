@@ -31,8 +31,8 @@ def foo(x, y):
     return out
 
 
-@sot.skip_function
 def dtype_in_guard(x, y):
+    sot.psdb.fallback()
     with paddle.amp.auto_cast(level='O2'):
         for i in range(10):
             z = foo(x, y)
@@ -47,8 +47,8 @@ def bar(x, y):
         return y - 1
 
 
-@sot.skip_function
 def dtype_as_input(x, y):
+    sot.psdb.fallback()
     with paddle.amp.auto_cast(level='O2'):
         for i in range(10):
             z = bar(x, y)

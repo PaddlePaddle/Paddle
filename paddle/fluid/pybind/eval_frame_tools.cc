@@ -17,8 +17,6 @@
 #include <unordered_set>
 
 #include <Python.h>
-#include "glog/logging.h"
-#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -132,8 +130,6 @@ int SkipCodeInfo::is_no_skip_code(PyCodeObject* code) {
 }
 
 int SkipCodeInfo::in_skip_path(PyObject* filename) {
-  paddle::platform::RecordEvent ecord_event(
-      "in_skip_path", paddle::platform::TracerEventType::UserDefined, 1);
   const char* name = pystr_to_cstr(filename);
   return root->check_filename(name);
 }
@@ -167,7 +163,6 @@ CodeStatus& CodeStatus::Instance() {
 }
 
 int CodeStatus::is_code_without_graph(PyCodeObject* code) {
-  VLOG(1) << "[fei] is_code_without_graph";
   CodeInfo* code_info;
   if (code_map.find(code) != code_map.end()) {
     code_info = code_map[code];
@@ -175,8 +170,6 @@ int CodeStatus::is_code_without_graph(PyCodeObject* code) {
     code_info = new CodeInfo();
     code_map.emplace(code, code_info);
   }
-  VLOG(1) << "[fei] counter " << code_info->counter << " state "
-          << code_info->state;
   if (code_info->state == WITHOUT_GRAPH) return 1;
   if (code_info->state == UNKNOW) {
     code_info->counter += 1;
@@ -215,8 +208,6 @@ void CodeStatus::clear() {
 /*========================== interfaces ===============================*/
 
 int need_skip(FrameObject* frame) {
-  paddle::platform::RecordEvent ecord_event(
-      "need_skip", paddle::platform::TracerEventType::UserDefined, 1);
   auto& skip_info = SkipCodeInfo::Instance();
   PyCodeObject* code = frame->f_code;  // NOLINT
   PyObject* co_filename = code->co_filename;
@@ -245,10 +236,6 @@ int need_skip(FrameObject* frame) {
 }
 
 int is_code_without_graph(PyCodeObject* code) {
-  paddle::platform::RecordEvent ecord_event(
-      "is_code_without_graph",
-      paddle::platform::TracerEventType::UserDefined,
-      1);
   auto& code_status = CodeStatus::Instance();
   return code_status.is_code_without_graph(code);
 }

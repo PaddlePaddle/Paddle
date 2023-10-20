@@ -48,6 +48,7 @@ class SimpleNet(nn.Layer):
         return x
 
     def forward(self, x):
+        sot.psdb.fallback()
         shape = self.getshape(x)
         feat = self.tmp(x.mean().reshape([1])).reshape([1, 1024, 10])
         logits = self.head(feat, shape[2:])
@@ -56,7 +57,6 @@ class SimpleNet(nn.Layer):
 
 class TestExecutor(TestCaseBase):
     def test_simple(self):
-        sot.skip_function(SimpleNet.forward)
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()
         net = paddle.jit.to_static(
