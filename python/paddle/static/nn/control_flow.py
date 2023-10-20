@@ -1352,7 +1352,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
-    merged_output = [fn() for fn in merged_output_fns]
+    merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1494,7 +1494,7 @@ def select_input_with_buildin_type(inputs, mask, name):
         true_var, UndefinedVar
     ):
         """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
+        return lambda: None
 
     if isinstance(false_var, Variable) and isinstance(true_var, Variable):
         return start_select_input
@@ -1503,7 +1503,7 @@ def select_input_with_buildin_type(inputs, mask, name):
         false_var, type(true_var)
     ):
         if false_var == true_var:
-            return false_var
+            return lambda: false_var
         else:
             inputs = [
                 to_static_variable(false_var),
@@ -1530,12 +1530,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
         )
