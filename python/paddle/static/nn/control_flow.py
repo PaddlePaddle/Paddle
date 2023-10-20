@@ -1357,18 +1357,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     return merged_output
 
 
-def create_undefined_var_in_subblock(var):
-    # to make sure the undefined var created in subblock.
-    from paddle.jit.dy2static.utils import (
-        UndefinedVar,
-        create_undefined_variable_local,
-    )
-
-    if isinstance(var, UndefinedVar):
-        var = create_undefined_variable_local()
-    return var
-
-
 def copy_var_to_parent_block(var, layer_helper):
     if not isinstance(var, Variable):
         return var
