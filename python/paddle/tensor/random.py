@@ -1387,3 +1387,15 @@ def exponential_(x, lam=1.0, name=None):
             attrs={"lambda": lam},
         )
         return x
+
+
+def bernoulli_(x, p=0.5, name=None):
+    pass
+
+
+def log_normal(mean=1.0, std=2.0, shape=None, dtype=None):
+    pass
+
+
+def log_normal_(x):
+    pass
