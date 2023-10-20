@@ -96,8 +96,9 @@ void FusedTransposeKernel(const Context& dev_ctx,
       errors::PreconditionNotMet("oneDNN Transpose kernel must use CPUPlace"));
 
   if (!(fused_squeeze2_axes.empty())) {
-    SetInMemDescWithSqueeze2FuseSupport(
-        fused_squeeze2_axes, const_cast<DenseTensor*>(&x), x.mem_desc());
+    SetInMemDescWithSqueeze2FuseSupport(fused_squeeze2_axes,
+                                        const_cast<DenseTensor*>(&x),
+                                        x.mem_desc());  // NOLINT
   }
 
   if (axis.size() == 1) {
@@ -158,7 +159,7 @@ void FusedTransposeKernel(const Context& dev_ctx,
     auto scales_md = dnnl::memory::desc(
         {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
     auto scales = dnnl::memory(
-        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));
+        scales_md, dev_ctx.GetEngine(), const_cast<float*>(&scale));  // NOLINT
     args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_SRC, scales});
   }
 
