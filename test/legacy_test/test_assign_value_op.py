@@ -108,7 +108,7 @@ class TestAssignApi(unittest.TestCase):
     def test_pir_assign(self):
         with paddle.pir_utils.IrGuard():
             main_program = paddle.pir.Program()
-            with paddle.pir.core.program_guard(main_program):
+            with paddle.static.program_guard(main_program):
                 x = paddle.zeros(shape=[1], dtype=self.dtype)
                 paddle.assign(self.value, output=x)
 

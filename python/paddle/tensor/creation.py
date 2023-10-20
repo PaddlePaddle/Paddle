@@ -706,6 +706,8 @@ def _to_tensor_static(data, dtype=None, stop_gradient=None):
             target_dtype = paddle.get_default_dtype()
         target_dtype = convert_dtype(target_dtype)
 
+        if data.dtype == "int16":
+            data = data.astype("int32")
         output = assign(data)
 
         if convert_dtype(output.dtype) != target_dtype:
@@ -899,7 +901,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         else:
             if isinstance(shape, (list, tuple)):
                 if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_pir_shape_tensor(shape, place)
+                    shape = paddle.utils.get_int_tensor_list(shape, place)
             elif isinstance(shape, paddle.pir.OpResult):
                 pass
             else:
