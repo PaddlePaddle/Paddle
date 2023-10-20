@@ -139,7 +139,7 @@ class Conv2dBnFusePattern
 
 class Conv2dFusePass : public pir::Pass {
  public:
-  Conv2dFusePass() : pir::Pass("Conv2dFusePass", 1) {}
+  Conv2dFusePass() : pir::Pass("Conv2dFusePass", 2) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
