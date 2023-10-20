@@ -17,9 +17,11 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/cinn/adt/equation_value_match_trait.h"
 #include "paddle/cinn/adt/inline_translator.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/map_expr_ctx.h"
+#include "paddle/cinn/adt/match.h"
 #include "paddle/cinn/adt/print.h"
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
@@ -32,6 +34,7 @@ namespace cinn::adt {
 
 namespace {
 
+using IteratorInt = std::int32_t;
 using Node2LoweredFuncs =
     std::unordered_map<hlir::framework::Node*, std::vector<ir::LoweredFunc>>;
 
@@ -365,7 +368,7 @@ class MapExprToIrTranslator {
       const auto& iterator = iterators->at(i);
       const auto& ld = LoopDescriptor4LoopIterator(iterator);
       ir::Var var{"v_" + std::to_string(iterator.value().unique_id())};
-      ir::Expr min{std::int32_t(0)};
+      ir::Expr min{IteratorInt(0)};
       ir::Expr extent = GetLoopSize(ld);
       ir::ForType for_type = GetForType(ld);
       ir::DeviceAPI device_api = GetDeviceApi();
@@ -393,7 +396,7 @@ class MapExprToIrTranslator {
         const auto& iterator = iterators->at(i);
         const auto& ld = LoopDescriptor4LoopIterator(iterator);
         ir::Var var{"v_" + std::to_string(iterator.value().unique_id())};
-        ir::Expr min{std::int32_t(0)};
+        ir::Expr min{IteratorInt(0)};
         ir::Expr extent = GetLoopSize(ld);
         ir::ForType for_type = GetForType(ld);
         ir::DeviceAPI device_api = GetDeviceApi();
@@ -410,7 +413,7 @@ class MapExprToIrTranslator {
   ir::Expr GetLoopSize(const LoopDescriptor& ld) const {
     const auto& [_, loop_size] = ld.tuple();
     CHECK(loop_size.Has<std::int64_t>());
-    return ir::Expr{std::int32_t(loop_size.Get<std::int64_t>())};
+    return ir::Expr{IteratorInt(loop_size.Get<std::int64_t>())};
   }
 
   ir::ForType GetForTypeImpl(const S0x& loop_type) const {
@@ -461,53 +464,96 @@ class MapExprToIrTranslator {
     return Translate(map_stmt);
   }
 
-  ir::Expr TranslateImpl(const Undefined& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const Ok& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const Iterator& iterator) const {
-    return ir::Var("v_" + std::to_string(iterator.value().unique_id()));
-  }
-  ir::Expr TranslateImpl(const Constant& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const List<Value>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const IndexDotValue<Value, Constant>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const IndexUnDotValue<Value, Constant>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const ConstantAdd<Value>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const ConstantDiv<Value>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const ConstantMod<Value>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const ListGetItem<Value, Constant>& value) const {
-    LOG(FATAL) << "Not Supported";
-  }
-  ir::Expr TranslateImpl(const PtrGetItem<Value>& value) const {
-    LOG(FATAL) << "Not Supported";
+  ir::Expr Mul(const ir::Expr& a, std::int64_t b) const {
+    if (b == 1) {
+      return a;
+    } else {
+      ir::Expr b_expr{IteratorInt(b)};
+      return ir::Mul::Make(a, b_expr);
+    }
   }
 
-  ir::Expr Translate(const TensorIteratorExpr& iterator_expr) const {
-    return std::visit([&](const auto& impl) { return TranslateImpl(impl); },
-                      iterator_expr.variant());
+  ir::Expr Accumulate(const std::vector<ir::Expr>& strided_exprs) const {
+    if (strided_exprs.size() == 0) {
+      LOG(FATAL) << "Dead code";
+    } else if (strided_exprs.size() == 1) {
+      return strided_exprs.at(0);
+    } else {
+      ir::Expr ret = strided_exprs.at(0);
+      for (int i = 1; i < strided_exprs.size(); ++i) {
+        ret = ir::Add::Make(ret, strided_exprs.at(i));
+      }
+      return ret;
+    }
+    LOG(FATAL) << "Dead code";
+  }
+
+  std::int64_t GetStride(const List<Constant>& dims, int start) const {
+    CHECK_GE(start, -1);
+    std::int64_t ret = 1;
+    for (int idx = start + 1; idx < dims->size(); ++idx) {
+      CHECK(dims->at(idx).Has<std::int64_t>());
+      ret *= dims->at(idx).Get<std::int64_t>();
+    }
+    return ret;
+  }
+
+  using IndexDotValueOfList = IndexDotValue<List<Value>, List<std::int64_t>>;
+  ir::Expr TranslateIndexDotValueOfList(const Value& value) const {
+    const auto& [list_value, dot_dims_value] =
+        value.Get<IndexDotValue<Value, Constant>>().tuple();
+    const auto& values = list_value.Get<List<Value>>();
+    const auto& dim_values = dot_dims_value.Get<List<Constant>>();
+    CHECK_EQ(values->size(), dim_values->size());
+
+    std::vector<ir::Expr> strided_exprs{};
+    for (std::size_t i = 0; i < values->size(); ++i) {
+      const auto& value_expr = TranslateTensorIterator(values->at(i));
+      const auto& stride_value = GetStride(dim_values, i);
+      strided_exprs.emplace_back(Mul(value_expr, stride_value));
+    }
+    return Accumulate(strided_exprs);
+  }
+
+  using ListGetItemOfUnDot =
+      ListGetItem<IndexUnDotValue<Value, List<std::int64_t>>, std::int64_t>;
+  ir::Expr TranslateListGetItemOfUnDot(const Value& value) const {
+    const auto& [undot_value, idx_value] =
+        value.Get<ListGetItem<Value, Constant>>().tuple();
+    const auto& [tensor_index_value, dims_value] =
+        undot_value.Get<IndexUnDotValue<Value, Constant>>().tuple();
+    ir::Expr tensor_index_expr = TranslateTensorIterator(tensor_index_value);
+    std::int64_t idx = idx_value.Get<std::int64_t>();
+    const auto& dims = dims_value.Get<List<Constant>>();
+
+    ir::Expr mod_operand{IteratorInt(GetStride(dims, idx - 1))};
+    ir::Expr div_operant{IteratorInt(GetStride(dims, idx))};
+    return ir::Div::Make(ir::Mod::Make(tensor_index_expr, mod_operand),
+                         div_operant);
+  }
+
+  ir::Expr TranslateIterator(const Value& value) const {
+    const auto& iterator = value.Get<Iterator>();
+    return ir::Var("v_" + std::to_string(iterator.value().unique_id()));
+  }
+
+  ir::Expr TranslateTensorIterator(const Value& value) const {
+    if (Match<IndexDotValueOfList>(value)) {
+      return TranslateIndexDotValueOfList(value);
+    } else if (Match<ListGetItemOfUnDot>(value)) {
+      return TranslateListGetItemOfUnDot(value);
+    } else if (Match<Iterator>(value)) {
+      return TranslateIterator(value);
+    } else {
+      LOG(FATAL) << "Not supported yet";
+    }
   }
 
   std::vector<ir::Expr> Translate(
       const List<TensorIteratorExpr>& iterator_exprs) const {
     std::vector<ir::Expr> ret{};
     for (const auto& iterator_expr : *iterator_exprs) {
-      ret.emplace_back(Translate(iterator_expr));
+      ret.emplace_back(TranslateTensorIterator(iterator_expr));
     }
     return ret;
   }
