@@ -260,11 +260,9 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
     if (eager_dels.count(op) == 0 || (!upper_inplace_op_info) ||
-        upper_op_name == "pd_op.transpose" ||
-        upper_op_name == "pd_op.unsqueeze" ||
-        upper_op_name == "pd_op.squeeze") {
-      // NOTE(wanghuancoder): pd_op.transpose and pd_op.unsqueeze is not an
-      // inplace op, only strided transpose and strided unsqueeze support
+        upper_op_name == "pd_op.transpose") {
+      // NOTE(wanghuancoder): pd_op.transpose is not an
+      // inplace op, only strided transpose support
       // inplace in dygraph
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
