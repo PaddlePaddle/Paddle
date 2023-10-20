@@ -328,7 +328,7 @@ def append_backward_ops(
     if op has grad_op, prepare its grad_op's inputs by value_to_valuegrad,
         eg:
         value_to_valuegrad[v3] = [[v3_g]];
-        v2_g = call_vjp(op3, [[v2]], [[v3]],[v3_g], [[v2_stopgradient]])
+        v2_g = call_vjp(op3, [[v2]], [[v3]],[[v3_g]], [[v2_stopgradient]])
 
 
     special pattern 1:
