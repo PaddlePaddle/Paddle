@@ -4567,11 +4567,11 @@ def masked_fill(x, mask, value, name=None):
 
     Args:
         x (Tensor) : The Destination Tensor. Supported data types are float,
-        double, int, int64_t,float16 and bfloat16.
+            double, int, int64_t,float16 and bfloat16.
         mask (Tensor): The boolean tensor indicate the position to be filled.
             The data type of mask must be bool.
         value (Scalar or 0-D Tensor): The value used to fill the target tensor.
-        Supported data types are float, double, int, int64_t,float16 and bfloat16.
+            Supported data types are float, double, int, int64_t,float16 and bfloat16.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
@@ -4580,6 +4580,7 @@ def masked_fill(x, mask, value, name=None):
         Tensor, same dimention and dtype with x.
     Examples:
         .. code-block:: python
+        
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> x = paddle.ones((3, 3), dtype="float32")
@@ -4610,6 +4611,7 @@ def masked_fill_(x, mask, value, name=None):
 
     Examples:
         .. code-block:: python
+
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> x = paddle.ones((3, 3), dtype="float32")
