@@ -80,8 +80,8 @@ class TestMathOpPatchesPir(unittest.TestCase):
 
     def test_mod(self):
         paddle.disable_static()
-        x_np = np.random.randint(1, 100, size=[10, 1024])
-        y_np = np.random.randint(1, 100, size=[10, 1024])
+        x_np = np.random.randint(1, 100, size=[10, 1024], dtype=np.int64)
+        y_np = np.random.randint(1, 100, size=[10, 1024], dtype=np.int64)
         res_np_b = x_np % y_np
         res_np_c = paddle.mod(paddle.to_tensor(x_np), paddle.to_tensor(y_np))
         res_np_d = x_np.__mod__(y_np)
