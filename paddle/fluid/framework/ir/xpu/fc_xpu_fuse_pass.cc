@@ -254,7 +254,9 @@ class FcXPUFusePass : public FusePassBase {
       std::map<std::string, Node*>* fusion_nodes_map,
       bool with_bias,
       bool with_bn,
-      std::string op_weights_precision) const;
+      std::string op_weights_precision,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+      const;
 
   void CreateFusionOutputs(
       ir::Graph* graph,
@@ -342,7 +344,9 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     std::map<std::string, Node*>* fusion_nodes_map,
     bool with_bias,
     bool with_bn,
-    std::string op_weights_precision) const {
+    std::string op_weights_precision,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+    const {
   // Get Node
   auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
   PADDLE_ENFORCE_EQ(
@@ -371,8 +375,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     transpose_w = PADDLE_GET_CONST(bool, mul->Op()->GetAttr("trans_y"));
   }
   // Get Weight scale in int8 scene
-  std::vector<float> weight_scale =
-      mul->Op()->GetAttrIfExists<std::vector<float>>("weight_scale");
+  std::vector<float> weight_scale{};
+  if (AreScalesPresentForNodes(var_quant_scales, {mul_w})) {
+    weight_scale = GetScaleVecValueForNode(var_quant_scales, mul_w);
+  }
   // Create fusion_bias_node
   auto filter_dims = filter_t->dims();
   bool has_bias = with_bn || with_bias;
@@ -784,10 +790,13 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
+    auto filter_data_type =
+        scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>()->dtype();
     std::string op_weights_precision = "float32";
-    if (mul->Op()->HasAttr("op_weights_precision")) {
-      op_weights_precision =
-          mul->Op()->GetAttrIfExists<std::string>("op_weights_precision");
+    if (filter_data_type == phi::DataType::INT8) {
+      op_weights_precision = "int8";
+    } else if (filter_data_type == phi::DataType::FLOAT16) {
+      op_weights_precision = "float16";
     }
     VLOG(4) << "FC fusion fuse pass is running on " << op_weights_precision
             << " precision!";
@@ -800,7 +809,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                &fusion_nodes_map,
                                with_bias,
                                with_bn,
-                               op_weights_precision);
+                               op_weights_precision,
+                               &var_quant_scales);
     CreateFusionInputs(graph,
                        scope,
                        block,
@@ -865,7 +875,6 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
             "act_alpha", PADDLE_GET_CONST(float, act->Op()->GetAttr("slope")));
       }
     }
-    fc_xpu_op_desc.SetAttr("op_weights_precision", op_weights_precision);
     // out_dtype is same to input precision
     fc_xpu_op_desc.SetAttr("out_dtype",
                            fusion_nodes_map["x"]->Var()->GetDataType());

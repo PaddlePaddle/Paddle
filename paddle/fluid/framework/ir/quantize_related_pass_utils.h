@@ -23,24 +23,6 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static inline void SaveInfoInTheTmpOp(
-    ir::Graph* graph,
-    const std::string& flag,
-    const std::string& key_suffix,
-    const std::unordered_map<std::string, std::vector<float>>& info_map) {
-  VLOG(3) << "save variables in the first op's attr";
-
-  const std::string suffix = "_" + key_suffix + "_" + flag;
-  OpDesc op_desc;
-  op_desc.SetType("save");
-  auto* op_node = graph->CreateOpNode(&op_desc);
-
-  op_node->Op()->SetAttr(flag, true);
-  for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-    op_node->Op()->SetAttr(iter->first + suffix, iter->second);
-  }
-}
-
 static inline void SaveQuantInfoInTheGraph(
     ir::Graph* graph,
     const std::string& flag,
@@ -48,50 +30,12 @@ static inline void SaveQuantInfoInTheGraph(
     const std::unordered_map<std::string, std::vector<float>>& info_map) {
   VLOG(1) << "Save quant info in the graph!";
   const std::string suffix = "_" + key_suffix + "_" + flag;
-  graph->Set(flag, new bool(true));
+  if (!graph->Has(flag)) {
+    graph->Set(flag, new bool(true));
+  }
   for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
     VLOG(1) << "SaveQuantInfoInTheGraph set attr: " << iter->first + suffix;
     graph->Set(iter->first + suffix, new std::vector<float>(iter->second));
-  }
-}
-
-static void GetInfoFromTheTmpOp(
-    ir::Graph* graph,
-    const std::string& flag,
-    const std::string& key_suffix,
-    std::unordered_map<std::string, std::vector<float>>* info_map) {
-  VLOG(3) << "get variables from the first op's attr";
-
-  const std::string suffix = "_" + key_suffix + "_" + flag;
-  for (auto* op_node :
-       ir::TopologyVarientSort(*graph, static_cast<ir::SortKind>(0))) {
-    if (!op_node->IsOp() || op_node->Op()->Type() != "save") continue;
-    VLOG(1) << "Come in save op";
-    auto* op_desc = op_node->Op();
-    if (op_desc->GetAttrIfExists<bool>(flag)) {
-      VLOG(1) << "flag is true";
-      op_desc->RemoveAttr(flag);
-      std::vector<std::string> attr_names = op_desc->AttrNames();
-      VLOG(1) << "attr_names size:" << attr_names.size();
-      for (auto fake_name : attr_names) {
-        VLOG(1) << "fake_name:" << fake_name;
-        size_t pos = fake_name.find(suffix);
-        if (pos != std::string::npos) {
-          std::string name = fake_name.substr(0, pos);
-          VLOG(1) << "name:" << name;
-          auto scales_vector =
-              PADDLE_GET_CONST(std::vector<float>, op_desc->GetAttr(fake_name));
-          VLOG(1) << "scales_vector:" << scales_vector[0];
-          info_map->insert(std::make_pair(name, scales_vector));
-          VLOG(1) << "insert success:";
-          op_desc->RemoveAttr(fake_name);
-          VLOG(1) << "remove success:";
-        }
-      }
-      graph->RemoveNode(op_node);
-      VLOG(1) << "remove op node success:";
-      break;
-    }
   }
 }
 
@@ -162,6 +106,12 @@ static inline float GetScaleValueForNode(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     Node* node) {
   return var_quant_scales->at(node->Name())[0];
+}
+
+static inline std::vector<float> GetScaleVecValueForNode(
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
+    Node* node) {
+  return var_quant_scales->at(node->Name());
 }
 
 }  // namespace ir

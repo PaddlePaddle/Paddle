@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_pass.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
 
 #include "glog/logging.h"
 
@@ -40,6 +41,7 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   bool is_int8 = false;
 
   std::unordered_set<const Node*> nodes2rm;
+  std::unordered_map<std::string, std::vector<float>> var_quant_scales{};
 
   for (const Node* n : graph->Nodes()) {
     if (n->IsOp()) {
@@ -150,10 +152,9 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
                             weight_scale_nums));
                     calcu_op_desc->SetAttr("weight_scale", weight_scale);
                   }
-                  if (bit_length == 8) {
-                    // Current 8-bit quantization only supports int8
-                    calcu_op_desc->SetAttr("op_weights_precision",
-                                           std::string("int8"));
+                  if (!var_quant_scales.count(weight_var_node->Var()->Name())) {
+                    var_quant_scales.insert(std::make_pair(
+                        weight_var_node->Var()->Name(), weight_scale));
                   }
 
                   calcu_op_desc->RenameInput(
@@ -180,6 +181,8 @@ void DeleteWeightDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
   }
 
   GraphSafeRemoveNodes(graph, nodes2rm);
+  SaveQuantInfoInTheGraph(
+      graph, "has_quant_info", "var_quant_scales", var_quant_scales);
   graph->Set("enable_int8", new bool(is_int8));
 }
 }  // namespace ir

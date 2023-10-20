@@ -371,7 +371,9 @@ class Conv2dXPUFusePass : public FusePassBase {
       bool with_conv_bias,
       bool with_bn,
       bool with_scale,
-      std::string op_weights_precision) const;
+      std::string op_weights_precision,
+      std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+      const;
 
   void CreateFusionInputs(
       ir::Graph* graph,
@@ -482,7 +484,9 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     bool with_conv_bias,
     bool with_bn,
     bool with_scale,
-    std::string op_weights_precision) const {
+    std::string op_weights_precision,
+    std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
+    const {
   // Get Node
   auto* conv = GetNodeFromNodesMap(nodes_map, "conv", "conv");
   PADDLE_ENFORCE_EQ(
@@ -505,8 +509,10 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   }
 
   // Get Weight scale in int8 scene
-  std::vector<float> weight_scale =
-      conv->Op()->GetAttrIfExists<std::vector<float>>("weight_scale");
+  std::vector<float> weight_scale{};
+  if (AreScalesPresentForNodes(var_quant_scales, {conv_filter})) {
+    weight_scale = GetScaleVecValueForNode(var_quant_scales, conv_filter);
+  }
   // Create fusion_bias_node
   auto filter_dims = filter_t->dims();
   bool has_bias = with_bn || with_conv_bias;
@@ -1094,7 +1100,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                with_conv_bias,
                                with_bn,
                                with_scale,
-                               op_weights_precision);
+                               op_weights_precision,
+                               &var_quant_scales);
     CreateFusionInputs(graph,
                        scope,
                        block,
@@ -1199,7 +1206,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     // out_dtype is same to input precision
     conv2d_xpu_op_desc.SetAttr("out_dtype",
                                fusion_nodes_map["x"]->Var()->GetDataType());
-    conv2d_xpu_op_desc.SetAttr("op_weights_precision", op_weights_precision);
 
     // Link node
     auto* conv2d_xpu = graph->CreateOpNode(&conv2d_xpu_op_desc);
