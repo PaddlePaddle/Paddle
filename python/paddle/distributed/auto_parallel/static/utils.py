@@ -2567,6 +2567,8 @@ def measure_real_op_cost_wrt_program_and_place(
 
     Example
     -----------
+    * Profiling a simple program from scratch:
+
     >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
     >>> program = ... # build your own program object here.
     >>> measure_real_op_cost_wrt_program_and_place(
@@ -2575,6 +2577,18 @@ def measure_real_op_cost_wrt_program_and_place(
     >>> print("first op execution time: %d us." % \\
     >>>     program.global_block().ops[0].get_runtime_us()
     >>> )
+
+    * Profiling a program which is already embedded into an Executor or
+    some other class instance:
+
+    >>> import paddle
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
+    >>> place: str = paddle.device.get_device() # here we assume place = "cuda:0"
+    >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
+    >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose=True)
+    >>> save_log = "./profile.log.%d" % os.getpid()
+    >>> with open(save_log, 'w') as f:
+    >>>     f.write(profiled_message)
     '''
 
     # parameter checks
