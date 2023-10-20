@@ -19,6 +19,11 @@ cc_library(
   DEPS drr)
 
 cc_library(
+  fused_dropout_add_pass
+  SRCS fused_dropout_add_pass.cc
+  DEPS drr)
+
+cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)

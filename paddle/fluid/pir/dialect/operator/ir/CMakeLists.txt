@@ -104,7 +104,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${api_gen_yaml_files}
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
     ${api_source_file_tmp}
@@ -135,10 +135,9 @@ set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 add_custom_command(
   OUTPUT ${python_c_header_file} ${python_c_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --python_c_def_h_file
-    ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
     ${python_c_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
           ${python_c_header_file}
@@ -166,9 +165,9 @@ set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${ops_api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --ops_api_file ${ops_api_source_file_tmp}
+    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --ops_api_file ${ops_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
           ${ops_api_source_file}
   COMMENT "copy_if_different ${ops_api_source_file}"
