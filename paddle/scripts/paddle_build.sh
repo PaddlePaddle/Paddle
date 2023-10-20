@@ -3364,7 +3364,9 @@ function build_pr_and_develop() {
     if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
         mkdir ${PADDLE_ROOT}/build/python/dist/
     fi
-    mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    cp ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    mkdir -p  ${PADDLE_ROOT}/dist1/
+    mv ${PADDLE_ROOT}/dist/*.whl  ${PADDLE_ROOT}/dist1
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
     generate_api_spec "$1" "PR"
@@ -3402,6 +3404,7 @@ function build_pr_and_develop() {
     fi
     mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
     mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+    mkdir $PADDLE_ROOT/build/pr_whl && cp ${PADDLE_ROOT}/dist1/*.whl $PADDLE_ROOT/build/pr_whl
     generate_api_spec "$1" "DEV"
 
 }
