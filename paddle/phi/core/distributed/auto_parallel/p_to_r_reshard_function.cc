@@ -26,19 +26,17 @@ namespace distributed {
 
 bool PToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
-
-  flag &= in.dist_attr().is_partial();
-  flag &= out_dist_attr.is_replicated();
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().is_partial());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
