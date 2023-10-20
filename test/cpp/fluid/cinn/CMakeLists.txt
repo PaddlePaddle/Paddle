@@ -46,7 +46,11 @@ if(WITH_TESTING)
     elementwise_add_op
     paddle_flags)
   target_link_libraries(cinn_instruction_run_op_test ${PYTHON_LIBRARIES})
+  get_property(
+    env
+    TEST cinn_instruction_run_op_test
+    PROPERTY ENVIRONMENT)
   set_tests_properties(
     cinn_instruction_run_op_test PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-                                            "${CINN_RUN_ENVIRONMENT}")
+                                            "${CINN_RUN_ENVIRONMENT}" ${env})
 endif()
