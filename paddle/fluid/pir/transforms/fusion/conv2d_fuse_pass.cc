@@ -22,6 +22,7 @@
 #include "paddle/pir/core/value.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
