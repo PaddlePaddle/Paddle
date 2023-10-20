@@ -66,9 +66,9 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination);
+USE_PASS(dead_code_elimination_pass);
 USE_PASS(inplace_pass);
-USE_PASS(conv2d_fuse);
+USE_PASS(conv2d_fuse_pass);
 
 PHI_DECLARE_bool(print_ir);
 

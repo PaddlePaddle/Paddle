@@ -188,4 +188,4 @@ std::unique_ptr<Pass> CreateConv2dFusePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(conv2d_fuse, Conv2dFusePass);
+REGISTER_IR_PASS(conv2d_fuse_pass, Conv2dFusePass);
