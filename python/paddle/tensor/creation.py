@@ -1366,15 +1366,22 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_or_pir_mode() and (
-        not isinstance(start, (Variable, paddle.pir.OpResult))
-        and not isinstance(end, (Variable, paddle.pir.OpResult))
-        and not isinstance(step, (Variable, paddle.pir.OpResult))
-    ):
+    is_value_input = (
+        not isinstance(start, paddle.pir.OpResult)
+        and not isinstance(end, paddle.pir.OpResult)
+        and not isinstance(step, paddle.pir.OpResult)
+    )
+
+    if not in_dynamic_mode() and is_value_input:
         out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if is_value_input and in_pir_mode():
+        return _C_ops.arange_value(
+            start, end, step, dtype, _current_expected_place()
+        )
 
     if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):

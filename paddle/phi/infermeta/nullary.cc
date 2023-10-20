@@ -16,6 +16,18 @@ limitations under the License. */
 
 namespace phi {
 
+void ArangeValueInferMeta(const Scalar& start,
+                          const Scalar& end,
+                          const Scalar& step,
+                          MetaTensor* out) {
+  double start_value = start.to<double>();
+  double end_value = end.to<double>();
+  double step_value = step.to<double>();
+  int numel =
+      static_cast<int>(std::ceil((end_value - start_value) / step_value));
+  out->set_dims(phi::make_ddim(std::vector<int64_t>(1, numel)));
+}
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {

@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -24,6 +25,13 @@ void ArangeKernel(const Context& dev_ctx,
                   const DenseTensor& end,
                   const DenseTensor& step,
                   DenseTensor* out);
+
+template <typename T, typename Context>
+void ArangeValueKernel(const Context& dev_ctx,
+                       const Scalar& start,
+                       const Scalar& end,
+                       const Scalar& step,
+                       DenseTensor* out);
 
 template <typename T, typename Context>
 void ArangeNullaryKernel(const Context& dev_ctx,

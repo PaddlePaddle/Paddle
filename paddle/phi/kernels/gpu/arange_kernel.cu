@@ -80,6 +80,19 @@ void ArangeNullaryKernel(const Context& dev_ctx,
   Range<T><<<grid, block, 0, stream>>>(start_value, step_value, size, out_data);
 }
 
+template <typename T, typename Context>
+void ArangeValueKernel(const Context& dev_ctx,
+                       const Scalar& start_value,
+                       const Scalar& end_value,
+                       const Scalar& step_value,
+                       DenseTensor* out) {
+  T start_value = start.to<T>();
+  T end_value = end.to<T>();
+  T step_value = step.to<T>();
+  ArangeNullaryKernel<T, Context>(
+      dev_ctx, start_value, end_value, step_value, out);
+}
+
 template decltype(ArangeNullaryKernel<int64_t, phi::GPUContext>)
     ArangeNullaryKernel;
 template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
@@ -100,3 +113,14 @@ PD_REGISTER_KERNEL(arange,
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
 }
+
+PD_REGISTER_KERNEL(arange_value,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::ArangeValueKernel,
+                   float,
+                   double,
+                   int64_t,
+                   int,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
