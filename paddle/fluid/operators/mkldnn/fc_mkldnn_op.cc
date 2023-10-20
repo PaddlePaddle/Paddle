@@ -172,6 +172,7 @@ class FCMKLDNNHandler
 
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
+      // For Inner Product primitives, the destination always N * C
       auto residual_data_md = dnnl::memory::desc(
           {MB, OC}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
       post_operations.append_binary(dnnl::algorithm::binary_add,
@@ -563,21 +564,8 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       if (residual_data) {
         residual_data_memory_p =
             std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
-        if (phi::funcs::is_int8<T_in>()) {
-          if (residual_data->dtype() == phi::DataType::INT8) {
-            auto residual_ptr = residual_data->data<int8_t>();
-            residual_data_memory_p->set_data_handle(
-                to_void_cast<int8_t>(residual_ptr));
-          } else {
-            auto residual_ptr = residual_data->data<uint8_t>();
-            residual_data_memory_p->set_data_handle(
-                to_void_cast<uint8_t>(residual_ptr));
-          }
-        } else {
-          auto residual_ptr = residual_data->data<T_in>();
-          residual_data_memory_p->set_data_handle(
-              to_void_cast<T_in>(residual_ptr));
-        }
+        void* residual_ptr = const_cast<void*>(residual_data->data());
+        residual_data_memory_p->set_data_handle(residual_ptr);
 
         fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
