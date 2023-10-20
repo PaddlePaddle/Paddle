@@ -574,11 +574,11 @@ void ReplaceWithGroupOp(pir::Block* block,
 
 class BuildCinnPass : public pir::Pass {
  public:
-  BuildCinnPass() : pir::Pass("BuildCinnPass", /*opt_level=*/1) {}
+  BuildCinnPass() : pir::Pass("build_cinn_pass", /*opt_level=*/1) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "InplacePass should run on module op.");
+    IR_ENFORCE(module_op, "build_cinn_pass should run on module op.");
     auto* block = module_op.block();
 
     std::vector<GroupOpsVec> groups =
