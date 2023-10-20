@@ -24,7 +24,7 @@ class TransLayerNormOpConverter : public OpConverter {
                "trans_layernorm plugin";
     framework::OpDesc op_desc(op, nullptr);
 
-    auto* X = engine_->GetITensor(op_desc.Input("X").front());
+    auto* X = engine_->GetITensor(op_desc.Input("X").front()); 
     auto* Bias_v = scope.FindVar(op_desc.Input("Bias").front());
     auto* Scale_v = scope.FindVar(op_desc.Input("Scale").front());
     // we already check the begin_norm_axis in pass action.

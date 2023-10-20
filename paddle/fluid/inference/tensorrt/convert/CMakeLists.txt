@@ -111,7 +111,9 @@ list(
   assign_op.cc
   flip_op.cc
   quantize_linear_op.cc
-  dequantize_linear_op.cc)
+  dequantize_linear_op.cc
+  token_merge_op.cc
+  token_unmerge_op.cc)
 
 if(${TENSORRT_MAJOR_VERSION} GREATER_EQUAL 7)
   list(APPEND CONVERT_FILES emb_eltwise_layernorm.cc

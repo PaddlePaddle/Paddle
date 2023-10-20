@@ -2521,6 +2521,20 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+    if (op_type == "token_merge") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The token_merge op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
+    if (op_type == "token_unmerge") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "The token_unmerge op does not support "
+                   "static shape yet";
+        return false;
+      }
+    }
     if (op_type == "fuse_eleadd_transpose") {
       if (!with_dynamic_shape) {
         VLOG(3) << "The fuse_eleadd_transpose op does not support "
@@ -2528,6 +2542,8 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
     }
+
+
     if (op_type == "lookup_table" || op_type == "lookup_table_v2") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the lookup_table does not support "
@@ -3086,7 +3102,9 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "token_merge",
+      "token_unmerge"};
 };
 
 struct GenericPluginTeller : public Teller {

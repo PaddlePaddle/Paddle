@@ -34,115 +34,72 @@ namespace plugin {
 #define SELECT_STRIDE 4
 
 
-template<typename T>
-struct tokenMerge{
-  int32_t operator()(const phi::GPUContext &dev_ctx,
-                   bool use_rand,
-                   int bsz,
-                   int token_number,
-                   int src_token_number,
-                   int dst_token_number,
-                   int final_token_number,
-                   int src_token_need_merged_num,
-                   int hid_dim,
-                   int height,
-                   int width,
-                   const T *origined_tensor,
-                   phi::DenseTensor &src_token_tensor,
-                   phi::DenseTensor &dst_token_tensor,
-                   phi::DenseTensor &src_L2_tensor,
-                   phi::DenseTensor &dst_L2_tensor,
-                   phi::DenseTensor &similarity_tensor,
-                   phi::DenseTensor &max_similarity_tensor,
-                   phi::DenseTensor &max_similarity_idx_tensor,
-                   phi::DenseTensor &argsort_res0_tensor,
-                   phi::DenseTensor &argsort_res1_tensor,
-                   phi::DenseTensor &divided_rank_tensor,
-                   T *merged_tensor,
-                   int *rand_select_arr,
-                   int *whether_to_be_merged_arr);
-};
-
-class TokenMergePluginDynamic : public DynamicPluginTensorRT {
+class TokenUnmergePluginDynamic : public DynamicPluginTensorRT {
  public:
-  TokenMergePluginDynamic(bool with_fp16,
+  TokenUnmergePluginDynamic(bool with_fp16,
                           int bsz,
-                          int token_number, 
-                          int hid_dim, 
-                          const float ratio,
-                          const bool use_rand)
-      : ratio_(ratio),  bsz_(bsz),  token_number_(token_number), 
-        hid_dim_(hid_dim){
+                          int token_number,
+                          int final_token_number,
+                          int hid_dim)
+      : bsz_(bsz), token_number_(token_number), final_token_number_(final_token_number), hid_dim_(hid_dim){
     with_fp16_ = with_fp16;
-    use_rand_ = use_rand;
     height_ = static_cast<int>(sqrt(token_number));
     width_ = static_cast<int>(sqrt(token_number));
     src_token_number_ = (token_number * 3) / 4;
     dst_token_number_ = token_number - src_token_number_;
-    src_need_merged_number_ = token_number * ratio > src_token_number_? src_token_number_ : token_number * ratio;
-    final_token_number_ = token_number - src_need_merged_number_;
-    VLOG(3) << "use_rand = " << use_rand_ << ", height_ = " << height_ << "width_ = " << width_ << ", src_token_number_ = " << src_token_number_ << ", final_token_number_ = " << final_token_number_;
+    VLOG(3) << "createTokenUnmergePluginDynamic" <<"height_ = " << height_ << "width_ = " << width_ << ", src_token_number_ = " << src_token_number_ << ", final_token_number_ = " << final_token_number_;
   }
   
-  TokenMergePluginDynamic(void const* serial_data, size_t serial_length) {
+  TokenUnmergePluginDynamic(void const* serial_data, size_t serial_length) {
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
-    DeserializeValue(&serial_data, &serial_length, &ratio_);
-    DeserializeValue(&serial_data, &serial_length, &use_rand_);
     DeserializeValue(&serial_data, &serial_length, &bsz_);
     DeserializeValue(&serial_data, &serial_length, &token_number_);
     DeserializeValue(&serial_data, &serial_length, &height_);
     DeserializeValue(&serial_data, &serial_length, &width_);
     DeserializeValue(&serial_data, &serial_length, &src_token_number_);
     DeserializeValue(&serial_data, &serial_length, &dst_token_number_);
-    DeserializeValue(&serial_data, &serial_length, &src_need_merged_number_);
     DeserializeValue(&serial_data, &serial_length, &final_token_number_);
+    DeserializeValue(&serial_data, &serial_length, &hid_dim_);
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
-    return new TokenMergePluginDynamic(with_fp16_,
+    return new TokenUnmergePluginDynamic(with_fp16_,
                                       bsz_,
                                       token_number_,
-                                      hid_dim_,
-                                      ratio_,
-                                      use_rand_);
+                                      final_token_number_,
+                                      hid_dim_);
   }
 
   const char* getPluginType() const TRT_NOEXCEPT override {
-    return "token_merge_plugin_dynamic";
+    return "token_unmerge_plugin_dynamic";
   }
 
-  int getNbOutputs() const TRT_NOEXCEPT override { return 3; }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   int initialize() TRT_NOEXCEPT override { return 0; }
-  void terminate() TRT_NOEXCEPT override {};
+  void terminate() TRT_NOEXCEPT override{};
 
 
   size_t getSerializationSize() const TRT_NOEXCEPT override {
-    return SerializedSize(with_fp16_) +  
-           SerializedSize(ratio_) + 
-           SerializedSize(use_rand_) + 
+    return SerializedSize(with_fp16_) + 
            SerializedSize(bsz_) +
            SerializedSize(token_number_) +
-           SerializedSize(hid_dim_) +
-           SerializedSize(height_) + 
-           SerializedSize(width_) +
-           SerializedSize(src_token_number_) + 
-           SerializedSize(dst_token_number_) + 
+           SerializedSize(height_) +
+           SerializedSize(width_)  +
+           SerializedSize(src_token_number_) +
+           SerializedSize(dst_token_number_) +
            SerializedSize(final_token_number_) + 
-           SerializedSize(final_token_number_);
+           SerializedSize(hid_dim_);
   }
 
   void serialize(void* buffer) const TRT_NOEXCEPT override {
     SerializeValue(&buffer, with_fp16_);
-    SerializeValue(&buffer, ratio_);
-    SerializeValue(&buffer, use_rand_);
     SerializeValue(&buffer, bsz_);
     SerializeValue(&buffer, token_number_);
-    SerializeValue(&buffer, hid_dim_);
     SerializeValue(&buffer, height_);
     SerializeValue(&buffer, width_);
     SerializeValue(&buffer, src_token_number_);
     SerializeValue(&buffer, dst_token_number_);
-    SerializeValue(&buffer, src_need_merged_number_);
     SerializeValue(&buffer, final_token_number_);
+    SerializeValue(&buffer, hid_dim_);
   }
 
   nvinfer1::DimsExprs getOutputDimensions(
@@ -183,27 +140,20 @@ class TokenMergePluginDynamic : public DynamicPluginTensorRT {
   void destroy() TRT_NOEXCEPT override { delete this; }
 
   private:
-  float ratio_;
-  bool use_rand_;
   int bsz_;
   int token_number_;
-  int hid_dim_;
   int height_;
   int width_;
   int src_token_number_;
   int dst_token_number_;
-  int src_need_merged_number_;
   int final_token_number_;
-
-  //need return
-  // void *rand_select_arr{nullptr};
-  // void *whether_to_be_merged_arr{nullptr};
+  int hid_dim_;
 };
 
-class TokenMergePluginCreator : public TensorRTPluginCreator {
+class TokenUnmergePluginCreator : public TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "token_merge_dynamic";
+    return "token_unmerge_dynamic";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -212,11 +162,12 @@ class TokenMergePluginCreator : public TensorRTPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
-    return new TokenMergePluginDynamic(serial_data, serial_length);
+    return new TokenUnmergePluginDynamic(serial_data, serial_length);
   }
 };
 
-REGISTER_TRT_PLUGIN_V2(TokenMergePluginCreator);
+REGISTER_TRT_PLUGIN_V2(TokenUnmergePluginCreator);
+
 
 }  // namespace plugin
 }  // namespace tensorrt

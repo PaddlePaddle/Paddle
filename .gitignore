@@ -36,6 +36,7 @@ paddle/fluid/prim/api/generated_prim/*.h
 *.DS_Store
 *.vs
 build/
+build-no-tome/
 dist/
 build_doc/
 *.user

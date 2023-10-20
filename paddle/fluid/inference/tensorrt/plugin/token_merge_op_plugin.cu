@@ -19,24 +19,45 @@
 #include "paddle/fluid/inference/tensorrt/plugin/token_merge_op_plugin.h"
 #include "paddle/fluid/platform/float16.h"
 
+
 namespace paddle {
 namespace inference {
 namespace tensorrt {
 namespace plugin {
-  TokenMergePluginDynamic::TokenMergePluginDynamic(int bsz,int token_number, int hid_dim, const float ratio)
-    : ratio_(ratio), token_number_(token_number), hid_dim_(hid_dim), bsz_(bsz);
-     {
-       src_token_number_ = (token_number * 4) / 3;
-       dst_token_number_ = token_number - src_token_number_;
-       int merged_token_number = token_number * ratio > src_token_number_? src_token_number_ : token_number * ratio;
-       final_token_number_ = token_number - merged_token_number;
-     }
 
-  int TokenMergePluginDynamic::initialize() TRT_NOEXCEPT {}
+nvinfer1::DimsExprs TokenMergePluginDynamic::getOutputDimensions(
+  int output_index,
+  const nvinfer1::DimsExprs* inputs,
+  int nb_inputs,
+  nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(nb_inputs,
+                   1,
+                   platform::errors::InvalidArgument(
+                       "The Split plugin should be only one input."));
+  PADDLE_ENFORCE_LT(output_index,
+                   3,
+                   platform::errors::InvalidArgument(
+                      "When GetOutputDimensions, the index(%d) should not "
+                      "greater the num(%d) of the outpus.",
+                      output_index,
+                      3));
+  nvinfer1::DimsExprs outputDims;
+  if (output_index == 1 || output_index == 2) {
+      outputDims.nbDims = 2;
+      outputDims.d[0] = inputs[0].d[0];
+      outputDims.d[1] = expr_builder.constant(token_number_);
+  } else if (output_index == 0) {
+      outputDims.nbDims = 3;
+      outputDims.d[0] = inputs[0].d[0];
+      outputDims.d[1] = expr_builder.constant(final_token_number_);
+      outputDims.d[2] = expr_builder.constant(hid_dim_);
+  }
+  return outputDims;
+}
 
-  void TransLayerNormPluginDynamic::terminate() TRT_NOEXCEPT {}
-  
-  bool TokenMergePluginDynamic::supportsFormatCombination(
+
+
+bool TokenMergePluginDynamic::supportsFormatCombination(
     int pos,
     const nvinfer1::PluginTensorDesc *in_out,
     int nb_inputs,
@@ -52,6 +73,7 @@ namespace plugin {
                                         "num(%d) of the input and the output.",
                                         pos,
                                         nb_inputs + nb_outputs));
+  VLOG(3) << "nb_inputs" << nb_inputs << " + " << "nb_outputs" << nb_outputs;
   const nvinfer1::PluginTensorDesc &in = in_out[pos];
  if (pos == 0) {
     if (with_fp16_) {
@@ -64,186 +86,231 @@ namespace plugin {
       return in.type == in_out[0].type && in.format == nvinfer1::TensorFormat::kLINEAR;
   }
   if (pos == 2) 
-    return in.type == kINT32 && in.format == nvinfer1::TensorFormat::kLINEAR;
+    return in.type == nvinfer1::DataType::kINT32 && in.format == nvinfer1::TensorFormat::kLINEAR;
 
   if (pos == 3) 
-      return in.type == kINT32 && in.format == nvinfer1::PluginFormat::kLINEAR;
+      return in.type == nvinfer1::DataType::kINT32 && in.format == nvinfer1::TensorFormat::kLINEAR;
+  
 }
-  
-  
-  
-  
-  
 
 
 
+void TokenMergePluginDynamic::configurePlugin(
+    const nvinfer1::DynamicPluginTensorDesc *in,
+    int nbInputs,
+    const nvinfer1::DynamicPluginTensorDesc *out,
+    int nbOutputs) TRT_NOEXCEPT {}
 
-
-  
-  nvinfer1::DimsExprs TokenMergePluginDynamic::getOutputDimensions(
-    int output_index,
-    const nvinfer1::DimsExprs* inputs,
-    int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
-  PADDLE_ENFORCE_EQ(nb_inputs,
-                    1,
+nvinfer1::DataType TokenMergePluginDynamic::getOutputDataType(
+    int index,
+    const nvinfer1::DataType *input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      1,
+      platform::errors::InvalidArgument(
+          "The token_merge Plugin only has one input, so the "
+          "nb_inputs value should be 1, but get %d.",
+          nb_inputs));
+  VLOG(3) << "exec TokenMergePluginDynamic::getOutputDataType";
+  PADDLE_ENFORCE_EQ((input_types[0] == nvinfer1::DataType::kFLOAT ||
+                     input_types[0] == nvinfer1::DataType::kHALF),
+                    true,
                     platform::errors::InvalidArgument(
-                        "The Split plugin should be only one input."));
-  PADDLE_ENFORCE_LT(output_index,
-                    3,
-                    platform::errors::InvalidArgument(
-                        "When GetOutputDimensions, the index(%d) should not "
-                        "greater the num(%d) of the outpus.",
-                        output_index,
-                        3));
-  int bsz = inputs[0].d[0];
-  int tokenNumber = inputs[0].d[1];
-  int hidDim = inputs[0].d[2];
-
-  nvinfer1::Dims outputDims;
-  if (index == 1 || index == 2) {
-      outputDims.nbDims = 2;
-      outputDims.d[0] = bsz;
-      outputDims.d[1] = tokenNumber;
-  } else if (index == 0) {
-      int finalTokenNumber = tokenNumber * ratio_;
-      outputDims.nbDims = 3;
-      outputDims.d[0] = bsz;
-      outputDims.d[1] = finalTokenNumber;
-      outputDims.d[2] = hidDim;
+                        "The input type should be half or float"));
+  if (index == 0){
+    return input_types[0];
   }
-  return outputDims;
+  return nvinfer1::DataType::kINT32;
 }
 
 
 
-
-
-
-int TokenMergePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
-                                const nvinfer1::PluginTensorDesc* output_desc,
-                                const void* const* inputs,
-                                void* const* outputs,
-                                void* workspace,
-                                cudaStream_t stream) TRT_NOEXCEPT {
+int TokenMergePluginDynamic::enqueue(
+    const nvinfer1::PluginTensorDesc *input_desc,
+    const nvinfer1::PluginTensorDesc *output_desc,
+    const void *const *inputs,
+    void *const *outputs,
+    void *workspace,
+    cudaStream_t stream) TRT_NOEXCEPT {
+  VLOG(3) << "exec TokenMergePluginDynamic::enqueue";
   const auto &input_dims = input_desc[0].dims;
   auto input_type = input_desc[0].type;
   int bsz = input_dims.d[0];
   int token_numebr = input_dims.d[1];
   int hid_dim = input_dims.d[2];
 
-  paddle::platform::DeviceContextPool &pool =
-      paddle::platform::DeviceContextPool::Instance();
-  platform::CUDAPlace place(platform::GetCurrentDeviceId());
-  auto *device_context = static_cast<phi::GPUContext *>(pool.Get(place));
-  const phi::GPUContext &dev_ctx = *device_context;
-
+  int device_id;
+  cudaGetDevice(&device_id);
+  auto *device_ctx = static_cast<phi::GPUContext *>(
+        platform::DeviceContextPool::Instance().Get(
+            platform::CUDAPlace(device_id)));
+  const phi::GPUContext &dev_ctx = *device_ctx;
 
    //divied_rank
-  phi::DenseTensorMeta divied_rank_meta(phi::DataType::INT32,
-                               phi::make_ddim({bsz, dst_token_number_}));
-  std::shared_ptr<phi::Allocation> divied_rank_alloc(new phi::Allocation(
-      static_cast<void *>(const_cast<int *>(divied_rank_gpu_)),  // NOLINT
-      bsz * dst_token_number_ * sizeof(int),
-      place))
-  auto divied_rank_tensor = phi::DenseTensor(divied_rank_alloc, divied_rank_meta);
+  phi::DenseTensor divied_rank_tensor;
+  divied_rank_tensor.Resize({bsz, dst_token_number_});
+  dev_ctx.Alloc<int>(&divied_rank_tensor, sizeof(int) * dst_token_number_ * bsz);
   
   //max_similarity_idx
-  phi::DenseTensorMeta max_similarity_idx_meta(phi::DataType::INT32,
-                               phi::make_ddim({bsz, src_token_number_}));
-  std::shared_ptr<phi::Allocation> max_similarity_idx_alloc(new phi::Allocation(
-      static_cast<void *>(const_cast<int *>(max_similarity_gpu_)),  // NOLINT
-      bsz * src_token_number_ * sizeof(int),
-      place))
-  auto max_similarity_idx_tensor = phi::DenseTensor(max_similarity_idx_alloc, max_similarity_idx_meta);
+  phi::DenseTensor max_similarity_idx_tensor;
+  max_similarity_idx_tensor.Resize({bsz, src_token_number_});
+  dev_ctx.Alloc<int>(&max_similarity_idx_tensor, sizeof(int) * src_token_number_ * bsz);
+  
+
 
 
   if (input_type == nvinfer1::DataType::kFLOAT) {
     VLOG(3) << "TRT Plugin DataType selected. TokenMerge-->fp32";
     //dst_token
-    phi::DenseTensorMeta dst_token_meta(phi::DataType::FLOAT32,
-                                    phi::make_ddim({bsz, dst_token_number_, hid_dim}));
-    std::shared_ptr<phi::Allocation> dst_token_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(dst_token_gpu_)),  
-        bsz * dst_token_number * hid_dim * sizeof(float),
-        place));
-    auto dst_token_tensor = phi::DenseTensor(dst_token_alloc, dst_token_meta);
+    phi::DenseTensor dst_token_tensor;
+    dst_token_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<float>(&dst_token_tensor, sizeof(float) * bsz * dst_token_number_ * hid_dim);
 
     //src_token
-    phi::DenseTensorMeta src_token_meta(phi::DataType::FLOAT32,
-                                    phi::make_ddim({bsz, dst_token_number_, hid_dim}));
-    std::shared_ptr<phi::Allocation> src_token_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(dst_token_gpu_)),  
-        bsz * src_token_number * hid_dim * sizeof(float),
-        place));
-    auto src_token_tensor = phi::DenseTensor(src_token_alloc, src_token_meta);
-    
+    phi::DenseTensor src_token_tensor;
+    src_token_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<float>(&src_token_tensor, sizeof(float) * bsz * src_token_number_ * hid_dim);
     
     //dst_L2
-    phi::DenseTensorMeta dst_L2_meta(phi::DataType::FLOAT32,
-                                    phi::make_ddim({bsz, dst_token_number_, hid_dim}));
-    std::shared_ptr<phi::Allocation> dst_L2_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(dst_L2_gpu_)),  
-        bsz * dst_token_number * hid_dim * sizeof(float),
-        place));
-    auto dst_L2_tensor = phi::DenseTensor(dst_L2_alloc, dst_L2_meta);
-  
+    phi::DenseTensor dst_L2_tensor;
+    dst_L2_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<float>(&dst_L2_tensor, sizeof(float) * bsz * dst_token_number_ * hid_dim);
+
     //src_L2
-    phi::DenseTensorMeta src_L2_meta(phi::DataType::FLOAT32,
-                                 phi::make_ddim({bsz, src_token_number_, hid_dim}));
-    std::shared_ptr<phi::Allocation> src_L2_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(src_L2_gpu_)),  
-        bsz * src_token_number * hid_dim * sizeof(float),
-        place));
-    auto src_L2_tensor = phi::DenseTensor(src_L2_alloc, src_L2_meta);
+    phi::DenseTensor src_L2_tensor;
+    src_L2_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<float>(&src_L2_tensor, sizeof(float) * bsz * src_token_number_ * hid_dim);
+    
+   
     
     //similarity
-    phi::DenseTensorMeta similarity_meta(phi::DataType::FLOAT32,
-                                 phi::make_ddim({bsz, src_token_number_ * dst_token_number_}));
-    std::shared_ptr<phi::Allocation> similarity_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(similarity_gpu_)),  // NOLINT
-        bsz * src_token_number_ * dst_token_number_ * sizeof(float),
-        place))
-    auto similarity_tensor = phi::DenseTensor(similarity_alloc, similarity_meta);
+    phi::DenseTensor similarity_tensor;
+    similarity_tensor.Resize({bsz, src_token_number_ * dst_token_number_});
+    dev_ctx.Alloc<float>(&similarity_tensor, sizeof(float) * bsz * src_token_number_ * dst_token_number_);
+    
 
 
     //max_similarity and tensors for argsort
-    phi::DenseTensorMeta max_similarity_meta(phi::DataType::FLOAT32,
-                                 phi::make_ddim({bsz, src_token_number_}));
-    std::shared_ptr<phi::Allocation> max_similarity_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(max_similarity_gpu_)),  // NOLINT
-        bsz * src_token_number_ * sizeof(float),
-        place))
-    auto max_similarity_tensor = phi::DenseTensor(max_similarity_alloc, max_similarity_meta);
+    phi::DenseTensor max_similarity_tensor;
+    max_similarity_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<float>(&max_similarity_tensor, sizeof(float) * bsz * src_token_number_);
 
-    phi::DenseTensorMeta argsort_res0_meta(phi::DataType::FLOAT32,
-                                 phi::make_ddim({bsz, src_token_number_}));
-    std::shared_ptr<phi::Allocation> argsort_res0_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<float *>(argsort_res0_gpu_)),  // NOLINT
-        bsz * src_token_number_ * sizeof(float),
-        place))
-    auto argsort_res0_tensor = phi::DenseTensor(argsort_res0_alloc, argsort_res0_meta);
+    phi::DenseTensor argsort_res0_tensor;
+    argsort_res0_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<float>(&argsort_res0_tensor, sizeof(float) * bsz * src_token_number_);
 
-    phi::DenseTensorMeta argsort_res1_meta(phi::DataType::INT32,
-                                 phi::make_ddim({bsz, src_token_number_}));
-    std::shared_ptr<phi::Allocation> argsort_res1_alloc(new phi::Allocation(
-        static_cast<void *>(const_cast<int *>(argsort_re1_gpu_)),  // NOLINT
-        bsz * src_token_number_ * sizeof(int),
-        place))
-    auto argsort_res0_tensor = phi::DenseTensor(argsort_res1_alloc, argsort_res1_meta);
+    phi::DenseTensor argsort_res1_tensor;
+    argsort_res1_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<int>(&argsort_res1_tensor, sizeof(int) * bsz * src_token_number_);
 
 
-
-    float *origin_tensor = reinterpret_cast<const float *>(inputs[0]);
-    float *merged_tensor = reinterpret_cast<const float *>(outputs[0]);
-    int *rand_select_arr = reinterpret_cast<const int *>(outputs[1]);
-    int *whether_tobe_merge = reinterpret_cast<const int *>(outputs[2]);
-
-
+    const float *origin_tensor = reinterpret_cast<const float *>(inputs[0]);
+    float *merged_tensor = reinterpret_cast<float *>(outputs[0]);
+    int *rand_select_arr = reinterpret_cast<int *>(outputs[1]);
+    int *whether_tobe_merge = reinterpret_cast<int *>(outputs[2]);
+    tokenMerge<float> tome;
+    return tome(dev_ctx,
+                      use_rand_,
+                      bsz_,
+                      token_number_,
+                      src_token_number_,
+                      dst_token_number_,
+                      final_token_number_,
+                      src_need_merged_number_,
+                      hid_dim_,
+                      height_,
+                      width_,
+                      origin_tensor,
+                      src_token_tensor,
+                      dst_token_tensor,
+                      src_L2_tensor,
+                      dst_L2_tensor,
+                      similarity_tensor,
+                      max_similarity_tensor,
+                      max_similarity_idx_tensor,
+                      argsort_res0_tensor,
+                      argsort_res1_tensor,
+                      divied_rank_tensor,
+                      merged_tensor,
+                      rand_select_arr,
+                      whether_tobe_merge);
    
   } else if (input_type == nvinfer1::DataType::kHALF) {
     VLOG(3) << "TRT Plugin DataType selected. TokenMerge-->fp16";
+    phi::DenseTensor dst_token_tensor;
+    dst_token_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&dst_token_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
 
+    //src_token
+    phi::DenseTensor src_token_tensor;
+    src_token_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&src_token_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
+    
+    //dst_L2
+    phi::DenseTensor dst_L2_tensor;
+    dst_L2_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&dst_L2_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
+
+    //src_L2
+    phi::DenseTensor src_L2_tensor;
+    src_L2_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&src_L2_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
+    
+   
+    
+    //similarity
+    phi::DenseTensor similarity_tensor;
+    similarity_tensor.Resize({bsz, src_token_number_ * dst_token_number_});
+    dev_ctx.Alloc<paddle::platform::float16>(&similarity_tensor, sizeof(half) * bsz * src_token_number_ * dst_token_number_);
+    
+
+
+    //max_similarity and tensors for argsort
+    phi::DenseTensor max_similarity_tensor;
+    max_similarity_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<paddle::platform::float16>(&max_similarity_tensor, sizeof(half) * bsz * src_token_number_);
+
+    phi::DenseTensor argsort_res0_tensor;
+    argsort_res0_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<float>(&argsort_res0_tensor, sizeof(float) * bsz * src_token_number_);
+
+    phi::DenseTensor argsort_res1_tensor;
+    argsort_res1_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<int>(&argsort_res1_tensor, sizeof(int) * bsz * src_token_number_);
+
+
+    const half *origin_tensor = reinterpret_cast<const half *>(inputs[0]);
+    half *merged_tensor = reinterpret_cast<half *>(outputs[0]);
+    int *rand_select_arr = reinterpret_cast<int *>(outputs[1]);
+    int *whether_tobe_merge = reinterpret_cast<int *>(outputs[2]);
+
+    tokenMerge<half> tome;
+    return tome(dev_ctx,
+                      use_rand_,
+                      bsz,
+                      token_number_,
+                      src_token_number_,
+                      dst_token_number_,
+                      final_token_number_,
+                      src_need_merged_number_,
+                      hid_dim_,
+                      height_,
+                      width_,
+                      origin_tensor,
+                      src_token_tensor,
+                      dst_token_tensor,
+                      src_L2_tensor,
+                      dst_L2_tensor,
+                      similarity_tensor,
+                      max_similarity_tensor,
+                      max_similarity_idx_tensor,
+                      argsort_res0_tensor,
+                      argsort_res1_tensor,
+                      divied_rank_tensor,
+                      merged_tensor,
+                      rand_select_arr,
+                      whether_tobe_merge);
 
 
 
@@ -254,9 +321,6 @@ int TokenMergePluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_des
   }
   return cudaGetLastError() != cudaSuccess;                                
   
-
-
-
 }
 
 

@@ -16,6 +16,18 @@ namespace inference {
 namespace tensorrt {
 namespace plugin {
 
+template <typename T>
+class tome_TypeTrait {
+ public:
+  using Type = T;
+};
+
+template <>
+class tome_TypeTrait<half> {
+ public:
+  using Type = typename phi::dtype::float16;
+};
+
 
 /**
  * @brief  generate random indices to select dst_tokens
@@ -67,7 +79,8 @@ __global__ void token_merge_rand_select_kernel(int* rand_select_arr, int token_n
  * @return rearranged_tensor origin token_tensor to src_token and dst_token 
  */
 template <typename T>
-__global__ void token_merge_split_kernel(T* origin_token_tensor,
+__global__ void token_merge_split_kernel(
+            const T* origin_token_tensor,
             int *rand_select_arr,
             int token_number,
             int hid_dim,
@@ -112,7 +125,7 @@ __global__ void token_merge_split_kernel(T* origin_token_tensor,
   if(thread_id_in_wrap == 0)
     sum[wrap_id_in_block] = sqrtf(aggregate);
   __syncthreads();
-  T aggregate0=1/sum[wrap_id_in_block];
+  T aggregate0=static_cast<T>(1.0f)/sum[wrap_id_in_block];
   for(int cnt = 0, idx = data_index0; idx < token0_begin + hid_dim; idx += WARP_SIZE, cnt++){
     if(rand_select_arr[rand_select_begin] == 0){
       dst_L2[(dst_token_num * blockIdx.z + gloable_wrap_id) * hid_dim + threadIdx.x + cnt * WARP_SIZE] = origin_token_tensor[idx]*aggregate0;
@@ -136,7 +149,7 @@ __global__ void token_merge_split_kernel(T* origin_token_tensor,
   if(thread_id_in_wrap == 0)
     sum[wrap_id_in_block] = sqrtf(aggregate);
   __syncthreads();
-  T aggregate1 = 1/sum[wrap_id_in_block];
+  T aggregate1 = static_cast<T>(1.0f)/sum[wrap_id_in_block];
   for(int cnt = 0, idx = data_index1; idx < token1_begin + hid_dim; idx += WARP_SIZE, cnt++){
    if(rand_select_arr[rand_select_begin + 1] == 0){
       dst_L2[(dst_token_num * blockIdx.z + gloable_wrap_id) * hid_dim + threadIdx.x + cnt * WARP_SIZE] = origin_token_tensor[idx]*aggregate1;
@@ -161,7 +174,7 @@ __global__ void token_merge_split_kernel(T* origin_token_tensor,
   if(thread_id_in_wrap % 32 == 0)
     sum[wrap_id_in_block] = sqrtf(aggregate);
   __syncthreads();
-  T aggregate2 = 1/sum[wrap_id_in_block];
+  T aggregate2 = static_cast<T>(1.0f)/sum[wrap_id_in_block];
   for(int cnt = 0, idx = data_index2; idx < token2_begin + hid_dim; idx += WARP_SIZE, cnt++){
    if(rand_select_arr[rand_select_begin + 2] == 0){
       dst_L2[(dst_token_num * blockIdx.z + gloable_wrap_id) * hid_dim + threadIdx.x  +cnt * WARP_SIZE] = origin_token_tensor[idx]*aggregate2;
@@ -184,7 +197,7 @@ __global__ void token_merge_split_kernel(T* origin_token_tensor,
   if(thread_id_in_wrap % 32 == 0)
     sum[wrap_id_in_block] = sqrtf(aggregate);
   __syncthreads();
-  T aggregate3 = 1/sum[wrap_id_in_block];
+  T aggregate3 = static_cast<T>(1.0f)/sum[wrap_id_in_block];
   for(int cnt = 0, idx = data_index3; idx < token3_begin + hid_dim; idx += WARP_SIZE, cnt++){
    if(rand_select_arr[rand_select_begin + 3] == 0){
       dst_L2[(dst_token_num * blockIdx.z + gloable_wrap_id) * hid_dim + threadIdx.x  +cnt * WARP_SIZE] = origin_token_tensor[idx]*aggregate0;
@@ -345,9 +358,8 @@ __global__ void token_merge_concat_kernel(T* dst_token, T* src_token, int token_
 
 
 template<typename T>
-int32_t tokenMerge(cudaStream_t stream,
-                   int device_id,
-                   nvinfer1::DataType dtype,
+int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
+                   bool use_rand,
                    int bsz,
                    int token_number,
                    int src_token_number,
@@ -357,7 +369,7 @@ int32_t tokenMerge(cudaStream_t stream,
                    int hid_dim,
                    int height,
                    int width,
-                   T *origined_tensor,
+                   const T *origined_tensor,
                    phi::DenseTensor &src_token_tensor,
                    phi::DenseTensor &dst_token_tensor,
                    phi::DenseTensor &src_L2_tensor,
@@ -369,29 +381,30 @@ int32_t tokenMerge(cudaStream_t stream,
                    phi::DenseTensor &argsort_res1_tensor,
                    phi::DenseTensor &divided_rank_tensor,
                    T *merged_tensor,
-                   int *rand_select_arr,
-                   int *whether_to_be_merged_arr){
+                   int *rand_select,
+                   int *whether_to_be_merged){
+  using PD_T = typename tome_TypeTrait<T>::Type;
+  T* src_L2 = reinterpret_cast<T*>(src_L2_tensor.data<PD_T>());
+  T* src_token = reinterpret_cast<T*>(src_token_tensor.data<PD_T>());
 
-  T* src_L2 = src_L2_tensor.mutable_data<T>(platform::CUDAPlace(device_id));
-  T* src_token = src_token_tensor.mutable_data<T>(platform::CUDAPlace(device_id));
+  T* dst_L2 = reinterpret_cast<T*>(dst_L2_tensor.data<PD_T>());
+  T* dst_token = reinterpret_cast<T*>(dst_token_tensor.data<PD_T>());
 
-  T* dst_L2 = dst_L2_tensor.mutable_data<T>(platform::CUDAPlace(device_id));
-  T* dst_token = dst_token_tensor.mutable_data<T>(platform::CUDAPlace(device_id));
-
-  T* similarity = similarity_tensor.mutable_data<T>(platform::CUDAPlace(device_id));
-  int* max_similarity_idx = max_similarity_idx_tensor.mutable_data<int>(platform::CUDAPlace(device_id));
-  int* divided_rank = divided_rank_tensor.mutable_data<int>(platform::CUDAPlace(device_id));
+  T* similarity = reinterpret_cast<T*>(similarity_tensor.data<PD_T>());
+  T* max_similarity =reinterpret_cast<T*>(max_similarity_tensor.data<PD_T>());
+  int* max_similarity_idx = max_similarity_idx_tensor.data<int>();
+  int* divied_rank = divided_rank_tensor.data<int>();
   //0: gen randomly select array，and init whether_tobe_merge_arrry
   dim3 grid_dim_for_rand_select(token_number / (4 * WARP_SIZE), bsz);
   dim3 block_dim_for_rand_select(WARP_SIZE);
-  token_merge_rand_select_kernel<<<grid_dim_for_rand_select, block_dim_for_rand_select, 0, stream>>>(rand_select, token_number, use_rand);
+  token_merge_rand_select_kernel<<<grid_dim_for_rand_select, block_dim_for_rand_select, 0, dev_ctx.stream()>>>(rand_select, token_number, use_rand);
     
   //1.split origined_tensor
   dim3 grid_dim_for_split(height / 16, width / 2, bsz);
   dim3 block_dim_for_split(WARP_SIZE, 8);
   token_merge_split_kernel<<<grid_dim_for_split, block_dim_for_split>>>(
     origined_tensor,
-    rand_select_arr,
+    rand_select,
     token_number,
     hid_dim,
     dst_token_number,
@@ -403,12 +416,12 @@ int32_t tokenMerge(cudaStream_t stream,
     src_L2);
 
   //step2: calculate the similarity between each src_token and each dst_token
-  phi::MatmulKernel<T, phi::GPUContext>(device_context,
+  phi::MatmulKernel<typename tome_TypeTrait<T>::Type, phi::GPUContext>(dev_ctx,
                                         src_L2_tensor,
                                         dst_L2_tensor,
                                         false,
                                         true,
-                                        similarity)
+                                        &similarity_tensor);
   
 
   //step3: get dst_token that is most similar to src_token
@@ -422,15 +435,15 @@ int32_t tokenMerge(cudaStream_t stream,
   
 
   //step4: argsort by echo src_token's max similarity
-  phi::ArgsortKernel<T, phi::GPUContext>(device_context,
+  phi::ArgsortKernel<typename tome_TypeTrait<T>::Type, phi::GPUContext>(dev_ctx,
                                         max_similarity_tensor,
                                         -1,
                                         false,
-                                        argsort_res0_tensor,
-                                        argsort_res1_tensor)
+                                        &argsort_res0_tensor,
+                                        &argsort_res1_tensor);
 
   //step5: do reduce
-  auto src_token_need_tobe_merged_id = argsort_res1_tensor.mutable_data<int>(platform::CUDAPlace(device_id))
+  auto src_token_need_tobe_merged_id = argsort_res1_tensor.data<int>();
   dim3 grid_dim_for_reduce(src_token_number / 8, bsz);
   dim3 block_dim_for_reduce(32, 8);
   token_merge_reduce_kernel<<<grid_dim_for_reduce, block_dim_for_reduce>>>(
@@ -444,7 +457,7 @@ int32_t tokenMerge(cudaStream_t stream,
     src_token_need_merged_num,
     max_similarity_idx,
     divied_rank,
-    whether_to_be_merged_arr);
+    whether_to_be_merged);
 
   dim3 grid_dim_for_concat(final_token_number / 8, bsz);
   dim3 block_dim_for_concat(32, 8);
@@ -455,16 +468,16 @@ int32_t tokenMerge(cudaStream_t stream,
     hid_dim,
     src_token_number,
     dst_token_number,
-    divided_rank,
+    divied_rank,
     src_token_need_tobe_merged_id,
     final_token_number,
     src_token_need_merged_num,
-    whether_tobe_merge,
+    whether_to_be_merged,
     merged_tensor);
   return cudaGetLastError() != cudaSuccess;
 }
-
-
+template struct tokenMerge<float>;
+template struct tokenMerge<half>;
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
