@@ -191,8 +191,11 @@ class TestBatchNorm(unittest.TestCase):
                         ),
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v3_1(x, is_test, trainable_statistics):
                 with base.dygraph.guard(p):
@@ -203,8 +206,11 @@ class TestBatchNorm(unittest.TestCase):
                         bias_attr=False,
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v3_2(x, is_test, trainable_statistics):
                 with base.dygraph.guard(p):
@@ -218,8 +224,11 @@ class TestBatchNorm(unittest.TestCase):
                         ),
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v3_3(x, is_test, trainable_statistics):
                 with base.dygraph.guard(p):
@@ -233,30 +242,40 @@ class TestBatchNorm(unittest.TestCase):
                         bias_attr=False,
                         trainable_statistics=trainable_statistics,
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             def compute_v4(x):
                 with base.dygraph.guard(p):
                     bn = paddle.nn.BatchNorm2D(
                         shape[1], weight_attr=False, bias_attr=False
                     )
-                    y = bn(paddle.to_tensor(x))
-                return y.numpy()
+                    x1 = paddle.to_tensor(x)
+                    x1.stop_gradient = False
+                    y = bn(x1)
+                    y.backward()
+                    return y.numpy(), x1.gradient()
 
             x = np.random.randn(*shape).astype("float32")
             y1 = compute_v1(x, False, False)
             y2 = compute_v2(x)
-            y3 = compute_v3(x, False, False)
-            y3_1 = compute_v3_1(x, False, False)
-            y3_2 = compute_v3_2(x, False, False)
-            y3_3 = compute_v3_3(x, False, False)
-            y4 = compute_v4(x)
+            y3, g3 = compute_v3(x, False, False)
+            y3_1, g3_1 = compute_v3_1(x, False, False)
+            y3_2, g3_2 = compute_v3_2(x, False, False)
+            y3_3, g3_3 = compute_v3_3(x, False, False)
+            y4, g4 = compute_v4(x)
             np.testing.assert_allclose(y1, y2, rtol=1e-05)
             np.testing.assert_allclose(y3, y4, rtol=1e-05)
             np.testing.assert_allclose(y3_1, y4, rtol=1e-05)
             np.testing.assert_allclose(y3_2, y4, rtol=1e-05)
             np.testing.assert_allclose(y3_3, y4, rtol=1e-05)
+            np.testing.assert_allclose(g3, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_1, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_2, g4, rtol=1e-05)
+            np.testing.assert_allclose(g3_3, g4, rtol=1e-05)
 
     def test_static(self):
         places = [base.CPUPlace()]
