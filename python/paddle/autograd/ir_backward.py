@@ -449,12 +449,13 @@ def append_backward_ops(
                 input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
-                inputs_, stop_gradient = make_input_with_input_stopgradient(
-                    input.get_defining_op()
-                )
-                inputs.append([info[0] for info in inputs_])
+                (
+                    combine_inputs,
+                    combine_stop_gradient,
+                ) = make_input_with_input_stopgradient(input.get_defining_op())
+                inputs.append([info[0] for info in combine_inputs])
                 input_grad_stopgradients.append(
-                    [info[0] for info in stop_gradient]
+                    [info[0] for info in combine_stop_gradient]
                 )
             else:
                 inputs.append([input])
