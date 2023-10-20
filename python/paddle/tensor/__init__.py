@@ -160,6 +160,11 @@ from .manipulation import index_add  # noqa: F401
 from .manipulation import index_add_  # noqa: F401
 from .manipulation import index_put  # noqa: F401
 from .manipulation import index_put_  # noqa: F401
+from .manipulation import column_stack  # noqa: F401
+from .manipulation import row_stack  # noqa: F401
+from .manipulation import dstack  # noqa: F401
+from .manipulation import hstack  # noqa: F401
+from .manipulation import vstack  # noqa: F401
 from .manipulation import unflatten  # noqa: F401
 from .manipulation import as_strided  # noqa: F401
 from .manipulation import view  # noqa: F401
@@ -669,6 +674,11 @@ tensor_method_func = [
     "index_add_",
     'index_put',
     'index_put_',
+    'column_stack',
+    'row_stack',
+    'dstack',
+    'hstack',
+    'vstack',
     'take',
     'bucketize',
     'sgn',
