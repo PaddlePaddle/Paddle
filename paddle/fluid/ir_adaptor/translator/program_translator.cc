@@ -484,7 +484,7 @@ pir::Operation* ProgramTranslator::TranslateCondIfOperation(
                    false_region.front(),
                    true,
                    cond_ops.FalseBlockOutputVarNames(),
-                   cond_ops.TrueBlockInitOps());
+                   cond_ops.FalseBlockInitOps());
   }
   VLOG(4) << "[general op][conditional_block] IfOp false block translate end.";
 
