@@ -1142,6 +1142,8 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
+        self._first_n_run = 3
+
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
             op.all_attrs()[self.op_role_key]
@@ -1852,6 +1854,31 @@ class Executor:
                     tensor._copy_from(cpu_tensor, self.place)
 
             ret = new_exe.run(list(feed.keys()), return_numpy)
+
+            # liuchenghao: run op profiling
+            if self._first_n_run > 0:
+                self._first_n_run -= 1
+                print(
+                    '==================== run op profiling ==================='
+                )
+                import paddle
+                from paddle.distributed.auto_parallel.static.utils import (
+                    measure_real_op_cost_wrt_program_and_place,
+                )
+
+                place: str = paddle.device.get_device()
+                print(place)
+                place = paddle.CUDAPlace(int(place.split(':')[1]))
+                msg = measure_real_op_cost_wrt_program_and_place(
+                    program, place, verbose_level=2
+                )
+                pid = os.getpid()
+                outfile = "mylog/profile.log.%d" % pid
+                print(outfile)
+                with open(outfile, 'w') as f:
+                    f.write(msg)
+                print("======================= finished ======================")
+
             set_flags(stored_flag)
             return ret
 

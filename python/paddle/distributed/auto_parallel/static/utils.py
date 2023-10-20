@@ -2408,7 +2408,11 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
             )
             else 1
         )
-        assert num_micro_batches == 1, 'num_micro_batches should be 1 here.'
+        if num_micro_batches != 1:
+            warnings.warn(
+                'num_micro_batches should be 1 here, but got %d'
+                % num_micro_batches
+            )
 
         feed_names = []
         has_feed_op = False
@@ -2457,12 +2461,21 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
         create and initialize persist vars and parameters in program
         """
         all_var_names = []
-        supported_var_dtypes = ["paddle.float32"]
+        supported_var_dtypes = [
+            "paddle.float16",
+            "paddle.float32",
+            "paddle.float64",
+            "paddle.int8",
+            "paddle.int16",
+            "paddle.int32",
+            "paddle.int64",
+            "paddle.bool",
+        ]
         for block in cloned_program.blocks:
             all_var_names += block.vars
         for var_name in all_var_names:
             if var_name in ['feed', 'fetch']:
-                continue  # skip special variables
+                continue  # skip special variables, they don't need to be created.
             var = cloned_main_block.var(var_name)
             var: Variable
             if var.persistable or var.is_parameter:
@@ -2470,7 +2483,7 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                 var_dtype = var.dtype
                 assert str(var_dtype) in supported_var_dtypes, (
                     "Found unsupported variable dtype: \"{}\", current supported "
-                    "dtype(s) is/are: {}. ".format(
+                    "dtype(s) is/are: [{}]. ".format(
                         str(var_dtype), ", ".join(supported_var_dtypes)
                     )
                 )
@@ -2527,7 +2540,7 @@ def measure_real_op_cost_wrt_program_and_place(
     place,
     run_iters: int = 8,
     profile_strategy: str = 'stable_average',
-    verbose: bool = False,
+    verbose_level: int = 0,
 ) -> str:
     '''
     Description
@@ -2545,11 +2558,15 @@ def measure_real_op_cost_wrt_program_and_place(
         to give more accurate profiling result but requires more time.
     @param profile_strategy: str
         Specify strategy used during profiling. Can be one of the following: 'average',
-        'last', 'stable_average'. 'average' will simply average the results from multiple
-        runs, 'last' will only take the last run as its profiling result, 'stable_average'
-        will first remove the outliers then average the remained result.
-    @param verbose: bool
-        Print op profiling information generated during profiling.
+        'last', 'stable_average'.
+        'average': simply average the results from multiple runs,
+        'last': only take the last run as its profiling result,
+        'stable_average': first remove the outliers then average the remained result.
+    @param verbose_level: int
+        Set up verbose level during profiling. Can be set to one of the following:
+        0 = turn off, don't print anything,
+        1 = print profiling message only,
+        2 = print profiling and debug message.
 
     Returns
     -----------
@@ -2559,9 +2576,9 @@ def measure_real_op_cost_wrt_program_and_place(
 
     Note
     -----------
-    Not all ops support runtime profiling. Currently comm ops do not support runtime
-    profiling feature since their execution times are relied on other ops. To check
-    if an op supports runtime profiling, use:
+    Not all ops support runtime profiling. Currently communication ops do not support
+    runtime profiling feature since their execution times are relied on other ops.
+    To check if an op supports runtime profiling, use:
     >>> op.supports_runtime_profiling()
     where "op" is an instance of "paddle.base.framework.Operator".
 
@@ -2572,22 +2589,22 @@ def measure_real_op_cost_wrt_program_and_place(
     >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
     >>> program = ... # build your own program object here.
     >>> measure_real_op_cost_wrt_program_and_place(
-    >>>     program, paddle.CUDAPlace(0), verbose=True
+    >>>     program, paddle.CUDAPlace(0), verbose_level=1
     >>> )
     >>> print("first op execution time: %d us." % \\
     >>>     program.global_block().ops[0].get_runtime_us()
     >>> )
 
     * Profiling a program which is already embedded into an Executor or
-    some other class instance:
+    some other class instance (inspect mode):
 
     >>> import paddle
     >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
-    >>> place: str = paddle.device.get_device() # here we assume place = "cuda:0"
+    >>> place: str = paddle.device.get_device() # here we assume place = "cuda:x"
     >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
-    >>> # here "program" can be an member variable of a class instance
-    >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose=True)
-    >>> save_log = "./profile.log.%d" % os.getpid()
+    >>> # here "program" is an inner object that has alredy been built before
+    >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose_level=1)
+    >>> save_log = "./profile[pid=%d].log" % os.getpid()
     >>> with open(save_log, 'w') as f:
     >>>     f.write(profiled_message)
     '''
@@ -2652,7 +2669,7 @@ def measure_real_op_cost_wrt_program_and_place(
             )
         message = ' ' * pad + s + '\n'
         profile_message += message
-        if verbose:
+        if verbose_level >= 1:
             sys.stdout.write(message)
             sys.stdout.flush()
 
@@ -2665,7 +2682,7 @@ def measure_real_op_cost_wrt_program_and_place(
     for _ in range(run_iters):
         single_prof_result = (
             _measure_real_op_cost_wrt_program_and_place_single_pass(
-                program, place, verbose=False
+                program, place, verbose=(verbose_level >= 2)
             )
         )
         if prof_results is None:
@@ -2717,7 +2734,7 @@ def measure_real_op_cost_wrt_program_and_place(
     main_block = program.global_block()
     _verbose_print("=" * TABLE_WIDTH)
     _verbose_print(
-        "Runtime Op Profiling Result",
+        "Op Runtime Profiling Result",
         length=TABLE_WIDTH,
         align='middle',
     )
@@ -2725,7 +2742,8 @@ def measure_real_op_cost_wrt_program_and_place(
     for op_idx, op in zip(range(len(main_block.ops)), main_block.ops):
         _verbose_print(_format_single_line(op_idx, op))
     _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time")
-    _verbose_print("NOTE: Op ID does not represent Op execution order.")
+    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time (us)")
+    _verbose_print("NOTE: 1. Op ID does not represent Op execution order.")
+    _verbose_print("      2. Profiling is only performed for the main block.")
 
     return profile_message
