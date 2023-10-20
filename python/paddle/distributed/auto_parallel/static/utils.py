@@ -2523,12 +2523,12 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
 
 
 def measure_real_op_cost_wrt_program_and_place(
-    program,
+    program: paddle.static.Program,
     place,
-    run_iters=8,
-    profile_strategy='stable_average',
-    verbose=False,
-):
+    run_iters: int = 8,
+    profile_strategy: str = 'stable_average',
+    verbose: bool = False,
+) -> str:
     '''
     Description
     -----------
@@ -2567,6 +2567,7 @@ def measure_real_op_cost_wrt_program_and_place(
 
     Example
     -----------
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
     >>> program = ... # build your own program object here.
     >>> measure_real_op_cost_wrt_program_and_place(
     >>>     program, paddle.CUDAPlace(0), verbose=True
@@ -2613,32 +2614,38 @@ def measure_real_op_cost_wrt_program_and_place(
             'might be inaccurate.'
         )
 
+    profile_message = ""
+
     def _verbose_print(s, length=None, align='left'):
+        nonlocal profile_message
         assert align in [
             'left',
             'middle',
             'right',
         ], 'invalid text alignment setting.'
-        if verbose:
-            if align in ['middle', 'right'] and length is None:
-                pad = 0
-            else:
-                pad = (
-                    0
-                    if align == 'left'
-                    else (
-                        length - len(s)
-                        if align == 'right'
-                        else (length - len(s)) // 2
-                    )
+        if align in ['middle', 'right'] and length is None:
+            pad = 0
+        else:
+            pad = (
+                0
+                if align == 'left'
+                else (
+                    length - len(s)
+                    if align == 'right'
+                    else (length - len(s)) // 2
                 )
-            sys.stdout.write(' ' * pad + s + '\n')
+            )
+        message = ' ' * pad + s + '\n'
+        profile_message += message
+        if verbose:
+            sys.stdout.write(message)
             sys.stdout.flush()
 
     _verbose_print("* Started op runtime profiling.")
     _verbose_print("* Current program being profiled:\n" + str(program))
     _verbose_print("* Profile strategy: %s" % str(profile_strategy))
 
+    # run profiling multiple times and record op run time of each run
     prof_results = None
     for _ in range(run_iters):
         single_prof_result = (
@@ -2674,8 +2681,7 @@ def measure_real_op_cost_wrt_program_and_place(
         if op.supports_runtime_profiling():
             op.set_runtime_us(op_runtime_us_final)
 
-    # because we run the cloned program, we need to write profiling
-    # message to the vanilla program
+    # print out profiling results if needed then return
     TABLE_WIDTH = 50
 
     def _format_single_line(idx, op):
@@ -2706,3 +2712,5 @@ def measure_real_op_cost_wrt_program_and_place(
     _verbose_print("=" * TABLE_WIDTH)
     _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time")
     _verbose_print("NOTE: Op ID does not represent Op execution order.")
+
+    return profile_message
