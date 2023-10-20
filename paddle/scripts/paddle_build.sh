@@ -3375,33 +3375,33 @@ function build_pr_and_develop() {
     dev_commit=`git log -1|head -1|awk '{print $2}'`
     dev_url="https://xly-devops.bj.bcebos.com/PR/build_whl/0/${dev_commit}/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl"
     url_return=`curl -s -m 5 -IL ${dev_url} |awk 'NR==1{print $2}'`
-    if [ "$url_return" == '200' ];then
-        mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
-        cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
-    else
-        tar --warning=no-file-changed --use-compress-program="pigz -1" -cpPf ${PADDLE_ROOT}/build.tar.gz ${PADDLE_ROOT}/build
-        if [[ ${cmake_change} ]];then
-            rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
-            rm -rf ${PADDLE_ROOT}/build/third_party
-        fi
+    # if [ "$url_return" == '200' ];then
+    #     mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
+    #     cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
+    # else
+    tar --warning=no-file-changed --use-compress-program="pigz -1" -cpPf ${PADDLE_ROOT}/build.tar.gz ${PADDLE_ROOT}/build
+    if [[ ${cmake_change} ]];then
+        rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
 
-        git checkout -b develop_base_pr upstream/$BRANCH
-        git submodule update --init
-        run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
-        #NOTE(risemeup1):remove build directory of develop branch to avoid conflict with pr branch,we only need whl package of develop branch
-        rm -rf ${PADDLE_ROOT}/build
-        if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
-            tar  --use-compress-program="pigz -1" -xpf ${PADDLE_ROOT}/build.tar.gz -C ${PADDLE_ROOT}
-        else
-            echo "build.tar.gz of pr branch not exist"
-            exit 123
-        fi
-        
-        if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-            mkdir -p ${PADDLE_ROOT}/build/python/dist/
-        fi
-        mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
-        mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
+    git checkout -b develop_base_pr upstream/$BRANCH
+    git submodule update --init
+    run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
+    #NOTE(risemeup1):remove build directory of develop branch to avoid conflict with pr branch,we only need whl package of develop branch
+    rm -rf ${PADDLE_ROOT}/build
+    if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
+        tar  --use-compress-program="pigz -1" -xpf ${PADDLE_ROOT}/build.tar.gz -C ${PADDLE_ROOT}
+    else
+        echo "build.tar.gz of pr branch not exist"
+        exit 123
+    fi
+    
+    if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
+        mkdir -p ${PADDLE_ROOT}/build/python/dist/
+    fi
+    mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
+    mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
 
     generate_api_spec "$1" "DEV"
