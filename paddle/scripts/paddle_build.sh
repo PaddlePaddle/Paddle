@@ -3398,7 +3398,7 @@ function build_pr_and_develop() {
         fi
         
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
-            mkdir ${PADDLE_ROOT}/build/python/dist/
+            mkdir -p ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
