@@ -72,7 +72,6 @@ class TestFCAddMKLDNNOp1(TestFCAddMKLDNNOp):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype("float32")
 
-
 if __name__ == "__main__":
     import paddle
 
