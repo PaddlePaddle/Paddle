@@ -595,7 +595,7 @@ def guard(place=None):
     if place is not None:
         expected_place = _get_paddle_place(place)
     else:
-        expected_place = framework._current_expected_place()
+        expected_place = framework._current_expected_place_()
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():

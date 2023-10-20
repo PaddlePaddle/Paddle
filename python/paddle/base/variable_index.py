@@ -14,6 +14,7 @@
 
 import itertools
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -344,14 +345,10 @@ def get_value_for_bool_tensor(var, item):
     empty_shape = [0] + list(var.shape[i:])
 
     def idx_not_empty(var, item):
-        from ..tensor import gather_nd
+        bool_2_idx = paddle.nonzero(item)
+        return paddle.gather_nd(var, bool_2_idx)
 
-        bool_2_idx = paddle.nonzero(item == True)
-        return gather_nd(var, bool_2_idx)
-
-    from paddle.static.nn import cond
-
-    return cond(
+    return paddle.static.nn.cond(
         item.any(),
         lambda: idx_not_empty(var, item),
         lambda: paddle.empty(empty_shape, var.dtype),
@@ -1051,7 +1048,7 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        from . import in_dynamic_or_pir_mode
+        from . import in_dynamic_or_pir_mode, in_pir_mode
 
         if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
@@ -1071,6 +1068,13 @@ def get_tensor_with_basic_indexing(
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
             else:
+                if in_pir_mode():
+                    if isinstance(st, (list, tuple)):
+                        if paddle.utils._contain_var(st):
+                            st = paddle.utils.get_int_tensor_list(st)
+                    if isinstance(end, (list, tuple)):
+                        if paddle.utils._contain_var(end):
+                            end = paddle.utils.get_int_tensor_list(end)
                 out = paddle._C_ops.slice(
                     x,
                     axes,
