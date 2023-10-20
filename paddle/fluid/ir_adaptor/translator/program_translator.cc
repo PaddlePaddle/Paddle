@@ -367,7 +367,7 @@ void ProgramTranslator::TranslateBlock(
           std::count(cond_sub_block_outputs.begin(),
                      cond_sub_block_outputs.end(),
                      op->Output("Out")[0])) {
-        assign_output_2_input[op->Output("Out")[0]] = op->Output("X")[0];
+        assign_output_2_input[op->Output("Out")[0]] = op->Input("X")[0];
         translate_completed[op_id] = true;
       } else {
         TranslateGeneralOperation(op, translation_ctx, dest_block);
