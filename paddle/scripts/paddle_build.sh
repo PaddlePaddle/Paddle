@@ -3389,9 +3389,9 @@ function build_pr_and_develop() {
     git submodule update --init
     run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
     #NOTE(risemeup1):remove build directory of develop branch to avoid conflict with pr branch,we only need whl package of develop branch
-    rm -rf ${PADDLE_ROOT}/build
+    rm -rf ${PADDLE_ROOT}/build/*
     if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
-        tar  --use-compress-program="pigz -1" -xpf ${PADDLE_ROOT}/build.tar.gz -C ${PADDLE_ROOT}
+        tar  --use-compress-program="pigz -1" -xpf ${PADDLE_ROOT}/build.tar.gz -C ${PADDLE_ROOT}/build
     else
         echo "build.tar.gz of pr branch not exist"
         exit 123
