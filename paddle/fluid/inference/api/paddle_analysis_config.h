@@ -880,6 +880,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
+
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,
@@ -1304,6 +1308,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_ir_optim_{true};
   bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 

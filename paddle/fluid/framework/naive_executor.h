@@ -26,6 +26,9 @@
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/place.h"
 
+#include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
+
 namespace paddle {
 namespace framework {
 
@@ -52,6 +55,12 @@ class NaiveExecutor {
                int block_id,
                bool with_feed_fetch_ops);
 
+  void PrepareInterpreterCore(
+      Scope* scope,
+      const ProgramDesc& program_desc,
+      const framework::interpreter::ExecutionConfig& execution_config =
+          framework::interpreter::ExecutionConfig{});
+
   // Create variables before head.
   // Create parameters if persistable is true, or create the temporary variables
   // instead.
@@ -62,6 +71,9 @@ class NaiveExecutor {
 
   // Run all the operators.
   void Run();
+
+  void RunInterpreterCore(const std::vector<std::string>& feed_names = {},
+                          bool need_fetch = false);
 
   // Get an tensor to operating directly, without the need for feed_ops.
   phi::DenseTensor* FindTensor(const std::string& name);
@@ -96,6 +108,8 @@ class NaiveExecutor {
   std::unordered_map<OperatorBase*, std::unordered_map<phi::DenseTensor*, int>>
       reuse_cache_;
   std::vector<phi::DenseTensor*> cluster_buffer_;
+
+  std::unique_ptr<framework::InterpreterCore> interpreter_core_;
 };
 
 }  // namespace framework

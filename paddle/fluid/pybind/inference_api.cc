@@ -855,6 +855,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
+      .def("enable_new_executor",
+           &AnalysisConfig::EnableNewExecutor,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
