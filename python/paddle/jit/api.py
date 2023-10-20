@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import pickle
 import warnings
+import sys
 from collections import OrderedDict
 import inspect
 import threading
@@ -236,7 +237,6 @@ def to_static(
     input_spec=None,
     build_strategy=None,
     backend=None,
-    enable_fallback=None,
     **kwargs,
 ):
     """
@@ -285,24 +285,31 @@ def to_static(
 
     """
     property = kwargs.get("property", False)
+    full_graph = kwargs.get("full_graph", None)
 
     def decorated(python_func):
         """
         Decorates a python function into a ASTStaticFunction object.
         """
 
-        nonlocal enable_fallback
-        if enable_fallback is None:
+        nonlocal full_graph
+        if full_graph is None:
             flag = os.environ.get("ENABLE_FALL_BACK", None)
-            if flag == "True":
-                enable_fallback = True
-            else:  # None or True
-                enable_fallback = False
+            if flag == "True" or flag is None:
+                full_graph = False
+            else:  # False
+                full_graph = True
 
-        StaticClass = StaticFunctionClass = {
-            True: SymbolicStaticFunction,
-            False: ASTStaticFunction,
-        }[enable_fallback]
+        if sys.version_info >= (3, 12) and not full_graph:
+            warnings.warn(
+                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+            )
+            full_graph = True
+
+        StaticClass = {
+            False: SymbolicStaticFunction,
+            True: ASTStaticFunction,
+        }[full_graph]
 
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
@@ -1108,7 +1115,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_forward = to_static(
                     inner_layer.forward,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    full_graph=True,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1146,7 +1153,7 @@ def save(layer, path, input_spec=None, **configs):
                 static_function = to_static(
                     static_func,
                     input_spec=inner_input_spec,
-                    enable_fallback=False,
+                    full_graph=True,
                 )
                 concrete_program = static_function.concrete_program
 

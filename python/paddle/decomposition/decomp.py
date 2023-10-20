@@ -16,6 +16,7 @@ import logging
 import typing
 
 from paddle import pir
+from paddle.autograd import ir_backward
 from paddle.base.core import call_decomp, has_decomp
 from paddle.base.libpaddle.pir import Block, Operation, Program
 from paddle.framework import core
@@ -50,28 +51,35 @@ def _prepare_python_api_arguments(op):
     Args:
     op (Operator): The target operator.
     """
-    op_inputs = []
+    combine_op_name = "builtin.combine"
+    inputs = []
     for x in op.operands():
-        op_input = x.source()
-        upper_op = op_input.get_defining_op()
-        if (
-            isinstance(upper_op, Operation)
-            and upper_op.name() == 'builtin.combine'
-        ):
-            op_input = [item.source() for item in upper_op.operands()]
-        op_inputs.append(op_input)
-    # The inputs of PIR op builtin.combine will be restored as list of tensor.
-    if op.name() in ["builtin.combine"]:
-        return (op_inputs,)
+        input = x.source()
+        if input and input.initialized():
+            prev_op = input.get_defining_op()
+            if (
+                isinstance(prev_op, Operation)
+                and prev_op.name() == combine_op_name
+            ):
+                input = [item.source() for item in prev_op.operands()]
+            inputs.append(input)
+        else:
+            # for optional input, such as scale for layer_norm op,
+            # if it is not set, there will be an empty OpResult which is not initialized in ops.operands
+            # therefore append None for it.
+            inputs.append(None)
 
-    op_attrs_dict = op.attrs()
-    op_attrs_name = op.get_attr_names()
-    op_attrs = [op_attrs_dict[x] for x in op_attrs_name]
-    api_arguments = op_inputs + op_attrs
+    # The inputs of PIR op builtin.combine will be restored as list of tensor.
+    if op.name() == combine_op_name:
+        return (inputs,)
+
+    api_arguments = inputs + [op.attrs()[x] for x in op.get_attr_names()]
     return tuple(api_arguments)
 
 
-def _check_op_results(op_name, orig_outs, new_outs, orig_vars, dst_vars):
+def _check_op_results(
+    op_name, orig_outs, new_outs, orig_vars=None, dst_vars=None
+):
     """
     Check whether the replaced outputs are consistent with origin outputs.
 
@@ -101,8 +109,9 @@ def _check_op_results(op_name, orig_outs, new_outs, orig_vars, dst_vars):
             # to keep same as phi op definition, orig_out may receive None
             continue
         elif new_out is not None:
-            if orig_out in orig_vars.keys():
-                dst_vars[orig_vars[orig_out]] = new_out
+            if orig_vars is not None and dst_vars is not None:
+                if orig_out in orig_vars.keys():
+                    dst_vars[orig_vars[orig_out]] = new_out
             orig_dtype = orig_out.dtype
             new_dtype = new_out.dtype
             orig_shape = orig_out.shape
@@ -279,3 +288,221 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     raise TypeError(
         f"Expect type Block or Sequence of Block, but got type {type(block)}"
     )
+
+
+def get_leaf_ops(block, global_outputs):
+    '''
+    This API checks which op contributes to the outputs of the entire computation graph,
+    as well as determining the corresponding output index.
+
+    Args:
+        block (Block): the block of program to be processed.
+        global_outputs (tuple(Value)): the outputs of the entire computation graph.
+
+    Returns:
+        related_ops (tuple(pir.Operation)): a tuple of op that contributes to the outputs of the entire graph.
+        related_ops_output_indexes (tuple(tuple())) : a tuple records the mapping of tuple(the output index of the op,  the output index of the entire graph)
+    '''
+    if not isinstance(block, Block):
+        raise TypeError(f"block should be Block, but got type {type(block)}")
+    if not isinstance(global_outputs, list):
+        raise TypeError("The type of global_outputs should be list")
+
+    related_ops = []
+    related_ops_output_indexes = []
+
+    op_to_op_valid_result = {}
+    for op in block.ops:
+        op_valid_result = []
+        for x in op.results():
+            if x.initialized():
+                op_valid_result.append(x)
+        op_to_op_valid_result[op] = op_valid_result
+
+    for global_output in global_outputs:
+        for op in op_to_op_valid_result.keys():
+            if global_output in op_to_op_valid_result[op]:
+                if op not in related_ops:
+                    related_ops.append(op)
+                    related_ops_output_indexes.append(
+                        [
+                            [
+                                op.results().index(global_output),
+                                global_outputs.index(global_output),
+                            ]
+                        ]
+                    )
+                else:
+                    related_ops_output_indexes[related_ops.index(op)].append(
+                        [
+                            op.results().index(global_output),
+                            global_outputs.index(global_output),
+                        ]
+                    )
+
+    return tuple(related_ops), tuple(related_ops_output_indexes)
+
+
+def replace_graph_outputs(
+    global_outputs,
+    op_outputs,
+    op_index,
+    related_ops_output_indexes,
+):
+    '''
+    This API replace the outputs of the entire computation graph with the new outputs of the op,
+    when the op contributes to the outputs of the entire computation graph.
+    '''
+    for index in related_ops_output_indexes[op_index]:
+        global_outputs[index[1]] = op_outputs[index[0]]
+
+
+def decompose_fwd_op(
+    block: Block, fwd_op: pir.Operation, grad_var_to_var_map: dict
+) -> tuple:
+    '''
+    Decompose the fwd_op into a list of primitive ops.
+
+    Args:
+        block (Block): the block to which the fwd_op belongs.
+        fwd_op (pir.Operation): the forward op to be decomposed.
+        grad_var_to_var_map (dict): a dict obtained from distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
+    Returns:
+        new_outputs (tuple(Value)): the new outputs after decomposing.
+    '''
+
+    if not core._is_fwd_prim_enabled():
+        raise RuntimeError(
+            "To decompose forward op, please set `core._set_prim_forward_enabled(True)` firstly"
+        )
+
+    with pir.core.program_guard(block.program):
+        op_name = fwd_op.name()
+        orig_outs = fwd_op.results()
+        decom_rule = register.get_decomp_rule(op_name)
+        has_sink_decomp_rule = has_decomp(fwd_op)
+        lower = decom_rule or has_sink_decomp_rule
+
+        if lower:
+            input_args = _prepare_python_api_arguments(fwd_op)
+            pir.set_insertion_point(fwd_op)
+            if has_sink_decomp_rule:
+                decomp_outs = call_decomp(fwd_op)
+                new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
+            else:
+                new_outs = _build_tensor_tuple(decom_rule(*input_args))
+
+            _check_op_results(op_name, orig_outs, new_outs)
+
+            # update_grad_var_to_var_map
+            for grad_var, var in grad_var_to_var_map.items():
+                if var in orig_outs:
+                    grad_var_to_var_map[grad_var] = new_outs[
+                        orig_outs.index(var)
+                    ]
+
+            fwd_op.replace_all_uses_with(new_outs)
+            block.remove_op(fwd_op)
+            return new_outs
+        else:
+            return tuple(orig_outs)
+
+
+def decompose_bwd_op(
+    block: Block,
+    bwd_op: pir.Operation,
+    grad_var_to_var_map: dict,
+    fwd_outputs: tuple,
+    fwd_inputs: tuple,
+) -> tuple:
+    '''
+    Lowering a first-order derivative PHI operator into primitive operators, steps are as follows:
+    step1: get grad_outputs from the bwd_op's operands, which is a subset of bwd_op's operands after excluding the inputs and outputs of fwd_op;
+    step2: get the new_fwd_outputs via grad_var_to_var_map, which correspond one-to-one with grad_outputs;
+    step3: get the new_fwd_inputs, iterate over the initialized result in bwd_op's results, then find the corresponding fwd_input based on grad_var_to_var_map;
+    step4: call grad() API, decompose the bwd_op, and get new gradients;
+    step5: replace bwd_op with a set of primitive ops;
+    step6: update grad_var_to_var_map.
+
+    Args:
+        block (Block): the block to which the backward op belongs.
+        bwd_op (pir.Operation): the backward op to be decomposed.
+        grad_var_to_var_map (dict): a dict obtained from distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
+        fwd_outputs (tuple(Value)): the output value tuple of the forward op.
+        fwd_inputs (tuple(Value)): the input value tuple of the forward op.
+
+    Returns:
+        new_input_grads (tuple(Value)): the input grad value tuple, the i-th returned value is the sum of gradients of `fwd_outputs` with respect to the i-th `fwd_inputs`.
+    '''
+
+    if not core._is_bwd_prim_enabled():
+        raise RuntimeError(
+            "To get composite backward op, please set `core._set_prim_backward_enabled(True)` firstly"
+        )
+
+    # intercept grad_outputs from the original bwd_op
+    # grad_outputs = bwd_op.operands() - fwd_inputs - fwd_outputs
+    bwd_inputs = tuple(x.source() for x in bwd_op.operands())
+    grad_outputs = tuple(
+        bwd_input
+        for bwd_input in bwd_inputs
+        if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs)
+    )
+
+    # new_fwd_outputs is a subset of fwd_outputs, because some fwd_output does not hold the gradients,
+    # e.g., layer_norm op's output is [out, mean, variance], but only out holds gradient,
+    # therefore, parse the new_fwd_outputs according to grad_outputs and grad_var_to_var_map
+    new_fwd_outputs = tuple(
+        grad_var_to_var_map[grad_output] for grad_output in grad_outputs
+    )
+
+    # new_fwd_inputs is a subset of fwd_inputs, because some fwd_input does not need to compute the gradients,
+    # e.g., dropout op's input is [x, seed_tensor], but the seed_tensor is generated by the forward op, and does not need to compute the gradients,
+    # therefore, parse the new_fwd_inputs according to bwd_op.results() and grad_var_to_var_map
+    new_fwd_inputs = tuple(
+        grad_var_to_var_map[grad_input]
+        for grad_input in bwd_op.results()
+        if grad_input.initialized()
+    )
+
+    # when replace bwd_op with a list of primitive ops, a insertion point is needed
+    bwd_op_idx = block.ops.index(bwd_op)
+    # decompose bwd_op into a list of primitive ops
+    before_num_ops = len(block.ops)
+    input_grads = ir_backward.grad(
+        new_fwd_outputs, new_fwd_inputs, grad_outputs
+    )
+    after_num_ops = len(block.ops)
+
+    # update the bwd_op's results
+    # when the original result of the bwd_op is None, then fake an OpResult for replacement
+    # when the original result of the bwd_op is not None, then replace it with the new result of primitive ops
+    new_input_grads = []
+    input_grads_idx = 0
+    for idx, input_grad in enumerate(bwd_op.results()):
+        if input_grad.initialized():
+            new_input_grads.append(input_grads[input_grads_idx])
+            input_grads_idx += 1
+        else:
+            new_input_grads.append(pir.fake_op_result())
+
+    # move the primitive ops to the insertion point
+    insert_idx = bwd_op_idx
+    for i in range(before_num_ops, after_num_ops):
+        block.move_op(block.ops[i], insert_idx)
+        insert_idx += 1
+
+    # update_grad_var_to_var_map
+    for idx, grad_var in enumerate(bwd_op.results()):
+        if grad_var in grad_var_to_var_map.keys():
+            grad_var_to_var_map[new_input_grads[idx]] = grad_var_to_var_map.pop(
+                grad_var
+            )
+
+    # replace the following use of original bwd_op's results with new primitive ops' results, and then remove original bwd_op
+    bwd_op.replace_all_uses_with(new_input_grads)
+    block.remove_op(bwd_op)
+
+    return tuple(new_input_grads)

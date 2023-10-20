@@ -32,7 +32,7 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
-              pd_build_cinn_pass)
+              pd_build_cinn_pass pir_pass)
   set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS
                                                            "RUN_TYPE=CINN")
 endif()
