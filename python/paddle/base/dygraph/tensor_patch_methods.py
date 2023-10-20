@@ -602,7 +602,7 @@ def monkey_patch_tensor():
                 else:
                     blocking = kwargs.get("blocking", None)
             elif (
-                isinstance(args[0], paddle.dtype, np.dtype)
+                isinstance(args[0], (paddle.dtype, np.dtype))
                 or isinstance(args[0], str)
                 and args[0].lower() in valid_dtypes
             ):

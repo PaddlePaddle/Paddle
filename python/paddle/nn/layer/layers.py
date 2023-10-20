@@ -925,7 +925,7 @@ class Layer:
         Casts all parameters and buffers to dtype and then return the Layer.
 
         Parameters:
-            dtype(str|paddle.dtype): target data type of layer.
+            dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
                 If set str, it can be "bool",  "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
                 Default: None
@@ -992,11 +992,11 @@ class Layer:
             "bool",
         ]
         if (
-            type(dtype) is paddle.dtype
+            isinstance(dtype, (paddle.dtype, np.dtype))
             or type(dtype) is str
             and dtype in valid_dtypes
         ):
-            if type(dtype) is str:
+            if isinstance(dtype, (str, np.dtype)):
                 dtype = framework.convert_np_dtype_to_dtype_(dtype)
             self._dtype = dtype
             for layer in self.sublayers():
