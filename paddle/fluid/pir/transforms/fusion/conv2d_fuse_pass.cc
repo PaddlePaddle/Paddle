@@ -30,7 +30,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
-#include "paddle/fluid/pir/transforms/conv2d_fuse_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
