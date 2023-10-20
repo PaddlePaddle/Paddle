@@ -7029,7 +7029,7 @@ def signbit(x, name=None):
         ],
         "signbit",
     )
-    
+
     x = paddle.sign(x)
     out = paddle.cast(x < 0, dtype='bool')
     return out
