@@ -26,26 +26,31 @@ using Dim = tDim<UniqueId>;
 // DimTuple = [Dim]
 using DimTuple = List<Dim>;
 
-DEFINE_ADT_UNION(Constant,
-                 std::int64_t,
-                 Dim,
-                 List<Constant>,
-                 Neg<Constant>,
-                 Add<Constant, Constant>,
-                 Mul<Constant, Constant>);
+DEFINE_ADT_UNION(Constant, std::int64_t, Dim, List<Constant>);
 
 OVERLOAD_OPERATOR_EQ_NE(Constant, UnionEqual);
-OVERLOAD_OPERATOR_EQ_NE(Neg<Constant>, TupleEqual);
-using AddConstant = Add<Constant, Constant>;
-using MulConstant = Mul<Constant, Constant>;
-OVERLOAD_OPERATOR_EQ_NE(AddConstant, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(MulConstant, TupleEqual);
 
 // EquationStaticValue = Dim | std::int64_t
 DEFINE_ADT_UNION(EquationStaticValue, Dim, std::int64_t);
 OVERLOAD_OPERATOR_EQ_NE(EquationStaticValue, UnionEqual);
 
 using EquationStaticLogical = Logical<EquationStaticValue>;
+
+inline std::size_t GetHashValue(const Constant& c);
+
+inline std::size_t GetHashValueImpl(const std::int64_t& c) { return c; }
+inline std::size_t GetHashValueImpl(const Dim& c) {
+  return c.value().unique_id();
+}
+inline std::size_t GetHashValueImpl(const List<Constant>& c) {
+  std::size_t ret = 0;
+  for (const auto& c_item : *c) {
+    ret = hash_combine(ret, GetHashValue(c_item));
+  }
+  return ret;
+}
+
+OVERRIDE_UNION_GET_HASH_VALUE(Constant);
 
 }  // namespace cinn::adt
 
@@ -55,6 +60,13 @@ template <>
 struct hash<::cinn::adt::Dim> final {
   std::size_t operator()(const ::cinn::adt::Dim& dim) const {
     return dim.value().unique_id();
+  }
+};
+
+template <>
+struct hash<cinn::adt::Constant> {
+  std::size_t operator()(const cinn::adt::Constant& constant) const {
+    return GetHashValue(constant);
   }
 };
 

@@ -46,46 +46,6 @@ struct MatchTrait<Constant, List<T>> final {
   }
 };
 
-template <typename T>
-struct MatchTrait<Constant, Neg<T>> final {
-  using base_type = Neg<Constant>;
-
-  static constexpr int is_template = true;
-
-  template <template <typename> class Matcher>
-  static bool MatchChildren(const base_type& constant) {
-    return Matcher<Constant>::template Call<T>(std::get<0>(constant.tuple()));
-  }
-};
-
-template <typename T0, typename T1>
-struct MatchTrait<Constant, Add<T0, T1>> final {
-  using base_type = Add<Constant, Constant>;
-
-  static constexpr int is_template = true;
-
-  template <template <typename> class Matcher>
-  static bool MatchChildren(const base_type& constant) {
-    return Matcher<Constant>::template Call<T0>(
-               std::get<0>(constant.tuple())) &&
-           Matcher<Constant>::template Call<T1>(std::get<1>(constant.tuple()));
-  }
-};
-
-template <typename T0, typename T1>
-struct MatchTrait<Constant, Mul<T0, T1>> final {
-  using base_type = Mul<Constant, Constant>;
-
-  static constexpr int is_template = true;
-
-  template <template <typename> class Matcher>
-  static bool MatchChildren(const base_type& constant) {
-    return Matcher<Constant>::template Call<T0>(
-               std::get<0>(constant.tuple())) &&
-           Matcher<Constant>::template Call<T1>(std::get<1>(constant.tuple()));
-  }
-};
-
 template <>
 struct MatchTrait<Value, Undefined> final {
   static constexpr int is_template = false;
@@ -144,9 +104,6 @@ DEFINE_MATCH_TRAIT_VALUE_UNION_ARGSIZE_2(IndexUnDotValue, Value, Constant);
     }                                                                      \
   };
 
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantAdd);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantDiv);
-DEFINE_ADT_MATCH_TRAIT_EQUATION(ConstantMod);
 DEFINE_ADT_MATCH_TRAIT_EQUATION(PtrGetItem);
 
 }  // namespace cinn::adt
