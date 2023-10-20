@@ -649,9 +649,7 @@ void softmax_grad(const Tensor& out,
         set_output<T>(tmp_x_grad, x_grad);
       }
     } else {
-      set_output<T>(
-          full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
-          x_grad);
+      set_output<T>(out_grad * 0.0, x_grad);
     }
   }
 }

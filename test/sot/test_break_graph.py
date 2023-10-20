@@ -153,5 +153,16 @@ class TestBreakGraphRepeat(TestCaseBase):
         self.assert_results(test_break_graph_repeat, x)
 
 
+def break_graph_resume_pass_null(x, y):
+    return paddle.add(x, y[0:50] if y is not None else None)
+
+
+class TestBreakGraphResumePassNull(TestCaseBase):
+    def test_break_graph_resume_pass_null(self):
+        x = paddle.rand([50, 50], dtype=paddle.float32)
+        y = paddle.rand([100, 50], dtype=paddle.float32)
+        self.assert_results(break_graph_resume_pass_null, x, y)
+
+
 if __name__ == "__main__":
     unittest.main()

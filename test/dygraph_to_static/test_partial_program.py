@@ -17,10 +17,7 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    IrMode,
-    ToStaticMode,
     ast_only_test,
-    disable_test_case,
     test_and_compare_with_new_ir,
 )
 from test_fetch_feed import Linear
@@ -91,7 +88,6 @@ class TestWithNestedInput(Dy2StTestBase):
         return out.numpy()
 
     @test_and_compare_with_new_ir(False)
-    @disable_test_case((ToStaticMode.SOT, IrMode.PIR))
     def test_nest(self):
         dygraph_res = self._run(to_static=False)
         static_res = self._run(to_static=True)

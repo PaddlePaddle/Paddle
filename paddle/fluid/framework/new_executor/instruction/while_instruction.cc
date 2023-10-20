@@ -63,42 +63,20 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  for (size_t i = 0; i < while_op.num_operands(); ++i) {
-    while_op_inputs_.push_back(inner_scope->GetVar(
+  cond_var_ = inner_scope->GetVar(
+      parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+  for (size_t i = 1; i < while_op.num_operands(); ++i) {
+    inputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    while_op_outputs_.push_back(inner_scope->GetVar(
+    outputs_.push_back(inner_scope->GetVar(
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
-  cond_block_ = while_op.cond_block();
   body_block_ = while_op.body_block();
-
-  auto cond_yied_inputs = GetYiedOpInputs(cond_block_);
-  auto body_yied_inputs = GetYiedOpInputs(body_block_);
-
-  Scope* cond_scope = &(parent_exe_info->GetScope()->NewScope());
-  auto cond_exe_info = parent_exe_info->NewChild(cond_scope);
-  for (size_t i = 0; i < cond_block_->args_size(); ++i) {
-    auto var_name = "block_arg_" + std::to_string(i);
-    cond_scope->Var(var_name);
-    cond_exe_info->Add(cond_block_->argument(i), var_name);
-  }
-  cond_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
-      place, {}, cond_block_, cond_scope, cond_exe_info, {}));
-
-  std::set<std::string> cond_skip_gc_names_set;
-  for (auto value : cond_yied_inputs) {
-    cond_skip_gc_names_.push_back(cond_inter_->GetNameByValue(value));
-    cond_skip_gc_names_set.insert(cond_inter_->GetNameByValue(value));
-  }
-  cond_inter_->SetSkipGcVars(cond_skip_gc_names_set);
-
-  auto cond_value = cond_yied_inputs[0];
-  auto var_name = cond_inter_->GetNameByValue(cond_value);
-  cond_var = cond_inter_->local_scope()->GetVar(var_name);
+  auto body_block_outputs = GetYiedOpInputs(body_block_);
 
   Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
   auto body_exe_info = parent_exe_info->NewChild(body_scope);
@@ -111,31 +89,15 @@ WhileInstruction::WhileInstruction(size_t id,
       place, {}, body_block_, body_scope, body_exe_info, {}));
 
   std::set<std::string> body_skip_gc_names_set;
-  for (auto value : body_yied_inputs) {
+  for (auto value : body_block_outputs) {
     body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
     body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
   }
   body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 
-  // the cond block and body block input also be the while_op inputs
-
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
 
-  // TODO(phlrain): process cond and body block
-  // GetOutsideOpInputs(cond_block_,
-  //                    inner_scope,
-  //                    parent_exe_info->GetValue2VarName(),
-  //                    parent_exe_info->GetVarName2Id(),
-  //                    parent_exe_info->GetVar2VarName(),
-  //                    &inputs);
-
-  // GetOutsideOpInputs(body_block_,
-  //                    inner_scope,
-  //                    parent_exe_info->GetValue2VarName(),
-  //                    parent_exe_info->GetVarName2Id(),
-  //                    parent_exe_info->GetVar2VarName(),
-  //                    &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -146,9 +108,9 @@ WhileInstruction::WhileInstruction(size_t id,
           parent_exe_info->GetValue2VarName().find(value),
           parent_exe_info->GetValue2VarName().end(),
           phi::errors::PreconditionNotMet(
-              "input should in name map, [%d] 'th input of [%s] op",
+              "output should in name map, [%d] 'th output of [%s] op",
               i,
-              "if op"));
+              "while op"));
       std::vector<int> outputs_id = GetValueIds(value, *parent_exe_info);
       outputs.emplace(value, outputs_id);
     }
@@ -156,62 +118,42 @@ WhileInstruction::WhileInstruction(size_t id,
   SetOutputs(outputs);
 }
 
-void WhileInstruction::CopyStepOutput() {
-  for (size_t i = 0; i < body_skip_gc_names_.size(); ++i) {
-    auto* inner_var =
-        body_inter_->local_scope()->GetVar(body_skip_gc_names_[i]);
-
-    while_op_outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        inner_var->Get<phi::DenseTensor>());
+void WhileInstruction::CopyInputsToOutputs() {
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
+        inputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
-void WhileInstruction::CopyWhileInputToBlockArgs(const NewIRInterpreter* inter,
-                                                 ::pir::Block* block) {
-  for (size_t i = 0; i < block->args_size(); ++i) {
-    auto block_arg = block->argument(i);
-    auto var_name = inter->GetNameByValue(block_arg);
-    auto* inner_var = inter->local_scope()->GetVar(var_name);
+void WhileInstruction::PassArgsToBodyBlock() {
+  for (size_t i = 0; i < body_block_->args_size(); ++i) {
+    auto block_arg = body_block_->argument(i);
+    auto var_name = body_inter_->GetNameByValue(block_arg);
+    auto* inner_var = body_inter_->local_scope()->GetVar(var_name);
     inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
-        while_op_inputs_[i]->Get<phi::DenseTensor>());
+        outputs_[i]->Get<phi::DenseTensor>());
   }
 }
 
-void WhileInstruction::CopyStepOutputToBlockArgs(const NewIRInterpreter* inter,
-                                                 ::pir::Block* block) {
-  for (size_t i = 0; i < block->args_size(); ++i) {
-    auto out_var_name = body_skip_gc_names_[i];
+void WhileInstruction::GetValueFromBodyBlock() {
+  cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
+      body_inter_->local_scope()
+          ->GetVar(body_skip_gc_names_[0])
+          ->Get<phi::DenseTensor>());
+  for (size_t i = 0; i < outputs_.size(); ++i) {
+    auto& out_var_name = body_skip_gc_names_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
-
-    auto block_arg = block->argument(i);
-    auto block_in_var_name = inter->GetNameByValue(block_arg);
-
-    auto* inner_var = inter->local_scope()->GetVar(block_in_var_name);
-
-    inner_var->GetMutable<phi::DenseTensor>()->ShareDataWith(
+    outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         out_var->Get<phi::DenseTensor>());
   }
 }
-
 void WhileInstruction::Run() {
-  CopyWhileInputToBlockArgs(cond_inter_.get(), cond_block_);
-  CopyWhileInputToBlockArgs(body_inter_.get(), body_block_);
-
-  while (true) {
-    cond_inter_->Run({}, false);
-
-    if (cond_var->Get<phi::DenseTensor>().data<bool>()[0]) {
-      body_inter_->Run({}, false);
-
-      CopyStepOutputToBlockArgs(cond_inter_.get(), cond_block_);
-      CopyStepOutputToBlockArgs(body_inter_.get(), body_block_);
-    } else {
-      break;
-    }
+  CopyInputsToOutputs();
+  while (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+    PassArgsToBodyBlock();
+    body_inter_->Run({}, false);
+    GetValueFromBodyBlock();
   }
-
-  // copy  output
-  CopyStepOutput();
 }
 
 }  // namespace framework

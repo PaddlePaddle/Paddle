@@ -27,9 +27,9 @@ namespace paddle {
 namespace prim {
 using Tensor = paddle::Tensor;
 template <>
-Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
-                         phi::DataType dtype,
-                         const paddle::Place& place) {
+TEST_API Tensor empty<DescTensor>(const paddle::experimental::IntArray& shape,
+                                  phi::DataType dtype,
+                                  const paddle::Place& place) {
   framework::VarDesc* new_var =
       StaticCompositeContext::Instance().GetBlock()->Var(
           StaticCompositeContext::Instance().GenerateUniqueName());

@@ -17,6 +17,7 @@
 #include <glog/logging.h>
 #include <gtest/gtest.h>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 
@@ -46,16 +47,13 @@ TEST(MutateTileSize, Basic) {
       [&](Var i, Var j) { return ReduceSum(A(i, k) * B(k, j), {k}); },
       "C");
 
-  poly::StageMap stages = CreateStages({A, B, C});
+  ast_gen_ius::TensorGroup tensor_group({A, B, C});
   std::vector<ir::LoweredFunc> funcs =
-      lang::LowerVec("TestMutateTileSize_Basic",
-                     stages,
-                     {A, B, C},
-                     {},
-                     {},
-                     nullptr,
-                     target,
-                     true);
+      lang::LowerToAstVec("TestMutateTileSize_Basic",
+
+                          {A, B, C},
+                          &tensor_group,
+                          target);
 
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Original Expr: ";
