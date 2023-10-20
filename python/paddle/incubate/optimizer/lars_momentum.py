@@ -64,7 +64,6 @@ class LarsMomentumOptimizer(Optimizer):
         .. code-block:: python
 
             >>> import paddle
-            >>> import paddle.base as base
             >>> import numpy as np
 
             >>> paddle.enable_static()
@@ -76,8 +75,8 @@ class LarsMomentumOptimizer(Optimizer):
             >>> optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
             >>> optimizer.minimize(out)
 
-            >>> exe = base.Executor(base.CPUPlace())
-            >>> exe.run(base.default_startup_program())
+            >>> exe = paddle.static.Executor(base.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
             >>> exe.run(
             ...     feed={"inp": np_inp},
             ...     fetch_list=[out.name])

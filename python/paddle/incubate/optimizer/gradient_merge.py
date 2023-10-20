@@ -51,7 +51,6 @@ class GradientMergeOptimizer:
         .. code-block:: python
 
         >>> import paddle
-        >>> import paddle.base as base
         >>> import numpy as np
         >>> paddle.enable_static()
 
@@ -76,13 +75,13 @@ class GradientMergeOptimizer:
         >>> sgd = paddle.incubate.optimizer.GradientMergeOptimizer(sgd, k_steps=4, avg=True)
         >>> sgd.minimize(cost)
 
-        >>> place = base.CPUPlace()
-        >>> exe = base.Executor(place)
-        >>> exe.run(base.default_startup_program())
+        >>> place = paddle.CPUPlace()
+        >>> exe = paddle.static.Executor(place)
+        >>> exe.run(paddle.static.default_startup_program())
 
         >>> for i in range(10):
         ...     cost_val = exe.run(feed=gen_data(32),
-        ...                program=base.default_main_program(),
+        ...                program=paddle.static.default_main_program(),
         ...                fetch_list=[cost.name])
         ...     print("step=%d, cost=%f" % (i, cost_val[0]))
     """
