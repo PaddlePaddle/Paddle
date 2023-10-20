@@ -2364,15 +2364,14 @@ class CosineAnnealingWarmRestarts(LRScheduler):
     When :math:`T_{cur}=T_{i}`, set :math:`\eta_t = \eta_{min}`.
     When :math:`T_{cur}=0` after restart, set :math:`\eta_t=\eta_{max}`.
 
-    It has been proposed in
-    `SGDR: Stochastic Gradient Descent with Warm Restarts`_.
+    It has been proposed in `SGDR: Stochastic Gradient Descent with Warm Restarts <https://arxiv.org/abs/1608.03983>`_.
 
     Args:
         learning_rate (float): Initial learning rate.
         T_0 (int): Number of iterations for the first restart.
         T_mult (int, optional): A factor increases :math:`T_{i}` after a restart. Default: 1.
         eta_min (float, optional): Minimum learning rate. Default: 0.
-        last_epoch (int, optional): The index of last epoch. Default: -1.
+        last_epoch (int, optional): The index of last epoch. Default: -1, means initial learning rate.
         verbose (bool, optional): If ``True``, prints a message to stdout for
             each update. Default: ``False``.
 
