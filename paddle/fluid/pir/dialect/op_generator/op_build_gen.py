@@ -21,6 +21,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReduceIntArrayAxisInferMeta',
     'ReshapeWithXShapeInferMeta',
     'SliceRawInferMeta',
+    'StackInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
