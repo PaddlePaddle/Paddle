@@ -14,9 +14,12 @@
 
 #include "paddle/fluid/pybind/eval_frame_tools.h"
 
+#include <Python.h>
+
+#include <glog/logging.h>
 #include <unordered_set>
 
-#include <Python.h>
+#include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
 
@@ -42,10 +45,10 @@ void TreeNode::clear() {
 }
 
 int TreeNode::add_prefix(const char* filepath) {
-  int ch = (int)filepath[0];  // NOLINT
   if (is_prefix) return 0;
-  if (ch == '\0') return 1;
+  if (filepath[0] == '\0') return 1;
 
+  int ch = (int)filepath[0];  // NOLINT
   if (children[ch] == NULL) {
     TreeNode* node = new TreeNode();
     children[ch] = node;
