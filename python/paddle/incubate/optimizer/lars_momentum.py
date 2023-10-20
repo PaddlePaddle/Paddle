@@ -75,7 +75,7 @@ class LarsMomentumOptimizer(Optimizer):
             >>> optimizer = paddle.incubate.optimizer.LarsMomentumOptimizer(learning_rate=0.001, momentum=0.9)
             >>> optimizer.minimize(out)
 
-            >>> exe = paddle.static.Executor(base.CPUPlace())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
             >>> exe.run(paddle.static.default_startup_program())
             >>> exe.run(
             ...     feed={"inp": np_inp},
