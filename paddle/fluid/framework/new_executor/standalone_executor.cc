@@ -214,7 +214,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       double start_time, end_time;
       std::tie(start_time, end_time) =
           interpretercores_[job_idx]->InterpreterRunTime();
-      VLOG(3) << "Profiler Info: Job (" << job_idx << "), type = " << job_type
+      VLOG(0) << "Profiler Info: Job (" << job_idx << "), type = " << job_type
               << ", micro_batch_id = " << job->MicroBatchId()
               << ", job_start_time = " << std::to_string(start_time)
               << ", job_end_time = " << std::to_string(end_time);

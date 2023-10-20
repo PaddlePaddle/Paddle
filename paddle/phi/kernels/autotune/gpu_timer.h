@@ -73,7 +73,7 @@ class GpuTimer {
   void Start() {
     struct timeval time_now {};
     gettimeofday(&time_now, nullptr);
-    start_time_ = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000);
+    start_time_ = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
     Start(stream_);
   }
 

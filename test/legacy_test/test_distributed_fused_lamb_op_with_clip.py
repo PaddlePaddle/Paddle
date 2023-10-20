@@ -49,14 +49,14 @@ def run_test(
     if os.name == 'nt':
         return
     args = locals()
-    log_dir = os.path.join(temp_dir.name, f'log_{os.getpid()}')
+    log_dir = "/home/root/Paddle/build/Testing/Temporary/"
     cmd = [
         sys.executable,
         '-u',
         '-m',
         'paddle.distributed.launch',
         '--devices',
-        '0,1',
+        '2,3',
         '--log_dir',
         log_dir,
         get_test_file(),
