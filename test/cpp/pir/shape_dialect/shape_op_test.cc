@@ -104,13 +104,13 @@ TEST(shape_op, tie_product_equal_op) {
   std::vector<pir::Value> lhs_ref{dim_op0, dim_op1};
   std::vector<pir::Value> rhs_ref{dim_op2, dim_op3, dim_op4};
 
-  EXPECT_EQ(symbolt_table.insert(tie_product_equal_op), "tie_product_equal_op");
-  EXPECT_EQ(symbolt_table
-                .Lookup<pir::shape::TieProductEqualOp>("tie_product_equal_op")
-                .size(),
-            static_cast<size_t>(1));
+  EXPECT_EQ(symbolt_table.insert(tie_product_equal_op), "tie_product_equal");
+  EXPECT_EQ(
+      symbolt_table.Lookup<pir::shape::TieProductEqualOp>("tie_product_equal")
+          .size(),
+      static_cast<size_t>(1));
   EXPECT_EQ(symbolt_table.Lookup<pir::shape::TieProductEqualOp>(
-                "tie_product_equal_op")[0],
+                "tie_product_equal")[0],
             tie_product_equal_op);
   EXPECT_EQ(lhs, lhs_ref);
   EXPECT_EQ(rhs, rhs_ref);
