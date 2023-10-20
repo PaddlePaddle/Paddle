@@ -77,24 +77,6 @@ void CollectTensorIndexIteratorsImpl(
 }
 
 void CollectTensorIndexIteratorsImpl(
-    const ConstantAdd<Value>& tensor_index_expr,
-    std::unordered_set<Iterator>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
-}
-
-void CollectTensorIndexIteratorsImpl(
-    const ConstantDiv<Value>& tensor_index_expr,
-    std::unordered_set<Iterator>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
-}
-
-void CollectTensorIndexIteratorsImpl(
-    const ConstantMod<Value>& tensor_index_expr,
-    std::unordered_set<Iterator>* ret) {
-  CollectTensorIndexIterators(tensor_index_expr.GetArg0(), ret);
-}
-
-void CollectTensorIndexIteratorsImpl(
     const ListGetItem<Value, Constant>& tensor_index_expr,
     std::unordered_set<Iterator>* ret) {
   CollectTensorIndexIterators(tensor_index_expr.GetList(), ret);

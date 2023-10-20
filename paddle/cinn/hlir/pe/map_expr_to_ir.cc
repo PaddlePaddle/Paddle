@@ -40,6 +40,8 @@ using Node2LoweredFuncs =
 
 using TensorIteratorExpr4TensorT =
     std::function<adt::List<adt::TensorIteratorExpr>(const adt::Tensor&)>;
+using IterExprs4TensorT =
+    std::function<std::vector<ir::Expr>(const adt::Tensor&)>;
 using LoopDescriptor4LoopIteratorT =
     std::function<adt::LoopDescriptor(const adt::Iterator&)>;
 
@@ -212,34 +214,41 @@ class MapExprToIrTranslator {
     return InlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
   }
 
-  std::optional<ir::Expr> TranslateImpl(
+  std::optional<ir::Expr> TranslateOpExprImpl(
       const Load<Tensor>& load,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     return std::nullopt;
   }
 
   std::vector<ir::Expr> TranslateTensorIndexImpl(
-      const OpCall<OpExpr>& op_call) const {
+      const OpCall<OpExpr>& op_call,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     LOG(FATAL) << "Dead code, no TensorIndexExpr for OpCall";
   }
 
   std::vector<ir::Expr> TranslateTensorIndexImpl(
-      const Load<Tensor>& op_call) const {
+      const Load<Tensor>& op_call,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [tensor] = op_call.tuple();
-    return Translate(TensorIteratorExpr4Tensor(tensor));
+    return IterExprs4Tensor(tensor);
   }
 
   // using OpExpr = Tree<OpCall, Load<Tensor>>;
-  std::vector<ir::Expr> TranslateTensorIndex(const OpExpr& op_expr) const {
+  std::vector<ir::Expr> TranslateTensorIndex(
+      const OpExpr& op_expr, const IterExprs4TensorT& IterExprs4Tensor) const {
     return std::visit(
-        [&](const auto& impl) { return TranslateTensorIndexImpl(impl); },
+        [&](const auto& impl) {
+          return TranslateTensorIndexImpl(impl, IterExprs4Tensor);
+        },
         op_expr.variant());
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
       const hlir::framework::Node* op,
       const OpCall<OpExpr>& op_expr,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [_, op_expr_children] = op_expr.tuple();
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
@@ -247,13 +256,13 @@ class MapExprToIrTranslator {
 
     CHECK_EQ(store_rvalue->operands.size(), op_expr_children->size());
     for (int i = 0; i < op_expr_children->size(); ++i) {
-      const auto& opt_operant =
-          Translate(op_expr_children->at(i), std::nullopt);
+      const auto& opt_operant = TranslateOpExpr(
+          op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
       if (opt_operant.has_value()) {
         store_rvalue->operands.at(i) = opt_operant.value();
       } else {
         store_rvalue->operands.at(i).As<ir::Load>()->indices =
-            TranslateTensorIndex(op_expr_children->at(i));
+            TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
       }
     }
     return store_rvalue;
@@ -262,7 +271,8 @@ class MapExprToIrTranslator {
   std::optional<ir::Expr> TranslateOpCallImpl(
       const tReduceInit<const hlir::framework::Node*>& op,
       const OpCall<OpExpr>& op_expr,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [_, op_expr_children] = op_expr.tuple();
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
@@ -277,7 +287,8 @@ class MapExprToIrTranslator {
   std::optional<ir::Expr> TranslateOpCallImpl(
       const tReduceAcc<const hlir::framework::Node*>& op,
       const OpCall<OpExpr>& op_expr,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [_, op_expr_children] = op_expr.tuple();
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
@@ -288,38 +299,41 @@ class MapExprToIrTranslator {
     CHECK_EQ(op_expr_children->size(), 1);
     CHECK(opt_output_tensor.has_value());
     store_rvalue->operands.at(0).As<ir::Load>()->indices =
-        Translate(TensorIteratorExpr4Tensor(opt_output_tensor.value()));
+        IterExprs4Tensor(opt_output_tensor.value());
     {
-      const auto& opt_operant =
-          Translate(op_expr_children->at(0), std::nullopt);
+      const auto& opt_operant = TranslateOpExpr(
+          op_expr_children->at(0), std::nullopt, IterExprs4Tensor);
       if (opt_operant.has_value()) {
         store_rvalue->operands.at(1) = opt_operant.value();
       } else {
         store_rvalue->operands.at(1).As<ir::Load>()->indices =
-            TranslateTensorIndex(op_expr_children->at(0));
+            TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
       }
     }
     return store_rvalue;
   }
 
-  std::optional<ir::Expr> TranslateImpl(
+  std::optional<ir::Expr> TranslateOpExprImpl(
       const OpCall<OpExpr>& op_expr,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     const auto& [op, op_expr_children] = op_expr.tuple();
     return std::visit(
         [&](const auto& impl) {
-          return TranslateOpCallImpl(impl, op_expr, opt_output_tensor);
+          return TranslateOpCallImpl(
+              impl, op_expr, opt_output_tensor, IterExprs4Tensor);
         },
         op.variant());
   }
 
   // using OpExpr = Tree<OpCall, Load<Tensor>>;
-  std::optional<ir::Expr> Translate(
+  std::optional<ir::Expr> TranslateOpExpr(
       const OpExpr& op_expr,
-      const std::optional<Tensor>& opt_output_tensor) const {
+      const std::optional<Tensor>& opt_output_tensor,
+      const IterExprs4TensorT& IterExprs4Tensor) const {
     return std::visit(
         [&](const auto& impl) {
-          return TranslateImpl(impl, opt_output_tensor);
+          return TranslateOpExprImpl(impl, opt_output_tensor, IterExprs4Tensor);
         },
         op_expr.variant());
   }
@@ -328,30 +342,127 @@ class MapExprToIrTranslator {
     return Translate(op_expr_stmt);
   }
 
+  template <typename DoEachT /*void(&)(const Value&)*/>
+  void VisitEachIteratorValue(const Tensor& tensor,
+                              const DoEachT& DoEach) const {
+    const List<Value>& iterator_values = TensorIteratorExpr4Tensor(tensor);
+    for (const auto& iterator_value : *iterator_values) {
+      DoEach(iterator_value);
+    }
+  }
+
+  template <typename DoEachT /*void(&)(const Value&)*/>
+  void VisitEachIteratorValueImpl(const OpCall<OpExpr>& op_call,
+                                  const DoEachT& DoEach) const {
+    const auto& [_, children] = op_call.tuple();
+    for (const auto& child : *children) {
+      VisitEachIteratorValue(child, DoEach);
+    }
+  }
+
+  template <typename DoEachT /*void(&)(const Value&)*/>
+  void VisitEachIteratorValueImpl(const Load<Tensor>& load,
+                                  const DoEachT& DoEach) const {
+    const auto& [tensor] = load.tuple();
+    VisitEachIteratorValue(tensor, DoEach);
+  }
+
+  template <typename DoEachT /*void(&)(const Value&)*/>
+  void VisitEachIteratorValue(const OpExpr& op_expr,
+                              const DoEachT& DoEach) const {
+    return std::visit(
+        [&](const auto& impl) {
+          return VisitEachIteratorValueImpl(impl, DoEach);
+        },
+        op_expr.variant());
+  }
+
+  template <typename DoEachT /*void(&)(const Value&)*/>
+  void VisitEachIteratorValue(const OpExprStmt& op_expr_stmt,
+                              const DoEachT& DoEach) const {
+    const auto& [tensor, op_expr] = op_expr_stmt.tuple();
+    VisitEachIteratorValue(tensor, DoEach);
+    VisitEachIteratorValue(op_expr, DoEach);
+  }
+
+  IterExprs4TensorT MakeGetterIterExprs4Tensor(
+      const OpExprStmt& op_expr_stmt,
+      std::vector<std::pair<ir::Var, ir::Expr>>* binding_var2value) const {
+    std::unordered_map<Value, std::pair<ir::Var, ir::Expr>> value2var_expr{};
+    VisitEachIteratorValue(op_expr_stmt, [&](const Value& value) {
+      if (value2var_expr.count(value) == 0) {
+        ir::Var var{std::string("m_expr_i_") +
+                    std::to_string(UniqueId::New().unique_id())};
+        ir::Expr expr = TranslateTensorIterator(value);
+        CHECK(value2var_expr.emplace(value, std::make_pair(var, expr)).second);
+      } else {
+        // Do nothing
+      }
+    });
+    for (const auto& [_, pair] : value2var_expr) {
+      binding_var2value->push_back(pair);
+    }
+    return [value2var_expr, this](const Tensor& tensor) {
+      const List<Value>& iterator_values = TensorIteratorExpr4Tensor(tensor);
+      std::vector<ir::Expr> ret{};
+      ret.reserve(iterator_values->size());
+      for (const auto& iterator_value : *iterator_values) {
+        const auto& it = value2var_expr.find(iterator_value);
+        CHECK(it != value2var_expr.end());
+        ret.emplace_back(it->second.first);
+      }
+      return ret;
+    };
+  }
+
+  std::vector<ir::Var> GetVectorOfPairFirst(
+      const std::vector<std::pair<ir::Var, ir::Expr>>& pairs) const {
+    std::vector<ir::Var> ret{};
+    ret.reserve(pairs.size());
+    for (const auto& pair : pairs) {
+      ret.emplace_back(pair.first);
+    }
+    return ret;
+  }
+
+  std::vector<ir::Expr> GetVectorOfPairSecond(
+      const std::vector<std::pair<ir::Var, ir::Expr>>& pairs) const {
+    std::vector<ir::Expr> ret{};
+    ret.reserve(pairs.size());
+    for (const auto& pair : pairs) {
+      ret.emplace_back(pair.second);
+    }
+    return ret;
+  }
+
   // using OpExprStmt = Store<Tensor, OpExpr>;
   ir::Expr Translate(const OpExprStmt& op_expr_stmt) const {
     const auto& [output_tensor, op_expr] = op_expr_stmt.tuple();
     std::optional<ir::Expr> store_expr = GetStoreExpr(op_expr);
     CHECK(store_expr.has_value());
     std::optional<Tensor> opt_output_tensor = output_tensor;
-    const auto& opt_rvalue = Translate(op_expr, opt_output_tensor);
+
+    std::vector<std::pair<ir::Var, ir::Expr>> binding_var2value{};
+    const auto& IterExprs4Tensor =
+        MakeGetterIterExprs4Tensor(op_expr_stmt, &binding_var2value);
+
+    const auto& opt_rvalue =
+        TranslateOpExpr(op_expr, opt_output_tensor, IterExprs4Tensor);
     CHECK(opt_rvalue.has_value());
 
     const auto& output_expr =
         ir::Store::Make(store_expr.value().As<ir::Store>()->tensor,
                         opt_rvalue.value(),
-                        Translate(TensorIteratorExpr4Tensor(output_tensor)));
+                        IterExprs4Tensor(output_tensor));
 
-    std::vector<ir::Expr> fake_values = {ir::Var("fake_v_0"),
-                                         ir::Var("fake_v_1")};
-    std::vector<ir::Var> fake_vars = {ir::Var("fake_i_0"), ir::Var("fake_i_1")};
     ir::Expr ret = ir::ScheduleBlock::Make(
-        fake_vars,
+        GetVectorOfPairFirst(binding_var2value),
         {},
         {},
         output_expr.As<ir::Store>()->tensor.as_tensor()->name,
         output_expr);
-    ret = ir::ScheduleBlockRealize::Make(fake_values, ret);
+    ret = ir::ScheduleBlockRealize::Make(
+        GetVectorOfPairSecond(binding_var2value), ret);
     return ret;
   }
 
@@ -436,12 +547,9 @@ class MapExprToIrTranslator {
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const S0x& loop_type, const LoopDescriptor& ld) const {
-    return std::make_tuple(
-        ir::ForType::Serial, ir::VectorizeInfo(), ir::BindInfo());
-    // TODO(Hongyu Jia) : Replace with the following codes after axis.bind
-    // supported ir::ForType for_type = ir::ForType::GPUBlock; ir::BindInfo
-    // bind_info{for_type, 0, ir::DeviceAPI::GPU}; return
-    // std::make_tuple(for_type, ir::VectorizeInfo(), bind_info);
+    ir::ForType for_type = ir::ForType::GPUBlock;
+    ir::BindInfo bind_info{for_type, 0, ir::DeviceAPI::GPU};
+    return std::make_tuple(for_type, ir::VectorizeInfo(), bind_info);
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
@@ -460,12 +568,9 @@ class MapExprToIrTranslator {
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>
   GetForTypeAndInfoImpl(const S1x& loop_type, const LoopDescriptor& ld) const {
-    return std::make_tuple(
-        ir::ForType::Serial, ir::VectorizeInfo(), ir::BindInfo());
-    // TODO(Hongyu Jia) : Replace with the following codes after axis.bind
-    // supported ir::ForType for_type = ir::ForType::GPUThread; ir::BindInfo
-    // bind_info{for_type, 0, ir::DeviceAPI::GPU}; return
-    // std::make_tuple(for_type, ir::VectorizeInfo(), bind_info);
+    ir::ForType for_type = ir::ForType::GPUThread;
+    ir::BindInfo bind_info{for_type, 0, ir::DeviceAPI::GPU};
+    return std::make_tuple(for_type, ir::VectorizeInfo(), bind_info);
   }
 
   std::tuple<ir::ForType, ir::VectorizeInfo, ir::BindInfo>

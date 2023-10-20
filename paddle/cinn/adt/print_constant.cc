@@ -43,26 +43,6 @@ struct ToTxtStringStruct {
     ret += "]";
     return ret;
   }
-
-  std::string operator()(const Neg<Constant>& neg) {
-    std::string ret;
-    ret += std::string("-") + ToTxtString(std::get<0>(neg.tuple()));
-    return ret;
-  }
-
-  std::string operator()(const Add<Constant, Constant>& constant) {
-    std::string ret;
-    const auto& [left, right] = constant.tuple();
-    ret += "(" + ToTxtString(left) + " + " + ToTxtString(right) + ")";
-    return ret;
-  }
-
-  std::string operator()(const Mul<Constant, Constant>& constant) {
-    std::string ret;
-    const auto& [left, right] = constant.tuple();
-    ret += "(" + ToTxtString(left) + " * " + ToTxtString(right) + ")";
-    return ret;
-  }
 };
 }  // namespace
 

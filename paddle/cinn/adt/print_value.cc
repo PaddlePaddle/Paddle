@@ -75,31 +75,6 @@ struct ToTxtStringStruct {
     return ret;
   }
 
-  std::string operator()(const ConstantAdd<Value>& constant_add) {
-    std::string ret;
-    const auto& [value, constant] = constant_add.tuple();
-
-    ret += "ConstantAdd(" + ToTxtString(value) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ConstantDiv<Value>& constant_div) {
-    std::string ret;
-    const auto& [value, constant] = constant_div.tuple();
-    ret += "ConstantDiv(" + ToTxtString(value) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
-  std::string operator()(const ConstantMod<Value>& constant_mod) {
-    std::string ret;
-    const auto& [value, constant] = constant_mod.tuple();
-    ret += "ConstantMod(" + ToTxtString(value) + ", " + ToTxtString(constant) +
-           ")";
-    return ret;
-  }
-
   std::string operator()(const ListGetItem<Value, Constant>& list_get_item) {
     std::string ret;
     const auto& [value, constant] = list_get_item.tuple();

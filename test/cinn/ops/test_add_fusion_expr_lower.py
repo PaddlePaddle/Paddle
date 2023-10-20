@@ -25,7 +25,7 @@ inputs = {
     "z": OpTest.random([1024, 1024], "float32", -1.0, 1.0),
 }
 
-builder = NetBuilder("PrecisionTest")
+builder = NetBuilder("ElementwiseAdd")
 x = builder.create_input(Float(32), inputs["x"].shape, "x")
 y = builder.create_input(Float(32), inputs["y"].shape, "y")
 z = builder.create_input(Float(32), inputs["z"].shape, "z")

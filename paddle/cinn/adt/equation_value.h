@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <functional>
+
 #include "paddle/cinn/adt/adt.h"
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/match.h"
@@ -43,30 +45,6 @@ struct IndexUnDotValue : public Tuple<IndexT, DimsT> {
   const IndexT& GetIndexValue() const { return std::get<0>(this->tuple()); }
 };
 
-// ConstantAdd T = Add T Constant
-template <typename T>
-struct ConstantAdd final : public Add<T, Constant> {
-  using Add<T, Constant>::Add;
-
-  const T& GetArg0() const { return std::get<0>(this->tuple()); }
-};
-
-// ConstantDiv T = Div T Constant
-template <typename T>
-struct ConstantDiv final : public Div<T, Constant> {
-  using Div<T, Constant>::Div;
-
-  const T& GetArg0() const { return std::get<0>(this->tuple()); }
-};
-
-// ConstantMod T = Mod T Constant
-template <typename T>
-struct ConstantMod final : public Mod<T, Constant> {
-  using Mod<T, Constant>::Mod;
-
-  const T& GetArg0() const { return std::get<0>(this->tuple()); }
-};
-
 // ListGetItem T ConstantT = (T, ConstantT)
 template <typename T, typename ConstantT>
 struct ListGetItem final : public Tuple<T, ConstantT> {
@@ -91,9 +69,6 @@ DEFINE_ADT_UNION(Value,
                  List<Value>,
                  IndexDotValue<Value, Constant>,
                  IndexUnDotValue<Value, Constant>,
-                 ConstantAdd<Value>,
-                 ConstantDiv<Value>,
-                 ConstantMod<Value>,
                  ListGetItem<Value, Constant>,
                  PtrGetItem<Value>);
 
@@ -102,11 +77,57 @@ using IndexDot_Value_Constant = IndexDotValue<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(IndexDot_Value_Constant, TupleEqual);
 using IndexUnDot_Value_Constant = IndexUnDotValue<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(IndexUnDot_Value_Constant, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(ConstantAdd<Value>, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(ConstantDiv<Value>, TupleEqual);
-OVERLOAD_OPERATOR_EQ_NE(ConstantMod<Value>, TupleEqual);
 using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
+inline std::size_t GetHashValue(const Value& value);
+
+inline std::size_t GetHashValueImpl(const Undefined& value) { return 0; }
+inline std::size_t GetHashValueImpl(const Ok& value) { return 1; }
+inline std::size_t GetHashValueImpl(const Iterator& value) {
+  return value.value().unique_id();
+}
+inline std::size_t GetHashValueImpl(const Constant& value) {
+  return GetHashValue(value);
+}
+inline std::size_t GetHashValueImpl(const List<Value>& value) {
+  std::size_t ret = 0;
+  for (const auto& v : *value) {
+    ret = hash_combine(ret, GetHashValue(v));
+  }
+  return ret;
+}
+inline std::size_t GetHashValueImpl(
+    const IndexDotValue<Value, Constant>& value) {
+  const auto& [v, c] = value.tuple();
+  return hash_combine(GetHashValue(v), GetHashValue(c));
+}
+inline std::size_t GetHashValueImpl(
+    const IndexUnDotValue<Value, Constant>& value) {
+  const auto& [v, c] = value.tuple();
+  return hash_combine(GetHashValue(v), GetHashValue(c));
+}
+inline std::size_t GetHashValueImpl(const ListGetItem<Value, Constant>& value) {
+  const auto& [v, c] = value.tuple();
+  return hash_combine(GetHashValue(v), GetHashValue(c));
+}
+inline std::size_t GetHashValueImpl(const PtrGetItem<Value>& value) {
+  const auto& [pointer, c] = value.tuple();
+  return hash_combine(pointer.value().unique_id(), GetHashValue(c));
+}
+
+OVERRIDE_UNION_GET_HASH_VALUE(Value);
+
 }  // namespace cinn::adt
+
+namespace std {
+
+template <>
+struct hash<cinn::adt::Value> {
+  std::size_t operator()(const cinn::adt::Value& value) const {
+    return GetHashValue(value);
+  }
+};
+
+}  // namespace std
