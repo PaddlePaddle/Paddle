@@ -2386,6 +2386,7 @@ class TestReluAPI(unittest.TestCase):
     def executed_api(self):
         self.relu = F.relu
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
