@@ -56,7 +56,6 @@ def fused_rms_norm(
 
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
-
             >>> paddle.device.set_device('gpu')
 
             >>> paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
