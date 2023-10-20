@@ -16,7 +16,7 @@
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
 #include <thrust/sort.h>
-#include "paddle/fluid/memory/memory.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
@@ -175,10 +175,10 @@ struct EmbeddingBagGradCUDAFunctor {
     int allocsize = input_.dims()[0] * input_.dims()[1];
 
     auto sortedIndices =
-        paddle::memory::Alloc(dev_ctx_.GetPlace(), allocsize * sizeof(IdT *));
+        memory_utils::Alloc(dev_ctx_.GetPlace(), allocsize * sizeof(IdT *));
     IdT *sortedIndices_d = reinterpret_cast<IdT *>(sortedIndices->ptr());
 
-    auto sortedIndicesCounter = paddle::memory::Alloc(
+    auto sortedIndicesCounter = memory_utils::Alloc(
         dev_ctx_.GetPlace(),
         allocsize * sizeof(IdT *),
         phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
