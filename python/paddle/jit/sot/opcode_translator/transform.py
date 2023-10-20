@@ -18,7 +18,7 @@ import dis
 from functools import partial
 
 from ..profiler import EventGuard
-from ..utils import log, log_do
+from ..utils import log_do, log_format
 from .custom_code import CustomCode
 from .executor.executor_cache import OpcodeExecutorCache
 
@@ -53,25 +53,27 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
     with EventGuard(
         f"eval_frame_callback: {frame.f_code.co_name}", event_level=2
     ):
-        log(2, f"[eval_frame_callback] start to translate: {frame.f_code}\n")
+        log_format(
+            2, "[eval_frame_callback] start to translate: {}\n", frame.f_code
+        )
         log_do(4, partial(print_locals, frame))
 
-        log(3, f"[transform] OriginCode: {frame.f_code.co_name}\n")
+        log_format(3, "[transform] OriginCode: {}\n", frame.f_code.co_name)
         log_do(3, lambda: dis.dis(frame.f_code))
 
         custom_code = OpcodeExecutorCache()(frame, **kwargs)
 
         if custom_code.code is None:
-            log(
+            log_format(
                 3,
-                "[transform] NewCode (same as origin code): "
-                + frame.f_code.co_name
-                + "\n",
+                "[transform] NewCode (same as origin code): {}\n",
+                frame.f_code.co_name,
             )
         else:
-            log(
+            log_format(
                 3,
-                "[transform] NewCode: " + custom_code.code.co_name + "\n",
+                "[transform] NewCode: {}\n",
+                custom_code.code.co_name,
             )
             log_do(3, lambda: dis.dis(custom_code.code))
 

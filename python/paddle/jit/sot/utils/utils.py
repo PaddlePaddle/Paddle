@@ -130,6 +130,12 @@ def log_do(level, fn):
         fn()
 
 
+def log_format(level, str, *args):
+    cur_level = int(os.environ.get("SOT_LOG_LEVEL", "0"))
+    if level <= cur_level:
+        print(str.format(*args), end="")
+
+
 def no_eval_frame(func):
     def no_eval_frame_func(*args, **kwargs):
         old_cb = paddle.framework.core.set_eval_frame(None)
