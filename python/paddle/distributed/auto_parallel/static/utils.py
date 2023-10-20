@@ -2533,6 +2533,7 @@ def measure_real_op_cost_wrt_program_and_place(
     Description
     -----------
     Measuring real op run time (us) with respect to the given "program" and "place".
+
     Parameters
     -----------
     @param program: paddle.static.Program
@@ -2549,11 +2550,13 @@ def measure_real_op_cost_wrt_program_and_place(
         will first remove the outliers then average the remained result.
     @param verbose: bool
         Print op profiling information generated during profiling.
+
     Returns
     -----------
     No return value. This function will write op profiling info directly into program
     object. For example, to retrieve the run time for the first op in program, use:
     >>> program.global_block().ops[0].get_runtime_us()
+
     Note
     -----------
     Not all ops support runtime profiling. Currently comm ops do not support runtime
@@ -2561,6 +2564,7 @@ def measure_real_op_cost_wrt_program_and_place(
     if an op supports runtime profiling, use:
     >>> op.supports_runtime_profiling()
     where "op" is an instance of "paddle.base.framework.Operator".
+
     Example
     -----------
     >>> program = ... # build your own program object here.
