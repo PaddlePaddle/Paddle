@@ -293,7 +293,7 @@ std::string Operation::name() const {
   return p_name ? p_name : "";
 }
 
-void Operation::erase() {
+void Operation::Erase() {
   if (auto *parent = GetParent())
     parent->erase(*this);
   else

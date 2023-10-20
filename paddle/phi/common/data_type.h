@@ -45,7 +45,6 @@ enum class DataType {
   INT16,
   UINT32,
   INT32,
-  INDEX,
   UINT64,
   INT64,
 
@@ -94,7 +93,6 @@ inline size_t SizeOf(DataType data_type) {
     case DataType::INT64:
     case DataType::UINT64:
     case DataType::COMPLEX64:
-    case DataType::INDEX:
       return 8;
     case DataType::COMPLEX128:
       return 16;

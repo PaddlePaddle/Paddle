@@ -40,15 +40,15 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
 
   template <class ConcreteType>
   struct Model : public Concept {
-    static inline DataType getElementType(Type type) {
+    static inline DataType GetElementType(Type type) {
       return pir::cast<ConcreteType>(type).dtype();
     }
 
-    static inline DDim getShape(Type type) {
+    static inline DDim GetShape(Type type) {
       return pir::cast<ConcreteType>(type).dims();
     }
 
-    Model() : Concept(getElementType, getShape) {}
+    Model() : Concept(GetElementType, GetShape) {}
   };
 
   ShapedTypeInterface(Type type, Concept *impl)

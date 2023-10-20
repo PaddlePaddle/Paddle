@@ -17,7 +17,7 @@
 namespace pir {
 
 bool InferShapedTypeOpInterface::ReifyReturnTypeShapes(
-    Builder& builder,  // NOLINT
+    Builder& builder,
     std::vector<OpOperand> operands,
     std::vector<Value>& reified_return_shapes) {
   return impl_->reify_return_type_shapes(

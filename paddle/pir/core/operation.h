@@ -128,7 +128,7 @@ class IR_API alignas(8) Operation final {
   ///
   /// \brief Remove this operation from its parent block and delete it.
   ///
-  void erase();
+  void Erase();
 
   ///
   /// \brief Returns true if this operation has no uses.

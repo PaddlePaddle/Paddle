@@ -124,13 +124,13 @@ void RewriterBase::ReplaceOp(Operation* op,
   op->ReplaceAllUsesWith(new_values);
 
   NotifyOperationRemoved(op);
-  op->erase();
+  op->Erase();
 }
 
 void RewriterBase::EraseOp(Operation* op) {
   IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
-  op->erase();
+  op->Erase();
 }
 
 // Find uses of `from` and replace it with `to`.
