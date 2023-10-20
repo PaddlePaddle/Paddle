@@ -24,6 +24,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
@@ -54,6 +55,11 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     if (use_gpu_) {
       LOG(INFO) << "Create GPU IR passes";
       pass_builder_ = std::make_unique<GpuPassStrategy>();
+      pass_builder_->InitPassCtrl(
+          static_cast<int64_t>(mixed_precision_mode_),
+          static_cast<int64_t>(tensorrt_precision_mode_),
+          use_gpu_,
+          use_tensorrt_);
     } else if (use_xpu_) {
       pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_ipu_) {
@@ -73,7 +79,6 @@ PassStrategy *AnalysisConfig::pass_builder() const {
     LOG(WARNING) << "Please make them compatible, still use the existing "
                     "PassBuilder.";
   }
-
   return pass_builder_.get();
 }
 
@@ -1092,6 +1097,12 @@ void AnalysisConfig::Update() {
         "You tried to enable the custom device "
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
+  }
+  if (!pass_builder_.get()) {
+    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
+                                static_cast<int64_t>(tensorrt_precision_mode_),
+                                use_gpu_,
+                                use_tensorrt_);
   }
 }
 

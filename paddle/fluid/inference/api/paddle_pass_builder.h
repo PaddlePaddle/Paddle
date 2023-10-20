@@ -19,6 +19,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #include "paddle_infer_declare.h"  // NOLINT
 
 ///
@@ -177,6 +178,11 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
+  virtual void InitPassCtrl(const int64_t mixed_precision_mode,
+                            const int64_t tensorrt_precision_mode,
+                            const bool use_gpu,
+                            const bool use_trt);
+
  protected:
   /// \cond Protected
   bool use_xpu_{false};
@@ -254,6 +260,7 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \param[in] other The GpuPassStrategy object we want to copy.
   explicit GpuPassStrategy(const GpuPassStrategy &other)
       : PassStrategy(other.AllPasses()) {
+    pass_ctrl_ = std::move(other.pass_ctrl_);
     use_gpu_ = true;
     use_cudnn_ = other.use_cudnn_;
   }
@@ -279,9 +286,17 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
   /// \brief Default destructor.
   virtual ~GpuPassStrategy() = default;
 
+  void InitPassCtrl(const int64_t mixed_precision_mode,
+                    const int64_t tensorrt_precision_mode,
+                    const bool use_gpu,
+                    const bool use_trt);
+
+  const std::vector<std::string> AllPasses() const;
+
  protected:
   /// \cond Protected
   bool use_cudnn_{false};
+  mutable std::unique_ptr<PaddlePassContorl> pass_ctrl_;
   /// \endcond
 };
 

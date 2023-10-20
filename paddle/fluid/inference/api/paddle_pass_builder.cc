@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/api/paddle_pass_controller.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #endif
@@ -24,9 +25,13 @@
 #endif
 
 #include <glog/logging.h>
-
 #include <algorithm>
 #include <sstream>
+#include "paddle/fluid/platform/flags.h"
+
+PADDLE_DEFINE_EXPORTED_bool(pass_controller_run,
+                            false,
+                            "Enable pass controller for manage passes");
 
 namespace paddle {
 
@@ -86,6 +91,26 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 }
 
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
+
+void GpuPassStrategy::InitPassCtrl(int64_t mixed_precision_mode,
+                                   int64_t tensorrt_precision_mode,
+                                   bool use_gpu,
+                                   bool use_trt) {
+  if (FLAGS_pass_controller_run && !(pass_ctrl_.get())) {
+    pass_ctrl_ = std::make_unique<PaddlePassContorl>(
+        mixed_precision_mode, tensorrt_precision_mode, use_gpu, use_trt);
+  }
+}
+
+const std::vector<std::string> GpuPassStrategy::AllPasses() const {
+  if (FLAGS_pass_controller_run) {
+    auto passes = passes_;
+    auto ctrl_passes = pass_ctrl_->GetCtrlPassList(passes);
+    return ctrl_passes;
+  } else {
+    return passes_;
+  }
+}
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "set_subgraph_edge_pass",                                       //

@@ -24,6 +24,10 @@ cc_library(
   paddle_pass_builder
   SRCS paddle_pass_builder.cc
   DEPS framework_proto)
+cc_library(
+  paddle_pass_controller
+  SRCS paddle_pass_controller.cc
+  DEPS framework_proto)
 
 set(paddle_inference_api_deps
     reset_tensor_array
