@@ -228,8 +228,8 @@ bool ConditionBlockCombination::Verify(
         return false;
       }
     } else {
-      if ((op_list[id]->Type() != "select_input") ||
-          (op_list[id]->Type() != "fill_constant") ||
+      if ((op_list[id]->Type() != "select_input") &&
+          (op_list[id]->Type() != "fill_constant") &&
           (op_list[id]->Type() != "assign_value")) {
         return false;
       }
