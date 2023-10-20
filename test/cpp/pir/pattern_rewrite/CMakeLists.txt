@@ -7,7 +7,7 @@ if(WITH_DISTRIBUTE)
                                 parallel_executor)
 endif()
 
-cc_test(
+cc_test_old(
   pattern_rewrite_test 
   SRCS pattern_rewrite_test.cc 
   DEPS ${PATTERN_REWRITE_TEST_DEPS})
@@ -32,9 +32,9 @@ cc_test(
   SRCS drr_attention_fuse_test.cc
   DEPS fusion_passes drr gtest pd_op_dialect pir)
 
-# set_tests_properties(
-#   pattern_rewrite_test PROPERTIES ENVIRONMENT
-#                                   "FLAGS_enable_new_ir_in_executor=true")
-set_source_files_properties(
+set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
-                                     "FLAGS_enable_new_ir_in_executor=true")
+                                  "FLAGS_enable_new_ir_in_executor=true")
+# set_source_files_properties(
+#   pattern_rewrite_test PROPERTIES ENVIRONMENT
+#                                      "FLAGS_enable_new_ir_in_executor=true")
