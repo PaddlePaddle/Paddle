@@ -515,7 +515,7 @@ def monkey_patch_tensor():
     @framework.dygraph_only
     def to(self, *args, **kwargs):
         """
-        Performs Tensor dtype and/or device conversion. A torch.dtype and torch.device
+        Performs Tensor dtype and/or device conversion. A paddle.dtype and place
         are inferred from the arguments of self.to(*args, **kwargs).There are three ways
         to call `to`
             to(dtype, blocking=True)
@@ -602,7 +602,7 @@ def monkey_patch_tensor():
                 else:
                     blocking = kwargs.get("blocking", None)
             elif (
-                isinstance(args[0], paddle.dtype)
+                isinstance(args[0], paddle.dtype, np.dtype)
                 or isinstance(args[0], str)
                 and args[0].lower() in valid_dtypes
             ):
