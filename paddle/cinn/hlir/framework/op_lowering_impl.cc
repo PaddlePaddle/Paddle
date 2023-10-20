@@ -119,7 +119,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(1) << "apply_group_schedule = " << apply_group_schedule;
   VLOG(1) << "apply_pass = " << apply_pass;
 
-  ir::Expr func_body = adt::MapExprToIr(group->map_expr_ctx());
+  ir::Expr func_body = adt::MapExprToIr(group->map_expr_ctx(), target_);
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr({func_body});
