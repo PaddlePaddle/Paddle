@@ -27,9 +27,7 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
-#include "paddle/cinn/runtime/flags.h"
 
-PD_DECLARE_bool(cinn_map_expr_enable_inline);
 namespace cinn::adt {
 
 namespace {
@@ -504,37 +502,10 @@ class MapExprToIrTranslator {
   }
 
   ir::Expr Translate(const MapStmt<Stmt>& map_stmt) const {
-    if (FLAGS_cinn_map_expr_enable_inline) {
-      Stmt stmt = map_stmt;
-      InternalStmt internal_stmt = ConvertToInternalStmt(stmt);
-      InlineStmt inline_stmt = ConvertToInlineStmt(internal_stmt);
-      return Translate(inline_stmt);
-    } else {
-      const auto& [iterators, stmts] = map_stmt.tuple();
-      ir::Expr ret = Translate(stmts);
-      CHECK_GT(iterators->size(), 0);
-      for (int i = iterators->size() - 1; i >= 0; --i) {
-        const auto& iterator = iterators->at(i);
-        const auto& ld = LoopDescriptor4LoopIterator(iterator);
-        ir::Var var{"v_" + std::to_string(iterator.value().unique_id())};
-        ir::Expr min{IteratorInt(0)};
-        ir::Expr extent = GetLoopSize(ld);
-        const auto& [for_type, vectorize_info, bind_info] =
-            GetForTypeAndInfo(ld);
-        ir::DeviceAPI device_api = GetDeviceApi();
-        ret = ir::For::Make(var,
-                            min,
-                            extent,
-                            for_type,
-                            device_api,
-                            ret,
-                            vectorize_info,
-                            bind_info);
-      }
-      ret = ir::ScheduleBlock::Make({}, {}, {}, "root", ret);
-      ret = ir::ScheduleBlockRealize::Make({}, ret);
-      return ret;
-    }
+    Stmt stmt = map_stmt;
+    InternalStmt internal_stmt = ConvertToInternalStmt(stmt);
+    InlineStmt inline_stmt = ConvertToInlineStmt(internal_stmt);
+    return Translate(inline_stmt);
   }
 
   ir::DeviceAPI GetDeviceApi() const { return ir::DeviceAPI::Host; }
@@ -612,10 +583,6 @@ class MapExprToIrTranslator {
     return std::visit(
         [&](const auto& impl) { return GetForTypeAndInfoImpl(impl, ld); },
         loop_type.variant());
-  }
-
-  ir::Expr TranslateImpl(const MapStmt<Stmt>& map_stmt) const {
-    return Translate(map_stmt);
   }
 
   ir::Expr Mul(const ir::Expr& a, std::int64_t b) const {
@@ -710,64 +677,6 @@ class MapExprToIrTranslator {
       ret.emplace_back(TranslateTensorIterator(iterator_expr));
     }
     return ret;
-  }
-
-  ir::Expr GetStoreExprForOpStmt(const OpStmt& op_stmt) const {
-    const auto& [op, _0, _1] = op_stmt.tuple();
-    return std::visit([&](const auto& impl) { return GetStoreExprForOp(impl); },
-                      op.variant());
-  }
-
-  ir::Expr MakeStoreExprForOpStmt(const OpStmt& op_stmt) const {
-    const auto& store_expr = GetStoreExprForOpStmt(op_stmt);
-
-    const auto& [_0, inputs, outputs] = op_stmt.tuple();
-    CHECK_EQ(outputs.value()->size(), 1);
-
-    ir::Expr store_rvalue = store_expr.As<ir::Store>()->value;
-    CHECK_EQ(store_rvalue->operands.size(), inputs.value()->size());
-    for (int i = 0; i < inputs.value()->size(); ++i) {
-      const auto& index_exprs =
-          Translate(TensorIteratorExpr4Tensor(inputs.value()->at(i)));
-      store_rvalue->operands.at(i).As<ir::Load>()->indices = index_exprs;
-    }
-    return ir::Store::Make(
-        store_expr.As<ir::Store>()->tensor,
-        store_rvalue,
-        Translate(TensorIteratorExpr4Tensor(outputs.value()->at(0))));
-  }
-
-  ir::Expr Translate(const OpStmt& op_stmt) const {
-    const auto& output_expr = MakeStoreExprForOpStmt(op_stmt);
-
-    std::vector<ir::Expr> fake_values = {ir::Var("fake_v_0"),
-                                         ir::Var("fake_v_1")};
-    std::vector<ir::Var> fake_vars = {ir::Var("fake_i_0"), ir::Var("fake_i_1")};
-    ir::Expr ret = ir::ScheduleBlock::Make(
-        fake_vars,
-        {},
-        {},
-        output_expr.As<ir::Store>()->tensor.as_tensor()->name,
-        output_expr);
-    ret = ir::ScheduleBlockRealize::Make(fake_values, ret);
-    return ret;
-  }
-
-  ir::Expr TranslateImpl(const OpStmt& op_stmt) const {
-    return Translate(op_stmt);
-  }
-
-  ir::Expr Translate(const List<Stmt>& stmts) const {
-    std::vector<ir::Expr> exprs;
-    for (const auto& stmt : *stmts) {
-      exprs.emplace_back(Translate(stmt));
-    }
-    return ir::Block::Make(exprs);
-  }
-
-  ir::Expr Translate(const Stmt& stmt) const {
-    return std::visit([&](const auto& impl) { return TranslateImpl(impl); },
-                      stmt.variant());
   }
 
   MapExpr map_expr_;
