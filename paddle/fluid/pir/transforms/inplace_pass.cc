@@ -60,7 +60,7 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     auto output_alloc_tensor_type =
         output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     if (phi::product(input_alloc_tensor_type.dims()) <
-        phi::product(output_alloc_tensor_type.place())) {
+        phi::product(output_alloc_tensor_type.dims())) {
       VLOG(9) << "     -- input's numel < output's numel, can't do inplace";
       return false;
     }
