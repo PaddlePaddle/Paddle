@@ -14,7 +14,7 @@
 
 import unittest
 
-from test_case_base import TestCaseBase
+from test_case_base import TestCaseBase, strict_mode_guard
 
 import paddle
 from paddle import nn
@@ -56,6 +56,7 @@ class SimpleNet(nn.Layer):
 
 
 class TestExecutor(TestCaseBase):
+    @strict_mode_guard(0)
     def test_simple(self):
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()
