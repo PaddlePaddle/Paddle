@@ -5180,7 +5180,7 @@ def column_stack(x, name=None):
    
     return paddle.concat(trans_x, 1)
 
-def dstack(x):
+def dstack(x, name=None):
     """
     Stacks tensors along the third axis in sequence depthwise.
     
@@ -5243,7 +5243,7 @@ def dstack(x):
     return paddle.concat(rep, 2)
 
 
-def hstack(x):
+def hstack(x, name=None):
     """
     Stacks tensors in sequence horizontally(column wise).
     For for 1-D tensors,it concatenates along the first axis.The others concatenation along the second axis.
@@ -5310,7 +5310,7 @@ def hstack(x):
     
     return paddle.concat(rep, 1)
 
-def vstack(x):
+def vstack(x, name=None):
     """
     Stacks tensors in sequence vertically(row wise).
     First, 1-D arrays of shape (N,) have been reshaped to (1,N).And then oncatenation along the first axis.
@@ -5377,7 +5377,7 @@ def vstack(x):
         raise ValueError("For 'hstack', need at least one tensor to concatenate.")
     return paddle.concat(rep, 0)
 
-def row_stack(x):
+def row_stack(x, name=None):
     """
     Alias for :func:`paddle.vstack`.
         
