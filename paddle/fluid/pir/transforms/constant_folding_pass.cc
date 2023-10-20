@@ -192,8 +192,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  // TODO(liuyuanle): Naming convention for pass.
-  ConstantFoldingPass() : pir::Pass("ConstantFoldingPass", 1) {}
+  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
