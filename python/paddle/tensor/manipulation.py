@@ -5354,6 +5354,7 @@ def vstack(x, name=None):
     if not x:
         msg = "For 'hstack', inputs can not be empty"
         raise TypeError(msg)
+    
     rep = ()
     for tensor in x:
         check_type(
