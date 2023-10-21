@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/new_ir/op_lowering_impl.h"
+#include "paddle/cinn/hlir/framework/pir/op_lowering_impl.h"
 
 #include <string>
 
@@ -22,9 +22,8 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
 
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/lang/placeholder.h"
-#include "paddle/cinn/utils/attribute_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/phi/core/ddim.h"
 
@@ -33,7 +32,7 @@ PD_DECLARE_bool(cinn_use_cuda_vectorize);
 namespace cinn {
 namespace hlir {
 namespace framework {
-namespace newir {
+namespace pir {
 
 using cinn::hlir::op::ExternalApiRegistry;
 using common::Type;
@@ -47,7 +46,7 @@ ir::Tensor GetTensor(const ::pir::Value& value) {
   auto dtype = type_info.dtype();
   std::string input_id = CompatibleInfo::ValueName(value);
   return lang::CreatePlaceHolder(
-      in_shape, utils::ConvertIRType(dtype), input_id);
+      in_shape, CompatibleInfo::ConvertIRType(dtype), input_id);
 }
 
 std::vector<ir::Tensor> CollectInputTensor(
@@ -55,9 +54,8 @@ std::vector<ir::Tensor> CollectInputTensor(
     std::vector<ir::Tensor>* func_args,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map) {
   std::vector<ir::Tensor> tensors;
-  for (auto in_value : op->operands_source()) {
+  for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
-    // NOTE(Aurelius84): Need always to create placeholder for input tensor.
     ir::Tensor tensor = details::GetTensor(in_value);
     if (!tensor_map->count(in_value)) {
       // record tensor.
@@ -82,7 +80,7 @@ void CollectOutputInfo(::pir::Operation* op,
     auto type_info =
         out_value.type().dyn_cast<paddle::dialect::DenseTensorType>();
 
-    out_types->push_back(utils::ConvertIRType(type_info.dtype()));
+    out_types->push_back(CompatibleInfo::ConvertIRType(type_info.dtype()));
     auto out_shape = phi::vectorize<int>(type_info.dims());
     out_shapes->push_back(std::move(out_shape));
   }
@@ -91,7 +89,7 @@ void CollectOutputInfo(::pir::Operation* op,
 NodeAttr CollectAttrs(const ::pir::Operation& op) {
   NodeAttr node_attrs;
   VLOG(4) << "op.attributes():" << op.attributes().size();
-  auto attrs = utils::ConvertAttributes(op.attributes());
+  auto attrs = CompatibleInfo::ConvertAttributes(op);
   node_attrs.node_name = CompatibleInfo::OpName(op);
   node_attrs.attr_store = std::move(attrs);
 
@@ -337,7 +335,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     const hlir::framework::Operator* cinn_op = Operator::Get(cinn_op_name);
     auto op_impl = OpStrategy::SelectImpl(strategy[cinn_op](
         node_attrs, op_func_arg_tensors, out_types, out_shapes, this->target_));
-
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
         DoOpLower(op_impl, op, tensor_map, &op_func_arg_tensors);
@@ -384,14 +381,14 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
-    if (pack.size() - 1 > op_results.size()) {
+    if (pack.size() - 1 > op_results.size() && post == "") {
       // Some op may output multiple temp tensors in their Compute
       // definition, but only one output  in the graph, and we use id +
       // "_0"/"_1" as key.
       // FIXME(Aurelius84): It seems that the implementation is relate with
       // string name.
-      // (*tensor_map)[op_results[0] + post] = expr.as_tensor_ref();
-      // post = "_" + std::to_string(idx);
+      (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+      post = "_" + std::to_string(idx);
     } else {
       // If the number of output tensors defined by Compute is less equal than
       // the output node_data on the graph, then there is a one-to-one
@@ -455,7 +452,7 @@ ir::Expr OpLowererImpl::DoOpSchedule(
   return expr_pack[0].operator ir::Expr();
 }
 
-}  // namespace newir
+}  // namespace pir
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn

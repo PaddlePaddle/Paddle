@@ -16,12 +16,14 @@
 #include <string>
 #include <unordered_map>
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/common/type.h"
+#include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
-namespace newir {
+namespace pir {
 
 struct CUDAJITInfo {
   void* fn_ptr;
@@ -47,9 +49,18 @@ struct CompatibleInfo {
                                              bool allow_duplicate = false);
 
   static std::vector<std::string> OutputNames(::pir::Operation& op);  // NOLINT
+
+  static std::vector<::pir::Value> RealOperandSources(
+      const ::pir::Operation& op);
+
+  static utils::Attribute ConvertAttribute(const ::pir::Attribute& src_attr);
+
+  static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
+
+  static common::Type ConvertIRType(::pir::Type type);
 };
 
-}  // namespace newir
+}  // namespace pir
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn
