@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
@@ -67,7 +68,7 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
-// default_data_parallel rule
+// default data parallel rule
 PD_REGISTER_SPMD_RULE(
     default_data_parallel,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
@@ -77,17 +78,17 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 
-// unsqueeze rule
-PD_REGISTER_SPMD_RULE(
-    unsqueeze,
-    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
-    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
-
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
     replicated,
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmd),
     PD_INFER_SPMD(phi::distributed::ReplicatedInferSpmdReverse));
+
+// unsqueeze rule
+PD_REGISTER_SPMD_RULE(
+    unsqueeze,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // elementwise unary rule
 PD_REGISTER_SPMD_RULE(
@@ -498,6 +499,11 @@ PD_REGISTER_SPMD_RULE(reshape,
 PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
+
+// flatten rule
+PD_REGISTER_SPMD_RULE(flatten,
+                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmdReverse));
 
 // embedding rule
 PD_REGISTER_SPMD_RULE(
