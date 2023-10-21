@@ -515,4 +515,9 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
+void SelfDPAttenInferMeta(const MetaTensor& x,
+                          const float alpha,
+                          const int head_number,
+                          MetaTensor* out);
+
 }  // namespace phi

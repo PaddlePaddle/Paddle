@@ -24,13 +24,13 @@
 #include <iostream>
 #include <new>
 #include <string>
+#include "glog/logging.h"
 
 #ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  //NOLINT
 #endif
 
-namespace paddle {
-namespace operators {
+namespace phi {
 
 template <typename T, typename Tt>
 void arraycpy(T* dst, const Tt* src, int n) {
@@ -460,5 +460,4 @@ void scaled_dp_attention(const float* query,
   return;
 }
 
-}  // namespace operators
-}  // namespace paddle
+}  // namespace phi

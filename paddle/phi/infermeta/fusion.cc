@@ -2167,4 +2167,21 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void SelfDPAttenInferMeta(const MetaTensor& x,
+                          const float alpha,
+                          const int head_number,
+                          MetaTensor* out) {
+  auto dim_input = x.dims();
+  PADDLE_ENFORCE_EQ(
+      dim_input.size(),
+      5,
+      phi::errors::InvalidArgument("The size of input X dims should be 5, "
+                                   "[batchsize, tokensize, 3, nhead, headsize] "
+                                   ", but now Input X dim is:[%s] ",
+                                   dim_input));
+  DDim out_dims({dim_input[0], dim_input[1], dim_input[3], dim_input[4]});
+  out->set_dims(out_dims);
+  out->share_lod(x);
+}
+
 }  // namespace phi
