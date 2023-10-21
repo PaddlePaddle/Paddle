@@ -109,12 +109,13 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
 
         return out
 
+
 def pdist(
     x, p=2.0, compute_mode="use_mm_for_euclid_dist_if_necessary", name=None
 ):
     r'''
-    Computes the p-norm distance between every pair of row vectors in the input. 
-    
+    Computes the p-norm distance between every pair of row vectors in the input.
+
     Args:
         x (Tensor): A tensor with shape :math:`N \times M`.
         p (float, optional): The value for the p-norm distance to calculate between each vector pair. Default: :math:`2.0`.
@@ -132,7 +133,7 @@ def pdist(
 
     Examples:
         .. code-block:: python
-             
+
             >>> import paddle
             >>> a = paddle.randn([4, 5])
             >>> a
@@ -145,16 +146,11 @@ def pdist(
             >>> pdist_out
             Tensor(shape=[6], dtype=float32, place=Place(gpu:0), stop_gradient=True,
                    [1.85331142, 2.58652687, 2.98273396, 1.61549115, 2.28762150, 2.85576940])
-                   
+
     '''
 
     x_shape = list(x.shape)
-    assert len(x_shape) == 2, (
-        "The x must be 2-dimensional"
-    )
+    assert len(x_shape) == 2, "The x must be 2-dimensional"
     d = paddle.cdist(x, x, p, compute_mode)
     mask = ~paddle.tril(paddle.ones(d.shape, dtype='bool'))
     return paddle.masked_select(d, mask)
-
-
-    

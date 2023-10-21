@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import unittest
+
 import numpy as np
+
 import paddle
+
 
 def ref_pdist(x, p=2.0):
     dist = np.linalg.norm(x[..., None, :] - x[None, :, :], ord=p, axis=-1)
@@ -22,7 +25,8 @@ def ref_pdist(x, p=2.0):
     rows, cols = dist.shape
     for i in range(rows):
         for j in range(cols):
-            if i >= j: continue
+            if i >= j:
+                continue
             res.append(dist[i][j])
     return np.array(res)
 
@@ -107,7 +111,6 @@ class TestpdistAPICase9(TestpdistAPI):
     def init_input(self):
         self.x = np.random.rand(500, 100).astype('float64')
 
-
     def test_static_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -116,9 +119,7 @@ class TestpdistAPICase9(TestpdistAPI):
             out1 = paddle.pdist(x, self.p, "donot_use_mm_for_euclid_dist")
             out2 = paddle.pdist(x, self.p, "use_mm_for_euclid_dist")
             exe = paddle.static.Executor(self.place)
-            res = exe.run(
-                feed={'x': self.x}, fetch_list=[out0, out1, out2]
-            )
+            res = exe.run(feed={'x': self.x}, fetch_list=[out0, out1, out2])
             out_ref = ref_pdist(self.x, self.p)
             np.testing.assert_allclose(out_ref, res[0])
             np.testing.assert_allclose(out_ref, res[1])
@@ -140,7 +141,3 @@ class TestpdistAPICase9(TestpdistAPI):
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
-
-
-
-
