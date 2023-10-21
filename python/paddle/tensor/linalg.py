@@ -3737,11 +3737,11 @@ def householder_product(A, tau, name=None):
 
     Computes the first n columns of a product of Householder matrices.
 
-    This function can get the vector :math:`\omega_{i}` from matrix `A`(m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `A`. 
+    This function can get the vector :math:`\omega_{i}` from matrix `A`(m x n), the :math:`i-1` elements are zeros, and the i-th is `1`, the rest of the elements are from i-th column of `A`.
     And with the vector `tau` can calculate the first n columns of a product of Householder matrices.
-    
+
     :math:`H_i = I_m - \tau_i \omega_i \omega_i^H`
-    
+
     Args:
         A (Tensor): A tensor with shape (*, m, n) where * is zero or more batch dimensions.
         tau (Tensor): A tensor with shape (*, k) where * is zero or more batch dimensions.
@@ -3768,26 +3768,40 @@ def householder_product(A, tau, name=None):
                     [-0.64721400, -0.12367040, -0.21738708],
                     [-0.05389076, -0.37562513, -0.84836429],
                     [ 0.12702821, -0.91822827,  0.36892807]])
-    """    
+    """
 
-    check_dtype(A.dtype, 'x', ['float32', 'float64',], 'householder_product')
-    check_dtype(tau.dtype, 'tau', ['float32', 'float64',], 'householder_product')
-    assert A.dtype == tau.dtype, (
-        "The input A must have the same dtype with input tau.\n"
+    check_dtype(
+        A.dtype,
+        'x',
+        [
+            'float32',
+            'float64',
+        ],
+        'householder_product',
     )
-    assert len(A.shape) >= 2 and len(tau.shape) >= 1, (
-        "The input A must have more than 2 dimensions, and input tau must have more than 1 dimension.\n"
+    check_dtype(
+        tau.dtype,
+        'tau',
+        [
+            'float32',
+            'float64',
+        ],
+        'householder_product',
     )
-    assert A.shape[-2] >= A.shape[-1], (
-        "The rows of input A must be greater than or equal to the columns of input A.\n"
-    )
+    assert (
+        A.dtype == tau.dtype
+    ), "The input A must have the same dtype with input tau.\n"
+    assert (
+        len(A.shape) >= 2 and len(tau.shape) >= 1
+    ), "The input A must have more than 2 dimensions, and input tau must have more than 1 dimension.\n"
+    assert (
+        A.shape[-2] >= A.shape[-1]
+    ), "The rows of input A must be greater than or equal to the columns of input A.\n"
     for idx, _ in enumerate(A.shape[:-2]):
-        assert A.shape[idx] == tau.shape[idx], (
-            "The input A must have the same batch dimensions with input tau.\n"
-        )
-        
-        
-        
+        assert (
+            A.shape[idx] == tau.shape[idx]
+        ), "The input A must have the same batch dimensions with input tau.\n"
+
     def _householder_product(A, tau):
         m, n = A.shape[-2:]
         Q = paddle.eye(m)
@@ -3795,14 +3809,23 @@ def householder_product(A, tau, name=None):
             normx = paddle.norm(A[i:, i])
             sign = 1 if A[i, i] < 0 else -1
             w = A[i:, i]
-            if in_dynamic_mode(): w[0] = 1
-            else: w = paddle.static.setitem(w, 0, 1)
+            if in_dynamic_mode():
+                w[0] = 1
+            else:
+                w = paddle.static.setitem(w, 0, 1)
             w = w.reshape([-1, 1])
-            if in_dynamic_mode(): Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
-            else: Q = paddle.static.setitem(Q, (slice(None), slice(i, None)), Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]))
+            if in_dynamic_mode():
+                Q[:, i:] = Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i])
+            else:
+                Q = paddle.static.setitem(
+                    Q,
+                    (slice(None), slice(i, None)),
+                    Q[:, i:] - (Q[:, i:] @ w @ w.T * tau[i]),
+                )
         return Q[:, :n]
-    
-    if len(A.shape) == 2: return _householder_product(A, tau)
+
+    if len(A.shape) == 2:
+        return _householder_product(A, tau)
     m, n = A.shape[-2:]
     org_A_shape = A.shape
     org_tau_shape = tau.shape
@@ -3811,8 +3834,11 @@ def householder_product(A, tau, name=None):
     n_batch = A.shape[0]
     out = paddle.zeros([n_batch, m, n])
     for i in range(n_batch):
-        if in_dynamic_mode(): out[i] = _householder_product(A[i], tau[i])
-        else: out = paddle.static.setitem(out, i, _householder_product(A[i], tau[i]))
+        if in_dynamic_mode():
+            out[i] = _householder_product(A[i], tau[i])
+        else:
+            out = paddle.static.setitem(
+                out, i, _householder_product(A[i], tau[i])
+            )
     out = out.reshape(org_A_shape)
     return out
-
