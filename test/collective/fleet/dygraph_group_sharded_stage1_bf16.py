@@ -223,7 +223,7 @@ def test_stage1_bf16():
         o2_32_loss = paddle.cast(o2_losses[i], dtype='float32').detach()
         np.testing.assert_array_equal(o1_32_loss, o2_32_loss)
 
-    # stage1 scaler test
+    # stage1 scaler test with main_grad
     mlp3 = MLP()
     mlp3.set_state_dict(state_dict)
     train_mlp(
@@ -231,6 +231,17 @@ def test_stage1_bf16():
         sharding_stage=1,
         use_pure_bf16=True,
         use_main_grad=True,
+        test_scaler=True,
+    )
+
+    # stage1 scaler test without main_grad
+    mlp4 = MLP()
+    mlp4.set_state_dict(state_dict)
+    train_mlp(
+        mlp4,
+        sharding_stage=1,
+        use_pure_bf16=True,
+        use_main_grad=False,
         test_scaler=True,
     )
 
