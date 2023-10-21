@@ -129,9 +129,9 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
   if (op_info) {
     try {
       op_info.VerifySig(op);
-    } catch (const std::exception &e) {
+    } catch (const pir::IrNotMetException &e) {
       op->Destroy();
-      throw e.what();
+      throw e;
     }
   }
   return op;
