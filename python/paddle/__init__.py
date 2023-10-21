@@ -410,6 +410,8 @@ from .tensor.math import (  # noqa: F401
     i1e,
     polygamma,
     polygamma_,
+    hypot,
+    hypot_,
 )
 
 from .tensor.random import (
@@ -907,4 +909,6 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'hypot',
+    'hypot_',
 ]

@@ -14,6 +14,8 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/enforce.h"
 
@@ -27,15 +29,17 @@ void JitKernelOp::VerifySig() {
 
   auto& attributes = this->attributes();
 
-  IR_ENFORCE(attributes.count(kAttrName) > 0 &&
-                 attributes.at(kAttrName).isa<::pir::PointerAttribute>(),
-             "Type of attribute: instruction is not right.");
+  IR_ENFORCE(
+      attributes.count(kAttrName) > 0 &&
+          attributes.at(kAttrName).isa<cinn::dialect::CUDAJITInfoAttribute>(),
+      "Type of attribute: instruction is not right.");
 }
 
-hlir::framework::Instruction* JitKernelOp::instruction() {
-  void* ptr =
-      attributes().at(kAttrName).dyn_cast<::pir::PointerAttribute>().data();
-  return reinterpret_cast<hlir::framework::Instruction*>(ptr);
+const hlir::framework::pir::CUDAJITInfo& JitKernelOp::cuda_jit_info() {
+  return attributes()
+      .at(kAttrName)
+      .dyn_cast<cinn::dialect::CUDAJITInfoAttribute>()
+      .data();
 }
 
 }  // namespace dialect

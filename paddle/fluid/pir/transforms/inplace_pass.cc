@@ -320,11 +320,11 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
 class InplacePass : public pir::Pass {
  public:
-  InplacePass() : pir::Pass("InplacePass", 3) {}
+  InplacePass() : pir::Pass("inplace_pass", 3) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "InplacePass should run on module op.");
+    IR_ENFORCE(module_op, "inplace_pass should run on module op.");
     auto* block = module_op.block();
 
     auto inplace_ops = details::GetInplaceOps(block);
@@ -349,7 +349,7 @@ class InplacePass : public pir::Pass {
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
     }
     LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::ir::Program to Kernel Dialect.";
+        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
@@ -365,4 +365,4 @@ std::unique_ptr<pir::Pass> CreateInplacePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(inplace, InplacePass);
+REGISTER_IR_PASS(inplace_pass, InplacePass);
