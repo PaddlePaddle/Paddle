@@ -59,6 +59,12 @@ void StreamSafeCUDAAllocation::RecordStream(gpuStream_t stream) {
   RecordGraphCapturingStreams();
 }
 
+void StreamSafeCUDAAllocation::EraseStream(gpuStream_t stream) {
+  VLOG(8) << "Try remove stream " << stream << " for address " << ptr();
+  std::lock_guard<SpinLock> lock_guard(outstanding_event_map_lock_);
+  outstanding_event_map_.erase(stream);
+}
+
 bool StreamSafeCUDAAllocation::CanBeFreed() {
 #ifdef PADDLE_WITH_CUDA
   if (UNLIKELY(phi::backends::gpu::CUDAGraph::IsThisThreadCapturing())) {

@@ -55,10 +55,12 @@ ProcessGroupNCCL::NCCLTask::NCCLTask(const Place& place,
                                      int rank,
                                      CommType comm_type,
                                      bool sync_op,
-                                     bool use_calc_stream)
+                                     bool use_calc_stream,
+                                     int gid)
     : TaskStream(rank, comm_type, sync_op, use_calc_stream),
       comm_event_(place, platform::GenerateDeviceEventFlag()),
-      task_place_(place) {}
+      task_place_(place),
+      gid_(gid) {}
 
 ProcessGroupNCCL::NCCLTask::~NCCLTask() {}
 
@@ -67,6 +69,15 @@ bool ProcessGroupNCCL::NCCLTask::IsCompleted() { return comm_event_.Query(); }
 void ProcessGroupNCCL::NCCLTask::UpdateWaitChain(
     const phi::DeviceContext& ctx) {
   comm_event_.Record(&ctx);
+}
+
+void ProcessGroupNCCL::NCCLTask::RemoveHolderStreamInGroup() {
+  auto map = distributed::ProcessGroupMapFromGid::getInstance();
+  distributed::ProcessGroup* pg = map->get(gid_);
+  if (!pg) return;
+  auto* pg_nccl = dynamic_cast<ProcessGroupNCCL*>(pg);
+  if (!pg_nccl) return;
+  pg_nccl->EraseTensorHolders();
 }
 
 // TODO(sheniang03): Add timeout for wait, now timeout unused
@@ -97,6 +108,7 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
   }
+  RemoveHolderStreamInGroup();
   return true;
 }
 
@@ -884,7 +896,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
     SyncCalcStream(place, key);
   }
 
-  auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
+  auto task =
+      CreateTask(place, rank_, comm_type, sync_op, use_calc_stream, gid_);
 
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
@@ -921,6 +934,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
       memory::RecordStream(tensor.Holder(), nccl_stream);
     }
     task->UpdateWaitChain(*comm_ctx);
+    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
@@ -974,7 +988,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     SyncCalcStream(place, key);
   }
 
-  auto task = CreateTask(place, rank_, comm_type, sync_op, use_calc_stream);
+  auto task =
+      CreateTask(place, rank_, comm_type, sync_op, use_calc_stream, gid_);
   const auto* calc_ctx = place_to_calc_ctx_.at(key);
   const auto& comm_ctx = place_to_comm_ctx_.at(key);
 
@@ -1011,6 +1026,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
       memory::RecordStream(tensor.Holder(), nccl_stream);
     }
     task->UpdateWaitChain(*comm_ctx);
+    allocation_stream_pairs.emplace_back(tensor.Holder(), nccl_stream);
   }
 
   if (FLAGS_enable_nccl_dynamic_check) {
