@@ -55,7 +55,6 @@ from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
-    ast_to_source_code,
     backend_guard,
     func_to_source_code,
     input_specs_compatible,
