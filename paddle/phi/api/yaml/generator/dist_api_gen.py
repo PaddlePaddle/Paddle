@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import argparse
+import re
 
 import yaml
 from api_base import PREFIX_TENSOR_NAME
@@ -43,23 +44,38 @@ PADDLE_THROW(phi::errors::Unimplemented(
 # TODO(chenweihang): add view support later
 MAIN_DIST_BRANCH_TEMPLATE = """
   // Auto Parallel condition
-  if ({}) {{
+  if (use_dist_branch) {{
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    // 4. Select Kernel{}
-    // 5. Reshard Input{}\n
-    // 6. PrepareData (DataTransform & Prepare Dense Input){}
-    // 7. Infer Local DenseTensor Meta{}
-    // 8. DenseTensor Kernel Call{}
-    // 9. Reshard Partial Output to Replicated (Temporary){}\n
+    if (!computation_clip_for_pp){{
+      // 4. Select Kernel{}
+      // 5. Reshard Input{}\n
+      // 6. PrepareData (DataTransform & Prepare Dense Input){}
+      // 7. Infer Local DenseTensor Meta{}
+      // 8. DenseTensor Kernel Call{}
+      // 9. Reshard Partial Output to Replicated (Temporary){}\n
+    }}
     // 10. Return
     {}
   }}
 """
 
+# TODO(GhostScreaming): Support no-input operators.
+# 1. Non computation rank clip
+GET_MESH_TEMPLATE = """
+    auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>({}impl())->dist_attr().process_mesh();
+    computation_clip_for_pp = !phi::distributed::IsCurRankInMesh(mesh);"""
+
 # Auto Parallel condition
-AUTO_PARALLEL_COND_TEMPLATE = """AllInputsAreDistTensor({})"""
+AUTO_PARALLEL_COND_TEMPLATE = """
+  bool use_dist_branch = AllInputsAreDistTensor({input_args});
+  bool computation_clip_for_pp = false;
+  if (use_dist_branch) {{{mesh}
+  }}
+  if (!computation_clip_for_pp) {{{kernel_code}
+  }}
+"""
 
 # 1. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
@@ -84,24 +100,49 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput(&api_output);
     auto dense_out = dist_out->unsafe_mutable_value();
+    if (computation_clip_for_pp) {{
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({out});
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    if (computation_clip_for_pp) {{
+      *dense_out_{idx} = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
 SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput(&api_output, spmd_info.second[0]);
     auto dense_out = dist_out->unsafe_mutable_value();
+    if (computation_clip_for_pp) {{
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
     auto dist_out_{idx} = SetKernelDistOutput({out}, spmd_info.second[{idx}]);
     auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    if (computation_clip_for_pp) {{
+      *dense_out_{idx} = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }}
 """
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
     for (size_t i = 0; i < dist_out.size(); ++i) {{
-        dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+      dense_out[i] = const_cast<phi::DenseTensor*>(&dist_out[i]->value());
+      if (computation_clip_for_pp) {{
+        *dense_out[i] = phi::DenseTensor(
+                std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+                phi::DenseTensorMeta());
+      }}
     }}
 """
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
@@ -109,6 +150,11 @@ MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
     for (size_t i = 0; i < dist_out_{out_name}.size(); ++i) {{
         dense_out_{out_name}[i] = const_cast<phi::DenseTensor*>(&dist_out_{out_name}[i]->value());
+        if (computation_clip_for_pp) {{
+          *dense_out_{out_name}[i] = phi::DenseTensor(
+                  std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
+                  phi::DenseTensorMeta());
+        }}
     }}
 """
 MULTI_VECTOR_INPLACE_AND_OPTIONAL_OUT_CREATION_TEMPLATE = """
@@ -180,54 +226,54 @@ SET_VECTOR_OUT_REPLICATED_DIST_ATTR = """
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
-    VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
-    auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
-    const auto& kernel = kernel_result.kernel;
-    VLOG(6) << "{} kernel: " << kernel;
-    auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+      VLOG(6) << "{} API dist branch: kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
+      auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
+          "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
+      const auto& kernel = kernel_result.kernel;
+      VLOG(6) << "{} kernel: " << kernel;
+      auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
 # 5. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
-    auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+      auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE = """
-    auto dist_input_{arg} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+      auto dist_input_{arg} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
 UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
-    // API `{}` does not need to support ReshardInput at this time
+      // API `{}` does not need to support ReshardInput at this time
 """
 
 # 6. PrepareData
 SINGLE_PREPARE_DATA_TEMPLATE = """
-    dist_input_{arg} = PrepareDataForDistTensor(dist_input_{arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
-    auto input_{arg} = &dist_input_{arg}->value();
+      dist_input_{arg} = PrepareDataForDistTensor(dist_input_{arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+      auto input_{arg} = &dist_input_{arg}->value();
 """
 SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
-    auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
-    auto input_{arg} = &dist_input_{arg}->value();
+      auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+      auto input_{arg} = &dist_input_{arg}->value();
 """
 VECTOR_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
-    std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
-    for (auto tmp : dist_input_{name}_vec) {{
-      dense_input_{name}_vec.emplace_back(&tmp->value());
-    }}
-    std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
-    std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
-    for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); ++i) {{
-      dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
-    }}
+      auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
+      for (auto tmp : dist_input_{name}_vec) {{
+        dense_input_{name}_vec.emplace_back(&tmp->value());
+      }}
+      std::vector<phi::MetaTensor> dense_input_{name}_meta_vec = MakeMetaTensor(dense_input_{name}_vec);
+      std::vector<const phi::MetaTensor*> dense_input_{name}_meta_ptr_vec(dense_input_{name}_meta_vec.size());
+      for (size_t i = 0; i < dense_input_{name}_meta_ptr_vec.size(); ++i) {{
+        dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
+      }}
 """
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
-    paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
+      auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
 """
 OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
-    auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
-    std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
-    if ({name}) {{
-      for (auto tmp : *dist_input_{name}_vec) {{
-        dense_input_{name}_vec.emplace_back(&tmp->value());
+      auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
+      if ({name}) {{
+        for (auto tmp : *dist_input_{name}_vec) {{
+          dense_input_{name}_vec.emplace_back(&tmp->value());
       }}
     }}
     paddle::optional<std::vector<const phi::DenseTensor*>> input_{name}(dense_input_{name}_vec);
@@ -257,16 +303,16 @@ VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 OPTIONAL_SINGLE_META_IN_TEMPLATE = """MakeMetaTensor(input_{}), """
 OPTIONAL_VECTOR_META_IN_TEMPLATE = """dense_input_{}_meta_ptr_vec, """
 SINGLE_META_OUT_DECL_TEMPLATE = """
-    phi::MetaTensor meta_{}({});"""
+      phi::MetaTensor meta_{}({});"""
 VECTOR_META_OUT_DECL_TEMPLATE = """
-    std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
-    std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
-    for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
-      {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
-    }}
+      std::vector<phi::MetaTensor> {name}_meta_vec = MakeMetaTensor({name});
+      std::vector<phi::MetaTensor*> {name}_meta_ptr_vec({name}_meta_vec.size());
+      for (size_t i = 0; i < {name}_meta_vec.size(); ++i) {{
+        {name}_meta_ptr_vec[i] = &{name}_meta_vec[i];
+      }}
 """
 INFER_META_TEMPLATE = """
-    phi::{}({}{});
+      phi::{}({}{});
 """
 
 # 8. DenseTensor Kernel Call
@@ -278,10 +324,11 @@ VECTOR_OUTPUT_NAME_TEMPLATE = """
 TUPLE_OUTPUT_NAME_TEMPLATE = """
 """
 KERNEL_CALL_TEMPLATE = """
-    using kernel_signature = {};
-    auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-    (*kernel_fn)({}, {});
+      using kernel_signature = {};
+      auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+      (*kernel_fn)({}, {});
 """
+
 # TODO(GhostScreaming): Some operators generate shape info in runtime,
 # bincount. As a result, dist_output's global shape is set uncorrectly,
 # because it's generated in InferMeta function. A temporally solution is
@@ -303,11 +350,11 @@ SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
 # 9. Reshard Partial Output to Replicated
 RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
+      ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
+      ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
 UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
-    // API `{}` does not need to support ReshardOutput now
+      // API `{}` does not need to support ReshardOutput now
 """
 
 # BaseAPI members:
@@ -399,13 +446,224 @@ class DistForwardAPI(ForwardAPI):
             self.outputs['out_size_expr'] is not None
         ), f"{self.api}: The out size expr : '{{expr}}' should be set when output has Tensor[]. You can refer 'split' api."
 
-    def generate_if_condition_code(self) -> str:
+    def generate_non_computation_rank_clip_code(self) -> str:
+        if len(self.inputs['names']) > 0:
+            mesh = ""
+            # All inputs have same mesh
+            if (
+                self.inputs['input_info'][self.inputs['names'][0]]
+                == "const Tensor&"
+            ):
+                mesh = GET_MESH_TEMPLATE.format(
+                    "{}.".format(self.inputs['names'][0])
+                )
+            elif (
+                self.inputs['input_info'][self.inputs['names'][0]]
+                == "const paddle::optional<Tensor>&"
+            ):
+                mesh = GET_MESH_TEMPLATE.format(
+                    "{}->".format(self.inputs['names'][0])
+                )
+            elif (
+                self.inputs['input_info'][self.inputs['names'][0]]
+                == "const std::vector<Tensor>&"
+            ):
+                mesh = GET_MESH_TEMPLATE.format(
+                    "{}[0].".format(self.inputs['names'][0])
+                )
+            elif (
+                self.inputs['input_info'][self.inputs['names'][0]]
+                == "const paddle::optional<std::vector<Tensor>>&"
+            ):
+                mesh = GET_MESH_TEMPLATE.format(
+                    "{}->at(0).".format(self.inputs['names'][0])
+                )
+            return mesh
+        else:
+            return ""
+
+    # Backward API Override this method
+    def gene_kernel_backend_select(self):
+        backend_select_code = ""
+        if self.kernel['backend'] is not None:
+            if '>' in self.kernel['backend']:
+                vars_list = self.kernel['backend'].split('>')
+                assert (
+                    len(vars_list) == 2
+                ), f"{self.api} api: The number of params to set backend with '>' only allows 2, but received {len(vars_list)}."
+                assert (vars_list[0].strip() in self.attrs['names']) and (
+                    self.attrs['attr_info'][vars_list[0].strip()][0]
+                    == 'const Place&'
+                ), f"{self.api} api: When use '>' to set kernel backend, the first param should be a attribute with Place type."
+                backend_select_code = f"""
+    kernel_backend = ParseBackendWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+
+            else:
+                backend_args = [
+                    ele.strip() for ele in self.kernel['backend'].split(',')
+                ]
+                backend_select_code = f"""
+    kernel_backend = ParseBackend({", ".join(backend_args)});
+"""
+
+        return backend_select_code
+
+    # Overload api_base.py gene_kernel_select function.
+    def gene_kernel_select(self) -> str:
+        api = self.api
+        input_names = self.inputs['names']
+        attrs = self.attrs
+        kernel = self.kernel
+
+        kernel_key_item_init = """
+  Backend kernel_backend = Backend::UNDEFINED;
+  DataLayout kernel_layout = DataLayout::UNDEFINED;
+  DataType kernel_data_type = DataType::UNDEFINED;
+"""
+
+        # Check the tensor options
+        attr_backend_count = 0
+        attr_layout_count = 0
+        attr_data_type_count = 0
+        for attr_name in attrs['names']:
+            if attrs['attr_info'][attr_name][0] == 'const Place&':
+                assert (
+                    kernel['backend'] is not None
+                ), f"{api} api: When there is a parameter with 'Place' type in attributes, you must set backend of kernel manually."
+                attr_backend_count = attr_backend_count + 1
+            if attrs['attr_info'][attr_name][0] == 'DataLayout':
+                assert (
+                    kernel['layout'] is not None
+                ), f"{api} api: When there is a parameter with 'DataLayout' type in attributes, you must set layout of kernel manually."
+                attr_layout_count = attr_layout_count + 1
+            if attrs['attr_info'][attr_name][0] == 'DataType':
+                assert (
+                    kernel['data_type'] is not None
+                ), f"{api} api: When there is a parameter with 'DataType' type in attributes, you must set data_type of kernel manually."
+                attr_data_type_count = attr_data_type_count + 1
+
+        # preprocess kernel configures
+        kernel_select_code = self.gene_kernel_backend_select()
+
+        if kernel['layout'] is not None:
+            if '>' in kernel['layout']:
+                vars_list = kernel['layout'].split('>')
+                assert (
+                    len(vars_list) == 2
+                ), f"{api} api: The number of params to set layout with '>' only allows 2, but received {len(vars_list)}."
+                assert (
+                    vars_list[0].strip() in attrs['names']
+                    and attrs['attr_info'][vars_list[0].strip()][0]
+                    == 'DataLayout'
+                ), f"{api} api: When use '>' to set kernel layout, the first param should be a attribute with DataLayout type."
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
+    kernel_layout = ParseLayoutWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+                )
+
+            else:
+                vars_list = kernel['layout'].split(',')
+                assert (
+                    len(vars_list) == 1
+                ), f"{api} api: The number of params to set layout must be 1, but received {len(vars_list)}."
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
+    kernel_layout = ParseLayout({vars_list[0].strip()});
+"""
+                )
+
+        if kernel['data_type'] is not None:
+
+            def process_data_type_args(args_item):
+                args_item = args_item.strip()
+                complex_match_result = re.match(
+                    r"complex\((?P<param_name>\w+)\)", args_item
+                )
+                if complex_match_result:
+                    return f"phi::dtype::ToComplex(ParseDataType({complex_match_result.group('param_name')}))"
+                else:
+                    return f"ParseDataType({args_item})"
+
+            if '>' in kernel['data_type']:
+                vars_list = kernel['data_type'].split('>')
+                assert (
+                    len(vars_list) == 2
+                ), f"{api} api: The number of params to set data_type with '>' only allows 2, but received {len(vars_list)}."
+                assert (
+                    vars_list[0].strip() in attrs['names']
+                    and attrs['attr_info'][vars_list[0].strip()][0]
+                    == 'DataType'
+                ), f"{api} api: When use '>' to set kernel data_type, the first param should be a attribute with DataType type."
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
+    kernel_data_type = ParseDataTypeWithInputOrder({vars_list[0].strip()}, {vars_list[1].strip()});
+"""
+                )
+
+            else:
+                vars_list = kernel['data_type'].split(',')
+                assert (
+                    len(vars_list) == 1
+                ), f"{api} api: The number of params to set data_type only allows 1, but received {len(vars_list)}."
+                kernel_select_code = (
+                    kernel_select_code
+                    + f"""
+    kernel_data_type = {process_data_type_args(vars_list[0])};
+"""
+                )
+
+        if len(input_names) == 0:
+            assert (
+                attr_backend_count > 0 and attr_data_type_count > 0
+            ), f"{api} api: When there is no input tensor, the args must have 'Place' and 'DataType'."
+
+        kernel_select_args = ""
+        for input_name in input_names:
+            kernel_select_args = kernel_select_args + input_name + ", "
+
+        if len(kernel_select_args) > 2:
+            kernel_select_args = kernel_select_args[:-2]
+
+        # kernel_select_code = kernel_key_item_init + kernel_select_code
+
+        if len(input_names) > 0:
+            kernel_select_code = (
+                kernel_select_code
+                + f"""
+    if (kernel_backend == Backend::UNDEFINED
+          || kernel_layout == DataLayout::UNDEFINED
+          || kernel_data_type == DataType::UNDEFINED ) {{
+      auto kernel_key_set = ParseKernelKeyByInputArgs({kernel_select_args});
+      auto kernel_key = kernel_key_set.GetHighestPriorityKernelKey();
+      if (kernel_backend == Backend::UNDEFINED) {{
+        kernel_backend = kernel_key.backend();
+      }}
+      if (kernel_layout == DataLayout::UNDEFINED) {{
+        kernel_layout = kernel_key.layout();
+      }}
+      if (kernel_data_type == DataType::UNDEFINED) {{
+        kernel_data_type = kernel_key.dtype();
+      }}
+    }}"""
+            )
+
         input_args = ""
         for input_name in self.inputs['names']:
             input_args = input_args + input_name + ", "
         if len(input_args) > 2:
             input_args = input_args[:-2]
-        return AUTO_PARALLEL_COND_TEMPLATE.format(input_args)
+        mesh = self.generate_non_computation_rank_clip_code()
+
+        if_condition_code = AUTO_PARALLEL_COND_TEMPLATE.format(
+            input_args=input_args, mesh=mesh, kernel_code=kernel_select_code
+        )
+
+        return kernel_key_item_init + if_condition_code
 
     def generate_specialized_infer_spmd_code(self) -> str:
         input_names = self.inputs['names']
@@ -1098,7 +1356,6 @@ class DistForwardAPI(ForwardAPI):
         if len(self.inputs['names']) == 0:
             return ""
         return MAIN_DIST_BRANCH_TEMPLATE.format(
-            self.generate_if_condition_code(),
             self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),

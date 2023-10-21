@@ -42,7 +42,7 @@ class NetWithOpAttr(paddle.nn.Layer):
         out = self.bn(out)
         return out
 
-    @paddle.jit.to_static(input_spec=[InputSpec([10, 16])])
+    @paddle.jit.to_static(input_spec=[InputSpec([10, 16])], full_graph=True)
     def with_cond(self, x):
         if paddle.mean(x) > 0.0:
             out = self.linear(x)

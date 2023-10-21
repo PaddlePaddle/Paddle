@@ -54,9 +54,12 @@ class TestDuplicateOutput(unittest.TestCase):
 
     @test_and_compare_with_new_ir(False)
     def _run_static(self):
+        param = self.net.parameters()
+        param[0].clear_grad()
+
         loss0, loss1 = self.net(self.x)
         loss0.backward()
-        param = self.net.parameters()
+
         self.assertEqual(param[0].grad.numpy(), 1.0)
 
     def test_ast_to_func(self):

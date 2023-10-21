@@ -47,6 +47,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
@@ -64,8 +65,10 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination);
-USE_PASS(inplace);
+USE_PASS(dead_code_elimination_pass);
+USE_PASS(inplace_pass);
+
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace pybind {
@@ -231,6 +234,24 @@ void BindBlock(py::module *m) {
             None
 
       )DOC")
+      .def(
+          "move_op",
+          [](Block &self, Operation *op, uint32_t offset) {
+            Block::Iterator position = self.begin();
+            std::advance(position, offset);
+            op->MoveTo(&self, position);
+          },
+          R"DOC(
+          Move an op to a specific position (block.begin() + offset).
+
+          Args:
+              op (pir.Operation): the operator to be moved.
+              offset (uint32_t) : offset relative to the begin of the block
+
+          Returns:
+              None
+
+        )DOC")
       .def("all_parameters", [](Block &self) -> py::list {
         py::list param_list;
         for (auto iter = self.begin(); iter != self.end(); iter++) {
@@ -349,6 +370,30 @@ py::str Value2String(const Value &self) {
   return print_stream.str();
 }
 
+phi::DataType GetValueDtype(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
+phi::DDim GetValueDims(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -384,7 +429,21 @@ void BindValue(py::module *m) {
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def_property(
+          "shape",
+          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Value &self) { return GetValueDtype(self); },
+          [](Value &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindOpOperand(py::module *m) {
@@ -462,6 +521,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType."));
+  }
+}
+
+const phi::DDim &GetOpResultDims(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return result.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
   }
 }
 
@@ -618,6 +687,8 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("numel",
+           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
       .def("replace_all_uses_with",
            [](OpResult &self, OpResult &op_result) {
              self.ReplaceAllUsesWith(op_result);
@@ -650,16 +721,7 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -1050,12 +1112,15 @@ SplitedResult ForwardBackwardSplit(
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
-  std::ostringstream print_stream;
-  print_stream << "ForwardProgram is :\n";
-  forward_program->Print(print_stream);
-  print_stream << "BackwardProgram is:\n";
-  backward_program->Print(print_stream);
-  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  if (FLAGS_print_ir) {
+    std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
+    forward_program->Print(print_stream);
+    print_stream << "BackwardProgram is:\n";
+    backward_program->Print(print_stream);
+    std::cout << "Splited Program (fwd | bwd): \n"
+              << print_stream.str() << std::endl;
+  }
 
   // construct all attributes we needed.
 

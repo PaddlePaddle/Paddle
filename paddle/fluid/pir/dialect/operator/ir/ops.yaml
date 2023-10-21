@@ -7,7 +7,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : add_n_with_kernel
   args : (Tensor[] inputs)
@@ -18,7 +17,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
@@ -175,7 +173,6 @@
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)
-  backward: write_to_array_grad
 
 - op: dpsgd
   args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
