@@ -64,10 +64,7 @@ from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 
 from .dy2static import logging_utils
-from .dy2static.convert_call_func import (
-    ConversionOptions,
-    add_ignore_module,
-)
+from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
 from .dy2static.program_translator import (
     ASTStaticFunction,
     ProgramTranslator,
