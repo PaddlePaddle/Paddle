@@ -5122,11 +5122,13 @@ def index_put(x, indices, value, accumulate=False, name=None):
         attrs={'accumulate': accumulate},
     )
     return out
+
+
 def column_stack(x, name=None):
     """
     Stacks 1-D tensors as columns into a 2-D tensor.
     First, 1-D arrays are turned into 2-D columns, and then 2-D arrays are stacked as-is, just like with hstack.
-    
+
     Args:
         x(tuple[Tensor] or list[Tensor]): A sequence of tensors to concatenate.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -5166,7 +5168,7 @@ def column_stack(x, name=None):
         msg = "For 'column_stack', inputs can not be empty"
         raise TypeError(msg)
     trans_x = ()
-    
+
     for tensor in x:
         check_type(x, 'x', (list, tuple), 'column_stack')
         # tensor.dim()
@@ -5176,27 +5178,30 @@ def column_stack(x, name=None):
             tensor = paddle.unsqueeze(tensor, 1)
         trans_x += (tensor,)
     if not trans_x:
-        raise ValueError(f"For column_stack, the input must have at least 1 tensor, but got 0.")
-   
+        raise ValueError(
+            "For column_stack, the input must have at least 1 tensor, but got 0."
+        )
+
     return paddle.concat(trans_x, 1)
+
 
 def dstack(x, name=None):
     """
     Stacks tensors along the third axis in sequence depthwise.
-    
+
     First, 1-D tensors should be reshaped to :math:`(1,N,1)`, 2-D tensors should be reshaped to :math:`(M,N,1)`. And then concatenation along the third axis.
 
     Args:
         x(tuple[Tensor] or list[Tensor]): A sequence of tensors to concatenate.
         name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
-        
+
     Returns:
         Stacked Tensor, will be at least 3-D.
 
     Raises:
         TypeError: If `inputs` is not tuple or list.
         ValueError: If `inputs` is empty.
-        
+
     Examples:
         .. code-block:: python
             >>> import paddle
@@ -5226,9 +5231,17 @@ def dstack(x, name=None):
         raise TypeError(msg)
     rep = ()
     for tensor in x:
-        check_type(tensor, 'tensor', (Variable), 'dstack', f"For 'dstack', each elements of 'inputs' must be Tensor, but got {type(tensor)}")
+        check_type(
+            tensor,
+            'tensor',
+            (Variable),
+            'dstack',
+            f"For 'dstack', each elements of 'inputs' must be Tensor, but got {type(tensor)}",
+        )
         if tensor.size == 0:
-            raise TypeError(f"For 'dstack', each elements of 'inputs' can not be empty.")
+            raise TypeError(
+                "For 'dstack', each elements of 'inputs' can not be empty."
+            )
         ndim = tensor.ndim
         if ndim == 0:
             tensor = paddle.reshape(tensor, (1, 1, 1))
@@ -5239,7 +5252,9 @@ def dstack(x, name=None):
             tensor = paddle.unsqueeze(tensor, axis=-1)
         rep += (tensor,)
     if not rep:
-        raise ValueError("For 'dstack', at least one tensor is needed to concatenate.")
+        raise ValueError(
+            "For 'dstack', at least one tensor is needed to concatenate."
+        )
     return paddle.concat(rep, 2)
 
 
@@ -5259,7 +5274,7 @@ def hstack(x, name=None):
         TypeError: If `tensors` is not list or tuple.
         TypeError: If element in `tensors` is not Tensor.
         ValueError: If `tensors` is empty.
-        
+
     Examples:
         .. code-block:: python
             >>> import paddle
@@ -5299,16 +5314,19 @@ def hstack(x, name=None):
                 shape = (shape,)
             ndim_diff = 1 - len(shape)
             if ndim_diff > 0:
-                shape = [1] * ndim_diff + [i for i in shape]
+                shape = [1] * ndim_diff + list(shape)
             tensor = paddle.reshape(tensor, tuple(shape))
         rep += (tensor,)
     if not rep:
-        raise ValueError("For 'hstack', need at least one tensor to concatenate.")
-    
-    if (rep[0].dim() == 1):
+        raise ValueError(
+            "For 'hstack', need at least one tensor to concatenate."
+        )
+
+    if rep[0].dim() == 1:
         return paddle.concat(rep, 0)
-    
+
     return paddle.concat(rep, 1)
+
 
 def vstack(x, name=None):
     """
@@ -5325,7 +5343,7 @@ def vstack(x, name=None):
     Raises:
         TypeError: If `inputs` is not list or tuple.
         ValueError: If `inputs` is empty.
-        
+
     Examples:
         .. code-block:: python
             >>> import paddle
@@ -5350,11 +5368,11 @@ def vstack(x, name=None):
 
 
     """
-    check_type(x, 'x', ( list, tuple), 'vstack')
+    check_type(x, 'x', (list, tuple), 'vstack')
     if not x:
         msg = "For 'hstack', inputs can not be empty"
         raise TypeError(msg)
-    
+
     rep = ()
     for tensor in x:
         check_type(
@@ -5364,24 +5382,27 @@ def vstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-       
+
         if tensor.ndim < 2:
             shape = tensor.shape
             if isinstance(shape, int):
                 shape = (shape,)
             ndim_diff = 2 - len(shape)
             if ndim_diff > 0:
-                shape = [1] * ndim_diff + [i for i in shape]
+                shape = [1] * ndim_diff + list(shape)
             tensor = paddle.reshape(tensor, tuple(shape))
         rep += (tensor,)
     if not rep:
-        raise ValueError("For 'hstack', need at least one tensor to concatenate.")
+        raise ValueError(
+            "For 'hstack', need at least one tensor to concatenate."
+        )
     return paddle.concat(rep, 0)
+
 
 def row_stack(x, name=None):
     """
     Alias for :func:`paddle.vstack`.
-        
+
     Examples:
         .. code-block:: python
             >>> import paddle
@@ -5408,6 +5429,7 @@ def row_stack(x, name=None):
     """
     rep = paddle.vstack(x)
     return rep
+
 
 def unflatten(x, axis, shape, name=None):
     """

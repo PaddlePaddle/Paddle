@@ -1,3 +1,17 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import unittest
 
 import numpy as np
@@ -76,17 +90,16 @@ class TestColumnStackTwo(StackBase):
     def test_dygraph_api(self):
         super().dygraph_api('column_stack')
 
+
 class TestColumnStackThree(StackBase):
     def setUp(self):
         # three tensor stack
         self.x = np.array([0, 1, 2, 3, 4], dtype="int32")
         self.x_shape = [5]
         self.x_dtype = "int32"
-        self.y = np.array([[0, 1],
-        [2, 3],
-        [4, 5],
-        [6, 7],
-        [8, 9]], dtype="int32")
+        self.y = np.array(
+            [[0, 1], [2, 3], [4, 5], [6, 7], [8, 9]], dtype="int32"
+        )
         self.y_shape = [5, 2]
         self.y_dtype = "int32"
         self.place = (
@@ -100,6 +113,7 @@ class TestColumnStackThree(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('column_stack')
+
 
 class TestHStack1D2T(StackBase):
     def setUp(self):
@@ -121,14 +135,15 @@ class TestHStack1D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('hstack')
-        
+
+
 class TestHStack2D2T(StackBase):
     def setUp(self):
         # 2 tensor with 2 dim
-        self.x = np.array([[1],[2],[3]], dtype="int32")
+        self.x = np.array([[1], [2], [3]], dtype="int32")
         self.x_shape = [3, 1]
         self.x_dtype = "int32"
-        self.y = np.array([[4],[5],[6]], dtype="int32")
+        self.y = np.array([[4], [5], [6]], dtype="int32")
         self.y_shape = [3, 1]
         self.y_dtype = "int32"
         self.place = (
@@ -142,6 +157,7 @@ class TestHStack2D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('hstack')
+
 
 class TestDStack1D2T(StackBase):
     def setUp(self):
@@ -163,14 +179,15 @@ class TestDStack1D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('dstack')
-        
+
+
 class TestDStack2D2T(StackBase):
     def setUp(self):
         # 2 tensor with 2 dim
-        self.x = np.array([[1],[2],[3]], dtype="int32")
+        self.x = np.array([[1], [2], [3]], dtype="int32")
         self.x_shape = [3, 1]
         self.x_dtype = "int32"
-        self.y = np.array([[4],[5],[6]], dtype="int32")
+        self.y = np.array([[4], [5], [6]], dtype="int32")
         self.y_shape = [3, 1]
         self.y_dtype = "int32"
         self.place = (
@@ -184,6 +201,7 @@ class TestDStack2D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('dstack')
+
 
 class TestRowStack1D2T(StackBase):
     def setUp(self):
@@ -205,14 +223,15 @@ class TestRowStack1D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('row_stack')
-        
+
+
 class TestRowStack2D2T(StackBase):
     def setUp(self):
         # 2 tensor with 2 dim
-        self.x = np.array([[1],[2],[3]], dtype="int32")
+        self.x = np.array([[1], [2], [3]], dtype="int32")
         self.x_shape = [3, 1]
         self.x_dtype = "int32"
-        self.y = np.array([[4],[5],[6]], dtype="int32")
+        self.y = np.array([[4], [5], [6]], dtype="int32")
         self.y_shape = [3, 1]
         self.y_dtype = "int32"
         self.place = (
@@ -226,6 +245,7 @@ class TestRowStack2D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('row_stack')
+
 
 class TestVStack1D2T(StackBase):
     def setUp(self):
@@ -247,14 +267,15 @@ class TestVStack1D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('vstack')
-        
+
+
 class TestVStack2D2T(StackBase):
     def setUp(self):
         # 2 tensor with 2 dim
-        self.x = np.array([[1],[2],[3]], dtype="int32")
+        self.x = np.array([[1], [2], [3]], dtype="int32")
         self.x_shape = [3, 1]
         self.x_dtype = "int32"
-        self.y = np.array([[4],[5],[6]], dtype="int32")
+        self.y = np.array([[4], [5], [6]], dtype="int32")
         self.y_shape = [3, 1]
         self.y_dtype = "int32"
         self.place = (
@@ -268,6 +289,7 @@ class TestVStack2D2T(StackBase):
 
     def test_dygraph_api(self):
         super().dygraph_api('vstack')
+
 
 if __name__ == '__main__':
     paddle.enable_static()
