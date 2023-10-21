@@ -53,13 +53,6 @@ from paddle.base.framework import (
 )
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
-from paddle.jit.translated_layer import (
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_INFO_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    INFER_PROPERTY_SUFFIX,
-    TranslatedLayer,
-)
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
 
@@ -72,6 +65,13 @@ from .dy2static.program_translator import (
     SymbolicStaticFunction,
     convert_to_static,
     unwrap_decorators,
+)
+from .translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
 )
 
 
