@@ -15,18 +15,17 @@
 
 # Temporary disable isort to avoid circular import
 # This can be removed after the circular import is resolved
-# isort: skip_file
 from __future__ import annotations
 
+import inspect
 import os
 import pickle
-import warnings
 import sys
-from collections import OrderedDict
-import inspect
 import threading
-from typing import Any
 import types
+import warnings
+from collections import OrderedDict
+from typing import Any
 
 import paddle
 from paddle.base import core, dygraph
@@ -40,44 +39,43 @@ from paddle.base.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
+from paddle.base.executor import Executor, scope_guard
+from paddle.base.framework import (
+    Block,
+    EagerParamBase,
+    Parameter,
+    Program,
+    Variable,
+    _current_expected_place,
+    _dygraph_guard,
+    _dygraph_tracer,
+    dygraph_only,
+)
+from paddle.base.wrapped_decorator import wrap_decorator
+from paddle.framework import in_dynamic_mode
+from paddle.jit.translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
+)
+from paddle.nn import Layer
+from paddle.static.io import save_inference_model
+
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import (
     ConversionOptions,
     add_ignore_module,
 )
 from .dy2static.program_translator import (
+    ASTStaticFunction,
     ProgramTranslator,
     StaticFunction,
-    ASTStaticFunction,
     SymbolicStaticFunction,
-    unwrap_decorators,
     convert_to_static,
+    unwrap_decorators,
 )
-from paddle.jit.translated_layer import (
-    TranslatedLayer,
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    INFER_PARAMS_INFO_SUFFIX,
-    INFER_PROPERTY_SUFFIX,
-)
-from paddle.nn import Layer
-from paddle.base.executor import Executor, scope_guard
-from paddle.base.framework import (
-    Block,
-    Program,
-    Variable,
-    Parameter,
-    EagerParamBase,
-)
-from paddle.base.framework import (
-    _current_expected_place,
-    _dygraph_guard,
-    _dygraph_tracer,
-)
-from paddle.base.framework import dygraph_only
-from paddle.base.wrapped_decorator import wrap_decorator
-from paddle.static.io import save_inference_model
-from paddle.framework import in_dynamic_mode
 
 
 def create_program_from_desc(program_desc):
