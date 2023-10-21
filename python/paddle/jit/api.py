@@ -51,6 +51,7 @@ from .dy2static.program_translator import (
     ASTStaticFunction,
     SymbolicStaticFunction,
     unwrap_decorators,
+    convert_to_static,
 )
 from paddle.jit.translated_layer import (
     TranslatedLayer,
@@ -166,7 +167,7 @@ def _dygraph_to_static_func_(dygraph_func):
                 "We will just return dygraph output."
             )
             return dygraph_func(*args, **kwargs)
-        static_func = program_translator.get_func(dygraph_func)
+        static_func = convert_to_static(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
