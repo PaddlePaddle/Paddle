@@ -186,17 +186,6 @@ class FCOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
         .SetDefault(false);
-#ifdef PADDLE_WITH_DNNL
-    AddInput("ResidualData",
-             "(Tensor, optional) ResidualData vector with shape (W x O");
-    AddAttr<bool>(
-        "fuse_residual_connection",
-        "(bool, default false) Only used in fuse_residual_connection kernel")
-        .SetDefault(false);
-    AddAttr<float>("Scale_in_eltwise",
-                   "(float, default 1.0f), The quantize scale of residual data")
-        .SetDefault(1.0f);
-#endif
     AddComment(R"DOC(
 Fully Connected Operator.
 
