@@ -1263,8 +1263,6 @@
     scale : Scale
   outputs :
     out : Out
-  attrs :
-    epsilon : epsilon
 
 - op : fused_fc_elementwise_layernorm
   inputs :
@@ -1278,11 +1276,6 @@
     out : Out
     mean : Mean
     variance : Variance
-  attrs :
-    x_num_col_dims : x_num_col_dims
-    activation_type : activation_type
-    epsilon : epsilon
-    begin_norm_axis : begin_norm_axis
 
 - op : fused_feedforward
   backward: fused_feedforward_grad
@@ -1334,17 +1327,9 @@
     batched_out : BatchedOut
     hidden : Hidden
   attrs :
-    activation : activation
-    gate_activation : gate_activation
-    is_reverse : is_reverse
-    use_seq : use_seq
-    origin_mode : origin_mode
-    use_mkldnn : use_mkldnn
-    mkldnn_data_type : mkldnn_data_type
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
-    force_fp32_output : force_fp32_output
 
 - op : fusion_seqconv_eltadd_relu
   inputs :
@@ -1367,18 +1352,12 @@
   outputs :
     out : Out
     fc_out : FCOut
-  attrs :
-    fc_activation : fc_activation
 
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X
   outputs :
     out : Out
-  attrs :
-    trans_axis : trans_axis
-    flatten_axis : flatten_axis
-    concat_axis : concat_axis
 
 - op : gather
   backward : gather_grad

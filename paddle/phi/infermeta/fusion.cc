@@ -1914,8 +1914,7 @@ void FusedEmbeddingEltWiseLayerNormInferMeta(
 
   auto dim_output = phi::make_ddim({batch, seq_len, hidden});
   out->set_dims(dim_output);
-  // out->share_lod(ids);
-  // context->ShareLoD("Ids", /*->*/ "Out");
+  out->share_lod(*ids[0]);
 }
 
 void FusionTransposeFlattenConcatInferMeta(
