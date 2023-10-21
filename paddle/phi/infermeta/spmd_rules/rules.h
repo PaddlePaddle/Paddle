@@ -19,7 +19,6 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
-#include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
@@ -28,6 +27,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
+#include "paddle/phi/infermeta/spmd_rules/unsqueeze.h"
 
 /**
  * Design Notes:
@@ -67,15 +67,21 @@ PD_REGISTER_SPMD_RULE(
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseBinaryInferSpmdReverse));
 
-// default data parallel rule
+// default_data_parallel rule
 PD_REGISTER_SPMD_RULE(
-    unsqueeze,
+    default_data_parallel,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
 PD_REGISTER_SPMD_RULE(
     default_,
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmd),
     PD_INFER_SPMD(phi::distributed::DefaultDataParallelInferSpmdReverse));
+
+// unsqueeze rule
+PD_REGISTER_SPMD_RULE(
+    unsqueeze,
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmd),
+    PD_INFER_SPMD(phi::distributed::UnsqueezeInferSpmdReverse));
 
 // replicated rule /* for unittest */
 PD_REGISTER_SPMD_RULE(
@@ -492,11 +498,6 @@ PD_REGISTER_SPMD_RULE(reshape,
 PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
-
-// flatten rule
-PD_REGISTER_SPMD_RULE(flatten,
-                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
-                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmdReverse));
 
 // embedding rule
 PD_REGISTER_SPMD_RULE(
