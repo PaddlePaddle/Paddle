@@ -676,11 +676,9 @@ class TestGatherNdAPI2(unittest.TestCase):
                 x = paddle.static.data(
                     name="x", shape=[2, 3, 2], dtype="float16"
                 )
-                x.desc.set_need_check_feed(False)
                 idx = paddle.static.data(
                     name="index", shape=[1, 2], dtype="int32"
                 )
-                idx.desc.set_need_check_feed(False)
 
                 y = paddle.gather_nd(x, idx)
 
