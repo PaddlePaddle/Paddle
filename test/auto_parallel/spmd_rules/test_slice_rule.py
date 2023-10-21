@@ -35,8 +35,8 @@ class TestSliceSPMDRule(unittest.TestCase):
         x_tensor_dist_attr.process_mesh = process_mesh
         self.x_dist_tensor_spec = DistTensorSpec(x_shape, x_tensor_dist_attr)
         self.attrs = OrderedDict()
-        self.attrs['infer_flags'] = []
-        self.attrs['decrease_axis'] = []
+        self.attrs['infer_flags'] = [0]
+        self.attrs['decrease_axis'] = [0]
 
     def test_slice_infer_forward(self):
         # axes: [-1]
