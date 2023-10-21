@@ -786,9 +786,10 @@ std::shared_ptr<ProcessGroupNCCL::NCCLTask> ProcessGroupNCCL::CreateTask(
     int rank,
     CommType comm_type,
     bool is_sync,
-    bool use_calc_stream) {
+    bool use_calc_stream,
+    int gid) {
   return std::make_shared<ProcessGroupNCCL::NCCLTask>(
-      place, rank, comm_type, is_sync, use_calc_stream);
+      place, rank, comm_type, is_sync, use_calc_stream, gid);
 }
 
 void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,

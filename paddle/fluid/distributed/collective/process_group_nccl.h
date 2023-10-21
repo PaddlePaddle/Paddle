@@ -60,7 +60,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
              CommType CommType,
              const std::vector<phi::DenseTensor>& inputs);
 
-    void RemoveHolderStream();
+    void RemoveHolderStreamInGroup();
 
    private:
     bool block_cpu_in_wait_{false};
@@ -180,7 +180,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                                                          int rank,
                                                          CommType op_type,
                                                          bool sync_op,
-                                                         bool use_calc_stream);
+                                                         bool use_calc_stream,
+                                                         int gid);
 
   void BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
                              bool is_p2p_op = false,
