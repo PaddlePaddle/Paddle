@@ -1241,7 +1241,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
-        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+        auto selected_row = std::make_shared<phi::SelectedRows>();
+        x_grad->emplace_back(selected_row);
       }
       x_grad->back().set_name(x_grad_names[i]);
     }

@@ -514,11 +514,15 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
   for (size_t i = 0; i < output_grads->size(); i++) {
     paddle::Tensor& grad = (*output_grads)[i];
     if (!grad.initialized() && grad_output_metas[i].HasTensorMeta()) {
-      auto tensor_with_zero = paddle::experimental::full(
-          phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
-          0.0,
-          grad_output_metas[i].GetTensorMeta().dtype,
-          grad_output_metas[i].GetPlace());
+      if (grad.is_selected_rows()) {
+        continue;
+      }
+      auto tensor_with_zero =
+          paddle::experimental::full(  // only create dense tensor.
+              phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+              0.0,
+              grad_output_metas[i].GetTensorMeta().dtype,
+              grad_output_metas[i].GetPlace());
       grad.set_impl(tensor_with_zero.impl());
     }
   }
