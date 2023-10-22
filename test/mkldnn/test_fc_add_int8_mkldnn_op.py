@@ -14,6 +14,7 @@
 
 import unittest
 import sys
+
 sys.path.append("../legacy_test")
 import numpy as np
 from op_test import OpTest, OpTestTool
@@ -21,6 +22,7 @@ from op_test import OpTest, OpTestTool
 
 @OpTestTool.skip_if_not_cpu()
 class TestFCAddINT8OneDNNOp(OpTest):
+
     def setUp(self):
         self.op_type = "fc"
         self._cpu_only = True
@@ -29,9 +31,8 @@ class TestFCAddINT8OneDNNOp(OpTest):
         self.generate_data()
         self.set_inputs()
 
-        y_scales_size = (
-            self.bias_shape if self.per_channel_quantize_weight else 1
-        )
+        y_scales_size = (self.bias_shape
+                         if self.per_channel_quantize_weight else 1)
 
         self.attrs = {
             'use_mkldnn': True,
@@ -68,11 +69,7 @@ class TestFCAddINT8OneDNNOp(OpTest):
         # we need to manually modify the fc_op.py to test.
         # Thus for the real PR on Paddle, skip the ResidualData input for CI correct
         # self.inputs = {'Input': self.x, 'W': self.y_float, 'Bias': self.bias, 'ResidualData': self.residual}
-        self.inputs = {
-            'Input': self.x,
-            'W': self.y_float,
-            'Bias': self.bias
-        }
+        self.inputs = {'Input': self.x, 'W': self.y_float, 'Bias': self.bias}
 
     def quantize(self, tensor):
         scale = 63.0 / np.abs(np.amax(tensor))
@@ -80,17 +77,17 @@ class TestFCAddINT8OneDNNOp(OpTest):
         return scale, quantized
 
     def generate_data(self):
-        self.x_float = np.random.random(self.input_shape).astype("float32") * 10
+        self.x_float = np.random.random(
+            self.input_shape).astype("float32") * 10
         self.x_scale, self.x = self.quantize(self.x_float)
 
-        self.y_float = (
-            np.random.random(self.weight_shape).astype("float32") * 10
-        )
+        self.y_float = (np.random.random(self.weight_shape).astype("float32") *
+                        10)
         self.y_scale, self.y = self.quantize(self.y_float)
-        
-        self.residual_float = np.random.random(self.residual_shape).astype("float32") * 10
-        self.residual_scale, self.residual = self.quantize(self.residual_float)     
-        
+
+        self.residual_float = np.random.random(
+            self.residual_shape).astype("float32") * 10
+        self.residual_scale, self.residual = self.quantize(self.residual_float)
 
         flatten_shape = [1, 1]
         for i in range(len(self.input_shape)):
@@ -99,11 +96,11 @@ class TestFCAddINT8OneDNNOp(OpTest):
             else:
                 flatten_shape[1] *= self.input_shape[i]
 
-        self.out_float = np.dot(
-            self.x_float.reshape(flatten_shape), self.y_float
-        )
+        self.out_float = np.dot(self.x_float.reshape(flatten_shape),
+                                self.y_float)
         if self.use_bias:
-            self.bias = np.random.random(self.bias_shape).astype("float32") * 10
+            self.bias = np.random.random(
+                self.bias_shape).astype("float32") * 10
             self.out_float += self.bias
         # Dont' add residual
         # self.out_float += self.residual_float
@@ -117,6 +114,7 @@ class TestFCAddINT8OneDNNOp(OpTest):
 
 
 class TestFCINT8NoBiasOneDNNOp(TestFCAddINT8OneDNNOp):
+
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = False
@@ -132,6 +130,7 @@ class TestFCINT8NoBiasOneDNNOp(TestFCAddINT8OneDNNOp):
 
 
 class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
+
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = True
@@ -140,6 +139,7 @@ class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
 
 
 class TestFCINT8ForceFP32OutputPerChannelWeightOneDNNOp(TestFCAddINT8OneDNNOp):
+
     def configure(self):
         self.use_bias = True
         self.force_fp32_output = True
