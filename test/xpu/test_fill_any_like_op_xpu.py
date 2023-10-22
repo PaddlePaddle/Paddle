@@ -81,6 +81,23 @@ class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
                 self.value = 5.0
 
 
+class TestFillAnyLikeOpNan(unittest.TestCase):
+    def setUp(self):
+        self.special_values = [float("nan"), float("+inf"), float("-inf")]
+        self.dtypes = ["float32", "float16"]
+
+    def test_dygraph_api(self):
+        paddle.disable_static()
+        paddle.set_device("xpu")
+        for dtype in self.dtypes:
+            for value in self.special_values:
+                ref = paddle.empty([4, 4], dtype=dtype)
+                val_pd = paddle.full_like(ref, value, dtype=dtype)
+                val_np = np.full([4, 4], value, dtype=dtype)
+                np.testing.assert_equal(val_pd.numpy(), val_np)
+        paddle.enable_static()
+
+
 support_types = get_xpu_op_support_types('fill_any_like')
 for stype in support_types:
     create_test_class(globals(), XPUTestFillAnyLikeOp, stype)

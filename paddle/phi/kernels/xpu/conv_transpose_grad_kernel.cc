@@ -38,6 +38,7 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   // The filter and dfilter will be reshaped in the calculations,
   // so here use an assignment operation,
   // that avoids modifying the variable in the Scope.
+  using XPUT = typename XPUTypeTrait<T>::Type;
   DenseTensor filter_ = filter;
   if (!dx && !dfilter) return;
 
@@ -69,64 +70,45 @@ void Conv2dTransposeGradKernel(const Context& ctx,
   if (dfilter) {
     ctx.template Alloc<T>(dfilter);
   }
-  int fccal_type = FCCalcType<T>();
-  if (fccal_type == XPUFCCalcType::FC_INT32 ||
-      fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    // xpu api do not support int31 quantization now.
-    int r = xpu::conv2d_transpose_grad<float, float, float, int_with_ll_t>(
-        ctx.x_context(),
-        x.data<T>(),
-        filter_.data<T>(),
-        dout.data<T>(),
-        dx ? dx->data<T>() : nullptr,
-        dfilter ? dfilter->data<T>() : nullptr,
-        batch_size,
-        img_yc,
-        img_yh,
-        img_yw,
-        img_xc,
-        img_xh,
-        img_xw,
-        ksize,
-        strides,
-        paddings_,
-        dilations_,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
-  } else {
-    int r = xpu::conv2d_transpose_grad<float, float, float, int16_t>(
-        ctx.x_context(),
-        x.data<T>(),
-        filter_.data<T>(),
-        dout.data<T>(),
-        dx ? dx->data<T>() : nullptr,
-        dfilter ? dfilter->data<T>() : nullptr,
-        batch_size,
-        img_yc,
-        img_yh,
-        img_yw,
-        img_xc,
-        img_xh,
-        img_xw,
-        ksize,
-        strides,
-        paddings_,
-        dilations_,
-        groups,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        nullptr,
-        true);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_transpose_grad");
-  }
+
+  auto x_data = reinterpret_cast<const XPUT*>(x.data<T>());
+  auto filter_data = reinterpret_cast<XPUT*>(filter_.data<T>());
+  auto dout_data = reinterpret_cast<const XPUT*>(dout.data<T>());
+  auto dx_data = (dx ? reinterpret_cast<XPUT*>(dx->data<T>()) : nullptr);
+  auto dfilter_data =
+      (dfilter ? reinterpret_cast<XPUT*>(dfilter->data<T>()) : nullptr);
+  int fccal_type = FCCalcType<XPUT>(ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv2d_transpose_grad", [&] {
+    // conv2d_tranpose_grad do not support float quantization currently.
+    using RealTGEMM = typename std::
+        conditional<std::is_same<TGEMM, float>::value, int16_t, TGEMM>::type;
+    int ret =
+        xpu::conv2d_transpose_grad<XPUT, XPUT, XPUT, RealTGEMM>(ctx.x_context(),
+                                                                x_data,
+                                                                filter_data,
+                                                                dout_data,
+                                                                dx_data,
+                                                                dfilter_data,
+                                                                batch_size,
+                                                                img_yc,
+                                                                img_yh,
+                                                                img_yw,
+                                                                img_xc,
+                                                                img_xh,
+                                                                img_xw,
+                                                                ksize,
+                                                                strides,
+                                                                paddings_,
+                                                                dilations_,
+                                                                groups,
+                                                                nullptr,
+                                                                nullptr,
+                                                                nullptr,
+                                                                nullptr,
+                                                                nullptr,
+                                                                true);
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv2d_transpose_grad");
+  });
 }
 
 template <typename T, typename Context>
@@ -165,9 +147,11 @@ PD_REGISTER_KERNEL(conv2d_transpose_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::Conv2dTransposeGradKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}
 PD_REGISTER_KERNEL(depthwise_conv2d_transpose_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::DepthwiseConv2dTransposeGradKernel,
-                   float) {}
+                   float,
+                   phi::dtype::float16) {}

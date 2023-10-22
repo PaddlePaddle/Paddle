@@ -106,84 +106,9 @@ void ConvGradKernel(const Context& dev_ctx,
       filter_grad_data_ptr = filter_grad_data_tmp;
     }
   }
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
-                                                    input_data,
-                                                    filter_data_ptr,
-                                                    output_grad_data,
-                                                    input_grad_data,
-                                                    filter_grad_data_ptr,
-                                                    batch_size,
-                                                    img_c,
-                                                    img_h,
-                                                    img_w,
-                                                    f,
-                                                    ksize,
-                                                    strides,
-                                                    paddings,
-                                                    dilations,
-                                                    groups,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
-
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
-                                                      input_data,
-                                                      filter_data_ptr,
-                                                      output_grad_data,
-                                                      input_grad_data,
-                                                      filter_grad_data_ptr,
-                                                      batch_size,
-                                                      img_c,
-                                                      img_h,
-                                                      img_w,
-                                                      f,
-                                                      ksize,
-                                                      strides,
-                                                      paddings,
-                                                      dilations,
-                                                      groups,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
-
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    int r =
-        xpu::conv2d_grad<XPUT, XPUT, XPUT, int_with_ll_t>(dev_ctx.x_context(),
-                                                          input_data,
-                                                          filter_data_ptr,
-                                                          output_grad_data,
-                                                          input_grad_data,
-                                                          filter_grad_data_ptr,
-                                                          batch_size,
-                                                          img_c,
-                                                          img_h,
-                                                          img_w,
-                                                          f,
-                                                          ksize,
-                                                          strides,
-                                                          paddings,
-                                                          dilations,
-                                                          groups,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
-  } else {
-    int r = xpu::conv2d_grad<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+  XPUFCCalcType fccal_type = FCCalcType<XPUT>(dev_ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv2d_grad", [&] {
+    int ret = xpu::conv2d_grad<XPUT, XPUT, XPUT, TGEMM>(dev_ctx.x_context(),
                                                         input_data,
                                                         filter_data_ptr,
                                                         output_grad_data,
@@ -205,8 +130,8 @@ void ConvGradKernel(const Context& dev_ctx,
                                                         nullptr,
                                                         nullptr,
                                                         is_nchw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv2d_grad");
-  }
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv2d_grad");
+  });
 
   if ((filter_grad_data_ptr != nullptr) && (data_format == "NHWC")) {
     std::vector<int> filter_shape_fhwc = {
@@ -329,85 +254,10 @@ void Conv3DGradKernel(const Context& dev_ctx,
       filter_grad_data_ptr = filter_grad_data_tmp;
     }
   }
-  int fccal_type = FCCalcType<XPUT>();
-  if (fccal_type == XPUFCCalcType::FC_INT32) {
-    int r = xpu::conv3d_grad<XPUT, XPUT, XPUT, int>(dev_ctx.x_context(),
-                                                    input_data,
-                                                    filter_data_ptr,
-                                                    output_grad_data,
-                                                    input_grad_data,
-                                                    filter_grad_data_ptr,
-                                                    batch_size,
-                                                    img_c,
-                                                    img_d,
-                                                    img_h,
-                                                    img_w,
-                                                    f,
-                                                    ksize,
-                                                    strides,
-                                                    paddings,
-                                                    dilations,
-                                                    groups,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    nullptr,
-                                                    is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  } else if (fccal_type == XPUFCCalcType::FC_FLOAT) {
-    int r = xpu::conv3d_grad<XPUT, XPUT, XPUT, float>(dev_ctx.x_context(),
-                                                      input_data,
-                                                      filter_data_ptr,
-                                                      output_grad_data,
-                                                      input_grad_data,
-                                                      filter_grad_data_ptr,
-                                                      batch_size,
-                                                      img_c,
-                                                      img_d,
-                                                      img_h,
-                                                      img_w,
-                                                      f,
-                                                      ksize,
-                                                      strides,
-                                                      paddings,
-                                                      dilations,
-                                                      groups,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      nullptr,
-                                                      is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  } else if (fccal_type == XPUFCCalcType::FC_INT32_WITH_LL) {
-    int r =
-        xpu::conv3d_grad<XPUT, XPUT, XPUT, int_with_ll_t>(dev_ctx.x_context(),
-                                                          input_data,
-                                                          filter_data_ptr,
-                                                          output_grad_data,
-                                                          input_grad_data,
-                                                          filter_grad_data_ptr,
-                                                          batch_size,
-                                                          img_c,
-                                                          img_d,
-                                                          img_h,
-                                                          img_w,
-                                                          f,
-                                                          ksize,
-                                                          strides,
-                                                          paddings,
-                                                          dilations,
-                                                          groups,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          nullptr,
-                                                          is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  } else {
-    int r = xpu::conv3d_grad<XPUT, XPUT, XPUT, int16_t>(dev_ctx.x_context(),
+
+  XPUFCCalcType fccal_type = FCCalcType<XPUT>(dev_ctx.x_context());
+  PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "con3d_grad", [&] {
+    int ret = xpu::conv3d_grad<XPUT, XPUT, XPUT, TGEMM>(dev_ctx.x_context(),
                                                         input_data,
                                                         filter_data_ptr,
                                                         output_grad_data,
@@ -430,8 +280,8 @@ void Conv3DGradKernel(const Context& dev_ctx,
                                                         nullptr,
                                                         nullptr,
                                                         is_ncdhw);
-    PADDLE_ENFORCE_XDNN_SUCCESS(r, "conv3d_grad");
-  }
+    PADDLE_ENFORCE_XDNN_SUCCESS(ret, "conv3d_grad");
+  });
 
   if ((filter_grad_data_ptr != nullptr) && (data_format == "NDHWC")) {
     std::vector<int> filter_shape_fhwc = {filter_shape[0],
