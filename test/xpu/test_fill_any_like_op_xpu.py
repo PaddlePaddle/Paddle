@@ -81,7 +81,7 @@ class XPUTestFillAnyLikeOp(XPUOpTestWrapper):
                 self.value = 5.0
 
 
-class TestFillAnyLikeOpNan(unittest.TestCase):
+class TestFillAnyLikeOpSpecialValue(unittest.TestCase):
     def setUp(self):
         self.special_values = [float("nan"), float("+inf"), float("-inf")]
         self.dtypes = ["float32", "float16"]
