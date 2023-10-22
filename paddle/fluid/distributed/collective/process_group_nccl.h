@@ -217,6 +217,9 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
         memory::EraseStream(holder_ptr, allocation_stream.second);
       }
     }
+    VLOG(5) << "After task wait/synchronize, totoal "
+            << allocation_stream_pairs.size()
+            << " tensors allocation stream have been removed.";
     allocation_stream_pairs.clear();
   }
 
