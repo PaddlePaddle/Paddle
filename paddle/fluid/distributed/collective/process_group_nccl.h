@@ -219,7 +219,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
     }
     VLOG(5) << "After task wait/synchronize, totoal "
             << allocation_stream_pairs.size()
-            << " tensors allocation stream have been removed.";
+            << " tensor(s) allocation stream have been removed.";
     allocation_stream_pairs.clear();
   }
 
