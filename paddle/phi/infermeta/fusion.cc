@@ -2272,4 +2272,41 @@ void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FusionSquaredMatSubInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const float scalar,
+                                  MetaTensor* squared_x,
+                                  MetaTensor* squared_y,
+                                  MetaTensor* squared_xy,
+                                  MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The input tensor X's dims size should "
+                                   "be equal to Y's. But received X's "
+                                   "dims size = %d, Y's dims size = %d.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input tensor X's dims size should be 2. But "
+                        "received X's dims size = %d.",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1],
+      y_dims[0],
+      phi::errors::InvalidArgument("The input tensor X's dims[1] should "
+                                   "be equal to Y's dims[0]. But received "
+                                   "X's dims[1] = %d, Y's dims[0] = %d.",
+                                   x_dims[1],
+                                   y_dims[0]));
+  squared_x->set_dims(x_dims);
+  squared_y->set_dims(y_dims);
+  squared_xy->set_dims({x_dims[0], y_dims[1]});
+  out->set_dims({x_dims[0], y_dims[1]});
+}
+
 }  // namespace phi

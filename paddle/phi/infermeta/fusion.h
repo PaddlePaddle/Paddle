@@ -526,4 +526,12 @@ void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
                                    std::vector<MetaTensor*> relu_out,
                                    MetaTensor* out);
 
+void FusionSquaredMatSubInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const float scalar,
+                                  MetaTensor* squared_x,
+                                  MetaTensor* squared_y,
+                                  MetaTensor* squared_xy,
+                                  MetaTensor* out);
+
 }  // namespace phi

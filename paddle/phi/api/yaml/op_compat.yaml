@@ -3269,6 +3269,16 @@
   outputs:
     {out: Out}
 
+- op: fusion_squared_mat_sub
+  inputs :
+    x : X
+    y : Y
+  outputs :
+    squared_x : SquaredX
+    squared_y : SquaredY
+    squared_xy : SquaredXY
+    out : Out
+
 - op: get_tensor_from_selected_rows
   inputs :
     x : X
