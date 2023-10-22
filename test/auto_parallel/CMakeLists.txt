@@ -129,6 +129,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
+  py_test_modules(test_mp_allreduce_matmul_grad_overlapping MODULES
+                  test_mp_allreduce_matmul_grad_overlapping)
+  #set_tests_properties(test_mp_allreduce_matmul_grad_overlapping PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
   # End of unittests WITH multi cards and WITHOUT timeout
 
   # NOTE(zyl): unittests WITH single card and timeout
