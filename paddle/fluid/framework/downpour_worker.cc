@@ -135,7 +135,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
           static_cast<int>(table_idx)));
 
   TableParameter table;
-  for (auto i : param_.sparse_table()) {
+  for (auto const& i : param_.sparse_table()) {
     if (i.table_id() == table_id) {
       table = i;
       break;
@@ -191,7 +191,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           static_cast<int>(table_idx)));
 
   TableParameter table;
-  for (auto i : param_.sparse_table()) {
+  for (auto const& i : param_.sparse_table()) {
     if (i.table_id() == table_id) {
       table = i;
       break;
@@ -362,9 +362,8 @@ void DownpourWorker::CopySparseTable() {
     if (src_table == dest_table) {
       continue;
     } else if (!copy_table_config_.sparse_copy_by_feasign()) {
-      if (feasign_set_.find(src_table) == feasign_set_.end()) {
-        continue;
-      } else if (feasign_set_[src_table].empty()) {
+      if (feasign_set_.find(src_table) == feasign_set_.end() ||
+          feasign_set_[src_table].empty()) {
         continue;
       }
       feanum = fleet_ptr_->CopyTable(src_table, dest_table);
@@ -486,7 +485,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
   double push_sparse_time = 0.0;
   double push_dense_time = 0.0;
   double copy_table_time = 0.0;
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   uint64_t total_inst = 0;
   timeline.Start();
@@ -514,7 +513,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -600,7 +599,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;
@@ -805,7 +804,7 @@ void DownpourWorker::TrainFiles() {
   platform::SetNumThreads(1);
   device_reader_->Start();
   int batch_cnt = 0;
-  int cur_batch;
+  int cur_batch = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     if (copy_table_config_.need_copy()) {
       if (batch_cnt % copy_table_config_.batch_num() == 0) {
@@ -820,7 +819,7 @@ void DownpourWorker::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -937,7 +936,7 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;

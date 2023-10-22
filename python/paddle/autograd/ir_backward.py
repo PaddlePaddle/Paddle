@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import collections
+import logging
 from collections.abc import Sequence
 
-import paddle.ir
+import paddle.pir
 from paddle.autograd.backward_utils import State
 
 """
@@ -94,7 +95,6 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                 dtype=output.dtype,
             )
             fillop = output_grad.get_defining_op()
-
             update_bwdop_structure(
                 backward_ops,
                 state.op_to_opgrad[output.get_defining_op()],
@@ -138,14 +138,14 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
                     0.0,
                     opresult.dtype,
                 )
-                fillop = grad.get_defining_op()
+                fillop = grad_value.get_defining_op()
 
                 update_bwdop_structure(
                     backward_ops,
                     state.op_to_opgrad[opresult.get_defining_op()],
                     fillop,
                 )
-                state.value_to_valuegrad[opresult] = [grad_value]
+                state.value_to_valuegrad[opresult] = [[grad_value]]
 
                 visited_output.add(opresult)
 
@@ -159,7 +159,7 @@ def some_in_set(value_list, value_set):
     def operand2value(values):
         value_set = set()
         for item in values:
-            if isinstance(item, paddle.ir.OpOperand):
+            if isinstance(item, paddle.pir.OpOperand):
                 value_set.add(item.source())
             else:
                 value_set.add(item)
@@ -206,6 +206,23 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
         else:
             union_op_flags[i] = False
             intersection_op_flags[i] = False
+
+    # some inputs in no_grad_set but its next op is effective,
+    # add their defining op here.
+    total_ops_list = list(total_ops)
+    for i, op in enumerate(total_ops_list):
+        if union_op_flags[i] is False:
+            for result in op.results():
+                if result.has_one_use():
+                    next_op = result.first_use().owner()
+                    if (
+                        next_op in total_ops
+                        and union_op_flags[total_ops_list.index(next_op)]
+                        is True
+                    ):
+                        union_op_flags[i] = True
+                else:
+                    continue
 
     effective_ops = [
         total_ops[i] for i in range(len(total_ops)) if intersection_op_flags[i]
@@ -272,7 +289,7 @@ def inverse_sort_op(ops):
     sorted_list = []
     for op in ops:
         for x in op.operands():
-            if x.source().get_defining_op() in ops_set:
+            if x.source() and x.source().get_defining_op() in ops_set:
                 pending_count[x.source().get_defining_op()] += 1
 
     queue = collections.deque()
@@ -347,8 +364,8 @@ def append_backward_ops(
         for i, value in enumerate(op.results()):
             if (
                 value in state.value_to_valuegrad
-                and len(state.value_to_valuegrad[value])
-            ) > 1:
+                and len(state.value_to_valuegrad[value]) > 1
+            ):
                 # one value is input of more than one fwd_op,
                 # so more than one bwd_op create input_grad,
                 # need add sum op to accumulate gradient
@@ -422,13 +439,16 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 stop_gradient = make_input_stopgradient(input.get_defining_op())
                 input_grad_stopgradients.append(
                     [info[0] for info in stop_gradient]
                 )
             else:
-                if input in no_grad_set:
+                if input.get_defining_op() is None or input in no_grad_set:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
@@ -445,7 +465,10 @@ def append_backward_ops(
         ):
             if not grad_semantic:
                 continue
-            if input.get_defining_op().name() == "builtin.combine":
+            if (
+                input.get_defining_op() is not None
+                and input.get_defining_op().name() == "builtin.combine"
+            ):
                 update_input_grad_map(input.get_defining_op(), input_grads[i])
             else:
                 input_grad = input_grads[i]
@@ -522,8 +545,8 @@ def append_backward_ops(
                         ] = state.value_to_valuegrad[value]
                     else:
                         state.op_to_opgrad[op] = []
-                else:
-                    state.op_to_opgrad[op] = []
+            else:
+                state.op_to_opgrad[op] = []
 
 
 def create_backward_prune_set(inputs, outputs, no_grad_set, state):
@@ -534,7 +557,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
                 if state.value_to_valuegrad[item] != []:
                     outputs_set.add(state.value_to_valuegrad[item][0][0])
         else:
-            raise ValueError("input privided by inputs has no use")
+            logging.warning("input privided by inputs has no use")
 
     inputs_set = set()
     for output in outputs:
@@ -725,26 +748,26 @@ def grad(
     check_type(
         outputs,
         'outputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         inputs,
         'inputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
         'paddle.autograd.ir_backward.grad',
     )
     check_type(
         grad_outputs,
         'grad_outputs',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, type(None)),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
 
     check_type(
         no_grad_vars,
         'no_grad_vars',
-        ((paddle.ir.Value, paddle.ir.OpResult), list, tuple, set, type(None)),
+        ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, set, type(None)),
         'paddle.autograd.ir_backward.grad',
     )
     outputs = _as_list(outputs)

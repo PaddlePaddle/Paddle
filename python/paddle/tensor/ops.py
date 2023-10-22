@@ -525,7 +525,7 @@ def ceil(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0., -0., 1. , 1. ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.ceil(x)
     else:
         check_variable_and_dtype(
@@ -564,7 +564,7 @@ def cos(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.92106098, 0.98006660, 0.99500418, 0.95533651])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cos(x)
     else:
         check_variable_and_dtype(
@@ -654,7 +654,7 @@ def exp(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.67032003, 0.81873077, 1.10517097, 1.34985888])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.exp(x)
     else:
         check_variable_and_dtype(
@@ -704,7 +704,7 @@ def expm1(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.32967997, -0.18126924,  0.10517092,  0.34985882])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expm1(x)
     else:
         check_variable_and_dtype(
@@ -754,7 +754,7 @@ def floor(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -1.,  0.,  0.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.floor(x)
     else:
         check_variable_and_dtype(
@@ -839,7 +839,7 @@ def round(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-1., -0.,  1.,  2.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.round(x)
     else:
         check_variable_and_dtype(
@@ -898,7 +898,7 @@ def sigmoid(x, name=None):
        out = \\frac{1}{1 + e^{-x}}
 
     Args:
-        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float32, float64 or float16.
+        x (Tensor): Input of Sigmoid operator, an N-D Tensor, with data type float16, float32, float64, complex64 or complex128.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -916,11 +916,21 @@ def sigmoid(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.40131235, 0.45016602, 0.52497917, 0.57444251])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sigmoid(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sigmoid'
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+                'complex64',
+                'complex128',
+            ],
+            'sigmoid',
         )
         helper = LayerHelper('sigmoid', **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -953,7 +963,7 @@ def sin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38941833, -0.19866933,  0.09983342,  0.29552022])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sin(x)
     else:
         check_variable_and_dtype(
@@ -1047,7 +1057,7 @@ def sqrt(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.31622776, 0.44721359, 0.54772258, 0.63245553])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sqrt(x)
     else:
         check_variable_and_dtype(
@@ -1087,7 +1097,7 @@ def square(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.16000001, 0.04000000, 0.01000000, 0.09000000])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.square(x)
     else:
         check_variable_and_dtype(

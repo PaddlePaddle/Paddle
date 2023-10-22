@@ -1077,6 +1077,31 @@ std::vector<ir::Tensor> TwoStepBlockReduceAny(const ir::Tensor& A,
                                     Expr(false));
 }
 
+std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
+                                              const ir::Expr& tensor) {
+  CHECK_NOTNULL(tensor.as_tensor());
+  if (op.As<ir::Add>()) {
+    return "cinn_block_reduce_sum" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+  } else if (op.As<ir::Mul>()) {
+    return "cinn_block_reduce_prod" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+  } else if (op.As<ir::Max>()) {
+    return "cinn_block_reduce_max" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+  } else if (op.As<ir::Min>()) {
+    return "cinn_block_reduce_min" +
+           Type2StrForReduce(tensor.as_tensor()->type()) + "_internal";
+  } else if (op.As<ir::And>()) {
+    return "cinn_block_reduce_all_internal";
+  } else if (op.As<ir::Or>()) {
+    return "cinn_block_reduce_any_internal";
+  } else {
+    LOG(FATAL) << "Reduce type: " << op << " Not supported yet!";
+  }
+  return "";
+}
+
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

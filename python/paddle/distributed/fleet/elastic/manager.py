@@ -229,9 +229,7 @@ class ElasticManager:
         node_tag = ''.join(
             random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(6)
         )
-        self.host_path = '{}/{}{}'.format(
-            self.node_prefix, node_tag, time.time()
-        )
+        self.host_path = f'{self.node_prefix}/{node_tag}{time.time()}'
         '''
         0 group mode, be aware of healthy status of other workers
         1 decouple mode, check own status only
@@ -280,9 +278,7 @@ class ElasticManager:
                         )
                 except Exception as e:
                     logger.error(
-                        "[lease_heartbeat] internal error:{} {}".format(
-                            e, traceback.format_exc()
-                        )
+                        f"[lease_heartbeat] internal error:{e} {traceback.format_exc()}"
                     )
                     break
                 time.sleep(elastic_ttl / 3)
@@ -309,9 +305,7 @@ class ElasticManager:
             edps = value.decode() if value is not None else ''
             self.dist_endpoints, self.trainers = edps.split('|')
             logger.info(
-                "set DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
-                    self.dist_endpoints
-                )
+                f"set DISTRIBUTED_TRAINER_ENDPOINTS {self.dist_endpoints} "
             )
             logger.info(f"set PADDLE_TRAINERS {self.trainers} ")
 
@@ -472,9 +466,7 @@ class ElasticManager:
             os.environ['DISTRIBUTED_TRAINER_ENDPOINTS'] = self.dist_endpoints
             os.environ['PADDLE_TRAINERS'] = self.trainers
             logger.info(
-                "update env DISTRIBUTED_TRAINER_ENDPOINTS {} ".format(
-                    self.dist_endpoints
-                )
+                f"update env DISTRIBUTED_TRAINER_ENDPOINTS {self.dist_endpoints} "
             )
             logger.info(f"update env PADDLE_TRAINERS {self.trainers} ")
             return
@@ -502,7 +494,7 @@ class ElasticManager:
             if curr_host_port not in host_endpoints:
                 host_endpoints.append(curr_host_port)
 
-        os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+        os.environ['PADDLE_TRAINER_ID'] = str(
             host_endpoints.index(self.curr_host)
         )
         hosts = ','.join(
@@ -555,7 +547,7 @@ class ElasticManager:
         )
 
         self.args.ips = hosts
-        os.environ['PADDLE_TRAINER_ID'] = '{}'.format(
+        os.environ['PADDLE_TRAINER_ID'] = str(
             sorted_endpoints.index(self.curr_host)
         )
         os.environ['PADDLE_TRAINERS'] = hosts

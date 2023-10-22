@@ -14,6 +14,7 @@
 
 import os
 
+import paddle
 from paddle.base import core
 from paddle.incubate.optimizer import PipelineOptimizer
 from paddle.static import (
@@ -248,9 +249,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.scale_gradient = gradient_scale_configs['scale_gradient']
         if gm_acc_step > 1:
             logger.info(
-                "Gradient merge in [{}], acc step = [{}]".format(
-                    gm_mode, gm_acc_step
-                )
+                f"Gradient merge in [{gm_mode}], acc step = [{gm_acc_step}]"
             )
 
         optimizer_sharding = False
@@ -716,7 +715,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
-        self._wait()
+        use_new_comm = paddle.get_flags("FLAGS_dynamic_static_unified_comm")[
+            "FLAGS_dynamic_static_unified_comm"
+        ]
+        if not use_new_comm:
+            self._wait()
         return optimize_ops, params_grads
 
     def _init_pair_comm(self, pair, ring_id):
@@ -863,9 +866,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                             )
                             assert (
                                 input_name not in self._forward_remain_anchors
-                            ), "segment anchor [{}] met twice !".format(
-                                input_name
-                            )
+                            ), f"segment anchor [{input_name}] met twice !"
                             self._backward_remain_anchors.remove(input_name)
                             self._forward_remain_anchors.append(input_name)
                 elif int(op.attr('op_role')) == int(OpRole.Forward):
@@ -980,7 +981,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         ].desc.input_arg_names(),
                     )
                 )
-        return
 
     def _prune_main_program(self, block, shard, rings):
         """
@@ -1096,7 +1096,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         reserved_x.append(var_name)
                 op.desc.set_input('X', reserved_x)
         block._sync_with_cpp()
-        return
 
     def _add_broadcast_allreduce(self, block):
         """
@@ -1665,8 +1664,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         logger.info(f"pure dp ring id: {self.dp_ring_id}")
         logger.info("#####" * 6)
 
-        return
-
     def _recreate_not_persist_param_as_var(self):
         def recreate_not_persist_param_as_var(program):
             block = program.global_block()
@@ -1768,9 +1765,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for grad_name in grad_names:
             assert (
                 get_grad_device(grad_name, shard) == shard.worker_idx
-            ), "try to merge gradient not belong to current shard: [{}]".format(
-                grad_name
-            )
+            ), f"try to merge gradient not belong to current shard: [{grad_name}]"
             persistable_grad_name = grad_name + '@GradiantMerge'
             assert (
                 grad_name not in self._grad2merged_grad
@@ -1834,7 +1829,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         zero_var = create_global_var(
             name="gradient_merge_zero",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,
@@ -1844,7 +1839,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         current_step_var = create_global_var(
             name="gradient_merge_current_step",
             shape=[1],
-            value=int(0),
+            value=0,
             dtype='int32',
             persistable=True,
             force_cpu=True,

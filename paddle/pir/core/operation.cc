@@ -31,17 +31,19 @@ using detail::OpOperandImpl;
 using detail::OpOutlineResultImpl;
 using detail::OpResultImpl;
 
-Operation *Operation::Create(const OperationArgument &argument) {
-  std::vector<Value> inputs;
-  for (auto op_result : argument.inputs) {
-    inputs.emplace_back(op_result);
+Operation *Operation::Create(OperationArgument &&argument) {
+  Operation *op = Create(argument.inputs,
+                         argument.attributes,
+                         argument.output_types,
+                         argument.info,
+                         argument.regions.size(),
+                         argument.successors);
+  for (size_t i = 0; i < argument.regions.size(); ++i) {
+    if (argument.regions[i]) {
+      op->region(i).TakeBody(std::move(*argument.regions[i]));
+    }
   }
-  return Create(inputs,
-                argument.attributes,
-                argument.output_types,
-                argument.info,
-                argument.num_regions,
-                argument.successors);
+  return op;
 }
 
 // Allocate the required memory based on the size and number of inputs, outputs,
@@ -121,7 +123,7 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.Verify(op);
+    op_info.VerifySig(op);
   }
   return op;
 }
@@ -278,6 +280,12 @@ Program *Operation::GetParentProgram() {
 void Operation::SetParent(Block *parent, const Block::Iterator &position) {
   parent_ = parent;
   position_ = position;
+}
+
+void Operation::MoveTo(Block *block, Block::Iterator position) {
+  IR_ENFORCE(parent_, "Operation does not have parent");
+  Operation *op = parent_->Take(this);
+  block->insert(position, op);
 }
 
 std::string Operation::name() const {

@@ -12,28 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .proto import framework_pb2
-
-from paddle.base import framework as framework
-from paddle.base import program_guard
-from . import core
 import collections
 import copy
 import logging
-from . import unique_name
-from . import log_helper
-import paddle.base
-from .data_feeder import check_type
+import re
 import warnings
-
 from collections.abc import Sequence
 
-import re
+import paddle.base
+from paddle.base import framework, program_guard
 
-__all__ = [
-    'append_backward',
-    'gradients',
-]
+from . import core, log_helper, unique_name
+from .data_feeder import check_type
+from .proto import framework_pb2
+
+__all__ = []
 
 _logger = log_helper.get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -237,7 +230,7 @@ class ProgramStats:
 
 
 def _pretty_op_desc_(op_desc, prefix):
-    out_s = "%s\tname:[%s]\n%s    \tinputs:[%s]\n%s    \toutputs:[%s]" % (
+    out_s = "{}\tname:[{}]\n{}    \tinputs:[{}]\n{}    \toutputs:[{}]".format(
         prefix + "_op",
         str(op_desc.type()),
         prefix + "_input",
@@ -351,22 +344,12 @@ def _create_op_desc_(op_type, inputs, outputs, attrs):
     for para, args in inputs.items():
         op_desc.set_input(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     for para, args in outputs.items():
         op_desc.set_output(
             para,
-            list(
-                map(
-                    lambda arg: arg.decode() if isinstance(arg, bytes) else arg,
-                    args,
-                )
-            ),
+            [arg.decode() if isinstance(arg, bytes) else arg for arg in args],
         )
     op_role_attr_name = core.op_proto_and_checker_maker.kOpRoleAttrName()
     op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName()
@@ -439,7 +422,7 @@ def _all_in_set_(cands, s):
     if len(cands) == 0:
         return False
     for c in cands:
-        if not c in s:
+        if c not in s:
             return False
     return True
 
@@ -739,9 +722,9 @@ def _remove_no_grad_branch_(
         return False
 
     # Remove ops whose outputs are all in no_grad_dict
-    target_grad_var_names = set(
-        [var.name + core.grad_var_suffix() for var in target_vars]
-    )
+    target_grad_var_names = {
+        var.name + core.grad_var_suffix() for var in target_vars
+    }
     op_descs = [
         op_desc
         for op_desc in op_descs
@@ -776,7 +759,7 @@ def _remove_no_grad_branch_(
                         ] = grad_op_id_to_fwd_op[op_desc.original_id()]
                     to_insert.append((new_op_desc, idx))
 
-    list([op_descs.insert(p[1], p[0]) for p in reversed(to_insert)])
+    [op_descs.insert(p[1], p[0]) for p in reversed(to_insert)]
 
     return op_descs
 
@@ -828,7 +811,7 @@ def _find_not_need_ops(grad_op_descs, forward_ops, input_grad_names_set):
             assert isinstance(var, Var)
             self.outputs.append(var)
 
-    var_versions = dict()
+    var_versions = {}
 
     def _create_node(name):
         if name not in var_versions.keys():
@@ -998,9 +981,7 @@ def _append_backward_ops_with_checkpoints_(
                 segments.append([min_idx, max_idx + 1])
             else:
                 _logger.info(
-                    "Could not recompute op range [{}] - [{}] ".format(
-                        min_idx, max_idx + 1
-                    )
+                    f"Could not recompute op range [{min_idx}] - [{max_idx + 1}] "
                 )
 
             start_idx += 1
@@ -1011,7 +992,7 @@ def _append_backward_ops_with_checkpoints_(
         recompute_segments = segments
 
     for i, (idx1, idx2) in enumerate(recompute_segments):
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1022,7 +1003,7 @@ def _append_backward_ops_with_checkpoints_(
                 ops[idx2 - 1].desc.type(), ops[idx2 - 1].desc.input_arg_names()
             )
         )
-        _logger.info("recompute segment[{}]".format(i))
+        _logger.info(f"recompute segment[{i}]")
         _logger.info(
             "segment start op: [{}]: [{}]".format(
                 ops[idx1].desc.type(), ops[idx1].desc.input_arg_names()
@@ -1338,7 +1319,7 @@ def _append_backward_ops_(
     if callbacks is not None:
         assert isinstance(callbacks, (list, tuple))
         for cb in callbacks:
-            if not hasattr(cb, '__call__'):
+            if not callable(cb):
                 raise ValueError("'callback' must be a callable object.")
 
     # grad_op_descs holds created grad_op, and will be appended to target_block
@@ -1689,17 +1670,8 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                     or var in parent_op_vars
                 ]
                 if not existing_grad_var_ins:
-                    '''
-                    FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in
-                    the program! Therefore, any dependency analysis would not
-                    work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong.
-                    Maybe we should re-design this op later...
-                    '''
-                    if op_desc.type() not in ['rnn_memory_helper_grad']:
-                        ops_to_remove.append(op_idx)
-                        continue
+                    ops_to_remove.append(op_idx)
+                    continue
 
         # sum may create invalid variable, here to deal with it.
         if op_desc.type() == 'sum':
@@ -1835,7 +1807,7 @@ def _rename_grad_(
 
 
 def _get_stop_gradients_(program):
-    no_grad_dict = dict()
+    no_grad_dict = {}
     assert isinstance(program, framework.Program)
     for block in program.blocks:
         assert isinstance(block, framework.Block)
@@ -2059,7 +2031,7 @@ def append_backward(
     for idx in son_parent_block_idx_dict:
         block_fwd_op_num_dict[idx] = program.block(idx).desc.op_size()
 
-    grad_to_var = dict()
+    grad_to_var = {}
 
     # pass the cuda_graph_attr to the fill_constant which generates the loss_grad
     op_desc = _create_loss_op_desc_(loss)
@@ -2073,16 +2045,16 @@ def append_backward(
             map(_strip_grad_suffix_, no_grad_dict[block_idx])
         )
 
-        op_path_dict = dict()
+        op_path_dict = {}
         op_path = _find_op_path_(
             block, [loss], [], block_no_grad_set, op_path_dict
         )
 
-        no_grad_vars = _find_no_grad_vars(
+        no_grad_set = _find_no_grad_vars(
             block, op_path, [loss], block_no_grad_set
         )
 
-        block_no_grad_set.update(no_grad_vars)
+        block_no_grad_set.update(no_grad_set)
         no_grad_dict[block_idx].update(
             list(map(_append_grad_suffix_, block_no_grad_set))
         )
@@ -2095,7 +2067,7 @@ def append_backward(
         # not support double grad in control flow sub-block now.
         if not is_in_control_flow:
             if program._appending_grad_times > 1:
-                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+                input_grad_names_set = {_append_grad_suffix_(loss.name)}
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
@@ -2136,7 +2108,7 @@ def append_backward(
                 grad_op_id_to_fwd_op=grad_op_id_to_fwd_op,
             )
 
-    grad_info_map = dict()
+    grad_info_map = {}
 
     # if in control flow, target_grad_block is a created new block which only contains grad ops,
     # so fwd_op_num is set to 0.
@@ -2196,9 +2168,7 @@ def append_backward(
         grad_block = grad_info[1]
         if not grad_block.has_var(grad_info[0]):
             raise ValueError(
-                "grad block[{0}] did not have grad var {1}".format(
-                    grad_info[1], grad_info[0]
-                )
+                f"grad block[{grad_info[1]}] did not have grad var {grad_info[0]}"
             )
         # Get the param var from the global block
         param_var = program.global_block().var(param)
@@ -2266,7 +2236,7 @@ def _get_output_names(cur_block, targets):
     """
 
     block = targets[0].block if targets else cur_block
-    current_output_names = set([out.name for out in targets])
+    current_output_names = {out.name for out in targets}
 
     # 1. If `targets` in cur_block or the ancestral block of `cur_block`
     if block.idx == cur_block.idx or _is_ancestor_block(block, cur_block):
@@ -2336,10 +2306,10 @@ def _find_op_path_(
         The forward op path of block corresponding to backward op.
     """
 
-    input_names = set([inp.name for inp in inputs])
+    input_names = {inp.name for inp in inputs}
     output_names = _get_output_names(block, targets)
     if op_path_dict is None:
-        op_path_dict = dict()
+        op_path_dict = {}
 
     relevant_op_flags = [True] * len(block.ops)
 
@@ -2461,8 +2431,9 @@ def calc_gradient_helper(
                 raise ValueError("all targets must be in the same block")
             if target.shape != grad.shape:
                 raise ValueError(
-                    "The shapes of target and grad are different: %s %s"
-                    % (target.name, grad.name)
+                    "The shapes of target and grad are different: {} {}".format(
+                        target.name, grad.name
+                    )
                 )
             target_grad_map[_append_grad_suffix_(target.name)] = grad.name
             input_grad_names_set.add(grad.name)
@@ -2481,10 +2452,10 @@ def calc_gradient_helper(
 
     for input in inputs:
         if input.block.program != prog:
-            raise "input must be in the same program as targets"
+            raise ValueError("input must be in the same program as targets")
     block_no_grad_set = set(map(_strip_grad_suffix_, no_grad_dict[0]))
 
-    op_path_dict = dict()
+    op_path_dict = {}
     op_path = _find_op_path_(
         block, targets, inputs, block_no_grad_set, op_path_dict
     )
@@ -2529,14 +2500,14 @@ def calc_gradient_helper(
         block.program._sync_with_cpp()
 
     # find no grad var by op_path
-    no_grad_vars = _find_no_grad_vars(
+    no_grad_set = _find_no_grad_vars(
         block, op_path, tmp_targets, block_no_grad_set
     )
-    block_no_grad_set.update(no_grad_vars)
+    block_no_grad_set.update(no_grad_set)
 
     no_grad_dict[0].update(list(map(_append_grad_suffix_, block_no_grad_set)))
-    grad_to_var = dict()
-    grad_info_map = dict()
+    grad_to_var = {}
+    grad_info_map = {}
     _append_backward_ops_(
         block,
         op_path,
@@ -2655,6 +2626,56 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
             >>> print(z)
             [var x@GRAD : LOD_TENSOR.shape(-1, 2, 8, 8).dtype(float32).stop_gradient(False)]
     """
+    if framework.in_pir_mode():
+        check_type(
+            targets,
+            'targets',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            'paddle.autograd.ir_backward.grad',
+        )
+        check_type(
+            inputs,
+            'inputs',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple),
+            'paddle.autograd.ir_backward.grad',
+        )
+        check_type(
+            target_gradients,
+            'target_gradients',
+            ((paddle.pir.Value, paddle.pir.OpResult), list, tuple, type(None)),
+            'paddle.autograd.ir_backward.grad',
+        )
+
+        check_type(
+            no_grad_set,
+            'no_grad_set',
+            (
+                (paddle.pir.Value, paddle.pir.OpResult),
+                list,
+                tuple,
+                set,
+                type(None),
+            ),
+            'paddle.autograd.ir_backward.grad',
+        )
+        targets = _as_list(targets)
+        inputs = _as_list(inputs)
+        target_gradients = _as_list(target_gradients)
+        if no_grad_set is None:
+            no_grad_set = set()
+        elif no_grad_set is not set:
+            no_grad_set = set(no_grad_set)
+        else:
+            no_grad_set = no_grad_set
+        from paddle.autograd.ir_backward import (
+            calc_gradient as pir_calc_gradient,
+        )
+
+        input_grad = pir_calc_gradient(
+            targets, inputs, target_gradients, no_grad_set
+        )
+        return input_grad
+
     check_type(
         targets,
         'targets',

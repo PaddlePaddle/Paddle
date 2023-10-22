@@ -131,6 +131,7 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     for (uint32_t i = 0; i < op->num_operands(); ++i) {
       AddOperandToWorklist(op->operand_source(i));
     }
+
     if (op->num_regions() == 0) {
       RemoveFromWorklist(op);
     } else {
@@ -173,7 +174,8 @@ class GreedyPatternRewriteDriver : public pir::PatternRewriter {
     // that single use values often have more canonicalization opportunities.
     if (!operand || (!operand.use_empty() && !operand.HasOneUse())) return;
 
-    if (auto* def_op = operand.GetDefiningOp()) AddToWorklist(def_op);
+    if (auto* def_op = operand.dyn_cast<pir::OpResult>().owner())
+      AddToWorklist(def_op);
   }
 
   void AddOperandsToWorklist(const std::vector<pir::Value> operands) {

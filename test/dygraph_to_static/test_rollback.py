@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle.jit.dy2static.program_translator import StaticFunction
@@ -67,10 +71,12 @@ def foo(x, flag=False):
     return out
 
 
+@dy2static_unittest
 class TestRollBackPlainFunction(unittest.TestCase):
     def setUp(self):
         paddle.set_device("cpu")
 
+    @test_and_compare_with_new_ir(False)
     def test_plain_func(self):
         st_foo = paddle.jit.to_static(foo)
         x = paddle.randn([3, 4])
@@ -91,6 +97,7 @@ class TestRollBackNet(unittest.TestCase):
         paddle.set_device("cpu")
 
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_net(self):
         net = paddle.jit.to_static(Net())
         x = paddle.randn([3, 4])
@@ -139,6 +146,7 @@ class FuncRollback(paddle.nn.Layer):
 @dy2static_unittest
 class TestRollBackNotForward(unittest.TestCase):
     @ast_only_test
+    @test_and_compare_with_new_ir(False)
     def test_rollback(self):
         x = paddle.zeros([2, 2])
         net = FuncRollback()

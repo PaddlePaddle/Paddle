@@ -14,7 +14,7 @@
 
 import unittest
 
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle.static import InputSpec
@@ -42,7 +42,7 @@ class NetWithOpAttr(paddle.nn.Layer):
         out = self.bn(out)
         return out
 
-    @paddle.jit.to_static(input_spec=[InputSpec([10, 16])])
+    @paddle.jit.to_static(input_spec=[InputSpec([10, 16])], full_graph=True)
     def with_cond(self, x):
         if paddle.mean(x) > 0.0:
             out = self.linear(x)
@@ -52,6 +52,7 @@ class NetWithOpAttr(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class CheckOpAttr(unittest.TestCase):
     def setUp(self):
         self.in_num = 16

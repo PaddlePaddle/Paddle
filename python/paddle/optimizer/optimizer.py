@@ -108,15 +108,15 @@ class Optimizer:
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It canbe a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_base_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of \
             some derived class of ``GradientClipBase`` . There are three cliping strategies \
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` , \
-            :ref:`api_base_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` , \
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         name (str, optional): Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name`.
             The default value is None.
@@ -312,11 +312,11 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                emb = paddle.nn.Embedding(10, 10)
+                >>> import paddle
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                state_dict = adam.state_dict()
+                >>> adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                >>> state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -396,9 +396,7 @@ class Optimizer:
                     load_para_np = load_para
                 else:
                     raise RuntimeError(
-                        "State dict type {} not supprt".format(
-                            str(type(load_para))
-                        )
+                        f"State dict type {str(type(load_para))} not supprt"
                     )
 
                 assert (
@@ -470,19 +468,19 @@ class Optimizer:
                 # only create global lr_var once
                 lr = self._global_learning_rate()
                 if in_pir_mode():
-                    if isinstance(lr, paddle.ir.OpResult):
+                    if isinstance(lr, paddle.pir.OpResult):
                         return
                     else:
                         place = _current_expected_place()
                         if not isinstance(_lr_dtype, paddle.base.core.DataType):
                             lr_dtype = (
-                                paddle.ir.core.convert_np_dtype_to_dtype_(
+                                paddle.pir.core.convert_np_dtype_to_dtype_(
                                     _lr_dtype
                                 )
                             )
                         self._learning_rate_map[
                             framework.default_main_program()
-                        ] = paddle._ir_ops.full(
+                        ] = paddle._pir_ops.full(
                             [],
                             self._learning_rate,
                             _lr_dtype,
@@ -844,9 +842,7 @@ class Optimizer:
             if framework.in_dygraph_mode():
                 return self._accumulators[name][param.name]
             raise Exception(
-                "Accumulator {} already exists for parameter {}".format(
-                    name, param.name
-                )
+                f"Accumulator {name} already exists for parameter {param.name}"
             )
         if shape is None:
             shape = param.shape
@@ -892,9 +888,7 @@ class Optimizer:
             if len(self._accumulators_holder) > 0:
                 assert (
                     var_name in self._accumulators_holder
-                ), "Optimizer set error, {} should in state dict".format(
-                    var_name
-                )
+                ), f"Optimizer set error, {var_name} should in state dict"
                 var.set_value(self._accumulators_holder.pop(var_name))
 
         self._accumulators[name][param.name] = var
@@ -917,9 +911,7 @@ class Optimizer:
             or param.name not in self._accumulators[name]
         ):
             raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, param.name
-                )
+                f"Accumulator {name} does not exist for parameter {param.name}"
             )
         return self._accumulators[name][param.name]
 
@@ -945,9 +937,7 @@ class Optimizer:
             or target_name not in self._accumulators[name]
         ):
             raise Exception(
-                "Accumulator {} does not exist for parameter {}".format(
-                    name, target_name
-                )
+                f"Accumulator {name} does not exist for parameter {target_name}"
             )
         return self._accumulators[name][target_name]
 
@@ -1251,9 +1241,9 @@ class Optimizer:
 
         Args:
             loss (Tensor): ``loss`` tensor to run optimizations.
-            startup_program (Program, optional): :ref:`api_base_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1316,6 +1306,16 @@ class Optimizer:
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
                 if in_pir_mode():
+                    if parameter_list is None:
+                        # all parameters will be updated.
+                        program_all_params = (
+                            program.global_block().all_parameters()
+                        )
+                        parameter_list = [
+                            param
+                            for param in program_all_params
+                            if param.stop_gradient is False
+                        ]
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
@@ -1612,9 +1612,9 @@ class Optimizer:
 
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
-            startup_program (Program, optional): :ref:`api_base_Program` for
+            startup_program (Program, optional): :ref:`api_paddle_static_Program` for
                 initializing parameters in ``parameters``. The default value
-                is None, at this time :ref:`api_base_default_startup_program` will be used.
+                is None, at this time :ref:`api_paddle_static_default_startup_program` will be used.
             parameters (list, optional): List of ``Tensor`` or ``Tensor.name`` to update
                 to minimize ``loss``. The default value is None, at this time all parameters
                 will be updated.
@@ -1650,7 +1650,7 @@ class Optimizer:
 
         """
         assert isinstance(
-            loss, (Variable, paddle.ir.OpResult)
+            loss, (Variable, paddle.pir.OpResult)
         ), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters else self._parameter_list
@@ -1688,7 +1688,6 @@ class Optimizer:
         )
         params_grads = [(param, param.grad) for param in parameters]
         optimize_ops = self.apply_gradients(params_grads)
-        return
 
     @imperative_base.no_grad()
     @framework.non_static_only

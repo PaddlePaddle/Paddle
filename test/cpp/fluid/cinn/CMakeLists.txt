@@ -12,7 +12,8 @@ if(WITH_TESTING)
     graph
     cinn_launch_context
     cinn_instruction_run_op
-    cinnapi)
+    cinnapi
+    paddle_flags)
   target_link_libraries(cinn_launch_context_test ${PYTHON_LIBRARIES})
   set_tests_properties(cinn_launch_context_test PROPERTIES LABELS
                                                            "RUN_TYPE=CINN")
@@ -42,9 +43,16 @@ if(WITH_TESTING)
     cinn_compiler
     cinn_launch_op
     cinn_instruction_run_op
-    elementwise_add_op)
+    elementwise_add_op
+    paddle_flags)
   target_link_libraries(cinn_instruction_run_op_test ${PYTHON_LIBRARIES})
-  set_tests_properties(
-    cinn_instruction_run_op_test PROPERTIES LABELS "RUN_TYPE=CINN" ENVIRONMENT
-                                            "${CINN_RUN_ENVIRONMENT}")
+
+  get_property(
+    env
+    TEST cinn_instruction_run_op_test
+    PROPERTY ENVIRONMENT)
+  set_property(TEST cinn_instruction_run_op_test
+               PROPERTY ENVIRONMENT "${CINN_RUN_ENVIRONMENT}" ${env})
+  set_tests_properties(cinn_instruction_run_op_test PROPERTIES LABELS
+                                                               "RUN_TYPE=CINN")
 endif()

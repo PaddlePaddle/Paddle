@@ -12,12 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
+import platform
 import site
 import sys
-import os
 import warnings
-import platform
-import logging
 
 has_paddle_dy_lib = False
 
@@ -29,6 +28,7 @@ if os.name == 'nt':
 current_path = os.path.abspath(os.path.dirname(__file__))
 if os.path.exists(current_path + os.sep + dy_lib_name + '.' + dy_lib_suffix):
     has_paddle_dy_lib = True
+
 
 try:
     if os.name == 'nt':
@@ -48,11 +48,10 @@ except ImportError as e:
     if os.name == 'nt':
         executable_path = os.path.abspath(os.path.dirname(sys.executable))
         raise ImportError(
-            """NOTE: You may need to run \"set PATH=%s;%%PATH%%\"
+            f"""NOTE: You may need to run \"set PATH={executable_path};%PATH%\"
         if you encounters \"DLL load failed\" errors. If you have python
-        installed in other directory, replace \"%s\" with your own
-        directory. The original error is: \n %s"""
-            % (executable_path, executable_path, str(e))
+        installed in other directory, replace \"{executable_path}\" with your own
+        directory. The original error is: \n {str(e)}"""
         )
     else:
         raise ImportError(
@@ -198,7 +197,7 @@ def run_shell_command(cmd):
 def get_dso_path(core_so, dso_name):
     if core_so and dso_name:
         return run_shell_command(
-            "ldd %s|grep %s|awk '{print $3}'" % (core_so, dso_name)
+            f"ldd {core_so}|grep {dso_name}|awk '{{print $3}}'"
         )
     else:
         return None
@@ -211,7 +210,7 @@ def load_dso(dso_absolute_path):
 
             cdll.LoadLibrary(dso_absolute_path)
         except:
-            warnings.warn("Load {} failed".format(dso_absolute_path))
+            warnings.warn(f"Load {dso_absolute_path} failed")
 
 
 def pre_load(dso_name):
@@ -238,8 +237,8 @@ def less_than_ver(a, b):
     if a is None or b is None:
         return False
 
-    import re
     import operator
+    import re
 
     def to_list(s):
         s = re.sub(r'(\.0+)+$', '', s)
@@ -279,69 +278,86 @@ try:
     # assign tensor alias
     libpaddle.LoDTensor = libpaddle.Tensor
 
-    from .libpaddle import *
-    from .libpaddle import __doc__, __file__, __name__, __package__
-    from .libpaddle import __unittest_throw_exception__
-    from .libpaddle import _append_python_callable_object_and_return_id
-    from .libpaddle import _cleanup, _Scope
-    from .libpaddle import _get_use_default_grad_op_desc_maker_ops
-    from .libpaddle import _get_all_register_op_kernels
-    from .libpaddle import _get_registered_phi_kernels
-    from .libpaddle import _is_program_version_supported
-    from .libpaddle import _set_eager_deletion_mode
-    from .libpaddle import _get_eager_deletion_vars
-    from .libpaddle import _set_fuse_parameter_group_size
-    from .libpaddle import _set_fuse_parameter_memory_size
-    from .libpaddle import _is_dygraph_debug_enabled
-    from .libpaddle import _dygraph_debug_level
-    from .libpaddle import _switch_tracer
-    from .libpaddle import _set_paddle_lib_path
-    from .libpaddle import _create_loaded_parameter
-    from .libpaddle import _cuda_synchronize
-    from .libpaddle import _test_enforce_gpu_success
-    from .libpaddle import _is_compiled_with_heterps
-    from .libpaddle import _promote_types_if_complex_exists
-    from .libpaddle import _set_cached_executor_build_strategy
-    from .libpaddle import _device_synchronize
-    from .libpaddle import _xpu_device_synchronize
-    from .libpaddle import _get_current_stream
-    from .libpaddle import _Profiler, _ProfilerResult, _RecordEvent
-    from .libpaddle import _set_current_stream
-    from .libpaddle import _get_phi_kernel_name
+    from .libpaddle import *  # noqa: F403
+    from .libpaddle import (  # noqa: F401
+        __doc__,
+        __file__,
+        __name__,
+        __package__,
+        __unittest_throw_exception__,
+        _append_python_callable_object_and_return_id,
+        _cleanup,
+        _create_loaded_parameter,
+        _cuda_synchronize,
+        _device_synchronize,
+        _dygraph_debug_level,
+        _get_all_register_op_kernels,
+        _get_current_stream,
+        _get_eager_deletion_vars,
+        _get_phi_kernel_name,
+        _get_registered_phi_kernels,
+        _get_use_default_grad_op_desc_maker_ops,
+        _is_compiled_with_heterps,
+        _is_dygraph_debug_enabled,
+        _is_program_version_supported,
+        _Profiler,
+        _ProfilerResult,
+        _promote_types_if_complex_exists,
+        _RecordEvent,
+        _Scope,
+        _set_cached_executor_build_strategy,
+        _set_current_stream,
+        _set_eager_deletion_mode,
+        _set_fuse_parameter_group_size,
+        _set_fuse_parameter_memory_size,
+        _set_paddle_lib_path,
+        _switch_tracer,
+        _test_enforce_gpu_success,
+        _xpu_device_synchronize,
+    )
 
-    # prim controller flags
-    from .libpaddle import __set_bwd_prim_enabled
-    from .libpaddle import _is_bwd_prim_enabled
-    from .libpaddle import __set_fwd_prim_enabled
-    from .libpaddle import _is_fwd_prim_enabled
-    from .libpaddle import __set_all_prim_enabled
-    from .libpaddle import _is_eager_prim_enabled
-    from .libpaddle import __set_eager_prim_enabled
-    from .libpaddle import _set_prim_target_grad_name
-    from .libpaddle import _add_skip_comp_ops
-    from .libpaddle import _set_bwd_prim_blacklist
-    from .libpaddle import _remove_skip_comp_ops
+    # isort: off
 
     # custom devivce
-    from .libpaddle import _get_current_custom_device_stream
-    from .libpaddle import _set_current_custom_device_stream
-    from .libpaddle import _synchronize_custom_device
-    from .libpaddle import CustomDeviceStream
-    from .libpaddle import CustomDeviceEvent
+    from .libpaddle import (  # noqa: F401
+        CustomDeviceEvent,
+        CustomDeviceStream,
+        _get_current_custom_device_stream,
+        _set_current_custom_device_stream,
+        _synchronize_custom_device,
+    )
 
+    # prim controller flags
+    from .libpaddle import (  # noqa: F401
+        __set_all_prim_enabled,
+        __set_bwd_prim_enabled,
+        __set_eager_prim_enabled,
+        __set_fwd_prim_enabled,
+        _add_skip_comp_ops,
+        _is_bwd_prim_enabled,
+        _is_eager_prim_enabled,
+        _is_fwd_prim_enabled,
+        _remove_skip_comp_ops,
+        _set_bwd_prim_blacklist,
+        _set_prim_target_grad_name,
+    )
+
+    # isort: on
     if sys.platform != 'win32':
-        from .libpaddle import _set_process_pids
-        from .libpaddle import _erase_process_pids
-        from .libpaddle import _set_process_signal_handler
-        from .libpaddle import _throw_error_if_process_failed
-        from .libpaddle import _convert_to_tensor_list
-        from .libpaddle import _array_to_share_memory_tensor
-        from .libpaddle import _cleanup_mmap_fds
-        from .libpaddle import _remove_tensor_list_mmap_fds
-        from .libpaddle import _set_max_memory_map_allocation_pool_size
+        from .libpaddle import (  # noqa: F401
+            _array_to_share_memory_tensor,
+            _cleanup_mmap_fds,
+            _convert_to_tensor_list,
+            _erase_process_pids,
+            _remove_tensor_list_mmap_fds,
+            _set_max_memory_map_allocation_pool_size,
+            _set_process_pids,
+            _set_process_signal_handler,
+            _throw_error_if_process_failed,
+        )
 
     # CINN
-    from .libpaddle import is_run_with_cinn
+    from .libpaddle import is_run_with_cinn  # noqa: F401
 
 except Exception as e:
     if has_paddle_dy_lib:
@@ -494,7 +510,6 @@ def _set_prim_forward_blacklist(*args):
             raise TypeError("ops set in forward_blacklist must belong to str")
         else:
             prim_config["forward_blacklist"].add(item)
-    return
 
 
 def _set_prim_backward_blacklist(*args):
@@ -503,7 +518,6 @@ def _set_prim_backward_blacklist(*args):
         if not isinstance(item, str):
             raise TypeError("all items in set must belong to string")
     _set_bwd_prim_blacklist(ops)
-    return
 
 
 def _set_prim_backward_enabled(value):

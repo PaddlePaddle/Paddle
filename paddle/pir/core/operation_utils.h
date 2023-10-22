@@ -34,32 +34,28 @@ using AttributeMap = std::unordered_map<std::string, Attribute>;
 // This represents an operation arguments in an combined form, suitable for use
 // with the builder APIs.
 struct OperationArgument {
-  std::vector<OpResult> inputs;
+  std::vector<Value> inputs;
   AttributeMap attributes;
   std::vector<Type> output_types;
   OpInfo info;
-  size_t num_regions{0};
   std::vector<Block*> successors;
+  std::vector<std::unique_ptr<Region>> regions;
 
  public:
   OperationArgument(IrContext* ir_context, const std::string& name);
   explicit OperationArgument(OpInfo info) : info(info) {}
-  OperationArgument(const std::vector<OpResult>& operands,
+  OperationArgument(const std::vector<Value>& inputs,
                     const AttributeMap& attributes,
                     const std::vector<Type>& types,
                     OpInfo info,
-                    size_t num_regions = 0,
                     const std::vector<Block*> successors = {})
-      : inputs(operands),
+      : inputs(inputs),
         attributes(attributes),
         output_types(types),
         info(info),
-        num_regions(num_regions),
         successors(successors) {}
 
-  void AddInput(Value input) {
-    inputs.emplace_back(input.dyn_cast<OpResult>());
-  }
+  void AddInput(Value input) { inputs.emplace_back(input); }
 
   template <class InputIt>
   void AddInputs(InputIt first, InputIt last);
@@ -79,6 +75,11 @@ struct OperationArgument {
   template <class InputIt>
   void AddOutputs(InputIt first, InputIt last);
 
+  template <class TypeContainer>
+  void AddOutputs(const TypeContainer& type_container) {
+    AddOutputs(std::begin(type_container), std::end(type_container));
+  }
+
   /// Add an attribute with the specified name.
   void AddAttribute(const std::string& name, Attribute attr) {
     attributes[name] = attr;
@@ -86,10 +87,29 @@ struct OperationArgument {
   /// Add an array of named attributes.
   template <class InputIt>
   void AddAttributes(InputIt first, InputIt last);
+
+  template <class AttrContainer>
+  void AddAttributes(const AttrContainer& attr_container) {
+    AddAttributes(std::begin(attr_container), std::end(attr_container));
+  }
+
   /// Get the context held by this operation state.
   IrContext* getContext() const { return info.ir_context(); }
 
   void AddSuccessor(Block* successor) { successors.emplace_back(successor); }
+
+  /// Create a region that should be attached to the operation.  These regions
+  /// can be filled in immediately without waiting for Operation to be
+  /// created.  When it is, the region bodies will be transferred.
+  Region* AddRegion();
+
+  /// Take a region that should be attached to the Operation.  The body of the
+  /// region will be transferred when the Operation is created.  If the
+  /// region is nullptr, a new empty region will be attached to the Operation.
+  void AddRegion(std::unique_ptr<Region>&& region);
+
+  // This interface is equivalent to calling AddRegion(nullptr) 'size' times.
+  void AddRegions(size_t size);
 };
 
 template <class InputIt>
