@@ -20,8 +20,7 @@ namespace phi {
 bool VerifyThreadConfigurationParameters(const dim3& block, const dim3& grid) {
   return block.x <= 1024 && block.y <= 1024 && block.z <= 64 &&
          block.x * block.y * block.z <= 1024 &&
-         block.x * block.y * block.z >= 32 && grid.y <= 32768 &&
-         grid.z <= 32768;
+         block.x * block.y * block.z >= 96 && grid.y < 65536 && grid.z < 65536;
 }
 
 template <typename T, size_t RANK>
