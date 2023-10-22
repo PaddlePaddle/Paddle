@@ -207,6 +207,15 @@
     func : fused_scale_bias_relu_conv_bnstats
     data_type : x
 
+- op : fusion_repeated_fc_relu
+  args : (Tensor x, Tensor[] w, Tensor[] bias)
+  output : Tensor[](relu_out){w.size()-1}, Tensor(out)
+  infer_meta :
+    func : FusionRepeatedFCReluInferMeta
+  kernel :
+    func : fusion_repeated_fc_relu
+  intermediate : relu_out
+
 - op : fusion_transpose_flatten_concat
   args : (Tensor[] x, int[] trans_axis, int flatten_axis, int concat_axis)
   output : Tensor(out)

@@ -1332,6 +1332,15 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : fusion_repeated_fc_relu
+  inputs :
+    x : X
+    w : W
+    bias : Bias
+  outputs :
+    relu_out : ReluOut
+    out : Out
+
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X

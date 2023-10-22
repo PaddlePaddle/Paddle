@@ -520,4 +520,10 @@ void SelfDPAttenInferMeta(const MetaTensor& x,
                           const int head_number,
                           MetaTensor* out);
 
+void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
+                                   const std::vector<const MetaTensor*>& w,
+                                   const std::vector<const MetaTensor*>& bias,
+                                   std::vector<MetaTensor*> relu_out,
+                                   MetaTensor* out);
+
 }  // namespace phi
