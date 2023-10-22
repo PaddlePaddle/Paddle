@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os  # noqa: F401
-
 from ..base import Scope  # noqa: F401
 from ..base.backward import append_backward, gradients
 from ..base.compiler import (
