@@ -252,28 +252,98 @@ def quant_linear(
     x,
     size,
     num_flatten_dims=1,
-    weight_attr=None,
     bias_attr=None,
+    w=None,
     activation=None,
     is_quant=False,
     scale_in=1.0,
-    scale_weights=[1.0],
+    scale_weight=None,
     quant_round_type=1,
     quant_max_bound=127.0,
     quant_min_bound=-127.0,
     name=None,
 ):
+    r"""
+
+    Quant linear layer can take a tensor as its input.
+    It creates a 2-D weight tensor for the input tensor, which represents its
+    weight matrix from the input unit to the output unit. The quant linear
+    layer multiplies the input tensor with the weight to produce
+    an output tensor with shape :math:`[batch\_size, *, size]` , where :math:`*`
+    means any number of additional dimensions. If :attr:`bias_attr` is not False, a 1-D bias tensor will
+    be created and added to the output. If :attr:`activation` is not None,
+    it will be applied to the output as well. If :attr:`is_quant` is True, the input will be quantize to
+    the tensor with int8 type, the parameter w must be a tensor with int8 type and the computation will also
+    be with the int8 type.
+
+    For a single input tensor :math:`X` , the equation is:
+
+    .. math::
+
+        Out = Act({XW + b})
+
+    For a list of input tensor, the equation is:
+
+    where:
+
+    * :math:`X`: The input tensor.
+    * :math:`W`: The weight matrix.
+    * :math:`b`: The bias created by this layer (if needed).
+    * :math:`Act`: The activation function.
+    * :math:`Out`: The output tensor.
+
+    Args:
+        x (Tensor): A tensor. The number of dimensions
+            of the tensor is at least 2. The data type should be float16, float32 or float64.
+        size (int): The number of the output unit in this layer, which also means the feature
+            size of output tensor.
+        num_flatten_dims (int, optional): The quant linear layer can accept an input tensor with more than
+            two dimensions. If this happens, the multi-dimensional tensor will first be flattened
+            into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
+            tensor is flattened: the first :math:`num\_flatten\_dims` (inclusive, index starts from 1)
+            dimensions will be flatten to form the first dimension of the final matrix (height of
+            the matrix), and the rest :math:`rank(x) - num\_flatten\_dims` dimensions are
+            flattened to form the second dimension of the final matrix (width of the matrix).
+            For example, assuming that :attr:`x` is a 5-dimensional tensor with a shape
+            :math:`[2, 3, 4, 5, 6]` , and :attr:`num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape :math:`[2 * 3 * 4, 5 * 6] = [24, 30]` .
+            Default: 1.
+        w (Tensor|ParamAttr, optional): A tensor. When is_quant is True, w must be a Tensor with int8 type.
+            Otherwise, w is the attribute for the learnable weight. The default value when is_quant is False
+            is None, and the weight will be initialized to zero. For detailed information, please refer to :attr:`paddle.ParamAttr`.
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
+            If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
+            initialized to zero.
+        activation (str, optional): Activation to be applied to the output of
+            this layer, such as tanh, softmax, sigmoid, relu. For more information,
+            please refer to :ref:`api_guide_activations_en` . Default: None.
+        is_quant (bool, optional): Use quantization. Default: False.
+        scale_in (float): The quantization scale for input. Default: 1.0.
+        scale_weight (list[float]): The quantization scale for weights. Default: None.
+        quant_round_type (int, optional): The round type of float to int. 0 means rounding to nearest ties to even and 1 means rounding to nearest ties away from zero. Default: 1.
+        quant_max_bound (float, optional): The max bound of float type to int type. Defualt: 127.0.
+        quant_min_bound (float, optional): The min bound of float type to int type. Defualt: -127.0.
+        name (str, optional): The default value is None. Normally there is no need for user to set
+            it. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
+
+    """
 
     def quant_linear_base(
         input,
         size,
         num_flatten_dims=1,
-        param_attr=None,
+        weight=None,
         bias_attr=None,
         act=None,
         is_quant=False,
         scale_in=1.0,
-        scale_weights=[1.0],
+        scale_weight=None,
         quant_round_type=1,
         quant_max_bound=127.0,
         quant_min_bound=-127.0,
@@ -283,21 +353,39 @@ def quant_linear(
         check_type(input, 'input', Variable, 'quant_linear')
         dtype = helper.input_dtype()
         check_dtype(
-            dtype, 'input', ['float16', 'uint16', 'float32', 'float64'], 'quant_linear'
+            dtype,
+            'input',
+            ['float16', 'uint16', 'float32', 'float64'],
+            'quant_linear',
         )
 
         input_shape = input.shape
         if num_flatten_dims == -1:
             num_flatten_dims = len(input_shape) - 1
-        param_shape = [
+
+        if is_quant:
+            if weight is None or not isinstance(weight, Variable):
+                raise TypeError(
+                    "The type of w in quant_lienar when is_quant is True must be Tensor."
+                )
+            if scale_weight is None or not isinstance(scale_weight, list):
+                raise TypeError(
+                    "The type of scale_weight in quant_lienar when is_quant is True must be list."
+                )
+            if len(scale_weight) != size:
+                raise AttributeError(
+                    "The length of scale_weight must be the same with the param size."
+                )
+        else:
+            param_shape = [
                 reduce(lambda a, b: a * b, input_shape[num_flatten_dims:], 1)
-        ] + [size]
-        w = helper.create_parameter(
-            attr=param_attr, shape=param_shape, dtype=dtype, is_bias=False
-        )
-        
-        inputs_of_quant_linear = {"x": input, "w": w}
-        if bias_attr != False:
+            ] + [size]
+            weight = helper.create_parameter(
+                attr=weight, shape=param_shape, dtype=dtype, is_bias=False
+            )
+
+        inputs_of_quant_linear = {"x": input, "w": weight}
+        if bias_attr is not False:
             bias_shape = [size]
             bias = helper.create_parameter(
                 attr=bias_attr, shape=bias_shape, dtype=dtype, is_bias=True
@@ -305,11 +393,27 @@ def quant_linear(
             inputs_of_quant_linear["bias"] = bias
 
         out = helper.create_variable_for_type_inference(dtype)
+        attrs_of_quant_linear = {
+            "in_num_col_dims": num_flatten_dims,
+            "activation_type": act,
+        }
+        if is_quant:
+            attrs_of_quant_linear.update(
+                {
+                    "is_quant": is_quant,
+                    "scale_in": scale_in,
+                    "scale_weights": scale_weight,
+                    "quant_round_type": quant_round_type,
+                    "quant_max_bound": quant_max_bound,
+                    "quant_min_bound": quant_min_bound,
+                }
+            )
+
         helper.append_op(
             type="quant_linear",
             inputs=inputs_of_quant_linear,
             outputs={"out": out},
-            attrs={"in_num_col_dims": num_flatten_dims, "activation_type": act, "is_quant": is_quant, "scale_in":scale_in, "scale_weights":scale_weights, "quant_round_type":quant_round_type, "quant_max_bound":quant_max_bound, "quant_min_bound":quant_min_bound}
+            attrs=attrs_of_quant_linear,
         )
         return out
 
@@ -317,12 +421,12 @@ def quant_linear(
         input=x,
         size=size,
         num_flatten_dims=num_flatten_dims,
-        param_attr=weight_attr,
+        weight=w,
         bias_attr=bias_attr,
         act=activation,
         is_quant=is_quant,
         scale_in=scale_in,
-        scale_weights=scale_weights,
+        scale_weight=scale_weight,
         quant_round_type=quant_round_type,
         quant_max_bound=quant_max_bound,
         quant_min_bound=quant_min_bound,
