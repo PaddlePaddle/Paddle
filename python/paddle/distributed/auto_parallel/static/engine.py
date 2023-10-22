@@ -1473,6 +1473,13 @@ class Engine:
             self._switch_mode(self._mode)
 
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
+        print("main program: ", self.main_program)
+        print("newir program: ", self.newir_program)
+        print(
+            "distributed context: ",
+            self._dist_contexts[self._mode]._dist_op_context.grad_var_to_var,
+        )
+
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1956,6 +1963,13 @@ class Engine:
     def main_program(self):
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
+
+    @property
+    def newir_program(self):
+        dist_context_ = self._dist_contexts[self._mode]
+        main_program_ = dist_context_.dist_main_programs[self._cur_rank]
+        newir_program = paddle.pir.translate_to_new_ir(main_program_.desc)
+        return newir_program
 
     @property
     def startup_program(self):
