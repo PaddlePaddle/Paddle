@@ -290,6 +290,10 @@ class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
         np.testing.assert_array_equal(res_1, res_2)
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel when is_quant is True.",
+)
 class TestQuantLinearOp_NumFlattenDims_NegOne_WithQuant(unittest.TestCase):
     def test_api(self):
         def run_program(num_flatten_dims):
