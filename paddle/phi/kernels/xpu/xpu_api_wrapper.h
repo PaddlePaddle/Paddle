@@ -20,7 +20,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_header.h"
 #include "paddle/phi/backends/xpu/xpu_info.h"
-#include "paddle/phi/core/visit_type.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
 
 namespace phi {

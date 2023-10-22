@@ -1373,58 +1373,5 @@ support_types = get_xpu_op_support_types('cos')
 for stype in support_types:
     create_test_class(globals(), XPUTestCosOP, stype)
 
-
-class XPUTestTanOP(XPUOpTestWrapper):
-    def __init__(self):
-        self.op_name = 'tan'
-        self.use_dynamic_create_class = False
-
-    class XPUTestTanBase(TestActivationOPBase):
-        def set_case(self):
-            self.op_type = "tan"
-            self.dtype = self.in_type
-
-            self.init_config()
-            out = np.tan(self.x)
-
-            self.inputs = {'X': self.x}
-            self.outputs = {'Out': out}
-            self.attrs = {'use_xpu': True}
-
-        def init_config(self):
-            self.x = np.random.uniform(
-                -0.45 * np.pi, 0.45 * np.pi, [11, 17]
-            ).astype(self.dtype)
-
-    class XPUTestTan_ZeroDim(XPUTestTanBase):
-        def init_config(self):
-            self.x = np.random.uniform(-0.45 * np.pi, 0.45 * np.pi, []).astype(
-                self.dtype
-            )
-
-    class XPUTestTan2(XPUTestTanBase):
-        def init_config(self):
-            self.x = np.random.uniform(
-                -0.45 * np.pi, 0.45 * np.pi, [1024, 8]
-            ).astype(self.dtype)
-
-    class XPUTestTan3(XPUTestTanBase):
-        def init_config(self):
-            self.x = np.random.uniform(
-                -0.45 * np.pi, 0.45 * np.pi, [4, 512, 15, 15]
-            ).astype(self.dtype)
-
-    class XPUTestTan4(XPUTestTanBase):
-        def init_config(self):
-            self.x = np.random.uniform(
-                -0.45 * np.pi, 0.45 * np.pi, [4, 256, 22, 22]
-            ).astype(self.dtype)
-
-
-support_types = get_xpu_op_support_types('tan')
-for stype in support_types:
-    create_test_class(globals(), XPUTestTanOP, stype)
-
-
 if __name__ == "__main__":
     unittest.main()
