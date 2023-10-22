@@ -75,6 +75,7 @@ ProgramDesc::ProgramDesc(const ProgramDesc &o) {
   for (int i = 0; i < desc_.blocks_size(); ++i) {
     auto *block = desc_.mutable_blocks(i);
     blocks_.emplace_back(new BlockDesc(*o.blocks_[i], block, this));
+    blocks_[i]->Proto()->set_parent_idx(block->parent_idx());
     // record all block desc's ptr from origin program
     old_block_desc.emplace_back(o.blocks_[i].get());
   }
