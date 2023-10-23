@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from op_test import OpTest
 
+import paddle
 from paddle import base
 
 
@@ -24,6 +25,8 @@ from paddle import base
 class TestExpandOpRank1(OpTest):
     def setUp(self):
         self.op_type = "expand"
+        self.python_api = paddle.expand
+        self.public_python_api = paddle.expand
         self.init_data()
         self.dtype = (
             "float32" if base.core.is_compiled_with_rocm() else "float64"
