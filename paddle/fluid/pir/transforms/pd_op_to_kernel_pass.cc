@@ -14,6 +14,7 @@
 
 #include <iostream>
 
+#include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
@@ -28,6 +29,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/data_transfer_utils.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
@@ -1249,6 +1251,10 @@ std::vector<pir::Value> BuildOpInputList(
       }
     }
     vec_inputs.push_back(new_in);
+
+    // phi::KernelKey kernel_key_for_var = pir::GetKernelKeyforVar();
+    // bool check_dtype_transfer =
+    // framework::NeedTransformDataType(kernel_key_for_var, kernel_key);
   }
 
   return vec_inputs;
