@@ -19,7 +19,7 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
-#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 
 namespace paddle {
 namespace framework {

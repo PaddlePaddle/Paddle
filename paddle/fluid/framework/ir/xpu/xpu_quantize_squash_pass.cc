@@ -66,8 +66,6 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
   int found_dequant_quant_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    LOG(INFO) << "squash dequantize-quantize ops pair";
-
     GET_IR_NODE_FROM_SUBGRAPH(dequant_in, dequant_in, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(dequant_op, dequant_op, squash_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(dequant_out, dequant_out, squash_pattern);

@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -381,7 +381,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   }
   // Create fusion_bias_node
   auto filter_dims = filter_t->dims();
-  bool has_bias = with_bn || with_bias;
   Node* fusion_bias_node = nullptr;
   if (with_bias) {
     auto* ew_bias_add_bias =
@@ -390,8 +389,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                       true,
                       platform::errors::InvalidArgument(
                           "ew_bias_add_bias node ptr can not be null"));
-    auto* ew_bias_add_bias_t = scope->FindVar(ew_bias_add_bias->Name())
-                                   ->GetMutable<phi::DenseTensor>();
     PrepareBias(graph, scope, block, ew_bias_add_bias, &fusion_bias_node);
   }
 
@@ -424,13 +421,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
 
     auto bn_bias_t =
         scope->Var(bn_bias->Name())->GetMutable<phi::DenseTensor>();
-    PADDLE_ENFORCE_EQ(
-        filter_dims[0],
-        bn_bias_t->dims()[0],
-        platform::errors::InvalidArgument("the shape[%d] of bn bias tensor "
-                                          "must equal out_channel[%d] of conv",
-                                          bn_bias_t->dims()[0],
-                                          filter_dims[0]));
     auto bn_scale_t =
         scope->Var(bn_scale->Name())->GetMutable<phi::DenseTensor>();
     auto bn_mean_t =
@@ -582,7 +572,6 @@ void FcXPUFusePass::CreateFusionOutputs(
       platform::errors::InvalidArgument("mul node ptr can not be null"));
   // output && output max
   std::string fc_xpu_out_name;
-  Node* fc_out_op_node = nullptr;
   Node* fc_out_var_node = nullptr;
 
   auto* bn = GetNodeFromNodesMap(nodes_map, "bn", "bn");
@@ -597,7 +586,6 @@ void FcXPUFusePass::CreateFusionOutputs(
         platform::errors::InvalidArgument("act_out node ptr can not be null"));
     fc_xpu_out_name = act_out->Name();
     fc_out_var_node = act_out;
-    fc_out_op_node = act;
   } else if (bn) {
     auto* bn_out = GetNodeFromNodesMap(nodes_map, "bn", "bn_out");
     PADDLE_ENFORCE_EQ(
@@ -606,7 +594,6 @@ void FcXPUFusePass::CreateFusionOutputs(
         platform::errors::InvalidArgument("bn_out node ptr can not be null"));
     fc_xpu_out_name = bn_out->Name();
     fc_out_var_node = bn_out;
-    fc_out_op_node = bn;
   } else if (ew_bias_add) {
     auto* ew_bias_add_out =
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_out");
@@ -616,7 +603,6 @@ void FcXPUFusePass::CreateFusionOutputs(
                           "ew_bias_add_out node ptr can not be null"));
     fc_xpu_out_name = ew_bias_add_out->Name();
     fc_out_var_node = ew_bias_add_out;
-    fc_out_op_node = ew_bias_add;
   } else {
     auto* mul_out = GetNodeFromNodesMap(nodes_map, "mul", "mul_out");
     PADDLE_ENFORCE_EQ(
@@ -625,7 +611,6 @@ void FcXPUFusePass::CreateFusionOutputs(
         platform::errors::InvalidArgument("mul_out node ptr can not be null"));
     fc_xpu_out_name = mul_out->Name();
     fc_out_var_node = mul_out;
-    fc_out_op_node = mul;
   }
   (*fusion_nodes_map)["out"] = fc_out_var_node;
 

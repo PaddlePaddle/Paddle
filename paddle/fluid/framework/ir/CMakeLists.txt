@@ -59,6 +59,10 @@ cc_library(
   placement_pass_base
   SRCS placement_pass_base.cc
   DEPS pass)
+cc_library(
+  quantize_pass_helper
+  SRCS quantize_pass_helper.cc
+  DEPS pass graph graph_helper)
 
 cc_library(
   coalesce_grad_tensor_pass
@@ -241,7 +245,8 @@ if(WITH_XPU)
     xpu_graph_pattern_detector
     SRCS xpu/xpu_graph_pattern_detector.cc
     DEPS graph_pattern_detector)
-  set(XPU_PASS_DEPS xpu_quant_utils xpu_pass_utils xpu_graph_pattern_detector)
+  set(XPU_PASS_DEPS quantize_pass_helper xpu_quant_utils xpu_pass_utils
+                    xpu_graph_pattern_detector)
   pass_library(cast_mixed_precision_op_fuse_pass inference DIR xpu DEPS
                ${XPU_PASS_DEPS})
   pass_library(yolo_box_xpu_fuse_pass inference DIR xpu DEPS ${XPU_PASS_DEPS})

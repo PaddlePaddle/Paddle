@@ -20,7 +20,7 @@
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
-#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 #include "paddle/fluid/framework/ir/xpu/pass_utils.h"
 #include "paddle/fluid/framework/ir/xpu/quant_utils.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -515,7 +515,6 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
   }
   // Create fusion_bias_node
   auto filter_dims = filter_t->dims();
-  bool has_bias = with_bn || with_conv_bias;
   Node* fusion_bias_node = nullptr;
   if (with_conv_bias) {
     auto* ew_bias_add_y =
@@ -677,7 +676,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
         filter_ptr[i] *= scale_val_;
       }
     } else {
-      for (int i = 0; i < weight_scale.size(); i++) {
+      for (size_t i = 0; i < weight_scale.size(); i++) {
         weight_scale[i] *= scale_val_;
       }
     }
@@ -877,12 +876,12 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
       platform::errors::InvalidArgument("conv node ptr can not be null"));
   // output && output max
   std::string conv2d_xpu_out_name;
-  Node* conv2d_out_op_node = nullptr;
   Node* conv2d_out_var_node = nullptr;
 
   auto* ew_branch_add =
       GetNodeFromNodesMap(nodes_map, "ew_branch_add", "ew_branch_add");
   auto* bn = GetNodeFromNodesMap(nodes_map, "bn", "bn");
+  auto* scale = GetNodeFromNodesMap(nodes_map, "scale", "scale");
   auto* ew_bias_add =
       GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add");
   if (!act_type.empty()) {
@@ -898,7 +897,6 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
         act != nullptr,
         true,
         platform::errors::InvalidArgument("act node ptr can not be null"));
-    conv2d_out_op_node = act;
   } else if (ew_branch_add) {
     auto* ew_branch_add_out =
         GetNodeFromNodesMap(nodes_map, "ew_branch_add", "ew_branch_add_out");
@@ -912,7 +910,14 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
                       true,
                       platform::errors::InvalidArgument(
                           "ew_branch_add node ptr can not be null"));
-    conv2d_out_op_node = ew_branch_add;
+  } else if (scale) {
+    auto* scale_out = GetNodeFromNodesMap(nodes_map, "scale", "scale_out");
+    PADDLE_ENFORCE_EQ(scale_out != nullptr,
+                      true,
+                      platform::errors::InvalidArgument(
+                          "scale_out node ptr can not be null"));
+    conv2d_xpu_out_name = scale_out->Name();
+    conv2d_out_var_node = scale_out;
   } else if (bn) {
     auto* bn_out = GetNodeFromNodesMap(nodes_map, "bn", "bn_out");
     PADDLE_ENFORCE_EQ(
@@ -921,7 +926,6 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
         platform::errors::InvalidArgument("bn_out node ptr can not be null"));
     conv2d_xpu_out_name = bn_out->Name();
     conv2d_out_var_node = bn_out;
-    conv2d_out_op_node = bn;
   } else if (ew_bias_add) {
     auto* ew_bias_add_out =
         GetNodeFromNodesMap(nodes_map, "ew_bias_add", "ew_bias_add_out");
@@ -931,7 +935,6 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
                           "ew_bias_add_out node ptr can not be null"));
     conv2d_xpu_out_name = ew_bias_add_out->Name();
     conv2d_out_var_node = ew_bias_add_out;
-    conv2d_out_op_node = ew_bias_add;
   } else {
     auto* conv_out = GetNodeFromNodesMap(nodes_map, "conv", "conv_out");
     PADDLE_ENFORCE_EQ(
@@ -945,7 +948,6 @@ void Conv2dXPUFusePass::CreateFusionOutputs(
         conv != nullptr,
         true,
         platform::errors::InvalidArgument("conv node ptr can not be null"));
-    conv2d_out_op_node = conv;
   }
   (*fusion_nodes_map)["out"] = conv2d_out_var_node;
 

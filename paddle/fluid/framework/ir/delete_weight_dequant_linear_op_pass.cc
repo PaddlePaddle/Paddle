@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/ir/delete_weight_dequant_linear_op_pass.h"
 #include "paddle/fluid/framework/ir/fuse_pass_base.h"
-#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 
 #include "glog/logging.h"
 

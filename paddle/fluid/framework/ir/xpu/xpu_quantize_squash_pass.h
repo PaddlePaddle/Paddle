@@ -61,16 +61,6 @@ class XPUQuantizeSquashPass : public FusePassBase {
   void MultipleQuantizeSquash(Graph* graph) const;
 
   /*
-   * Squash scale if dequantize is before scale
-   */
-  void DequantScaleSquash(Graph* graph) const;
-
-  /*
-   * Squash scale if scale is before quantize
-   */
-  void ScaleQuantSquash(Graph* graph) const;
-
-  /*
    * Squash quantize if is before conv2d_xpu/fc_xpuy
    */
   void QuantOpSquash(Graph* graph) const;

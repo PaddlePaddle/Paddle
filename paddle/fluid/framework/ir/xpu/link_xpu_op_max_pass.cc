@@ -172,7 +172,6 @@ void LinkXPUOpMaxPass::LinkConv2dMax(ir::Graph* graph, bool with_branch) const {
   GraphPatternDetector gpd;
   patterns::LinkConv2dPattern pattern(
       gpd.mutable_pattern(), name_scope_, with_branch);
-  auto* scope = param_scope();
   int found_subgraph_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
@@ -232,7 +231,6 @@ void LinkXPUOpMaxPass::LinkFcMax(ir::Graph* graph) const {
   GraphPatternDetector gpd;
   patterns::LinkFcPattern pattern(gpd.mutable_pattern(), name_scope_);
   int found_subgraph_count = 0;
-  auto* scope = param_scope();
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* graph) {
     VLOG(4) << "handle LinkFcMax";

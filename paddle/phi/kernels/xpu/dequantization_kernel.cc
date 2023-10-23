@@ -56,7 +56,7 @@ void DeQuantizeKernel(const Context& ctx,
       break;
     default:
       PADDLE_THROW(phi::errors::Unavailable(
-          "Not supported Quantize data type from %d -> %d ",
+          "Not supported dequantize data type from %d -> %d ",
           x.dtype(),
           out_dtype));
   }

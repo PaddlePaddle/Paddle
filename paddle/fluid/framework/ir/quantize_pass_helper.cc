@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-
-#include <string>
-
-#include "paddle/fluid/framework/ir/graph_helper.h"
-#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace ir {
 
-static inline void SaveQuantInfoInTheGraph(
+void SaveQuantInfoInTheGraph(
     ir::Graph* graph,
     const std::string& flag,
     const std::string& key_suffix,
@@ -37,10 +32,8 @@ static inline void SaveQuantInfoInTheGraph(
   }
 }
 
-static inline std::unordered_map<std::string, std::vector<float>>
-GetQuantInfoFromTheGraph(ir::Graph* graph,
-                         const std::string& flag,
-                         const std::string& key_suffix) {
+std::unordered_map<std::string, std::vector<float>> GetQuantInfoFromTheGraph(
+    ir::Graph* graph, const std::string& flag, const std::string& key_suffix) {
   std::unordered_map<std::string, std::vector<float>> info_map;
   const std::string suffix = "_" + key_suffix + "_" + flag;
   if (graph->Has(flag)) {
@@ -57,7 +50,7 @@ GetQuantInfoFromTheGraph(ir::Graph* graph,
   return info_map;
 }
 
-static inline bool AreScalesPresentForNodes(
+bool AreScalesPresentForNodes(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     std::initializer_list<Node*> nodes) {
   bool present = true;
@@ -69,13 +62,13 @@ static inline bool AreScalesPresentForNodes(
   return present;
 }
 
-static inline float GetScaleValueForNode(
+float GetScaleValueForNode(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     Node* node) {
   return var_quant_scales->at(node->Name())[0];
 }
 
-static inline std::vector<float> GetScaleVecValueForNode(
+std::vector<float> GetScaleVecValueForNode(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     Node* node) {
   return var_quant_scales->at(node->Name());

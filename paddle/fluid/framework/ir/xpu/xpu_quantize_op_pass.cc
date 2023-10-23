@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/ir/quantize_related_pass_utils.h"
+#include "paddle/fluid/framework/ir/quantize_pass_helper.h"
 #include "paddle/utils/string/pretty_log.h"
 
 namespace paddle {
