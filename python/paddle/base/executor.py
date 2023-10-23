@@ -1857,12 +1857,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)

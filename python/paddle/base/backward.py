@@ -2348,7 +2348,7 @@ def _find_op_path_(
         # If block is while block, dealing with op specifically again.
         # TODO(liym27): Consider special types of ops.
         for i, op in reversed(list(enumerate(block.ops))):
-            if relevant_op_flags[i] == False and _some_in_set_(
+            if relevant_op_flags[i] is False and _some_in_set_(
                 op.desc.output_arg_names(), output_names
             ):
                 relevant_op_flags[i] = True

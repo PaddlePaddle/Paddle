@@ -928,7 +928,7 @@ def to_variable(value, name=None, zero_copy=None, dtype=None):
             # (2): when used in flask framework, it may result in hang.
             # Details: https://github.com/PaddlePaddle/Paddle/issues/26635
             # So, we temporally diable the zero_copy strategy.
-            if zero_copy == True:
+            if zero_copy is True:
                 warnings.warn(
                     "Currently, zero_copy is not supported, and it will be discarded."
                 )
