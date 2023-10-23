@@ -31,5 +31,4 @@ per-file-ignores =
 
     # temp ignore base directory
     python/paddle/base/*:
-        E266,
         E714

@@ -1700,7 +1700,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -2274,7 +2274,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)
