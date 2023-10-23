@@ -100,6 +100,15 @@ class CUDAKernelParams {
   void **kernelParams;
 };
 
+#if CUDA_VERSION < 11000
+// For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
+using cudaFunction_t = void *;
+cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
+                                const void *symbolPtr) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
+}
+#endif
 using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 
 //  ** class CUDAGraphNodeLauncher
@@ -149,10 +158,6 @@ class CUDAGraphNodeLauncher {
   //  [Kernel Launch]
   //  With the callbacks defined and the CUDA function obtained, the kernel can
   //  be launched using the `KernelNodeLaunch` method.
-#if CUDA_VERSION < 11000
-  // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
-  using cudaFunction_t = void *;
-#endif
   void KernelNodeLaunch(cudaFunction_t cudaFunc,
                         parameterSetter_t parameterSetter,
                         cudaKernelCallback_t cudakernelCallback);
