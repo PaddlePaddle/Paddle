@@ -22,6 +22,7 @@ from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 
 seed = 102
 
+
 def set_seed():
     paddle.seed(seed)
     np.random.seed(seed)
@@ -30,6 +31,7 @@ def set_seed():
             "FLAGS_cudnn_deterministic": True,
         }
     )
+
 
 class Model(nn.Layer):
     def __init__(self, in_size, out_size, dropout=0):
@@ -60,6 +62,7 @@ class DropoutModel(nn.Layer):
         x = self.dropout_2(x)
         return x
 
+
 class TestSimpleModel(unittest.TestCase):
     def setUp(self):
         set_seed()
@@ -74,19 +77,23 @@ class TestSimpleModel(unittest.TestCase):
             loss = model(x).mean()
             loss.backward()
             ans.append(x.grad.numpy())
-        
+
         return np.array(ans)
 
-
     def test_layer(self):
-        model = Model(10,20)
-        cuda_graphed_model = CUDAGraphedLayer(Model(10,20))
+        model = Model(10, 20)
+        cuda_graphed_model = CUDAGraphedLayer(Model(10, 20))
 
-        dropout_model = DropoutModel(10,20)
-        cuda_graphed_dropout_model = CUDAGraphedLayer(DropoutModel(10,20))
-        
-        np.testing.assert_array_equal(self.train(model), self.train(cuda_graphed_model))
-        np.testing.assert_array_equal(self.train(dropout_model), self.train(cuda_graphed_dropout_model))
+        dropout_model = DropoutModel(10, 20)
+        cuda_graphed_dropout_model = CUDAGraphedLayer(DropoutModel(10, 20))
+
+        np.testing.assert_array_equal(
+            self.train(model), self.train(cuda_graphed_model)
+        )
+        np.testing.assert_array_equal(
+            self.train(dropout_model), self.train(cuda_graphed_dropout_model)
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
