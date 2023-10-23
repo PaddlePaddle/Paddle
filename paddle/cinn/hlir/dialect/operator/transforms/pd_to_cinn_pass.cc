@@ -14,6 +14,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -37,9 +38,9 @@ class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
                      {"dtype", patttern.Attr("dtype_2")},
                      {"place", patttern.Attr("place_2")}});
 
-    const auto &sum = patttern.Op(
-        paddle::dialect::SumOp::name(),
-        {{"dtype", pat.Attr("dtype")}, {"keepdim", pat.Attr("keep_dim")}});
+    const auto &sum = patttern.Op(paddle::dialect::SumOp::name(),
+                                  {{"dtype", patttern.Attr("dtype")},
+                                   {"keepdim", patttern.Attr("keep_dim")}});
     patttern.Tensor("ret") = sum(patttern.Tensor("arg0"), full_int_array());
 
     // Result patterns
@@ -59,9 +60,9 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
     pir::drr::SourcePattern patttern = ctx->SourcePattern();
     const auto &full_int_array =
         patttern.Op(paddle::dialect::FullIntArrayOp::name(),
-                    {{"value", pat.Attr("axis_info")},
-                     {"dtype", pat.Attr("dtype_2")},
-                     {"place", pat.Attr("place_2")}});
+                    {{"value", patttern.Attr("axis_info")},
+                     {"dtype", patttern.Attr("dtype_2")},
+                     {"place", patttern.Attr("place_2")}});
 
     const auto &pd_max = patttern.Op(paddle::dialect::MaxOp::name(),
                                      {{"keepdim", patttern.Attr("keep_dim")}});
