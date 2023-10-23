@@ -49,15 +49,16 @@ inline void InplaceCompareKernelImpl(const Context& ctx,
                                      const DenseTensor& y,
                                      int axis,
                                      DenseTensor* out) {
-  auto x_origin = x;
+  DenseTensor x_origin = x;
+  DenseTensor y_origin = y;
   out->set_type(phi::DataType::BOOL);
   ctx.template Alloc<bool>(out);
-  if (x_origin.dims().size() >= y.dims().size()) {
+  if (x_origin.dims().size() >= y_origin.dims().size()) {
     funcs::ElementwiseCompute<Functor, T, bool>(
-        ctx, x_origin, y, Functor(), out, axis);
+        ctx, x_origin, y_origin, Functor(), out, axis);
   } else {
     funcs::ElementwiseCompute<InverseFunctor, T, bool>(
-        ctx, x_origin, y, InverseFunctor(), out, axis);
+        ctx, x_origin, y_origin, InverseFunctor(), out, axis);
   }
 }
 
