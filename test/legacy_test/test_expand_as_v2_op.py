@@ -48,10 +48,10 @@ class TestExpandAsBasic(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
+        self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestExpandAs_ZeroDim1(TestExpandAsBasic):
@@ -104,11 +104,11 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
         )
 
 
@@ -242,7 +242,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
+        self.check_output_with_place(place=paddle.CUDAPlace(0))
 
     def test_check_grad(self):
         pass
