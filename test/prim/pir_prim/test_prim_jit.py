@@ -30,7 +30,7 @@ class TestDy2staticNewIR(unittest.TestCase):
             return out
 
         # ==== dygraph computation ====
-        static_func = paddle.jit.to_static(func)
+        static_func = paddle.jit.to_static(func, full_graph=True)
         x = paddle.randn((8, 16, 64))
         x.stop_gradient = False
         ref_out = func(x) * 2
