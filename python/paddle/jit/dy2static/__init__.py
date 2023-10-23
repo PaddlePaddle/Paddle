@@ -18,6 +18,7 @@ from .convert_call_func import convert_call as Call  # noqa: F401
 
 # isort: off
 # NOTE(gouzil): isort will delete the import
+# TODO(gouzil): Remove `isort: off` after adding the `combine-as-imports` configuration
 from .convert_operators import (  # noqa: F401
     convert_assert as Assert,
     convert_attr as Attr,
