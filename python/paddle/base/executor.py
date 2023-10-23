@@ -2148,7 +2148,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
