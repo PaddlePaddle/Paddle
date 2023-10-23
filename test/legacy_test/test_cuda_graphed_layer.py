@@ -23,16 +23,6 @@ from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
 seed = 102
 
 
-def set_seed():
-    paddle.seed(seed)
-    np.random.seed(seed)
-    paddle.set_flags(
-        {
-            "FLAGS_cudnn_deterministic": True,
-        }
-    )
-
-
 class Model(nn.Layer):
     def __init__(self, in_size, out_size, dropout=0):
         paddle.seed(seed)
@@ -64,9 +54,6 @@ class DropoutModel(nn.Layer):
 
 
 class TestSimpleModel(unittest.TestCase):
-    def setUp(self):
-        set_seed()
-
     def train(self, model):
         paddle.seed(seed)
 

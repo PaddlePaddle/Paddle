@@ -22,8 +22,7 @@
 #if CUDA_VERSION < 11000
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
                                 const void *symbolPtr) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
+  return cudaSuccess;
 }
 #endif
 
@@ -344,8 +343,7 @@ void CUDAGraphNodeLauncher::KernelNodeLaunch(
     cudaFunction_t cudaFunc,
     parameterSetter_t parameterSetter,
     cudaKernelCallback_t cudakernelCallback) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
+  cudakernelCallback(0);
 }
 
 std::vector<cudaGraphExecuterSetter_t>
