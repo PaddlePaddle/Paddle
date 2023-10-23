@@ -74,9 +74,21 @@ void CommTaskManager::CommTaskEnqueue(std::shared_ptr<CommTask> comm_task) {
   }
 }
 
+void CommTaskManager::Stop() {
+  terminated_.store(true);
+
+  LOG(INFO) << "CommTaskManager stopped begin.";
+  if (comm_task_loop_thread_.joinable()) {
+    comm_task_loop_thread_.join();
+    comm_task_list_cv_.notify_one();
+  }
+  LOG(INFO) << "CommTaskManager stopped.";
+}
+
 void CommTaskManager::CommTaskLoop() {
   bool done = false;
   while (!terminated_.load() || !done) {
+    LOG(INFO) << "CommTaskManager terminated_ " << terminated_.load() << ", done " << done;
     std::unique_lock<std::mutex> lock(comm_task_list_mutex_);
     comm_task_list_cv_.wait_for(
         lock,
@@ -100,7 +112,11 @@ void CommTaskManager::CommTaskLoop() {
         }
         iter = comm_task_list_.erase(iter);
       } else {
-        ++iter;
+        if (task->IsStarted() && task->IsCompleted()) {
+            iter = comm_task_list_.erase(iter);
+        } else {
+            ++iter;
+        }
       }
     }
 
@@ -128,9 +144,14 @@ void CommTaskManager::CommTaskLoop() {
       }
     }
 
+    LOG(INFO) << "debug comm_task size: " << comm_task_list_.size()
+              << ", init_comm_task size: " << init_comm_task_map_.size()
+              << ", start_comm_task size: " << start_comm_task_map_.size();
     if (comm_task_list_.empty() && init_comm_task_map_.empty() &&
         start_comm_task_map_.empty()) {
       done = true;
+    } else {
+      done = false;
     }
   }
 }
