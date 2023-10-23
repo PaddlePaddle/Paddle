@@ -16,7 +16,6 @@
 
 #include <Python.h>
 
-#include <glog/logging.h>
 #include <unordered_set>
 
 #include "paddle/fluid/platform/profiler/event_tracing.h"
