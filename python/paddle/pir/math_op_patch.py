@@ -368,6 +368,28 @@ def monkey_patch_opresult():
             '__rtruediv__',
             _binary_creator_('__rtruediv__', paddle.tensor.divide, True, None),
         ),
+        (
+            '__pow__',
+            _binary_creator_('__pow__', paddle.tensor.pow, False, None),
+        ),
+        (
+            '__rpow__',
+            _binary_creator_('__rpow__', paddle.tensor.pow, True, None),
+        ),
+        (
+            '__floordiv__',
+            _binary_creator_(
+                '__floordiv__', paddle.tensor.floor_divide, False, None
+            ),
+        ),
+        (
+            '__mod__',
+            _binary_creator_('__mod__', paddle.tensor.remainder, False, None),
+        ),
+        (
+            '__matmul__',
+            _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
+        ),
     ]
 
     global _already_patch_opresult

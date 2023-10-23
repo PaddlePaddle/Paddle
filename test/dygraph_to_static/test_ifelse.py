@@ -274,7 +274,7 @@ class TestDygraphIfTensor(unittest.TestCase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
-    # TODO(zhangbo): open pir test (abnormal insertion of fill constant op after conditional block op)
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -503,8 +503,8 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int3)
         self.out = self.get_dy2stat_out()
 
-    # TODO(zhangbo): open pir test (abnormal insertion of fill constant op after conditional block op)
     @ast_only_test
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.setUp()
         self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
