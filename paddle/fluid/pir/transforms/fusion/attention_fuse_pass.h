@@ -15,19 +15,12 @@
 #pragma once
 
 #include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
 namespace pir {
-class Program;
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateAttentionFusePass();
+
 }  // namespace pir
-
-namespace cinn {
-namespace hlir {
-namespace framework {
-class Program;
-
-std::unique_ptr<::pir::Program> ConvertToRuntimeDialect(
-    const hlir::framework::Program& program);
-
-}  // namespace framework
-}  // namespace hlir
-}  // namespace cinn

@@ -31,9 +31,8 @@ set(LIBXSMMNOBLAS_LIB "${LIBXSMM_LIBRARY_DIR}/libxsmmnoblas.a")
 file(GLOB LIBXSMM_SOURCE_FILE_LIST ${LIBXSMM_SOURCE_DIR})
 list(LENGTH LIBXSMM_SOURCE_FILE_LIST RES_LEN)
 if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${LIBXSMM_TAG}
-            "https://github.com/hfp/libxsmm.git" ${LIBXSMM_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${LIBXSMM_TAG}
+                          "${GIT_URL}/hfp/libxsmm.git" ${LIBXSMM_SOURCE_DIR})
 else()
   # check git tag
   execute_process(

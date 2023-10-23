@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -24,7 +23,7 @@ from paddle.base import backward, core, framework, program_guard
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import _apply_pass
+from paddle.base.framework import _apply_pass, get_flags
 from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
@@ -839,7 +838,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -853,7 +854,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

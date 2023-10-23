@@ -364,8 +364,8 @@ def append_backward_ops(
         for i, value in enumerate(op.results()):
             if (
                 value in state.value_to_valuegrad
-                and len(state.value_to_valuegrad[value])
-            ) > 1:
+                and len(state.value_to_valuegrad[value]) > 1
+            ):
                 # one value is input of more than one fwd_op,
                 # so more than one bwd_op create input_grad,
                 # need add sum op to accumulate gradient

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+
 #include <iostream>
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
@@ -28,7 +30,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -36,6 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -63,15 +65,17 @@ const std::unordered_set<std::string> UnchangeOutputOps = {
     "pd_op.fetch",
     "builtin.set_parameter",
     "builtin.get_parameter",
-    "builtin.shadow_output"};
-
-const std::unordered_set<std::string> SpecialLowerOps = {"builtin.combine",
-                                                         "builtin.slice",
-                                                         "builtin.split",
-                                                         "pd_op.if",
-                                                         "pd_op.while",
-                                                         "cf.yield",
-                                                         "cf.cond_yield"};
+    "builtin.shadow_output",
+    "cinn_runtime.jit_kernel"};
+const std::unordered_set<std::string> SpecialLowerOps = {
+    "builtin.combine",
+    "builtin.slice",
+    "builtin.split",
+    "pd_op.if",
+    "pd_op.while",
+    "cf.yield",
+    "cf.cond_yield",
+    "cinn_runtime.jit_kernel"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
                      const std::string& kernel_fn_name,
@@ -817,7 +821,7 @@ pir::Value GetNewInput(
     const pir::Value cur_in,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     const int index,
-    const std::string op_name) {
+    const std::string& op_name) {
   PADDLE_ENFORCE_EQ(
       map_value_pair.count(cur_in),
       true,
@@ -918,7 +922,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == "cf.yield" || op_item->name() == "cf.cond_yield") {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);
@@ -930,6 +934,28 @@ void HandleForSpecialOp(
             cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
         vec_inputs.push_back(new_in);
       }
+    }
+  }
+
+  if (op_item->name() == "cinn_runtime.jit_kernel") {
+    if (op_item->num_operands() > 0) {
+      for (size_t i = 0; i < op_item->num_operands(); ++i) {
+        auto cur_in = op_item->operand_source(i);
+        if (!cur_in) {
+          vec_inputs.emplace_back();
+          continue;
+        }
+        auto new_in = GetNewInput(
+            cur_in, *map_value_pair, static_cast<int>(i), op_item->name());
+        vec_inputs.push_back(new_in);
+      }
+    }
+
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
+          ctx,
+          place,
+          op_item->result(i).type().dyn_cast<dialect::DenseTensorType>()));
     }
   }
 

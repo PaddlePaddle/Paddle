@@ -245,11 +245,15 @@ class FunctionGraph:
         class VariableLoader:
             def __init__(self, index_for_load, pycode_gen):
                 self._index_for_load = index_for_load
-                self._pycode_gen = pycode_gen
+                self._pycode_gen: PyCodeGen = pycode_gen
 
-            def load(self, var):
+            def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
+                    if allow_push_null:
+                        var.reconstruct(self._pycode_gen)
+                    else:
+                        # Avoid passing NULL as a parameter to the resume function
+                        self._pycode_gen.gen_load_null_variable()
                     return
                 self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
 
