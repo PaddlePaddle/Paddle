@@ -90,28 +90,20 @@ def main():
 
     # support Perfetto format
     save_path = os.path.join(args.log_dir, "pipeline_profile_perfetto.json")
-    all_events.extend(
-        [
-            {
-                "args": {"name": "GPU"},
-                "cat": "__metadata",
-                "name": "thread_name",
-                "ph": "M",
-                "pid": "Main",
-                "tid": 0,
-                "ts": 0,
-            },
-            {
-                "args": {"name": "GPU"},
-                "cat": "__metadata",
-                "name": "thread_name",
-                "ph": "M",
-                "pid": "Main",
-                "tid": 1,
-                "ts": 0,
-            },
-        ]
-    )
+    for i in range(len(args.devices.split(","))):
+        all_events.extend(
+            [
+                {
+                    "args": {"name": "GPU"},
+                    "cat": "__metadata",
+                    "name": "thread_name",
+                    "ph": "M",
+                    "pid": "Main",
+                    "tid": i,
+                    "ts": 0,
+                }
+            ]
+        )
     json_str = json.dumps({"traceEvents": all_events})
     for i in range(len(args.devices.split(","))):
         json_str = json_str.replace(f'"GPU{i}"', f'{i}')
