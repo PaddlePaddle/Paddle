@@ -68,7 +68,7 @@ static PyObject *{name}(PyObject *self, PyObject *args, PyObject *kwargs) {{
 OPS_API_TEMPLATE = """
 {{"{name}", (PyCFunction)(void (*)(void)){name}, METH_VARARGS | METH_KEYWORDS, "C++ interface function for {name}."}},"""
 
-NEED_GEN_STATIC_ONLY_APIS = ['fetch']
+NEED_GEN_STATIC_ONLY_APIS = ['fetch', 'shuffle_batch']
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
     'add_n_',
