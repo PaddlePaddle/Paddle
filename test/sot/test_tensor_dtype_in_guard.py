@@ -16,12 +16,12 @@ import unittest
 
 from test_case_base import (
     TestCaseBase,
-    strict_mode_guard,
     test_instruction_translator_cache_context,
 )
 
 import paddle
 from paddle.jit import sot
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def foo(x, y):

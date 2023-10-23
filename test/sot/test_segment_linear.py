@@ -14,11 +14,12 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle import nn
 from paddle.jit import sot
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 class Head(nn.Layer):

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import builtins
 import inspect
-import os
 import time
 import types
 import weakref
@@ -129,7 +128,7 @@ def log_do(level, fn):
 
 
 def log_format(level, str, *args):
-    cur_level = int(os.environ.get("SOT_LOG_LEVEL", "0"))
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(str.format(*args), end="")
 
