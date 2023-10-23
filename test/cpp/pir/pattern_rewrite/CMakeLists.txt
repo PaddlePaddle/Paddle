@@ -18,7 +18,6 @@ cc_test_old(
   drr
   gtest
   pd_op_dialect
-  cinn_op_dialect
   pir)
 cc_test_old(
   drr_same_type_binding_test
