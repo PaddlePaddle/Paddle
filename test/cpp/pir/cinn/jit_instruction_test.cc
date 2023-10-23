@@ -31,7 +31,7 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -78,14 +78,13 @@ namespace framework {
 TEST(CinnJitInstruction, Run) {
   // Step 1: Construct pir::Program
   std::unique_ptr<::pir::Program> program = BuildProgram();
-  // EXPECT_EQ(program->block()->size(), 2u);
+  EXPECT_EQ(program->block()->size(), 7u);
 
   // Step 2: Compiler New pir::Program into Runtime Program
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  // ASSERT_EQ(scope->var_names().size(), 2);
 
-  std::vector<cinn::hlir::framework::NewIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
 
   std::set<std::string> checking_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
@@ -102,10 +101,10 @@ TEST(CinnJitInstruction, Run) {
        ++it) {
     if (checking_cinn_ops.count((*it)->name())) {
       auto ir_compiler =
-          new cinn::hlir::framework::NewIRCompiler(*program, target, scope);
+          new cinn::hlir::framework::PIRCompiler(*program, target, scope);
 
       std::vector<::pir::Operation*> ops = {*it};
-      auto group = std::make_shared<cinn::hlir::framework::newir::Group>(ops);
+      auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
       auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
       compiler_list.push_back(ir_compiler);
       std::unordered_map<std::string, ::pir::Attribute> op_attrs{

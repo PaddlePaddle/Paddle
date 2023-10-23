@@ -1570,8 +1570,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 if_fn, if_fn.__code__.co_name
             )
             insert_index = len(self._graph.pycode_gen._instructions) - 1
-            for stack_arg in self.stack:
-                var_loader.load(stack_arg)
+            for i, stack_arg in enumerate(self.stack):
+                var_loader.load(
+                    stack_arg, allow_push_null=i >= len(self.stack) - 1
+                )
             for name in if_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1587,8 +1589,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 else_fn, else_fn.__code__.co_name
             )
             jump_to = self._graph.pycode_gen._instructions[-1]
-            for stack_arg in self.stack:
-                var_loader.load(stack_arg)
+            for i, stack_arg in enumerate(self.stack):
+                var_loader.load(
+                    stack_arg, allow_push_null=i >= len(self.stack) - 1
+                )
             for name in else_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1658,16 +1662,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):
-            # Avoid passing NULL as a parameter to the resume function
-            if (
-                isinstance(stack_arg, NullVariable)
-                and i < len(self.stack) - pop_n
-            ):
-                self._graph.pycode_gen.gen_load_object(
-                    NullVariable(), f'null_var_{i}', push_null=False
-                )
-            else:
-                var_loader.load(stack_arg)
+            var_loader.load(
+                stack_arg, allow_push_null=i >= len(self.stack) - pop_n
+            )
 
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.

@@ -19,6 +19,7 @@ import pathlib
 import sys
 
 import yaml
+from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
 from op_interface_gen import (
     gen_exclusive_interface_str,
@@ -58,6 +59,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -1036,6 +1038,8 @@ def OpGenerator(
             and op_info.op_phi_name[0] not in vjp_interface_black_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
+        if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
+            op_interfaces += ["paddle::dialect::DecompInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )

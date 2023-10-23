@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
+
 # generator interfaces
 from vjp_interface_black_list import vjp_interface_black_list
 
@@ -316,4 +318,6 @@ def gen_exclusive_interface_str(op_info, op_info_items):
             )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+    if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
     return exclusive_interface_str

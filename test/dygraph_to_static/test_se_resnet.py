@@ -321,7 +321,7 @@ class SeResNeXt(paddle.nn.Layer):
             ),
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)

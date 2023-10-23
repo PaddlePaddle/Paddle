@@ -2728,9 +2728,9 @@ class OpTest(unittest.TestCase):
         if check_pir:
             with paddle.pir_utils.IrGuard():
                 outs_p = self._calc_new_ir_output(place)
-                outs_p = [outs_p[out] for out in outs_p]
+                outs_p = [outs_p[out][0] for out in outs_p]
                 outs_p.sort(key=len)
-                checker(outs_p[0])
+                checker(outs_p)
 
     def _assert_is_close(
         self,
