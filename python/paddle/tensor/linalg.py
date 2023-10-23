@@ -2799,10 +2799,12 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
+        2-element tuple containing
+
         - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
-            The eigenvalues of eigh op.
+          The eigenvalues of eigh op.
         - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
-            complex64 and complex128. The eigenvectors of eigh op.
+          complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
