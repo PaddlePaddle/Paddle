@@ -331,6 +331,9 @@ void HandleForSpecialOp(pir::Operation* op,
         op->attributes().at("op_name").dyn_cast<pir::StrAttribute>().AsString();
   }
 
+  VLOG(10) << "opname:" << op_name << " is shadow_output:"
+           << (op_name.compare(pir::ShadowOutputOp::name()) == 0);
+
   if (op_name == "pd_op.fetch") {
     // fetch is a very special op, with no output
     auto fetch_src_name =
@@ -415,10 +418,8 @@ void HandleForSpecialOp(pir::Operation* op,
   }
   if (op_name.compare(pir::ShadowOutputOp::name()) == 0) {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
-    auto var_name = op->attributes()
-                        .at("output_name")
-                        .dyn_cast<pir::StrAttribute>()
-                        .AsString();
+    auto var_name =
+        op->attributes().at("name").dyn_cast<pir::StrAttribute>().AsString();
 
     auto value = op->operand_source(0);
     // change opreand name to param_name
@@ -429,6 +430,7 @@ void HandleForSpecialOp(pir::Operation* op,
       LOG(WARNING) << "var " << var_name << " has been removed from scope";
     }
     const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
+    VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
   }
