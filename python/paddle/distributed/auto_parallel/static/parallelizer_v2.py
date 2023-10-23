@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -428,8 +429,21 @@ class Parallelizer:
             and self._strategy.pipeline.enable
             and use_new_executor()
         ):
+            enable_send_recv_overlap = (
+                self._strategy.pipeline.enable_send_recv_overlap
+            )
+            if (
+                enable_send_recv_overlap
+                and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
+            ):
+                self._logger.warning(
+                    "enable_send_recv_overlap requires environment variable CUDA_DEVICE_MAX_CONNECTIONS=1, but you did not set it. Paddle has been automatically set CUDA_DEVICE_MAX_CONNECTIONS to 1, try export CUDA_DEVICE_MAX_CONNECTIONS=1 to make this warning disappear."
+                )
+                os.environ["CUDA_DEVICE_MAX_CONNECTIONS"] = "1"
+
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
+                "enable_send_recv_overlap": enable_send_recv_overlap,
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),

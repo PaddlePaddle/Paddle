@@ -35,6 +35,8 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FETCH_LIST,
 ]
 
+logger = get_logger(logging.INFO)
+
 
 # NOTE: Here stream is just a presentation with different name,
 # it is up to executor to create the exact streams given the name.
@@ -264,7 +266,7 @@ def set_skip_gc_vars(num_micro_batches, type_to_program, jobs):
         required_vars = type_to_required_vars[job_type]
         micro_batch_id = job.micro_batch_id()
         skip_gc_vars = required_vars & suffixed_required_vars[micro_batch_id]
-        get_logger(logging.INFO).info(
+        logger.debug(
             f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
         )
 
