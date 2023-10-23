@@ -85,22 +85,20 @@ struct ExpandShapeOfOpPattern : public OpRewritePattern<shape::ShapeOfOp> {
 
   bool MatchAndRewrite(shape::ShapeOfOp op,
                        PatternRewriter& rewriter) const override {
-    // TODO(zhangbopd): Uncomment
-    // auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
+    auto type = op.out().type().dyn_cast<pir::DenseTensorType>();
 
-    // if (!type || !type.dyn_cast<ShapedTypeInterface>().HasStaticShape() ||
-    //     !type.dyn_cast<ShapedTypeInterface>().GetElementType().IsIndex())
-    //   return false;
+    if (!type || !type.dyn_cast<ShapedTypeInterface>().HasStaticShape() ||
+        !type.dyn_cast<ShapedTypeInterface>().GetElementType().IsIndex())
+      return false;
 
-    // std::vector<Value> dim_sizes;
-    // for (int dim = 0, rank =
-    // type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
-    //      dim < rank;
-    //      ++dim) {
-    //   dim_sizes.push_back(
-    //       rewriter.Build<shape::TensorDimOp>(op.input(), dim).out());
-    // }
-    // rewriter.ReplaceOpWithNewOp<shape::FromElementsOp>(op, dim_sizes);
+    std::vector<Value> dim_sizes;
+    for (int dim = 0, rank = type.dyn_cast<ShapedTypeInterface>().GetShape()[0];
+         dim < rank;
+         ++dim) {
+      dim_sizes.push_back(
+          rewriter.Build<shape::TensorDimOp>(op.input(), dim).out());
+    }
+    rewriter.ReplaceOpWithNewOp<shape::FromElementsOp>(op, dim_sizes);
     return true;
   }
 };
@@ -118,37 +116,35 @@ struct DimOfShapedTypeOpInterfacePattern : public OpRewritePattern<OpTy> {
         dim_value.owner()->dyn_cast<InferShapedTypeOpInterface>();
 
     if (!shaped_type_op) return false;
-    // TODO(zhangbopd): Uncomment
-    // std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
-    // if (!dim_index) return false;
+    std::optional<int64_t> dim_index = dim_op.GetConstantIndex();
+    if (!dim_index) return false;
 
-    // std::vector<Value> reified_result_shapes;
-    // if (!shaped_type_op.ReifyReturnTypeShapes(
-    //         rewriter, shaped_type_op->operands(), reified_result_shapes))
-    //   return false;
+    std::vector<Value> reified_result_shapes;
+    if (!shaped_type_op.ReifyReturnTypeShapes(
+            rewriter, shaped_type_op->operands(), reified_result_shapes))
+      return false;
 
-    // if (reified_result_shapes.size() != shaped_type_op->num_results())
-    //   return false;
+    if (reified_result_shapes.size() != shaped_type_op->num_results())
+      return false;
 
-    // Value result_shape = reified_result_shapes[dim_value.index()];
-    // auto result_shape_type = result_shape.type().dyn_cast<DenseTensorType>();
-    // auto shaped_type = result_shape_type.dyn_cast<ShapedTypeInterface>();
-    // if (!result_shape_type || !shaped_type.GetElementType().IsIntOrIndex())
-    //   return false;
+    Value result_shape = reified_result_shapes[dim_value.index()];
+    auto result_shape_type = result_shape.type().dyn_cast<DenseTensorType>();
+    auto shaped_type = result_shape_type.dyn_cast<ShapedTypeInterface>();
+    if (!result_shape_type || !shaped_type.GetElementType().IsIntOrIndex())
+      return false;
 
     // // TODO(zhangbopd): BuildOrFold required.
-    // std::vector<Value> indices;
-    // indices.push_back(rewriter.Build<shape::ConstantIndexOp>(*dim_index).out());
-    // Value new_value =
-    //     rewriter.Build<shape::ExtractOp>(result_shape, indices).out();
+    std::vector<Value> indices;
+    indices.push_back(rewriter.Build<shape::ConstantIndexOp>(*dim_index).out());
+    Value new_value =
+        rewriter.Build<shape::ExtractOp>(result_shape, indices).out();
 
-    // if (!new_value.type().isa<IndexType>())
-    //   new_value =
-    //       rewriter.Build<shape::IndexCastOp>(rewriter.index_type(),
-    //       new_value)
-    //           .out();
+    if (!new_value.type().isa<IndexType>())
+      new_value =
+          rewriter.Build<shape::IndexCastOp>(rewriter.index_type(), new_value)
+              .out();
 
-    // rewriter.ReplaceOp(dim_op, {new_value});
+    rewriter.ReplaceOp(dim_op, {new_value});
     return true;
   }
 };
