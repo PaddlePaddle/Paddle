@@ -48,14 +48,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
-  void RunProfile(const std::vector<std::string>& feed_names,
-                  std::shared_ptr<profiling::OpRuntimeProfilingRecorder>
-                      prof_recorder) override;
-  void RunProfileImpl(
-      std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder);
-  void ProfileInstructionList(
-      const std::vector<Instruction>& vec_instr,
-      std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder);
+  void RunProfile(const std::vector<std::string>& feed_names) override;
+  void RunProfileImpl();
+  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
 
   void Build(
       const std::vector<std::string>& feed_names,
@@ -75,6 +70,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
 

@@ -814,8 +814,8 @@ class _StandaloneExecutor:
         Args:
             feed_names (list): input names of the model.
         """
-        prof_recorder = self._new_exe.run_profile(feed_names)
-        return prof_recorder
+        program_desc = self._new_exe.run_profile(feed_names)
+        return program_desc
 
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)

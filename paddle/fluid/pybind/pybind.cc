@@ -2021,14 +2021,12 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("run_profile",
            [](StandaloneExecutor &self, std::vector<std::string> feed_names) {
-             std::shared_ptr<
-                 paddle::framework::profiling::OpRuntimeProfilingRecorder>
-                 prof_recorder;
+             std::shared_ptr<framework::ProgramDesc> program_desc;
              {
                pybind11::gil_scoped_release release;
-               prof_recorder = self.RunProfile(feed_names);
+               program_desc = self.RunProfile(feed_names);
              }
-             return py::cast(std::move(prof_recorder));
+             return py::cast(std::move(program_desc));
            });
 
   py::class_<framework::interpreter::Job,
@@ -2060,18 +2058,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("job_list", &framework::interpreter::Plan::JobList)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
       .def("program", &framework::interpreter::Plan::Program);
-
-  py::class_<framework::profiling::OpRuntimeProfilingRecorder,
-             std::shared_ptr<framework::profiling::OpRuntimeProfilingRecorder>>(
-      m, "OpRuntimeProfilingRecorder")
-      .def(py::init<>())
-      .def("record_op_runtime",
-           &framework::profiling::OpRuntimeProfilingRecorder::RecordOpRuntime)
-      .def("get_op_runtime",
-           &framework::profiling::OpRuntimeProfilingRecorder::GetOpRuntime)
-      .def("find_op_runtime_record",
-           &framework::profiling::OpRuntimeProfilingRecorder::
-               FindOpRuntimeRecord);
 
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);

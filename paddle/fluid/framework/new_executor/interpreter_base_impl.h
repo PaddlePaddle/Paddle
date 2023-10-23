@@ -74,9 +74,7 @@ class InterpreterBaseImpl {
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
   // optional interface
-  virtual void RunProfile(
-      const std::vector<std::string>& feed_names,
-      std::shared_ptr<profiling::OpRuntimeProfilingRecorder> prof_recorder) {
+  virtual void RunProfile(const std::vector<std::string>& feed_names) {
     VLOG(1) << "WARNING: RunProfile() was not implemented in this class. "
                "Please provide a valid implementation.";
   }
@@ -86,6 +84,13 @@ class InterpreterBaseImpl {
   virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;
 
   virtual void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) = 0;
+
+  virtual std::shared_ptr<ProgramDesc> GetMutableCopyProgram() {
+    VLOG(1) << "WARNING: GetMutableCopyProgram() was not implemented in this "
+               "class. "
+               "Please provide a valid implementation.";
+    return nullptr;
+  }
 
   virtual void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) = 0;
 

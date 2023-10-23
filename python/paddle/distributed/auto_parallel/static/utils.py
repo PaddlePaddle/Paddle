@@ -2375,8 +2375,8 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
 
 
-def _measure_real_op_cost_wrt_program_and_place_single_pass(
-    program, place, verbose
+def _measure_real_op_cost_wrt_program_and_place_multipass(
+    program, place, run_iters, verbose
 ):
     '''
     Run op profiling for a single pass. Internal function for API, do not call this
@@ -2539,21 +2539,30 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
     # build a simple plan from program and run profiling
     plan = core.Plan([core.Job("default")], {"default": cloned_program.desc})
     exe = _StandaloneExecutor(place, plan, scope)
-    prof_recorder = exe.run_profile(feed_names)
 
-    prof_result = []
-    for op_id, cloned_op in zip(
-        range(len(cloned_main_block.ops)), cloned_main_block.ops
-    ):
-        op_prof_key = 'op:%d,%s' % (op_id, cloned_op.type)
-        if (
-            prof_recorder.find_op_runtime_record(op_prof_key)
-            and cloned_op.supports_runtime_profiling()
+    num_ops = len(cloned_main_block.ops)
+    prof_results = [[None for _ in range(run_iters)] for _ in range(num_ops)]
+
+    for iter_id in range(run_iters):
+        program_desc = exe.run_profile(feed_names)
+
+        # rebuild program from returned program desc
+        cloned_program._rebuild_from_desc(program_desc)
+        cloned_main_block = cloned_program.global_block()
+
+        # collect profile result
+        for op_id, cloned_op in zip(
+            range(len(cloned_main_block.ops)), cloned_main_block.ops
         ):
-            prof_result.append(prof_recorder.get_op_runtime(op_prof_key))
-        else:
-            prof_result.append(None)
-    return prof_result
+            prof_results[op_id][iter_id] = (
+                cloned_op.get_runtime_us()
+                if cloned_op.supports_runtime_profiling()
+                else None
+            )
+    print(prof_results)
+    sys.exit()
+
+    return prof_results
 
 
 def measure_real_op_cost_wrt_program_and_place(
@@ -2699,21 +2708,9 @@ def measure_real_op_cost_wrt_program_and_place(
     _verbose_print("* Profile strategy: %s" % str(profile_strategy))
 
     # run profiling multiple times and record op run time of each run
-    prof_results = None
-    for _ in range(run_iters):
-        single_prof_result = (
-            _measure_real_op_cost_wrt_program_and_place_single_pass(
-                program, place, verbose=(verbose_level >= 2)
-            )
-        )
-        if prof_results is None:
-            prof_results = []
-            for _ in range(len(single_prof_result)):
-                prof_results.append([])
-        for op_id, op_runtime_us in zip(
-            range(len(prof_results)), single_prof_result
-        ):
-            prof_results[op_id].append(op_runtime_us)
+    prof_results = _measure_real_op_cost_wrt_program_and_place_multipass(
+        program, place, run_iters, verbose=(verbose_level >= 2)
+    )
     op_num = len(prof_results)
     for op_id, op in zip(range(op_num), program.global_block().ops):
         op_runtime_us_final = None
@@ -2735,16 +2732,21 @@ def measure_real_op_cost_wrt_program_and_place(
             op.set_runtime_us(op_runtime_us_final)
 
     # print out profiling results if needed then return
-    TABLE_WIDTH = 50
+    TABLE_WIDTH = 64
 
     def _format_single_line(idx, op):
-        bg_str = ' .' * (TABLE_WIDTH // 2)
-        left_str = '[*] %5d, %s' % (idx, op.type)
-        right_str = ''
-        if (
+        profile_run_success = (
             op.supports_runtime_profiling()
             and op.desc.dist_attr.run_time_us >= 0.0
-        ):
+        )
+        bg_str = ' .' * (TABLE_WIDTH // 2)
+        left_str = '[%s] %5d, %s' % (
+            '*' if profile_run_success else ' ',
+            idx,
+            op.type,
+        )
+        right_str = ''
+        if profile_run_success:
             # op supports runtime profiling and profiling info is correctly set
             right_str = '%d us' % int(op.get_runtime_us())
         elif op.supports_runtime_profiling():
@@ -2771,7 +2773,7 @@ def measure_real_op_cost_wrt_program_and_place(
     for op_idx, op in zip(range(len(main_block.ops)), main_block.ops):
         _verbose_print(_format_single_line(op_idx, op))
     _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print("[*]/[x]: OK/FAIL, Op ID, Op Name, Execution Time (us)")
+    _verbose_print("[*]/[ ]: OK/FAIL, Op ID, Op Name, Execution Time (us)")
     _verbose_print("NOTE: 1. Op ID does not represent Op execution order.")
     _verbose_print("      2. Profiling is only performed for the main block.")
 
