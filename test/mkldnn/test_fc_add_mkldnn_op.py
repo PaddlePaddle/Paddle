@@ -28,7 +28,6 @@ def fully_connected_naive(input, weights, bias_data, residual_data):
 
 
 class MatrixGenerate:
-
     def __init__(self, mb, ic, oc, h, w):
         self.input = np.random.random((mb, ic * h * w)).astype("float32")
         self.weights = np.random.random((ic * h * w, oc)).astype("float32")
@@ -36,7 +35,6 @@ class MatrixGenerate:
 
 
 class TestFCAddMKLDNNOp(OpTest):
-
     def create_data(self):
         self.matrix = MatrixGenerate(1, 10, 15, 3, 3)
         self.bias = np.random.random(15).astype("float32")
@@ -60,9 +58,12 @@ class TestFCAddMKLDNNOp(OpTest):
         # self.attrs = {'use_mkldnn': self.use_mkldnn, 'fuse_residual_connection' : True}
 
         self.outputs = {
-            'Out':
-            fully_connected_naive(self.matrix.input, self.matrix.weights,
-                                  self.bias, self.matrix.residual)
+            'Out': fully_connected_naive(
+                self.matrix.input,
+                self.matrix.weights,
+                self.bias,
+                self.matrix.residual,
+            )
         }
 
     def test_check_output(self):
@@ -76,7 +77,6 @@ class TestFCAddMKLDNNOp(OpTest):
 
 
 class TestFCAddMKLDNNOp1(TestFCAddMKLDNNOp):
-
     def create_data(self):
         self.matrix = MatrixGenerate(2, 15, 48, 2, 2)
         self.bias = np.random.random(48).astype("float32")
