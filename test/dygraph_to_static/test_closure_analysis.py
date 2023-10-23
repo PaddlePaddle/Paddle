@@ -15,10 +15,7 @@
 import inspect
 import unittest
 
-from dygraph_to_static_utils_new import (
-    Dy2StTestBase,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 from numpy import append
 
 import paddle
@@ -263,7 +260,7 @@ class TestClosureAnalysis_PushPop(TestClosureAnalysis):
 
 
 class TestPushPopTrans(Dy2StTestBase):
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test(self):
         def vlist_of_dict(x):
             ma = {'a': []}
@@ -274,7 +271,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test2(self):
         import numpy as np
 
@@ -287,7 +284,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test3(self):
         import numpy as np
 
@@ -300,7 +297,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test4(self):
         import numpy as np
 
@@ -313,7 +310,7 @@ class TestPushPopTrans(Dy2StTestBase):
         x = paddle.to_tensor([3])
         print(paddle.jit.to_static(vlist_of_dict)(x))
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test5(self):
         import numpy as np
 
