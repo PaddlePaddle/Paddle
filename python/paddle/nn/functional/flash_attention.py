@@ -351,16 +351,13 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP("`is_sm8x || is_sm75` check failed at /paddle/third_party/flashattn/csrc/flash_attn/flash_attn.cpp:293")
             >>> import paddle
-
             >>> paddle.seed(2023)
             >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
             >>> cu = paddle.arange(0, 384, 128, dtype='int32')
             >>> qq = paddle.reshape(q, [256, 8, 16])
             >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
-            >>> print(output)
-            >>> # doctest: -SKIP
+
     """
     if in_dynamic_mode():
         (
@@ -477,7 +474,7 @@ def scaled_dot_product_attention(
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP((InvalidArgument) flash_attn(): argument (position 5) must be double, but got NoneType (at ../paddle/fluid/pybind/op_function_common.cc:241))
+            >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
