@@ -19,3 +19,5 @@ foreach(target ${TEST_IR_SYSTEM_CASES})
 endforeach()
 
 set_tests_properties(test_pd_inplace_pass PROPERTIES TIMEOUT 60)
+
+add_subdirectory(fused_pass)
