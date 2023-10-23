@@ -452,10 +452,10 @@
   inplace: (x -> out)
 
 - op : frobenius_norm
-  args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  args : (Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad

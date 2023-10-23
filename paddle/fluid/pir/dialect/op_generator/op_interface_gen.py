@@ -111,7 +111,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
     }"""
 
 OP_VJP_DEFINE_TEMPLATE = """
-std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
+std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::OpResult>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
     {op_class_name} op_obj = op->dyn_cast<{op_class_name}>(); (void)op_obj;
 
     VLOG(6) << "Prepare inputs of {op_grad_name}";
@@ -317,7 +317,7 @@ def gen_exclusive_interface_str(op_info, op_info_items):
                 "  static void InferMeta( phi::InferMetaContext *infer_meta );"
             )
     if op_info.op_phi_name[0] not in vjp_interface_black_list:
-        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
+        exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::OpResult>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients);"
     if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
         exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
     return exclusive_interface_str
