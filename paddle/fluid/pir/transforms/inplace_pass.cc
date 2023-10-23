@@ -24,6 +24,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -70,8 +71,12 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
         input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     auto output_alloc_tensor_type =
         output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
-    if (phi::product(input_alloc_tensor_type.dims()) <
-        phi::product(output_alloc_tensor_type.dims())) {
+    if (phi::SizeOf(paddle::dialect::TransToPhiDataType(
+            input_alloc_tensor_type.dtype())) *
+            phi::product(input_alloc_tensor_type.dims()) <
+        phi::SizeOf(paddle::dialect::TransToPhiDataType(
+            output_alloc_tensor_type.dtype())) *
+            phi::product(output_alloc_tensor_type.dims())) {
       VLOG(9) << "     -- input's numel < output's numel, can't do inplace";
       return false;
     }
