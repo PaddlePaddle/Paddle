@@ -19,6 +19,14 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#if CUDA_VERSION < 11000
+cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
+                                const void *symbolPtr) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
+}
+#endif
+
 namespace phi {
 namespace backends {
 namespace gpu {

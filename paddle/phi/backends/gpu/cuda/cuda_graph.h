@@ -40,10 +40,7 @@
 // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
 using cudaFunction_t = void *;
 cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
-}
+                                const void *symbolPtr);
 #endif
 
 namespace phi {
