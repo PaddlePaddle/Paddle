@@ -120,7 +120,8 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 1.3 Calculate the input one dim dist attr
       TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
-      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0});
+      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0},
+                                              kv.second);
 
       // 1.4 Calculate the output one dim dist attr
       TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
