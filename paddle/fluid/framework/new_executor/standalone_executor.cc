@@ -207,6 +207,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   // record each job's run time
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_auto_parallel_profiler) {
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
@@ -220,6 +221,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
               << ", job_end_time = " << std::to_string(end_time);
     }
   }
+#endif
 
   // return Fetch Tensors
   if (FLAGS_enable_new_ir_in_executor) {

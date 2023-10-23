@@ -677,7 +677,9 @@ void ProgramInterpreter::AddGpuStreamEvents() {
 }
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
-  double min_start_time = DBL_MAX, max_end_time = DBL_MIN;
+  double min_start_time = std::numeric_limits<double>::max(),
+         max_end_time = std::numeric_limits<double>::min();
+#if defined(PADDLE_WITH_CUDA)
   for (size_t i = 0; i < stream_timers_.size(); ++i) {
     auto& stream_timer = stream_timers_[i];
     double start_time = stream_timer.StartTime();
@@ -692,6 +694,7 @@ std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
             << std::to_string(min_start_time)
             << ", max_end_time: " << std::to_string(max_end_time);
   }
+#endif
   return std::make_tuple(min_start_time, max_end_time);
 }
 
