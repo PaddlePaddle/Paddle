@@ -22,15 +22,17 @@
 
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-using cinn::hlir::framework::newir::Group;
-using cinn::hlir::framework::newir::GroupPtr;
+using cinn::hlir::framework::pir::Group;
+using cinn::hlir::framework::pir::GroupPtr;
 
 using ProgramInfo =
     std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>;
@@ -74,7 +76,73 @@ ProgramInfo BuildProgram() {
   return {program, groups};
 }
 
-TEST(NewIRCompier, CompilerAndRun) {
+ProgramInfo BuildSoftmax() {
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  auto program = std::make_shared<::pir::Program>(ctx);
+  paddle::dialect::APIBuilder::Instance().SetProgram(program.get());
+
+  auto x = paddle::dialect::full(std::vector<int64_t>{64, 128},
+                                 1.0,
+                                 phi::DataType::FLOAT32,
+                                 phi::GPUPlace());
+  auto max_tmp = paddle::dialect::max(x, std::vector<int64_t>{1}, true);
+  auto sub_tmp = paddle::dialect::subtract(x, max_tmp);
+  auto exp_tmp = paddle::dialect::exp(sub_tmp);
+  // sum need to be decomposed in Program pass, but not implemented currently.
+  auto sum_tmp = paddle::dialect::sum(
+      exp_tmp, std::vector<int64_t>{1}, phi::DataType::FLOAT32, true);
+  auto out = paddle::dialect::divide(exp_tmp, sum_tmp);
+
+  std::vector<GroupPtr> groups;
+  groups.emplace_back(std::make_shared<Group>(
+      std::initializer_list<::pir::Operation*>({x.owner()})));
+  groups.emplace_back(
+      std::make_shared<Group>(std::initializer_list<::pir::Operation*>({
+          max_tmp.owner(),
+          sub_tmp.owner(),
+          exp_tmp.owner(),
+          sum_tmp.owner(),
+          out.owner(),
+      })));
+
+  return {program, groups};
+}
+
+TEST(PIRCompier, CompileSoftmax) {
+  // Step 1: Construct pir::Program
+  auto prog_info = BuildSoftmax();
+  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
+  std::vector<GroupPtr> groups = std::get<1>(prog_info);
+  EXPECT_EQ(program->block()->size(), 8u);
+  LOG(INFO) << program->block()->size();
+
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
+
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  LOG(INFO) << scope->var_names().size();
+  ASSERT_EQ(scope->var_names().size(), 8);
+
+  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  auto runtime_program = ir_compiler.Build(groups);
+
+  // Step 3: Execute Runtime Instruction and check Scope.
+  ASSERT_NO_THROW(runtime_program->Execute());
+  for (auto& var_name : scope->var_names()) {
+    std::string name = {var_name.begin(), var_name.end()};
+    std::vector<float> data =
+        cinn::GetTensorData<float>(scope->GetTensor(name), target);
+    for (int i = 0; i < 1; ++i) {
+      LOG_FIRST_N(INFO, 10) << "data: " << data[i];
+    }
+  }
+}
+
+TEST(PIRCompier, CompilerAndRun) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
@@ -90,7 +158,7 @@ TEST(NewIRCompier, CompilerAndRun) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6);
 
-  cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build();
 
   // Step 3: Execute Runtime Instruction and check Scope.
@@ -105,7 +173,7 @@ TEST(NewIRCompier, CompilerAndRun) {
   }
 }
 
-TEST(NewIRCompier, CompileGroupOps) {
+TEST(PIRCompier, CompileGroupOps) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
@@ -122,7 +190,7 @@ TEST(NewIRCompier, CompileGroupOps) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6);
 
-  cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build(groups);
 
   // Step 3: Execute Runtime Instruction and check Scope.
@@ -148,6 +216,6 @@ TEST(RuntimeDialect, CompilerAndRun) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6u);
 
-  cinn::hlir::framework::NewIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build();
 }

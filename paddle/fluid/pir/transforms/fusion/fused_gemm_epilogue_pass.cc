@@ -254,7 +254,7 @@ class FusedLinearReluGradPattern
 
 class FusedGemmEpiloguePass : public pir::Pass {
  public:
-  FusedGemmEpiloguePass() : pir::Pass("fused_gemm_epilogue_pass", 1) {}
+  FusedGemmEpiloguePass() : pir::Pass("fused_gemm_epilogue_pass", 2) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
