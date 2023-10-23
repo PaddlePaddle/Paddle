@@ -22,12 +22,15 @@ from utils import dygraph_guard, static_guard
 
 import paddle
 from paddle.autograd.ir_backward import grad as ir_grad
-from paddle.base import core
+from paddle.base import Scope, core
+from paddle.base.executor import scope_guard
 from paddle.base.framework import (
     OpProtoHolder,
     _dygraph_tracer,
     canonicalize_attrs,
     in_dygraph_mode,
+    in_pir_mode,
+    use_pir_api,
 )
 from paddle.decomposition import decompose
 from paddle.incubate.autograd import primapi
@@ -232,7 +235,9 @@ class OpTestUtils:
 def apply_to_static(net, use_cinn):
     build_strategy = paddle.static.BuildStrategy()
     build_strategy.build_cinn_pass = use_cinn
-    return paddle.jit.to_static(net, build_strategy=build_strategy)
+    return paddle.jit.to_static(
+        net, build_strategy=build_strategy, full_graph=True
+    )
 
 
 class PrimNet(paddle.nn.Layer):
@@ -399,7 +404,7 @@ class PrimForwardChecker:
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if not paddle.ir.core._use_new_ir_api():
+        if not in_pir_mode():
             if self.enable_check_static_comp:
                 self.check_static_comp()
             if self.enable_check_jit_comp:
@@ -408,7 +413,11 @@ class PrimForwardChecker:
                 self.check_jit_comp_with_cinn()
         else:
             if self.enable_check_static_comp:
-                self.check_static_comp()
+                with scope_guard(Scope()):
+                    self.check_static_comp()
+            if self.enable_check_jit_comp:
+                with scope_guard(Scope()):
+                    self.check_jit_comp()
 
     def get_kernel_sig(self):
         with dygraph_guard():
@@ -601,12 +610,12 @@ class PrimForwardChecker:
                     args, len(inputs_sig)
                 )
                 ret = flatten(_as_list(self.public_python_api(*args)))
-                if not paddle.ir.core._use_new_ir_api():
+                if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
                     ret = decompose(main_program, ret)
                 # ensure the operator not in program if check_prim is True
-                if not paddle.ir.core._use_new_ir_api():
+                if not in_pir_mode():
                     forward_ops = [op.type for op in main_program.blocks[0].ops]
                     assert self.op_type not in forward_ops, (
                         "%s shouldn't appear in program when check_prim is True"
@@ -685,15 +694,16 @@ class PrimForwardChecker:
             net = PrimNet(self.public_python_api)
             net = apply_to_static(net, False)
             # ensure the operator not in program if check_prim is True
-            forward_ops = [
-                op.type
-                for op in net.forward.get_concrete_program(args)[1]
-                .forward_program.block(0)
-                .ops
-            ]
-            assert self.op_type not in forward_ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (self.op_type)
+            if not use_pir_api():
+                forward_ops = [
+                    op.type
+                    for op in net.forward.get_concrete_program(args)[1]
+                    .forward_program.block(0)
+                    .ops
+                ]
+                assert self.op_type not in forward_ops, (
+                    "%s shouldn't appear in program when check_prim is True"
+                ) % (self.op_type)
             ret = flatten(_as_list(net(args)))
             ret = paddle.utils.map_structure(lambda x: x.numpy(), ret)
             if OpTestUtils.is_bfloat16_type(self.dtype):
@@ -858,7 +868,7 @@ class PrimGradChecker(PrimForwardChecker):
         ):
             return
         self.eager_desire = self.get_eager_desire()
-        if not paddle.ir.core._use_new_ir_api():
+        if not in_pir_mode():
             if self.enable_check_eager_comp:
                 self.check_eager_comp()
             if self.enable_check_static_comp:
@@ -869,7 +879,11 @@ class PrimGradChecker(PrimForwardChecker):
                 self.check_jit_comp_with_cinn()
         else:
             if self.enable_check_static_comp:
-                self.check_static_comp()
+                with scope_guard(Scope()):
+                    self.check_static_comp()
+            if self.enable_check_jit_comp:
+                with scope_guard(Scope()):
+                    self.check_jit_comp()
 
     def get_output_dict(self, np_outputs, api_outputs, outputs_sig):
         assert len(api_outputs) <= len(outputs_sig), (
@@ -1061,7 +1075,7 @@ class PrimGradChecker(PrimForwardChecker):
                     args, len(inputs_sig)
                 )
                 fw_outs = _as_list(self.public_python_api(*args))
-                if not paddle.ir.core._use_new_ir_api():
+                if not in_pir_mode():
                     primapi.to_prim(main_program.blocks)
                 else:
                     fw_outs = decompose(main_program, fw_outs)
@@ -1085,14 +1099,14 @@ class PrimGradChecker(PrimForwardChecker):
                 no_grad_vars = self.gen_no_grad_set(
                     var_dict={**inputs_dict, **outputs_dict}
                 )
-                if not paddle.ir.core._use_new_ir_api():
+                if not in_pir_mode():
                     ret = paddle.static.gradients(
                         ys, xs, vs, no_grad_set=no_grad_vars
                     )
                 else:
                     ret = ir_grad(ys, xs, vs, no_grad_vars=no_grad_vars)
                 # check the backward operator not in program when check_prim is True
-                if not paddle.ir.core._use_new_ir_api():
+                if not in_pir_mode():
                     ops = [op.type for op in main_program.blocks[0].ops]
                     backward_op_type = self.op_type + "_grad"
                     assert backward_op_type not in ops, (
@@ -1182,16 +1196,18 @@ class PrimGradChecker(PrimForwardChecker):
             net = PrimNet(self.public_python_api)
             net = apply_to_static(net, False)
             # check the backward operator not in program when check_prim is True
-            ops = [
-                op.type
-                for op in net.forward.get_concrete_program(args)[1]
-                .backward_program.block(0)
-                .ops
-            ]
-            backward_op_type = self.op_type + "_grad"
-            assert backward_op_type not in ops, (
-                "%s shouldn't appear in program when check_prim is True"
-            ) % (backward_op_type)
+
+            if not use_pir_api():
+                ops = [
+                    op.type
+                    for op in net.forward.get_concrete_program(args)[1]
+                    .backward_program.block(0)
+                    .ops
+                ]
+                backward_op_type = self.op_type + "_grad"
+                assert backward_op_type not in ops, (
+                    "%s shouldn't appear in program when check_prim is True"
+                ) % (backward_op_type)
             out = _as_list(net(args))
             if hasattr(self.op_test, "python_out_sig"):
                 outputs_sig = self.op_test.python_out_sig

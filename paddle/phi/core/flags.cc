@@ -20,11 +20,11 @@
 
 namespace phi {
 
-const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+TEST_API const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
   return *GetMutableExportedFlagInfoMap();
 }
 
-ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
+TEST_API ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
   return &g_exported_flag_info_map;
 }
@@ -1278,15 +1278,13 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
 
 /**
  * Using new IR API in Python
- * Name: enable_new_ir_api
+ * Name: enable_pir_api
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, New IR API will be used in Python
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_api,
-                         false,
-                         "Enable new IR API in Python");
+PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
  * Using new IR in executor FLAG
@@ -1335,18 +1333,20 @@ PHI_DEFINE_EXPORTED_int32(
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
 
+PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm
  * Since Version: 2.5
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: Whether to use new communication library in auto parallel and static
  * mode. If true, it will use unified CommContextManager for communication.
  */
 PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         false,
+                         true,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm

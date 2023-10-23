@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -433,6 +435,9 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
+OpDesc::OpDesc() {}
+
+OpDesc::~OpDesc() = default;
 OpDesc::OpDesc(const OpDesc &other) {
   CopyFrom(other);
   block_ = other.block_;
@@ -525,6 +530,8 @@ proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;
 }
+
+void OpDesc::SetType(const std::string &type) { desc_.set_type(type); }
 
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
@@ -964,7 +971,12 @@ struct SetAttrDescVisitor {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-
+  void operator()(const std::vector<pir::Value> &v) const {
+    // just do nothing.
+  }
+  void operator()(const std::vector<pir::Block *> &v) const {
+    // just do nothing.
+  }
   void operator()(const std::vector<VarDesc *> &v) const {
     std::vector<std::string> var_names;
     for (auto var : v) {
@@ -1121,7 +1133,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }

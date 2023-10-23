@@ -63,9 +63,8 @@ KernelFactory& KernelFactory::Instance() {
 
 bool KernelFactory::HasCompatiblePhiKernel(const std::string& op_type) const {
   if (deprecated_op_names.find(op_type) == deprecated_op_names.end()) {
-    if (phi::OpUtilsMap::Instance().Contains(op_type)) {
-      return true;
-    } else if (kernels_.find(op_type) != kernels_.end()) {
+    if (phi::OpUtilsMap::Instance().Contains(op_type) ||
+        (kernels_.find(op_type) != kernels_.end())) {
       return true;
     }
   }
@@ -527,7 +526,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   std::unordered_set<std::string> dtype_set;
 
   // Record all kernel information of kernel_name
-  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+  for (auto const& iter : KernelFactory::Instance().kernels()[kernel_name]) {
     KernelKey kernel_key = iter.first;
     if (kernel_key.backend() == target_key.backend()) {
       support_backend = true;

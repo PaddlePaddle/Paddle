@@ -1,4 +1,4 @@
-# TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
+# TODO(Aurelius84): pir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
   set(CINN_DIALECT_BINARY_DIR
@@ -35,6 +35,7 @@ if(NOT CINN_ONLY)
     COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
             ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
+    DEPENDS ${cinn_op_gen_parsed_yaml_file} ${cinn_op_yaml_file}
     VERBATIM)
 
   add_custom_command(
@@ -53,8 +54,15 @@ if(NOT CINN_ONLY)
             ${cinn_op_compat_yaml_file}
     VERBATIM)
 
-  cinn_cc_library(cinn_op_dialect SRCS op_dialect.cc ${cinn_op_source_file}
-                  DEPS pd_op_dialect)
+  cinn_cc_library(
+    cinn_op_dialect
+    SRCS
+    op_dialect.cc
+    ${cinn_op_source_file}
+    manual_op.cc
+    op_attribute.cc
+    DEPS
+    pd_op_dialect)
 
   target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_BINARY_DIR})
 endif()

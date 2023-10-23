@@ -184,7 +184,6 @@ void AutoMixedPrecisionPass::SetDefaultBlacklist() const {
       "log",
       "mean",
       "sum",
-      "cos_sim",
       "softmax_with_cross_entropy",
       "sigmoid_cross_entropy_with_logits",
       "c_softmax_with_cross_entropy",

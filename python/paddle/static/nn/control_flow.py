@@ -415,8 +415,8 @@ class While:
     while loop control flow. Repeat while body until cond is False.
 
     Note:
-        A new OP :ref:`api_base_layers_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
-        OP :ref:`api_base_layers_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
+        A new OP :ref:`api_paddle_static_nn_while_loop` is highly recommended instead of ``While`` if the shape of parameter ``cond`` is [1].
+        OP :ref:`api_paddle_static_nn_while_loop` is easier to use and is called with less code but does the same thing as ``While`` .
 
     Notice:
         Local variables created in ``While`` are similar to that created in while of C++, and cannot be referenced externally.
@@ -750,14 +750,8 @@ def _deal_with_undefined_var(output_vars, loop_vars):
 
 def _error_message(what, arg_name, op_name, right_value, error_value):
     error_message = (
-        "{what} of '{arg_name}' in {op_name} must be "
-        "{right_value}, but received: {error_value}.".format(
-            what=what,
-            arg_name=arg_name,
-            op_name=op_name,
-            right_value=right_value,
-            error_value=error_value,
-        )
+        f"{what} of '{arg_name}' in {op_name} must be "
+        f"{right_value}, but received: {error_value}."
     )
 
     return error_message
@@ -871,8 +865,8 @@ def case(pred_fn_pairs, default=None, name=None):
 
             if not callable(fn):
                 raise TypeError(
-                    "The fn for {} of pred_fn_pairs in Op(case) must"
-                    " be callable.".format(pred.name)
+                    f"The fn for {pred.name} of pred_fn_pairs in Op(case) must"
+                    " be callable."
                 )
 
         if default is None:
@@ -1350,7 +1344,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     def merge_every_var_list(false_vars, true_vars, name):
         return map_structure(partial(merge_func, name), false_vars, true_vars)
 
-    merged_output = list(
+    merged_output_fns = list(
         map(
             merge_every_var_list,
             _to_sequence_except_dict(false_output),
@@ -1358,6 +1352,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
+    merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1428,9 +1423,7 @@ def _select_input_infer_shape(first_shape, second_shape):
             f"the input shapes of select_input should have the same rank, but get {first_shape}, {second_shape}"
         )
         return second_shape
-    out_shape = list(
-        map(lambda a, b: a if a == b else -1, first_shape, second_shape)
-    )
+    out_shape = [a if a == b else -1 for a, b in zip(first_shape, second_shape)]
     return out_shape
 
 
@@ -1477,13 +1470,7 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     false_var, true_var = inputs
 
-    if isinstance(false_var, UndefinedVar) and isinstance(
-        true_var, UndefinedVar
-    ):
-        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
-
-    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+    def start_select_input():
         try:
             return select_input(inputs, mask)
         except Exception as e:
@@ -1491,11 +1478,20 @@ def select_input_with_buildin_type(inputs, mask, name):
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
             )
 
+    if isinstance(false_var, UndefinedVar) and isinstance(
+        true_var, UndefinedVar
+    ):
+        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
+        return lambda: None
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return start_select_input
+
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
         false_var, type(true_var)
     ):
         if false_var == true_var:
-            return false_var
+            return lambda: false_var
         else:
             inputs = [
                 to_static_variable(false_var),
@@ -1522,12 +1518,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
         )
@@ -1539,12 +1529,7 @@ def select_input_with_buildin_type(inputs, mask, name):
                 type(false_var), type(true_var)
             )
         )
-    try:
-        return select_input(inputs, mask)
-    except Exception as e:
-        raise RuntimeError(
-            f"Exceptions throwed while doing select_input on {name}:\n{e}"
-        )
+    return start_select_input
 
 
 def _is_sequence_except_dict(x):
@@ -1719,7 +1704,7 @@ def Print(
     check_variable_and_dtype(
         input,
         'input',
-        ['float32', 'float64', 'int32', 'int64', 'bool'],
+        ['uint16', 'float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         'paddle.static.Print',
     )
 

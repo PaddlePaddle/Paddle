@@ -39,7 +39,7 @@ void LapackSVD(const T* x_data, T* eigenvalues_data, int rows, int cols) {
   int lwork = 3 * mn + std::max(mx, 7 * mn);
   std::vector<T> work(lwork);
   std::vector<int> iwork(8 * mn);
-  int info;
+  int info = 0;
 
   phi::funcs::lapackSvd<T>(jobz,
                            rows,

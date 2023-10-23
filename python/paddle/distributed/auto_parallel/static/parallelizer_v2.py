@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -25,12 +26,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import (
-    get_pp_stage,
-    is_sequential_run,
-    set_grad_var_shape,
-    use_new_executor,
-)
+from .utils import get_pp_stage, is_sequential_run, use_new_executor
 
 
 class Parallelizer:
@@ -121,7 +117,7 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            set_grad_var_shape(dist_main_prog, self._dist_context)
+
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
@@ -358,6 +354,17 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
             params_grads = self._pass_context.get_attr("params_grads")
+
+        mp_async_allreduce_in_backward = os.getenv(
+            "FLAGS_mp_async_allreduce_in_backward"
+        ) in [1, "1", True, "True"]
+        if mp_async_allreduce_in_backward:
+            column_parallel_linear_backward_overlapping_pass = new_pass(
+                "column_parallel_linear_backward_overlapping", {}
+            )
+            column_parallel_linear_backward_overlapping_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
 
         if self.is_train:
             # GradClip is train-only optimization

@@ -26,7 +26,7 @@ from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
-__all__ = [  # noqa
+__all__ = [
     'yolo_loss',
     'yolo_box',
     'prior_box',
@@ -616,10 +616,10 @@ def box_coder(
             left top coordinate of the anchor box, if the input is image feature
             map, they are close to the origin of the coordinate system.
             [xmax, ymax] is the right bottom coordinate of the anchor box.
-        prior_box_var (List|Tensor|None): prior_box_var supports three types
+        prior_box_var (Tensor|List|tuple|None): prior_box_var supports four types
             of input. One is Tensor with shape [M, 4] which holds M group and
-            data type is float32 or float64. The second is list consist of
-            4 elements shared by all boxes and data type is float32 or float64.
+            data type is float32 or float64. The second is list or tuple consist
+            of 4 elements shared by all boxes and data type is float32 or float64.
             Other is None and not involved in calculation.
         target_box (Tensor): This input can be a 2-D LoDTensor with shape
             [N, 4] when code_type is 'encode_center_size'. This input also can
@@ -685,7 +685,11 @@ def box_coder(
                 axis,
                 [],
             )
-        elif isinstance(prior_box_var, list):
+        elif isinstance(prior_box_var, (list, tuple)):
+            prior_box_var = list(prior_box_var)
+            assert (
+                len(prior_box_var) == 4
+            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
             output_box = _C_ops.box_coder(
                 prior_box,
                 None,
@@ -696,9 +700,10 @@ def box_coder(
                 prior_box_var,
             )
         else:
-            raise TypeError("Input prior_box_var must be Variable or list")
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         return output_box
-
     else:
         check_variable_and_dtype(
             prior_box, 'prior_box', ['float32', 'float64'], 'box_coder'
@@ -720,10 +725,15 @@ def box_coder(
         }
         if isinstance(prior_box_var, Variable):
             inputs['PriorBoxVar'] = prior_box_var
-        elif isinstance(prior_box_var, list):
+        elif isinstance(prior_box_var, (list, tuple)):
             attrs['variance'] = prior_box_var
+            assert (
+                len(attrs['variance']) == 4
+            ), "Input prior_box_var must be Variable or list|tuple with 4 elements."
         else:
-            raise TypeError("Input prior_box_var must be Variable or list")
+            raise TypeError(
+                "Input prior_box_var must be Variable or list|tuple"
+            )
         helper.append_op(
             type="box_coder",
             inputs=inputs,

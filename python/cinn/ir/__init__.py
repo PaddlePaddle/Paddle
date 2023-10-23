@@ -12,6 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .ir import sequential
+from .ir_context import (
+    IRBuilder,
+    IRContext,
+    ScheduleBlockContext,
+    LowerFuncContext,
+    ForContext,
+    IfContext,
+    ThenContext,
+    ElseContext,
+)
 from ..core_api.ir import (  # noqa: F401
     Add,
     And,
@@ -120,6 +131,15 @@ from ..core_api.ir import (  # noqa: F401
     _Module_,
     _Tensor_,
     _Var_,
+    _Buffer_,
+    Buffer,
+    ModuleExpr,
+    IrCompare,
+    IfThenElse,
+    Arg,
+    Sequential,
+    TensorStore,
+    AxisMap,
 )
 
 

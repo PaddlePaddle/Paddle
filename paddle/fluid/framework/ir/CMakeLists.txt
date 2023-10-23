@@ -46,7 +46,7 @@ cc_library(
 cc_library(
   op_compat_sensible_pass
   SRCS op_compat_sensible_pass.cc
-  DEPS graph_pattern_detector op_def_api pass)
+  DEPS graph_pattern_detector op_def_api pass pir_core)
 cc_library(
   subgraph_detector
   SRCS subgraph_detector.cc

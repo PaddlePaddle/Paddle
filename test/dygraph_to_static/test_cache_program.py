@@ -76,6 +76,7 @@ class TestCacheProgram2(TestCacheProgram):
         self.data = np.random.random((4, 10)).astype('float32')
 
 
+@dy2static_unittest
 class TestCacheProgramWithOptimizer(unittest.TestCase):
     def setUp(self):
         self.dygraph_class = Linear
@@ -115,9 +116,7 @@ class TestCacheProgramWithOptimizer(unittest.TestCase):
             dygraph_loss,
             static_loss,
             rtol=1e-05,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
 
@@ -127,6 +126,7 @@ def simple_func(x):
     return mean
 
 
+@dy2static_unittest
 class TestConvertWithCache(unittest.TestCase):
     def test_cache(self):
         static_func = convert_to_static(simple_func)
@@ -157,6 +157,7 @@ def sum_under_while(limit):
     return ret_sum
 
 
+@dy2static_unittest
 class TestToOutputWithCache(unittest.TestCase):
     def test_output(self):
         with base.dygraph.guard():

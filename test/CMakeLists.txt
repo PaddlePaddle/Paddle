@@ -1,3 +1,4 @@
+remove_definitions(-DPADDLE_DLL_EXPORT)
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")

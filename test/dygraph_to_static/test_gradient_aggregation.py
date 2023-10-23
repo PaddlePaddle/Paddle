@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -37,6 +40,7 @@ class SimpleNet(paddle.nn.Layer):
         # return [out2, out1] # 梯度正常
 
 
+@dy2static_unittest
 class TestGradientAggregationInDy2Static(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_to_static(self):

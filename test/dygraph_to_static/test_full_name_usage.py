@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import base
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def dygraph_decorated_func(x):
     x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
@@ -31,7 +31,7 @@ def dygraph_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def jit_decorated_func(x):
     x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
@@ -41,23 +41,24 @@ def jit_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
 class DoubleDecorated:
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func1(self, x):
         return dygraph_decorated_func(x)
 
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func2(self, x):
         return jit_decorated_func(x)
 
 
+@dy2static_unittest
 class TestFullNameDecorator(unittest.TestCase):
     @ast_only_test
     def test_run_success(self):

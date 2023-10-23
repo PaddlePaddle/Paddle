@@ -32,13 +32,13 @@ def fill_any_like_wrapper(x, value, out_dtype=None, name=None):
         else:
             from paddle.base.libpaddle import DataType
 
-            tmp_dtype = DataType(paddle.ir.core.vartype_to_datatype[out_dtype])
+            tmp_dtype = DataType(paddle.pir.core.vartype_to_datatype[out_dtype])
     else:
         tmp_dtype = out_dtype
         if in_pir_mode() and isinstance(
             out_dtype, paddle.framework.core.VarDesc.VarType
         ):
-            tmp_dtype = paddle.ir.core.vartype_to_datatype[tmp_dtype]
+            tmp_dtype = paddle.pir.core.vartype_to_datatype[tmp_dtype]
     return paddle.full_like(x, value, tmp_dtype, name)
 
 
@@ -148,7 +148,7 @@ class TestFullLikeOp1(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_new_ir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def if_enable_cinn(self):
         pass

@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-import signal
 import atexit
+import queue
+import signal
+import sys
 
 from . import core
-
-import queue
 
 # multi-process worker check indices queue interval, avoid
 # hanging in subprocess data loading
@@ -74,7 +73,6 @@ class CleanupFuncRegistrar:
             if not callable(function):
                 raise TypeError("%s is not callable object." % (function))
             # check function object whether hash-able
-            set([function])
             if function not in cls._registered_func_set:
                 atexit.register(_func_exectuor)
                 cls._registered_func_set.add(function)

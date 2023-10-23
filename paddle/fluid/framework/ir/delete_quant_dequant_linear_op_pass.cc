@@ -125,7 +125,7 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
         platform::errors::InvalidArgument(
             "Input scale tensor's place should be CPU."));
 
-    float input_scale;
+    float input_scale = NAN;
     if (input_scale_tensor.dtype() == phi::DataType::FLOAT32) {
       const float* input_scale_data = input_scale_tensor.data<float>();
       input_scale = input_scale_data[0];
