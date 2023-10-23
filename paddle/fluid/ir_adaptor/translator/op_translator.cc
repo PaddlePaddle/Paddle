@@ -259,6 +259,9 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
       continue;
     }
     VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+    IR_ENFORCE(var != nullptr,
+               "Can't find var recursively from current block.");
+
     if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
       need_inputs_sig.emplace_back("dense");
     } else if (var->GetType() ==
@@ -677,7 +680,7 @@ void OpTranscriber::RecordOpResultMapping(pir::IrContext* ctx,
     pir::OpResult value = operation->result(idx_in_op);
     bool generated_by_vector = value.type().isa<pir::VectorType>();
 
-    param_map->UpdateValue(
+    param_map->PushValue(
         arg_name,
         VariableDefiningInfo(
             value,
@@ -1579,8 +1582,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       axis += static_cast<int>(x_shape.size());
     }
 
-    int append_size =
-        static_cast<int>(x_shape.size() - axis - 1 - y_shape.size());
+    int append_size = static_cast<int>(x_shape.size() - axis - y_shape.size());
     if (append_size < 0) {  // which means x.rank <= y.rank, mostly
                             // x.rank=y.rank
       return {x_value, y_value};
@@ -1595,7 +1597,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
     pir::OpResult y_new;
     if (std::find(y_shape.begin(), y_shape.end(), -1) == y_shape.end()) {
       std::vector<int64_t> y_new_shape(y_shape);
-      for (int i = 0; i <= append_size; i++) {
+      for (int i = 0; i < append_size; i++) {
         y_new_shape.push_back(1);
       }
       dialect::ReshapeOp reshape_op =
@@ -1607,7 +1609,7 @@ struct ElementwiseTranscriber : public OpTranscriber {
       auto shape_op = builder.Build<dialect::ShapeOp>(y_value);
       auto append_shape_op = builder.Build<dialect::FullIntArrayOp>(
           std::vector<int64_t>(append_size, 1),
-          phi::DataType::INT64,
+          phi::DataType::INT32,
           phi::CPUPlace());
       auto y_true_shape_op = builder.Build<pir::CombineOp>(
           std::vector<pir::Value>{shape_op.out(), append_shape_op.out()});
@@ -1698,8 +1700,8 @@ struct ElementwiseGradTranscriber : public OpTranscriber {
     pir::OpResult value = operation->result(idx_in_op);
     pir::Builder builder(ctx, operation->GetParent());
     auto reshape_op = builder.Build<dialect::ReshapeOp>(value, y_shape);
-    param_map->UpdateValue(y_grad_var_name,
-                           VariableDefiningInfo(reshape_op.out(), false, -1));
+    param_map->PushValue(y_grad_var_name,
+                         VariableDefiningInfo(reshape_op.out(), false, -1));
   }
 };
 
@@ -1866,9 +1868,24 @@ struct FusedFeedForwardOpTranscriber : public OpTranscriber {
       auto output_var = output_vars[0];
       auto fused_feedforward_op =
           operation->dyn_cast<dialect::FusedFeedforwardOp>();
-      param_map->UpdateValue(output_var,
-                             VariableDefiningInfo{fused_feedforward_op.out()});
+      param_map->PushValue(output_var,
+                           VariableDefiningInfo{fused_feedforward_op.out()});
     }
+  }
+};
+
+struct ShareBufferOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name = dialect::ShareDataOp::name();
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    if (!op_info) {
+      IR_THROW(
+          "Op share_buffer should have corresponding OpInfo "
+          "pd_op.share_data");
+    }
+
+    return op_info;
   }
 };
 
@@ -1895,6 +1912,7 @@ OpTranslator::OpTranslator() {
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
   special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["share_buffer"] = ShareBufferOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();

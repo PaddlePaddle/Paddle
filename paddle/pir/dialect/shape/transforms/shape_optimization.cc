@@ -300,7 +300,7 @@ bool OptimizeShapeComputation(pir::ModuleOp m, PassPipelineRunner runner) {
 
 class ShapeOptimizationPass : public pir::Pass {
  public:
-  ShapeOptimizationPass() : pir::Pass("shape_optimization", 0) {}
+  ShapeOptimizationPass() : pir::Pass("shape_optimization_pass", 0) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
@@ -328,4 +328,4 @@ std::unique_ptr<Pass> CreateShapeOptimizationPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(shape_optimization, pir::ShapeOptimizationPass);
+REGISTER_IR_PASS(shape_optimization_pass, pir::ShapeOptimizationPass);

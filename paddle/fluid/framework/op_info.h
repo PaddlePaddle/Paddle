@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/utils/flat_hash_map.h"
-
+#include "paddle/utils/test_macros.h"
 namespace paddle {
 namespace framework {
 
@@ -128,7 +128,7 @@ class OpInfo {
   }
 };
 
-class OpInfoMap {
+class TEST_API OpInfoMap {
  public:
   static OpInfoMap& Instance();
 

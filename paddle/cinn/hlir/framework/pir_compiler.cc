@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 
 #include <absl/types/variant.h>
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
-#include "paddle/cinn/utils/attribute_util.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/pir/core/builtin_type.h"
 
@@ -26,22 +25,60 @@ namespace framework {
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
-std::unique_ptr<Program> NewIRCompiler::Build() {
+std::unique_ptr<Program> PIRCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
-  std::vector<newir::GroupPtr> groups;
+  std::vector<pir::GroupPtr> groups;
   for (auto it = program_.block()->begin(); it != program_.block()->end();
        ++it) {
     std::vector<::pir::Operation*> ops = {*it};
-    groups.push_back(std::make_shared<newir::Group>(ops));
+    groups.push_back(std::make_shared<pir::Group>(ops));
   }
   VLOG(4) << "Groups size: " << groups.size();
   return std::move(Build(groups));
 }
 
-std::unique_ptr<Program> NewIRCompiler::Build(
-    const std::vector<newir::GroupPtr>& groups) {
-  auto op_lowerer = CreateOpLowerer<newir::GroupPtr>(target_);
+std::vector<pir::CUDAJITInfo> PIRCompiler::BuildCUDAJITInfo(
+    const std::vector<pir::GroupPtr>& groups) {
+  std::vector<pir::CUDAJITInfo> vec_res;
+
+  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
+
+  std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
+  for (int i = 0; i < groups.size(); ++i) {
+    lowered_funcs.emplace_back(op_lowerer.Lower(groups[i]));
+  }
+
+  for (auto&& lowered_func : lowered_funcs) {
+    ProcessFunction(lowered_func);
+  }
+
+  compiler_ = backends::Compiler::Create(target_);
+  auto build_module = m_builder_.Build();
+  compiler_->Build(build_module, "");
+
+  auto instructions = BuildInstructions(groups);
+
+  auto fn_ptrs = compiler_->GetFnPtr();
+
+  for (int idx = 0; idx < groups.size(); ++idx) {
+    pir::CUDAJITInfo jit_info;
+    jit_info.fn_ptr = fn_ptrs[idx];
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyBlockDimsTo(
+        &(jit_info.block_dims));
+
+    lowered_funcs[idx][0]->cuda_axis_info.CopyGridDimsTo(&(jit_info.grid_dims));
+
+    vec_res.push_back(jit_info);
+  }
+
+  return vec_res;
+}
+
+std::unique_ptr<Program> PIRCompiler::Build(
+    const std::vector<pir::GroupPtr>& groups) {
+  auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
   std::vector<std::vector<ir::LoweredFunc>> lowered_funcs;
   for (int i = 0; i < groups.size(); ++i) {
@@ -72,7 +109,7 @@ std::unique_ptr<Program> NewIRCompiler::Build(
   return std::make_unique<Program>(scope_, std::move(instructions));
 }
 
-void NewIRCompiler::ProcessFunction(
+void PIRCompiler::ProcessFunction(
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   for (auto&& func : lowered_funcs) {
     for (auto&& arg : func->args) {
@@ -97,8 +134,8 @@ void NewIRCompiler::ProcessFunction(
   }
 }
 
-std::vector<std::unique_ptr<Instruction>> NewIRCompiler::BuildInstructions(
-    const std::vector<newir::GroupPtr>& groups) {
+std::vector<std::unique_ptr<Instruction>> PIRCompiler::BuildInstructions(
+    const std::vector<pir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
     auto& fn_name = groups[idx]->fn_name;
@@ -130,7 +167,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
     if (visited.count(value) > 0) return;
     visited.emplace(value);
 
-    std::string name = newir::CompatibleInfo::ValueName(value);
+    std::string name = pir::CompatibleInfo::ValueName(value);
     auto type_info = value.type().dyn_cast<paddle::dialect::DenseTensorType>();
     auto* var = scope->Var<Tensor>(name);
     auto& tensor = absl::get<Tensor>(*var);
@@ -140,7 +177,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
       shape.push_back(Shape::dim_t(type_info.dims()[i]));
     }
     tensor->Resize(Shape{shape});
-    tensor->set_type(utils::ConvertIRType(type_info.dtype()));
+    tensor->set_type(pir::CompatibleInfo::ConvertIRType(type_info.dtype()));
   };
 
   for (auto it = program.block()->begin(); it != program.block()->end(); ++it) {
