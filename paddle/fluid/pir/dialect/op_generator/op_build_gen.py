@@ -696,41 +696,36 @@ def gen_build_func_str(
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 

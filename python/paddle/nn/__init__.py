@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
-from paddle.utils import deprecated
-
 from . import functional, initializer, quant, utils  # noqa: F401
 from .clip import ClipGradByGlobalNorm, ClipGradByNorm, ClipGradByValue
 from .decode import BeamSearchDecoder, dynamic_decode
@@ -162,46 +159,6 @@ from .layer.transformer import (
 )
 from .layer.vision import ChannelShuffle, PixelShuffle, PixelUnshuffle
 from .utils.spectral_norm_hook import spectral_norm  # noqa: F401
-
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.functional.diag_embed",
-    level=1,
-    reason="diag_embed in paddle.nn will be removed in future",
-)
-def diag_embed(*args):
-    '''
-    alias name of paddle.nn.functional.diag_embed
-    '''
-    return functional.diag_embed(*args)
-
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.remove_weight_norm",
-    level=1,
-    reason="remove_weight_norm in paddle.nn will be removed in future",
-)
-def remove_weight_norm(*args):
-    '''
-    alias name of paddle.nn.utils.remove_weight_norm
-    '''
-    return utils.remove_weight_norm(*args)
-
-
-@deprecated(
-    since="2.0.0",
-    update_to="paddle.nn.utils.weight_norm",
-    level=1,
-    reason="weight_norm in paddle.nn will be removed in future",
-)
-def weight_norm(*args):
-    '''
-    alias name of paddle.nn.utils.weight_norm
-    '''
-    return utils.weight_norm(*args)
-
 
 __all__ = [
     'BatchNorm',
