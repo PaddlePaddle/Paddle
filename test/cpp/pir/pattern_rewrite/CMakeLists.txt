@@ -24,7 +24,6 @@ cc_test_old(
   SRCS
   drr_same_type_binding_test.cc
   DEPS
-  fused_gemm_epilogue_pass
   drr
   gtest
   pd_op_dialect
