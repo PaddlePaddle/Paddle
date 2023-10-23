@@ -104,6 +104,7 @@ ProgramInterpreter::~ProgramInterpreter() {
 }
 
 void ProgramInterpreter::RunImpl() {
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_auto_parallel_profiler) {
     // Note(sonder): Record the start time of the each stream.
     for (size_t i = 0; i < stream_timers_.size(); ++i) {
@@ -111,6 +112,7 @@ void ProgramInterpreter::RunImpl() {
       stream_timer.Start();
     }
   }
+#endif
 
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
@@ -136,12 +138,15 @@ void ProgramInterpreter::RunImpl() {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
   }
 #endif
+
+#if defined(PADDLE_WITH_CUDA)
   if (FLAGS_auto_parallel_profiler) {
     for (size_t i = 0; i < stream_timers_.size(); ++i) {
       auto& stream_timer = stream_timers_[i];
       stream_timer.Stop();
     }
   }
+#endif
 }
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,

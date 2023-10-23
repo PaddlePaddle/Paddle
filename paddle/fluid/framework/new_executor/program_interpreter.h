@@ -215,7 +215,9 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
+#if defined(PADDLE_WITH_CUDA)
   std::vector<phi::GpuTimer> stream_timers_;
+#endif
 };
 
 }  // namespace framework
