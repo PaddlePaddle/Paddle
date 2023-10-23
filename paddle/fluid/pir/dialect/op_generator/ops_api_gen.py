@@ -101,6 +101,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_bn_add_activation_',
     'fused_feedforward',
     'fused_scale_bias_relu_conv_bnstats',
+    'memcpy',
     'print',
     'recv_v2',
     'rnn_',
