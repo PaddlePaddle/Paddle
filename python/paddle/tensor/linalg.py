@@ -1958,7 +1958,7 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3, 3, 3])
+            >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,

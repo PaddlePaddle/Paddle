@@ -83,7 +83,8 @@ def quanter(class_name):
     Examples:
         .. code-block:: python
 
-            >>> from paddle.quantization import QuantConfig
+            >>> # doctest: +SKIP('need 2 file to run example')
+            >>> # Given codes in ./customized_quanter.py
             >>> from paddle.quantization import quanter
             >>> from paddle.quantization import BaseQuanter
             >>> @quanter("CustomizedQuanter")
@@ -91,14 +92,13 @@ def quanter(class_name):
             ...     def __init__(self, arg1, kwarg1=None):
             ...         pass
 
+            >>> # Used in ./test.py
+            >>> # from .customized_quanter import CustomizedQuanter
+            >>> from paddle.quantization import QuantConfig
             >>> arg1_value = "test"
             >>> kwarg1_value = 20
             >>> quanter = CustomizedQuanter(arg1_value, kwarg1=kwarg1_value)
             >>> q_config = QuantConfig(activation=quanter, weight=quanter)
-            >>> print(q_config)
-            Global config:
-            activation: CustomizedQuanter(test,kwarg1=20)
-            weight: CustomizedQuanter(test,kwarg1=20)
 
     """
 
