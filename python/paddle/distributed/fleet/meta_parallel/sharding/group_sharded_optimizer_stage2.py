@@ -112,8 +112,17 @@ class GroupShardedOptimizerStage2(Optimizer):
         if isinstance(params[0], dict):
             for param_group in params:
                 self._local_params.extend(list(param_group["params"]))
+
         else:
             self._local_params.extend(list(params))
+
+        strategy = fleet._user_defined_strategy
+        self._delay_scale_loss = strategy.hybrid_configs[
+            "sharding_configs"
+        ].delay_scale_loss
+        self._accumulate_steps = strategy.hybrid_configs[
+            "sharding_configs"
+        ].accumulate_steps
 
         self.use_main_grad = None
         for param in self._local_params:
@@ -595,6 +604,15 @@ class GroupShardedOptimizerStage2(Optimizer):
         """
         # This method won't be called directly by opt.step()!
         # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
+        if self._delay_scale_loss:
+            for param in self._layers.parameters():
+                if hasattr(param, "main_grad") and param.main_grad is not None:
+                    assert param.grad is None
+                    param.main_grad = param.main_grad.scale_(
+                        1.0 / self._accumulate_steps
+                    )
+                elif param.grad is not None:
+                    param.grad = param.grad.scale_(1.0 / self._accumulate_steps)
         self._step()
 
     def minimize(self):
