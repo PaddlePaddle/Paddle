@@ -5171,7 +5171,6 @@ def column_stack(x, name=None):
 
     for tensor in x:
         check_type(x, 'x', (list, tuple), 'column_stack')
-        # tensor.dim()
         if tensor.ndim < 1:
             tensor = paddle.unsqueeze(tensor, 0)
         if tensor.ndim == 1:
@@ -5243,6 +5242,7 @@ def dstack(x, name=None):
                 "For 'dstack', each elements of 'inputs' can not be empty."
             )
         ndim = tensor.ndim
+        #similar to the function of atleast_3d
         if ndim == 0:
             tensor = paddle.reshape(tensor, (1, 1, 1))
         if ndim == 1:
@@ -5308,14 +5308,9 @@ def hstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-        if tensor.ndim < 1:
-            shape = tensor.shape
-            if isinstance(shape, int):
-                shape = (shape,)
-            ndim_diff = 1 - len(shape)
-            if ndim_diff > 0:
-                shape = [1] * ndim_diff + list(shape)
-            tensor = paddle.reshape(tensor, tuple(shape))
+        #similar to the function of atleast_1d
+        if tensor.ndim == 0:
+            tensor = paddle.reshape(tensor, [1])
         rep += (tensor,)
     if not rep:
         raise ValueError(
@@ -5382,15 +5377,11 @@ def vstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-
-        if tensor.ndim < 2:
-            shape = tensor.shape
-            if isinstance(shape, int):
-                shape = (shape,)
-            ndim_diff = 2 - len(shape)
-            if ndim_diff > 0:
-                shape = [1] * ndim_diff + list(shape)
-            tensor = paddle.reshape(tensor, tuple(shape))
+        #similar to the function of atleast_2d
+        if tensor.ndim == 0:
+            tensor = paddle.reshape(tensor, [1, 1])
+        elif tensor.ndim == 1:
+            tensor = paddle.unsqueeze(tensor, 0)
         rep += (tensor,)
     if not rep:
         raise ValueError(
@@ -5402,6 +5393,13 @@ def vstack(x, name=None):
 def row_stack(x, name=None):
     """
     Alias for :func:`paddle.vstack`.
+
+    Args:
+        x(tuple[Tensor] or list[Tensor]): A sequence of tensors to concatenate.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        tuple[Tensor] or list[Tensor]: A sequence of tensors to concatenate
 
     Examples:
         .. code-block:: python
