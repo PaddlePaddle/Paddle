@@ -26,7 +26,7 @@ CPP_FILE_TEMPLATE = """
 namespace pir {{
 namespace drr {{
 
-void OperationFactory::RegisterGeneratedOpCreator() {{
+void OperationFactory::Register{dialect}GeneratedOpCreator() {{
 {body}
 }}
 
@@ -148,6 +148,7 @@ class OpCreatorCodeGen:
         with open(cpp_file_path, 'w') as f:
             f.write(
                 CPP_FILE_TEMPLATE.format(
+                    dialect=to_pascal_case(self.dialect_name),
                     op_header=Dialect2OpHeaderMap[self.dialect_name],
                     body=body_code,
                 )

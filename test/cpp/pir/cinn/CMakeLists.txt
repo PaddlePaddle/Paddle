@@ -23,7 +23,7 @@ if(WITH_TESTING AND WITH_CINN)
     DEPS
     drr
     gtest
-    pd_op_to_cinn_op_convert_pass
+    pd_to_cinn_pass
     pd_op_dialect
     cinn_op_dialect
     pir)

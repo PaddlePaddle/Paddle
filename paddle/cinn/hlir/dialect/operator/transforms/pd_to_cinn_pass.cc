@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/dialect/operator/transforms/pd_op_to_cinn_op_convert_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
@@ -25,61 +25,63 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class PDSum2CINNReduceSumPattern
-    : public pir::drr::DrrPatternBase<PDSum2CINNReduceSumPattern> {
+class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &full_int_array = pat.Op("pd_op.full_int_array",
-                                        {{"value", pat.Attr("axis_info")},
-                                         {"dtype", pat.Attr("dtype_2")},
-                                         {"place", pat.Attr("place_2")}});
+    pir::drr::SourcePattern patttern = ctx->SourcePattern();
+    const auto &full_int_array =
+        patttern.Op(paddle::dialect::FullIntArrayOp::name(),
+                    {{"value", patttern.Attr("axis_info")},
+                     {"dtype", patttern.Attr("dtype_2")},
+                     {"place", patttern.Attr("place_2")}});
 
-    const auto &sum = pat.Op(
-        "pd_op.sum",
+    const auto &sum = patttern.Op(
+        paddle::dialect::SumOp::name(),
         {{"dtype", pat.Attr("dtype")}, {"keepdim", pat.Attr("keep_dim")}});
-    pat.Tensor("ret") = sum(pat.Tensor("arg0"), full_int_array());
+    patttern.Tensor("ret") = sum(patttern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &cinn_reduce_sum = res.Op(
-        "cinn_op.reduce_sum",
-        {{"axis", pat.Attr("axis_info")}, {"keep_dim", pat.Attr("keep_dim")}});
+    pir::drr::ResultPattern res = patttern.ResultPattern();
+    const auto &cinn_reduce_sum =
+        res.Op(cinn::dialect::ReduceSumOp::name(),
+               {{"axis", patttern.Attr("axis_info")},
+                {"keep_dim", patttern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
 };
 
-class PDSum2CINNReduceMaxPattern
-    : public pir::drr::DrrPatternBase<PDSum2CINNReduceMaxPattern> {
+class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern pat = ctx->SourcePattern();
-    const auto &full_int_array = pat.Op("pd_op.full_int_array",
-                                        {{"value", pat.Attr("axis_info")},
-                                         {"dtype", pat.Attr("dtype_2")},
-                                         {"place", pat.Attr("place_2")}});
+    pir::drr::SourcePattern patttern = ctx->SourcePattern();
+    const auto &full_int_array =
+        patttern.Op(paddle::dialect::FullIntArrayOp::name(),
+                    {{"value", pat.Attr("axis_info")},
+                     {"dtype", pat.Attr("dtype_2")},
+                     {"place", pat.Attr("place_2")}});
 
-    const auto &pd_max =
-        pat.Op("pd_op.max", {{"keepdim", pat.Attr("keep_dim")}});
-    pat.Tensor("ret") = pd_max(pat.Tensor("arg0"), full_int_array());
+    const auto &pd_max = patttern.Op(paddle::dialect::MaxOp::name(),
+                                     {{"keepdim", patttern.Attr("keep_dim")}});
+    patttern.Tensor("ret") = pd_max(patttern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = pat.ResultPattern();
-    const auto &cinn_reduce_max = res.Op(
-        "cinn_op.reduce_max",
-        {{"axis", pat.Attr("axis_info")}, {"keep_dim", pat.Attr("keep_dim")}});
+    pir::drr::ResultPattern res = patttern.ResultPattern();
+    const auto &cinn_reduce_max =
+        res.Op(cinn::dialect::ReduceMaxOp::name(),
+               {{"axis", patttern.Attr("axis_info")},
+                {"keep_dim", patttern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
 };
 
-PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("PdOpToCinnOpPass", 1) {}
+PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
-  ps.Add(PDSum2CINNReduceSumPattern().Build(context));
-  ps.Add(PDSum2CINNReduceMaxPattern().Build(context));
+  ps.Add(SumOpPattern().Build(context));
+  ps.Add(MaxOpPattern().Build(context));
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
@@ -93,7 +95,7 @@ void PdOpToCinnOpPass::Run(pir::Operation *op) {
 }
 
 bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
-  return op->name() == "builtin.module" && op->num_regions() > 0;
+  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
 }
 
 void PdOp2CinnOpConverter(::pir::Program *program) {

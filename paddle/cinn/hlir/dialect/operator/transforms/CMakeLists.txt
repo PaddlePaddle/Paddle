@@ -9,9 +9,9 @@ if(NOT CINN_ONLY)
     pd_op_dialect)
 
   cinn_cc_library(
-    pd_op_to_cinn_op_convert_pass
+    pd_to_cinn_pass
     SRCS
-    pd_op_to_cinn_op_convert_pass.cc
+    pd_to_cinn_pass.cc
     DEPS
     drr
     pd_op_dialect
