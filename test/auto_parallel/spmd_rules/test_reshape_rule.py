@@ -246,7 +246,7 @@ class TestReshapeSPMDRule(unittest.TestCase):
         # shape: [6, 12, 48, 24] --> [3, 24, 6, -1, -1]
         # raise error
         self.attrs["shape"] = [3, 24, 6, -1, -1]
-        with self.assertRaises(BaseException):
+        with self.assertRaises(ValueError):
             self.rule.infer_forward(
                 self.x_dist_tensor_spec, self.attrs['shape']
             )

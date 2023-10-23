@@ -18,7 +18,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
-#include "paddle/cinn/hlir/dialect/operator/transforms/pd_op_to_cinn_op_convert_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"

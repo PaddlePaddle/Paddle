@@ -73,15 +73,14 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
 
 bool SameNdMeshReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
-
-  flag &= (in.dist_attr().process_mesh() == out_dist_attr.process_mesh());
-  flag &= (out_dist_attr.process_mesh().ndim() > 1);
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().process_mesh() ==
+                            out_dist_attr.process_mesh());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.process_mesh().ndim() > 1);
 
   // check the input and output dims_mapping is not equal
-  flag &= in.dist_attr() != out_dist_attr;
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr() != out_dist_attr);
 
-  return flag;
+  return true;
 }
 
 void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
@@ -121,7 +120,8 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 1.3 Calculate the input one dim dist attr
       TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
-      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0});
+      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0},
+                                              kv.second);
 
       // 1.4 Calculate the output one dim dist attr
       TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
