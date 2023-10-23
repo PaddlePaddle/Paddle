@@ -7,4 +7,13 @@ if(NOT CINN_ONLY)
     tensor_node.cc
     DEPS
     pd_op_dialect)
+
+  cinn_cc_library(
+    pd_to_cinn_pass
+    SRCS
+    pd_to_cinn_pass.cc
+    DEPS
+    drr
+    pd_op_dialect
+    cinn_op_dialect)
 endif()

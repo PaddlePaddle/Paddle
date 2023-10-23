@@ -88,13 +88,14 @@ void FullLikeKernel(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullIntArrayKernel(const Context& dev_ctx,
-                        const IntArray& val,
+                        const std::vector<int64_t>& shape,
                         DataType dtype UNUSED,
                         DenseTensor* out) {
-  out->Resize(phi::make_ddim({static_cast<int64_t>(val.GetData().size())}));
+  out->Resize(phi::make_ddim({static_cast<int64_t>(shape.size())}));
   T* out_data = dev_ctx.template Alloc<T>(out);
-  for (size_t i = 0; i < val.GetData().size(); ++i) {
-    out_data[i] = static_cast<T>(val.GetData()[i]);
+  for (size_t i = 0; i < shape.size(); ++i) {
+    int64_t val = shape[i];
+    out_data[i] = static_cast<T>(val);
   }
 }
 
