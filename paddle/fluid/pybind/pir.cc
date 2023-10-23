@@ -65,8 +65,8 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination);
-USE_PASS(inplace);
+USE_PASS(dead_code_elimination_pass);
+USE_PASS(inplace_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -234,6 +234,24 @@ void BindBlock(py::module *m) {
             None
 
       )DOC")
+      .def(
+          "move_op",
+          [](Block &self, Operation *op, uint32_t offset) {
+            Block::Iterator position = self.begin();
+            std::advance(position, offset);
+            op->MoveTo(&self, position);
+          },
+          R"DOC(
+          Move an op to a specific position (block.begin() + offset).
+
+          Args:
+              op (pir.Operation): the operator to be moved.
+              offset (uint32_t) : offset relative to the begin of the block
+
+          Returns:
+              None
+
+        )DOC")
       .def("all_parameters", [](Block &self) -> py::list {
         py::list param_list;
         for (auto iter = self.begin(); iter != self.end(); iter++) {
@@ -352,6 +370,30 @@ py::str Value2String(const Value &self) {
   return print_stream.str();
 }
 
+phi::DataType GetValueDtype(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
+phi::DDim GetValueDims(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -387,7 +429,21 @@ void BindValue(py::module *m) {
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
       .def("__str__", &Value2String)
-      .def("__repr__", &Value2String);
+      .def("__repr__", &Value2String)
+      .def_property(
+          "shape",
+          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Value &self) { return GetValueDtype(self); },
+          [](Value &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindOpOperand(py::module *m) {
