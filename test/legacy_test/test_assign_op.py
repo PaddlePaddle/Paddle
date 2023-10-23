@@ -24,6 +24,7 @@ import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
 from paddle.base.backward import append_backward
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAssignOp(op_test.OpTest):
@@ -42,12 +43,12 @@ class TestAssignOp(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
         paddle.disable_static()
 
 
@@ -71,12 +72,12 @@ class TestAssignFP16Op(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
         paddle.disable_static()
 
 
@@ -97,12 +98,12 @@ class TestAssignBFP16Op(op_test.OpTest):
 
     def test_forward(self):
         paddle.enable_static()
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
         paddle.disable_static()
 
     def test_backward(self):
         paddle.enable_static()
-        self.check_grad(['X'], 'Out', check_prim=True, check_new_ir=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
         paddle.disable_static()
 
 
@@ -275,9 +276,12 @@ class TestAssignOApiFP16(unittest.TestCase):
 
 
 class TestAssignOpErrorApi(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             # The type of input must be Variable or numpy.ndarray.
             x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
@@ -288,9 +292,12 @@ class TestAssignOpErrorApi(unittest.TestCase):
             self.assertRaises(TypeError, paddle.assign, x2)
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_type_error(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x = [paddle.randn([3, 3]), paddle.randn([3, 3])]
             # not support to assign list(var)
             self.assertRaises(TypeError, paddle.assign, x)

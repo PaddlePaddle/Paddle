@@ -32,6 +32,8 @@ class ProcessMesh;
 
 bool IsCurRankInMesh(const ProcessMesh& process_mesh);
 
+Place GetDefaultPlace();
+
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank = -1);
 

@@ -21,6 +21,7 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class ApiMinTest(unittest.TestCase):
@@ -30,6 +31,7 @@ class ApiMinTest(unittest.TestCase):
         else:
             self.place = core.CPUPlace()
 
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
         with paddle.static.program_guard(

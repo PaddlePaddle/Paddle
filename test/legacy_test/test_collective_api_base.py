@@ -359,6 +359,7 @@ class TestDistBase(unittest.TestCase):
             "PATH_ID": path_id,
             "DTYPE": dtype,
             "REDUCE_TYPE": str(reduce_type),
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
         required_envs.update(additional_envs)
         required_envs.update(need_envs)
@@ -608,16 +609,23 @@ class TestDistBase(unittest.TestCase):
                     send_ptr2 = send_ptr2 + global_expert_count2[idx]
             result1 = []
             result2 = []
+
+            def is_empyt_list(x):
+                if isinstance(x, list) and len(x) == 0:
+                    return True
+                return False
+
             for i in range(tot_expert):
                 for arr in output1[i]:
-                    if arr == []:
+                    if is_empyt_list(arr):
                         continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
-                    if arr == []:
+                    if is_empyt_list(arr):
                         continue
                     result2.append(arr)
+
             if result1 == []:
                 output1 = np.array([])
             else:

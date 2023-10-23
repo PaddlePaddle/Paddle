@@ -18,7 +18,7 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -205,13 +205,14 @@ class StaticCode2:
 
 
 class NetWithError(paddle.nn.Layer):
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
 
 
+@dy2static_unittest
 class TestEnableDeclarative(unittest.TestCase):
     def setUp(self):
         self.x = np.random.randn(30, 10, 32).astype('float32')
@@ -262,11 +263,12 @@ class SwitchModeNet(paddle.nn.Layer):
         return True
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def switch_mode_function():
     return True
 
 
+@dy2static_unittest
 class TestFunctionTrainEvalMode(unittest.TestCase):
     @ast_only_test
     def test_switch_mode(self):
@@ -297,6 +299,7 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
             net.foo.train()
 
 
+@dy2static_unittest
 class TestIfElseEarlyReturn(unittest.TestCase):
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
@@ -311,6 +314,7 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
+@dy2static_unittest
 class TestRemoveCommentInDy2St(unittest.TestCase):
     def func_with_comment(self):
         # Comment1
@@ -352,6 +356,7 @@ class Net2:
         return func1(data)
 
 
+@dy2static_unittest
 class TestParameterRecorder(unittest.TestCase):
     def test_recorder(self):
         """function calls nn.Layer case."""

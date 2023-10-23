@@ -29,6 +29,8 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -42,11 +44,14 @@
 #include "paddle/fluid/framework/new_executor/instruction/cond_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/legacy_kernel_instruction.h"
 #include "paddle/fluid/framework/new_executor/instruction/phi_kernel_instruction.h"
+#include "paddle/fluid/framework/new_executor/instruction/while_instruction.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
 
@@ -114,7 +119,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::NewIRInterpreter(
@@ -176,7 +181,7 @@ NewIRInterpreter::NewIRInterpreter(
 
   std::stringstream ss;
   ss << this;
-  ::pir::BuildScope(*ir_block_, ss.str(), &sub_blocks_, value_exe_info_.get());
+  BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
 NewIRInterpreter::~NewIRInterpreter() {
@@ -234,7 +239,8 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   scope_ = new_scope;
   for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
     const auto& var_name = value_exe_info_->GetNameById(static_cast<int>(i));
-    value_exe_info_->ResetVarList(i, new_scope->FindVar(var_name));
+    value_exe_info_->ResetVarList(static_cast<int>(i),
+                                  new_scope->FindVar(var_name));
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
@@ -379,12 +385,12 @@ std::string NewIRInterpreter::GetDepsString() const {
 
 bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
-Scope* NewIRInterpreter::InnerScope() {
+Scope* NewIRInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
 std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
-  return value_exe_info_->GetValue2VarName().at(value);
+  return value_exe_info_->GetVarName(value);
 }
 
 void NewIRInterpreter::UpdateSyncOpNum() {
@@ -461,7 +467,7 @@ void NewIRInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_"
+      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
@@ -558,20 +564,23 @@ void NewIRInterpreter::BuildInstruction() {
     VLOG(6) << "Build Instruction for op: " << op_idx;
     if (op->dialect()->name() == "builtin") {
       if (interpreter::GetSpecialOpNames().count(op->name())) {
-        VLOG(6) << "skip process " << op->name();
+        VLOG(6) << "skip process builtin dialect op: " << op->name();
         continue;
       }
     } else if (op->dialect()->name() == "cf") {
+      VLOG(6) << "skip process cf dialect op: " << op->name();
       continue;
     } else if (op->dialect()->name() == "pd_op") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CondInstruction>(op_idx++,
-                                            place_,
-                                            op,
-                                            scope_,
-                                            local_scope_,
-                                            value_exe_info_.get(),
-                                            sub_blocks_));
+      if (op->isa<paddle::dialect::IfOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<CondInstruction>(
+            op_idx++, place_, op, value_exe_info_.get()));
+      } else if (op->isa<paddle::dialect::WhileOp>()) {
+        vec_instruction_base_.emplace_back(std::make_unique<WhileInstruction>(
+            op_idx++, place_, op, scope_, local_scope_, value_exe_info_.get()));
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Now only support pd_kernel and cinn dialect."));
+      }
     } else if (op->dialect()->name() == "pd_kernel") {
       auto op_name = op->attributes()
                          .at("op_name")
@@ -583,33 +592,19 @@ void NewIRInterpreter::BuildInstruction() {
       }
       VLOG(6) << "process " << op_name;
 
-      if (op->name().compare(paddle::dialect::LegacyKernelOp::name()) == 0) {
+      if (op->isa<paddle::dialect::LegacyKernelOp>()) {
         vec_instruction_base_.emplace_back(
             std::make_unique<LegacyKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       } else {
         vec_instruction_base_.emplace_back(
             std::make_unique<PhiKernelInstruction>(
-                op_idx++,
-                place_,
-                op,
-                scope_,
-                local_scope_,
-                value_exe_info_->GetValue2VarName(),
-                value_exe_info_->GetVarName2Id(),
-                value_exe_info_->GetVar2VarName()));
+                op_idx++, place_, op, *(value_exe_info_.get())));
       }
 #ifdef PADDLE_WITH_CINN
     } else if (op->dialect()->name() == "cinn_runtime") {
-      vec_instruction_base_.emplace_back(
-          std::make_unique<CinnJitInstruction>(op_idx++, place_, op, scope_));
+      vec_instruction_base_.emplace_back(std::make_unique<CinnJitInstruction>(
+          op_idx++, place_, op, *(value_exe_info_.get())));
 #endif
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
@@ -632,7 +627,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
     PADDLE_ENFORCE((bool)kv.first,
                    platform::errors::PreconditionNotMet(
                        "vlaue(%s) should not be nullptr", kv.second));
-    PADDLE_ENFORCE(value_exe_info_->GetVarName2Id().count(kv.second) > 0,
+    PADDLE_ENFORCE(value_exe_info_->HasVar(kv.second),
                    platform::errors::PreconditionNotMet(
                        "var(%s) should exist in var_name_2_id_", kv.second));
     auto* var = InnerScope()->FindVar(kv.second);
@@ -641,8 +636,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
         platform::errors::PreconditionNotMet(
             "var(%s) should exist in scope (%p)", kv.second, InnerScope()));
     os << kv.first.impl() << " -> " << kv.second << " -> "
-       << value_exe_info_->GetVarName2Id().at(kv.second) << " -> " << var
-       << "\n";
+       << value_exe_info_->GetVarId(kv.first) << " -> " << var << "\n";
   }
   return os.str();
 }
@@ -810,6 +804,18 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor);
       }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()));
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()));
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
@@ -850,6 +856,7 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
 }
 
 void NewIRInterpreter::CalculateLastLiveOps() {
+  VLOG(4) << "NewIRInterpreter(): " << this << " start CalculateLastLiveOps";
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
@@ -875,13 +882,20 @@ void NewIRInterpreter::CalculateLastLiveOps() {
         gc_check_vars.insert(var_id);
       }
     }
+    VLOG(4) << "get gc check vars for: " << instr->Name();
 
     for (auto var_id : gc_check_vars) {
       Scope* inner_scope = InnerScope();
       paddle::framework::Variable* var = inner_scope->FindVar(
           value_exe_info_->GetNameById(static_cast<int>(var_id)));
+      PADDLE_ENFORCE_NOT_NULL(
+          var,
+          platform::errors::NotFound("Var(id=%d) should not be nullptr.",
+                                     static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>()) {
+          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::SparseCooTensor>() ||
+          var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear "
@@ -890,6 +904,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
                 << framework::ToTypeName(var->Type());
       }
     }
+    VLOG(4) << "update last_live_ops for: " << instr->Name();
   }
   // clear the last_live_ops list for all vars in skip_gc_vars
   for (const std::string& skip_gc_var : execution_config_.skip_gc_vars) {
@@ -899,7 +914,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
       VLOG(8) << "Skip gc for var: " << skip_gc_var;
     }
   }
-  VLOG(4) << "calculate last_live_ops_";
+  VLOG(4) << "clear the last_live_ops list for all vars in skip_gc_vars";
 
   // shrink, find the downstream op that has no other op in the
   // downstream list happens before it
@@ -940,6 +955,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     last_live_ops_[i] = minumum_last_live_ops;
     var_ref_count_[i] = static_cast<int>(last_live_ops_[i].size());
   }
+  VLOG(4) << "shrink the last_live_ops list for all vars in skip_gc_vars";
 
   for (auto& dep : *dependecy_count_) {
     deps_.emplace_back(std::make_shared<interpreter::OpDepInfo>(dep));
@@ -948,6 +964,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
     refs_.emplace_back(std::make_shared<interpreter::VarRefInfo>(
         var_ref_count_[i], value_exe_info_->GetVarList()[i]));
   }
+  VLOG(4) << "done CalculateLastLiveOps";
 }
 
 void NewIRInterpreter::ConstructEventForJitInput() {
@@ -1401,8 +1418,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
     VLOG(4) << place_ << " "
-            << instr_node->DebugStringEx(scope_,
-                                         value_exe_info_->GetValue2VarName());
+            << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
 
@@ -1424,11 +1440,10 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
       VLOG(4) << place_ << " "
-              << instr_node->DebugStringEx(scope_,
-                                           value_exe_info_->GetValue2VarName());
+              << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      interpreter::LogDeviceMemoryStats(place_);
+      memory::LogDeviceMemoryStats(place_, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
     instr_node->RecordEvent(place_);
@@ -1500,6 +1515,9 @@ void NewIRInterpreter::SolvePersisableVarNames() {
     ::pir::Value value = kv.first;
     const std::string& var_name = kv.second;
     ::pir::OpResult result = value.dyn_cast<::pir::OpResult>();
+    if (!result) {
+      continue;
+    }
     auto* defining_op = result.owner();
     if (defining_op->HasAttribute(kAttrIsPersisable)) {
       auto is_persisables =

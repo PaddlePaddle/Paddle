@@ -18,7 +18,11 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -126,6 +130,7 @@ class MNIST(paddle.nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestMNIST(unittest.TestCase):
     def setUp(self):
         self.epoch_num = 1
@@ -194,7 +199,7 @@ class TestMNISTWithToStatic(TestMNIST):
             base.default_startup_program().random_seed = SEED
             mnist = MNIST()
             if to_static:
-                mnist = paddle.jit.to_static(mnist)
+                mnist = paddle.jit.to_static(mnist, full_graph=True)
             adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
             for epoch in range(self.epoch_num):

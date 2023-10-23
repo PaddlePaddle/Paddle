@@ -20,7 +20,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -29,6 +33,7 @@ from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
@@ -316,7 +321,7 @@ class SeResNeXt(paddle.nn.Layer):
             ),
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -346,6 +351,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
+@dy2static_unittest
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
@@ -368,6 +374,7 @@ class TestSeResnet(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(True)
     def train(self, train_reader, to_static):
         paddle.jit.enable_to_static(to_static)
 
@@ -450,9 +457,15 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img, label],
                                 output_spec=[pred],
-                                input_names_after_prune=[img.name],
+                                input_names_after_prune=['x'],
+                                input_spec=[
+                                    InputSpec(
+                                        shape=[None, 3, 224, 224], name='x'
+                                    ),
+                                    InputSpec(shape=[None, 1], name='y'),
+                                ],
+                                clip_extra=False,
                             )
                         else:
                             paddle.save(
@@ -483,6 +496,7 @@ class TestSeResnet(unittest.TestCase):
 
             return pred_res.numpy()
 
+    @test_and_compare_with_new_ir(True)
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)

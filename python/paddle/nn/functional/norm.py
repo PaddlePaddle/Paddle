@@ -194,7 +194,7 @@ def batch_norm(
     else:
         trainable_statistics = not use_global_stats
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
             x,
             running_mean,
