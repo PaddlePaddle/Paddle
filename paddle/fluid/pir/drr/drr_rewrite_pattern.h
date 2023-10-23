@@ -80,14 +80,14 @@ class DrrRewritePattern : public pir::RewritePattern {
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const;
 
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
-                           pir::PatternRewriter& rewriter) const;
+                           pir::PatternRewriter& rewriter) const;  // NOLINT
 
  private:
   MatchContextImpl CreateOperations(
       const SourcePatternGraph& source_pattern_graph,
       const ResultPatternGraph& result_pattern_graph,
       const MatchContextImpl& src_match_ctx,
-      pir::PatternRewriter& rewriter) const;
+      pir::PatternRewriter& rewriter) const;  // NOLINT
 
   void RebindIrTensorForAssignTensor(
       const ResultPatternGraph& result_pattern_graph,
@@ -95,7 +95,7 @@ class DrrRewritePattern : public pir::RewritePattern {
 
   void ReplaceOutputTensor(const MatchContextImpl& src_match_ctx,
                            const MatchContextImpl& res_match_ctx,
-                           pir::PatternRewriter& rewriter) const;
+                           pir::PatternRewriter& rewriter) const;  // NOLINT
 
   void DeleteSourcePatternOp(const SourcePatternGraph& source_pattern_graph,
                              const ResultPatternGraph& result_pattern_graph,
