@@ -523,5 +523,4 @@ TEST(IROpFusionPass, softmax) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   std::cerr << "new group size " << new_group.size() << std::endl;
-  // ASSERT_EQ(new_group.size(), 1u);
 }

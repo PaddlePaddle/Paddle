@@ -157,3 +157,11 @@ set_field_default_config(DP_OPTIMIZATION, "enable", False)
 set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
 set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
 set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
+
+#########################################
+# model parallel configuration
+#########################################
+MP_OPTIMIZATION = "mp_optimization"
+set_field_default_config(
+    MP_OPTIMIZATION, "allreduce_matmul_grad_overlapping", False
+)

@@ -115,23 +115,29 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
-      std::cerr << "before op fusion" << std::endl;
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
-
-      std::cerr << "after op fusion" << std::endl;
 
       // fusion merge
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
-
-      std::cerr << "finish fusion merge" << std::endl;
 
       PADDLE_ENFORCE_EQ(group_list.size(),
                         1u,
                         phi::errors::Unimplemented(
                             "Only support one group after group fusion"));
       for (auto group : group_list) {
+        auto ir_compiler =
+            new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+        auto group1 =
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        compiler_list.push_back(ir_compiler);
+        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+            {cinn::dialect::JitKernelOp::kAttrName,
+             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+        };
+
         // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->nodes);
 
