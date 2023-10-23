@@ -156,23 +156,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_types.push_back(out.type());
         }
 
-        auto ir_compiler =
-            new cinn::hlir::framework::PIRCompiler(*program, target, scope);
-        for (size_t i = 0; i < group->nodes.size(); ++i) {
-          std::cerr << "grou nodes " << group->nodes[i]->name() << std::endl;
-        }
-        auto group1 =
-            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
-        group1->input_values = vec_ins;
-        group1->output_values = vec_outs;
-
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
-        compiler_list.push_back(ir_compiler);
-        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-            {cinn::dialect::JitKernelOp::kAttrName,
-             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
-        };
-
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
