@@ -126,7 +126,7 @@ class FusedDropoutAddPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
