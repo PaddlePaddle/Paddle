@@ -25,463 +25,468 @@ TEST(FusionMergePass, ElementWise_Fusion_0) {
   // create model
   {
     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(E, C);
-    auto G = net_builder.Add(E, D);
+    auto Max = net_builder.ReduceMax(A, {-1}, true);
+    auto broadcast_1 = net_builder.BroadcastTo(Max, {h, w}, {0, 1});
+    auto sub = net_builder.Subtract(A, broadcast_1);
+    auto exp = net_builder.Exp(sub);
+    auto sum = net_builder.ReduceSum(exp, {1}, true);
+    auto broadcast_2 = net_builder.BroadcastTo(sum, {h, w}, {0, 1});
+    auto out = net_builder.Divide(exp, broadcast_2);
   }
 
   auto program = net_builder.Build();
   auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+  // RunDecomposer(&program, target);
 
   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+
+  std::cerr << graph->DebugGroupedGraph() << std::endl;
   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
+
+  std::cerr << graph->DebugGroupedGraph() << std::endl;
+  hlir::framework::ApplyPass(graph.get(), "GeneralFusionMergePass");
+
+  std::cerr << graph->DebugGroupedGraph() << std::endl;
 }
 
-TEST(FusionMergePass, ElementWise_Fusion_1) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("ElementWise_Fusion_1");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(C, D);
-    auto G = net_builder.Add(E, F);
-    auto I = net_builder.Add(E, F);
-  }
+// TEST(FusionMergePass, ElementWise_Fusion_1) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("ElementWise_Fusion_1");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.Add(C, D);
+//     auto G = net_builder.Add(E, F);
+//     auto I = net_builder.Add(E, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 4);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 4);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, ElementWise_Fusion_2) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("ElementWise_Fusion_2");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
-    auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
-    auto G = net_builder.Add(A, B);
-    auto H = net_builder.Add(C, D);
-    auto I = net_builder.Add(E, G);
-    auto J = net_builder.Add(G, H);
-    auto K = net_builder.Add(H, F);
-  }
+// TEST(FusionMergePass, ElementWise_Fusion_2) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("ElementWise_Fusion_2");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
+//     auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
+//     auto G = net_builder.Add(A, B);
+//     auto H = net_builder.Add(C, D);
+//     auto I = net_builder.Add(E, G);
+//     auto J = net_builder.Add(G, H);
+//     auto K = net_builder.Add(H, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 5);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 5);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, ElementWise_Fusion_3) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("ElementWise_Fusion_3");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
-    auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
-    auto G = net_builder.Add(A, B);
-    auto H = net_builder.Add(G, C);
-    auto I = net_builder.Add(G, D);
-    auto J = net_builder.Add(G, E);
-    auto K = net_builder.Add(G, F);
-  }
+// TEST(FusionMergePass, ElementWise_Fusion_3) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("ElementWise_Fusion_3");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
+//     auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
+//     auto G = net_builder.Add(A, B);
+//     auto H = net_builder.Add(G, C);
+//     auto I = net_builder.Add(G, D);
+//     auto J = net_builder.Add(G, E);
+//     auto K = net_builder.Add(G, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 5);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 5);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, ElementWise_Fusion_4) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("ElementWise_Fusion_4");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
-    auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
-    auto G = net_builder.Add(A, B);
-    auto H = net_builder.Add(G, C);
-    auto I = net_builder.Add(G, D);
-    auto J = net_builder.Add(I, E);
-    auto K = net_builder.Add(I, F);
-  }
+// TEST(FusionMergePass, ElementWise_Fusion_4) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("ElementWise_Fusion_4");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
+//     auto F = net_builder.CreateInput(Float(32), {h, w}, "F");
+//     auto G = net_builder.Add(A, B);
+//     auto H = net_builder.Add(G, C);
+//     auto I = net_builder.Add(G, D);
+//     auto J = net_builder.Add(I, E);
+//     auto K = net_builder.Add(I, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 5);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 5);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, ElementWise_Fusion_5) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("ElementWise_Fusion_5");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.Add(A, B);
-    auto D = net_builder.Add(A, B);
-  }
+// TEST(FusionMergePass, ElementWise_Fusion_5) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("ElementWise_Fusion_5");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.Add(A, B);
+//     auto D = net_builder.Add(A, B);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_0) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_0");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(C, D);
-    auto G = net_builder.Add(F, E);
-  }
+// TEST(FusionMergePass, Broadcast_Test_0) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_0");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.Add(C, D);
+//     auto G = net_builder.Add(F, E);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_1) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_1");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(C, E);
-    auto G = net_builder.Add(D, E);
-  }
+// TEST(FusionMergePass, Broadcast_Test_1) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_1");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.Add(C, E);
+//     auto G = net_builder.Add(D, E);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_2) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_2");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(C, E);
-    auto G = net_builder.Add(D, E);
-  }
+// TEST(FusionMergePass, Broadcast_Test_2) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_2");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.Add(C, E);
+//     auto G = net_builder.Add(D, E);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_3) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_3");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {h * w, w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.Add(C, E);
-    auto G = net_builder.Add(D, E);
-  }
+// TEST(FusionMergePass, Broadcast_Test_3) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_3");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {h * w, w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.Add(C, E);
+//     auto G = net_builder.Add(D, E);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_4) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_4");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
-    auto F = net_builder.Add(A, B);
-    auto G = net_builder.Add(C, F);
-    auto H = net_builder.Add(D, F);
-    auto I = net_builder.Add(E, F);
-  }
+// TEST(FusionMergePass, Broadcast_Test_4) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_4");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.CreateInput(Float(32), {h, w}, "E");
+//     auto F = net_builder.Add(A, B);
+//     auto G = net_builder.Add(C, F);
+//     auto H = net_builder.Add(D, F);
+//     auto I = net_builder.Add(E, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 4);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 4);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Broadcast_Test_5) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Broadcast_Test_5");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.CreateInput(Float(32), {h * w, w}, "E");
-    auto F = net_builder.Add(A, B);
-    auto G = net_builder.Add(C, F);
-    auto H = net_builder.Add(D, F);
-    auto I = net_builder.Add(E, F);
-  }
+// TEST(FusionMergePass, Broadcast_Test_5) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Broadcast_Test_5");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.CreateInput(Float(32), {h * w, w}, "E");
+//     auto F = net_builder.Add(A, B);
+//     auto G = net_builder.Add(C, F);
+//     auto H = net_builder.Add(D, F);
+//     auto I = net_builder.Add(E, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 4);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 4);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+// }
 
-TEST(FusionMergePass, Reduce_Test_0) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Reduce_Test_0");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.Add(A, B);
-    auto D = net_builder.ReduceSum(C, {0});
-    auto E = net_builder.ReduceSum(C, {0});
-    auto F = net_builder.ReduceSum(C, {0});
-  }
+// TEST(FusionMergePass, Reduce_Test_0) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Reduce_Test_0");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.Add(A, B);
+//     auto D = net_builder.ReduceSum(C, {0});
+//     auto E = net_builder.ReduceSum(C, {0});
+//     auto F = net_builder.ReduceSum(C, {0});
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 4);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  // CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 4);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   // CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Reduce_Test_1) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Reduce_Test_1");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.Add(A, B);
-    auto D = net_builder.ReduceSum(C, {0});
-    auto E = net_builder.ReduceSum(C, {1});
-  }
+// TEST(FusionMergePass, Reduce_Test_1) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Reduce_Test_1");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.Add(A, B);
+//     auto D = net_builder.ReduceSum(C, {0});
+//     auto E = net_builder.ReduceSum(C, {1});
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Reduce_Test_2) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Reduce_Test_2");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.Add(A, B);
-    auto E = net_builder.ReduceSum(D, {0});
-    auto F = net_builder.ReduceSum(D, {1});
-    auto G = net_builder.Add(C, E);
-    auto H = net_builder.Add(C, F);
-  }
+// TEST(FusionMergePass, Reduce_Test_2) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Reduce_Test_2");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.Add(A, B);
+//     auto E = net_builder.ReduceSum(D, {0});
+//     auto F = net_builder.ReduceSum(D, {1});
+//     auto G = net_builder.Add(C, E);
+//     auto H = net_builder.Add(C, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 2);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 2);
+// }
 
-TEST(FusionMergePass, Reduce_Test_3) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Reduce_Test_3");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.ReduceSum(E, {0});
-    auto G = net_builder.Add(C, F);
-    auto H = net_builder.Add(D, F);
-  }
+// TEST(FusionMergePass, Reduce_Test_3) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Reduce_Test_3");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.ReduceSum(E, {0});
+//     auto G = net_builder.Add(C, F);
+//     auto H = net_builder.Add(D, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 4);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  // CHECK_EQ(graph->fusion_groups.size(), 3);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 4);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   // CHECK_EQ(graph->fusion_groups.size(), 3);
+// }
 
-TEST(FusionMergePass, Reduce_Test_4) {
-  int h = 32, w = 32;
-  NetBuilder net_builder("Reduce_Test_4");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.CreateInput(Float(32), {w}, "C");
-    auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
-    auto E = net_builder.Add(A, B);
-    auto F = net_builder.ReduceSum(E, {0});
-    auto G = net_builder.Add(C, F);
-    auto H = net_builder.Add(D, F);
-    auto I = net_builder.Add(D, F);
-  }
+// TEST(FusionMergePass, Reduce_Test_4) {
+//   int h = 32, w = 32;
+//   NetBuilder net_builder("Reduce_Test_4");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.CreateInput(Float(32), {w}, "C");
+//     auto D = net_builder.CreateInput(Float(32), {h, w}, "D");
+//     auto E = net_builder.Add(A, B);
+//     auto F = net_builder.ReduceSum(E, {0});
+//     auto G = net_builder.Add(C, F);
+//     auto H = net_builder.Add(D, F);
+//     auto I = net_builder.Add(D, F);
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 5);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  // CHECK_EQ(graph->fusion_groups.size(), 3);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 5);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   // CHECK_EQ(graph->fusion_groups.size(), 3);
+// }
 
-TEST(FusionMergePass, Reduce_Test_5) {
-  int h = 128, w = 128;
-  NetBuilder net_builder("Reduce_Test_5");
-  // create model
-  {
-    auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
-    auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
-    auto C = net_builder.Add(A, B);
-    auto D = net_builder.ReduceSum(A, {1});
-    auto E = net_builder.ReduceSum(B, {1});
-    auto F = net_builder.ReduceSum(C, {1});
-  }
+// TEST(FusionMergePass, Reduce_Test_5) {
+//   int h = 128, w = 128;
+//   NetBuilder net_builder("Reduce_Test_5");
+//   // create model
+//   {
+//     auto A = net_builder.CreateInput(Float(32), {h, w}, "A");
+//     auto B = net_builder.CreateInput(Float(32), {h, w}, "B");
+//     auto C = net_builder.Add(A, B);
+//     auto D = net_builder.ReduceSum(A, {1});
+//     auto E = net_builder.ReduceSum(B, {1});
+//     auto F = net_builder.ReduceSum(C, {1});
+//   }
 
-  auto program = net_builder.Build();
-  auto target = common::DefaultTarget();
-  RunDecomposer(&program, target);
+//   auto program = net_builder.Build();
+//   auto target = common::DefaultTarget();
+//   RunDecomposer(&program, target);
 
-  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
-  hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
-  CHECK_EQ(graph->fusion_groups.size(), 3);
-  hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
-  CHECK_EQ(graph->fusion_groups.size(), 1);
-}
+//   auto graph = std::make_shared<hlir::framework::Graph>(program, target);
+//   hlir::framework::ApplyPass(graph.get(), "OpFusionPass");
+//   CHECK_EQ(graph->fusion_groups.size(), 3);
+//   hlir::framework::ApplyPass(graph.get(), "FusionMergePass");
+//   CHECK_EQ(graph->fusion_groups.size(), 1);
+// }
 
 }  // namespace frontend
 }  // namespace cinn

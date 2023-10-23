@@ -38,7 +38,12 @@ struct VerticalFuseUtil {
     if (iter == map.end()) {
       return false;
     }
-    return iter->second(ctx, src, dst);
+    std::cerr << "src dst " << src.group_id() << "\t" << dst.group_id()
+              << std::endl;
+    std::cerr << "src sdst " << src.kind() << "\t" << dst.kind() << std::endl;
+    auto out = iter->second(ctx, src, dst);
+    std::cerr << "fuse result " << out << std::endl;
+    return out;
   }
 
   typedef bool (*ConditionT)(LightwareFusePassCtx* ctx,

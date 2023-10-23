@@ -30,6 +30,7 @@ class DefaultInputFusePass final : public InputFusePass {
   int Benefit() const override { return 100; }
 
   void operator()(InputFusePassCtx* ctx) const override {
+    std::cerr << "------------------------------------" << std::endl;
     const auto& consumer_set = ctx->PickConsumersWithSameInputs();
 
     const std::unordered_set<OpGroupPtr> consumer_candidates =
@@ -46,13 +47,15 @@ class DefaultInputFusePass final : public InputFusePass {
       return consumers;
     }();
     if (consumer_candidates.size() <= 1) {
+      std::cerr << "************************************\n";
       return;
     }
-
+    std::cerr << "#################################\n";
     std::vector<OpGroupList> fusionable_consumers;
     for (auto& candidate : consumer_candidates) {
       if (ctx->fuse_helper().IsConsumerSetsReachable(candidate,
                                                      consumer_candidates)) {
+        std::cerr << "%%%%%%%%%%%%%%%%%%%%%%%%%\n";
         continue;
       }
       if (fusionable_consumers.empty()) {
@@ -63,6 +66,7 @@ class DefaultInputFusePass final : public InputFusePass {
       bool fusionable = false;
       for (auto& groups : fusionable_consumers) {
         auto& last = groups.back();
+        std::cerr << "$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$\n";
         if (!HorizontalFuseUtil<InputFusePassCtx>::DetectFusabilityByKind(
                 ctx, candidate, last)) {
           continue;
@@ -80,6 +84,10 @@ class DefaultInputFusePass final : public InputFusePass {
 
     for (const auto& groups : fusionable_consumers) {
       if (groups.size() > 1) {
+        std::cerr << "!!!!!!!!!!!! <" << std::endl;
+        for (auto& g : groups) {
+          std::cerr << "@@@ !! " << g.group_id() << std::endl;
+        }
         ctx->MarkFusible(groups);
       }
     }

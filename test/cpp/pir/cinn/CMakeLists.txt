@@ -46,6 +46,17 @@ if(WITH_TESTING AND WITH_CINN)
               cinn_op_dialect)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
 
+  paddle_test(
+    test_pir_all_path
+    SRCS
+    pir_all_path_test.cc
+    DEPS
+    op_with_group_merge_pass
+    pd_build_cinn_pass
+    cinn_op_dialect
+    pd_op_to_cinn_op_convert_pass)
+  set_tests_properties(test_pir_all_path PROPERTIES LABELS "RUN_TYPE=CINN")
+
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
               pd_build_cinn_pass pir_pass)
   set_tests_properties(test_pir_build_cinn_pass PROPERTIES LABELS

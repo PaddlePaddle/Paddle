@@ -115,12 +115,17 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
+      std::cerr << "before op fusion" << std::endl;
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
+
+      std::cerr << "after op fusion" << std::endl;
 
       // fusion merge
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
+
+      std::cerr << "finish fusion merge" << std::endl;
 
       PADDLE_ENFORCE_EQ(group_list.size(),
                         1u,
@@ -147,6 +152,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+        for (size_t i = 0; i < group->nodes.size(); ++i) {
+          std::cerr << "grou nodes " << group->nodes[i]->name() << std::endl;
+        }
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
         group1->input_values = vec_ins;

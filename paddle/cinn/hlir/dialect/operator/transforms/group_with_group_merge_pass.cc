@@ -26,6 +26,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
+#include "paddle/cinn/common/is_reachable_predicator.h"
+
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
@@ -154,49 +156,45 @@ class GraphGroupFuseHelper final : public FuseHelper {
  private:
   bool IsReachableInDag(const OpGroupPtr& producer,
                         const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            Visit(node_producer);
+          }
+        };
+    ::cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   bool ReachableIfDirectEdgeIgnored(const OpGroupPtr& producer,
                                     const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         if (node == consumer && node_producer == producer) {
-    //           continue;
-    //         }
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            if (node == consumer && node_producer == producer) {
+              continue;
+            }
+            Visit(node_producer);
+          }
+        };
+    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   const FusePassCtxT* ctx_;
@@ -400,6 +398,10 @@ struct HorizontalFuseUtil {
   static bool DetectFusabilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
+    std::cerr << "src and dst " << src.group_id() << "\t" << dst.group_id()
+              << std::endl;
+    std::cerr << "src and dst kind " << src.kind() << "\t" << dst.kind()
+              << std::endl;
     const KindKeyT kind_pair(src.kind(), dst.kind());
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
@@ -407,6 +409,8 @@ struct HorizontalFuseUtil {
       return false;
     }
     auto out = iter->second(src, dst);
+
+    std::cerr << "fuse result " << out << std::endl;
     return out;
   }
 
@@ -481,7 +485,7 @@ struct HorizontalFuseUtil {
 
   static bool ReduceFuseReduce(const OpGroupPtr& src, const OpGroupPtr& dst) {
     // return ctx->fuse_helper().ReduceFuseReduce(src, dst);
-    return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+    return ReduceFuseReduce1(src, dst);
   }
 };
 
@@ -518,6 +522,7 @@ class DefaultInputFusePass final : public InputFusePass {
   int Benefit() const override { return 100; }
 
   void operator()(InputFusePassCtx* ctx) const override {
+    std::cerr << "=========================================\n";
     const auto& consumer_set = ctx->PickConsumersWithSameInputs();
 
     const std::unordered_set<OpGroupPtr> consumer_candidates =
@@ -553,6 +558,7 @@ class DefaultInputFusePass final : public InputFusePass {
                 ctx, candidate, last)) {
           continue;
         }
+        std::cerr << "push back herre !!!!!!!!!!!!!!!!!\n";
         groups.push_back(candidate);
         fusionable = true;
         break;
@@ -566,6 +572,10 @@ class DefaultInputFusePass final : public InputFusePass {
 
     for (const auto& groups : fusionable_consumers) {
       if (groups.size() > 1) {
+        // std::cerr << "!!!!!!!!!!!!!!!!!" << std::endl;
+        for (size_t i = 0; i < groups.size(); ++i) {
+          std::cerr << "groups " << groups[i].GetGroup()->group_id << std::endl;
+        }
         ctx->MarkFusible(groups);
       }
     }
@@ -1074,12 +1084,28 @@ class GeneralFusionMergePassHelper {
  private:
   void DoFusionMerge() {
     VLOG(3) << "DoFusionMerge...!";
+    std::cerr << "group size 1 " << fusion_groups_.size() << std::endl;
+    // for( size_t i = 0; i < fusion_groups_.size(); ++i )
+    // {
+    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
+    // }
     while (DoGeneralHorizontalFusion()) {
     }
+    std::cerr << "group size 2 " << fusion_groups_.size() << std::endl;
+    //  for( size_t i = 0; i < fusion_groups_.size(); ++i )
+    // {
+    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
+    // }
     while (DoGeneralVerticalFusion()) {
     }
+    std::cerr << "group size 3 " << fusion_groups_.size() << std::endl;
+    //  for( size_t i = 0; i < fusion_groups_.size(); ++i )
+    // {
+    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
+    // }
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
+    std::cerr << "group size 5 " << fusion_groups_.size() << std::endl;
   }
 
   bool DoGeneralHorizontalFusion() {
@@ -1135,20 +1161,30 @@ class GeneralFusionMergePassHelper {
       auto producer = fusion_groups_[idx];
       VLOG(3) << "Fusion Producer idx " << idx << " Group -> "
               << producer->group_id;
+      std::cerr << "group id " << producer->group_id << std::endl;
       // if producer is sub group.
       if (producer->belong_groups.size()) {
         continue;
       }
       // do horizontal fusion.
       bool recompute_success = GeneralRecomputeFuse(producer);
+      std::cerr << "recomput " << recompute_success << std::endl;
       updated |= recompute_success;
       if (!recompute_success) {
         updated |= GeneralVerticalFuse(producer);
+        std::cerr << "general vertical " << updated << std::endl;
       }
     }
 
     // fuse input consumers
+    for (auto& group : fusion_groups_) {
+      std::cerr << "!!!@@@ group id  " << group->group_id << std::endl;
+    }
     updated |= GeneralInputFuse();
+    for (auto& group : fusion_groups_) {
+      std::cerr << "@@@ group id  " << group->group_id << std::endl;
+    }
+    std::cerr << "update " << updated << std::endl;
 
     if (updated) {
       UpdateFusionGroup();
@@ -1157,12 +1193,17 @@ class GeneralFusionMergePassHelper {
   }
 
   void UpdateFusionGroup() {
+    std::cerr << "update fusion " << std::endl;
     VLOG(3) << "UpdateFusionGroup...";
+    for (auto& group : fusion_groups_) {
+      std::cerr << "!!! group id  " << group->group_id << std::endl;
+    }
     GroupList fusion_groups;
     std::unordered_set<GroupPtr, Hasher, Comparator> fusion_groups_set;
     // update fusion_groups_
     for (auto& group : fusion_groups_) {
       if (!group->belong_groups.size()) {
+        std::cerr << "group id " << group->group_id << std::endl;
         fusion_groups.push_back(group);
         fusion_groups_set.insert(group);
       }
@@ -1174,12 +1215,14 @@ class GeneralFusionMergePassHelper {
       bool is_ring = true;
       for (size_t idx = 0; idx < fusion_groups.size(); ++idx) {
         auto& group = fusion_groups[idx];
+        std::cerr << "id " << group->group_id << std::endl;
         if (!group.get()) {
           continue;
         }
 
         bool exist = false;
         for (const auto& producer : group->producer_groups()) {
+          std::cerr << "producer " << producer->group_id << std::endl;
           if (fusion_groups_set.count(producer)) {
             VLOG(4) << group->group_id << " " << producer->group_id;
             exist = true;
@@ -2083,10 +2126,14 @@ class GeneralFusionMergePassHelper {
 
       for (const auto& producer : group->producer_groups()) {
         CHECK(producer->belong_groups.size());
+        std::cerr << "add producer "
+                  << (*producer->belong_groups.begin())->group_id << std::endl;
         producers.insert(*producer->belong_groups.begin());
       }
 
       for (auto& consumer : *group->mut_consumer_groups()) {
+        std::cerr << "add comsumer "
+                  << (*consumer->belong_groups.begin())->group_id << std::endl;
         CHECK(consumer->belong_groups.size());
         consumers.insert(*consumer->belong_groups.begin());
       }
