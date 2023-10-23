@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,19 +14,14 @@
 
 #pragma once
 
-#include <vector>
+#include "paddle/pir/core/program.h"
 
-#include "paddle/phi/common/int_array.h"
-#include "paddle/phi/core/dense_tensor.h"
+namespace cinn {
+namespace dialect {
+namespace ir {
 
-namespace phi {
+std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program);
 
-template <typename T, typename Context>
-void FrobeniusNormKernel(const Context& ctx,
-                         const DenseTensor& x,
-                         const IntArray& axis,
-                         bool keep_dim,
-                         bool reduce_all,
-                         DenseTensor* out);
-
-}  // namespace phi
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn
