@@ -2768,7 +2768,7 @@ void ShuffleBatchInferMeta(const MetaTensor& x,
                            MetaTensor* out,
                            MetaTensor* shuffleidx,
                            MetaTensor* seed_out,
-                           MetaConfig config = MetaConfig()) {
+                           MetaConfig config) {
   out->set_dims(x.dims());
   out->set_layout(x.layout());
   seed_out->set_dims(seed.dims());
