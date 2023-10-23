@@ -71,12 +71,27 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
         input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     auto output_alloc_tensor_type =
         output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    int64_t in_numel = 1;
+    int64_t out_numel = 1;
+    for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
+      if (input_alloc_tensor_type.dims()[i] == -1) {
+        continue;
+      }
+      in_numel *= input_alloc_tensor_type.dims()[i];
+    }
+
+    for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
+      if (output_alloc_tensor_type.dims()[i] == -1) {
+        continue;
+      }
+      out_numel *= output_alloc_tensor_type.dims()[i];
+    }
     if (phi::SizeOf(paddle::dialect::TransToPhiDataType(
             input_alloc_tensor_type.dtype())) *
-            phi::product(input_alloc_tensor_type.dims()) <
+            in_numel <
         phi::SizeOf(paddle::dialect::TransToPhiDataType(
             output_alloc_tensor_type.dtype())) *
-            phi::product(output_alloc_tensor_type.dims())) {
+            out_numel) {
       VLOG(9) << "     -- input's numel < output's numel, can't do inplace";
       return false;
     }
