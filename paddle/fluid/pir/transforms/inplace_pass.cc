@@ -60,6 +60,10 @@ static bool CanBeDeleted(pir::Value value) {
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
                          pir::Value output) {
+  if (!input.type() || !output.type()) {
+    return false;
+  }
+
   if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
       output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     auto input_alloc_tensor_type =
