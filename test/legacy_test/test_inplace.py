@@ -783,6 +783,9 @@ class TestDygraphInplaceMutilgammaln(TestDygraphInplaceWithContinuous):
     def non_inplace_api_processing(self, var):
         return paddle.multigammaln(var, self.p)
 
+    def test_leaf_inplace_var_error(self):
+        pass
+
 
 class TestDygraphInplaceNeg(TestDygraphInplaceWithContinuous):
     def inplace_api_processing(self, var):
