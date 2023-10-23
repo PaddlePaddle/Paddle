@@ -976,7 +976,9 @@ class _ExecutorCache:
             else False
         )
 
-        if os.getenv("FLAGS_enable_new_ir_in_executor"):
+        if get_flags('FLAGS_enable_new_ir_in_executor')[
+            'FLAGS_enable_new_ir_in_executor'
+        ]:
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
             enable_addto = False

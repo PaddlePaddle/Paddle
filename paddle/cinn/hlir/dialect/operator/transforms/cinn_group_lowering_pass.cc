@@ -24,7 +24,7 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
@@ -97,7 +97,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
-  std::vector<cinn::hlir::framework::NewIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
 
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
@@ -122,7 +122,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
                             "Only support one group after group fusion"));
       for (auto group : group_list) {
         auto ir_compiler =
-            new cinn::hlir::framework::NewIRCompiler(*program, target, scope);
+            new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         auto group1 =
             std::make_shared<cinn::hlir::framework::newir::Group>(group->nodes);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});

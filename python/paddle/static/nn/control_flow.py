@@ -1350,7 +1350,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     def merge_every_var_list(false_vars, true_vars, name):
         return map_structure(partial(merge_func, name), false_vars, true_vars)
 
-    merged_output = list(
+    merged_output_fns = list(
         map(
             merge_every_var_list,
             _to_sequence_except_dict(false_output),
@@ -1358,6 +1358,7 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
             _to_sequence_except_dict(return_names),
         )
     )
+    merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
 
@@ -1487,13 +1488,7 @@ def select_input_with_buildin_type(inputs, mask, name):
 
     false_var, true_var = inputs
 
-    if isinstance(false_var, UndefinedVar) and isinstance(
-        true_var, UndefinedVar
-    ):
-        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
-        return None
-
-    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+    def start_select_input():
         try:
             return select_input(inputs, mask)
         except Exception as e:
@@ -1501,11 +1496,20 @@ def select_input_with_buildin_type(inputs, mask, name):
                 f"Exceptions throwed while doing select_input on {name}:\n{e}"
             )
 
+    if isinstance(false_var, UndefinedVar) and isinstance(
+        true_var, UndefinedVar
+    ):
+        """None -> UndefinedVar, so the real value is a [None, UndefinedVar] or [None, None], we just return None."""
+        return lambda: None
+
+    if isinstance(false_var, Variable) and isinstance(true_var, Variable):
+        return start_select_input
+
     elif isinstance(false_var, support_ret_buildin_type) and isinstance(
         false_var, type(true_var)
     ):
         if false_var == true_var:
-            return false_var
+            return lambda: false_var
         else:
             inputs = [
                 to_static_variable(false_var),
@@ -1532,12 +1536,6 @@ def select_input_with_buildin_type(inputs, mask, name):
         isinstance(true_var, UndefinedVar)
         and isinstance(false_var, (Variable,) + support_ret_buildin_type)
     ):
-
-        def create_var_if_not_undefined_var(a):
-            if isinstance(a, UndefinedVar):
-                return a
-            return to_static_variable(a)
-
         true_var, false_var = to_static_variable(true_var), to_static_variable(
             false_var
         )
@@ -1549,12 +1547,7 @@ def select_input_with_buildin_type(inputs, mask, name):
                 type(false_var), type(true_var)
             )
         )
-    try:
-        return select_input(inputs, mask)
-    except Exception as e:
-        raise RuntimeError(
-            f"Exceptions throwed while doing select_input on {name}:\n{e}"
-        )
+    return start_select_input
 
 
 def _is_sequence_except_dict(x):

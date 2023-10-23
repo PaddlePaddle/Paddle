@@ -3969,8 +3969,8 @@ void SqueezeWithXShapeInferMeta(const MetaTensor& x,
                                 MetaTensor* out,
                                 MetaTensor* xshape,
                                 MetaConfig config) {
-  SqueezeInferMeta(x, axes, out, config);
   const auto& x_dims = x.dims();
+  SqueezeInferMeta(x, axes, out, config);
   std::vector<int64_t> xshape_dims(x_dims.size() + 1);
   xshape_dims[0] = 0;
   for (int i = 0; i < x_dims.size(); ++i) {
