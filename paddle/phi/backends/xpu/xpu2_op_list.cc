@@ -651,7 +651,6 @@ XPUOpMap& get_kl2_ops() {
       {"reduce_min", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_prod",
        XPUKernelSet({phi::DataType::FLOAT32,
-                     phi::DataType::FLOAT16,
                      phi::DataType::INT32,
                      phi::DataType::INT64})},
       {"reduce_sum_grad", XPUKernelSet({phi::DataType::FLOAT32})},
