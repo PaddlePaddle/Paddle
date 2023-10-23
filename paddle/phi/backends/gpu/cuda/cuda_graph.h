@@ -36,6 +36,16 @@
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/optional.h"
 
+#if CUDA_VERSION < 11000
+// For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
+using cudaFunction_t = void *;
+cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
+                                const void *symbolPtr) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
+}
+#endif
+
 namespace phi {
 namespace backends {
 namespace gpu {
@@ -100,15 +110,6 @@ class CUDAKernelParams {
   void **kernelParams;
 };
 
-#if CUDA_VERSION < 11000
-// For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
-using cudaFunction_t = void *;
-cudaError_t cudaGetFuncBySymbol(cudaFunction_t *functionPtr,
-                                const void *symbolPtr) {
-  PADDLE_THROW(phi::errors::Unimplemented(
-      "cudaGetFuncBySymbol is only supported when CUDA version >= 11.0"));
-}
-#endif
 using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 
 //  ** class CUDAGraphNodeLauncher
