@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace cinn {
@@ -44,7 +44,7 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
   static constexpr char* kAttrName = "jit_info";
   static const char* attributes_name[attributes_num];
 
-  const hlir::framework::newir::CUDAJITInfo& cuda_jit_info();
+  const hlir::framework::pir::CUDAJITInfo& cuda_jit_info();
 
   void VerifySig();
 };

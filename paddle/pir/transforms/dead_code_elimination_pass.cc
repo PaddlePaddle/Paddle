@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
+
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
@@ -25,11 +26,12 @@ namespace {
 // Now just a naive implementation.
 class DeadCodeEliminationPass : public pir::Pass {
  public:
-  DeadCodeEliminationPass() : pir::Pass("dead_code_elimination", 0) {}
+  DeadCodeEliminationPass() : pir::Pass("dead_code_elimination_pass", 0) {}
 
   void Run(pir::Operation *op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "DcePass should run on module op.");
+    IR_ENFORCE(module_op,
+               "dead_code_elimination_pass should run on module op.");
     auto *block = module_op.block();
     std::vector<pir::Operation *> erased_op;
     for (auto &op : *block) {
@@ -76,4 +78,4 @@ std::unique_ptr<Pass> CreateDeadCodeEliminationPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(dead_code_elimination, DeadCodeEliminationPass);
+REGISTER_IR_PASS(dead_code_elimination_pass, DeadCodeEliminationPass);

@@ -1,5 +1,6 @@
 set(PATTERN_REWRITE_TEST_DEPS
-    _constant_folding_pass transform_general_functions gtest pd_op_dialect pir)
+    pd_constant_folding_pass transform_general_functions gtest pd_op_dialect
+    pir)
 
 if(WITH_DISTRIBUTE)
   set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor
@@ -19,20 +20,21 @@ cc_test_old(
   pd_op_dialect
   pir)
 cc_test_old(
-  drr_fuse_linear_test
-  SRCS
-  drr_fuse_linear_test.cc
-  DEPS
-  fused_gemm_epilogue_pass
-  drr
-  gtest
-  pd_op_dialect
-  pir)
-cc_test_old(
   drr_same_type_binding_test
   SRCS
   drr_same_type_binding_test.cc
   DEPS
+  drr
+  gtest
+  pd_op_dialect
+  pir)
+
+cc_test_old(
+  drr_fuse_linear_test
+  SRCS
+  drr_fuse_linear_test.cc
+  DEPS
+  fusion_passes
   drr
   gtest
   pd_op_dialect
@@ -42,6 +44,7 @@ cc_test_old(
   SRCS
   drr_attention_fuse_test.cc
   DEPS
+  fusion_passes
   drr
   gtest
   pd_op_dialect
