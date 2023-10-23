@@ -573,8 +573,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   }
   if (PyBytes_GET_SIZE(frame->f_code->co_exceptiontable)) {
     eval_frame_callback_set(callback);
-    auto out = eval_frame_default(tstate, frame, throw_flag);
-    return out;
+    return eval_frame_default(tstate, frame, throw_flag);
   }
   // PyFrame_FastToLocalsWithError receives a PyFrameObject, but if we created a
   // PyFrameObject from a PyInterpreterFrame, it will changes the original
