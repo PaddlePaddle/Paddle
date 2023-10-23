@@ -18,7 +18,6 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include "cuda_graph.h"
 
 namespace phi {
 namespace backends {

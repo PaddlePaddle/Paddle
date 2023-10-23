@@ -94,7 +94,7 @@ class CUDAKernelParams {
     return *reinterpret_cast<T *>(kernelParams[idx]);
   }
 
-  void **getParams() const { return kernelParams; };
+  void **getParams() const { return kernelParams; }
 
  private:
   void **kernelParams;

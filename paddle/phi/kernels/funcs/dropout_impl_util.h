@@ -47,15 +47,15 @@ inline bool GetSeedDataAndIncrement(const phi::GPUContext& dev_ctx,
     *seed_data = seed_offset.first;
     *increment = seed_offset.second;
     VLOG(10) << "GetSeedDataAndIncrement using IncrementOffset, Generator = "
-            << gen_cuda << " offset = " << offset
-            << " seed_data = " << (*seed_data)
-            << " increment = " << (*increment);
+             << gen_cuda << " offset = " << offset
+             << " seed_data = " << (*seed_data)
+             << " increment = " << (*increment);
     return false;
   } else {
     *seed_data = seed_val;
     *increment = offset;
     VLOG(10) << "GetSeedDataAndIncrement direct, seed_data = " << (*seed_data)
-            << " increment = " << (*increment);
+             << " increment = " << (*increment);
     return false;
   }
 }
