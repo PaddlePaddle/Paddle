@@ -509,7 +509,13 @@ class ProcessGroupMapFromGid {
 
   void insert(int gid, ProcessGroup* pg) { map_[gid] = pg; }
 
-  ProcessGroup* get(int gid) { return map_.find(gid)->second; }
+  ProcessGroup* get(int gid) {
+    auto it = map_.find(gid);
+    if (it == map_.end()) {
+      return nullptr;
+    }
+    return it->second;
+  }
 
   static std::shared_ptr<ProcessGroupMapFromGid> getInstance() {
     static auto s_instance = std::make_shared<ProcessGroupMapFromGid>();
