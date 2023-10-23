@@ -36,8 +36,8 @@ namespace drr {
 
 class DrrRewritePattern : public pir::RewritePattern {
  public:
-  explicit DrrRewritePattern( const std::string& pattern_name,
-                              const DrrPatternContext& drr_context,
+  explicit DrrRewritePattern(const std::string& pattern_name,
+                             const DrrPatternContext& drr_context,
                              pir::IrContext* context,
                              pir::PatternBenefit benefit = 1)
       : pir::RewritePattern(
@@ -62,11 +62,10 @@ class DrrRewritePattern : public pir::RewritePattern {
                          MatchContextImpl* source_pattern_match_ctx) const;
 
   std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>
-  FindCandidateIrOutputOp(
-      pir::Operation* op,
-      const OpCall* anchor,
-      const SourcePatternGraph& source_pattern_graph) const;
-      
+  FindCandidateIrOutputOp(pir::Operation* op,
+                          const OpCall* anchor,
+                          const SourcePatternGraph& source_pattern_graph) const;
+
   void DfsVisitor(
       const OpCall* drr_op,
       pir::Operation* ir_op,
@@ -74,12 +73,11 @@ class DrrRewritePattern : public pir::RewritePattern {
       std::unordered_set<const OpCall*>* drr_visited_ops,
       std::unordered_map<const OpCall*, std::unordered_set<pir::Operation*>>*
           output_op_bind_map) const;
-        
+
   bool MatchFromOutputToInput(
       std::unordered_map<const OpCall*, Operation*> output_op_map,
       const SourcePatternGraph& source_pattern_graph,
       const std::shared_ptr<MatchContextImpl>& source_pattern_match_ctx) const;
-
 
   void PatternGraphRewrite(const MatchContextImpl& source_pattern_match_ctx,
                            pir::PatternRewriter& rewriter) const;
@@ -98,11 +96,12 @@ class DrrRewritePattern : public pir::RewritePattern {
   void ReplaceOutputTensor(const MatchContextImpl& src_match_ctx,
                            const MatchContextImpl& res_match_ctx,
                            pir::PatternRewriter& rewriter) const;
-                           
+
   void DeleteSourcePatternOp(const SourcePatternGraph& source_pattern_graph,
                              const ResultPatternGraph& result_pattern_graph,
                              const MatchContextImpl& src_match_ctx,
                              pir::PatternRewriter& rewriter) const;  // NOLINT
+
  private:
   const std::string pattern_name_;
   const std::shared_ptr<SourcePatternGraph> source_pattern_graph_;

@@ -33,7 +33,8 @@ class DrrPatternBase {
     DrrPatternContext drr_context;
     this->operator()(&drr_context);
     std::string pattern_name = pir::get_type_name<DrrPattern>();
-    return std::make_unique<DrrRewritePattern>(pattern_name, drr_context, ir_context, benefit);
+    return std::make_unique<DrrRewritePattern>(
+        pattern_name, drr_context, ir_context, benefit);
   }
 };
 
