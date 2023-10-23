@@ -410,7 +410,7 @@ static std::pair<std::string, std::string> GetAttrType(
       ret = "std::vector<std::string>";
       if (is_arg) ret += "&";
       val += "{";
-      for (auto x : PADDLE_GET_CONST(std::vector<std::string>, attr)) {
+      for (auto const& x : PADDLE_GET_CONST(std::vector<std::string>, attr)) {
         val += "\"" + x + "\"" + ",";
       }
       if (val.size() > 1) val.pop_back();
@@ -1238,7 +1238,7 @@ static std::string GenerateGradNodeCreationContent(
       bool found_target_name = false;
       for (const auto& iter : op_base_infos) {
         const auto& grad_outs_slot_map = iter.GetGradOutsSlotnameMap();
-        for (auto iter : grad_outs_slot_map) {
+        for (auto const& iter : grad_outs_slot_map) {
           if ((!found_target_name) && (input_name == iter.second)) {
             const char* SET_GRAD_OUT_META_TEMPLATE =
                 "      grad_node->SetGradOutMeta(%s, %d);\n";
@@ -1256,7 +1256,7 @@ static std::string GenerateGradNodeCreationContent(
       bool found_target_name = false;
       for (const auto& iter : op_base_infos) {
         const auto& grad_outs_slot_map = iter.GetGradOutsSlotnameMap();
-        for (auto iter : grad_outs_slot_map) {
+        for (auto const& iter : grad_outs_slot_map) {
           if ((!found_target_name) && (input_name == iter.second)) {
             const char* SET_GRAD_OUT_META_TEMPLATE =
                 "      grad_node->SetGradOutMeta(%s, %d);\n";
@@ -1877,6 +1877,18 @@ static std::pair<std::string, std::string> GenerateForwardFunctionContents(
   trace_op_body_str += trace_op_str;
   trace_op_body_str += "\n";
 
+  // [Generation] Log memory infomation
+  const char* LOG_MEMORY_INFO_TEMPLATE =
+      " // Log memory information\n"
+      "  "
+      "paddle::memory::LogDeviceMemoryStats(egr::Controller::Instance()."
+      "GetExpectedPlace(), \"%s\");\n";
+  std::string log_memory_info_str =
+      paddle::string::Sprintf(LOG_MEMORY_INFO_TEMPLATE, op_type);
+
+  trace_op_body_str += log_memory_info_str;
+  trace_op_body_str += "\n";
+
   VLOG(6) << "Generated AttrMap & TraceOp";
 
   // [Generation] Convert output VarBase to Vector/Tensor
@@ -2142,7 +2154,7 @@ static std::string GenerateSingleOpBase(
   // [Generation] Get Full Zero
   std::string fill_zero_str = "";
   if (ops_to_fill_zero_for_empty_grads.count(fwd_op_type)) {
-    for (auto iter : grad_ins) {
+    for (auto const& iter : grad_ins) {
       const std::string& grad_input_name = iter.first;
       if (grad_ins_grad_slotname_map.count(grad_input_name)) {
         size_t fwd_output_position = fwd_outputs_name_pos_map.at(
@@ -2189,7 +2201,7 @@ static std::string GenerateSingleOpBase(
       "backward_inplace_tensor" + std::to_string(*outs_size);
   bool process_backward_inplace = false;
   std::string ins_contents_str = "";
-  for (auto iter : grad_ins) {
+  for (auto const& iter : grad_ins) {
     const std::string& grad_input_name = iter.first;
 
     if (grad_ins_fwd_slotname_map.count(grad_input_name)) {
@@ -2293,7 +2305,7 @@ static std::string GenerateSingleOpBase(
       paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_name, ins_contents_str);
   generated_grad_function_body += ins_map_str;
 
-  for (auto iter : grad_ins) {
+  for (auto const& iter : grad_ins) {
     const std::string& grad_input_name = iter.first;
 
     if (grad_ins_fwd_slotname_map.count(grad_input_name)) {
@@ -2335,7 +2347,7 @@ static std::string GenerateSingleOpBase(
   VLOG(6) << "Generated Ins Map";
   // [Generation] Get Outs Map
   std::string outs_contents_str = "";
-  for (auto iter : grad_outs) {
+  for (auto const& iter : grad_outs) {
     const std::string& grad_output_name = iter.first;
 
     if (grad_outs_slotname_map.count(grad_output_name)) {
@@ -2440,7 +2452,7 @@ static std::string GenerateSingleOpBase(
   generated_grad_function_body += outs_map_str;
   generated_grad_function_body += outs_contents_str;
   generated_grad_function_body += "\n";
-  for (auto iter : grad_outs) {
+  for (auto const& iter : grad_outs) {
     const std::string& grad_output_name = iter.first;
 
     if (grad_outs_slotname_map.count(grad_output_name)) {
@@ -2498,7 +2510,7 @@ static std::string GenerateSingleOpBase(
         "%s[\"%s\"][0]);\n"
         "  };\n";
     std::string backward_inplace_map_str = "";
-    for (auto iter : backward_inplace_map) {
+    for (auto const& iter : backward_inplace_map) {
       std::string backward_inplace_input_name = iter.first;
       std::string backward_inplace_output_name = iter.second;
       backward_inplace_map_str += paddle::string::Sprintf(
@@ -2553,7 +2565,7 @@ static std::string GenerateSingleOpBase(
   // [Generation] Get Return
   std::string outputs_str = "";
   size_t num_appended_outputs = 0;
-  for (auto iter : grad_outs) {
+  for (auto const& iter : grad_outs) {
     const std::string& grad_out_name = iter.first;
     const std::string& fwd_name = grad_outs_slotname_map.at(grad_out_name);
 
@@ -2594,7 +2606,7 @@ static std::string GenerateSingleOpBase(
 
   /* Handle Special Case: "PullSparseOp", etc
      For returns, append "GradOut" to the very end of return list. */
-  for (auto iter : grad_outs) {
+  for (auto const& iter : grad_outs) {
     const std::string& grad_out_name = iter.first;
     const std::string& fwd_name = grad_outs_slotname_map.at(grad_out_name);
 
@@ -2968,6 +2980,7 @@ static std::string GenerateDygraphHFileIncludes() {
       "#pragma once\n"
       "#include \"glog/logging.h\"\n"
       "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
+      "#include \"paddle/fluid/memory/stats.h\"\n"
       "#include \"paddle/phi/api/all.h\"\n"
       "#include \"paddle/fluid/eager/utils.h\"\n"
       "#include \"paddle/fluid/imperative/tracer.h\"\n"

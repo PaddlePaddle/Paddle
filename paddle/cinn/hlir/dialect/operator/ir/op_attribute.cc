@@ -19,7 +19,13 @@ namespace dialect {
 const GroupInfo &GroupInfoAttribute::data() const {
   return storage()->GetAsKey();
 }
+
+const cinn::hlir::framework::pir::CUDAJITInfo &CUDAJITInfoAttribute::data()
+    const {
+  return storage()->GetAsKey();
+}
 }  // namespace dialect
 }  // namespace cinn
 
 IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::GroupInfoAttribute)
+IR_DEFINE_EXPLICIT_TYPE_ID(cinn::dialect::CUDAJITInfoAttribute)

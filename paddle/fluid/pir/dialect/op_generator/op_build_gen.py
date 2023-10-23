@@ -21,6 +21,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReduceIntArrayAxisInferMeta',
     'ReshapeWithXShapeInferMeta',
     'SliceRawInferMeta',
+    'StackInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
@@ -144,6 +145,7 @@ mutable_attribute_phi_type_maps = {
     'int': 'phi::DataType::INT32',
     'int64_t': 'phi::DataType::INT64',
     'float': 'phi::DataType::FLOAT32',
+    'double': 'phi::DataType::FLOAT64',
     'std::vector<int64_t>': 'phi::DataType::INT64',
     'const std::vector<int64_t>&': 'phi::DataType::INT64',
     'bool': 'phi::DataType::BOOL',
@@ -694,41 +696,36 @@ def gen_build_func_str(
     )
 
     GET_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<{attr_ir_type}>().data();
 """
     GET_STR_ATTRIBUTES_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<pir::StrAttribute>().AsString();
 """
     GET_ARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name};
   for (size_t i = 0; i < attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().size(); i++) {{
     {attribute_name}.push_back(attributes.at("{attribute_name}").dyn_cast<pir::ArrayAttribute>().at(i).dyn_cast<{inner_type}>().{data_name}());
   }}
 """
     GET_INTARRAY_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::IntArrayAttribute>().data().GetData();
 """
     GET_SCALAR_ATTRIBUTE_FROM_MAP_TEMPLATE = """
-  PADDLE_ENFORCE(
+  IR_ENFORCE(
       attributes.find("{attribute_name}") != attributes.end(),
-      phi::errors::NotFound(
-          "'{attribute_name}' Attribute is expected for {op_name}. "));
+          "'{attribute_name}' Attribute is expected for {op_name}. ");
   {attr_type} {attribute_name} = attributes.at("{attribute_name}").dyn_cast<paddle::dialect::ScalarAttribute>().data().to<{attr_type}>();
 """
 

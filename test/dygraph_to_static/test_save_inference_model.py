@@ -17,7 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -38,7 +42,7 @@ class SimpleFcLayer(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -65,7 +69,7 @@ class SimplePyLayerNet(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         y = self._linear(x)
         out = cus_tanh.apply(y)
@@ -73,6 +77,7 @@ class SimplePyLayerNet(paddle.nn.Layer):
         return loss, out
 
 
+@dy2static_unittest
 class TestDyToStaticSaveInferenceModel(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -223,6 +228,7 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         return np.array(results[0])
 
 
+@dy2static_unittest
 class TestPartialProgramRaiseError(unittest.TestCase):
     @ast_only_test
     @test_and_compare_with_new_ir(False)

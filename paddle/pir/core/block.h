@@ -84,6 +84,7 @@ class IR_API Block {
   ArgsIterator args_end() { return arguments_.end(); }
   bool args_empty() const { return arguments_.empty(); }
   uint32_t args_size() const { return arguments_.size(); }
+  const BlockArgListType &args() const { return arguments_; }
   BlockArgument argument(uint32_t index) { return arguments_[index]; }
   Type argument_type(uint32_t index) const { return arguments_[index].type(); }
   void ClearArguments();

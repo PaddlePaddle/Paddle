@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
     ast_only_test,
-    dy2static_unittest,
     test_and_compare_with_new_ir,
 )
 from test_fetch_feed import Linear
@@ -57,8 +57,7 @@ def fake_data(shape):
     return base.dygraph.to_variable(x_data)
 
 
-@dy2static_unittest
-class TestWithNestedInput(unittest.TestCase):
+class TestWithNestedInput(Dy2StTestBase):
     def setUp(self):
         self.x = None
         self.y = None
@@ -82,7 +81,9 @@ class TestWithNestedInput(unittest.TestCase):
                 self.fake_input()
 
             if to_static:
-                out = paddle.jit.to_static(nested_input)(self.x, self.y)
+                out = paddle.jit.to_static(nested_input, full_graph=True)(
+                    self.x, self.y
+                )
             else:
                 out = nested_input(self.x, self.y)
 
@@ -95,8 +96,7 @@ class TestWithNestedInput(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-@dy2static_unittest
-class TestWithNestedOutput(unittest.TestCase):
+class TestWithNestedOutput(Dy2StTestBase):
     def setUp(self):
         self.x = None
         self.y = None
@@ -108,7 +108,9 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.y = fake_data([10, 16])
 
             if to_static:
-                out = paddle.jit.to_static(nested_output)(self.x, self.y)
+                out = paddle.jit.to_static(nested_output, full_graph=True)(
+                    self.x, self.y
+                )
             else:
                 out = nested_output(self.x, self.y)
 
@@ -133,14 +135,13 @@ class TestWithNestedOutput(unittest.TestCase):
                 self.assertTrue(dy_var, st_var)
 
 
-@dy2static_unittest
-class TestWithTrainAndEval(unittest.TestCase):
+class TestWithTrainAndEval(Dy2StTestBase):
     @ast_only_test
     @test_and_compare_with_new_ir(False)
     def test_switch_eval_and_train(self):
         with base.dygraph.guard():
             linear_net = Linear()
-            linear_net = paddle.jit.to_static(linear_net)
+            linear_net = paddle.jit.to_static(linear_net, full_graph=True)
             x_data = np.random.random((4, 10)).astype('float32')
             x = base.dygraph.to_variable(x_data)
             linear_net(x)
@@ -167,14 +168,13 @@ class TestWithTrainAndEval(unittest.TestCase):
             )
 
 
-@dy2static_unittest
-class TestWithNoGrad(unittest.TestCase):
+class TestWithNoGrad(Dy2StTestBase):
     @ast_only_test
     @test_and_compare_with_new_ir(False)
     def test_with_no_grad(self):
         with base.dygraph.guard():
             linear_net = Linear()
-            linear_net = paddle.jit.to_static(linear_net)
+            linear_net = paddle.jit.to_static(linear_net, full_graph=True)
             x_data = np.random.random((5, 10)).astype('float32')
             x = base.dygraph.to_variable(x_data)
 
@@ -197,15 +197,14 @@ class GPT2LMHeadModel(paddle.nn.Layer):
             np.random.rand(2, 3).astype('float32')
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         x = paddle.reshape(x, shape=[-1, 6])
         x1, x2, x3 = paddle.split(x=x, axis=1, num_or_sections=3)
         return x1
 
 
-@dy2static_unittest
-class TestPruneUnusedParamInProgram(unittest.TestCase):
+class TestPruneUnusedParamInProgram(Dy2StTestBase):
     @test_and_compare_with_new_ir(False)
     def test_prune(self):
         input_ids = np.array([[15, 11, 6, 3, 18, 13]]).astype("float32")

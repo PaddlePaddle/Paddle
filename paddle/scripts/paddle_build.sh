@@ -932,6 +932,95 @@ set -ex
     fi
 }
 
+function check_run_sot_ci() {
+    set +x
+    # use "git commit -m 'message, test=sot'" to force ci to run
+    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s" | grep -w "test=sot" || true)
+    # check pr title
+    TITLE_RUN_CI=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
+    if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]]; then
+        set -x
+        return
+    fi
+
+    # git diff
+    SOT_FILE_LIST=(
+        paddle/fluid/operators/run_program_op.h
+        paddle/fluid/operators/run_program_op.cu
+        paddle/fluid/operators/run_program_op.cc
+        paddle/fluid/eager/to_static
+        paddle/fluid/pybind/
+        python/
+        test/sot
+    )
+
+    run_sot_ut="OFF"
+    for change_file in $(git diff --name-only upstream/develop);
+    do
+        for sot_file in ${SOT_FILE_LIST[@]};
+        do
+            if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
+                echo "Detect change about SOT: "
+                echo "Changes related to the sot code were detected: " ${change_file}
+                run_sot_ut="ON"
+                break
+            fi
+        done
+        if [[ "ON" == ${run_sot_ut} ]]; then
+            break
+        fi
+    done
+
+    if [[ "OFF" == ${run_sot_ut} ]]; then
+        echo "No SOT-related changes were found"
+        echo "Skip SOT UT CI"
+        exit 0
+    fi
+    set -x
+}
+
+function run_sot_test() {
+    PY_VERSION=$1
+    PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
+    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+
+    export STRICT_MODE=1
+    export COST_MODEL=False
+    export MIN_GRAPH_SIZE=0
+    export SOT_LOG_LEVEL=0
+
+    # Install PaddlePaddle
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
+    # Install PaddleSOT
+    cd $PADDLE_ROOT/test/sot/
+
+    # Run unittest
+    failed_tests=()
+
+    for file in ./test_*.py; do
+        # check file is python file
+        if [ -f "$file" ]; then
+            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            # run unittests
+            python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
+
+            if [ $? -ne 0 ]; then
+                echo "run $file failed"
+                failed_tests+=("$file")
+                echo -e "$python_output"
+            fi
+        fi
+    done
+
+    if [ ${#failed_tests[@]} -ne 0 ]; then
+        echo "failed tests file:"
+        for failed_test in "${failed_tests[@]}"; do
+            echo "$failed_test"
+        done
+        exit 1
+    fi
+}
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -1317,6 +1406,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
+    
+        exit 102
         disable_ut_quickly='disable_ut'
     fi
 }
@@ -2350,6 +2441,11 @@ set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
@@ -3285,21 +3381,23 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        cp -r ${PADDLE_ROOT}/build /tmp/
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
-    
+
     generate_api_spec "$1" "DEV"
 
 }
@@ -3555,7 +3653,7 @@ EOF
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
     export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
-    
+
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -3568,7 +3666,7 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    
+
     # reset ccache zero stats for collect PR's actual hit rate
     if [ "${MAX_JOBS}" == "" ]; then
         export MAX_JOBS=${parallel_number}
@@ -3845,7 +3943,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-    
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -4076,6 +4174,18 @@ function main() {
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_sot)
+        check_run_sot_ci
+        export WITH_SHARED_PHI=ON
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
+            ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+            ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+            run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+            run_sot_test $PY_VERSION
+            rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+        done
         ;;
       build_gpubox)
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}

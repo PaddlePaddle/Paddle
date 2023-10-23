@@ -35,7 +35,73 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+        assert len(str(mappings)) > 0, "no mapping found"
+
+
+class TestCondWithInplace(unittest.TestCase):
+    def test_op(self):
+        def cond_with_inplace():
+            x = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            y = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            running_variance = paddle.to_tensor([1], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+            if x > y:
+                y = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
+            else:
+                y = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
+
+        legacy_program = paddle.jit.to_static(
+            cond_with_inplace,
+            input_spec=[],
+            full_graph=True,
+        )
+
+        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        assert l is not None
+
+    def test_nested_op(self):
+        def cond_with_inplace():
+            x = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            y = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            z = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            running_variance = paddle.to_tensor([1], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+            if x > y:
+                if y > z:
+                    z = paddle.nn.functional.batch_norm(
+                        z, running_mean, running_variance, weight, bias
+                    )
+                else:
+                    y = paddle.nn.functional.batch_norm(
+                        x, running_mean, running_variance, weight, bias
+                    )
+            else:
+                if y > z:
+                    z = paddle.nn.functional.batch_norm(
+                        z, running_mean, running_variance, weight, bias
+                    )
+                else:
+                    y = paddle.nn.functional.batch_norm(
+                        x, running_mean, running_variance, weight, bias
+                    )
+
+        legacy_program = paddle.jit.to_static(
+            cond_with_inplace,
+            input_spec=[],
+            full_graph=True,
+        )
+
+        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        assert l is not None
 
 
 class TestElementwiseOpTranscriber(unittest.TestCase):
@@ -99,6 +165,27 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                     rtol=1e-6,
                     atol=1e-6,
                 )
+
+    def test_add_inplace(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+        exe = paddle.static.Executor(place)
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('elementwise_add')
+                helper.append_op(
+                    type="elementwise_add",
+                    inputs={"X": x, "Y": y},
+                    outputs={"Out": y},
+                    attrs={"axis": -1},
+                )
+        _ = pir.translate_to_new_ir(main_program.desc)
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -406,6 +493,30 @@ class TestSetValueOp(unittest.TestCase):
                 fetch_list = [x.grad_name, value.grad_name]
                 ret = exe.run(main_program, fetch_list=fetch_list)
                 self.assertTrue((ret[0][6:0:-4] == 0).all())
+
+
+class TestShareBufferOpTranscriber(unittest.TestCase):
+    def test_program(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                x = paddle.ones(shape=(100, 2, 3), dtype='float32')
+                y = paddle.ones(shape=(100, 2, 3), dtype='float32')
+
+                helper = LayerHelper('share_buffer')
+                helper.append_op(
+                    type="share_buffer",
+                    inputs={"X": x},
+                    outputs={"Out": y, "XOut": x},
+                )
+        l = pir.translate_to_new_ir(main_program.desc)
+        assert (
+            l.global_block().ops[2].name() == "pd_op.share_data"
+        ), "share_buffer should be translated to share_data"
 
 
 class TestCheckUnregisteredOp(unittest.TestCase):
