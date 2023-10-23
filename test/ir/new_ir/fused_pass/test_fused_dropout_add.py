@@ -52,7 +52,6 @@ class TestFusedDropoutAdd(unittest.TestCase):
                     feed={"x": x_np, "y": y_np},
                     fetch_list=[res3],
                 )
-                print("res2 = ", fetches[0])
 
     def test_fused_dropout_add_grad(self):
         with paddle.pir_utils.IrGuard():
@@ -90,7 +89,6 @@ class TestFusedDropoutAdd(unittest.TestCase):
                 )  # apply pass to elimitate dead code
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
-                print(main_program)
                 self.assertTrue(
                     'pd_op.fused_dropout_add' in op_names
                     and 'pd_op.fused_dropout_add_grad' in op_names
