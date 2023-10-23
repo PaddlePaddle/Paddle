@@ -59,7 +59,6 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
     Graph* graph,
     std::unordered_map<const Node*, int>* nodes_keep_counter) const {
   GraphPatternDetector gpd;
-  LOG(INFO) << "DequantQuantSquash COME IN";
   patterns::DequantQuantXPUAny squash_pattern{gpd.mutable_pattern(),
                                               "dequant_quant_xpu_any"};
   squash_pattern();
@@ -90,7 +89,6 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
     // check if dequantize op should be kept or removed, decrease the counter
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
 
-    int equal = dequant_scale == quant_scale ? 1 : 0;
     if (dequant_scale == quant_scale) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();

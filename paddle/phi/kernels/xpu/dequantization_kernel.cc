@@ -19,7 +19,7 @@ namespace phi {
 template <typename TX, typename TY, typename Context>
 void DeQuantizeKernelImpl(const Context& ctx,
                           const DenseTensor& x,
-                          const paddle::optional<DenseTensor>& max,
+                          float scale,
                           DenseTensor* y) {
   using XPUInX = typename XPUTypeTrait<TX>::Type;
   using XPUOutY = typename XPUTypeTrait<TY>::Type;
@@ -27,9 +27,12 @@ void DeQuantizeKernelImpl(const Context& ctx,
   auto* y_data = ctx.template Alloc<TY>(y);
   const auto* x_data = x.data<TX>();
   int64_t len = x.numel();
-  const float* max_data =
-      max.get_ptr() == nullptr ? nullptr : max->data<float>();
-  int r = xpu::dequantization<XPUInX, XPUOutY>(
+  int max_ptr_size = ctx.x_context()->max_ptr_size();
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  auto max_data = RAII_GUARD.alloc_l3_or_gm<float>(max_ptr_size);
+  int r = xpu::constant<float>(ctx.x_context(), max_data, max_ptr_size, scale);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
+  r = xpu::dequantization<XPUInX, XPUOutY>(
       ctx.x_context(),
       reinterpret_cast<const XPUInX*>(x_data),
       reinterpret_cast<XPUOutY*>(y_data),
@@ -41,16 +44,15 @@ void DeQuantizeKernelImpl(const Context& ctx,
 template <typename T, typename Context>
 void DeQuantizeKernel(const Context& ctx,
                       const DenseTensor& x,
-                      const paddle::optional<DenseTensor>& max,
                       DataType out_dtype,
                       float scale,
                       DenseTensor* y) {
   switch (out_dtype) {
     case DataType::FLOAT32:
-      DeQuantizeKernelImpl<T, float, Context>(ctx, x, max, y);
+      DeQuantizeKernelImpl<T, float, Context>(ctx, x, scale, y);
       break;
     case DataType::FLOAT16:
-      DeQuantizeKernelImpl<T, dtype::float16, Context>(ctx, x, max, y);
+      DeQuantizeKernelImpl<T, dtype::float16, Context>(ctx, x, scale, y);
       break;
     default:
       PADDLE_THROW(phi::errors::Unavailable(

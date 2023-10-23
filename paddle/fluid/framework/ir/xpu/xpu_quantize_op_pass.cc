@@ -66,31 +66,11 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
   quantize_out_node->Var()->SetDataType(
       proto::VarType::Type::VarType_Type_INT8);
 
-  // Create quantize max_ptr node
-  float scale = GetScaleValueForNode(&var_quant_scales_, input);
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-  std::string input_max_name = input->Name() + "_quantize_max";
-  VarDesc input_max_desc(input_max_name);
-  input_max_desc.SetPersistable(true);
-  input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
-  input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-  Node* input_max_node = g->CreateVarNode(&input_max_desc);
-  auto input_max_tensor =
-      scope->Var(input_max_name)->GetMutable<phi::DenseTensor>();
-  input_max_tensor->set_type(phi::DataType::FLOAT32);
-  input_max_tensor->Resize({max_ptr_size});
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  std::vector<float> input_scales(max_ptr_size, scale);
-  memcpy(cpu_ctx->Alloc<float>(input_max_tensor),
-         input_scales.data(),
-         max_ptr_size * sizeof(float));
-
   // Create a quantize op node
+  float scale = GetScaleValueForNode(&var_quant_scales_, input);
   OpDesc q_desc;
   q_desc.SetType("quantize_xpu");
   q_desc.SetInput("x", std::vector<std::string>({input->Name()}));
-  q_desc.SetInput("max", std::vector<std::string>({input_max_name}));
   q_desc.SetOutput("y", std::vector<std::string>({quantize_out_node->Name()}));
   q_desc.SetAttr("out_dtype",
                  static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
@@ -104,7 +84,6 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
   // Link quantize op
   UnlinkNodes(input, op);
   IR_NODE_LINK_TO(input, quantize_op);
-  IR_NODE_LINK_TO(input_max_node, quantize_op);
   IR_NODE_LINK_TO(quantize_op, quantize_out_node);
   IR_NODE_LINK_TO(quantize_out_node, op);
 }
@@ -131,32 +110,12 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
   dequantize_in_node->Var()->SetDataType(
       proto::VarType::Type::VarType_Type_INT8);
 
-  // Create dequantize max_ptr node
   float scale = GetScaleValueForNode(&var_quant_scales_, output);
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-  std::string input_max_name = output->Name() + "_dequantize_max";
-  VarDesc input_max_desc(input_max_name);
-  input_max_desc.SetPersistable(true);
-  input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
-  input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-  Node* input_max_node = g->CreateVarNode(&input_max_desc);
-  auto input_max_tensor =
-      scope->Var(input_max_name)->GetMutable<phi::DenseTensor>();
-  input_max_tensor->set_type(phi::DataType::FLOAT32);
-  input_max_tensor->Resize({max_ptr_size});
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  std::vector<float> input_scales(max_ptr_size, scale);
-  memcpy(cpu_ctx->Alloc<float>(input_max_tensor),
-         input_scales.data(),
-         max_ptr_size * sizeof(float));
-
   // Create a quantize op node
   OpDesc deq_desc;
   deq_desc.SetType("dequantize_xpu");
   deq_desc.SetInput("x",
                     std::vector<std::string>({dequantize_in_node->Name()}));
-  deq_desc.SetInput("max", std::vector<std::string>({input_max_name}));
   deq_desc.SetOutput("y", std::vector<std::string>({output->Name()}));
   deq_desc.SetAttr("out_dtype", static_cast<int>(output->Var()->GetDataType()));
   deq_desc.SetAttr("scale", static_cast<float>(scale));
@@ -170,7 +129,6 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
   UnlinkNodes(op, output);
   IR_NODE_LINK_TO(op, dequantize_in_node);
   IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
-  IR_NODE_LINK_TO(input_max_node, dequantize_op);
   IR_NODE_LINK_TO(dequantize_op, output);
 }
 

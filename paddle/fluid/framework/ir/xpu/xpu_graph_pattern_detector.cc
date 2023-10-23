@@ -57,9 +57,6 @@ PDNode *patterns::DequantQuantXPUAny::operator()() {
   auto *dequant_in = pattern->NewNode(dequant_in_repr())
                          ->AsInput()
                          ->assert_is_op_input("dequantize_xpu", "x");
-  auto *dequant_max_in = pattern->NewNode(dequant_max_in_repr())
-                             ->AsInput()
-                             ->assert_is_op_input("dequantize_xpu", "max");
 
   auto *dequant_op =
       pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize_xpu");
@@ -67,9 +64,6 @@ PDNode *patterns::DequantQuantXPUAny::operator()() {
   auto *dequant_out = pattern->NewNode(dequant_out_repr())
                           ->AsOutput()
                           ->assert_is_op_output("dequantize_xpu", "y");
-
-  auto *quant_max_in = pattern->NewNode(quant_max_in_repr())
-                           ->assert_is_op_input("quantize_xpu", "max");
 
   auto *quant_op = pattern->NewNode(quant_op_repr())
                        ->assert_is_op("quantize_xpu")
@@ -81,8 +75,8 @@ PDNode *patterns::DequantQuantXPUAny::operator()() {
 
   auto *next_op = pattern->NewNode(next_op_repr())->assert_is_op();
 
-  dequant_op->LinksFrom({dequant_in, dequant_max_in}).LinksTo({dequant_out});
-  quant_op->LinksFrom({dequant_out, quant_max_in}).LinksTo({quant_out});
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
+  quant_op->LinksFrom({dequant_out}).LinksTo({quant_out});
   next_op->LinksFrom({quant_out});
 
   return quant_out;
@@ -92,10 +86,6 @@ PDNode *patterns::OpDequantXPU::operator()() {
   auto any_op = pattern->NewNode(any_op_repr())->assert_is_op();
   auto *dequant_in = pattern->NewNode(dequant_in_repr())
                          ->assert_is_op_input("dequantize_xpu", "x");
-
-  auto *dequant_max_in = pattern->NewNode(dequant_max_in_repr())
-                             ->AsInput()
-                             ->assert_is_op_input("dequantize_xpu", "max");
   auto *dequant_op =
       pattern->NewNode(dequant_op_repr())->assert_is_op("dequantize_xpu");
   auto dequant_out = pattern->NewNode(dequant_out_repr())
@@ -103,7 +93,7 @@ PDNode *patterns::OpDequantXPU::operator()() {
                          ->assert_is_op_output("dequantize_xpu", "y");
 
   any_op->LinksTo({dequant_in});
-  dequant_op->LinksFrom({dequant_in, dequant_max_in}).LinksTo({dequant_out});
+  dequant_op->LinksFrom({dequant_in}).LinksTo({dequant_out});
   return dequant_out;
 }
 
