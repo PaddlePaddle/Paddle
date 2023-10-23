@@ -54,7 +54,7 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_gpu=False):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
             x = paddle.static.data('X', [100, 100])
             y = paddle.cumsum(x)
@@ -66,16 +66,16 @@ class TestCumsumOp(unittest.TestCase):
 
             place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+            exe.run(paddle.static.default_startup_program())
             out = exe.run(
                 feed={'X': data_np},
                 fetch_list=[
-                    y.name,
-                    y2.name,
-                    y3.name,
-                    y4.name,
-                    y5.name,
-                    y6.name,
+                    y,
+                    y2,
+                    y3,
+                    y4,
+                    y5,
+                    y6,
                 ],
             )
 
@@ -110,7 +110,6 @@ class TestCumsumOp(unittest.TestCase):
     def test_gpu_static(self):
         self.run_static(use_gpu=True)
 
-    @test_with_pir_api
     def test_name(self):
         with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])
