@@ -36,7 +36,7 @@ class TestFusedDropoutAdd(unittest.TestCase):
                 self.assertTrue('pd_op.add' in op_names)
                 pm = paddle.pir.PassManager()
                 pm.add_pass(
-                    'fused_dropout_add'
+                    'fused_dropout_add_pass'
                 )  # apply pass to elimitate dead code
                 pm.run(main_program)
                 op_names = [op.name() for op in main_program.global_block().ops]
