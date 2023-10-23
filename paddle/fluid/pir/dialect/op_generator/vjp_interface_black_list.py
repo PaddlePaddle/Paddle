@@ -24,7 +24,6 @@
 
 
 vjp_interface_black_list = [
-    'frobenius_norm',
     'write_to_array',
     'fused_attention',
     'fused_feedforward',
