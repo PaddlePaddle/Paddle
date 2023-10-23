@@ -44,7 +44,7 @@ class CUDAJITInfoAttribute : public pir::Attribute {
     return storage() < right.storage();
   }
 
-  const cinn::hlir::framework::newir::CUDAJITInfo& data() const;
+  const cinn::hlir::framework::pir::CUDAJITInfo& data() const;
 };
 
 }  // namespace dialect

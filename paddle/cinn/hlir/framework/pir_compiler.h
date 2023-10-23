@@ -28,11 +28,11 @@ namespace framework {
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
-class NewIRCompiler final {
+class PIRCompiler final {
  public:
-  NewIRCompiler(const ::pir::Program& prog,
-                const Target& target,
-                const std::shared_ptr<Scope>& scope)
+  PIRCompiler(const ::pir::Program& prog,
+              const Target& target,
+              const std::shared_ptr<Scope>& scope)
       : program_(prog),
         m_builder_("NewIR", target),
         target_(target),
@@ -40,20 +40,20 @@ class NewIRCompiler final {
 
   std::unique_ptr<Program> Build();
 
-  std::vector<newir::CUDAJITInfo> BuildCUDAJITInfo(
-      const std::vector<newir::GroupPtr>& groups);
+  std::vector<pir::CUDAJITInfo> BuildCUDAJITInfo(
+      const std::vector<pir::GroupPtr>& groups);
 
-  std::unique_ptr<Program> Build(const std::vector<newir::GroupPtr>& groups);
+  std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
-  CINN_DISALLOW_COPY_AND_ASSIGN(NewIRCompiler);
+  CINN_DISALLOW_COPY_AND_ASSIGN(PIRCompiler);
 
   std::vector<ir::LoweredFunc> GetOpFunc(const ::pir::Operation& op, int idx);
 
   void ProcessFunction(const std::vector<ir::LoweredFunc>& lowered_funcs);
 
   std::vector<std::unique_ptr<Instruction>> BuildInstructions(
-      const std::vector<newir::GroupPtr>& groups);
+      const std::vector<pir::GroupPtr>& groups);
 
   const ::pir::Program& program_;
   ir::Module::Builder m_builder_;
