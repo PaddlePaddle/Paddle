@@ -360,10 +360,8 @@ void DropoutFwGPUKernelDriver(
             uint64_t seed_data, increment;
             phi::funcs::GetSeedDataAndIncrement(
                 *dev_ctx_p, nullptr, false, 0, offset, &seed_data, &increment);
-            params.As<uint64_t>(2) =
-                static_cast<decltype(params.As<uint64_t>(2))>(seed_data);
-            params.As<uint64_t>(8) =
-                static_cast<decltype(params.As<uint64_t>(8))>(increment);
+            params.As<uint64_t>(2) = seed_data;
+            params.As<uint64_t>(8) = increment;
             VLOG(10) << "CUDA_GRAPH seed_data = " << seed_data
                      << ", increment = " << increment;
           };

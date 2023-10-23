@@ -102,6 +102,8 @@ class CUDAKernelParams {
 
 using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 
+//  ** class CUDAGraphNodeLauncher
+//
 //  This class offers a interface for launching CUDA kernels in CUDA Graph, we
 //  utilize the `cudaGraphExecKernelNodeSetParams` function for parameter setup.
 //  Launching kernels via this class ensures proper management.
@@ -114,44 +116,43 @@ using cudaGraphExecuterSetter_t = std::function<void(cudaGraphExec_t)>;
 //
 //  NOTE: This class use a singleton design pattern ensures there's only a
 //  single global instance accessible via the `Instance()` method.
-//
-//  === Callback Definitions ===
-//
-//  [Parameter Setter Callback]
-//  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
-//  dynamic determination and setup of kernel arguments.
-//
-//  parameterSetter_t parameterSetter = [saved_state](CUDAKernelParams &param){
-//      // Code to compute and the parameter values from the saved_state
-//      // ...
-//      param.As<type>(idx) = calculated_value;
-//  };
-//
-//  [CUDA Kernel Callback]
-//  Acts as the launcher for the kernel. It accepts an `unsigned int` identifier
-//  and uses it for the kernel launch.
-//
-//  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
-//      kernel<<<>>>(id, ...);  // Launching the kernel with id
-//  };
-//
-//  [Retrieving CUDA Function]
-//  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
-//  reference of the kernel from the kernel pointer.
-//
-//  cudaFunction_t cudaFunc;
-//  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
-//
-//  [Kernel Launch]
-//  With the callbacks defined and the CUDA function obtained, the kernel can be
-//  launched using the `KernelNodeLaunch` method.
-//
-//  KernelNodeLaunch(cudaFunc, parameterSetter, cudaKernelCallback);
 class CUDAGraphNodeLauncher {
  public:
+  //  [Parameter Setter Callback]
+  //  Sets the kernel's parameters BEFORE activating the CUDA graph. It enables
+  //  dynamic determination and setup of kernel arguments.
+  //
+  //  parameterSetter_t parameterSetter = [saved_state](CUDAKernelParams
+  //  &param){
+  //      // Code to compute and the parameter values from the saved_state
+  //      // ...
+  //      param.As<type>(idx) = calculated_value;
+  //  };
   using parameterSetter_t = std::function<void(CUDAKernelParams &)>;
+
+  //  [CUDA Kernel Callback]
+  //  Acts as the launcher for the kernel. It accepts an `unsigned int`
+  //  identifier and uses it for the kernel launch.
+  //
+  //  cudaKernelCallback_t cudaKernelCallback = [=](unsigned int id) {
+  //      kernel<<<>>>(id, ...);  // Launching the kernel with id
+  //  };
   using cudaKernelCallback_t = std::function<void(unsigned int)>;
 
+  //  [Retrieving CUDA Function]
+  //  The `cudaGetFuncBySymbol` method can be used to fetch the `cudaFunction_t`
+  //  reference of the kernel from the kernel pointer.
+  //
+  //  cudaFunction_t cudaFunc;
+  //  PADDLE_ENFORCE_GPU_SUCCESS(cudaGetFuncBySymbol(&cudaFunc, &kernel));
+  //
+  //  [Kernel Launch]
+  //  With the callbacks defined and the CUDA function obtained, the kernel can
+  //  be launched using the `KernelNodeLaunch` method.
+#if CUDA_VERSION < 11000
+  // For CUDA versions less than 11.0, use a dummy type for cudaFunction_t.
+  using cudaFunction_t = void *;
+#endif
   void KernelNodeLaunch(cudaFunction_t cudaFunc,
                         parameterSetter_t parameterSetter,
                         cudaKernelCallback_t cudakernelCallback);
@@ -171,13 +172,6 @@ class CUDAGraphNodeLauncher {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphNodeLauncher);
 
   unsigned int GenerateIndentifier() { return id++; }
-
-  void InnerLaunch(const void *func,
-                   unsigned int blockSize,
-                   unsigned int numBlocks,
-                   size_t sharedMem,
-                   cudaStream_t stream,
-                   void **args);
 
   unsigned int id;
   std::unordered_map<cudaFunction_t, std::map<unsigned int, parameterSetter_t>>
@@ -371,54 +365,6 @@ class CUDAGraphCaptureModeGuard {
       cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
 };
 #endif
-
-template <typename T>
-static bool IsBitwiseEqual(const T &x, const T &y) {
-  return std::memcmp(&x, &y, sizeof(T)) == 0;
-}
-
-template <typename F, F f>
-struct IsSameKernelHelper;
-
-template <typename Return,
-          typename... FuncArgs,
-          Return (*kernel_fn)(FuncArgs...)>
-struct IsSameKernelHelper<Return (*)(FuncArgs...), kernel_fn> {
- private:
-  using FuncArgsTuple = decltype(std::make_tuple(std::declval<FuncArgs>()...));
-
-  template <typename TupleT, size_t IDX, bool IsEnd /*=false*/>
-  struct Impl {
-    static bool Compare(const CUDAKernelParams &params, const TupleT &args) {
-      using CompareT = typename std::tuple_element<IDX, FuncArgsTuple>::type;
-      if (!IsBitwiseEqual<CompareT>(params.As<CompareT>(IDX),
-                                    std::get<IDX>(args))) {
-        return false;
-      }
-
-      constexpr auto NewIsEnd = (IDX + 1 == std::tuple_size<TupleT>::value);
-      return Impl<TupleT, IDX + 1, NewIsEnd>::Compare(params, args);
-    }
-  };
-
-  template <typename TupleT, size_t IDX>
-  struct Impl<TupleT, IDX, true> {
-    static bool Compare(const CUDAKernelParams &params, const TupleT &args) {
-      return true;
-    }
-  };
-
- public:
-  template <typename... Args>
-  static bool Compare(const CUDAKernelParams &params, Args... args) {
-    constexpr auto kNumArgs = sizeof...(FuncArgs);
-    static_assert(kNumArgs == sizeof...(Args), "Argument number not match");
-
-    auto args_tuple = std::make_tuple(args...);
-    using TupleT = typename std::decay<decltype(args_tuple)>::type;
-    return Impl<TupleT, 0, kNumArgs == 0>::Compare(params, args_tuple);
-  }
-};
 
 }  // namespace gpu
 }  // namespace backends

@@ -270,6 +270,22 @@ void CUDAGraph::PrintToDotFiles(const std::string &dirname,
 #endif
 }
 
+#if CUDA_VERSION >= 11000
+void CUDAGraphNodeLauncher::KernelNodeLaunch(
+    cudaFunction_t cudaFunc,
+    parameterSetter_t parameterSetter,
+    cudaKernelCallback_t cudakernelCallback) {
+  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
+    unsigned int id = GenerateIndentifier();
+
+    parameterSetters[cudaFunc][id] = parameterSetter;
+    cudakernelCallback(id);
+
+  } else {
+    cudakernelCallback(0);
+  }
+}
+
 std::vector<cudaGraphExecuterSetter_t>
 CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
   size_t num_nodes;
@@ -298,8 +314,8 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
         auto parameterSetter = launchSequence.find(id);
         if (parameterSetter != launchSequence.end()) {
           auto setter = parameterSetter->second;
-          hooks.push_back([setter, cuNode, cuParams](
-                              cudaGraphExec_t exec_graph) {
+          hooks.emplace_back([setter, cuNode, cuParams](
+                                 cudaGraphExec_t exec_graph) {
             CUDAKernelParams kernel_params(cuParams.kernelParams);
             setter(kernel_params);
             PADDLE_ENFORCE_GPU_SUCCESS(dynload::cuGraphExecKernelNodeSetParams(
@@ -315,33 +331,21 @@ CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
 
   return hooks;
 }
-
-void CUDAGraphNodeLauncher::InnerLaunch(const void *func,
-                                        unsigned int blockSize,
-                                        unsigned int numBlocks,
-                                        size_t sharedMem,
-                                        cudaStream_t stream,
-                                        void **args) {
-  dim3 blockDims(blockSize, 1, 1);
-  dim3 gridDims(numBlocks, 1, 1);
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaLaunchKernel(func, gridDims, blockDims, args, sharedMem, stream));
-}
-
+#else
 void CUDAGraphNodeLauncher::KernelNodeLaunch(
     cudaFunction_t cudaFunc,
     parameterSetter_t parameterSetter,
     cudaKernelCallback_t cudakernelCallback) {
-  if (phi::backends::gpu::CUDAGraph::IsThisThreadCapturing()) {
-    unsigned int id = GenerateIndentifier();
-
-    parameterSetters[cudaFunc][id] = parameterSetter;
-    cudakernelCallback(id);
-
-  } else {
-    cudakernelCallback(0);
-  }
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
 }
+
+std::vector<cudaGraphExecuterSetter_t>
+CUDAGraphNodeLauncher::GetParameterSettersForExecGraph(cudaGraph_t graph) {
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "CUDAGraphNodeLauncher is only supported when CUDA version >= 11.0"));
+}
+#endif
 
 }  // namespace gpu
 }  // namespace backends
