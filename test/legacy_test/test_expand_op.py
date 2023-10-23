@@ -42,10 +42,10 @@ class TestExpandOpRank1(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestExpandOpRank2_Corner(TestExpandOpRank1):
@@ -149,10 +149,10 @@ class TestExpandOpRank1_tensor(OpTest):
         self.expand_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_dygraph=False)
+        self.check_grad(['X'], 'Out')
 
 
 class TestExpandOpRank2_tensor(TestExpandOpRank1_tensor):
@@ -173,7 +173,7 @@ class TestExpandOpInteger(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_pir=True)
 
 
 # Situation 5: input x is Bool
@@ -186,7 +186,7 @@ class TestExpandOpBoolean(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_pir=True)
 
 
 # Situation 56: input x is Integer
@@ -201,7 +201,7 @@ class TestExpandOpInt64_t(OpTest):
         self.outputs = {'Out': output}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output(check_pir=True)
 
 
 if __name__ == "__main__":
