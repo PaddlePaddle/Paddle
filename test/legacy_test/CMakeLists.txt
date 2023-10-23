@@ -619,8 +619,7 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
 endif()
 
 if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.0))
-  py_test_modules(test_cuda_graph MODULES
-                  test_cuda_graph)
+  py_test_modules(test_cuda_graph MODULES test_cuda_graph)
   py_test_modules(test_cuda_graph_partial_graph MODULES
                   test_cuda_graph_partial_graph)
   py_test_modules(test_cuda_graph_partial_graph_static MODULES
@@ -631,8 +630,7 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.0))
                   test_cuda_graph_static_mode)
   py_test_modules(test_cuda_graph_static_mode_error MODULES
                   test_cuda_graph_static_mode_error)
-  py_test_modules(test_cuda_graphed_layer MODULES
-                  test_cuda_graphed_layer)
+  py_test_modules(test_cuda_graphed_layer MODULES test_cuda_graphed_layer)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
