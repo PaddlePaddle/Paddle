@@ -18,9 +18,19 @@ import inspect
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.amp.auto_cast import amp_state
+from paddle.framework import _dygraph_tracer
 
 from ..profiler import EventGuard
-from ..utils import Cache, GraphLogger, Singleton, StepInfoManager, log_do
+from ..utils import (
+    Cache,
+    GraphLogger,
+    Singleton,
+    StepInfoManager,
+    log,
+    log_do,
+    map_if,
+)
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
@@ -51,6 +61,29 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
 
+    def amp_cast_inputs(self, args, kwargs):
+        """Prepare inputs for amp, cast float32 into float16 if needed."""
+        current_amp_state = amp_state()
+        if current_amp_state is None:
+            return args, kwargs
+        # skip if not gpu / xpu / custom place
+        tracer = _dygraph_tracer()
+        if not (
+            tracer._expected_place.is_gpu_place()
+            or tracer._expected_place.is_xpu_place()
+            or tracer._expected_place.is_custom_place()
+        ):
+            return args, kwargs
+        amp_dtype = current_amp_state["dtype"]
+        log(3, f"[AMP] Cast float32 into {amp_dtype}")
+        return map_if(
+            (args, kwargs),
+            pred=lambda x: isinstance(x, paddle.Tensor)
+            and x.dtype == paddle.float32,
+            true_fn=lambda x: x.cast(amp_dtype),
+            false_fn=lambda x: x,
+        )
+
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
@@ -60,6 +93,7 @@ class FallbackWrapper:
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
+            args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(
