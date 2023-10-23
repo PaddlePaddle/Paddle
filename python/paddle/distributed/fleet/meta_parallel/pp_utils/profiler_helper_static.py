@@ -36,6 +36,12 @@ def process_log_data(log_data, device_id):
     log_pattern = r'.*?Profiler Info: Job \((\d+)\), type = (\w+), micro_batch_id = (\d+), job_start_time = (\d+.\d+), job_end_time = (\d+.\d+)'
     matches = re.findall(log_pattern, log_data)
     events = []
+    color_map = {
+        "forward": "thread_state_running",  # RGB: 126, 200, 148
+        "backward": "rail_idle",  # RGB: 238, 142, 0
+        "optimizer": "rail_response",  # RGB: 238, 142, 0
+        "default": "thread_state_unknown",  # RGB: 199, 155, 125
+    }
     for match in matches:
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
         if job_type in ["lr"]:
@@ -47,7 +53,8 @@ def process_log_data(log_data, device_id):
             "ph": "B",
             "ts": float(job_start_time.strip()) * 1000,
             "pid": "Main",
-            "tid": "GPU: " + str(device_id),
+            "tid": "GPU" + str(device_id),
+            "cname": color_map[job_type],
         }
         event_end = {
             "name": job_type[0].upper() + "_" + str(job_id),
@@ -55,7 +62,8 @@ def process_log_data(log_data, device_id):
             "ph": "E",
             "pid": "Main",
             "ts": float(job_end_time.strip()) * 1000,
-            "tid": "GPU: " + str(device_id),
+            "tid": "GPU" + str(device_id),
+            "cname": color_map[job_type],
         }
         events.append(event_start)
         events.append(event_end)
@@ -78,6 +86,38 @@ def main():
     save_path = os.path.join(args.log_dir, "pipeline_profile.json")
     with open(save_path, "w") as f:
         f.write(json.dumps({"traceEvents": all_events}))
+    print(f"Save pipeline profile to {save_path}")
+
+    # support Perfetto format
+    save_path = os.path.join(args.log_dir, "pipeline_profile_perfetto.json")
+    all_events.extend(
+        [
+            {
+                "args": {"name": "GPU"},
+                "cat": "__metadata",
+                "name": "thread_name",
+                "ph": "M",
+                "pid": "Main",
+                "tid": 0,
+                "ts": 0,
+            },
+            {
+                "args": {"name": "GPU"},
+                "cat": "__metadata",
+                "name": "thread_name",
+                "ph": "M",
+                "pid": "Main",
+                "tid": 1,
+                "ts": 0,
+            },
+        ]
+    )
+    json_str = json.dumps({"traceEvents": all_events})
+    for i in range(len(args.devices.split(","))):
+        json_str = json_str.replace(f'"GPU{i}"', f'{i}')
+
+    with open(save_path, "w") as f:
+        f.write(json_str)
     print(f"Save pipeline profile to {save_path}")
 
 
