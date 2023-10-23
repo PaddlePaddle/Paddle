@@ -28,39 +28,12 @@ static inline void SaveQuantInfoInTheGraph(
     const std::string& flag,
     const std::string& key_suffix,
     const std::unordered_map<std::string, std::vector<float>>& info_map) {
-  VLOG(1) << "Save quant info in the graph!";
   const std::string suffix = "_" + key_suffix + "_" + flag;
   if (!graph->Has(flag)) {
     graph->Set(flag, new bool(true));
   }
   for (auto iter = info_map.begin(); iter != info_map.end(); ++iter) {
-    VLOG(1) << "SaveQuantInfoInTheGraph set attr: " << iter->first + suffix;
     graph->Set(iter->first + suffix, new std::vector<float>(iter->second));
-  }
-}
-
-static inline void GetQuantInfoFromTheGraph(
-    ir::Graph* graph,
-    const std::string& flag,
-    const std::string& key_suffix,
-    std::unordered_map<std::string, std::vector<float>>* info_map) {
-  VLOG(1) << "Get quant info from the graph attrs!";
-  const std::string suffix = "_" + key_suffix + "_" + flag;
-  VLOG(1) << "flag:" << (graph->Has(flag) ? 1 : 0);
-  if (graph->Has(flag)) {
-    std::vector<std::string> attr_names = graph->AttrNames();
-    VLOG(1) << "attr_names size:" << attr_names.size();
-    for (auto fake_name : attr_names) {
-      VLOG(1) << "fake_name:" << fake_name;
-      size_t pos = fake_name.find(suffix);
-      if (pos != std::string::npos) {
-        std::string name = fake_name.substr(0, pos);
-        VLOG(1) << "name:" << name;
-        auto scales_vector = graph->Get<std::vector<float>>(fake_name);
-        VLOG(1) << "scales_vector:" << scales_vector[0];
-        info_map->insert(std::make_pair(name, scales_vector));
-      }
-    }
   }
 }
 
@@ -69,20 +42,14 @@ GetQuantInfoFromTheGraph(ir::Graph* graph,
                          const std::string& flag,
                          const std::string& key_suffix) {
   std::unordered_map<std::string, std::vector<float>> info_map;
-  VLOG(1) << "Get quant info from the graph attrs!";
   const std::string suffix = "_" + key_suffix + "_" + flag;
-  VLOG(1) << "flag:" << (graph->Has(flag) ? 1 : 0);
   if (graph->Has(flag)) {
     std::vector<std::string> attr_names = graph->AttrNames();
-    VLOG(1) << "attr_names size:" << attr_names.size();
     for (auto fake_name : attr_names) {
-      VLOG(1) << "fake_name:" << fake_name;
       size_t pos = fake_name.find(suffix);
       if (pos != std::string::npos) {
         std::string name = fake_name.substr(0, pos);
-        VLOG(1) << "name:" << name;
         auto scales_vector = graph->Get<std::vector<float>>(fake_name);
-        VLOG(1) << "scales_vector:" << scales_vector[0];
         info_map.insert(std::make_pair(name, scales_vector));
       }
     }

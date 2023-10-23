@@ -25,8 +25,6 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
 void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
-void CastToInt8(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
-
 void CastToInt32(phi::DenseTensor* in, phi::DenseTensor* out = nullptr);
 
 template <typename T>

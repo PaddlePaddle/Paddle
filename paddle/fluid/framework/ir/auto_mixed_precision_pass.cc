@@ -771,7 +771,7 @@ void AutoMixedPrecisionPass::SetVarPrecision() const {
                                ->GetMutable<phi::DenseTensor>();
             if (framework::TransToProtoVarType(tensor->type()) !=
                 real_in_var_node->Var()->GetDataType()) {
-              VLOG(1) << "[AutoMixedPrecisionPass] variable "
+              VLOG(3) << "[AutoMixedPrecisionPass] variable "
                       << real_in_var_node->Name() << "'s proto data type "
                       << real_in_var_node->Var()->GetDataType()
                       << " is different from real dense tensor "

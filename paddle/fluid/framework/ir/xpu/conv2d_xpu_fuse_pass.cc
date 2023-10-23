@@ -780,9 +780,7 @@ void Conv2dXPUFusePass::CreateFusionInputs(
     float input_scale = GetScaleValueForNode(var_quant_scales, input);
     int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
     VarDesc conv_input_max_desc(conv_input_max_name);
-    conv_input_max_desc.SetPersistable(
-        true);  // Need depends on ir_params_sync_among_devices_pass copy to xpu
-                // device
+    conv_input_max_desc.SetPersistable(true);
     conv_input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
     conv_input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
     conv2d_xpu_input_max = graph->CreateVarNode(&conv_input_max_desc);
@@ -828,9 +826,7 @@ void Conv2dXPUFusePass::CreateFusionBranch(
     if (op_weights_precision == "int8" && !ew_branch_add_max) {
       int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
       VarDesc ew_branch_add_in_max_desc(ew_branch_add_max_name);
-      ew_branch_add_in_max_desc.SetPersistable(
-          true);  // Need depends on ir_params_sync_among_devices_pass copy to
-                  // xpu device
+      ew_branch_add_in_max_desc.SetPersistable(true);
       ew_branch_add_in_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
       ew_branch_add_in_max_desc.SetDataType(
           proto::VarType::Type::VarType_Type_FP32);

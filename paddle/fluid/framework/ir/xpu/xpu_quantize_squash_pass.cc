@@ -91,10 +91,8 @@ void XPUQuantizeSquashPass::DequantQuantSquash(
     bool keep_dequant = (*nodes_keep_counter)[dequant_out]-- > 1;
 
     int equal = dequant_scale == quant_scale ? 1 : 0;
-    if (dequant_scale == quant_scale || isnan(dequant_scale) ||
-        isnan(quant_scale) || isinf(dequant_scale) || isinf(quant_scale)) {
+    if (dequant_scale == quant_scale) {
       // squash dequantize-quantize to nothing
-
       auto quant_out_var_name = quant_out->Name();
       for (auto input_name : next_op_desc->InputNames()) {
         auto& input_names = next_op_desc->MutableInputs()->at(input_name);
@@ -131,7 +129,6 @@ void XPUQuantizeSquashPass::OpDequantSquash(Graph* graph) const {
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     VLOG(4) << "squash op-dequant ops pair";
-
     GET_IR_NODE_FROM_SUBGRAPH(any_op, any_op, op_dequant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(dequant_in, dequant_in, op_dequant_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(dequant_op, dequant_op, op_dequant_pattern);
@@ -275,7 +272,8 @@ void XPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
   OpDequantSquash(graph);
-  // QuantOpSquash(graph);
+  // QuantOpSquash(graph); // If the quant op is fused into conv2d_xpu, the
+  // performance will become worse.
   MultipleQuantizeSquash(graph);
 }
 

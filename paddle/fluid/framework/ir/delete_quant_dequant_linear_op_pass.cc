@@ -91,7 +91,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
 
   GraphPatternDetector gpd;
   auto* scope = param_scope();
-  BlockDesc* block = nullptr;
   PADDLE_ENFORCE_NOT_NULL(
       scope,
       platform::errors::InvalidArgument(
@@ -114,7 +113,6 @@ void DeleteQuantDequantLinearOpPass::ApplyImpl(ir::Graph* graph) const {
       return;
     }
     */
-    block = quantize_linear_op->Op()->Block();
     std::unordered_set<const Node*> nodes2rm = {};
 
     // Get input scale from tensor

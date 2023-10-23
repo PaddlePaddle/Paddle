@@ -148,41 +148,6 @@ void CastToFp32(phi::DenseTensor* in, phi::DenseTensor* out) {
   }
 }
 
-void CastToInt8(phi::DenseTensor* in, phi::DenseTensor* out) {
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-
-  paddle::experimental::CheckAndTrans2Contiguous(in);
-
-  phi::DenseTensor int8_tensor;
-  phi::DenseTensor* out_ptr = out == nullptr ? &int8_tensor : out;
-  out_ptr->Resize(in->dims());
-  out_ptr->set_type(phi::DataType::INT8);
-  out_ptr->set_layout(in->layout());
-
-  switch (in->dtype()) {
-    case phi::DataType::FLOAT32:
-      phi::CastKernel<float>(*cpu_ctx, *in, phi::DataType::INT8, out_ptr);
-      break;
-    case phi::DataType::INT8:
-      if (out == nullptr) {
-        return;
-      } else {
-        phi::AssignKernel(*cpu_ctx, *in, out_ptr);
-      }
-      break;
-    default:
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support fp32, but received dtype is %s.",
-          phi::DataTypeToString(in->dtype())));
-      break;
-  }
-
-  if (out == nullptr) {
-    Assign(*out_ptr, in);
-  }
-}
-
 static float FindMaxAbs(const float* data, int len) {
   float max_f = 0.0f;
   for (int i = 0; i < len; ++i) {

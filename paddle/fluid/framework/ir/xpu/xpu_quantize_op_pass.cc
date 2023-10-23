@@ -65,15 +65,13 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
   auto* quantize_out_node = g->CreateVarNode(&quantize_out_desc);
   quantize_out_node->Var()->SetDataType(
       proto::VarType::Type::VarType_Type_INT8);
-  // Create quantize max_ptr node
 
+  // Create quantize max_ptr node
   float scale = GetScaleValueForNode(&var_quant_scales_, input);
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   std::string input_max_name = input->Name() + "_quantize_max";
   VarDesc input_max_desc(input_max_name);
-  input_max_desc.SetPersistable(
-      true);  // Need depends on ir_params_sync_among_devices_pass copy to xpu
-              // device
+  input_max_desc.SetPersistable(true);
   input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
   input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
   Node* input_max_node = g->CreateVarNode(&input_max_desc);
@@ -88,7 +86,7 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
          input_scales.data(),
          max_ptr_size * sizeof(float));
 
-  // create a quantize op node
+  // Create a quantize op node
   OpDesc q_desc;
   q_desc.SetType("quantize_xpu");
   q_desc.SetInput("x", std::vector<std::string>({input->Name()}));
@@ -97,12 +95,13 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
   q_desc.SetAttr("out_dtype",
                  static_cast<int>(proto::VarType::Type::VarType_Type_INT8));
   q_desc.SetAttr("scale", static_cast<float>(scale));
-
   auto quantize_op = g->CreateOpNode(&q_desc);  // OpDesc will be copied.
-  // update op's input
+
+  // Update op's input
   op->Op()->SetInput(input_arg_name,
                      std::vector<std::string>({quantize_out_node->Name()}));
-  // link quantize op
+
+  // Link quantize op
   UnlinkNodes(input, op);
   IR_NODE_LINK_TO(input, quantize_op);
   IR_NODE_LINK_TO(input_max_node, quantize_op);
@@ -137,9 +136,7 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
   int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
   std::string input_max_name = output->Name() + "_dequantize_max";
   VarDesc input_max_desc(input_max_name);
-  input_max_desc.SetPersistable(
-      true);  // Need depends on ir_params_sync_among_devices_pass copy to xpu
-              // device
+  input_max_desc.SetPersistable(true);
   input_max_desc.SetShape({static_cast<int64_t>(max_ptr_size)});
   input_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
   Node* input_max_node = g->CreateVarNode(&input_max_desc);
@@ -154,7 +151,7 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
          input_scales.data(),
          max_ptr_size * sizeof(float));
 
-  // create a quantize op node
+  // Create a quantize op node
   OpDesc deq_desc;
   deq_desc.SetType("dequantize_xpu");
   deq_desc.SetInput("x",
@@ -163,12 +160,13 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
   deq_desc.SetOutput("y", std::vector<std::string>({output->Name()}));
   deq_desc.SetAttr("out_dtype", static_cast<int>(output->Var()->GetDataType()));
   deq_desc.SetAttr("scale", static_cast<float>(scale));
-
   auto dequantize_op = g->CreateOpNode(&deq_desc);  // OpDesc will be copied.
-  // update op's input
+
+  // Update op's input
   op->Op()->SetOutput(output_arg_name,
                       std::vector<std::string>({dequantize_in_node->Name()}));
-  // link dequantize op
+
+  // Link dequantize op
   UnlinkNodes(op, output);
   IR_NODE_LINK_TO(op, dequantize_in_node);
   IR_NODE_LINK_TO(dequantize_in_node, dequantize_op);
@@ -220,8 +218,8 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
           AreScalesPresentForNodes(&var_quant_scales_, {out_var_node});
       bool has_branch = branch_var_node != nullptr;
 
-      // Note: Conv2d fusion requres branch datatype is same as output datatype,
-      // so we should consider branch/output together.
+      // Note: Conv2d fusion requires branch datatype is same as output
+      // datatype, so we should consider branch/output together.
       if (has_branch) {
         bool has_branch_scale =
             AreScalesPresentForNodes(&var_quant_scales_, {branch_var_node});

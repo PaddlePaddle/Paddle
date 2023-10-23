@@ -44,34 +44,14 @@ class XPUQuantizeSquashPass : public FusePassBase {
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   /*
-   * Don't squash unsigned dequantize with signed quantize.
-   * This is important for concat and elementwise ops.
-   * When inputs have different sign, concat will assume signed type and
-   * elementwise assumes first input type.
-   */
-  bool IsDequantizeQuantizeIncompatible(Node* quant_op,
-                                        Node* dequant_op,
-                                        Node* next_op) const;
-
-  /*
-   * Squash dequantize-quantize ops pairs into requantize or nothing
+   * Squash dequantize-quantize ops pairs into nothing
    */
   void DequantQuantSquash(
       Graph* graph,
       std::unordered_map<const Node*, int>* nodes_keep_counter) const;
 
   /*
-   * Squash requantize op into conv with scale_out like requantize scale_out
-   */
-  void OpRequantSquash(Graph* graph) const;
-
-  /*
-   * Squash requantize op if the next operator's input scale can be updated
-   */
-  void RequantOpSquash(Graph* graph) const;
-
-  /*
-   * Squash dequant if the previous operator has force_fp32_output attribute
+   * Squash dequant if the previous operator support fp32 out
    */
   void OpDequantSquash(Graph* graph) const;
 
@@ -89,13 +69,6 @@ class XPUQuantizeSquashPass : public FusePassBase {
    * Squash scale if scale is before quantize
    */
   void ScaleQuantSquash(Graph* graph) const;
-
-  /*
-   * Squash quantize if is before bfloat16 conv2d or fused_conv2d
-   */
-  void QuantizeBf16Conv(Graph* graph) const;
-
-  void QuantizeBf16ConvImpl(Graph* graph, const std::string& conv_type) const;
 
   /*
    * Squash quantize if is before conv2d_xpu/fc_xpuy

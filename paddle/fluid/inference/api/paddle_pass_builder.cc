@@ -565,7 +565,6 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "cast_mixed_precision_op_fuse_pass",
       "xpu_quantize_op_pass",
       "xpu_quantize_squash_pass",
-      // "auto_trans_quantize_op_precision_pass",
       "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });
