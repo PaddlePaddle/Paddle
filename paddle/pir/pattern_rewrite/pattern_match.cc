@@ -135,17 +135,19 @@ void RewriterBase::EraseOp(Operation* op) {
 
 // Find uses of `from` and replace it with `to`.
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  for (auto it = from.use_begin(); it != from.use_end(); ++it)
-    UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
+  for (auto it = from.use_begin(); it != from.use_end();)
+    UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
 }
 
 // Find uses of `from` and replace them with `to` if the `functor` returns true.
 void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
-  for (auto it = from.use_begin(); it != from.use_end(); ++it) {
+  // Use post-increment operator for iterator since set_source() will change
+  // `it`.
+  for (auto it = from.use_begin(); it != from.use_end();) {
     if (functor(*it))
-      UpdateRootInplace(it.owner(), [&]() { it->set_source(to); });
+      UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
   }
 }
 
