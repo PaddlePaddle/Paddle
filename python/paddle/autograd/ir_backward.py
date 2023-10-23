@@ -440,6 +440,7 @@ def append_backward_ops(
             grad_semantic_info = [True for _ in range(op.num_operands())]
         else:
             grad_semantic_info = op.get_input_grad_semantics()
+
         for input, grad_semantic in zip(
             op.operands_source(), grad_semantic_info
         ):
