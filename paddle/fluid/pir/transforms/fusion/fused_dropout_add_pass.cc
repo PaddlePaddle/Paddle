@@ -143,4 +143,4 @@ std::unique_ptr<Pass> CreateFusedDropoutAddPass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(fused_dropout_add, FusedDropoutAddPass);
+REGISTER_IR_PASS(fused_dropout_add_pass, FusedDropoutAddPass);
