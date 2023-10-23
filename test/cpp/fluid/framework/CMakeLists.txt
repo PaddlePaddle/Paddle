@@ -1,3 +1,5 @@
+# add_subdirectory(details)
+
 cc_test(
   data_type_test
   SRCS data_type_test.cc
