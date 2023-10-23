@@ -342,9 +342,21 @@ class TestTensordotAPIAxesType(TestTensordotAPI):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         y = paddle.to_tensor(self.y)
-        for axes in self.all_axes:
-            with self.assertRaises(BaseException):
-                paddle.tensordot(x, y, axes)
+
+        with self.assertRaises(TypeError):
+            paddle.tensordot(x, y, axes=self.all_axes[0])
+        with self.assertRaises(TypeError):
+            paddle.tensordot(x, y, axes=self.all_axes[1])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[2])
+        with self.assertRaises(IndexError):
+            paddle.tensordot(x, y, axes=self.all_axes[3])
+        with self.assertRaises(ValueError):
+            paddle.tensordot(x, y, axes=self.all_axes[4])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[5])
+        with self.assertRaises(AssertionError):
+            paddle.tensordot(x, y, axes=self.all_axes[6])
 
 
 class TestTensordotAPIAxesTypeFloat64(TestTensordotAPIAxesType):
