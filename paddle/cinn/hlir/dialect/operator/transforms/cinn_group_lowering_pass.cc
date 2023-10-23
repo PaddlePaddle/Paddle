@@ -124,7 +124,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         auto group1 =
-            std::make_shared<cinn::hlir::framework::newir::Group>(group->nodes);
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         compiler_list.push_back(ir_compiler);
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
