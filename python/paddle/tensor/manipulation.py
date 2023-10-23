@@ -3888,8 +3888,49 @@ def reshape_(x, shape, name=None):
 
 def atleast_1d(*inputs, name=None):
     """
-    TODO
+    Convert inputs to tensors and return the view with at least 1-dimension. Scalar inputs are converted,
+    one or high-dimensional inputs are preserved.
 
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Note:
+        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_1d(x)
+            >>> print(out)
+            Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_1d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123]), Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.23000002])]
+
+            >>> # more than 1-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[1.23]], dtype='float32')
+            >>> out = paddle.atleast_1d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [123]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.23000002]])]
     """
     out = []
     for tensor in inputs:
@@ -3908,8 +3949,48 @@ def atleast_1d(*inputs, name=None):
 
 def atleast_2d(*inputs, name=None):
     """
-    TODO
+    Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
 
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Note:
+        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_2d(x)
+            >>> print(out)
+            Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_2d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]]), Tensor(shape=[1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[1.23000002]])]
+
+            >>> # more than 2-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[[1.23]]], dtype='float32')
+            >>> out = paddle.atleast_2d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[123]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1.23000002]]])]
     """
     out = []
     for tensor in inputs:
@@ -3930,8 +4011,48 @@ def atleast_2d(*inputs, name=None):
 
 def atleast_3d(*inputs, name=None):
     """
-    TODO
+    Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
 
+    Args:
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Note:
+        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
+
+    Returns:
+        One Tensor, if there is only one input.
+        List of Tensors, if there are more than one inputs.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> # one input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> out = paddle.atleast_3d(x)
+            >>> print(out)
+            Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]])
+
+            >>> # more than one inputs
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([1.23], dtype='float32')
+            >>> out = paddle.atleast_3d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]]), Tensor(shape=[1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[1.23000002]]])]
+
+            >>> # more than 3-D input
+            >>> x = paddle.to_tensor(123, dtype='int32')
+            >>> y = paddle.to_tensor([[[[1.23]]]], dtype='float32')
+            >>> out = paddle.atleast_3d(x, y)
+            >>> print(out)
+            [Tensor(shape=[1, 1, 1], dtype=int32, place=Place(cpu), stop_gradient=True,
+            [[[123]]]), Tensor(shape=[1, 1, 1, 1], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[1.23000002]]]])]
     """
     out = []
     for tensor in inputs:
