@@ -25,10 +25,6 @@
 #include "paddle/pir/core/region.h"
 #include "paddle/pir/core/utils.h"
 
-#include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/errors.h"
-#include "paddle/phi/api/all.h"
-
 namespace pir {
 using detail::OpInlineResultImpl;
 using detail::OpOperandImpl;
