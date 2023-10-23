@@ -67,6 +67,11 @@ void RecordStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream) {
                                                               stream);
 }
 
+void EraseStream(std::shared_ptr<Allocation> allocation, gpuStream_t stream) {
+  return allocation::AllocatorFacade::Instance().EraseStream(allocation,
+                                                             stream);
+}
+
 gpuStream_t GetStream(const std::shared_ptr<Allocation>& allocation) {
   return allocation::AllocatorFacade::Instance().GetStream(allocation);
 }
