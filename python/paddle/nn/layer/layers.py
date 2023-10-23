@@ -938,6 +938,7 @@ class Layer:
 
                 >>> import paddle
                 >>> import paddle.nn as nn
+                >>> paddle.seed(2023)
 
                 >>> net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
                 >>> print(net)
@@ -948,17 +949,17 @@ class Layer:
                 >>> print(net.parameters())
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[ 0.12119570,  0.71133953],
-                        [-0.46748328,  0.27421260]]), Parameter containing:
+                    [[ 0.76424706,  1.21572542],
+                        [ 0.02650531, -0.16404852]]), Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
                     [0., 0.]), Parameter containing:
                 Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[-0.28993332, -0.89435989],
-                        [ 0.12127877, -1.12000990]]), Parameter containing:
+                    [[ 0.05151060, -1.02659082],
+                        [-1.20846939, -0.46195853]]), Parameter containing:
                 Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
                     [0., 0.])]
 
-                >>> net.astype("int8")
+                >>> net = net.astype("int8")
                 >>> print(net)
                 Sequential(
                 (0): Linear(in_features=2, out_features=2, dtype=paddle.int8)
@@ -967,13 +968,13 @@ class Layer:
                 >>> print(net.parameters())
                 [Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [[0, 0],
+                    [[0, 1],
                         [0, 0]]), Parameter containing:
                 Tensor(shape=[2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
                     [0, 0]), Parameter containing:
                 Tensor(shape=[2, 2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [[ 0,  0],
-                        [ 0, -1]]), Parameter containing:
+                    [[ 0, -1],
+                        [-1,  0]]), Parameter containing:
                 Tensor(shape=[2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
                     [0, 0])]
         """
@@ -2232,7 +2233,7 @@ class Layer:
         if t.place.is_gpu_place():
             # for gpu, minimum memory allocation unit is 256 bytes.
             size_dtype = core.size_of_dtype(dtype)
-            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t’ occupied memory space.
+            # Note(zhangbo): Paddle GPU minimum memory allocation unit is 256 bytes, waiting_alloc_memory will comput ‘t�? occupied memory space.
             # Coefficient 1.2 is used to avoid OOM that may occur in this critical state when the memory is just enough.
             waiting_alloc_memory = (
                 ((np.prod(t.shape) * size_dtype) / 256 + 1) * 256 * 1.2
