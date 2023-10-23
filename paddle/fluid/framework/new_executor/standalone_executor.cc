@@ -58,7 +58,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_pir_api) {
       ir_program = plan_.IrProgram(job_type);
     } else {
-      // this will make a copy for ProgramDesc
+      // liuchenghao: this will make a copy of ProgramDesc
       // maybe using std::make_unique<ProgramDesc>(...) is better?
       program = std::make_shared<ProgramDesc>(*plan_.Program(job_type));
     }

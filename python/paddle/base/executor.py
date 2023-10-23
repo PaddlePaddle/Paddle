@@ -1875,9 +1875,11 @@ class Executor:
                 pid = os.getpid()
                 outfile = "mylog/profile.log.%d" % pid
                 print(outfile)
-                with open(outfile, 'w') as f:
+                with open(outfile, 'a') as f:
                     f.write(msg)
                 print("======================= finished ======================")
+            else:
+                sys.exit()
 
             set_flags(stored_flag)
             return ret

@@ -270,15 +270,18 @@ void ProgramInterpreter::ProfileInstructionList(
     VLOG(4) << "** Profiling op: [id=" << instr.Id()
             << ",name=" << instr.OpBase()->Type() << "]";
 
+    OperatorBase* op_base = instr.OpBase();
+
     std::string op_ident_name_for_prof =
         std::string("op:") + std::to_string(trace_execute_order_[idx]) + "," +
-        instr.OpBase()->Type();
+        op_base->Type();
     double dt_us = -1.0;
 
-    if (instr.IsSupportRuntimeProfiling()) {
-      // step 1: prepare
-      OperatorBase* op_base = instr.OpBase();
+    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
+      // if this instruction supports runtime profiling and op_base ID is
+      // correctly set step 1: prepare
       OpDesc* op_desc = block_.Op(op_base->Id());
+      VLOG(4) << "** op_desc type: " << op_desc->Type();
       OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
       OpFuncType op_func_type = instr.KernelType();
       bool require_sync = false;
@@ -301,7 +304,7 @@ void ProgramInterpreter::ProfileInstructionList(
       op_dist_attr->set_run_time_us(dt_us);
       VLOG(4) << "** op "
               << "[" << instr.Id() << "," << instr.OpBase()->Type() << "]"
-              << " run time: " << op_dist_attr->run_time_us() << " us.";
+              << " run time: " << int(op_dist_attr->run_time_us()) << " us.";
       prof_recorder->RecordOpRuntime(op_ident_name_for_prof, dt_us);
     } else {
       // don't need profiling

@@ -2422,6 +2422,7 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                 out_var_name = op.desc.output('Out')[0]
                 in_var_name = op.desc.input('X')[0]  # this is usually "feed"
                 out_var = cloned_main_block.var(out_var_name)
+                out_var: Variable
                 out_var_shape = out_var.shape
                 out_var_dtype = out_var.dtype
                 input_index = op.desc.attr('col')
@@ -2437,15 +2438,28 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                     if isinstance(out_var_dtype, core.VarDesc.VarType)
                     else out_var_dtype
                 )
-                out_cur_feed = np.array(np.random.randn(*out_var_shape)).astype(
-                    out_var_np_dtype
-                )
+                if str(out_var_dtype).find('int') != -1:
+                    # target variable's type is int* (uint*, int*), it is highly possible that
+                    # the target variable contains indices (such as lookup_table op's input var)
+                    # for safety we need to fill it with all one instead of random numbers
+                    out_cur_feed = np.array(np.ones(out_var_shape)).astype(
+                        out_var_np_dtype
+                    )
+                else:
+                    # target variable's type is float*, we treat it as an ordinary tensor
+                    out_cur_feed = np.array(
+                        np.random.randn(*out_var_shape)
+                    ).astype(out_var_np_dtype)
                 out_cur_feed = _as_lodtensor(out_cur_feed, place, out_var_dtype)
                 check_feed_shape_type(out_var, out_cur_feed)
                 sys.stdout.write(
-                    '[+] feed var: "%s".\n' % out_var_name
+                    '[+] feed var: "{}", shape={}, dtype="{}".\n'.format(
+                        out_var_name, str(out_var_shape), str(out_var_dtype)
+                    )
                 ) if verbose else None
-                core.set_variable(scope, out_cur_feed, out_var_name)
+                core.set_variable(
+                    scope, out_cur_feed, out_var_name
+                )  # TODO: try to comment this line to see if VMEM drops
                 core.set_feed_variable(
                     scope, out_cur_feed, in_var_name, input_index
                 )
@@ -2499,9 +2513,16 @@ def _measure_real_op_cost_wrt_program_and_place_single_pass(
                         if isinstance(var_dtype, core.VarDesc.VarType)
                         else var_dtype
                     )
-                    cur_feed = np.array(np.random.randn(*var_shape)).astype(
-                        np_dtype
-                    )
+                    if str(var_dtype).find('int') != -1:
+                        # target variable's type is int* (uint*, int*), it is highly possible that
+                        # the target variable contains indices (such as lookup_table op's input var)
+                        # for safety we need to fill it with all one instead of random numbers
+                        cur_feed = np.array(np.ones(var_shape)).astype(np_dtype)
+                    else:
+                        # target variable's type is float*, we treat it as an ordinary tensor
+                        cur_feed = np.array(np.random.randn(*var_shape)).astype(
+                            np_dtype
+                        )
                     cur_feed = _as_lodtensor(cur_feed, place, var_dtype)
                     check_feed_shape_type(var, cur_feed)
                     core.set_variable(scope, cur_feed, var_name)
@@ -2710,7 +2731,7 @@ def measure_real_op_cost_wrt_program_and_place(
                 raise RuntimeError(
                     'unknwon profile_strategy "%s" given.' % profile_strategy
                 )
-        if op.supports_runtime_profiling():
+        if op_runtime_us_final is not None and op.supports_runtime_profiling():
             op.set_runtime_us(op_runtime_us_final)
 
     # print out profiling results if needed then return
@@ -2719,11 +2740,19 @@ def measure_real_op_cost_wrt_program_and_place(
     def _format_single_line(idx, op):
         bg_str = ' .' * (TABLE_WIDTH // 2)
         left_str = '[*] %5d, %s' % (idx, op.type)
-        right_str = (
-            ('%d us' % int(op.get_runtime_us()))
-            if op.supports_runtime_profiling()
-            else 'not supported'
-        )
+        right_str = ''
+        if (
+            op.supports_runtime_profiling()
+            and op.desc.dist_attr.run_time_us >= 0.0
+        ):
+            # op supports runtime profiling and profiling info is correctly set
+            right_str = '%d us' % int(op.get_runtime_us())
+        elif op.supports_runtime_profiling():
+            # op supports runtime profiling but no runtime info found
+            right_str = 'skipped'
+        else:
+            # op does not support runtime profiling
+            right_str = 'not supported'
         out_str = (
             left_str
             + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]

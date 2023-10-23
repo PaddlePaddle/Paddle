@@ -602,6 +602,7 @@ void BuildOpFuncList(const platform::Place& place,
     op->SetId(i);  // save op id info into op base
                    // (note: op id is equivalent to
                    // its dist_attr id)
+    VLOG(6) << "set op id " << i << " for op " << op_type;
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
