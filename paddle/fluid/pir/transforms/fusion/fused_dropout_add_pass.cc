@@ -107,7 +107,7 @@ class FusedDropoutGradAddGradPattern
 
 class FusedDropoutAddPass : public pir::Pass {
  public:
-  FusedDropoutAddPass() : pir::Pass("fused_dropout_add", 1) {}
+  FusedDropoutAddPass() : pir::Pass("fused_dropout_add_pass", 1) {}
 
   bool Initialize(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
