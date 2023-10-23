@@ -170,6 +170,16 @@
     func: share_data
     param: [x]
 
+- op : shuffle_batch
+  args : (Tensor x, Tensor seed, int startup_seed = 0)
+  output : Tensor(out), Tensor(shuffleidx), Tensor(seed_out)
+  infer_meta:
+    func: ShuffleBatchInferMeta
+    param: [x, seed, startup_seed]
+  kernel:
+    func: shuffle_batch
+    param: [x, seed, startup_seed]
+
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)

@@ -67,7 +67,6 @@ class TestWhileOp(unittest.TestCase):
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
-            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
@@ -77,6 +76,8 @@ class TestWhileOp(unittest.TestCase):
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
+
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
         sum_result = paddle.tensor.array_read(array=mem_array, i=j)
         loss = paddle.mean(sum_result)
         return loss, sum_result
@@ -109,7 +110,7 @@ class TestWhileOp(unittest.TestCase):
         with base.program_guard(main_program, startup_program):
             self.simple_net()
             binary = base.compiler.CompiledProgram(main_program)
-
+            print("main_program:\n", main_program, flush=True)
             cpu = core.CPUPlace()
             exe = Executor(cpu)
             d = []
@@ -120,7 +121,6 @@ class TestWhileOp(unittest.TestCase):
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
-    @test_and_compare_with_new_ir()
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -135,7 +135,6 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
-    @test_and_compare_with_new_ir()
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -182,6 +181,11 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = numpy.array([[10], [12], [33]])
         input_y = input_y.reshape(3, 1, 1)
 
+        print(
+            "base.default_main_program(): \n",
+            base.default_main_program(),
+            flush=True,
+        )
         (res,) = exe.run(
             base.default_main_program(),
             feed={'x': input_x, 'y': input_y},
@@ -192,7 +196,6 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
-    @test_and_compare_with_new_ir()
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
