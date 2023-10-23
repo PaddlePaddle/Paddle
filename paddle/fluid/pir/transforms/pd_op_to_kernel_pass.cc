@@ -74,7 +74,6 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     "pd_op.if",
     "pd_op.while",
     "cf.yield",
-    "cf.cond_yield",
     "cinn_runtime.jit_kernel"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
