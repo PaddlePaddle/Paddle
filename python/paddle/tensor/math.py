@@ -4437,7 +4437,7 @@ def isnan(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, False, False, False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isnan(x)
     else:
         helper = LayerHelper("isnan_v2", **locals())
