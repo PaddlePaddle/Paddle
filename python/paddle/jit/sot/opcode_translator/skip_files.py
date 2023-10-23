@@ -140,6 +140,7 @@ with_graph_codes = (
 )
 
 
-paddle.framework.core.eval_frame_skip_file_prefix(tuple(skip_file_names))
-paddle.framework.core.eval_frame_no_skip_codes(tuple(no_skip_code))
-paddle.framework.core.sot_setup_codes_with_graph(with_graph_codes)
+def setup_skip_files():
+    paddle.framework.core.eval_frame_skip_file_prefix(tuple(skip_file_names))
+    paddle.framework.core.eval_frame_no_skip_codes(tuple(no_skip_code))
+    paddle.framework.core.sot_setup_codes_with_graph(with_graph_codes)
