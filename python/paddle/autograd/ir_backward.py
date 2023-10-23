@@ -328,7 +328,7 @@ def append_backward_ops(
     if op has grad_op, prepare its grad_op's inputs by value_to_valuegrad,
         eg:
         value_to_valuegrad[v3] = [[v3_g]];
-        v2_g = call_vjp(op3, [v3_g], [v2_stopgradient])
+        v2_g = call_vjp(op3, [[v2]], [[v3]],[[v3_g]], [[v2_stopgradient]])
 
 
     special pattern 1:
@@ -339,7 +339,7 @@ def append_backward_ops(
 
         v1 is inside python api, we don't describe it in backward process(state)
         so v1_grad is inside vjp, we don't describe it in backward process(state)
-        [[v11_g, v12_g], v2_g] = call_vjp(combine_op, [v3_g], [[v11_stopgradient, v12_stopgradient], v2_stop_gradient)
+        [[v11_g, v12_g], v2_g] = call_vjp(combine_op, [[v11, v12]], [[v3]],[[v3_g]], [[v11_stopgradient, v12_stopgradient], v2_stop_gradient])
 
 
         op_vjp is:
@@ -358,8 +358,9 @@ def append_backward_ops(
     else continue to next op.
     '''
 
-    def make_output_grad(op):
+    def make_output_with_output_grad(op):
         zero_flag = [False] * op.num_results()
+        outputs = []
         output_grads = []
         for i, value in enumerate(op.results()):
             if (
@@ -396,12 +397,15 @@ def append_backward_ops(
                     # pattern case:
                     # this fwd_op's output is vectorType, it will split to
                     # Type by builtin.split op, so need get from split op's ouput
-                    split_zero_flag, split_output_grad = make_output_grad(
-                        value.first_use().owner()
-                    )
+                    (
+                        split_zero_flag,
+                        split_outputs,
+                        split_output_grad,
+                    ) = make_output_with_output_grad(value.first_use().owner())
                     zero_flag[i] = all(split_zero_flag)
                     grad_values = [value[0] for value in split_output_grad]
                     state.value_to_valuegrad[value] = [grad_values]
+                    outputs.append([info[0] for info in split_outputs])
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -424,16 +428,19 @@ def append_backward_ops(
 
                     state.value_to_valuegrad[value] = [[grad_value]]
 
+                    outputs.append([value])
             output_grads.append(state.value_to_valuegrad[value][0])
 
-        return zero_flag, output_grads
+        return zero_flag, outputs, output_grads
 
-    def make_input_stopgradient(op):
+    def make_input_with_input_stopgradient(op):
+        inputs = []
         input_grad_stopgradients = []
         if op.name() == "builtin.combine":
             grad_semantic_info = [True for _ in range(op.num_operands())]
         else:
             grad_semantic_info = op.get_input_grad_semantics()
+
         for input, grad_semantic in zip(
             op.operands_source(), grad_semantic_info
         ):
@@ -443,16 +450,22 @@ def append_backward_ops(
                 input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"
             ):
-                stop_gradient = make_input_stopgradient(input.get_defining_op())
+                (
+                    combine_inputs,
+                    combine_stop_gradient,
+                ) = make_input_with_input_stopgradient(input.get_defining_op())
+                inputs.append([info[0] for info in combine_inputs])
                 input_grad_stopgradients.append(
-                    [info[0] for info in stop_gradient]
+                    [info[0] for info in combine_stop_gradient]
                 )
             else:
+                inputs.append([input])
                 if input.get_defining_op() is None or input in no_grad_set:
                     input_grad_stopgradients.append([True])
                 else:
                     input_grad_stopgradients.append([False])
-        return input_grad_stopgradients
+
+        return inputs, input_grad_stopgradients
 
     def update_input_grad_map(op, input_grads):
         i = 0
@@ -494,7 +507,7 @@ def append_backward_ops(
     for op in clear_effective_forward_ops:
         if paddle.framework.core.has_vjp(op):
             # prepare output_grad
-            zero_flag, output_grads = make_output_grad(op)
+            zero_flag, outputs, output_grads = make_output_with_output_grad(op)
 
             # all(zero_flag) support this op has no contribution for grad
             # should be delete (prune sub_graph)
@@ -502,12 +515,15 @@ def append_backward_ops(
                 continue
 
             # prepare input_grad stop_gradient info.
-            input_grad_stopgradients = make_input_stopgradient(op)
+            (
+                inputs,
+                input_grad_stopgradients,
+            ) = make_input_with_input_stopgradient(op)
 
             # create grad_op
             before_ops_num = len(block.ops)
             input_grads = paddle.framework.core.call_vjp(
-                op, output_grads, input_grad_stopgradients
+                op, inputs, outputs, output_grads, input_grad_stopgradients
             )
             after_ops_num = len(block.ops)
 
