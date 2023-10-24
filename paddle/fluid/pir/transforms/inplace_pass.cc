@@ -67,6 +67,10 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
 
   if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
       output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
+      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
+      return false;
+    }
     auto input_alloc_tensor_type =
         input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     auto output_alloc_tensor_type =
@@ -75,23 +79,20 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     int64_t out_numel = 1;
     for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
       if (input_alloc_tensor_type.dims()[i] == -1) {
-        continue;
+        VLOG(9) << "     -- input's shape has -1, can't do inplace";
+        return false;
       }
       in_numel *= input_alloc_tensor_type.dims()[i];
     }
 
     for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
       if (output_alloc_tensor_type.dims()[i] == -1) {
-        continue;
+        VLOG(9) << "     -- output's shape has -1, can't do inplace";
+        return false;
       }
       out_numel *= output_alloc_tensor_type.dims()[i];
     }
-    if (phi::SizeOf(paddle::dialect::TransToPhiDataType(
-            input_alloc_tensor_type.dtype())) *
-            in_numel <
-        phi::SizeOf(paddle::dialect::TransToPhiDataType(
-            output_alloc_tensor_type.dtype())) *
-            out_numel) {
+    if (in_numel < out_numel) {
       VLOG(9) << "     -- input's numel < output's numel, can't do inplace";
       return false;
     }
