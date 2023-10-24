@@ -240,7 +240,9 @@ PD_REGISTER_STRUCT_KERNEL(partial_concat,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}
 PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
                           GPU,
                           ALL_LAYOUT,
@@ -249,4 +251,6 @@ PD_REGISTER_STRUCT_KERNEL(partial_concat_grad,
                           double,
                           int,
                           int64_t,
-                          plat::float16) {}
+                          plat::float16,
+                          phi::dtype::complex<float>,
+                          phi::dtype::complex<double>) {}
