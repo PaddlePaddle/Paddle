@@ -72,9 +72,10 @@ class ConstantInitializer(Initializer):
             if self._force_cpu:
                 place = core.CPUPlace()
             if in_dygraph_mode():
-                return _C_ops.full_(
+                _C_ops.full_(
                     var, var.shape, float(self._value), var.dtype, place
                 )
+                return None
             else:
                 return _C_ops.full(
                     var.shape, float(self._value), var.dtype, place
