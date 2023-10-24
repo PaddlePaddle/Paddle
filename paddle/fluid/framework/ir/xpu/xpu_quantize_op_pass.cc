@@ -49,7 +49,6 @@ void XPUQuantizeOpPass::QuantizeInput(Graph* g,
                                       Node* op,
                                       Node* input,
                                       std::string input_arg_name) const {
-  auto* scope = param_scope();
   auto inputs = op->Op()->InputNames();
   bool name_found =
       std::find(inputs.begin(), inputs.end(), input_arg_name) != inputs.end();
@@ -92,7 +91,6 @@ void XPUQuantizeOpPass::DequantizeOutput(Graph* g,
                                          Node* op,
                                          Node* output,
                                          std::string output_arg_name) const {
-  auto* scope = param_scope();
   auto outputs = op->Op()->OutputNames();
   bool name_found =
       std::find(outputs.begin(), outputs.end(), output_arg_name) !=
@@ -166,7 +164,8 @@ void XPUQuantizeOpPass::QuantizeConv(ir::Graph* graph) const {
           out_var_node = output_node;
         }
       }
-      if (!AreScalesPresentForNodes(&var_quant_scales_, {x_var_node})) {
+      if (!AreScalesPresentForNodes(&var_quant_scales_,
+                                    {x_var_node, w_var_node})) {
         MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
         return;
       }

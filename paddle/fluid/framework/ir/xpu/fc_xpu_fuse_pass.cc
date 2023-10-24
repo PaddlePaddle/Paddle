@@ -380,7 +380,6 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     weight_scale = GetScaleVecValueForNode(var_quant_scales, mul_w);
   }
   // Create fusion_bias_node
-  auto filter_dims = filter_t->dims();
   Node* fusion_bias_node = nullptr;
   if (with_bias) {
     auto* ew_bias_add_bias =
