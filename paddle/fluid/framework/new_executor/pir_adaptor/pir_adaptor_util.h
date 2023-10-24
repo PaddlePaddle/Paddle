@@ -379,6 +379,7 @@ void BuildPhiContext(pir::Operation* op,
   }
 
   // EmplaceBackOutputs
+  VLOG(8) << "ctx->EmplaceBackOutput: ";
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
     if (!IsInvalid(out_ptr)) {
