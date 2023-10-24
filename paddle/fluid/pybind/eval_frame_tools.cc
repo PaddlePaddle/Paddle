@@ -75,9 +75,8 @@ int TreeNode::check_filename(const char* filename) {
 /*========================== utils  ==========================*/
 
 const char* pystr_to_cstr(PyObject* pystr) {
-  const char* cstr = PyUnicode_AsUTF8(pystr);
-  if (cstr)
-    return cstr;
+  if (PyUnicode_Check(pystr))
+    return PyUnicode_AsUTF8(pystr);
   else
     PADDLE_THROW(phi::errors::InvalidArgument("Input PyObject is not string!"));
 }
@@ -220,9 +219,10 @@ int need_skip(FrameObject* frame) {
 
 #if PY_VERSION_HEX >= 0x030b0000
   const char* filename = pystr_to_cstr(co_filename);
+  PyObject* _filename = NULL;
   if (memcmp(filename, "<frozen", 7) == 0) {
     PyObject* f_globals = frame->f_globals;
-    PyObject* _filename = PyDict_GetItemString(f_globals, "__file__");
+    _filename = PyDict_GetItemString(f_globals, "__file__");
     if (_filename != NULL) {
       co_filename = _filename;
     }
@@ -232,7 +232,7 @@ int need_skip(FrameObject* frame) {
   int result = skip_info.in_skip_path(co_filename);
 
 #if PY_VERSION_HEX >= 0x030b0000
-  Py_DECREF(co_filename);
+  if (_filename != NULL) Py_DECREF(_filename);
 #endif
   return result;
 }
