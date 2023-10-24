@@ -123,7 +123,12 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.VerifySig(op);
+    try {
+      op_info.VerifySig(op);
+    } catch (const pir::IrNotMetException &e) {
+      op->Destroy();
+      throw e;
+    }
   }
   return op;
 }
