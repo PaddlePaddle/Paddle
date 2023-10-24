@@ -49,8 +49,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
             out = layer(image)
             label = paddle.to_tensor(self.label)
             loss = loss_fn(out, label)
-
-        loss.backward()
+            loss.backward()
 
         return loss, layer.w0.grad, layer.w1.grad
 
