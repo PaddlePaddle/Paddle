@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    ast_only_test,
-    test_and_compare_with_new_ir,
+    test_ast_only,
+    test_legacy_and_pir,
 )
 
 from paddle import base
@@ -60,7 +60,6 @@ def test_mix_cast(x):
     return x
 
 
-# @dy2static_unittest
 class TestCastBase(Dy2StTestBase):
     def setUp(self):
         self.place = (
@@ -89,9 +88,8 @@ class TestCastBase(Dy2StTestBase):
             res = self.func(self.input)
             return res
 
-    @ast_only_test  # TODO: add new symbolic only test.
-    @test_and_compare_with_new_ir(False)
-    # @set_to_static_mode(ToStaticMode.LEGACY_AST)
+    @test_ast_only  # TODO: add new sot only test.
+    @test_legacy_and_pir
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -156,8 +154,8 @@ class TestMixCast(TestCastBase):
     def set_func(self):
         self.func = to_static(full_graph=True)(test_mix_cast)
 
-    @ast_only_test  # TODO: add new symbolic only test.
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only  # TODO: add new symbolic only test.
+    @test_legacy_and_pir
     def test_cast_result(self):
         res = self.do_test().numpy()
         self.assertTrue(
@@ -188,8 +186,8 @@ class TestNotVarCast(TestCastBase):
     def set_func(self):
         self.func = to_static(full_graph=True)(test_not_var_cast)
 
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
+    @test_legacy_and_pir
     def test_cast_result(self):
         # breakpoint()
         # print("run once!!!")
