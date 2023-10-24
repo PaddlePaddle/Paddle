@@ -4565,7 +4565,7 @@ def sign(x, name=None):
     Returns sign of every element in `x`: 1 for positive, -1 for negative and 0 for zero.
 
     Args:
-        x (Tensor): The input tensor. The data type can be float16, float32 or float64.
+        x (Tensor): The input tensor. The data type can be int8, int16, int32, int64, float16, float32 or float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -4586,7 +4586,19 @@ def sign(x, name=None):
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'float32', 'float64', 'uint16'], 'sign'
+            x,
+            'x',
+            [
+                'int8',
+                'int16',
+                'int32',
+                'int64',
+                'float16',
+                'float32',
+                'float64',
+                'uint16',
+            ],
+            'sign',
         )
         helper = LayerHelper("sign", **locals())
         out = helper.create_variable_for_type_inference(dtype=x.dtype)

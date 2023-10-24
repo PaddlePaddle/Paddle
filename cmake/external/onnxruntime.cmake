@@ -44,19 +44,19 @@ set(ONNXRUNTIME_DOWNLOAD_DIR
 
 if(WIN32)
   set(ONNXRUNTIME_URL
-      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-win-x64-${ONNXRUNTIME_VERSION}.zip"
+      "${GIT_URL}/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-win-x64-${ONNXRUNTIME_VERSION}.zip"
   )
   set(ONNXRUNTIME_URL_MD5 f21d6bd1feef15935a5f4e1007797593)
   set(ONNXRUNTIME_CACHE_EXTENSION "zip")
 elseif(APPLE)
   set(ONNXRUNTIME_URL
-      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-osx-x86_64-${ONNXRUNTIME_VERSION}.tgz"
+      "${GIT_URL}/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-osx-x86_64-${ONNXRUNTIME_VERSION}.tgz"
   )
   set(ONNXRUNTIME_URL_MD5 6a6f6b7df97587da59976042f475d3f4)
   set(ONNXRUNTIME_CACHE_EXTENSION "tgz")
 else()
   set(ONNXRUNTIME_URL
-      "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
+      "${GIT_URL}/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-x64-${ONNXRUNTIME_VERSION}.tgz"
   )
   set(ONNXRUNTIME_URL_MD5 ce3f2376854b3da4b483d6989666995a)
   set(ONNXRUNTIME_CACHE_EXTENSION "tgz")
