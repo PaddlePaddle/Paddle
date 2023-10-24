@@ -8,6 +8,19 @@ if(WITH_TESTING AND WITH_CINN)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(
+    dialect_convert_test
+    SRCS
+    dialect_convert_test.cc
+    DEPS
+    drr
+    gtest
+    pd_to_cinn_pass
+    pd_op_dialect
+    cinn_op_dialect
+    pir)
+  set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test_old(
     ir_op_fusion_test
     SRCS
     ir_op_fusion_test.cc
