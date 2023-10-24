@@ -147,7 +147,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",   \
         {ir::Expr(32)});                                                 \
     tmp_buffer->dtype = tmp_dtype;                                       \
-    shm_buffer_.emplace_back(std::move(original_update_stmt));           \
+    shm_buffer_.emplace_back(std::move(tmp_buffer));                     \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)
