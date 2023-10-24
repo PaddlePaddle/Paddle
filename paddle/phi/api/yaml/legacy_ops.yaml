@@ -34,6 +34,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
+    spmd_rule : ReductionAllInferSpmdDynamic
   kernel :
     func : all
 
@@ -228,6 +229,7 @@
   output : Tensor(out)
   infer_meta :
     func : CastInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cast
     param : [x, dtype]
@@ -317,6 +319,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : divide
   inplace: (x -> out)
@@ -348,6 +351,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
   backward : elementwise_pow_grad
@@ -447,6 +451,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : floor_divide
   inplace: (x -> out)
@@ -717,6 +722,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
   backward : maximum_grad
@@ -763,6 +769,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : minimum
   backward : minimum_grad
@@ -782,6 +789,7 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
@@ -802,6 +810,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
   inplace: (x -> out)
@@ -921,6 +930,7 @@
   output : Tensor(out), Tensor(xshape)
   infer_meta :
     func : ReshapeWithXShapeInferMeta
+    spmd_rule : ReshapeInferSpmdForward
   kernel :
     func : reshape
   inplace : (x -> out)
@@ -968,6 +978,7 @@
   output : Tensor(out)
   infer_meta :
     func : SoftmaxInferMeta
+    spmd_rule : SoftmaxInferSpmd
   kernel :
     func : softmax
   inplace : (x -> out)
@@ -987,6 +998,7 @@
   output : Tensor[]{num}
   infer_meta :
     func : SplitWithNumInferMeta
+    spmd_rule : SplitWithNumInferSpmd
   kernel :
     func : split_with_num
   backward : split_with_num_grad
@@ -1067,6 +1079,7 @@
   output : Tensor(out)
   infer_meta :
     func : TransposeInferMeta
+    spmd_rule: TransposeInferSpmd
   kernel :
     func : transpose
   inplace : (x -> out)

@@ -344,8 +344,14 @@ PD_REGISTER_SPMD_RULE(
     trunc,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     dropout,
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
+    PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(
+    cast,
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmd),
     PD_INFER_SPMD(phi::distributed::ElementwiseUnaryInferSpmdReverse));
 
@@ -523,6 +529,7 @@ PD_REGISTER_SPMD_RULE(
 PD_REGISTER_SPMD_RULE(split,
                       PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),

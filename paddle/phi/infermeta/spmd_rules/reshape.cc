@@ -209,6 +209,12 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
   return {{x_dist_attr_dst}, {out_dist_attr}};
 }
 
+SpmdInfo ReshapeInferSpmdForward(const DistMetaTensor& x,
+                                 const IntArray& shape,
+                                 DataType dtype) {
+  return ReshapeInferSpmd(x, shape.GetData());
+}
+
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  const std::vector<int64_t>& shape) {

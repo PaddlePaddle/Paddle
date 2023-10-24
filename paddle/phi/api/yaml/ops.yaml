@@ -337,6 +337,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bitwise_not
     backend : x
@@ -550,6 +551,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cos
   inplace: (x -> out)
@@ -1399,6 +1401,7 @@
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
+    spmd_rule: LayerNormInferSpmd
   kernel :
     func : layer_norm
     data_type : x
@@ -1981,6 +1984,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param: [x]
   kernel :
     func : pow
@@ -2180,6 +2184,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : rsqrt
   inplace : (x -> out)
@@ -2190,6 +2195,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
     param : [x]
   kernel :
     func : scale {dense -> dense},
@@ -2360,6 +2366,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
   backward : silu_grad
@@ -2369,6 +2376,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule: ElementwiseUnaryInferSpmd
   kernel :
     func : sin
   inplace: (x -> out)
