@@ -364,17 +364,6 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
 
   // before profiling, do some preparations
   platform::Timer timer;
-
-  auto SyncDevice = []() {
-  // implement device sync for different platforms here (hip, cuda, ...)
-#if defined(PADDLE_WITH_CUDA)
-    platform::GpuDeviceSync();
-#else
-#error "Unsupported platform, cannot find a proper way to sync device."
-#endif
-  };
-
-  // step 1: prepare
   OpDesc* op_desc = block_.Op(op->Id());
   VLOG(4) << "** op_desc type: " << op_desc->Type();
   OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
@@ -391,6 +380,15 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
           << ",name=" << instr_node.OpBase()->Type() << "]";
 
   {
+    auto SyncDevice = []() {
+    // implement device sync for different platforms here (hip, cuda, ...)
+#if defined(PADDLE_WITH_CUDA)
+      platform::GpuDeviceSync();
+#else
+#error "Unsupported platform, cannot find a proper way to sync device."
+#endif
+    };
+
     // compute
     if (op_with_kernel == nullptr) {  // operator base
       if (require_sync) SyncDevice();
