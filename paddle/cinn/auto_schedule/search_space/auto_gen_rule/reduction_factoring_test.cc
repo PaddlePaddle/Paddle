@@ -66,6 +66,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
 };
 
 TEST_F(TestReductionFactoring, AnalyseApplyType) {
+  Context::Global().ResetNameId();
   Initialize(common::DefaultNVGPUTarget());
   auto test_program =
       tests::OpBuilder("elementwise_add").Build({{"X", {4, 5}}, {"Y", {4, 5}}});
@@ -80,6 +81,7 @@ TEST_F(TestReductionFactoring, AnalyseApplyType) {
 #ifdef CINN_WITH_CUDA
 
 TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
@@ -124,6 +126,7 @@ TEST_F(TestReductionFactoring, ApplyOnBlock1ReduceDim) {
 }
 
 TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
@@ -168,6 +171,7 @@ TEST_F(TestReductionFactoring, ApplyOnBlock2ReduceDim) {
 }
 
 TEST_F(TestReductionFactoring, ApplyOnBlock3ReduceDim) {
+  Context::Global().ResetNameId();
   std::string expected_ir = R"({
   ScheduleBlock(root)
   {
