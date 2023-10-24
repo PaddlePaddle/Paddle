@@ -21,10 +21,6 @@ set(STANDALONE_EXECUTOR_DEPS
     pir
     plan)
 
-if(WITH_NVTX AND NOT WIN32)
-  set(STANDALONE_EXECUTOR_DEPS ${STANDALONE_EXECUTOR_DEPS} cuda_profiler)
-endif()
-
 cc_library(
   standalone_executor
   SRCS ${STANDALONE_EXECUTOR_SRCS}
