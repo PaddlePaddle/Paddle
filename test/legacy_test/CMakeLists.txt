@@ -1387,12 +1387,9 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
     set_tests_properties(
       ${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
-    if(${IR_OP_TEST} STREQUAL "test_exponential_op")
-      set_tests_properties(${IR_OP_TEST}
-                           PROPERTIES ENVIRONMENT "FLAGS_NEW_IR_NO_CHECK=True")
-    endif()
+  endif()
   else()
-    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()
 endforeach()
 
@@ -1404,6 +1401,18 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
     set_tests_properties(
       ${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                "FLAGS_NEW_IR_OPTEST_RELAX_CHECK=True")
+  else()
+    message(
+      STATUS "NewIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_no_check_list"
+     NEW_IR_OP_RELAXED_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                                  "FLAGS_NEW_IR_NO_CHECK=True")
   else()
     message(
       STATUS "NewIR Relaxed OpTest: not found ${IR_OP_TEST} in legacy_test")
