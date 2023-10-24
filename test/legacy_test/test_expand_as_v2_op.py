@@ -279,7 +279,7 @@ class TestExpandAsV2API(unittest.TestCase):
 
             exe = base.Executor(place=base.CPUPlace())
             res_1 = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"x": input1, "target_tensor": input2},
                 fetch_list=[out_1],
             )
