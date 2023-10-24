@@ -208,7 +208,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
   // record each job's run time
 #if defined(PADDLE_WITH_CUDA)
-  if (FLAGS_auto_parallel_profiler) {
+  if (FLAGS_auto_parallel_profiler && !FLAGS_enable_new_ir_in_executor) {
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
       const std::string& job_type = job->Type();
