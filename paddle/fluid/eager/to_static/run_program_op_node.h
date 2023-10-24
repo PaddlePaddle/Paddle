@@ -618,6 +618,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
+  auto need_grad = !is_test && require_any_grad;
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -674,7 +675,7 @@ inline void RunProgramAPI(
   paddle::framework::BlockDesc *backward_global_block = nullptr;
   paddle::framework::ProgramDesc *backward_program = nullptr;
 
-  if (!is_test) {
+  if (!need_grad) {
     backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                              attrs.at("backward_global_block"));
     backward_program = backward_global_block->Program();
@@ -726,7 +727,7 @@ inline void RunProgramAPI(
     }
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    if (!is_test) {
+    if (!need_grad) {
       skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
               *backward_program);
@@ -793,7 +794,7 @@ inline void RunProgramAPI(
     details::ShareTensorsFromScopeWithPartialBlock(
         dout, *forward_global_block, backward_global_block, global_inner_scope);
 
-    if (is_test || !require_any_grad) {
+    if (!need_grad) {
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
