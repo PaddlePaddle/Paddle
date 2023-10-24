@@ -108,6 +108,8 @@ class TestCumsumOp(unittest.TestCase):
 
     @test_with_pir_api
     def test_gpu_static(self):
+        if not base.core.is_compiled_with_cuda():
+            return
         self.run_static(use_gpu=True)
 
     def test_name(self):
