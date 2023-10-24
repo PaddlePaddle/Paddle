@@ -1023,9 +1023,7 @@ class FusionPassRegistrar final : public Registrar {
 // code generation.
 class GeneralFusionMergePassHelper {
  public:
-  explicit GeneralFusionMergePassHelper(const ::pir::Program* graph,
-                                        const GroupList& group_list)
-      : graph_(graph) {
+  explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
     fusion_groups_ = group_list;
     // init input to consumers.
     InitInputToConsumers();
@@ -2099,7 +2097,6 @@ class GeneralFusionMergePassHelper {
     }
   }
 
-  const ::pir::Program* graph_;
   GroupList fusion_groups_;
   std::unordered_map<GroupPtr, int> fusion_groups_index_;
   std::unordered_set<const ::pir::Operation*> output_nodes_set_;
@@ -2108,14 +2105,13 @@ class GeneralFusionMergePassHelper {
       input_to_consumers_;
 };
 
-GroupList GeneralFusionMergePassInternal(const ::pir::Program* graph,
-                                         const GroupList& group_list) {
+GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   if (group_list.size() <= 1) {
     VLOG(3) << "Don't do Fusoin Merge Pass...!";
     return group_list;
   }
 
-  GeneralFusionMergePassHelper fusion_merge_pass_helper(graph, group_list);
+  GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
 
   return res;

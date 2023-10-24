@@ -181,9 +181,9 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
             y, [None]
         )
 
-        mes_loss = paddle.nn.loss.MSELoss()
-        local_out = mes_loss(local_in, local_label)
-        dist_out = mes_loss(dist_in, dist_label)
+        mse_loss = paddle.nn.loss.MSELoss()
+        local_out = mse_loss(local_in, local_label)
+        dist_out = mse_loss(dist_in, dist_label)
         self.check_tensor_eq(local_out, dist_out)
 
         # test backward

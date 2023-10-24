@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/slice_utils.h"
@@ -386,20 +387,31 @@ void SetValueKernel(const Context& dev_ctx,
                     const std::vector<int64_t>& shape,
                     const std::vector<Scalar>& values,
                     DenseTensor* out) {
-  std::vector<T> assign_values;
-  assign_values.reserve(values.size());
-  for (const auto& val : values) {
-    assign_values.push_back(val.to<T>());
+  // avoid using vector<T> if T is bool or phi::dtype::float16
+  int value_size = sizeof(T);
+  int values_size = values.size();
+  int values_length = values_size * value_size;
+  std::vector<uint8_t> assign_values(values_length);
+  uint8_t* value_data_uint8_cpu = assign_values.data();
+  for (int i = 0; i < values_size; i++) {
+    T value = values[i].to<T>();
+    memcpy(value_data_uint8_cpu + i * value_size, &value, value_size);
   }
 
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  xpu::ctx_guard RAII_GUARD(dev_ctx.x_context());
+  T* value_data =
+      reinterpret_cast<T*>(RAII_GUARD.alloc_l3_or_gm<XPUType>(values_size));
+  memory_utils::Copy(dev_ctx.GetPlace(),
+                     value_data,
+                     phi::CPUPlace(),
+                     value_data_uint8_cpu,
+                     values_length);
   auto value_dims = phi::make_ddim(shape);
-
-  DenseTensor value_tensor;
-  TensorFromVector<T>(assign_values, dev_ctx, &value_tensor);
 
   SetValueKernelImpl<T, Context>(dev_ctx,
                                  x,
-                                 value_tensor.data<T>(),
+                                 value_data,
                                  value_dims,
                                  starts,
                                  ends,

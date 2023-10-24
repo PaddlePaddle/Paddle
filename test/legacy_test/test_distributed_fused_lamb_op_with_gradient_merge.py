@@ -38,7 +38,7 @@ class TestDistributedFusedLambGradientMerge(unittest.TestCase):
             clip_after_allreduce=True,
             max_global_norm=-1.0,
             gradient_merge_steps=2,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_gm_with_fp16_acc_grad_new_comm(self):
@@ -47,7 +47,7 @@ class TestDistributedFusedLambGradientMerge(unittest.TestCase):
             max_global_norm=-1.0,
             gradient_merge_steps=2,
             use_master_acc_grad=False,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 
