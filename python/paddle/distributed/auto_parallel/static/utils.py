@@ -2683,6 +2683,14 @@ def measure_real_op_cost_wrt_program_and_place(
             'might be inaccurate.'
         )
 
+    # currently only CUDA profiling is supported, we will add profiling feature for
+    # other devices in the future.
+    if not isinstance(place, paddle.CUDAPlace):
+        warnings.warn(
+            'Currently only CUDA profiling is supported, '
+            'profiling results might be inaccurate.'
+        )
+
     profile_message = ""
 
     def _verbose_print(s, length=None, align='left'):
