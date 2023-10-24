@@ -25,6 +25,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -139,7 +140,7 @@ class TestCholeskySolveOp(OpTest):
 
     # check Op forward result
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     # check Op grad
     def test_check_grad_normal(self):
@@ -193,6 +194,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], z_np, rtol=1e-05)
 
+    @test_with_pir_api
     # test in static graph mode
     def test_static(self):
         for place in self.place:
@@ -239,6 +241,7 @@ class TestCholeskySolveAPI(unittest.TestCase):
 
 # test condition out of bounds
 class TestCholeskySolveOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
