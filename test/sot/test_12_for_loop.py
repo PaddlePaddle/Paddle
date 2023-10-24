@@ -186,6 +186,7 @@ class TestForLoop(TestCaseBase):
         paddle_output = for_iter(a, gener())
         self.assert_nest_match(sym_output, paddle_output)
 
+    @strict_mode_guard(False)
     def test_for_break(self):
         a = paddle.to_tensor(1)
         sym_output = symbolic_translate(for_break)(a, gener())
@@ -295,5 +296,4 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
 
 
 if __name__ == "__main__":
-    with strict_mode_guard(False):
-        unittest.main()
+    unittest.main()
