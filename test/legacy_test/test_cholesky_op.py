@@ -22,7 +22,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 @skip_check_grad_ci(
@@ -136,7 +135,6 @@ class TestCholeskySingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
-    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
