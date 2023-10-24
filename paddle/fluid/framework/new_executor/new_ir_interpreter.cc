@@ -54,10 +54,14 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
 #include "paddle/phi/core/flags.h"
-#include "paddle/pir/core/builtin_attribute.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
@@ -741,7 +745,8 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
   if (instr->Name() == "send_v2") {
     ::pir::Operation* op = instr->Operation();
     if (op->HasAttribute("use_calc_stream") &&
-        op->attribute<::pir::BoolAttribute>("use_calc_stream").data()) {
+        op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
+            false) {
       int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
       if (FLAGS_dynamic_static_unified_comm) {
         const auto& comm_context_manager =
