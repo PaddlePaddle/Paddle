@@ -17,14 +17,8 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/utils.h"
-#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/phi/api/all.h"
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -33,7 +27,7 @@ ReshardGradNode::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
-  VLOG(3) << "Running API GRAD: "
+  VLOG(3) << "Running AD API GRAD: "
           << "reshard_grad";
 
   // Apply Gradient Hooks
@@ -50,47 +44,56 @@ ReshardGradNode::operator()(
   const auto& out_metas = OutputMeta();
   paddle::small_vector<std::vector<paddle::Tensor>, egr::kSlotSmallVectorSize>
       returns(1);
-  for (int i = 0; i < 1; ++i) {
-    out_metas[i].size() == 0 ? returns[i].resize(1)
-                             : returns[i].resize(out_metas[i].size());
-  }
+
+  out_metas[0].size() == 0 ? returns[0].resize(1)
+                           : returns[0].resize(out_metas[0].size());
 
   auto& grad_input = returns[0][0];
 
   VLOG(5) << "Running C++ API: "
           << "reshard_func";
 
-  // Backward call reshard_func function
-  // reshard_func(grad_out, grad_input, dist_attr);
-  auto dev_ctx = phi::DeviceContextPool::Instance().Get(grad_out.place());
-  std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
-  if (phi::distributed::DistTensor::classof(grad_out.impl().get())) {
-    auto tensor_grad_out = grad_out.impl();
-    if (tensor_grad_out) {
-      phi::distributed::DistTensor* dist_tensor =
-          static_cast<phi::distributed::DistTensor*>(tensor_grad_out.get());
-      if (dist_tensor->dist_attr() != dist_attr) {
-        VLOG(6) << "reshard func, reshard tensor from "
-                << dist_tensor->dist_attr() << " to " << dist_attr;
-        auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                   dist_attr);
-        dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
-      } else {
-        dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
-            tensor_grad_out);
-      }
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The input tensor of shard function should be "
-        "``phi::distributed::DistTensor``. "
-        "However it's %s",
-        typeid(grad_out.impl().get()).name()));
+  if (VLOG_IS_ON(3)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s]} ";
+
+    std::string input_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_out_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_x_str;
+    VLOG(3) << paddle::string::Sprintf(INPUT_PRINT_TEMPLATE, input_str);
   }
+
+  // Backward call reshard_func function
+  auto dist_out_ptr = phi::distributed::Reshard(grad_out, dist_attr);
   grad_input.set_impl(dist_out_ptr);
 
   VLOG(5) << "Finish C++ API: reshard_func";
   VLOG(6) << "gradnode_ptr = " << this;
+
+  if (VLOG_IS_ON(4)) {
+    const char* INPUT_PRINT_TEMPLATE = "{ Input: [%s],  \n Output: [%s] } ";
+    std::string input_str = "";
+    std::string output_str = "";
+    const char* TENSOR_OUT_GRAD_TEMPLATE = " \n( out_grad , [%s]), ";
+    std::string input_out_grad_str = paddle::string::Sprintf(
+        TENSOR_OUT_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_out));
+    input_str += input_out_grad_str;
+    const char* TENSOR_X_TEMPLATE = " \n( x , [%s]), ";
+    std::string input_x_str = paddle::string::Sprintf(
+        TENSOR_X_TEMPLATE, egr::EagerUtils::TensorStr(input));
+    input_str += input_x_str;
+    const char* TENSOR_X_GRAD_TEMPLATE = " \n ( input_grad , [%s]), ";
+    std::string output_x_grad_str = paddle::string::Sprintf(
+        TENSOR_X_GRAD_TEMPLATE, egr::EagerUtils::TensorStr(grad_input));
+    output_str += output_x_grad_str;
+    VLOG(4) << paddle::string::Sprintf(
+        INPUT_PRINT_TEMPLATE, input_str, output_str);
+  }
 
   return returns;
 }

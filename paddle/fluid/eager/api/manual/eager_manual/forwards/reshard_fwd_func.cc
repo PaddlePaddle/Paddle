@@ -17,11 +17,7 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/backends/context_pool.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& input,
@@ -59,31 +55,7 @@ paddle::Tensor reshard_ad_function(
 
   // Forward API Call
   // reshard_func(input, api_result, dist_attr);
-  auto dev_ctx = phi::DeviceContextPool::Instance().Get(input.place());
-  std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
-  if (phi::distributed::DistTensor::classof(input.impl().get())) {
-    auto tensor_in = input.impl();
-    if (tensor_in) {
-      phi::distributed::DistTensor* dist_tensor =
-          static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-      if (dist_tensor->dist_attr() != dist_attr) {
-        VLOG(6) << "reshard func, reshard tensor from "
-                << dist_tensor->dist_attr() << " to " << dist_attr;
-        auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                   dist_attr);
-        dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
-      } else {
-        dist_out_ptr =
-            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
-      }
-    }
-  } else {
-    PADDLE_THROW(phi::errors::InvalidArgument(
-        "The input tensor of shard function should be "
-        "``phi::distributed::DistTensor``. "
-        "However it's %s",
-        typeid(input.impl().get()).name()));
-  }
+  auto dist_out_ptr = phi::distributed::Reshard(input, dist_attr);
   auto api_result = paddle::Tensor(dist_out_ptr);
 
   // Get Outputs

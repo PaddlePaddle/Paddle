@@ -89,12 +89,13 @@ class TestReshardAPI:
         if self._backend == "cpu":
             return
 
+        np.random.seed(1901)
         input_numpy = np.random.random(self._shape).astype("float32")
         label_numpy = np.random.random(self._shape).astype('float32')
 
         in_shard_specs = [None for i in range(len(self._shape))]
         out_shard_specs = [None for i in range(len(self._shape))]
-        # out_shard_specs[self._shard] = "x"
+        out_shard_specs[self._shard] = "x"
 
         in_dist_attr = dist.DistAttr(
             mesh=dist.ProcessMesh([0, 1], dim_names=["x"]),
