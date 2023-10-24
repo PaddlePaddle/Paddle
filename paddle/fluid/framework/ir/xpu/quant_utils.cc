@@ -281,11 +281,6 @@ void ConvertWithQuant(phi::DenseTensor* weight,
                       phi::DenseTensor* weight_max,
                       bool transpose,
                       const std::vector<float>& weight_scales) {
-  if (!weight_scales.empty()) {
-    LOG(FATAL) << "Weight scales should be empty(), otherwise, check if your "
-                  "model is quant model or not.";
-  }
-
   // Convert fp16 to fp32
   phi::DenseTensor weight_fp32;
   CastToFp32(weight, &weight_fp32);
@@ -349,51 +344,17 @@ template void ConvertWithQuant<float, int16_t>(
     bool transpose,
     const std::vector<float>& weight_scales);
 
-template void ConvertWithoutQuant<int8_t>(
+template void ConvertWithQuant<float, int8_t>(
     phi::DenseTensor* weight,
     phi::DenseTensor* weight_max,
     bool transpose,
     const std::vector<float>& weight_scales);
 
-template <typename T>
-void PrepareWeight(phi::DenseTensor* weight,
-                   phi::DenseTensor* weight_max,
-                   bool transpose) {
-  // Convert fp16 to fp32
-  phi::DenseTensor weight_fp32;
-  CastToFp32(weight, &weight_fp32);
-
-  // Transpose
-  if (transpose) {
-    Transpose2D(&weight_fp32);
-  }
-
-  // Find max
-  int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-  int size = weight_fp32.numel();
-  auto* weight_data = weight_fp32.data<float>();
-  float max_val = FindMaxAbs(weight_data, size);
-  std::vector<float> max_vec(max_ptr_size, max_val);
-  weight_max->set_type(phi::DataType::FLOAT32);
-  weight_max->Resize({max_ptr_size});
-  auto* cpu_ctx = static_cast<phi::CPUContext*>(
-      platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-  memcpy(cpu_ctx->Alloc<float>(weight_max),
-         max_vec.data(),
-         max_ptr_size * sizeof(float));
-
-  // Quant
-  weight->set_type(phi::CppTypeToDataType<T>::Type());
-  weight->Resize(weight_fp32.dims());
-  QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
-}
-
-template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
-                                     phi::DenseTensor* weight_max,
-                                     bool transpose);
-template void PrepareWeight<int8_t>(phi::DenseTensor* weight,
-                                    phi::DenseTensor* weight_max,
-                                    bool transpose);
+template void ConvertWithoutQuant<int8_t>(
+    phi::DenseTensor* weight,
+    phi::DenseTensor* weight_max,
+    bool transpose,
+    const std::vector<float>& weight_scales);
 
 bool IsPerTensorQuant(const std::vector<float>& weight_max) {
   bool per_tensor = true;

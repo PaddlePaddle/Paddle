@@ -51,14 +51,6 @@ void ConvertWithQuant(phi::DenseTensor* weight,
                       bool transpose,
                       const std::vector<float>& weight_scales);
 
-// 1. Quant weight from fp32 to int16/int31
-// 2. Weight data is in-place update.
-// 3. Generate weight max tensor
-template <typename T>
-void PrepareWeight(phi::DenseTensor* weight,
-                   phi::DenseTensor* weight_max,
-                   bool transpose);
-
 bool IsPerTensorQuant(const std::vector<float>& weight_max);
 
 }  // namespace ir

@@ -95,7 +95,6 @@ void ConvertToMixedPrecisionPass::Run() {
   framework::ir::AutoMixedPrecisionPass auto_mixed_precision_pass;
   auto_mixed_precision_pass.Set("mixed_precision_mode",
                                 new int{static_cast<int>(mixed_precision_)});
-
   if (backend_ == phi::Backend::GPU) {
     auto_mixed_precision_pass.Set("enable_gpu_mixed", new bool{true});
   } else if (backend_ == phi::Backend::XPU) {

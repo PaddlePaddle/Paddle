@@ -13,13 +13,8 @@ cc_library(
 cc_library(
   convert_to_mixed_precision
   SRCS convert_to_mixed_precision.cc
-  DEPS analysis_pass
-       ir_graph_build_pass
-       auto_mixed_precision_pass
-       constant_folding_pass
-       identity_op_clean_pass
-       delete_quant_dequant_linear_op_pass
-       delete_weight_dequant_linear_op_pass)
+  DEPS analysis_pass ir_graph_build_pass auto_mixed_precision_pass
+       constant_folding_pass identity_op_clean_pass)
 cc_library(
   ir_params_sync_among_devices_pass
   SRCS ir_params_sync_among_devices_pass.cc

@@ -79,22 +79,16 @@ void ConvertWeightWrapper(phi::DenseTensor* weight,
   ConvertWithoutQuant<Tcpu>(weight, weight_max, transpose, weight_scales);
 }
 
-template <typename T>
-void PrepareWeight(Graph* graph,
-                   Scope* scope,
-                   BlockDesc* block,
-                   Node* src,
-                   Node** dst,
-                   Node** dst_max,
-                   bool transpose);
-
+// 1. Quant weight from fp32 to int16/int31/int8
+// 2. Weight data is in-place update.
+// 3. Generate weight max tensor
 template <typename Tcpu, typename Txpu>
 void PrepareWeight(Graph* graph,
                    Scope* scope,
                    BlockDesc* block,
                    Node* weight,
-                   Node** quant_weight,
-                   Node** quant_weight_max,
+                   Node** dst_weight,
+                   Node** dst_weight_max,
                    bool transpose,
                    const std::vector<float>& weight_scales);
 
