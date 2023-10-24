@@ -2466,12 +2466,12 @@ class TestLeakyRelu(TestActivation):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestLeakyReluAlpha1(TestLeakyRelu):
@@ -4751,7 +4751,9 @@ create_test_act_fp16_class(TestHardSigmoid)
 create_test_act_fp16_class(TestSwish)
 create_test_act_fp16_class(TestHardSwish, check_prim=True)
 create_test_act_fp16_class(TestMish)
-create_test_act_fp16_class(TestLeakyRelu, check_prim=True, enable_cinn=True)
+create_test_act_fp16_class(
+    TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
+)
 create_test_act_fp16_class(
     TestLeakyReluAlpha1, check_prim=True, enable_cinn=True
 )
@@ -4899,7 +4901,7 @@ create_test_act_bf16_class(TestHardSigmoid)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
-create_test_act_bf16_class(TestLeakyRelu, check_prim=True)
+create_test_act_bf16_class(TestLeakyRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestLeakyReluAlpha1, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha2, check_prim=True)
 create_test_act_bf16_class(TestLeakyReluAlpha3, check_prim=True)
