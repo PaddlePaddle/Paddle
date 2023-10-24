@@ -28,12 +28,8 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
   auto* source_op =
       op.operand_source(/*dim_idx=*/1).dyn_cast<::pir::OpResult>().owner();
   CHECK(source_op->isa<paddle::dialect::FullIntArrayOp>());
-  const std::vector<int64_t>& dim_val =
-      source_op->attributes()
-          .at("value")
-          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-          .data()
-          .GetData();
+  auto dim_val =
+      paddle::dialect::GetInt64Vector(source_op->attributes().at("value"));
   std::vector<int> dim(dim_val.begin(), dim_val.end());
   attrs["dim"] = dim;
 }

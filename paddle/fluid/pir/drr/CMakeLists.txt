@@ -87,9 +87,11 @@ if(WITH_CINN AND NOT CINN_ONLY)
     VERBATIM)
   set(CINN_SOURCE_FILE ${cinn_op_creator_file})
 
+  set(CINN_DEPS cinn_op_dialect)
+
 endif()
 
 cc_library(
   drr
   SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
-  DEPS pd_op_dialect pir)
+  DEPS pd_op_dialect ${CINN_DEPS} pir)

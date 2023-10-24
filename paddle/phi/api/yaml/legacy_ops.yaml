@@ -726,6 +726,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMeanInferSpmdDynamic
   kernel :
     func : mean
   backward : mean_grad
@@ -1015,6 +1016,7 @@
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
+    spmd_rule : ReductionSumInferSpmdDynamic
   kernel :
     func : sum
     data_type : x
