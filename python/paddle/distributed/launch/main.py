@@ -696,6 +696,8 @@ def launch():
                 cur_cfg["max_mem_usage"] = None if not OOM_flag else "OOM"
 
             # record history
+            if tuner_cfg['metric_cfg']['name'] not in cur_cfg:
+                cur_cfg[tuner_cfg['metric_cfg']['name']] = None
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)
             recorder.store_history(history_file_path)
