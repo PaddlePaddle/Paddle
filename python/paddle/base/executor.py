@@ -1870,7 +1870,7 @@ class Executor:
                 print(place)
                 place = paddle.CUDAPlace(int(place.split(':')[1]))
                 msg = measure_real_op_cost_wrt_program_and_place(
-                    program, place, verbose_level=2
+                    program, place, run_iters=16, verbose_level=2
                 )
                 pid = os.getpid()
                 outfile = "mylog/profile.log.%d" % pid
@@ -1878,8 +1878,6 @@ class Executor:
                 with open(outfile, 'a') as f:
                     f.write(msg)
                 print("======================= finished ======================")
-            else:
-                sys.exit()
 
             set_flags(stored_flag)
             return ret

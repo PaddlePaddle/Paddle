@@ -247,8 +247,10 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
           << ", micro_batch_id =" << job->MicroBatchId();
 
   interpretercores_[0]->RunProfile(feed_names);
-
-  return interpretercores_[0]->GetMutableCopyProgram();
+  std::shared_ptr<framework::ProgramDesc> copy_desc =
+      std::make_shared<framework::ProgramDesc>(
+          *(interpretercores_[0]->GetMutableCopyProgram()));
+  return copy_desc;
 }
 
 }  // namespace framework

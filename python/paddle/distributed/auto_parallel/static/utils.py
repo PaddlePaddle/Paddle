@@ -2379,8 +2379,7 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     program, place, run_iters, verbose
 ):
     '''
-    Run op profiling for a single pass. Internal function for API, do not call this
-    function directly.
+    Run op profiling for a single pass. Internal function, do not call this directly.
     '''
 
     # clone the program to avoid accidental change made to the vanilla program.
@@ -2543,23 +2542,28 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     num_ops = len(cloned_main_block.ops)
     prof_results = [[None for _ in range(run_iters)] for _ in range(num_ops)]
 
-    for iter_id in range(run_iters):
-        program_desc = exe.run_profile(feed_names)
+    with open('666.txt', 'w') as f:
+        for iter_id in range(run_iters):
+            f.write('%d\n' % iter_id)
+            # for each iteration, run profiling and retrieve modified version of program desc
+            program_desc = exe.run_profile(feed_names)
 
-        # rebuild program from returned program desc
-        cloned_program._rebuild_from_desc(program_desc)
-        cloned_main_block = cloned_program.global_block()
+            # rebuild program object from the new program desc
+            temp_program = cloned_program.clone()
+            temp_program._rebuild_from_desc(program_desc)
+            temp_main_block = temp_program.global_block()
 
-        # collect profile result
-        for op_id, cloned_op in zip(
-            range(len(cloned_main_block.ops)), cloned_main_block.ops
-        ):
-            prof_results[op_id][iter_id] = (
-                cloned_op.get_runtime_us()
-                if cloned_op.supports_runtime_profiling()
-                else None
-            )
-    print(prof_results)
+            # collect profiling result
+            for op_id, temp_op in zip(
+                range(len(temp_main_block.ops)), temp_main_block.ops
+            ):
+                f.write('  %d %s\n' % (op_id, str(temp_op.type)))
+                prof_results[op_id][iter_id] = (
+                    temp_op.get_runtime_us()
+                    if temp_op.supports_runtime_profiling()
+                    else None
+                )
+        f.write(str(prof_results))
     sys.exit()
 
     return prof_results
@@ -2600,15 +2604,16 @@ def measure_real_op_cost_wrt_program_and_place(
 
     Returns
     -----------
-    No return value. This function will write op profiling info directly into program
-    object. For example, to retrieve the run time for the first op in program, use:
+    Returns profiling report (as Python string). This API will write op run time
+    directly into program object. For example, to retrieve the run time for the first
+    op in program, use:
     >>> program.global_block().ops[0].get_runtime_us()
 
     Note
     -----------
     Not all ops support runtime profiling. Currently communication ops do not support
-    runtime profiling feature since their execution times are relied on other ops.
-    To check if an op supports runtime profiling, use:
+    runtime profiling feature since their execution times rely on other ops. To check
+    if an op supports runtime profiling, use:
     >>> op.supports_runtime_profiling()
     where "op" is an instance of "paddle.base.framework.Operator".
 
