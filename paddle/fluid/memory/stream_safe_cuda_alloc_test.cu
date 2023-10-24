@@ -412,7 +412,7 @@ TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStreamTest) {
   CheckResult();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000))
 TEST_F(StreamSafeCUDAAllocTest, CUDAGraphTest) {
   MultiStreamRun();
   CUDAGraphRun();
