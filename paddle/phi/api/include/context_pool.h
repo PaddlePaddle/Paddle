@@ -69,7 +69,7 @@ class PADDLE_API DeviceContextPool {
 
   const phi::DeviceContext* Get(const Place& place);
 
-  const phi::DeviceContext* GetMutable(const Place& place);
+  phi::DeviceContext* GetMutable(const Place& place);
 
   void SyncDeviceContext(const Place& place);
 

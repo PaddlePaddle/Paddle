@@ -60,8 +60,8 @@ const phi::DeviceContext* DeviceContextPool::Get(const Place& place) {
   return it->second;
 }
 
-const phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
-  return Get(place);
+phi::DeviceContext* DeviceContextPool::GetMutable(const Place& place) {
+  return const_cast<phi::DeviceContext*>(Get(place));  // NOLINT
 }
 
 }  // namespace experimental
