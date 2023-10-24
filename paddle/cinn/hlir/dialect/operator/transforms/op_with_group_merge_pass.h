@@ -24,10 +24,9 @@ namespace ir {
 using GroupPtr = std::shared_ptr<Group>;
 using GroupList = std::vector<GroupPtr>;
 
-GroupList OpFusionPassInternal(const ::pir::Program& program);
+GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list);
 
-GroupList GeneralFusionMergePassInternal(const ::pir::Program* graph,
-                                         const GroupList& group_list);
+GroupList GeneralFusionMergePassInternal(const GroupList& group_list);
 
 }  // namespace ir
 }  // namespace dialect
