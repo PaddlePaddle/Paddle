@@ -19,9 +19,9 @@
 
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
-#include "paddle/cinn/hlir/framework/new_ir/group.h"
 #include "paddle/cinn/hlir/framework/op_lowering_impl_base.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
+#include "paddle/cinn/hlir/framework/pir/group.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
@@ -36,7 +36,7 @@
 namespace cinn {
 namespace hlir {
 namespace framework {
-namespace newir {
+namespace pir {
 
 using GroupPtr = std::shared_ptr<Group>;
 
@@ -157,7 +157,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
   Target target_;
 };
 
-}  // namespace newir
+}  // namespace pir
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn

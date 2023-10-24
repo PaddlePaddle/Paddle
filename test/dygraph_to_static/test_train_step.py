@@ -17,10 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_util import (
-    enable_fallback_guard,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -87,7 +84,9 @@ class TestTrainStepTinyModel(unittest.TestCase):
             self.train_step_func, self.steps
         )
         reset_seed()
-        static_func = paddle.jit.to_static(self.train_step_func)
+        static_func = paddle.jit.to_static(
+            self.train_step_func, full_graph=True
+        )
         static_losses = self.get_train_step_losses(static_func, self.steps)
         self.assertEqual(len(dygraph_losses), len(static_losses))
         for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):
@@ -438,5 +437,4 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
 
 
 if __name__ == "__main__":
-    with enable_fallback_guard("False"):
-        unittest.main()
+    unittest.main()

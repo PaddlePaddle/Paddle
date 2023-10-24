@@ -15,21 +15,36 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace cinn {
 namespace dialect {
 
 const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 
-// TODO(Aurlius84): Need to figure out how to rebuild relation info of ops outer
-// GroupOp
 void GroupOp::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
                     const std::vector<pir::Type> &output_types) {
   argument.AddRegion(nullptr);
   argument.output_types = output_types;
+}
+
+void GroupOp::Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<pir::Block> &&block) {
+  VLOG(4) << "Start build GroupOp";
+  if (block && !block->empty()) {
+    IR_ENFORCE(block->back()->isa<pir::YieldOp>());
+    auto *op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      argument.AddOutput(op->operand(i).type());
+    }
+  }
+  argument.AddRegion()->push_back(block.release());
 }
 
 pir::Block *GroupOp::block() {

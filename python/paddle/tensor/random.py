@@ -797,7 +797,7 @@ def uniform(shape, dtype=None, min=-1.0, max=1.0, seed=0, name=None):
     if in_dynamic_or_pir_mode():
         shape = paddle.utils.convert_shape_to_list(shape)
         if in_pir_mode() and paddle.utils._contain_var(shape):
-            shape = paddle.utils.get_pir_shape_tensor(
+            shape = paddle.utils.get_int_tensor_list(
                 shape, _current_expected_place()
             )
         return _C_ops.uniform(
