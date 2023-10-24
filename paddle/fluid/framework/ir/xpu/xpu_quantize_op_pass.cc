@@ -237,7 +237,8 @@ void XPUQuantizeOpPass::QuantizeFC(ir::Graph* graph) const {
           out_var_node = output_node;
         }
       }
-      if (!AreScalesPresentForNodes(&var_quant_scales_, {x_var_node})) {
+      if (!AreScalesPresentForNodes(&var_quant_scales_,
+                                    {x_var_node, w_var_node})) {
         MarkAndLogCannotQuantizeOp(n, "No scale available for the operator");
         return;
       }

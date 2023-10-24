@@ -577,14 +577,10 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     auto bn_mean_t =
         scope->Var(bn_mean->Name())->GetMutable<phi::DenseTensor>();
     auto bn_var_t = scope->Var(bn_var->Name())->GetMutable<phi::DenseTensor>();
-    float* bn_scale_ptr =
-        bn_scale_t->mutable_data<float>(paddle::platform::CPUPlace());
-    float* bn_bias_ptr =
-        bn_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
-    float* bn_mean_ptr =
-        bn_mean_t->mutable_data<float>(paddle::platform::CPUPlace());
-    float* bn_var_ptr =
-        bn_var_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* bn_scale_ptr = bn_scale_t->data<float>();
+    float* bn_bias_ptr = bn_bias_t->data<float>();
+    float* bn_mean_ptr = bn_mean_t->data<float>();
+    float* bn_var_ptr = bn_var_t->data<float>();
     auto mean_len = bn_mean_t->numel();
     auto filter_stride = filter_len / mean_len;
     float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
@@ -594,24 +590,21 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
 
     auto fusion_bias_t =
         scope->Var(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
-    float* fusion_bias_ptr =
-        fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* fusion_bias_ptr = fusion_bias_t->data<float>();
     // recompute bias and weights
     for (int i = 0; i < mean_len; ++i) {
       bn_scale_ptr[i] = bn_scale_ptr[i] / sqrtf(bn_var_ptr[i] + epsilon);
     }
     // recompute the weights
     if (op_weights_precision != "int8") {
-      float* filter_ptr =
-          filter_t->mutable_data<float>(paddle::platform::CPUPlace());
+      float* filter_ptr = filter_t->data<float>();
       for (int i = 0; i < mean_len; ++i) {
         for (int j = 0; j < filter_stride; j++) {
           filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
         }
       }
     } else {
-      int8_t* filter_ptr =
-          filter_t->mutable_data<int8_t>(paddle::platform::CPUPlace());
+      int8_t* filter_ptr = filter_t->data<int8_t>();
       PADDLE_ENFORCE_EQ(
           weight_scale.size(),
           mean_len,
@@ -659,8 +652,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     // recompute bias as scale op
     auto fusion_bias_t =
         scope->GetVar(fusion_bias_node->Name())->GetMutable<phi::DenseTensor>();
-    float* fusion_bias_ptr =
-        fusion_bias_t->mutable_data<float>(paddle::platform::CPUPlace());
+    float* fusion_bias_ptr = fusion_bias_t->data<float>();
     for (int i = 0; i < bias_len; ++i) {
       if (bias_after_scale_) {
         fusion_bias_ptr[i] = fusion_bias_ptr[i] * scale_val_ + bias_val_;
@@ -670,8 +662,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     }
     // recompute weight as scale op
     if (op_weights_precision != "int8") {
-      float* filter_ptr =
-          filter_t->mutable_data<float>(paddle::platform::CPUPlace());
+      float* filter_ptr = filter_t->data<float>();
       for (int i = 0; i < filter_len; ++i) {
         filter_ptr[i] *= scale_val_;
       }
