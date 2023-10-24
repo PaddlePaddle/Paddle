@@ -122,7 +122,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
-  optional : reserve_space
+  optional : scale, bias, reserve_space
 
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)

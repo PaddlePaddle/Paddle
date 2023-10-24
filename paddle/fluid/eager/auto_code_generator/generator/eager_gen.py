@@ -1059,7 +1059,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or IsVectorTensorType(atype)
                             or (name in self.optional_inputs)
                         ):
-                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            if for_backward is False:
+                                set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            else:
+                                set_tensor_wrappers = f"{indent}if({name}_optional) grad_node->SetTensorWrapper{name}(*{name}_optional);"
+
                         else:
                             need_pre_contiguous_set.add(name)
                             set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
@@ -1138,7 +1142,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
 
             if is_optional:
-                set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                if for_backward is False:
+                    set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                else:
+                    set_grad_out_meta = f"{indent}if({name}_optional.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}_optional.get_ptr()), {pos});"
             else:
                 if (
                     is_special_forward_api
