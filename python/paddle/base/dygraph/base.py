@@ -595,7 +595,7 @@ def guard(place=None):
     if place is not None:
         expected_place = _get_paddle_place(place)
     else:
-        expected_place = framework._current_expected_place()
+        expected_place = framework._current_expected_place_()
 
     with framework.program_guard(train, startup):
         with framework.unique_name.guard():
@@ -798,8 +798,6 @@ def grad(
 
     if no_grad_vars is None:
         no_grad_vars = []
-    elif isinstance(no_grad_vars, core.eager.Tensor):
-        no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, core.eager.Tensor):
         no_grad_vars = [no_grad_vars]
     elif isinstance(no_grad_vars, (list, tuple, set)):

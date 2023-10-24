@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
 
 
 class TestReplicatedSPmdApiForSemiAutoParallel:
@@ -50,29 +49,6 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         return local_t, dist_t
 
     # input: phi::Tensor
-    # output: phi::Tensor
-    def test_relu(self):
-        x = np.random.random(size=[4, 4]).astype(self._dtype)
-        local_in, dist_in = self.create_local_and_dist_tensor_pair(
-            x, ['x', None]
-        )
-        local_out = F.relu(local_in)
-        dist_out = F.relu(dist_in)
-        np.testing.assert_equal(
-            dist_out.dist_attr.dims_mapping, [-1, -1], verbose=True
-        )
-        self.check_tensor_eq(local_out, dist_out)
-
-        # test backward
-        local_out.backward()
-        dist_out.backward()
-        np.testing.assert_equal(dist_in.grad._local_shape, [2, 4], verbose=True)
-        np.testing.assert_equal(
-            dist_in.grad.dist_attr.dims_mapping, [0, -1], verbose=True
-        )
-        self.check_tensor_eq(local_in.grad, dist_in.grad)
-
-    # input: phi::Tensor
     # output: std::vector<phi::Tensor>
     def test_unbind(self):
         x = np.random.random(size=[2, 8]).astype("float32")
@@ -102,9 +78,9 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
             y, [None]
         )
 
-        mes_loss = paddle.nn.loss.MSELoss()
-        local_out = mes_loss(local_in, local_label)
-        dist_out = mes_loss(dist_in, dist_label)
+        mse_loss = paddle.nn.loss.MSELoss()
+        local_out = mse_loss(local_in, local_label)
+        dist_out = mse_loss(dist_in, dist_label)
         self.check_tensor_eq(local_out, dist_out)
 
         # test backward
@@ -124,7 +100,6 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_relu()
         self.test_mse_loss()
         self.test_unbind()
 

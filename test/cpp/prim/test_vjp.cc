@@ -59,12 +59,15 @@ TEST(VJP, TanhBackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh");
   auto tanh_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+  tanh_vjp_interface_impl->vjp_(
+      op2.operation(), inputs, outputs, out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -114,12 +117,15 @@ TEST(VJP, Tanh_BackwardTest) {
       std::vector<int64_t>{1}, 2.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.tanh_");
   auto tanh_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  tanh_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+  tanh_vjp_interface_impl->vjp_(
+      op2.operation(), inputs, outputs, out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -169,12 +175,15 @@ TEST(VJP, MeanBackwardTest) {
       std::vector<int64_t>{}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op2.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.out()}};
 
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.mean");
   auto mean_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  mean_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+  mean_vjp_interface_impl->vjp_(
+      op2.operation(), inputs, outputs, out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -227,11 +236,14 @@ TEST(VJP, ConcatBackwardTest) {
   paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  concat_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
+  concat_vjp_interface_impl->vjp_(
+      op3.operation(), inputs, outputs, out_grads, stop_gradients);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
@@ -291,12 +303,15 @@ TEST(VJP, AddBackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op2.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add");
   auto add_vjp_interface_impl =
       op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
-  add_vjp_interface_impl->vjp_(op3.operation(), out_grads, stop_gradients);
+  add_vjp_interface_impl->vjp_(
+      op3.operation(), inputs, outputs, out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -356,13 +371,15 @@ TEST(VJP, Add_BackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op2.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
   pir::OpInfo op3_info = ctx->GetRegisteredOpInfo("pd_op.add_");
   auto add_inplace_vjp_interface_impl =
       op3_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
   add_inplace_vjp_interface_impl->vjp_(
-      op3.operation(), out_grads, stop_gradients);
+      op3.operation(), inputs, outputs, out_grads, stop_gradients);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -422,13 +439,16 @@ TEST(VJP, SplitBackwardTest) {
       std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
+  std::vector<std::vector<pir::OpResult>> outputs{{op3.outputs()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
 
   auto concat_vjp_interface_impl =
       op2_info.GetInterfaceImpl<paddle::dialect::VjpInterface>();
 
-  concat_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
+  concat_vjp_interface_impl->vjp_(
+      op2.operation(), inputs, outputs, out_grads, stop_gradients);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
