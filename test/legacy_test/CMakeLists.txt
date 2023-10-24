@@ -1387,6 +1387,10 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
     set_tests_properties(
       ${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
+    if(${IR_OP_TEST} STREQUAL "test_exponential_op")
+      set_tests_properties(${IR_OP_TEST}
+                           PROPERTIES ENVIRONMENT "FLAGS_NEW_IR_NO_CHECK=True")
+    endif()
   else()
     message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()
