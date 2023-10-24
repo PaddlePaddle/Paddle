@@ -7,7 +7,7 @@ include(ExternalProject)
 
 # clone jitify to Paddle/third_party
 set(JITIFY_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/jitify)
-set(JITIFY_URL https://github.com/NVIDIA/jitify.git)
+set(JITIFY_URL ${GIT_URL}/NVIDIA/jitify.git)
 set(JITIFY_TAG 57de649139c866eb83acacfe50c92ad7c6278776)
 
 ExternalProject_Add(

@@ -31,6 +31,7 @@ def distributed_scaler(scaler):
             return
 
         param_grads = []
+        param_grads_bf16 = []
         param_grads_fp16 = []
         param_grads_fp32 = []
         if getattr(optimizer, '_param_groups', None) and isinstance(
@@ -53,6 +54,10 @@ def distributed_scaler(scaler):
                             paddle.float16,
                         ]:
                             param_grads_fp16.append(tgt_grad)
+                        elif tgt_grad.dtype in [
+                            paddle.bfloat16,
+                        ]:
+                            param_grads_bf16.append(tgt_grad)
                         else:
                             param_grads_fp32.append(tgt_grad)
         else:
@@ -90,10 +95,15 @@ def distributed_scaler(scaler):
                         paddle.float16,
                     ]:
                         param_grads_fp16.append(tgt_grad)
+                    elif tgt_grad.dtype in [
+                        paddle.bfloat16,
+                    ]:
+                        param_grads_bf16.append(tgt_grad)
                     else:
                         param_grads_fp32.append(tgt_grad)
 
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
+        temp_found_inf_bf16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool_))
         self._found_inf = self._temp_found_inf_value_false
         if len(param_grads_fp16):
@@ -105,6 +115,16 @@ def distributed_scaler(scaler):
             )
             self._found_inf = _C_ops.bitwise_or(
                 self._found_inf, temp_found_inf_fp16
+            )
+        if len(param_grads_bf16):
+            _legacy_C_ops.check_finite_and_unscale(
+                param_grads_bf16,
+                self._scale,
+                param_grads_bf16,
+                temp_found_inf_bf16,
+            )
+            self._found_inf = _C_ops.bitwise_or(
+                self._found_inf, temp_found_inf_bf16
             )
         if len(param_grads_fp32):
             _legacy_C_ops.check_finite_and_unscale(

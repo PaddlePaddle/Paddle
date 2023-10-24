@@ -23,7 +23,6 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/errors.h"
 
