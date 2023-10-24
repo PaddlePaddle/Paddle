@@ -197,6 +197,8 @@ void FlashAttnGradKernel(const Context& ctx,
            << k.dims() << "], v.shape=[" << v.dims() << "]";
   VLOG(10) << "[FlashAttn Forward] dropout=" << dropout
            << ", seed=" << params.seed << ", offset=" << params.offset;
+  VLOG(10) << "[FlashAttn Forward] softmax_scale=" << softmax_scale
+           << ", softmax_unscale=" << softmax_unscale;
   if (attn_mask.get_ptr()) {
     VLOG(10) << "[FlashAttn Backward] attn_mask.shape=["
              << (attn_mask.get_ptr())->dims() << "]";
