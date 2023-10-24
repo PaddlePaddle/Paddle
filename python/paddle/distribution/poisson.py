@@ -190,7 +190,11 @@ class Poisson(distribution.Distribution):
         Returns:
             numpy.ndarray: the bounded approximation of the support
         """
-        s_max = paddle.sqrt(paddle.max(rate))
+        s_max = (
+            paddle.sqrt(paddle.max(rate))
+            if paddle.greater_equal(paddle.max(rate), paddle.to_tensor(1.0))
+            else paddle.ones_like(rate, dtype=self.dtype)
+        )
         upper = paddle.max(paddle.cast(rate + 30 * s_max, dtype="int32"))
         values = paddle.arange(0, upper, dtype="float32")
         return values
@@ -260,14 +264,11 @@ class Poisson(distribution.Distribution):
                 "KL divergence of two poisson distributions should share the same `batch_shape`."
             )
         rate_max = paddle.max(paddle.maximum(self.rate, other.rate))
-        rate_min = paddle.min(paddle.minimum(self.rate, other.rate))
         support_max = self._enumerate_bounded_support(rate_max)
-        support_min = self._enumerate_bounded_support(rate_min)
-        a_min = paddle.min(support_min)
         a_max = paddle.max(support_max)
-        common_support = paddle.arange(a_min, a_max, dtype=self.dtype).reshape(
-            (-1,) + (1,) * len(self.batch_shape)
-        )
+        common_support = paddle.arange(
+            paddle.to_tensor(0.0), a_max, dtype=self.dtype
+        ).reshape((-1,) + (1,) * len(self.batch_shape))
 
         log_prob_1 = self.log_prob(common_support)
         log_prob_2 = other.log_prob(common_support)
