@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 from test_case_base import (
@@ -64,7 +65,11 @@ class TestDtypeInGuard(TestCaseBase):
             x = paddle.to_tensor([2], dtype="float32")
             y = paddle.to_tensor([3], dtype="float32")
             self.assert_results(dtype_in_guard, x, y)
-            self.assertEqual(ctx.translate_count, 2)
+            if sys.version_info >= (3, 11):
+                # skipped with co_exceptiontable flag
+                self.assertEqual(ctx.translate_count, 1)
+            else:
+                self.assertEqual(ctx.translate_count, 2)
 
     @strict_mode_guard(0)
     def test_input_dtype_in_guard(self):
@@ -72,7 +77,11 @@ class TestDtypeInGuard(TestCaseBase):
             x = paddle.float32
             y = paddle.to_tensor([3], dtype="float32")
             self.assert_results(dtype_as_input, x, y)
-            self.assertEqual(ctx.translate_count, 2)
+            if sys.version_info >= (3, 11):
+                # skipped with co_exceptiontable flag
+                self.assertEqual(ctx.translate_count, 1)
+            else:
+                self.assertEqual(ctx.translate_count, 2)
 
 
 if __name__ == "__main__":
