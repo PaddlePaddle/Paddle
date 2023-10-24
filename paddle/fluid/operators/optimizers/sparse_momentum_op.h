@@ -301,6 +301,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
 
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout<<"enter sparse_momentum Compute"<<std::endl;
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
     bool use_nesterov = ctx.Attr<bool>("use_nesterov");
     auto index = ctx.Input<phi::DenseTensor>("Index");
@@ -353,6 +354,7 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
   void InnerCompute(const framework::ExecutionContext& ctx,
                     const bool multi_precision,
                     const UpdateMethod& update_method) const {
+    std::cout<<"enter sparse_momentum InnerCompute"<<std::endl;
     std::string regularization_method =
         ctx.Attr<std::string>("regularization_method");
     MT regularization_coeff =
@@ -365,8 +367,9 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
 
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
-
+    std::cout<<"sparse_momentum kernel 0"<<std::endl;
     int axis = ctx.Attr<int>("axis");
+     std::cout<<"sparse_momentum kernel 1"<<std::endl;
     // get axis from tensor
     if (ctx.HasInput("Axis")) {
       phi::DenseTensor cpu_axis;

@@ -3181,16 +3181,20 @@ DDim ReduceInferDim(const MetaTensor& x,
                     bool keep_dim,
                     bool reduce_all) {
   int x_rank = x.dims().size();
-
+  std::cout << "enter reduceinfer"<<std::endl;
+  std::cout << "axis.size()  "<<axis.size()<<std::endl;
   std::vector<int64_t> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); ++i) {
+      std::cout << "enter reduceinfer1"<<std::endl;
     if (x_rank == 0) {
       PADDLE_ENFORCE_EQ(
           axis[i] == 0 || axis[i] == -1,
           true,
           phi::errors::InvalidArgument(
               "When input 0D Tensor, the axis can only be -1, 0, None or []"));
+                std::cout << "enter reduceinfer1"<<std::endl;
     } else {
+        std::cout << "enter reduceinfer2"<<std::endl;
       PADDLE_ENFORCE_LT(axis[i],
                         x_rank,
                         errors::InvalidArgument(
@@ -3200,6 +3204,7 @@ DDim ReduceInferDim(const MetaTensor& x,
                             i,
                             x_rank,
                             axis[i]));
+      std::cout << "enter reduceinfer2.0"<<std::endl;
       PADDLE_ENFORCE_GE(axis[i],
                         -x_rank,
                         errors::InvalidArgument(
@@ -3209,13 +3214,15 @@ DDim ReduceInferDim(const MetaTensor& x,
                             i,
                             x_rank,
                             axis[i]));
+        std::cout << "enter reduceinfer2.1"<<std::endl;
     }
 
     if (axis[i] < 0) {
       formated_axis[i] = axis[i] + x_rank;
     }
+      std::cout << "enter reduceinfer3"<<std::endl;
   }
-
+  std::cout << "enter reduceinfer4"<<std::endl;
   bool full_dim = true;
   std::set<int64_t> dims_set(formated_axis.begin(), formated_axis.end());
   for (int64_t i = 0; i < x_rank; ++i) {
@@ -3226,7 +3233,7 @@ DDim ReduceInferDim(const MetaTensor& x,
   }
   bool empty_dim = axis.size() == 0;
   reduce_all = reduce_all || full_dim || empty_dim;
-
+  std::cout << "enter reduceinfer5"<<std::endl;
   std::vector<int64_t> out_dim_vector;
   for (int i = 0; i < x_rank; ++i) {
     if (reduce_all || dims_set.find(i) != dims_set.end()) {
@@ -3239,7 +3246,7 @@ DDim ReduceInferDim(const MetaTensor& x,
       out_dim_vector.push_back(x.dims().at(i));
     }
   }
-
+std::cout << "enter reduceinfer6"<<std::endl;
   DDim out_dim = phi::make_ddim(out_dim_vector);
   return out_dim;
 }

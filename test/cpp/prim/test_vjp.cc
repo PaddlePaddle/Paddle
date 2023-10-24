@@ -42,6 +42,16 @@ PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
 namespace paddle {
 namespace framework {
 
+
+pir::Operation* GetOpFromProgram(const std::string& op_name,const pir::Program& program){
+   for(auto op : *(program.block())){
+       if(op->name() == op_name){
+           return op;
+       }
+   }
+   return nullptr;
+}
+
 TEST(VJP, TanhBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -68,9 +78,17 @@ TEST(VJP, TanhBackwardTest) {
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
+ //{
+// (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<1xf32>
+ //(%1) = "pd_op.tanh" (%0) {stop_gradient:[true]} : (pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+ //(%2) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+ //(%3) = "pd_op.tanh_grad" (%1, %2) {stop_gradient:[true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+//}
+
+  builder->Build<pir::ShadowOutputOp>(op2->result(0),"tanh_out");
+  builder->Build<pir::SetParameterOp>(GetOpFromProgram("pd_op.tanh_grad",program)->result(0),"tanh_grad_out");
   auto place = platform::CPUPlace();
   Scope scope;
-
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
@@ -78,19 +96,19 @@ TEST(VJP, TanhBackwardTest) {
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
-      {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
+      {"tanh_out", "tanh_grad_out"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
+          ? scope.FindVar("tanh_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_1")
+                ->FindVar("tanh_out")
                 ->Get<phi::DenseTensor>();
   auto grad_out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
+          ? scope.FindVar("tanh_grad_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_3")
+                ->FindVar("tanh_grad_out")
                 ->Get<phi::DenseTensor>();
 
   ASSERT_NEAR(out_tensor.data<float>()[0], 0.76159, 1e-5);
@@ -126,6 +144,16 @@ TEST(VJP, Tanh_BackwardTest) {
   auto place = platform::CPUPlace();
   Scope scope;
 
+//{
+//  (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<1xf32>
+//  (%1) = "pd_op.tanh_" (%0) {stop_gradient:[true]} : (pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+//  (%2) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+//  (%3) = "pd_op.tanh_grad" (%1, %2) {stop_gradient:[true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+//}
+
+builder->Build<pir::ShadowOutputOp>(op1->result(0),"full_op1_out");
+builder->Build<pir::ShadowOutputOp>(op3->result(0),"full_op3_out");
+
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
@@ -133,25 +161,24 @@ TEST(VJP, Tanh_BackwardTest) {
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
-      {prefix_str + "_inner_var_0", prefix_str + "_inner_var_2"});
+      {"full_op1_out", "full_op3_out"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
+          ? scope.FindVar("full_op1_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_0")
+                ->FindVar("full_op1_out")
                 ->Get<phi::DenseTensor>();
   auto grad_out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
+          ? scope.FindVar("full_op3_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_2")
+                ->FindVar("full_op3_out")
                 ->Get<phi::DenseTensor>();
 
   ASSERT_NEAR(out_tensor.data<float>()[0], 0.76159, 1e-5);
   ASSERT_NEAR(grad_out_tensor.data<float>()[0], 0.83995, 1e-5);
 }
-
 TEST(VJP, MeanBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -181,6 +208,16 @@ TEST(VJP, MeanBackwardTest) {
   auto place = platform::CPUPlace();
   Scope scope;
 
+//{
+//  (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[2,2],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<2x2xf32>
+//  (%1) = "pd_op.mean" (%0) {axis:(pd_op.IntArray)[],keepdim:false,stop_gradient:[true]} : (pd_op.tensor<2x2xf32>) -> pd_op.tensor<f32>
+//  (%2) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<f32>
+//  (%3) = "pd_op.mean_grad" (%0, %2) {axis:(pd_op.IntArray)[],keepdim:false,reduce_all:false,stop_gradient:[true]} : (pd_op.tensor<2x2xf32>, pd_op.tensor<f32>) -> pd_op.tensor<2x2xf32>
+// }
+
+  builder->Build<pir::ShadowOutputOp>(op2->result(0),"mean_out");
+  builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("pd_op.mean_grad",program)->result(0),"mean_grad_out");
+
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
@@ -188,19 +225,19 @@ TEST(VJP, MeanBackwardTest) {
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
-      {prefix_str + "_inner_var_1", prefix_str + "_inner_var_3"});
+      {"mean_out", "mean_grad_out"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_1")->Get<phi::DenseTensor>()
+          ? scope.FindVar("mean_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_1")
+                ->FindVar("mean_out")
                 ->Get<phi::DenseTensor>();
   auto grad_out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
+          ? scope.FindVar("mean_grad_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_3")
+                ->FindVar("mean_grad_out")
                 ->Get<phi::DenseTensor>();
   ASSERT_EQ(out_tensor.data<float>()[0], 2.0);
   ASSERT_EQ(grad_out_tensor.data<float>()[0], 0.25);
@@ -208,7 +245,6 @@ TEST(VJP, MeanBackwardTest) {
   ASSERT_EQ(grad_out_tensor.data<float>()[2], 0.25);
   ASSERT_EQ(grad_out_tensor.data<float>()[3], 0.25);
 }
-
 TEST(VJP, ConcatBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -236,6 +272,20 @@ TEST(VJP, ConcatBackwardTest) {
 
   auto place = platform::CPUPlace();
   Scope scope;
+//{
+//  (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1,2],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1x2xf32>
+//  (%1) = "builtin.combine" (%0, %0) {stop_gradient:[true]} : (pd_op.tensor<1x2xf32>, pd_op.tensor<1x2xf32>) -> vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>]
+//  (%2) = "pd_op.full" () {dtype:(pd_op.DataType)int32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)0} : () -> pd_op.tensor<1xi32>
+//  (%3) = "pd_op.concat" (%1, %2) {stop_gradient:[true]} : (vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>], pd_op.tensor<1xi32>) -> pd_op.tensor<2x2xf32>
+//  (%4) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[2,2],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<2x2xf32>
+//  (%5) = "builtin.combine" (%0, %0) {stop_gradient:[true]} : (pd_op.tensor<1x2xf32>, pd_op.tensor<1x2xf32>) -> vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>]
+//  (%6) = "pd_op.concat_grad" (%5, %4, %2) {stop_gradient:[true]} : (vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>], pd_op.tensor<2x2xf32>, pd_op.tensor<1xi32>) -> vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>]
+//  (%7, %8) = "builtin.split" (%6) {stop_gradient:[true,true]} : (vec[pd_op.tensor<1x2xf32>,pd_op.tensor<1x2xf32>]) -> pd_op.tensor<1x2xf32>, pd_op.tensor<1x2xf32>
+// }
+
+  builder->Build<pir::ShadowOutputOp>(op2->result(0),"concat_out");
+  builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("builtin.split",program)->result(0),"split_out_0");
+  builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("builtin.split",program)->result(1),"split_out_1");
 
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
@@ -243,27 +293,27 @@ TEST(VJP, ConcatBackwardTest) {
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
-  test_core.SetSkipGcVars({prefix_str + "_inner_var_3",
-                           prefix_str + "_inner_var_7",
-                           prefix_str + "_inner_var_8"});
+  test_core.SetSkipGcVars({"concat_out",
+                           "split_out_0",
+                           "split_out_1"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
+          ? scope.FindVar("concat_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_3")
+                ->FindVar("concat_out")
                 ->Get<phi::DenseTensor>();
   auto grad_out_tensor_0 =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_7")->Get<phi::DenseTensor>()
+          ? scope.FindVar("split_out_0")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_7")
+                ->FindVar("split_out_0")
                 ->Get<phi::DenseTensor>();
   auto grad_out_tensor_1 =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_8")->Get<phi::DenseTensor>()
+          ? scope.FindVar("split_out_1")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_8")
+                ->FindVar("split_out_1")
                 ->Get<phi::DenseTensor>();
   ASSERT_EQ(out_tensor.data<float>()[0], 2.0);
   ASSERT_EQ(grad_out_tensor_0.data<float>()[0], 1.0);
@@ -271,7 +321,6 @@ TEST(VJP, ConcatBackwardTest) {
   ASSERT_EQ(grad_out_tensor_1.data<float>()[0], 1.0);
   ASSERT_EQ(grad_out_tensor_1.data<float>()[1], 1.0);
 }
-
 TEST(VJP, AddBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -303,34 +352,46 @@ TEST(VJP, AddBackwardTest) {
   auto place = platform::CPUPlace();
   Scope scope;
 
+//{
+//  (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+//  (%1) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+//  (%2) = "pd_op.add" (%0, %1) {stop_gradient:[true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+//  (%3) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<1xf32>
+//  (%4, %5) = "pd_op.add_grad" (%0, %1, %3) {axis:(Int32)-1,stop_gradient:[true,true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>, pd_op.tensor<1xf32>
+// } 
+
+ builder->Build<pir::ShadowOutputOp>(op3->result(0),"add_out");
+ builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("pd_op.add_grad",program)->result(0),"add_grad_out_0");
+ builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("pd_op.add_grad",program)->result(1),"add_grad_out_1");
+
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
-  test_core.SetSkipGcVars({prefix_str + "_inner_var_2",
-                           prefix_str + "_inner_var_4",
+  test_core.SetSkipGcVars({"add_out",
+                           "add_grad_out_0",
                            prefix_str + "_inner_var_5"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_2")->Get<phi::DenseTensor>()
+          ? scope.FindVar("add_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_2")
+                ->FindVar("add_out")
                 ->Get<phi::DenseTensor>();
   auto dx =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_4")->Get<phi::DenseTensor>()
+          ? scope.FindVar("add_grad_out_0")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_4")
+                ->FindVar("add_grad_out_0")
                 ->Get<phi::DenseTensor>();
 
   auto dy =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_5")->Get<phi::DenseTensor>()
+          ? scope.FindVar("add_grad_out_1")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_5")
+                ->FindVar("add_grad_out_1")
                 ->Get<phi::DenseTensor>();
   ASSERT_EQ(out_tensor.data<float>()[0], 4.0);
   ASSERT_EQ(dx.data<float>()[0], 1.0);
@@ -368,6 +429,17 @@ TEST(VJP, Add_BackwardTest) {
 
   auto place = platform::CPUPlace();
   Scope scope;
+//{
+//  (%0) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+//  (%1) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)2} : () -> pd_op.tensor<1xf32>
+//  (%2) = "pd_op.add_" (%0, %1) {stop_gradient:[true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>
+//  (%3) = "pd_op.full" () {dtype:(pd_op.DataType)float32,place:(pd_op.Place)Place(cpu),shape:(pd_op.IntArray)[1],stop_gradient:[true],value:(Float)1} : () -> pd_op.tensor<1xf32>
+//  (%4, %5) = "pd_op.add_grad" (%0, %1, %3) {axis:(Int32)-1,stop_gradient:[true,true]} : (pd_op.tensor<1xf32>, pd_op.tensor<1xf32>, pd_op.tensor<1xf32>) -> pd_op.tensor<1xf32>, pd_op.tensor<1xf32>
+// }
+
+ builder->Build<pir::ShadowOutputOp>(op1->result(0),"full_op1_out");
+ builder->Build<pir::ShadowOutputOp>(op4->result(0),"full_op4_out");
+ builder->Build<pir::ShadowOutputOp>(GetOpFromProgram("pd_op.add_grad",program)->result(0),"add_grad_out");
 
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
@@ -375,39 +447,39 @@ TEST(VJP, Add_BackwardTest) {
   os << reinterpret_cast<NewIRInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
-  test_core.SetSkipGcVars({prefix_str + "_inner_var_0",
-                           prefix_str + "_inner_var_3",
+  test_core.SetSkipGcVars({"full_op1_out",
+                           "full_op4_out",
                            prefix_str + "_inner_var_4"});
   test_core.Run({});
   auto out_tensor =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_0")->Get<phi::DenseTensor>()
+          ? scope.FindVar("full_op1_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_0")
+                ->FindVar("full_op1_out")
                 ->Get<phi::DenseTensor>();
   auto dx =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_3")->Get<phi::DenseTensor>()
+          ? scope.FindVar("full_op4_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_3")
+                ->FindVar("full_op4_out")
                 ->Get<phi::DenseTensor>();
 
   auto dy =
       test_core.local_scope() == nullptr
-          ? scope.FindVar(prefix_str + "_inner_var_4")->Get<phi::DenseTensor>()
+          ? scope.FindVar("add_grad_out")->Get<phi::DenseTensor>()
           : test_core.local_scope()
-                ->FindVar(prefix_str + "_inner_var_4")
+                ->FindVar("add_grad_out")
                 ->Get<phi::DenseTensor>();
   ASSERT_EQ(out_tensor.data<float>()[0], 4.0);
   ASSERT_EQ(dx.data<float>()[0], 1.0);
   ASSERT_EQ(dy.data<float>()[0], 1.0);
 }
 
+
 TEST(VJP, SplitBackwardTest) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::Program program((ctx));
   paddle::dialect::APIBuilder::Instance().SetProgram(&program);
-
   std::shared_ptr<pir::Builder> builder =
       paddle::dialect::APIBuilder::Instance().GetBuilder();
   paddle::dialect::FullOp op1 = builder->Build<paddle::dialect::FullOp>(
@@ -430,9 +502,10 @@ TEST(VJP, SplitBackwardTest) {
 
   concat_vjp_interface_impl->vjp_(op2.operation(), out_grads, stop_gradients);
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
-
+ 
   auto place = platform::CPUPlace();
   Scope scope;
+
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;

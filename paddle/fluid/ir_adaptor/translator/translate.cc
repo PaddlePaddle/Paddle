@@ -32,10 +32,11 @@ std::unique_ptr<Program> TranslateLegacyProgramToProgram(
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<dialect::OperatorDialect>();
   auto program = std::make_unique<Program>(ctx);
+  
   translator::ProgramTranslator program_translator(&legacy_program,
                                                    program.get());
   program_translator.Translate();
-
+  std::cout << program.get() << std::endl;
   return program;
 }
 

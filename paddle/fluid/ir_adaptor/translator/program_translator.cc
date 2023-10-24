@@ -370,6 +370,11 @@ void ProgramTranslator::TranslateBlock(
         pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
     dest_block->push_back(yeild_op);
   }
+  std::stringstream os;
+  pir::IrPrinter printer(os);
+  printer.PrintBlock(dest_block);
+  std::cout<<"new ir program"<<std::endl;
+  std::cout<<os.str()<<std::endl;
 }
 
 pir::Operation* ProgramTranslator::TranslateCondIfOperation(

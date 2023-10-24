@@ -193,6 +193,7 @@ class IntArrayAttributeVisitor : public AttributeVisitor {
   pir::Attribute operator()(const std::vector<int>& is) override {
     VLOG(10) << "translating vector<int> to IntArray";
     phi::IntArray data(is);
+    VLOG(10) << "get data";
     return paddle::dialect::IntArrayAttribute::get(ctx, data);
   }
 

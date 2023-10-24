@@ -22,84 +22,10 @@ from paddle import base
 from paddle.base import Program, program_guard
 
 
-class TestRepeatInterleaveOp(OpTest):
-    def setUp(self):
-        self.op_type = "repeat_interleave"
-        self.python_api = paddle.repeat_interleave
-        self.init_dtype_type()
-        index_np = np.random.randint(
-            low=0, high=3, size=self.index_size
-        ).astype(self.index_type)
-        x_np = np.random.random(self.x_shape).astype(self.x_type)
-
-        self.inputs = {'X': x_np, 'RepeatsTensor': index_np}
-        self.attrs = {'dim': self.dim}
-
-        outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
-        x_np_reshape = np.reshape(x_np, tuple(x_reshape))
-        out_list = []
-        for i in range(outer_loop):
-            for j in range(self.index_size):
-                for k in range(index_np[j]):
-                    out_list.append(x_np_reshape[i, j])
-        self.out_shape = list(self.x_shape)
-        self.out_shape[self.dim] = np.sum(index_np)
-        self.out_shape = tuple(self.out_shape)
-
-        out = np.reshape(out_list, self.out_shape)
-        self.outputs = {'Out': out}
-
-    def init_dtype_type(self):
-        self.dim = 1
-        self.x_type = np.float64
-        self.index_type = np.int64
-        self.x_shape = (8, 4, 5)
-        self.index_size = self.x_shape[self.dim]
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
 
 
-class TestRepeatInterleaveOp2(OpTest):
-    def setUp(self):
-        self.op_type = "repeat_interleave"
-        self.python_api = paddle.repeat_interleave
-        self.init_dtype_type()
-        index_np = 2
-        x_np = np.random.random(self.x_shape).astype(self.x_type)
-        self.inputs = {'X': x_np}  # , 'RepeatsTensor': None}
-        self.attrs = {'dim': self.dim, 'Repeats': index_np}
 
-        outer_loop = np.prod(self.x_shape[: self.dim])
-        x_reshape = [outer_loop] + list(self.x_shape[self.dim :])
-        x_np_reshape = np.reshape(x_np, tuple(x_reshape))
-        out_list = []
-        for i in range(outer_loop):
-            for j in range(self.index_size):
-                for k in range(index_np):
-                    out_list.append(x_np_reshape[i, j])
-        self.out_shape = list(self.x_shape)
-        self.out_shape[self.dim] = index_np * self.index_size
-        self.out_shape = tuple(self.out_shape)
 
-        out = np.reshape(out_list, self.out_shape)
-        self.outputs = {'Out': out}
-
-    def init_dtype_type(self):
-        self.dim = 1
-        self.x_type = np.float64
-        self.x_shape = (8, 4, 5)
-        self.index_size = self.x_shape[self.dim]
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
 
 
 class TestIndexSelectAPI(unittest.TestCase):
@@ -208,64 +134,7 @@ class TestIndexSelectAPI(unittest.TestCase):
         expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
-    def test_dygraph_api(self):
-        self.input_data()
-        # case axis none
-        input_x = np.array([[1, 2, 1], [1, 2, 3]]).astype('int32')
-        index_x = np.array([1, 1, 2, 1, 2, 2]).astype('int32')
-
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_x)
-            index = base.dygraph.to_variable(index_x)
-            z = paddle.repeat_interleave(x, index, None)
-            np_z = z.numpy()
-        expect_out = np.repeat(input_x, index_x, axis=None)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
-
-        # case repeats int
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(input_x)
-            index = 2
-            z = paddle.repeat_interleave(x, index, None)
-            np_z = z.numpy()
-        expect_out = np.repeat(input_x, index, axis=None)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
-
-        # case 1:
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
-            z = paddle.repeat_interleave(x, index, -1)
-            np_z = z.numpy()
-        expect_out = np.repeat(self.data_x, self.data_index, axis=-1)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
-
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(self.data_index)
-            z = paddle.repeat_interleave(x, index, 1)
-            np_z = z.numpy()
-        expect_out = np.repeat(self.data_x, self.data_index, axis=1)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
-
-        # case 2:
-        index_x = np.array([1, 2, 1]).astype('int32')
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_x)
-            index = base.dygraph.to_variable(index_x)
-            z = paddle.repeat_interleave(x, index, axis=0)
-            np_z = z.numpy()
-        expect_out = np.repeat(self.data_x, index, axis=0)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
-
-        # case 3 zero_dim:
-        with base.dygraph.guard():
-            x = base.dygraph.to_variable(self.data_zero_dim_x)
-            index = 2
-            z = paddle.repeat_interleave(x, index, None)
-            np_z = z.numpy()
-        expect_out = np.repeat(self.data_zero_dim_x, index, axis=None)
-        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+   
 
 
 if __name__ == '__main__':

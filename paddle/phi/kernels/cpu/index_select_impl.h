@@ -108,10 +108,10 @@ void IndexSelectInner(const Context& ctx,
 
   input->Resize(phi::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
-
+  std::cout<<"in repeat interleave op kernel 0"<<std::endl;
   auto input_tensor = EigenTensor<T, 3>::From(*input);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
-
+  std::cout<<"in repeat interleave op kernel 1"<<std::endl;
   auto& place = *ctx.eigen_device();
 
   for (auto j = 0; j < index_size; j++) {

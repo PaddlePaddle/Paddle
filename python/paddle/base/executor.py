@@ -991,6 +991,9 @@ class _ExecutorCache:
             )
 
         new_program = program.clone()
+        print("old ir program")
+        print(program)
+
         if (
             new_program._pipeline_opt
             and "standalone_opt" in new_program._pipeline_opt
@@ -1025,12 +1028,14 @@ class _ExecutorCache:
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )
-
+        print("pir_progrm")
+        print(program)
         default_job = core.Job("default")
         type_to_program = {"default": program}
         plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
+ 
         return program, new_exe
 
 

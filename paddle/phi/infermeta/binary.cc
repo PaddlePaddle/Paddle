@@ -2603,6 +2603,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
                                               MetaTensor* out) {
   const auto& input_dim = x.dims();
   auto output_dim = phi::vectorize(input_dim);
+  std::cout<<"RepeatInterleaveWithTensorIndexInferMeta 0 "<<std::endl;
   PADDLE_ENFORCE_EQ(
       dim < input_dim.size() && dim >= (0 - input_dim.size()),
       true,
@@ -2614,7 +2615,7 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
           dim));
 
   auto repeats_dim = repeats.dims();
-
+  std::cout<<"RepeatInterleaveWithTensorIndexInferMeta 1 "<<std::endl;
   PADDLE_ENFORCE_EQ(
       repeats_dim.size() == 1 ||
           (repeats_dim.size() == 2 && repeats_dim[1] == 1),
@@ -2625,15 +2626,17 @@ void RepeatInterleaveWithTensorIndexInferMeta(const MetaTensor& x,
           "the dimension of Input(Index) is [%d].",
           repeats_dim,
           repeats_dim.size()));
-
+  std::cout<<"RepeatInterleaveWithTensorIndexInferMeta 2 "<<std::endl;
   PADDLE_ENFORCE_EQ(repeats_dim[0] != 0,
                     true,
                     phi::errors::InvalidArgument(
                         "The length of Input(RepeatsTensor) can't be 0."));
+  std::cout<<"RepeatInterleaveWithTensorIndexInferMeta 3 "<<std::endl;
   PADDLE_ENFORCE_NE(out,
                     nullptr,
                     phi::errors::InvalidArgument(
                         "repeat_interleave's output tensor can't be nullptr"));
+    std::cout<<"RepeatInterleaveWithTensorIndexInferMeta 3 "<<std::endl;
   if (dim < 0) {
     dim += input_dim.size();
   }
