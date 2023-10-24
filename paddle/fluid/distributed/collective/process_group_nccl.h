@@ -82,6 +82,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
                    int size,
                    int gid,
                    int64_t timeout = 20 * 1000);
+  ~ProcessGroupNCCL();
 
   std::string GetBackendName() const override { return "NCCL"; }
 
