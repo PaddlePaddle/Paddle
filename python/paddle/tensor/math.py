@@ -3670,7 +3670,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             "But received axis1 = %d, axis2 = %d\n" % (axis1, axis2)
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.trace(x, offset, axis1, axis2)
     else:
         __check_input(x, offset, axis1, axis2)
