@@ -131,23 +131,23 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       original_update_stmt = original_update_body;
     }
 
-#define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
-  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
-    auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();   \
-    CHECK(node);                                                         \
-    auto& operand = node->b();                                           \
-    std::string reduce_func_name =                                       \
-        hlir::pe::CrossThreadReduceExternalFuncName(                     \
-            original_update_stmt.As<ir::Store>()->value,                 \
-            operand.As<ir::Load>()->tensor);                             \
-    original_update_stmt.As<ir::Store>()->value =                        \
-        lang::CallExtern(reduce_func_name, {node->b()});                 \
-    auto tmp_dtype = operand.As<ir::Load>()->tensor.as_tensor()->type(); \
-    auto tmp_buffer = ir::_Buffer_::Make(                                \
-        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",   \
-        {ir::Expr(32)});                                                 \
-    tmp_buffer->dtype = tmp_dtype;                                       \
-    shm_buffer_.emplace_back(std::move(tmp_buffer));                     \
+#define REPLACE_TO_EXTERNAL_CALL(Op)                                         \
+  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {                \
+    auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();       \
+    CHECK(node);                                                             \
+    auto& operand = node->b();                                               \
+    std::string reduce_func_name =                                           \
+        hlir::pe::CrossThreadReduceExternalFuncName(                         \
+            original_update_stmt.As<ir::Store>()->value,                     \
+            operand.As<ir::Load>()->tensor);                                 \
+    auto tmp_dtype = operand.As<ir::Load>()->tensor.as_tensor()->type();     \
+    auto tmp_buffer = ir::_Buffer_::Make(                                    \
+        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",       \
+        {ir::Expr(32)});                                                     \
+    tmp_buffer->dtype = tmp_dtype;                                           \
+    shm_buffer_.emplace_back(std::move(tmp_buffer));                         \
+    original_update_stmt.As<ir::Store>()->value =                            \
+        lang::CallExtern(reduce_func_name, {node->b(), shm_buffer_.back()}); \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)
