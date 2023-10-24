@@ -46,6 +46,7 @@ class CommTaskManager {
   }
 
   void CommTaskEnqueue(std::shared_ptr<CommTask> comm_task);
+  void Stop();
 
  private:
   void CommTaskLoop();
