@@ -3,7 +3,8 @@ file(
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
   "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
-set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0 STRICT_MODE=0)
+set(SOT_ENVS SOT_LOG_LEVEL=0 COST_MODEL=False MIN_GRAPH_SIZE=0
+             STRICT_MODE=False)
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0)
 
 list(REMOVE_ITEM TEST_OPS test_lac)
