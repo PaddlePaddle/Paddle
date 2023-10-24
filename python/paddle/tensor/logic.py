@@ -1213,7 +1213,7 @@ def bitwise_or(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -1, -3])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
 
     return _bitwise_op(
@@ -1234,7 +1234,7 @@ def bitwise_or_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_or_(x, y)
 
 
@@ -1272,7 +1272,7 @@ def bitwise_xor(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -3, -4])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
@@ -1292,7 +1292,7 @@ def bitwise_xor_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_xor_(x, y)
 
 
@@ -1328,7 +1328,7 @@ def bitwise_not(x, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 4,  0, -2])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_not(x)
 
     return _bitwise_op(
@@ -1342,7 +1342,7 @@ def bitwise_not_(x, name=None):
     Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_not`.
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_not_(x)
 
 
