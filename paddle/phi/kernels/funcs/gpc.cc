@@ -144,7 +144,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
 
   if (!*lmt) {
     /* Add node onto the tail end of the LMT */
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node), "LMT insertion");
+    gpc_malloc<lmt_node>(
+        *lmt, sizeof(lmt_node), const_cast<char *>("LMT insertion"));  // NOLINT
     (*lmt)->y = y;
     (*lmt)->first_bound = nullptr;
     (*lmt)->next = nullptr;
@@ -152,7 +153,8 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
   } else if (y < (*lmt)->y) {
     /* Insert a new LMT node before the current node */
     existing_node = *lmt;
-    gpc_malloc<lmt_node>(*lmt, sizeof(lmt_node), "LMT insertion");
+    gpc_malloc<lmt_node>(
+        *lmt, sizeof(lmt_node), const_cast<char *>("LMT insertion"));  // NOLINT
     (*lmt)->y = y;
     (*lmt)->first_bound = nullptr;
     (*lmt)->next = existing_node;
@@ -171,7 +173,10 @@ static edge_node **bound_list(lmt_node **lmt, double y) {
 static void add_to_sbtree(int *entries, sb_tree **sbtree, double y) {
   if (!*sbtree) {
     /* Add a new tree node here */
-    gpc_malloc<sb_tree>(*sbtree, sizeof(sb_tree), "scanbeam tree insertion");
+    gpc_malloc<sb_tree>(
+        *sbtree,
+        sizeof(sb_tree),
+        const_cast<char *>("scanbeam tree insertion"));  // NOLINT
     (*sbtree)->y = y;
     (*sbtree)->less = nullptr;
     (*sbtree)->more = nullptr;
@@ -249,7 +254,7 @@ static edge_node *build_lmt(lmt_node **lmt,
   /* Create the entire input polygon edge table in one go */
   gpc_malloc<edge_node>(edge_table,
                         total_vertices * static_cast<int>(sizeof(edge_node)),
-                        "edge table creation");
+                        const_cast<char *>("edge table creation"));  // NOLINT
 
   for (c = 0; c < p->num_contours; c++) {
     if (p->contour[c].num_vertices < 0) {
@@ -407,7 +412,8 @@ static void add_intersection(
 
   if (!*it) {
     /* Append a new node to the tail of the list */
-    gpc_malloc<it_node>(*it, sizeof(it_node), "IT insertion");
+    gpc_malloc<it_node>(
+        *it, sizeof(it_node), const_cast<char *>("IT insertion"));  // NOLINT
     (*it)->ie[0] = edge0;
     (*it)->ie[1] = edge1;
     (*it)->point.x = x;
@@ -417,7 +423,8 @@ static void add_intersection(
     if ((*it)->point.y > y) {
       /* Insert a new node mid-list */
       existing_node = *it;
-      gpc_malloc<it_node>(*it, sizeof(it_node), "IT insertion");
+      gpc_malloc<it_node>(
+          *it, sizeof(it_node), const_cast<char *>("IT insertion"));  // NOLINT
       (*it)->ie[0] = edge0;
       (*it)->ie[1] = edge1;
       (*it)->point.x = x;
@@ -442,7 +449,8 @@ static void add_st_edge(st_node **st,
 
   if (!*st) {
     /* Append edge onto the tail end of the ST */
-    gpc_malloc<st_node>(*st, sizeof(st_node), "ST insertion");
+    gpc_malloc<st_node>(
+        *st, sizeof(st_node), const_cast<char *>("ST insertion"));  // NOLINT
     (*st)->edge = edge;
     (*st)->xb = edge->xb;
     (*st)->xt = edge->xt;
@@ -456,7 +464,8 @@ static void add_st_edge(st_node **st,
         (fabs(den) <= DBL_EPSILON)) {
       /* No intersection - insert edge here (before the ST edge) */
       existing_node = *st;
-      gpc_malloc<st_node>(*st, sizeof(st_node), "ST insertion");
+      gpc_malloc<st_node>(
+          *st, sizeof(st_node), const_cast<char *>("ST insertion"));  // NOLINT
       (*st)->edge = edge;
       (*st)->xb = edge->xb;
       (*st)->xt = edge->xt;
@@ -539,7 +548,10 @@ static void add_left(polygon_node *p, double x, double y) {
   vertex_node *nv = nullptr;
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node), "vertex node creation");
+  gpc_malloc<vertex_node>(
+      nv,
+      sizeof(vertex_node),
+      const_cast<char *>("vertex node creation"));  // NOLINT
   nv->x = x;
   nv->y = y;
 
@@ -576,7 +588,10 @@ static void add_right(polygon_node *p, double x, double y) {
   vertex_node *nv = nullptr;
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node), "vertex node creation");
+  gpc_malloc<vertex_node>(
+      nv,
+      sizeof(vertex_node),
+      const_cast<char *>("vertex node creation"));  // NOLINT
   nv->x = x;
   nv->y = y;
   nv->next = nullptr;
@@ -620,10 +635,16 @@ static void add_local_min(polygon_node **p,
 
   existing_min = *p;
 
-  gpc_malloc<polygon_node>(*p, sizeof(polygon_node), "polygon node creation");
+  gpc_malloc<polygon_node>(
+      *p,
+      sizeof(polygon_node),
+      const_cast<char *>("polygon node creation"));  // NOLINT
 
   /* Create a new vertex node and set its fields */
-  gpc_malloc<vertex_node>(nv, sizeof(vertex_node), "vertex node creation");
+  gpc_malloc<vertex_node>(
+      nv,
+      sizeof(vertex_node),
+      const_cast<char *>("vertex node creation"));  // NOLINT
   nv->x = x;
   nv->y = y;
   nv->next = nullptr;
@@ -655,7 +676,9 @@ static int count_tristrips(polygon_node *tn) {
 void add_vertex(vertex_node **t, double x, double y) {
   if (!(*t)) {
     gpc_malloc<vertex_node>(
-        *t, sizeof(vertex_node), "tristrip vertex creation");
+        *t,
+        sizeof(vertex_node),
+        const_cast<char *>("tristrip vertex creation"));  // NOLINT
     (*t)->x = x;
     (*t)->y = y;
     (*t)->next = nullptr;
@@ -678,7 +701,9 @@ static void new_tristrip(polygon_node **tn,
                          double y) {
   if (!(*tn)) {
     gpc_malloc<polygon_node>(
-        *tn, sizeof(polygon_node), "tristrip node creation");
+        *tn,
+        sizeof(polygon_node),
+        const_cast<char *>("tristrip node creation"));  // NOLINT
     (*tn)->next = nullptr;
     (*tn)->v[LEFT] = nullptr;
     (*tn)->v[RIGHT] = nullptr;
@@ -698,7 +723,7 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
 
   gpc_malloc<bbox>(box,
                    p->num_contours * static_cast<int>(sizeof(bbox)),
-                   "Bounding box creation");
+                   const_cast<char *>("Bounding box creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(
       box, phi::errors::ResourceExhausted("Failed to malloc box memory."));
 
@@ -743,7 +768,7 @@ static void minimax_test(gpc_polygon *subj, gpc_polygon *clip, gpc_op op) {
   gpc_malloc<int>(
       o_table,
       subj->num_contours * clip->num_contours * static_cast<int>(sizeof(int)),
-      "overlap table creation");
+      const_cast<char *>("overlap table creation"));  // NOLINT
 
   /* Check all subject contour bounding boxes against clip boxes */
   for (s = 0; s < subj->num_contours; s++) {
@@ -865,7 +890,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   /* Create an extended hole array */
   gpc_malloc<int>(extended_hole,
                   (p->num_contours + 1) * static_cast<int>(sizeof(int)),
-                  "contour hole addition");
+                  const_cast<char *>("contour hole addition"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(
       extended_hole,
       phi::errors::ResourceExhausted("Failed to malloc extended hole memory."));
@@ -874,7 +899,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   gpc_malloc<gpc_vertex_list>(
       extended_contour,
       (p->num_contours + 1) * static_cast<int>(sizeof(gpc_vertex_list)),
-      "contour addition");
+      const_cast<char *>("contour addition"));  // NOLINT
 
   /* Copy the old contour and hole data into the extended arrays */
   for (c = 0; c < p->num_contours; c++) {
@@ -889,7 +914,7 @@ void gpc_add_contour(gpc_polygon *p, gpc_vertex_list *new_contour, int hole) {
   gpc_malloc<gpc_vertex>(
       extended_contour[c].vertex,
       new_contour->num_vertices * static_cast<int>(sizeof(gpc_vertex)),
-      "contour addition");
+      const_cast<char *>("contour addition"));  // NOLINT
   for (v = 0; v < new_contour->num_vertices; v++) {
     extended_contour[c].vertex[v] = new_contour->vertex[v];  // NOLINT
   }
@@ -988,8 +1013,9 @@ void gpc_polygon_clip(gpc_op op,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(
-      sbt, sbt_entries * static_cast<int>(sizeof(double)), "sbt creation");
+  gpc_malloc<double>(sbt,
+                     sbt_entries * static_cast<int>(sizeof(double)),
+                     const_cast<char *>("sbt creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(sbt,
                           phi::errors::ResourceExhausted(
                               "Failed to malloc scanbeam table memory."));
@@ -1486,11 +1512,11 @@ void gpc_polygon_clip(gpc_op op,
   if (result->num_contours > 0) {
     gpc_malloc<int>(result->hole,
                     result->num_contours * static_cast<int>(sizeof(int)),
-                    "hole flag table creation");
+                    const_cast<char *>("hole flag table creation"));  // NOLINT
     gpc_malloc<gpc_vertex_list>(
         result->contour,
         result->num_contours * static_cast<int>(sizeof(gpc_vertex_list)),
-        "contour creation");
+        const_cast<char *>("contour creation"));  // NOLINT
 
     c = 0;
     for (poly = out_poly; poly; poly = npoly) {
@@ -1498,10 +1524,11 @@ void gpc_polygon_clip(gpc_op op,
       if (poly->active) {
         result->hole[c] = poly->proxy->hole;
         result->contour[c].num_vertices = poly->active;
-        gpc_malloc<gpc_vertex>(result->contour[c].vertex,
-                               result->contour[c].num_vertices *
-                                   static_cast<int>(sizeof(gpc_vertex)),
-                               "vertex creation");
+        gpc_malloc<gpc_vertex>(
+            result->contour[c].vertex,
+            result->contour[c].num_vertices *
+                static_cast<int>(sizeof(gpc_vertex)),
+            const_cast<char *>("vertex creation"));  // NOLINT
 
         v = result->contour[c].num_vertices - 1;
         for (vtx = poly->proxy->v[LEFT]; vtx; vtx = nv) {
@@ -1634,8 +1661,9 @@ void gpc_tristrip_clip(gpc_op op,
   }
 
   /* Build scanbeam table from scanbeam tree */
-  gpc_malloc<double>(
-      sbt, sbt_entries * static_cast<int>(sizeof(double)), "sbt creation");
+  gpc_malloc<double>(sbt,
+                     sbt_entries * static_cast<int>(sizeof(double)),
+                     const_cast<char *>("sbt creation"));  // NOLINT
   PADDLE_ENFORCE_NOT_NULL(sbt,
                           phi::errors::ResourceExhausted(
                               "Failed to malloc scanbeam table memory."));
@@ -2174,7 +2202,7 @@ void gpc_tristrip_clip(gpc_op op,
     gpc_malloc<gpc_vertex_list>(
         result->strip,
         result->num_strips * static_cast<int>(sizeof(gpc_vertex_list)),
-        "tristrip list creation");
+        const_cast<char *>("tristrip list creation"));  // NOLINT
 
     s = 0;
     for (tn = tlist; tn; tn = tnn) {
@@ -2185,7 +2213,7 @@ void gpc_tristrip_clip(gpc_op op,
         gpc_malloc<gpc_vertex>(
             result->strip[s].vertex,
             tn->active * static_cast<int>(sizeof(gpc_vertex)),
-            "tristrip creation");
+            const_cast<char *>("tristrip creation"));  // NOLINT
         v = 0;
         if (false) {
           lt = tn->v[RIGHT];
@@ -2237,5 +2265,3 @@ void gpc_tristrip_clip(gpc_op op,
 
 }  // namespace funcs
 }  // namespace phi
-
-/* vim: set expandtab ts=4 sw=4 sts=4 tw=100: */
