@@ -18,7 +18,6 @@
 #include <curand_kernel.h>
 
 #include "cub/cub.cuh"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -26,6 +25,7 @@
 #include "paddle/phi/kernels/funcs/gather.cu.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/top_k_function_cuda.h"
+#include "paddle/phi/kernels/primitive/functor_primitives.h"
 
 // #define DEBUG_TOPP
 
