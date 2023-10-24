@@ -2550,30 +2550,24 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
     num_ops = len(cloned_main_block.ops)
     prof_results = [[None for _ in range(run_iters)] for _ in range(num_ops)]
 
-    with open('666.txt', 'w') as f:
-        for iter_id in range(run_iters):
-            f.write('%d\n' % iter_id)
-            # for each iteration, run profiling and retrieve modified version of program desc
-            program_desc = exe.run_profile(feed_names)
+    for iter_id in range(run_iters):
+        # for each iteration, run profiling and retrieve modified version of program desc
+        program_desc = exe.run_profile(feed_names)
 
-            # rebuild program object from the new program desc
-            temp_program = cloned_program.clone()
-            temp_program._rebuild_from_desc(program_desc)
-            temp_main_block = temp_program.global_block()
+        # rebuild program object from the new program desc
+        temp_program = cloned_program.clone()
+        temp_program._rebuild_from_desc(program_desc)
+        temp_main_block = temp_program.global_block()
 
-            # collect profiling result
-            for op_id, temp_op in zip(
-                range(len(temp_main_block.ops)), temp_main_block.ops
-            ):
-                f.write('  %d %s\n' % (op_id, str(temp_op.type)))
-                prof_results[op_id][iter_id] = (
-                    temp_op.get_runtime_us()
-                    if temp_op.supports_runtime_profiling()
-                    else None
-                )
-        f.write(str(prof_results))
-    sys.exit()
-
+        # collect profiling result
+        for op_id, temp_op in zip(
+            range(len(temp_main_block.ops)), temp_main_block.ops
+        ):
+            prof_results[op_id][iter_id] = (
+                temp_op.get_runtime_us()
+                if temp_op.supports_runtime_profiling()
+                else None
+            )
     return prof_results
 
 
