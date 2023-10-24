@@ -775,8 +775,6 @@ inline void RunProgramAPI(
     }
   }
 
-  VLOG(3) << paddle::framework::GenScopeTreeDebugInfo(global_inner_scope);
-
   // interpretercore run
   if (forward_global_block->OpSize() > 0) {
     paddle::platform::RecordEvent record_event(
