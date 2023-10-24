@@ -64,7 +64,6 @@ requirements:
   run:
     - httpx
     - numpy>=1.13
-    - protobuf>=3.1.0, <=3.20.0
     - Pillow
     - decorator
     - astor
@@ -92,6 +91,7 @@ pip install paddle_bfloat==0.1.7 -f {}
 
         self.blt_const = r"""
 pip install paddle_bfloat==0.1.7 -f C:\package
+pip install protobuf===3.20.2 -f C:\package
 """
 
         self.python37 = r"    - python>=3.7, <3.8"
