@@ -281,6 +281,7 @@ class TestEigStatic(TestEigOp):
 
 class TestEigDyGraph(unittest.TestCase):
     def test_check_output_with_place(self):
+        np.random.seed(1024)
         input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
 
@@ -318,6 +319,7 @@ class TestEigDyGraph(unittest.TestCase):
         test_type = 'float64'
         paddle.set_device("cpu")
 
+        np.random.seed(1024)
         input_np = np.random.random(test_shape).astype(test_type)
         real_w, real_v = np.linalg.eig(input_np)
 
