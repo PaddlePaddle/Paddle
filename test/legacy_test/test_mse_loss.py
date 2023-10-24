@@ -62,8 +62,6 @@ class TestMseLoss(unittest.TestCase):
 class TestMseInvalidInput(unittest.TestCase):
     @test_with_pir_api
     def test_error(self):
-        paddle.enable_static()
-
         def test_invalid_input():
             input = [256, 3]
             label = paddle.static.data(
@@ -221,6 +219,7 @@ class TestNNMseLoss(unittest.TestCase):
 
 
 class TestNNFunctionalMseLoss(unittest.TestCase):
+    @test_with_pir_api
     def test_NNFunctionalMseLoss_mean(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -263,6 +262,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertEqual(dy_result.shape, ())
 
+    @test_with_pir_api
     def test_NNFunctionalMseLoss_sum(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
@@ -305,6 +305,7 @@ class TestNNFunctionalMseLoss(unittest.TestCase):
             np.testing.assert_allclose(dy_result, expected, rtol=1e-05)
             self.assertEqual(dy_result.shape, ())
 
+    @test_with_pir_api
     def test_NNFunctionalMseLoss_none(self):
         for dim in [[10, 10], [2, 10, 10], [3, 3, 10, 10]]:
             input_np = np.random.uniform(0.1, 0.5, dim).astype("float32")
