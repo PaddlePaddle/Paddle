@@ -25,6 +25,7 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import Any
 
 import paddle
@@ -55,6 +56,10 @@ from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
@@ -73,6 +78,14 @@ from .translated_layer import (
     INFER_PROPERTY_SUFFIX,
     TranslatedLayer,
 )
+
+ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+@contextmanager
+def sot_mode_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
+        yield
 
 
 def create_program_from_desc(program_desc):
@@ -294,11 +307,8 @@ def to_static(
 
         nonlocal full_graph
         if full_graph is None:
-            flag = os.environ.get("ENABLE_FALL_BACK", None)
-            if flag == "True" or flag is None:
-                full_graph = False
-            else:  # False
-                full_graph = True
+            flag = ENV_ENABLE_SOT.get()
+            full_graph = not flag
 
         if sys.version_info >= (3, 12) and not full_graph:
             warnings.warn(
