@@ -1855,7 +1855,7 @@ class Executor:
 
             ret = new_exe.run(list(feed.keys()), return_numpy)
 
-            # liuchenghao: run op profiling
+            # liuchenghao: run op profiling, temp code
             if self._first_n_run > 0:
                 self._first_n_run -= 1
                 print(

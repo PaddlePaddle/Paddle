@@ -2441,6 +2441,10 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
                     # target variable's type is int* (uint*, int*), it is highly possible that
                     # the target variable contains indices (such as lookup_table op's input var)
                     # for safety we need to fill it with all one instead of random numbers
+                    # NOTE: filling with zero will generate "division by zero" error in mod ops,
+                    # so filling with one seems to be the simplest way to make it work, although
+                    # it is possible that for array with only one element, index "1" is invalid,
+                    # that situation is very rare and we don't need to care about it now.
                     out_cur_feed = np.array(np.ones(out_var_shape)).astype(
                         out_var_np_dtype
                     )
@@ -2516,6 +2520,10 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
                         # target variable's type is int* (uint*, int*), it is highly possible that
                         # the target variable contains indices (such as lookup_table op's input var)
                         # for safety we need to fill it with all one instead of random numbers
+                        # NOTE: filling with zero will generate "division by zero" error in mod ops,
+                        # so filling with one seems to be the simplest way to make it work, although
+                        # it is possible that for array with only one element, index "1" is invalid,
+                        # that situation is very rare and we don't need to care about it now.
                         cur_feed = np.array(np.ones(var_shape)).astype(np_dtype)
                     else:
                         # target variable's type is float*, we treat it as an ordinary tensor
