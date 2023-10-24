@@ -124,8 +124,6 @@ class AddBrodcastToElementwiseAddPattern
                        pir::PatternRewriter& rewriter) const override {
     return ProcessOp(op, &rewriter);
   }
-
- private:
 };
 
 class AddBrodcastToElementwiseSubPattern
@@ -137,8 +135,28 @@ class AddBrodcastToElementwiseSubPattern
                        pir::PatternRewriter& rewriter) const override {
     return ProcessOp(op, &rewriter);
   }
+};
 
- private:
+class AddBrodcastToElementwiseDivPattern
+    : public pir::OpRewritePattern<paddle::dialect::DivideOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::DivideOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::DivideOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    return ProcessOp(op, &rewriter);
+  }
+};
+
+class AddBrodcastToElementwiseMulPattern
+    : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::MultiplyOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::MultiplyOp op,
+                       pir::PatternRewriter& rewriter) const override {
+    return ProcessOp(op, &rewriter);
+  }
 };
 
 AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
@@ -148,6 +166,8 @@ bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
   ps.Add<AddBrodcastToElementwiseAddPattern>(context);
   ps.Add<AddBrodcastToElementwiseSubPattern>(context);
+  ps.Add<AddBrodcastToElementwiseDivPattern>(context);
+  ps.Add<AddBrodcastToElementwiseMulPattern>(context);
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
