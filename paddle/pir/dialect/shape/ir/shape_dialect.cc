@@ -32,7 +32,6 @@ void ShapeDialect::initialize() {
               FromElementsOp,
               ExtractOp,
               ConstantOp,
-              ConstantIndexOp,
               IndexCastOp>();
 }
 

@@ -233,7 +233,6 @@ class IR_API ExtractOp : public Op<ExtractOp> {
 class IR_API ConstantIndexOp : public ConstantOp {
  public:
   using ConstantOp::ConstantOp;
-  static const char *name() { return "shape.constant_index"; }
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT

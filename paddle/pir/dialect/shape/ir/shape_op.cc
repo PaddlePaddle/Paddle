@@ -310,12 +310,13 @@ void ExtractOp::Build(Builder &builder,             // NOLINT
                       OperationArgument &argument,  // NOLINT
                       Value tensor,
                       std::vector<Value> indices) {
+  argument.AddInput(tensor);
   argument.AddInputs(indices);
 }
 
 std::vector<Value> ExtractOp::indices() {
   std::vector<pir::Value> indices;
-  for (uint32_t idx = 0; idx < num_operands(); idx++) {
+  for (uint32_t idx = 1; idx < num_operands(); idx++) {
     indices.push_back(operand_source(static_cast<int>(idx)));
   }
   return indices;

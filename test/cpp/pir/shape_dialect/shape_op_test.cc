@@ -183,6 +183,7 @@ TEST(shape_op, tensor_dim_op) {
   pir::shape::TensorDimOp tensor_dim_op0 =
       builder.Build<pir::shape::TensorDimOp>(res_dense_tensor_value, 0);
   pir::OpResult res0 = tensor_dim_op0.out();
+  std::optional<int64_t> index0 = tensor_dim_op0.GetConstantIndex();
 
   pir::OpResult index_value =
       builder
@@ -196,6 +197,7 @@ TEST(shape_op, tensor_dim_op) {
   pir::OpResult res1 = tensor_dim_op1.out();
 
   EXPECT_EQ(res0.type(), pir::IndexType::get(ctx));
+  EXPECT_EQ(*index0, static_cast<int64_t>(0));
   EXPECT_EQ(res1.type(), pir::IndexType::get(ctx));
   EXPECT_EQ(tensor_dim_op0.source(), res_dense_tensor_value);
   EXPECT_EQ(tensor_dim_op1.source(), res_dense_tensor_value);
@@ -223,14 +225,83 @@ TEST(shape_op, from_elements_op) {
   ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
   pir::Builder builder = pir::Builder(ctx, program.block());
 
-  auto op = test::CreateDenseTensorOp(
-      ctx, {pir::ShapedTypeInterface::kDynamic, 2}, {"op_attr"}, {"op_name"});
-  pir::OpResult res = op->result(0);
+  pir::Int32Attribute int32_attr0 = builder.int32_attr(0);
+  pir::Int32Attribute int32_attr1 = builder.int32_attr(1);
+  pir::Int32Attribute int32_attr2 = builder.int32_attr(2);
+  pir::Int32Type int32_type = builder.int32_type();
 
-  pir::shape::ShapeOfOp from_elements_op =
-      builder.Build<pir::shape::ShapeOfOp>(res);
-  pir::Value shape_of_op_input = from_elements_op.input();
-  EXPECT_EQ(shape_of_op_input, res);
+  pir::OpResult element0 =
+      builder.Build<pir::ConstantOp>(int32_attr0, int32_type).out();
+  pir::OpResult element1 =
+      builder.Build<pir::ConstantOp>(int32_attr1, int32_type).out();
+  pir::OpResult element2 =
+      builder.Build<pir::ConstantOp>(int32_attr2, int32_type).out();
+
+  std::vector<pir::Value> elements_in = {element0, element1, element2};
+
+  pir::shape::FromElementsOp from_elements_op =
+      builder.Build<pir::shape::FromElementsOp>(elements_in);
+
+  std::vector<pir::Value> elements_out = from_elements_op.elements();
+  for (size_t i = 0; i < elements_in.size(); i++) {
+    EXPECT_EQ(elements_in[i], elements_out[i]);
+  }
 }
 
-// TODO(zhangbopd): Add more shap_op tests.
+TEST(shape_op, extract_op) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  auto op = test::CreateDenseTensorOp(ctx, {3, 2}, {"op_attr"}, {"op_name"});
+  pir::OpResult res = op->result(0);
+
+  pir::Int32Attribute int32_attr = builder.int32_attr(1);
+  pir::Int32Type int32_type = builder.int32_type();
+  pir::OpResult indice =
+      builder.Build<pir::ConstantOp>(int32_attr, int32_type).out();
+  std::vector<pir::Value> indice_in = {indice, indice};
+
+  pir::shape::ExtractOp extract_op =
+      builder.Build<pir::shape::ExtractOp>(res, indice_in);
+  pir::Value input = extract_op.tensor();
+  std::vector<pir::Value> indice_out = extract_op.indices();
+
+  EXPECT_EQ(input, res);
+  for (size_t i = 0; i < indice_in.size(); i++) {
+    EXPECT_EQ(indice_in[i], indice_out[i]);
+  }
+}
+
+TEST(shape_op, constant_index_op) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::shape::ConstantIndexOp constant_index_op =
+      builder.Build<pir::shape::ConstantIndexOp>(1);
+
+  EXPECT_EQ(
+      constant_index_op.value().dyn_cast<pir::IndexAttribute>().data() == 1,
+      true);
+}
+
+TEST(shape_op, index_cast_op) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::Program program(ctx);
+  ctx->GetOrRegisterDialect<pir::shape::ShapeDialect>();
+  pir::Builder builder = pir::Builder(ctx, program.block());
+
+  pir::IndexAttribute index_attr = builder.index_attr(1);
+  pir::IndexType index_type = builder.index_type();
+  pir::OpResult in =
+      builder.Build<pir::ConstantOp>(index_attr, index_type).out();
+
+  pir::shape::IndexCastOp index_cast_op =
+      builder.Build<pir::shape::IndexCastOp>(builder.int32_type(), in);
+  pir::Value index_cast_op_input = index_cast_op.in();
+
+  EXPECT_EQ(index_cast_op_input, in);
+}
