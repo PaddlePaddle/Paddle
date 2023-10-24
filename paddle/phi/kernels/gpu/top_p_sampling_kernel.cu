@@ -62,8 +62,6 @@ struct DataTypeTraits<phi::dtype::float16> {
   FIXED_BLOCK_DIM_BASE(64, ##__VA_ARGS__);   \
   FIXED_BLOCK_DIM_BASE(32, ##__VA_ARGS__)
 
-namespace ops = paddle::operators;
-
 struct SegmentOffsetIter {
   explicit SegmentOffsetIter(int num_cols) : num_cols_(num_cols) {}
 
