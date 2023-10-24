@@ -675,7 +675,7 @@ inline void RunProgramAPI(
   paddle::framework::BlockDesc *backward_global_block = nullptr;
   paddle::framework::ProgramDesc *backward_program = nullptr;
 
-  if (!need_grad) {
+  if (need_grad) {
     backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                              attrs.at("backward_global_block"));
     backward_program = backward_global_block->Program();
@@ -727,7 +727,7 @@ inline void RunProgramAPI(
     }
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    if (!need_grad) {
+    if (need_grad) {
       skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
               *backward_program);
