@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.reader import DataLoaderBase
+from paddle import base
+from paddle.base.reader import DataLoaderBase
 
 EPOCH_NUM = 20
 BATCH_SIZE = 32
@@ -38,18 +38,18 @@ def random_reader():
 def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
     paddle.seed(1)
     paddle.framework.random._manual_program_seed(1)
-    startup_prog = fluid.Program()
-    main_prog = fluid.Program()
+    startup_prog = base.Program()
+    main_prog = base.Program()
 
-    with fluid.unique_name.guard():
-        with fluid.program_guard(main_prog, startup_prog):
+    with base.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
             image = paddle.static.data(
                 name='image', shape=[-1, 784], dtype='float32'
             )
             label = paddle.static.data(
                 name='label', shape=[-1, 1], dtype='int64'
             )
-            py_reader = fluid.io.DataLoader.from_generator(
+            py_reader = base.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=4,
                 iterable=not use_legacy_py_reader,
@@ -61,7 +61,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                     hidden,
                     size=hidden_size,
                     activation='tanh',
-                    bias_attr=fluid.ParamAttr(
+                    bias_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(value=1.0)
                     ),
                 )
@@ -78,7 +78,7 @@ def simple_fc_net(places, use_legacy_py_reader, use_double_buffer):
                 )
             )
 
-            optimizer = fluid.optimizer.Adam()
+            optimizer = paddle.optimizer.Adam()
             optimizer.minimize(loss)
     return startup_prog, main_prog, py_reader, loss
 
@@ -90,24 +90,24 @@ class TestBase(unittest.TestCase):
         places,
         use_double_buffer,
     ):
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             startup_prog, main_prog, py_reader, loss = simple_fc_net(
                 places, use_legacy_py_reader, use_double_buffer
             )
 
             reader = paddle.batch(random_reader, batch_size=BATCH_SIZE)
 
-            ps = places if use_double_buffer else fluid.cpu_places(len(places))
+            ps = places if use_double_buffer else base.cpu_places(len(places))
 
             py_reader.set_sample_list_generator(
                 reader, places=ps if py_reader.iterable else None
             )
 
-            exe = fluid.Executor(place=places[0])
+            exe = base.Executor(place=places[0])
             exe.run(startup_prog)
 
-            prog = fluid.CompiledProgram(main_prog)
+            prog = base.CompiledProgram(main_prog)
 
             step = 0
             step_list = []
@@ -126,7 +126,7 @@ class TestBase(unittest.TestCase):
                             )
                             loss_list.append(np.mean(L))
                             step += 1
-                        except fluid.core.EOFException:
+                        except base.core.EOFException:
                             py_reader.reset()
                             break
                     step_list.append(step)
@@ -134,9 +134,9 @@ class TestBase(unittest.TestCase):
                 for _ in range(EPOCH_NUM):
                     step = 0
                     for d in py_reader():
-                        assert len(d) == len(places), "{} != {}".format(
-                            len(d), len(places)
-                        )
+                        assert len(d) == len(
+                            places
+                        ), f"{len(d)} != {len(places)}"
                         for i, item in enumerate(d):
                             image = item['image']
                             label = item['label']
@@ -164,10 +164,10 @@ class TestBase(unittest.TestCase):
     def prepare_places(self, with_cpu=True, with_gpu=True):
         places = []
         if with_cpu:
-            places.append([fluid.CPUPlace()])
+            places.append([base.CPUPlace()])
 
-        if with_gpu and fluid.core.is_compiled_with_cuda():
-            tmp = fluid.cuda_places()
+        if with_gpu and base.core.is_compiled_with_cuda():
+            tmp = base.cuda_places()
             assert len(tmp) > 0, "no gpu detected"
             places.append([tmp[0]])
         return places

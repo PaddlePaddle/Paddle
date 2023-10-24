@@ -21,8 +21,8 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import bow_net, fc_with_batchnorm, init_data
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestFuseOptimizationOps(TestParallelExecutorBase):
@@ -40,7 +40,7 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
         use_device,
         feed_dict=None,
         get_data_from_feeder=None,
-        optimizer=fluid.optimizer.Adam,
+        optimizer=paddle.optimizer.Adam,
     ):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
@@ -90,7 +90,7 @@ class TestFuseOptimizationOps(TestParallelExecutorBase):
 
 class TestFuseAdamOps(TestFuseOptimizationOps):
     def optimizer(self, learning_rate=1e-4):
-        return fluid.optimizer.Adam(learning_rate=learning_rate)
+        return paddle.optimizer.Adam(learning_rate=learning_rate)
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
@@ -103,12 +103,12 @@ class TestFuseAdamOps(TestFuseOptimizationOps):
 
 class TestFuseSGDOps(TestFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.SGD(learning_rate=learning_rate)
+        return paddle.optimizer.SGD(learning_rate=learning_rate)
 
 
 class TestFuseMomentumOps(TestFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 
@@ -124,8 +124,8 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
         cls.train_data = next(reader)
 
     def _get_data_from_feeder(self):
-        place = fluid.CPUPlace()
-        feeder = fluid.DataFeeder(feed_list=["words", "label"], place=place)
+        place = base.CPUPlace()
+        feeder = base.DataFeeder(feed_list=["words", "label"], place=place)
         return feeder.feed(self.train_data)
 
     def _decorate_compare_fused_optimizer_ops(
@@ -139,7 +139,7 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
         )
 
     def optimizer(self, learning_rate=1e-4):
-        return fluid.optimizer.Adam(learning_rate=learning_rate)
+        return paddle.optimizer.Adam(learning_rate=learning_rate)
 
     def test_simple_bow_net_with_fuse_op(self):
         model = partial(bow_net, dict_dim=self.word_dict_len, is_sparse=True)
@@ -153,12 +153,12 @@ class TestSpareFuseAdamOps(TestFuseOptimizationOps):
 
 class TestSpareFuseSGDOps(TestSpareFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.SGD(learning_rate=learning_rate)
+        return paddle.optimizer.SGD(learning_rate=learning_rate)
 
 
 class TestSpareFuseMomentumOps(TestSpareFuseAdamOps):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 
@@ -170,7 +170,7 @@ class TestPassConflictBase(TestFuseAdamOps):
         use_device,
         feed_dict=None,
         get_data_from_feeder=None,
-        optimizer=fluid.optimizer.Adam,
+        optimizer=paddle.optimizer.Adam,
     ):
         if use_device == DeviceType.CUDA and not core.is_compiled_with_cuda():
             return
@@ -188,7 +188,7 @@ class TestPassConflictBase(TestFuseAdamOps):
 
 class TestFuseAdamOpsPassConflict(TestPassConflictBase):
     def optimizer(self, learning_rate=1e-4):
-        return fluid.optimizer.Adam(learning_rate=learning_rate)
+        return paddle.optimizer.Adam(learning_rate=learning_rate)
 
     def test_batchnorm_fc_with_fuse_op(self):
         self._decorate_compare_fused_optimizer_ops(
@@ -201,12 +201,12 @@ class TestFuseAdamOpsPassConflict(TestPassConflictBase):
 
 class TestFuseSGDOpsPassConflict(TestFuseAdamOpsPassConflict):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.SGD(learning_rate=learning_rate)
+        return paddle.optimizer.SGD(learning_rate=learning_rate)
 
 
 class TestFuseMomentumOpsPassConflict(TestFuseAdamOpsPassConflict):
     def optimizer(self, learning_rate=1e-3):
-        return fluid.optimizer.Momentum(
+        return paddle.optimizer.Momentum(
             learning_rate=learning_rate, momentum=0.1
         )
 

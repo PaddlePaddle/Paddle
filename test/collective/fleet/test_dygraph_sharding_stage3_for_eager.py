@@ -18,7 +18,6 @@ from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDygraphShardingStage3(TestMultipleGpus):
-
     # check sharding logic as well as the accuracy with single mode
     def test_dygraph_sharding_stage3(self):
         self.run_mnist_2gpu('dygraph_group_sharded_stage3.py')

@@ -14,25 +14,15 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 
-#define GET_ATTR_FROM_VECTOR(attr_name__)                                   \
-  do {                                                                      \
-    std::vector<int64_t> vec_##attr_name__;                                 \
-    if (op_desc.HasAttr(#attr_name__)) {                                    \
-      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,            \
-                                           op_desc.GetAttr(#attr_name__));  \
-      if (vec_##attr_name__.size() > 0) attr_name__ = vec_##attr_name__[0]; \
-    }                                                                       \
+#define GET_ATTR_FROM_VECTOR(attr_name__)                                  \
+  do {                                                                     \
+    std::vector<int64_t> vec_##attr_name__;                                \
+    if (op_desc.HasAttr(#attr_name__)) {                                   \
+      vec_##attr_name__ = PADDLE_GET_CONST(std::vector<int64_t>,           \
+                                           op_desc.GetAttr(#attr_name__)); \
+      if (!vec_##attr_name__.empty()) attr_name__ = vec_##attr_name__[0];  \
+    }                                                                      \
   } while (0)
-
-namespace paddle {
-namespace framework {
-class Scope;
-
-namespace proto {
-class OpDesc;
-}  // namespace proto
-}  // namespace framework
-}  // namespace paddle
 
 namespace paddle {
 namespace inference {
@@ -55,6 +45,14 @@ class SetValueConverter : public OpConverter {
 
     auto* inputs = engine_->GetITensor(op_desc.Input("Input")[0]);
     auto* updates = engine_->GetITensor(op_desc.Input("ValueTensor")[0]);
+    const auto decrease_axes = PADDLE_GET_CONST(
+        std::vector<int64_t>, op_desc.GetAttr("decrease_axes"));
+    std::vector<int32_t> decr_axes{decrease_axes.begin(), decrease_axes.end()};
+    auto value_rank = updates->getDimensions().nbDims;
+    auto input_rank = inputs->getDimensions().nbDims;
+    if (!decrease_axes.empty() && value_rank != input_rank) {
+      updates = Unsqueeze(updates, decr_axes);
+    }
 
     int64_t axes = 0;
     int64_t starts = 0;
@@ -115,39 +113,14 @@ class SetValueConverter : public OpConverter {
         indices.insert(indices.end(), axes_index.begin(), axes_index.end());
       }
 
-      nvinfer1::Dims indice_dims = update_dims;
-
-      // create a tensor to store data
-      std::vector<int> indice_dim_vec;
-      for (int i = 0; i < update_dims.nbDims; i++) {
-        indice_dim_vec.emplace_back(update_dims.d[i]);
-      }
-      auto indice_tensor_dims = phi::make_ddim(indice_dim_vec);
-      std::unique_ptr<phi::DenseTensor> indice_tensor(
-          std::make_unique<phi::DenseTensor>());
-      indice_tensor->Resize(indice_tensor_dims);
-
-      auto* dev_ctx = static_cast<phi::CPUContext*>(
-          platform::DeviceContextPool::Instance().Get(platform::CPUPlace()));
-      auto* weight_data = dev_ctx->template HostAlloc<int>(indice_tensor.get());
-
-      memcpy(weight_data, indices.data(), sizeof(int) * indice_tensor->numel());
-
-      TensorRTEngine::Weight weight{
-          nvinfer1::DataType::kINT32,
-          static_cast<void*>(weight_data),
-          static_cast<size_t>(indice_tensor->numel())};
       auto output_name = op_desc.Output("Out")[0];
-      engine_->SetWeights("set_value_index_" + output_name,
-                          std::move(indice_tensor));
-
-      auto const_layer =
-          TRT_ENGINE_ADD_LAYER(engine_, Constant, indice_dims, weight.get());
+      const auto const_layer = AddConstantLayer(
+          indices.data(), update_dims, "set_value_index_" + output_name);
 
       auto* layer = TRT_ENGINE_ADD_LAYER(engine_,
                                          Scatter,
                                          *inputs,
-                                         *const_layer->getOutput(0),
+                                         *const_layer,
                                          *updates,
                                          nvinfer1::ScatterMode::kELEMENT);
 

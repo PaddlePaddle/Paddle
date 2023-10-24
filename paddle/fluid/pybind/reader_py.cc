@@ -23,7 +23,6 @@
 
 #include "Python.h"
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/tracer.h"
@@ -33,6 +32,7 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 PHI_DECLARE_bool(reader_queue_speed_test_mode);
@@ -46,19 +46,16 @@ namespace pybind {
 namespace py = pybind11;
 namespace reader = operators::reader;
 
-// Check whether the tensor shape matches the VarDesc shape
-// Return the different shape if exists
-static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+static paddle::optional<std::vector<int64_t>> DiffTensorShape(
     const phi::DenseTensor &tensor,
-    const framework::VarDesc &var_desc,
+    const std::vector<int64_t> &target_shape,
     size_t num_places) {
   auto tensor_shape = tensor.dims();
-  auto desc_shape = var_desc.GetShape();
 
   int64_t rank = tensor_shape.size();
 
   if (UNLIKELY(rank == 0)) {
-    if (desc_shape.size() != 0) {  // Tensor rank = 0 but desc does not match
+    if (!target_shape.empty()) {  // Tensor rank = 0 but desc does not match
       return phi::vectorize<int64_t>(tensor_shape);
     } else {
       return paddle::none;
@@ -73,11 +70,13 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
   if (!tensor.lod().empty()) {
     tensor_shape[0] = -1;  // unknown shape
   } else {
-    int64_t split_size = (tensor_shape[0] + num_places - 1) / num_places;
-    int64_t remainder = (split_size == 0 ? 0 : tensor_shape[0] % split_size);
+    int64_t split_size =
+        static_cast<int64_t>((tensor_shape[0] + num_places - 1) / num_places);
+    int64_t remainder = static_cast<int64_t>(
+        split_size == 0 ? 0 : tensor_shape[0] % split_size);
     tensor_shape[0] = split_size;
-    if (desc_shape[0] >= 0) {  // need check dim 0
-      if (tensor_shape[0] != desc_shape[0]) {
+    if (target_shape[0] >= 0) {  // need check dim 0
+      if (tensor_shape[0] != target_shape[0]) {
         return phi::vectorize<int64_t>(tensor_shape);
       }
 
@@ -94,12 +93,23 @@ static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
         0,
         platform::errors::InvalidArgument(
             "Tensor shape at dim %d must not be less than 0", idx));
-    if (desc_shape[idx] >= 0 && tensor_shape[idx] != desc_shape[idx]) {
+    if (target_shape[idx] >= 0 &&
+        tensor_shape[static_cast<int>(idx)] != target_shape[idx]) {
       return phi::vectorize<int64_t>(tensor_shape);
     }
   }
 
   return paddle::none;
+}
+
+// Check whether the tensor shape matches the VarDesc shape
+// Return the different shape if exists
+static paddle::optional<std::vector<int64_t>> DiffTensorShapeWithVarDesc(
+    const phi::DenseTensor &tensor,
+    const framework::VarDesc &var_desc,
+    size_t num_places) {
+  auto desc_shape = var_desc.GetShape();
+  return DiffTensorShape(tensor, desc_shape, num_places);
 }
 
 static const std::shared_ptr<reader::LoDTensorBlockingQueue> &GetQueue(
@@ -190,8 +200,8 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultDictList result;
     result.reserve(ret_.size());
-    for (size_t i = 0; i < ret_.size(); ++i) {
-      if (ret_[i].empty()) {
+    for (auto &item : ret_) {
+      if (item.empty()) {
         if (!kKeepOrder) result.emplace_back();
         continue;
       }
@@ -199,7 +209,7 @@ class MultiDeviceFeedReader {
       result.emplace_back();
       auto &ret = result.back();
       PADDLE_ENFORCE_EQ(names_.size(),
-                        ret_[i].size(),
+                        item.size(),
                         platform::errors::InvalidArgument(
                             "The sample number of reader's input data and the "
                             "input number of feed list are not equal.\n"
@@ -208,7 +218,7 @@ class MultiDeviceFeedReader {
                             "and configured by `set_batch_generator`, but here "
                             "need to used `set_sample_list_generator`."));
       for (size_t j = 0; j < names_.size(); ++j) {
-        ret.emplace(names_[j], std::move(ret_[i][j]));
+        ret.emplace(names_[j], std::move(item[j]));
       }
     }
     ReadAsync();
@@ -219,9 +229,9 @@ class MultiDeviceFeedReader {
     CheckNextStatus();
     ResultList result;
     result.reserve(ret_.size());
-    for (size_t i = 0; i < ret_.size(); ++i) {
-      if (kKeepOrder && ret_[i].empty()) continue;
-      result.emplace_back(std::move(ret_[i]));
+    for (auto &item : ret_) {
+      if (kKeepOrder && item.empty()) continue;
+      result.emplace_back(std::move(item));
     }
     ReadAsync();
     return result;
@@ -392,6 +402,18 @@ void BindReader(py::module *module) {
            const framework::VarDesc &var_desc,
            size_t num_places) -> py::object {
           auto diff = DiffTensorShapeWithVarDesc(tensor, var_desc, num_places);
+          if (diff) {
+            return py::cast(std::move(diff.get()));
+          } else {
+            return py::cast(nullptr);
+          }
+        });
+
+  m.def("diff_tensor_shape",
+        [](const phi::DenseTensor &tensor,
+           const std::vector<int64_t> &target_shape,
+           size_t num_places) -> py::object {
+          auto diff = DiffTensorShape(tensor, target_shape, num_places);
           if (diff) {
             return py::cast(std::move(diff.get()));
           } else {

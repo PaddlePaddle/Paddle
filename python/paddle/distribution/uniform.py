@@ -16,9 +16,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import random
 
@@ -62,33 +62,42 @@ class Uniform(distribution.Distribution):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Uniform
+            >>> import paddle
+            >>> from paddle.distribution import Uniform
+            >>> paddle.seed(2023)
 
-            # Without broadcasting, a single uniform distribution [3, 4]:
-            u1 = Uniform(low=3.0, high=4.0)
-            # 2 distributions [1, 3], [2, 4]
-            u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
-            # 4 distributions
-            u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
-                        high=[[1.5, 2.5], [3.5, 4.5]])
+            >>> # Without broadcasting, a single uniform distribution [3, 4]:
+            >>> u1 = Uniform(low=3.0, high=4.0)
+            >>> # 2 distributions [1, 3], [2, 4]
+            >>> u2 = Uniform(low=[1.0, 2.0], high=[3.0, 4.0])
+            >>> # 4 distributions
+            >>> u3 = Uniform(low=[[1.0, 2.0], [3.0, 4.0]],
+            ...             high=[[1.5, 2.5], [3.5, 4.5]])
+            ...
+            >>> # With broadcasting:
+            >>> u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
 
-            # With broadcasting:
-            u4 = Uniform(low=3.0, high=[5.0, 6.0, 7.0])
+            >>> # Complete example
+            >>> value_tensor = paddle.to_tensor([0.8], dtype="float32")
 
-            # Complete example
-            value_tensor = paddle.to_tensor([0.8], dtype="float32")
+            >>> uniform = Uniform([0.], [2.])
 
-            uniform = Uniform([0.], [2.])
+            >>> sample = uniform.sample([2])
+            >>> # a random tensor created by uniform distribution with shape: [2, 1]
+            >>> entropy = uniform.entropy()
+            >>> print(entropy)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.69314718])
 
-            sample = uniform.sample([2])
-            # a random tensor created by uniform distribution with shape: [2, 1]
-            entropy = uniform.entropy()
-            # [0.6931472] with shape: [1]
-            lp = uniform.log_prob(value_tensor)
-            # [-0.6931472] with shape: [1]
-            p = uniform.probs(value_tensor)
-            # [0.5] with shape: [1]
+            >>> lp = uniform.log_prob(value_tensor)
+            >>> print(lp)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [-0.69314718])
+
+            >>> p = uniform.probs(value_tensor)
+            >>> print(p)
+            Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [0.50000000])
     """
 
     def __init__(self, low, high, name=None):
@@ -96,13 +105,13 @@ class Uniform(distribution.Distribution):
             check_type(
                 low,
                 'low',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
             check_type(
                 high,
                 'high',
-                (int, float, np.ndarray, tensor.Variable, list, tuple),
+                (int, float, np.ndarray, Variable, list, tuple),
                 'Uniform',
             )
 
@@ -160,9 +169,9 @@ class Uniform(distribution.Distribution):
         batch_shape = list((self.low + self.high).shape)
         if -1 in batch_shape:
             output_shape = shape + batch_shape
-            zero_tmp = tensor.fill_constant_batch_size_like(
-                self.low + self.high, batch_shape + shape, self.dtype, 0.0
-            )
+            fill_shape = list(batch_shape + shape)
+            fill_shape[0] = paddle.shape(self.low + self.high)[0].item()
+            zero_tmp = paddle.full(fill_shape, 0.0, self.dtype)
             uniform_random_tmp = random.uniform_random_batch_size_like(
                 zero_tmp,
                 zero_tmp.shape,

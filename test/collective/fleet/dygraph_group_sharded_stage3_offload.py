@@ -18,13 +18,13 @@
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_utils import (
     GroupShardedScaler,
 )
-from paddle.fluid import core
 from paddle.nn import Linear
 
 epoch = 10
@@ -215,7 +215,10 @@ def test_stage3_offload():
 
     # bfp16 offload
     nccl_version = core.nccl_version()
-    if nccl_version >= 21000:
+    if (
+        nccl_version >= 21000
+        and paddle.device.cuda.get_device_properties().major >= 8
+    ):
         stage3_params = train_mlp(mlp7, use_pure_fp16=True, use_bfp16=True)
         stage3_params_offload = train_mlp(
             mlp8, use_pure_fp16=True, offload=True, use_bfp16=True
@@ -247,7 +250,6 @@ def test_stage3_offload():
             rtol=1e-6,
             atol=1e-8,
         )
-    return
 
 
 if __name__ == '__main__':

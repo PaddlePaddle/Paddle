@@ -17,7 +17,7 @@
 namespace phi {
 
 void KernelContext::EmplaceBackInput(const TensorBase* input) {
-  int index = inputs_.size();
+  int index = static_cast<int>(inputs_.size());
   inputs_.emplace_back(input);
   // Record the start and end index of the input
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
@@ -29,7 +29,7 @@ void KernelContext::EmplaceBackInputWithoutSetRange(const TensorBase* input) {
 
 void KernelContext::EmplaceBackInputs(
     paddle::small_vector<const TensorBase*> inputs) {
-  int index = inputs_.size();
+  int index = static_cast<int>(inputs_.size());
   // Record the start and end index of the input
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   inputs_.insert(inputs_.end(),
@@ -45,7 +45,7 @@ void KernelContext::EmplaceBackInputsWithoutSetRange(
 }
 
 void KernelContext::EmplaceBackOutput(TensorBase* output) {
-  int index = outputs_.size();
+  int index = static_cast<int>(outputs_.size());
   outputs_.emplace_back(output);
   // Record the start and end index of the input
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
@@ -57,7 +57,7 @@ void KernelContext::EmplaceBackOutputWithoutSetRange(TensorBase* output) {
 
 void KernelContext::EmplaceBackOutputs(
     paddle::small_vector<TensorBase*> outputs) {
-  int index = outputs_.size();
+  int index = static_cast<int>(outputs_.size());
   // Record the start and end index of the input
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
@@ -123,6 +123,10 @@ const AttrType& KernelContext::AttrAt(size_t idx) const {
   }
 }
 
+const Attribute& KernelContext::AttrAt(size_t idx) const {
+  return attrs_.at(idx);
+}
+
 template const bool& KernelContext::AttrAt(size_t idx) const;
 template const int& KernelContext::AttrAt(size_t idx) const;
 template const int64_t& KernelContext::AttrAt(size_t idx) const;
@@ -142,5 +146,7 @@ template const IntArray& KernelContext::AttrAt(size_t idx) const;
 template const DataType& KernelContext::AttrAt(size_t idx) const;
 template const DataLayout& KernelContext::AttrAt(size_t idx) const;
 template const Place& KernelContext::AttrAt(size_t idx) const;
+template const TensorRef& KernelContext::AttrAt(size_t idx) const;
+template const std::vector<TensorRef>& KernelContext::AttrAt(size_t idx) const;
 
 }  // namespace phi

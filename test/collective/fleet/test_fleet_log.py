@@ -24,7 +24,6 @@ class TestFleetLog(unittest.TestCase):
         fleet.init(log_level="DEBUG")
 
     def test_log_level(self):
-
         # check correctly initialized
         assert fleet.get_log_level_code() == logging._nameToLevel["DEBUG"]
         assert logger.getEffectiveLevel() == logging._nameToLevel["DEBUG"]

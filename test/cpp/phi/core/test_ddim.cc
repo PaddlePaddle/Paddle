@@ -23,7 +23,7 @@ namespace tests {
 TEST(DDim, Equality) {
   // default construct ddim
   phi::DDim default_ddim;
-  EXPECT_EQ(arity(default_ddim), 1);
+  EXPECT_EQ(arity(default_ddim), -1);
   EXPECT_EQ(default_ddim[0], 0);
 
   // construct a zero-DDim
@@ -126,7 +126,7 @@ TEST(DDim, Print) {
 
 TEST(DDim, Hash) {
   // hash a DDim
-  std::size_t h;
+  std::size_t h = 0;
   phi::DDim ddim = phi::make_ddim({2, 3, 4});
   h = std::hash<phi::DDim>()(ddim);
   EXPECT_EQ(h, 0xa16fb2b2967ul);

@@ -16,29 +16,31 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_resnet import SEED, ResNet, optimizer_setting
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def train(to_static, build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
     """
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -70,7 +72,7 @@ def train(to_static, build_strategy=None):
 
                 with paddle.amp.auto_cast():
                     pred = resnet(img)
-                    # FIXME(Aurelius84): The followding cross_entropy seems to bring out a
+                    # FIXME(Aurelius84): The following cross_entropy seems to bring out a
                     # precision problem, need to figure out the underlying reason.
                     # If we remove it, the loss between dygraph and dy2stat is exactly same.
                     loss = paddle.nn.functional.cross_entropy(
@@ -112,11 +114,13 @@ def train(to_static, build_strategy=None):
     return total_loss.numpy()
 
 
+@dy2static_unittest
 class TestResnet(unittest.TestCase):
     def train(self, to_static):
         paddle.jit.enable_to_static(to_static)
         return train(to_static)
 
+    @test_and_compare_with_new_ir(False)
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -124,9 +128,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet_composite(self):
@@ -138,9 +140,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
 

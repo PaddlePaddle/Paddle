@@ -38,7 +38,8 @@ class ConvertToMixedPrecisionPass {
       phi::DataType mixed_precision,
       phi::Backend backend,
       bool keep_io_types,
-      const std::unordered_set<std::string>& black_list);
+      const std::unordered_set<std::string>& black_list,
+      const std::unordered_set<std::string>& white_list);
 
   void Run();
 
@@ -55,6 +56,7 @@ class ConvertToMixedPrecisionPass {
   phi::Backend backend_;
   bool keep_io_types_;
   std::unordered_set<std::string> black_list_;
+  std::unordered_set<std::string> white_list_;
 
   framework::Scope scope_;
   std::unique_ptr<framework::ir::Graph> main_graph_{nullptr};
@@ -63,7 +65,8 @@ class ConvertToMixedPrecisionPass {
 bool OpSupportPrecision(const std::string& op_type,
                         phi::Backend backend,
                         phi::DataType precision,
-                        const std::unordered_set<std::string>& black_list);
+                        const std::unordered_set<std::string>& black_list,
+                        const std::unordered_set<std::string>& white_list);
 
 void InsertCastOp(
     framework::ir::Graph* graph,
@@ -82,7 +85,8 @@ void ConvertToMixedPrecision(const std::string& model_file,
                              phi::DataType mixed_precision,
                              phi::Backend backend,
                              bool keep_io_types,
-                             const std::unordered_set<std::string>& black_list);
+                             const std::unordered_set<std::string>& black_list,
+                             const std::unordered_set<std::string>& white_list);
 
 }  // namespace analysis
 }  // namespace inference

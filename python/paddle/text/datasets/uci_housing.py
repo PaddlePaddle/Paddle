@@ -58,28 +58,38 @@ class UCIHousing(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import UCIHousing
+            >>> import paddle
+            >>> from paddle.text.datasets import UCIHousing
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, feature, target):
+            ...         return paddle.sum(feature), target
 
-                def forward(self, feature, target):
-                    return paddle.sum(feature), target
+            >>> paddle.disable_static()
 
-            paddle.disable_static()
+            >>> uci_housing = UCIHousing(mode='train')
 
-            uci_housing = UCIHousing(mode='train')
-
-            for i in range(10):
-                feature, target = uci_housing[i]
-                feature = paddle.to_tensor(feature)
-                target = paddle.to_tensor(target)
-
-                model = SimpleNet()
-                feature, target = model(feature, target)
-                print(feature.numpy().shape, target.numpy())
+            >>> for i in range(10):
+            ...     feature, target = uci_housing[i]
+            ...     feature = paddle.to_tensor(feature)
+            ...     target = paddle.to_tensor(target)
+            ...
+            ...     model = SimpleNet()
+            ...     feature, target = model(feature, target)
+            ...     print(feature.shape, target.numpy())
+            [] [24.]
+            [] [21.6]
+            [] [34.7]
+            [] [33.4]
+            [] [36.2]
+            [] [28.7]
+            [] [22.9]
+            [] [27.1]
+            [] [16.5]
+            [] [18.9]
 
     """
 

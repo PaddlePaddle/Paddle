@@ -46,11 +46,11 @@ class TileOpConverter : public OpConverter {
       nvinfer1::ITensor* repeat_tensor = nullptr;
       int32_t repeat_rank = 0;
       if (inputs.find("RepeatTimes") != inputs.end() &&
-          op_desc.Input("RepeatTimes").size() >= 1) {
+          !op_desc.Input("RepeatTimes").empty()) {
         repeat_tensor = engine_->GetITensor(op_desc.Input("RepeatTimes")[0]);
         repeat_rank = repeat_tensor->getDimensions().d[0];
       } else if (inputs.find("repeat_times_tensor") != inputs.end() &&
-                 op_desc.Input("repeat_times_tensor").size() >= 1) {
+                 !op_desc.Input("repeat_times_tensor").empty()) {
         int32_t repeat_size = op_desc.Input("repeat_times_tensor").size();
         std::vector<nvinfer1::ITensor*> repeat_tensors;
         for (int32_t i = 0; i < repeat_size; ++i) {

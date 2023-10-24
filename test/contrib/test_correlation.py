@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 
 paddle.enable_static()
 
@@ -81,7 +81,7 @@ def corr(
 
 class TestCorrelationOp(unittest.TestCase):
     def test_check_output(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
         np.random.seed(13)
         np.set_printoptions(threshold=np.inf)
@@ -125,11 +125,11 @@ class TestCorrelationOp(unittest.TestCase):
         )
 
         loss = paddle.mean(out)
-        optimizer = fluid.optimizer.Momentum(0.0001, 0.9)
+        optimizer = paddle.optimizer.Momentum(0.0001, 0.9)
         optimizer.minimize(loss)
 
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0)
+        exe = base.Executor(place)
         res = exe.run(
             feed={'x1': x1_np, 'x2': x2_np}, fetch_list=[out.name, loss.name]
         )
@@ -156,14 +156,14 @@ class Net(paddle.nn.Layer):
 
 class TestCorrelationOpDyGraph(unittest.TestCase):
     def test_check_output(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
         np.random.seed(13)
         np.set_printoptions(threshold=np.inf)
         x_shape = (2, 10, 3, 3)
         x_type = 'float32'
-        place = fluid.CUDAPlace(0)
-        with fluid.dygraph.guard(place):
+        place = base.CUDAPlace(0)
+        with base.dygraph.guard(place):
             x1_np = np.random.randn(2, 3, 4, 5).astype(x_type)
             x2_np = np.random.randn(2, 3, 4, 5).astype(x_type)
             out_np = corr(

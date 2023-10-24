@@ -31,7 +31,6 @@ class TestDataUnshard(unittest.TestCase):
     def test_dp2pp1mp1(self):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
-
                 MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[2, 8])
                 label = paddle.static.data(name='label', shape=[2, 8])
@@ -66,7 +65,7 @@ class TestDataUnshard(unittest.TestCase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,
@@ -107,10 +106,9 @@ class TestDataUnshard(unittest.TestCase):
         desired = input_data[worker_index].reshape(shard_data_np.shape)
         np.testing.assert_allclose(shard_data_np, desired)
 
-    def dp1pp1mp2(self):
+    def test_dp1pp1mp2(self):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
-
                 MESH_0 = auto.ProcessMesh([0, 1], dim_names=["x"])
                 input = paddle.static.data(name='input', shape=[8, 8])
                 label = paddle.static.data(name='label', shape=[8, 8])
@@ -147,7 +145,7 @@ class TestDataUnshard(unittest.TestCase):
         dist_strategy = fleet.DistributedStrategy()
         dist_strategy.semi_auto = True
         fleet.init(is_collective=True, strategy=dist_strategy)
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,
@@ -174,7 +172,6 @@ class TestDataUnshard(unittest.TestCase):
 
         input_data = np.array(range(8 * 8)).reshape([8, 8]).astype("float32")
         label_data = np.random.randint(0, 10, [8, 8]).astype("float32")
-
         fetchs = [loss.name, 'input']
         loss_np, shard_data_np = exe.run(
             distributed_main_program,

@@ -25,8 +25,8 @@ from amp_base_models import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import amp
 
 paddle.enable_static()
@@ -55,23 +55,23 @@ class TestModelCastBF16(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
     def get_static_graph_result(
         self, feed, fetch_list, amp_fun, with_lod=False, startup_prog=None
     ):
-        exe = fluid.Executor(core.CPUPlace())
+        exe = base.Executor(core.CPUPlace())
         exe.run(
-            fluid.default_startup_program()
+            base.default_startup_program()
             if startup_prog is None
             else startup_prog
         )
-        prog = fluid.default_main_program()
+        prog = base.default_main_program()
         if amp_fun is not None:
             if startup_prog is not None:
                 amp_fun(prog, startup_prog)
@@ -193,7 +193,7 @@ class TestModelCastBF16(unittest.TestCase):
                 ),
                 use_bf16_guard=True,
             ),
-            startup_prog=fluid.default_startup_program(),
+            startup_prog=base.default_startup_program(),
         )
 
 
@@ -212,7 +212,7 @@ class TestProgramBF16(AmpTestBase):
         self.assertEqual(
             actual_num_mp,
             expected_num_mp,
-            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but recieved {actual_num_mp}.",
+            f"The number of optimizers with multi_precison = True is expected to be {expected_num_mp}, but received {actual_num_mp}.",
         )
 
     def test_amp_bf16_o1(self):
@@ -302,7 +302,7 @@ class TestStaticBF16(AmpTestBase):
         self.assertEqual(
             losses_o1,
             losses_o2,
-            f"loss of o1 and o2 should be equal, but recieved loss o1: {losses_o1}, loss o2: {losses_o2}",
+            f"loss of o1 and o2 should be equal, but received loss o1: {losses_o1}, loss o2: {losses_o2}",
         )
 
 

@@ -16,16 +16,17 @@ import os
 import tempfile
 import unittest
 
+import nets
 import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def convolutional_neural_network(img):
-    conv_pool_1 = fluid.nets.simple_img_conv_pool(
+    conv_pool_1 = nets.simple_img_conv_pool(
         input=img,
         filter_size=5,
         num_filters=20,
@@ -34,7 +35,7 @@ def convolutional_neural_network(img):
         act="relu",
     )
     conv_pool_1 = paddle.static.nn.batch_norm(conv_pool_1)
-    conv_pool_2 = fluid.nets.simple_img_conv_pool(
+    conv_pool_2 = nets.simple_img_conv_pool(
         input=conv_pool_1,
         filter_size=5,
         num_filters=50,
@@ -56,7 +57,7 @@ def static_train_net(img, label):
     )
     avg_loss = paddle.mean(loss)
 
-    optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     optimizer.minimize(avg_loss)
 
     return prediction, avg_loss
@@ -77,8 +78,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def train_and_save_model(self):
         with new_program_scope():
-            startup_program = fluid.default_startup_program()
-            main_program = fluid.default_main_program()
+            startup_program = base.default_startup_program()
+            main_program = base.default_main_program()
 
             img = paddle.static.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
@@ -90,14 +91,14 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             prediction, avg_loss = static_train_net(img, label)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
-            feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+            feeder = base.DataFeeder(feed_list=[img, label], place=place)
             exe.run(startup_program)
 
             train_reader = paddle.batch(
@@ -119,18 +120,16 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                         break
 
             static_param_dict = {}
-            for param in fluid.default_main_program().all_parameters():
-                static_param_dict[param.name] = fluid.executor._fetch_var(
+            for param in base.default_main_program().all_parameters():
+                static_param_dict[param.name] = base.executor._fetch_var(
                     param.name
                 )
 
-            fluid.io.save_inference_model(
+            paddle.static.io.save_inference_model(
                 self.save_dirname,
-                ["img"],
+                [img],
                 [prediction],
                 exe,
-                model_filename=self.model_filename,
-                params_filename=self.params_filename,
             )
 
         return static_param_dict

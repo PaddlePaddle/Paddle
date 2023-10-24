@@ -32,6 +32,8 @@
 #ifndef PADDLE_NO_PYTHON
 #include "paddle/fluid/eager/hooks.h"
 #endif
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 
 namespace egr {
 class TensorWrapper {
@@ -63,10 +65,20 @@ class TensorWrapper {
             static_cast<phi::DenseTensor*>(tensor.impl().get());
         // TODO(jiabin): It's not a good idea to set memory size to zero, find
         // another way and change this.
-        intermidiate_tensor_.set_impl(
-            std::move(std::make_shared<phi::DenseTensor>(
-                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
-                std::move(dense_tensor->meta()))));
+        intermidiate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dense_tensor->meta()));
+      } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
+        // Copy Global dims, DistAttr and DenseTensorMeta
+        phi::distributed::DistTensor* dist_tensor =
+            static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
+        auto no_buffer_dist_tensor =
+            std::make_shared<phi::distributed::DistTensor>(
+                dist_tensor->dims(), dist_tensor->dist_attr());
+        *no_buffer_dist_tensor->unsafe_mutable_value() = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dist_tensor->value().meta());
+        intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
@@ -77,10 +89,9 @@ class TensorWrapper {
           tensor.is_dense_tensor() && tensor.initialized()) {
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(tensor.impl().get());
-        intermidiate_tensor_.set_impl(
-            std::move(std::make_shared<phi::DenseTensor>(
-                std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
-                dense_tensor->meta())));
+        intermidiate_tensor_.set_impl(std::make_shared<phi::DenseTensor>(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dense_tensor->meta()));
         auto pack_hook = egr::SavedTensorsHooks::GetInstance().GetPackHook();
         unpack_hook_ = egr::SavedTensorsHooks::GetInstance().GetUnPackHook();
         packed_value_ = (*pack_hook)(tensor);

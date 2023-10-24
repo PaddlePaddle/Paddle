@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -37,12 +38,27 @@ class TestUnsqueezeOp(OpTest):
             "XShape": np.random.random(self.ori_shape).astype("float64"),
         }
         self.prim_op_type = "comp"
+        self.if_enable_cinn()
+
+    def if_enable_cinn(self):
+        pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"], check_prim=True)
+        self.check_output(
+            no_check_set=["XShape"],
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
     def init_test_case(self):
         self.ori_shape = (3, 40)
@@ -90,7 +106,6 @@ class TestUnsqueezeOp_ZeroDim1(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1,)
         self.new_shape = 1
-        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
@@ -98,7 +113,6 @@ class TestUnsqueezeOp_ZeroDim2(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (-1, 1)
         self.new_shape = (1, 1)
-        self.enable_cinn = False
 
 
 class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
@@ -106,7 +120,6 @@ class TestUnsqueezeOp_ZeroDim3(TestUnsqueezeOp):
         self.ori_shape = ()
         self.axes = (0, 1, 2)
         self.new_shape = (1, 1, 1)
-        self.enable_cinn = False
 
 
 # axes is a list(with tensor)
@@ -134,10 +147,10 @@ class TestUnsqueezeOp_AxesTensorList(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -195,10 +208,10 @@ class TestUnsqueezeOp_AxesTensor(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(no_check_set=["XShape"])
+        self.check_output(no_check_set=["XShape"], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
     def init_test_case(self):
         self.ori_shape = (20, 5)
@@ -245,40 +258,44 @@ class TestUnsqueezeAPI(unittest.TestCase):
     def executed_api(self):
         self.unsqueeze = paddle.unsqueeze
 
+    @test_with_pir_api
     def test_api(self):
-        input = np.random.random([3, 2, 5]).astype("float64")
-        x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
-        positive_3_int32 = paddle.tensor.fill_constant([1], "int32", 3)
-        positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
-        axes_tensor_int32 = paddle.static.data(
-            name='axes_tensor_int32', shape=[3], dtype="int32"
-        )
-        axes_tensor_int64 = paddle.static.data(
-            name='axes_tensor_int64', shape=[3], dtype="int64"
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            input = np.random.random([3, 2, 5]).astype("float64")
+            x = paddle.static.data(name='x', shape=[3, 2, 5], dtype="float64")
+            positive_3_int32 = paddle.tensor.fill_constant([1], "int32", 3)
+            positive_1_int64 = paddle.tensor.fill_constant([1], "int64", 1)
+            axes_tensor_int32 = paddle.static.data(
+                name='axes_tensor_int32', shape=[3], dtype="int32"
+            )
+            axes_tensor_int64 = paddle.static.data(
+                name='axes_tensor_int64', shape=[3], dtype="int64"
+            )
 
-        out_1 = self.unsqueeze(x, axis=[3, 1, 1])
-        out_2 = self.unsqueeze(x, axis=[positive_3_int32, positive_1_int64, 1])
-        out_3 = self.unsqueeze(x, axis=axes_tensor_int32)
-        out_4 = self.unsqueeze(x, axis=3)
-        out_5 = self.unsqueeze(x, axis=axes_tensor_int64)
+            out_1 = self.unsqueeze(x, axis=[3, 1, 1])
+            out_2 = self.unsqueeze(
+                x, axis=[positive_3_int32, positive_1_int64, 1]
+            )
+            out_3 = self.unsqueeze(x, axis=axes_tensor_int32)
+            out_4 = self.unsqueeze(x, axis=3)
+            out_5 = self.unsqueeze(x, axis=axes_tensor_int64)
 
-        exe = paddle.static.Executor(place=paddle.CPUPlace())
-        res_1, res_2, res_3, res_4, res_5 = exe.run(
-            paddle.static.default_main_program(),
-            feed={
-                "x": input,
-                "axes_tensor_int32": np.array([3, 1, 1]).astype("int32"),
-                "axes_tensor_int64": np.array([3, 1, 1]).astype("int64"),
-            },
-            fetch_list=[out_1, out_2, out_3, out_4, out_5],
-        )
+            exe = paddle.static.Executor(place=paddle.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    "axes_tensor_int32": np.array([3, 1, 1]).astype("int32"),
+                    "axes_tensor_int64": np.array([3, 1, 1]).astype("int64"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5],
+            )
 
-        assert np.array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
-        assert np.array_equal(res_4, input.reshape([3, 2, 5, 1]))
-        assert np.array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_1, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_2, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_3, input.reshape([3, 1, 1, 2, 5, 1]))
+        np.testing.assert_array_equal(res_4, input.reshape([3, 2, 5, 1]))
+        np.testing.assert_array_equal(res_5, input.reshape([3, 1, 1, 2, 5, 1]))
 
     def test_error(self):
         def test_axes_type():
@@ -286,6 +303,13 @@ class TestUnsqueezeAPI(unittest.TestCase):
             self.unsqueeze(x2, axis=2.1)
 
         self.assertRaises(TypeError, test_axes_type)
+
+        def test_pir_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(name="x2", shape=[2, 25], dtype="int32")
+                self.unsqueeze(x2, axis=2.1)
+
+        self.assertRaises(ValueError, test_pir_axes_type)
 
 
 class TestUnsqueezeInplaceAPI(TestUnsqueezeAPI):

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import random
 import unittest
 
@@ -24,6 +25,7 @@ from paddle.static.quantization.quanter import convert, quant_aware
 np.random.seed(0)
 random.seed(0)
 paddle.seed(0)
+logging.basicConfig(level="INFO", format="%(message)s")
 
 
 class RandomDataset(paddle.io.Dataset):
@@ -106,10 +108,8 @@ class TestQuantPostQuantAwareCase1(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
-                        'train iter={}, avg loss {}, acc_top1 {}'.format(
-                            iter, cost, top1
-                        )
+                    logging.info(
+                        f'train iter={iter}, avg loss {cost}, acc_top1 {top1}'
                     )
 
         def test(program):
@@ -121,17 +121,13 @@ class TestQuantPostQuantAwareCase1(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
-                        'eval iter={}, avg loss {}, acc_top1 {}'.format(
-                            iter, cost, top1
-                        )
+                    logging.info(
+                        f'eval iter={iter}, avg loss {cost}, acc_top1 {top1}'
                     )
                 result[0].append(cost)
                 result[1].append(top1)
-            print(
-                ' avg loss {}, acc_top1 {}'.format(
-                    np.mean(result[0]), np.mean(result[1])
-                )
+            logging.info(
+                f' avg loss {np.mean(result[0])}, acc_top1 {np.mean(result[1])}'
             )
             return np.mean(result[1])
 
@@ -180,8 +176,8 @@ class TestQuantPostQuantAwareCase1(StaticCase):
         quant_eval_prog = convert(quant_eval_prog, place, config)
         top1_2 = test(quant_eval_prog)
         # values before quantization and after quantization should be close
-        print(f"before quantization: top1: {top1_1}")
-        print(f"after quantization: top1: {top1_2}")
+        logging.info(f"before quantization: top1: {top1_1}")
+        logging.info(f"after quantization: top1: {top1_2}")
 
 
 if __name__ == '__main__':

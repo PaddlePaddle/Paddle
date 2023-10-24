@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/nms_kernel.h"
+#include <array>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 
 #include "paddle/phi/core/kernel_registry.h"
@@ -32,17 +33,17 @@ static int64_t NMS(const T* boxes_data,
 
   for (int64_t i = 0; i < num_boxes; ++i) {
     if (masks[i / 64] & 1ULL << (i % 64)) continue;
-    T box_1[4];
+    std::array<T, 4> box_1;
     for (int k = 0; k < 4; ++k) {
       box_1[k] = boxes_data[i * 4 + k];
     }
     for (int64_t j = i + 1; j < num_boxes; ++j) {
       if (masks[j / 64] & 1ULL << (j % 64)) continue;
-      T box_2[4];
+      std::array<T, 4> box_2;
       for (int k = 0; k < 4; ++k) {
         box_2[k] = boxes_data[j * 4 + k];
       }
-      bool is_overlap = CalculateIoU<T>(box_1, box_2, threshold);
+      bool is_overlap = CalculateIoU<T>(box_1.data(), box_2.data(), threshold);
       if (is_overlap) {
         masks[j / 64] |= 1ULL << (j % 64);
       }

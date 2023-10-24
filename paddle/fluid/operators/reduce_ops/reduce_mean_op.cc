@@ -94,8 +94,8 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReduceMeanGradNoNeedBufferVarInferer, "X");
 
 class __reduce_meanMaker__ : public ops::ReduceBaseOpMaker {
  protected:
-  virtual std::string GetName() const { return "reduce_mean"; }
-  virtual std::string GetOpType() const { return "Reduce reduce_mean"; }
+  std::string GetName() const override { return "reduce_mean"; }
+  std::string GetOpType() const override { return "Reduce reduce_mean"; }
 };
 
 DECLARE_INFER_SHAPE_FUNCTOR(

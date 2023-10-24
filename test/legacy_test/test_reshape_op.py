@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static import Program, program_guard
 
 
@@ -44,10 +44,16 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestReshapeOp_ZeroDim1(TestReshapeOp):
@@ -86,6 +92,10 @@ class TestReshapeOp_ZeroDim3(OpTest):
         self.infered_shape = ()
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or paddle.is_compiled_with_rocm(),
+    "BFP16 test runs only on CUDA",
+)
 class TestReshapeBF16Op(OpTest):
     def setUp(self):
         self.init_data()
@@ -113,10 +123,16 @@ class TestReshapeBF16Op(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestReshapeFP16Op(OpTest):
@@ -141,10 +157,16 @@ class TestReshapeFP16Op(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", check_prim=True)
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestReshapeOpDimInfer1(TestReshapeOp):
@@ -166,7 +188,9 @@ class TestReshapeOpWithInputShape(OpTest):
     def setUp(self):
         self.init_data()
         self.op_type = "reshape2"
+        self.prim_op_type = "prim"
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
 
         self.inputs = {
@@ -185,10 +209,16 @@ class TestReshapeOpWithInputShape(OpTest):
         self.actual_shape = (2, 3, 20)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 # Situation 3: have shape(list, have tensor), no actual shape(Tensor)
@@ -197,6 +227,8 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.init_data()
         self.op_type = "reshape2"
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
+        self.prim_op_type = "prim"
         self.python_out_sig = ['Out']
 
         shape_tensor = []
@@ -222,10 +254,16 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.shape = (-1, -1)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestReshapeOpDimInfer1_attr_ShapeTensor(TestReshapeOp_attr_ShapeTensor):
@@ -250,6 +288,8 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.init_data()
         self.op_type = "reshape2"
         self.python_api = paddle.tensor.reshape
+        self.public_python_api = paddle.tensor.reshape
+        self.prim_op_type = "prim"
         self.python_out_sig = ['Out']
 
         self.inputs = {
@@ -268,10 +308,16 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.infered_shape = (10, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'])
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(
+            ["X"],
+            "Out",
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestReshapeOpDimInfer1_attr_OnlyShape(TestReshapeOp_attr_OnlyShape):
@@ -301,7 +347,7 @@ class TestReshapeInt8Op(OpTest):
         self.python_api = paddle.tensor.reshape
         self.python_out_sig = ['Out']
         input = np.random.randint(0, 127, self.ori_shape).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
         self.attrs = {
             'shape': self.new_shape,
             'use_mkldnn': self.use_mkldnn,
@@ -321,9 +367,10 @@ class TestReshapeInt8Op(OpTest):
 
     def test_check_output(self):
         self.check_output_with_place(
-            fluid.core.CPUPlace(),
+            base.core.CPUPlace(),
             atol=1e-5,
             no_check_set=['XShape'],
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -336,6 +383,9 @@ class TestReshapeUint8Op(TestReshapeInt8Op):
         self.dtype = np.uint8
 
 
+@skip_check_grad_ci(
+    "we don't need to check grad for the bool type of reshape op"
+)
 class TestReshapeOpBool(TestReshapeOp):
     def setUp(self):
         self.init_data()
@@ -396,10 +446,10 @@ class TestReshapeAPI(unittest.TestCase):
             fetch_list=[out_1, out_2, out_3, out_4],
         )
 
-        assert np.array_equal(res_1, input.reshape(shape))
-        assert np.array_equal(res_2, input.reshape(shape))
-        assert np.array_equal(res_3, input.reshape([5, 10]))
-        assert np.array_equal(res_4, input.reshape(shape))
+        np.testing.assert_array_equal(res_1, input.reshape(shape))
+        np.testing.assert_array_equal(res_2, input.reshape(shape))
+        np.testing.assert_array_equal(res_3, input.reshape([5, 10]))
+        np.testing.assert_array_equal(res_4, input.reshape(shape))
 
     def test_paddle_api(self):
         self._set_paddle_api()
@@ -409,7 +459,7 @@ class TestReshapeAPI(unittest.TestCase):
         self._set_paddle_api()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = self.to_tensor(input)
             positive_five = self.fill_constant([1], "int32", 5)
 
@@ -420,9 +470,9 @@ class TestReshapeAPI(unittest.TestCase):
             shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = self.reshape(x, shape=shape_tensor)
 
-        assert np.array_equal(out_1.numpy(), input.reshape(shape))
-        assert np.array_equal(out_2.numpy(), input.reshape([5, 10]))
-        assert np.array_equal(out_3.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_1.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_2.numpy(), input.reshape([5, 10]))
+        np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
 
 
 class TestStaticReshape_(TestReshapeAPI):
@@ -433,7 +483,7 @@ class TestStaticReshape_(TestReshapeAPI):
         self._set_paddle_api()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = self.to_tensor(input)
             positive_five = self.fill_constant([1], "int32", 5)
 
@@ -444,9 +494,9 @@ class TestStaticReshape_(TestReshapeAPI):
             shape_tensor = self.to_tensor(np.array([2, 5, 5]).astype("int32"))
             out_3 = self.reshape(x, shape=shape_tensor)
 
-        assert np.array_equal(out_1.numpy(), input.reshape(shape))
-        assert np.array_equal(out_2.numpy(), input.reshape(shape))
-        assert np.array_equal(out_3.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_1.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_2.numpy(), input.reshape(shape))
+        np.testing.assert_array_equal(out_3.numpy(), input.reshape(shape))
 
 
 # Test Input Error
@@ -456,10 +506,11 @@ class TestReshapeOpError(unittest.TestCase):
         self.reshape = paddle.reshape
 
     def _test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The x type of reshape_op must be Variable.
             def test_x_type():
-                x1 = fluid.create_lod_tensor(
+                x1 = base.create_lod_tensor(
                     np.array([[-1]]), [[1]], paddle.CPUPlace()
                 )
                 self.reshape(x1, shape=[1])
@@ -506,6 +557,7 @@ class TestReshapeOpError(unittest.TestCase):
                 self.reshape(x3, [-1, -2, 5])
 
             self.assertRaises(AssertionError, test_shape_3)
+        paddle.disable_static()
 
     def test_paddle_api_error(self):
         self._set_paddle_api()
@@ -598,18 +650,18 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
         paddle.enable_static()
 
     def test_static(self):
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, fluid.Program()):
+        main_prog = base.Program()
+        with base.program_guard(main_prog, base.Program()):
             x = paddle.rand([])
             x.stop_gradient = False
             out = paddle.reshape(x, [-1])
-            fluid.backward.append_backward(out)
+            base.backward.append_backward(out)
 
             prog = paddle.static.default_main_program()
             block = prog.global_block()
 
-            x_grad = block.var(fluid.framework.grad_var_name(x.name))
-            out_grad = block.var(fluid.framework.grad_var_name(out.name))
+            x_grad = block.var(base.framework.grad_var_name(x.name))
+            out_grad = block.var(base.framework.grad_var_name(out.name))
 
             # Test compile shape
             self.assertEqual(x.shape, ())
@@ -617,7 +669,7 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
             self.assertEqual(x_grad.shape, ())
             self.assertEqual(out_grad.shape, (1,))
 
-            exe = fluid.Executor()
+            exe = base.Executor()
             result = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])
 
             # Test runtime shape

@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.jit.dy2static.utils import _compatible_non_tensor_spec
 from paddle.static import InputSpec
 
@@ -200,7 +200,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         st_out = net(self.x, *specs[1:])
 
         np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
@@ -217,7 +217,7 @@ class TestNetWithNonTensorSpec(unittest.TestCase):
         net = NetWithNonTensorSpec(self.in_num, self.out_num)
 
         specs = [self.x_spec, False, "bn", -10]
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         net.eval()
 
         path = os.path.join(self.temp_dir.name, './net_twice')
@@ -288,14 +288,20 @@ class TestNetWithNonTensorSpecWithPrune(unittest.TestCase):
         np.testing.assert_allclose(dy_out, pred_out, rtol=1e-05)
 
         # @to_static by InputSpec
-        net = paddle.jit.to_static(net, input_spec=specs)
+        net = paddle.jit.to_static(net, input_spec=specs, full_graph=True)
         st_out, _ = net(self.x, self.y, *specs[2:])
 
         np.testing.assert_allclose(dy_out, st_out, rtol=1e-05)
 
         # jit.save and jit.load with prune y and loss
         prune_specs = [self.x_spec, True]
-        paddle.jit.save(net, path, prune_specs, output_spec=[st_out])
+        paddle.jit.save(
+            net,
+            path,
+            prune_specs,
+            output_spec=[st_out],
+            input_names_after_prune=[self.x_spec.name],
+        )
         load_net = paddle.jit.load(path)
         load_net.eval()
         load_out = load_net(self.x)  # no y and no loss
@@ -345,7 +351,9 @@ class TestNegSpecWithPrim(unittest.TestCase):
     def test_run(self):
         net = NegSpecNet()
         net = paddle.jit.to_static(
-            net, input_spec=[paddle.static.InputSpec(shape=[-1, 10])]
+            net,
+            input_spec=[paddle.static.InputSpec(shape=[-1, 10])],
+            full_graph=True,
         )
         x = paddle.randn([2, 10])
         out = net(x)

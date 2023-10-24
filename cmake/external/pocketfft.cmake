@@ -19,32 +19,36 @@ set(POCKETFFT_PATH
     CACHE STRING "A path setting for external_pocketfft path.")
 set(POCKETFFT_PREFIX_DIR ${POCKETFFT_PATH})
 
-set(POCKETFFT_REPOSITORY https://gitlab.mpcdf.mpg.de/mtr/pocketfft.git)
-set(POCKETFFT_TAG release_for_eigen)
-
 set(POCKETFFT_INCLUDE_DIR ${POCKETFFT_PREFIX_DIR}/src)
+set(POCKETFFT_SOURCE_DIR ${POCKETFFT_PREFIX_DIR}/src/extern_pocketfft)
 message("POCKETFFT_INCLUDE_DIR is ${POCKETFFT_INCLUDE_DIR}")
 include_directories(${POCKETFFT_INCLUDE_DIR})
+
+set(POCKETFFT_TAG release_for_eigen)
+set(SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/pocketfft)
 
 if(APPLE)
   file(TO_NATIVE_PATH
        ${PADDLE_SOURCE_DIR}/patches/pocketfft/pocketfft_hdronly.h.patch
        native_dst)
   set(POCKETFFT_PATCH_COMMAND
-      git checkout -- . && git checkout ${GLOO_TAG} && patch -Nd
-      ${POCKETFFT_INCLUDE_DIR}/extern_pocketfft < ${native_dst})
+      git checkout -- . && git checkout ${POCKETFFT_TAG} && patch -Nd
+      ${SOURCE_DIR} < ${native_dst})
 endif()
 
 ExternalProject_Add(
   extern_pocketfft
-  ${EXTERNAL_PROJECT_LOG_ARGS} ${SHALLOW_CLONE}
-  GIT_REPOSITORY ${POCKETFFT_REPOSITORY}
-  GIT_TAG ${POCKETFFT_TAG}
+  ${EXTERNAL_PROJECT_LOG_ARGS}
+  SOURCE_DIR ${SOURCE_DIR}
   PREFIX ${POCKETFFT_PREFIX_DIR}
   PATCH_COMMAND ${POCKETFFT_PATCH_COMMAND}
   UPDATE_COMMAND ""
   CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
+  BUILD_COMMAND
+  COMMAND ${CMAKE_COMMAND} -E remove_directory ${POCKETFFT_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${POCKETFFT_SOURCE_DIR}
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${SOURCE_DIR}
+          ${POCKETFFT_SOURCE_DIR}
   INSTALL_COMMAND ""
   TEST_COMMAND "")
 

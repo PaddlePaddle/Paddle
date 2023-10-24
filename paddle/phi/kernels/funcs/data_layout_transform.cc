@@ -23,7 +23,7 @@
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/dense_tensor.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/onednn_helper.h"
 #include "paddle/phi/backends/onednn/onednn_reuse.h"
 #endif
@@ -31,7 +31,7 @@
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 void* GetDataFromTensor(const DenseTensor& tensor,
                         dnnl::memory::data_type type) {
@@ -65,7 +65,7 @@ dnnl::memory::desc make_memory_desc(const phi::DenseTensor& ref_tensor,
                         "Ref tensor type (%s) is not supported by oneDNN.",
                         ref_tensor.dtype()));
 
-  auto md_dims = ref_dims.size() != 0 ? ref_dims : std::vector<int64_t>{1};
+  auto md_dims = !ref_dims.empty() ? ref_dims : std::vector<int64_t>{1};
   auto md_format =
       OneDNNFormatForSize(md_dims.size(), ToOneDNNFormat(target_layout));
   dnnl::memory::desc md(md_dims, ref_type, md_format);
@@ -84,6 +84,14 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   auto& pool = DeviceContextPool::Instance();
   auto* dev_ctx = dynamic_cast<OneDNNContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
+  auto in_dims = vectorize<int64_t>(in.dims());
+
+  auto md_dims = !in_dims.empty() ? in_dims : std::vector<int64_t>{1};
+  const auto src_mem_desc =
+      !in_dims.empty() ? in.mem_desc()
+                       : dnnl::memory::desc(md_dims,
+                                            ToOneDNNDataType(in.dtype()),
+                                            dnnl::memory::format_tag::x);
 
   dnnl::memory::desc out_mem_desc = make_memory_desc(in, out_layout);
 
@@ -100,8 +108,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
 
     ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
 
-    auto reorder_src_memory_p =
-        handler.AcquireSrcMemory(in.mem_desc(), in_data);
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(src_mem_desc, in_data);
     auto reorder_dst_memory_p =
         handler.AcquireDstMemory(out, out->mem_desc(), place);
     auto reorder_p =

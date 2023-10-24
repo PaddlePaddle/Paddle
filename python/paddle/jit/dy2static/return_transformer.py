@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer
@@ -338,7 +338,6 @@ class SingleReturnTransformer(BaseTransformer):
         max_return_length,
         parent_node_of_return,
     ):
-
         assert max_return_length >= 0, "Input illegal max_return_length"
         i = index_in_list(stmt_list, return_node)
         if i == -1:

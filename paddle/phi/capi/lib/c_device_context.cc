@@ -74,4 +74,32 @@ void* PD_DeviceContextAllocateTensor(const PD_DeviceContext* ctx,
   }
 }
 
+void PD_DeviceContextSetSeed(const PD_DeviceContext* ctx,
+                             uint64_t seed,
+                             PD_Status* status) {
+  if (status) {
+    *status = C_SUCCESS;
+  }
+  auto dev_ctx = reinterpret_cast<const phi::DeviceContext*>(ctx);
+  dev_ctx->GetGenerator()->SetCurrentSeed(seed);
+}
+
+uint64_t PD_DeviceContextGetSeed(const PD_DeviceContext* ctx,
+                                 PD_Status* status) {
+  if (status) {
+    *status = C_SUCCESS;
+  }
+  auto dev_ctx = reinterpret_cast<const phi::DeviceContext*>(ctx);
+  return dev_ctx->GetGenerator()->GetCurrentSeed();
+}
+
+uint64_t PD_DeviceContextGetRandom(const PD_DeviceContext* ctx,
+                                   PD_Status* status) {
+  if (status) {
+    *status = C_SUCCESS;
+  }
+  auto dev_ctx = reinterpret_cast<const phi::DeviceContext*>(ctx);
+  return dev_ctx->GetGenerator()->Random64();
+}
+
 PD_REGISTER_CAPI(device_context);

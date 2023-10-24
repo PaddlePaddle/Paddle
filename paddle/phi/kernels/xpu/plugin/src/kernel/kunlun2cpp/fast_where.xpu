@@ -1,0 +1,191 @@
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+/*
+ * copyright (C) 2022 KUNLUNXIN, Inc
+ */
+
+#include "xpu/kernel/cluster.h"
+#include "xpu/kernel/cluster_partition.h"
+#include "xpu/kernel/cluster_primitive.h"
+
+namespace xpu2 {
+namespace plugin {
+
+#define CALC_MASK(offset) \
+  mask |= static_cast<int>(condition[i + offset]) << offset;
+
+static __device__ inline void do_select_16(const int8_t* condition,
+                                           const int16_t* x,
+                                           int16_t* y,
+                                           int len) {
+  int len_rounddown32 = rounddown32(len);
+  for (int i = 0; i < len_rounddown32; i += 32) {
+    int mask = condition[i];
+    CALC_MASK(1)
+    CALC_MASK(2)
+    CALC_MASK(3)
+    CALC_MASK(4)
+    CALC_MASK(5)
+    CALC_MASK(6)
+    CALC_MASK(7)
+    CALC_MASK(8)
+    CALC_MASK(9)
+    CALC_MASK(10)
+    CALC_MASK(11)
+    CALC_MASK(12)
+    CALC_MASK(13)
+    CALC_MASK(14)
+    CALC_MASK(15)
+    CALC_MASK(16)
+    CALC_MASK(17)
+    CALC_MASK(18)
+    CALC_MASK(19)
+    CALC_MASK(20)
+    CALC_MASK(21)
+    CALC_MASK(22)
+    CALC_MASK(23)
+    CALC_MASK(24)
+    CALC_MASK(25)
+    CALC_MASK(26)
+    CALC_MASK(27)
+    CALC_MASK(28)
+    CALC_MASK(29)
+    CALC_MASK(30)
+    CALC_MASK(31)
+    vstore_lm_int16x32_mh(y + i, vload_lm_int16x32(x + i), mask);
+  }
+  for (int i = len_rounddown32; i < len; i++) {
+    y[i] = condition[i] ? x[i] : y[i];
+  }
+  mfence_lm();
+}
+
+static __device__ inline void do_select_32(const int8_t* condition,
+                                           const int32_t* x,
+                                           int32_t* y,
+                                           int len) {
+  int len_rounddown16 = rounddown16(len);
+  for (int i = 0; i < len_rounddown16; i += 16) {
+    int mask = condition[i];
+    CALC_MASK(1)
+    CALC_MASK(2)
+    CALC_MASK(3)
+    CALC_MASK(4)
+    CALC_MASK(5)
+    CALC_MASK(6)
+    CALC_MASK(7)
+    CALC_MASK(8)
+    CALC_MASK(9)
+    CALC_MASK(10)
+    CALC_MASK(11)
+    CALC_MASK(12)
+    CALC_MASK(13)
+    CALC_MASK(14)
+    CALC_MASK(15)
+    vstore_lm_int32x16_mh(y + i, vload_lm_int32x16(x + i), mask);
+  }
+  for (int i = len_rounddown16; i < len; i++) {
+    y[i] = condition[i] ? x[i] : y[i];
+  }
+  mfence_lm();
+}
+
+template <typename T>
+static __device__ void do_select(const int8_t* condition,
+                                 const T* x,
+                                 T* y,
+                                 int len) {}
+
+template <>
+__device__ void do_select<float16>(const int8_t* condition,
+                                   const float16* x,
+                                   float16* y,
+                                   int len) {
+  do_select_16(condition,
+               reinterpret_cast<const int16_t*>(x),
+               reinterpret_cast<int16_t*>(y),
+               len);
+}
+
+template <>
+__device__ void do_select<float>(const int8_t* condition,
+                                 const float* x,
+                                 float* y,
+                                 int len) {
+  do_select_32(condition,
+               reinterpret_cast<const int32_t*>(x),
+               reinterpret_cast<int32_t*>(y),
+               len);
+}
+
+template <>
+__device__ void do_select<int16_t>(const int8_t* condition,
+                                   const int16_t* x,
+                                   int16_t* y,
+                                   int len) {
+  do_select_16(condition, x, y, len);
+}
+
+template <>
+__device__ void do_select<int32_t>(const int8_t* condition,
+                                   const int32_t* x,
+                                   int32_t* y,
+                                   int len) {
+  do_select_32(condition, x, y, len);
+}
+
+template <typename T>
+__global__ void fast_where(
+    const int8_t* condition, const T* x, const T* y, T* z, int64_t len) {
+  int tid = core_id() * cluster_num() + cluster_id();
+  int nthreads = core_num() * cluster_num();
+#ifdef __XPU3__
+  const int buf_len = 1536 / sizeof(T);
+#else
+  const int buf_len = 512 / sizeof(T);
+#endif
+  __simd__ int8_t local_condition[buf_len];
+  __simd__ T local_x[buf_len];
+  __simd__ T local_y[buf_len];
+  int loop = 0;
+  for (int64_t i = tid * buf_len; i < len; i += nthreads * buf_len) {
+    int read_len = min(static_cast<int64_t>(buf_len), len - i);
+    GM2LM_ASYNC(condition + i, local_condition, read_len * sizeof(int8_t));
+    GM2LM_ASYNC(x + i, local_x, read_len * sizeof(T));
+    GM2LM(y + i, local_y, read_len * sizeof(T));
+    do_select<T>(local_condition, local_x, local_y, read_len);
+    LM2GM_ASYNC(local_y, z + i, read_len * sizeof(T));
+    mfence();
+#ifndef __XPU3__
+    loop++;
+    if ((loop & 0xF) == 0) {
+      sync_all();
+    }
+#endif
+  }
+}
+
+#define _XPU_DEF__FAST_WHERE_(DTYPE)                                  \
+  template __global__ void fast_where<DTYPE>(const int8_t* condition, \
+                                             const DTYPE* x,          \
+                                             const DTYPE* y,          \
+                                             DTYPE* z,                \
+                                             int64_t len);
+_XPU_DEF__FAST_WHERE_(float16);
+_XPU_DEF__FAST_WHERE_(float);
+_XPU_DEF__FAST_WHERE_(int16_t);
+_XPU_DEF__FAST_WHERE_(int32_t);
+
+}  // namespace plugin
+}  // namespace xpu2

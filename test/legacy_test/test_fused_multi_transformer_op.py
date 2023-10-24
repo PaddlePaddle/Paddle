@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid.framework import default_main_program
+from paddle.base.framework import default_main_program
 from paddle.incubate.nn import FusedMultiTransformer
 from paddle.incubate.nn.functional import fused_multi_transformer
 from paddle.nn.layer.common import Dropout, Linear
@@ -38,6 +39,7 @@ paddle.seed(seed)
 
 class TestFusedMultiTransformerOp(OpTest):
     def setUp(self):
+        self.with_new_comm()
         self.config()
         self.generate_input_data()
 
@@ -57,7 +59,7 @@ class TestFusedMultiTransformerOp(OpTest):
         # use autograd to check grad in this unittest.
         self.__class__.no_need_check_grad = False
 
-        bias_attr = paddle.fluid.ParamAttr(
+        bias_attr = paddle.base.ParamAttr(
             initializer=paddle.paddle.nn.initializer.Constant(value=0.0005)
         )
         self.q_proj = Linear(
@@ -107,6 +109,9 @@ class TestFusedMultiTransformerOp(OpTest):
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
         self.activation = getattr(F, self.act_method)
+
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
 
     def config(self):
         # for debug
@@ -996,13 +1001,13 @@ class TestFusedMultiTransformerOp(OpTest):
         }
         if self.has_pre_cache:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.base.default_main_program(),
                 feed=feed_data,
                 fetch_list=[final_out[0].name],
             )
         else:
             out = exe.run(
-                paddle.fluid.default_main_program(),
+                paddle.base.default_main_program(),
                 feed=feed_data,
                 fetch_list=[final_out.name],
             )
@@ -1123,6 +1128,11 @@ class TestFusedMultiTransformerOp(OpTest):
             np.testing.assert_allclose(
                 final_out_ref, final_out, rtol=self.rtol, atol=self.atol
             )
+
+
+class TestFusedMultiTransformerOpWithNewComm(TestFusedMultiTransformerOp):
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestFusedMultiTransformerOpRotaryFP16(TestFusedMultiTransformerOp):
@@ -1412,7 +1422,9 @@ class TestFusedMultiTransformerOpPreCacheStatic1(TestFusedMultiTransformerOp):
             )
 
 
-class TestFusedMultiAttentionAPIError(unittest.TestCase):
+# Starts the name of this test with 'Z' to make this test
+# run after others. If not, it will make other tests fail.
+class ZTestFusedMultiAttentionAPIError(unittest.TestCase):
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([1.9], dtype=np.float32)
@@ -1425,7 +1437,7 @@ class TestFusedMultiAttentionAPIError(unittest.TestCase):
         self.assertRaises(ValueError, test_invalid_input_dim)
 
 
-class TestFusedMultiTransformerAPIError(unittest.TestCase):
+class ZTestFusedMultiTransformerAPIError(unittest.TestCase):
     def test_errors(self):
         def test_invalid_input_dim():
             array = np.array([], dtype=np.float32)

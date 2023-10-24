@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include <memory>
 #include <mutex>     // NOLINT
 #include "dnnl.hpp"  // NOLINT
@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/attribute.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -125,7 +126,7 @@ class OneDNNContext : public CPUContext {
   void SetBlob(const std::string& name, std::shared_ptr<void> data) const;
 
   // Calculate number of oneDNN objects cached
-  unsigned int GetCachedObjectsNumber(void) const;
+  TEST_API unsigned int GetCachedObjectsNumber(void) const;
 
   // Find a saved blob. Return nullptr if not found
   std::shared_ptr<void> GetBlob(const std::string& name) const;

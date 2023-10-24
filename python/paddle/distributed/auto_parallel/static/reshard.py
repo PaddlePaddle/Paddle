@@ -33,7 +33,7 @@ from .cost import (
 from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .utils import is_gradient_clip_op
+from .utils import is_gradient_clip_op, is_optimize_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
@@ -337,7 +337,7 @@ class Inserter:
         """Insert send op into block at the given index."""
         op_type = 'send_v2'
         # use pair comm group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         send_op = block._insert_op(
             idx,
             type=op_type,
@@ -357,7 +357,7 @@ class Inserter:
         """Insert recv op into block at the given index."""
         op_type = 'recv_v2'
         # use pair group
-        process_group = new_process_group([src, dst])
+        process_group = new_process_group([src, dst], group_type='p2p')
         recv_op = block._insert_op(
             idx,
             type=op_type,
@@ -568,7 +568,7 @@ class Inserter:
         return outs
 
     @staticmethod
-    def insert_fill_constant_op(block, idx, op_role):
+    def insert_fill_constant_op(block, idx, op_role, shape):
         """Insert fill constant op into block at the given index."""
         # to avoid name conflict with framework
         helper = LayerHelper('fill_constant@RESHARD', **locals())
@@ -591,7 +591,7 @@ class Inserter:
         attrs['dtype'] = out.dtype
         attrs['op_role'] = op_role
         paddle.utils.get_shape_tensor_inputs(
-            inputs=inputs, attrs=attrs, shape=[0], op_type='fill_constant'
+            inputs=inputs, attrs=attrs, shape=shape, op_type='fill_constant'
         )
         fillconstant_op = block._insert_op(
             idx,
@@ -610,38 +610,6 @@ class Inserter:
         tensor_list = []
         group = new_process_group(ranks)
         idx_offset = 0
-
-        # instant process group before insert allgather op.
-        if not group.is_instantiate():
-            # insert fill_constant op
-            fill_constant_out = Inserter.insert_fill_constant_op(
-                block, idx, op_role
-            )
-            fill_constant_out.stop_gradient = True
-
-            # insert c_allreduce_sum op
-            allreduce_op = block._insert_op(
-                idx + 1,
-                type="c_allreduce_sum",
-                inputs={'X': [fill_constant_out]},
-                outputs={'Out': [fill_constant_out]},
-                attrs={
-                    'ring_id': 0,
-                    'use_calc_stream': True,
-                    'op_role': op_role,
-                },
-            )
-            allreduce_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            # insert c_sync_calc_stream op
-            sync_calc_op = block._insert_op(
-                idx + 2,
-                type="c_sync_calc_stream",
-                inputs={'X': [fill_constant_out]},
-                outputs={'Out': [fill_constant_out]},
-                attrs={'op_role': op_role},
-            )
-            sync_calc_op._set_attr('op_namescope', "/auto_parallel/reshard")
-            idx_offset = 3
 
         # insert c_allgather op
         op_type = 'c_allgather'
@@ -1033,28 +1001,25 @@ class Resharder:
     ):
         assert isinstance(auto_parallel_main_prog, Program), (
             "The type of auto_parallel_main_prog should be Program, "
-            "but got {}.".format(type(auto_parallel_main_prog))
+            f"but got {type(auto_parallel_main_prog)}."
         )
         if auto_parallel_startup_prog is not None:
             assert isinstance(auto_parallel_main_prog, Program), (
                 "The type of auto_parallel_startup_prog should be Program or None, "
-                "but got {}.".format(type(auto_parallel_startup_prog))
+                f"but got {type(auto_parallel_startup_prog)}."
             )
-        assert isinstance(
-            rank_id, int
-        ), "The type of rank_id should be int, " "but got {}.".format(
-            type(rank_id)
+        assert isinstance(rank_id, int), (
+            "The type of rank_id should be int, " f"but got {type(rank_id)}."
         )
         assert isinstance(dist_context, DistributedContext), (
             "The type of dist_context should be DistributedContext, "
-            "but got {}.".format(type(dist_context))
+            f"but got {type(dist_context)}."
         )
 
         if batch_size is not None:
-            assert isinstance(
-                batch_size, int
-            ), "The type of batch_size should be int, " "but got {}.".format(
-                type(batch_size)
+            assert isinstance(batch_size, int), (
+                "The type of batch_size should be int, "
+                f"but got {type(batch_size)}."
             )
 
         self._auto_parallel_main_prog = auto_parallel_main_prog
@@ -1794,9 +1759,13 @@ class Resharder:
                 elif isinstance(op_desc, AllGatherConcatOpDesc):
                     new_process_group(op_desc.group)
                 elif isinstance(op_desc, SendOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
                 elif isinstance(op_desc, RecvOpDesc):
-                    new_process_group([op_desc.src, op_desc.dst])
+                    new_process_group(
+                        [op_desc.src, op_desc.dst], group_type='p2p'
+                    )
 
         tensor_list = []
         partition_tensor_list = []
@@ -1811,16 +1780,25 @@ class Resharder:
                 break
         assert (
             idx is not None
-        ), "The op for reshard cannot be found in the rank {} program.".format(
-            self.rank_id
-        )
+        ), f"The op for reshard cannot be found in the rank {self.rank_id} program."
 
         matched_op = block.ops[idx]
         source_tensor = get_var_with_recursion(
             var_name, block, self.auto_parallel_main_prog
         )
+
+        def is_grad(name):
+            return name.endswith('GRAD')
+
+        # all op that generate grad is marked as OpRole.Backward
+        op_role = (
+            OpRole.Backward
+            if is_optimize_op(reshard_op) and is_grad(var_name)
+            else reshard_op.attr('op_role')
+        )
+
         for op_desc in op_desc_list:
-            if isinstance(op_desc, AllGatherOpDesc):  # noqa: F401
+            if isinstance(op_desc, AllGatherOpDesc):
                 if var_name not in self.has_allgather.keys():
                     self.has_allgather[var_name] = []
                 if not self.has_allgather[var_name] or op_desc.group not in [
@@ -1832,7 +1810,7 @@ class Resharder:
                             block,
                             idx,
                             source_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.int64,
                         )
                         tensor_list, idx_offset = Inserter.insert_allgather_op(
@@ -1840,7 +1818,7 @@ class Resharder:
                             idx + 1,
                             out_cast,
                             op_desc.group,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += idx_offset
                         tensor_name_list = []
@@ -1849,7 +1827,7 @@ class Resharder:
                                 block,
                                 idx,
                                 var,
-                                reshard_op.attr('op_role'),
+                                op_role,
                                 paddle.bool,
                             )
                             tensor_name_list.append(out_cast.name)
@@ -1863,7 +1841,7 @@ class Resharder:
                             idx,
                             source_tensor,
                             op_desc.group,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += idx_offset
                         tensor_name_list = [var.name for var in tensor_list]
@@ -1895,7 +1873,7 @@ class Resharder:
                             block,
                             idx,
                             source_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.int64,
                         )
                         Inserter.insert_send_op(
@@ -1904,7 +1882,7 @@ class Resharder:
                             out_cast,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += 2
                     else:
@@ -1914,7 +1892,7 @@ class Resharder:
                             source_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         idx += 1
                     self.has_sent[var_name].append(op_desc.dst)
@@ -1942,13 +1920,13 @@ class Resharder:
                             recv_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
                         out_cast = Inserter.insert_cast_op(
                             block,
                             idx + 1,
                             recv_tensor,
-                            reshard_op.attr('op_role'),
+                            op_role,
                             paddle.bool,
                         )
                         tensor_list.append(out_cast)
@@ -1968,7 +1946,7 @@ class Resharder:
                             recv_tensor,
                             op_desc.src,
                             op_desc.dst,
-                            reshard_op.attr('op_role'),
+                            op_role,
                         )
 
                         # for lod tensor, need reset lod after received
@@ -1991,7 +1969,7 @@ class Resharder:
                                                 idx + 1,
                                                 recv_tensor,
                                                 tmp_var,
-                                                reshard_op.attr('op_role'),
+                                                op_role,
                                             )
                                         )
                                         tensor_list.append(reset_lod_out)
@@ -2021,7 +1999,7 @@ class Resharder:
                         partition_index_list[index],
                         block,
                         idx_list,
-                        reshard_op.attr('op_role'),
+                        op_role,
                     )
                 idx = idx_list[0]
 
@@ -2046,7 +2024,7 @@ class Resharder:
                         ends=op_desc.ends,
                         axes=op_desc.axes,
                         new_var_name=new_name,
-                        op_role=reshard_op.attr('op_role'),
+                        op_role=op_role,
                     )
                 else:
                     target_tensor = Inserter.insert_c_concat_op(
@@ -2054,7 +2032,7 @@ class Resharder:
                         idx,
                         source_tensor,
                         op_desc.group,
-                        reshard_op.attr('op_role'),
+                        op_role,
                     )
 
                 assert target_tensor is not None
@@ -2721,7 +2699,10 @@ class Resharder:
                                             # Ensure every rank has a global view of communicator groups for entire cluters.
                                             # When initialize communicators for pipeline parallel, every rank could
                                             # conduct a correct global synchronization.
-                                            new_process_group([item, recv_rank])
+                                            new_process_group(
+                                                [item, recv_rank],
+                                                group_type='p2p',
+                                            )
                             else:
                                 for index, tensor_process in enumerate(
                                     tensor_processes
@@ -2748,7 +2729,9 @@ class Resharder:
                                         # Ensure every rank has a global view of communicator groups for entire cluters.
                                         # When initialize communicators for pipeline parallel, every rank could
                                         # conduct a correct global synchronization.
-                                        new_process_group([item, recv_rank])
+                                        new_process_group(
+                                            [item, recv_rank], group_type='p2p'
+                                        )
 
                             cur_op_count = len(block.ops)
                             idx_offset = (

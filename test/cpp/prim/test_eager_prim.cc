@@ -29,42 +29,6 @@
 
 PHI_DECLARE_string(tensor_operants_mode);
 
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(pow, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(scale, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(multiply, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(not_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_equal, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_than, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_and, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_or, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_xor, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_not, CPU, ALL_LAYOUT);
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_DECLARE_KERNEL(full, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(tanh_grad, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(pow, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(scale, GPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(multiply, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(less_than, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(not_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_equal, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(greater_than, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_and, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_or, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_xor, KPS, ALL_LAYOUT);
-PD_DECLARE_KERNEL(bitwise_not, KPS, ALL_LAYOUT);
-
-#endif
-
 namespace paddle {
 namespace prim {
 
@@ -76,20 +40,20 @@ TEST(EagerPrim, TanhBackwardTest) {
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::FLOAT32,
-                                                  phi::DataLayout::NCHW,
-                                                  5.0 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::FLOAT32,
-                                                  phi::DataLayout::NCHW,
-                                                  5.0 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor1);
   // 3. Run Forward once
   paddle::Tensor out0 = tanh_ad_func(tensor0);
@@ -133,20 +97,20 @@ TEST(EagerPrim, LogicalOperantsTest) {
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::INT32,
-                                                  phi::DataLayout::NCHW,
-                                                  1 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        1 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::INT32,
-                                                  phi::DataLayout::NCHW,
-                                                  0 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        0 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor1);
   // 3. Run Forward once
   paddle::Tensor out0 = tensor0 & tensor1;
@@ -171,20 +135,20 @@ TEST(EagerPrim, CompareOperantsTest) {
   // 2. pre
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor0 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::INT32,
-                                                  phi::DataLayout::NCHW,
-                                                  1 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        1 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor0);
   paddle::Tensor tensor1 =
-      ::egr::egr_utils_api::CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::INT32,
-                                                  phi::DataLayout::NCHW,
-                                                  0 /*value*/,
-                                                  true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::INT32,
+                                        phi::DataLayout::NCHW,
+                                        0 /*value*/,
+                                        true /*is_leaf*/);
   ::egr::egr_utils_api::RetainGradForTensor(tensor1);
   // 3. Run Forward once
   paddle::Tensor out0 = (tensor0 < tensor1);

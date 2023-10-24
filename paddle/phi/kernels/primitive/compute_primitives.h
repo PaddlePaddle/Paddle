@@ -22,7 +22,7 @@
 #endif
 
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
-#include "paddle/phi/common/float16.h"
+#include "paddle/phi/common/amp_type_traits.h"
 
 namespace phi {
 namespace kps {
@@ -39,24 +39,6 @@ constexpr int kWarpSize = 32;
 // kGlobalMode: block reduce, each block gets an output;
 // kLocalMode: thread reduce, each thread gets an output;
 enum ReduceMode { kGlobalMode, kLocalMode };
-
-template <typename T>
-class MPTypeTrait {
- public:
-  using Type = T;
-};
-
-template <>
-class MPTypeTrait<phi::dtype::float16> {
- public:
-  using Type = float;
-};
-
-template <>
-class MPTypeTrait<phi::dtype::bfloat16> {
- public:
-  using Type = float;
-};
 
 /**
  * @brief Will be used in BlockYReduce, get the index of reduce_num in shared

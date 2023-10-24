@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -121,6 +121,7 @@ def start_local_trainers(
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         proc_env["FLAGS_allocator_strategy"] = allocator_strategy
@@ -160,8 +161,8 @@ class TestMultipleGpus(unittest.TestCase):
         allocator_strategy="auto_growth",
     ):
         if (
-            not fluid.core.is_compiled_with_cuda()
-            or fluid.core.get_cuda_device_count() == 0
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() == 0
         ):
             return
 
@@ -190,7 +191,6 @@ class TestMultipleGpus(unittest.TestCase):
 
 class TestMultipleWithGloo(unittest.TestCase):
     def run_mnist_2cpu(self, target_file_name):
-
         cluster, pod = get_cluster_from_args(
             [0, 1]
         )  # tmp use. for getting trainer_nranks()

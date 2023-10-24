@@ -14,12 +14,12 @@
 
 import unittest
 
-import eager_op_test
 import numpy as np
+import op_test
 
 import paddle
+from paddle.base import core
 from paddle.distributed.models.moe import utils
-from paddle.fluid import core
 
 
 def assign_pos(x, _cum_count):
@@ -72,7 +72,7 @@ def get_redefined_allclose(cum_count):
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestAssignPosOpInt64(eager_op_test.OpTest):
+class TestAssignPosOpInt64(op_test.OpTest):
     def setUp(self):
         x = np.random.randint(0, 16, size=(100, 2)).astype("int64")
         y = count(x, 16)
@@ -87,8 +87,9 @@ class TestAssignPosOpInt64(eager_op_test.OpTest):
         self.cum_count = cum_count
 
     def test_forward(self):
+        paddle.enable_static()
         np.testing.assert_allclose = get_redefined_allclose(self.cum_count)
-        self.check_output_with_place(paddle.CUDAPlace(0))
+        self.check_output_with_place(paddle.CUDAPlace(0), check_dygraph=False)
 
 
 @unittest.skipIf(

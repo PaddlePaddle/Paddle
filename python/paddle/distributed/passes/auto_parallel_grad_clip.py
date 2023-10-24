@@ -280,9 +280,7 @@ class ClipHelper:
                 numel = reduce(lambda x, y: x * y, param.shape, 1)
                 assert (
                     numel > 0
-                ), "param [{}] should larger than 0, but it is [{}]".format(
-                    param.name, numel
-                )
+                ), f"param [{param.name}] should larger than 0, but it is [{numel}]"
                 sizes[rank] += numel
         return mapping
 
@@ -327,7 +325,6 @@ class ClipGradByGloblNormPass(PassBase):
         self._remove_no_need_ops_vars(block)
 
     def _remove_no_need_ops_vars(self, block):
-
         removed_op_out_type = [
             'squared_l2_norm',
             'square',
@@ -463,7 +460,6 @@ class ClipGradByGloblNormPass(PassBase):
                     self.clip_helper._init_dist_attr(allreduce_op)
 
                     if insert_leaf_fill_constant_node:
-
                         # NOTE add naive deps for global norm sync in graph exe
                         j = idx - 1
                         prior_op = None

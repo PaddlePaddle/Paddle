@@ -32,6 +32,10 @@ class Device final {
  public:
   Device(size_t dev_id, DeviceInterface* impl) : dev_id_(dev_id), impl_(impl) {}
 
+  ~Device();
+
+  void CheckInitialized();
+
   // Stream
   // ! Create an asynchronous stream
   void CreateStream(
@@ -123,6 +127,8 @@ class Device final {
  private:
   size_t dev_id_;
   DeviceInterface* impl_;
+  std::once_flag initialized_once_flag_;
+  bool initialized_{false};
 };
 
 class DeviceManager {
@@ -143,10 +149,6 @@ class DeviceManager {
   static void Finalize(const std::string& device_type);
 
   static void SynchronizeDevice(const Place& place);
-
-  static void InitDevice(const Place& place);
-
-  static void DeInitDevice(const Place& place);
 
   static void SetDevice(const std::string& device_type, size_t device_id);
 
@@ -241,6 +243,17 @@ class DeviceManager {
                       const ccl::CCLComm& ccl_comm,
                       const stream::Stream& stream);
 
+  static void CCLAllToAll(const std::string& device_type,
+                          const void** send_buf,
+                          const size_t* send_count,
+                          const ccl::CCLDataType* send_dtype,
+                          void** recv_buf,
+                          const size_t* recv_count,
+                          const ccl::CCLDataType* recv_dtype,
+                          size_t rank,
+                          size_t nranks,
+                          const ccl::CCLComm& comm,
+                          const stream::Stream& stream);
   // profiler
   static void ProfilerInitialize(const std::string& dev_type,
                                  phi::TraceEventCollector* collector,
@@ -262,7 +275,7 @@ class DeviceManager {
                                        uint64_t start_ns,
                                        void* context);
 
-  static void Clear();
+  static void Release();
 
  private:
   DISABLE_COPY_AND_ASSIGN(DeviceManager);

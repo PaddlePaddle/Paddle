@@ -33,7 +33,7 @@ class TestLogsumexpAPI(unittest.TestCase):
     def setUp(self):
         self.place = (
             paddle.CUDAPlace(0)
-            if paddle.fluid.core.is_compiled_with_cuda()
+            if paddle.base.core.is_compiled_with_cuda()
             else paddle.CPUPlace()
         )
 
@@ -64,6 +64,18 @@ class TestLogsumexpAPI(unittest.TestCase):
         self.xshape = [10, 200, 300]
         self.yshape = [10, 200, 300]
         self.dtype = np.float32
+        self.api_case()
+
+    def test_api_int32(self):
+        self.xshape = [10, 200, 300]
+        self.yshape = [10, 200, 300]
+        self.dtype = np.int32
+        self.api_case()
+
+    def test_api_int64(self):
+        self.xshape = [10, 200, 300]
+        self.yshape = [10, 200, 300]
+        self.dtype = np.int64
         self.api_case()
 
 

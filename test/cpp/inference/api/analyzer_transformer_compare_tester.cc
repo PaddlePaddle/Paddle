@@ -33,7 +33,7 @@ void compare(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_Transformer, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_Transformer, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

@@ -121,8 +121,8 @@ class SkipLayerNormOpConverter : public OpConverter {
     auto scale_weight = GetWeight("Scale").get();
     nvinfer1::ILayer* layer = nullptr;
     bool flag_varseqlen = engine_->use_varseqlen() &&
-                          engine_->tensorrt_transformer_posid() != "" &&
-                          engine_->tensorrt_transformer_maskid() != "";
+                          !engine_->tensorrt_transformer_posid().empty() &&
+                          !engine_->tensorrt_transformer_maskid().empty();
     if (flag_varseqlen && engine_->with_interleaved()) {
       VLOG(4) << "fused skip_layernorm op: use_varseqlen and with_interleaved";
       if (!enable_int8) {

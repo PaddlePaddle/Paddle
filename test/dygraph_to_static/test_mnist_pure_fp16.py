@@ -16,12 +16,13 @@ import unittest
 from time import time
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 from test_mnist import MNIST, SEED, TestMNIST
 
 import paddle
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class TestPureFP16(TestMNIST):
@@ -31,8 +32,9 @@ class TestPureFP16(TestMNIST):
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_and_compare_with_new_ir(False)
     def test_mnist_to_static(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             dygraph_loss = self.train_dygraph()
             static_loss = self.train_static()
             # NOTE: In pure fp16 training, loss is not stable, so we enlarge atol here.
@@ -41,9 +43,7 @@ class TestPureFP16(TestMNIST):
                 static_loss,
                 rtol=1e-05,
                 atol=0.001,
-                err_msg='dygraph is {}\n static_res is \n{}'.format(
-                    dygraph_loss, static_loss
-                ),
+                err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
             )
 
     def train(self, to_static=False):

@@ -62,8 +62,8 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
     std::vector<std::vector<std::string>> &res) {
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
-  for (size_t query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
-    int server_index = get_server_index_by_id(node_ids[query_idx]);
+  for (auto node_id : node_ids) {
+    int server_index = get_server_index_by_id(node_id);
     if (server2request[server_index] == -1) {
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
@@ -102,10 +102,7 @@ std::future<int32_t> GraphBrpcClient::get_node_feat(
 
             for (size_t feat_idx = 0; feat_idx < feature_names.size();
                  ++feat_idx) {
-              for (size_t node_idx = 0;
-                   node_idx < query_idx_buckets.at(request_idx).size();
-                   ++node_idx) {
-                int query_idx = query_idx_buckets.at(request_idx).at(node_idx);
+              for (auto query_idx : query_idx_buckets.at(request_idx)) {
                 size_t feat_len = *reinterpret_cast<size_t *>(buffer);
                 buffer += sizeof(size_t);
                 auto feature = std::string(buffer, feat_len);
@@ -200,7 +197,7 @@ std::future<int32_t> GraphBrpcClient::add_graph_node(
     std::vector<bool> &is_weighted_list) {
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<std::vector<bool>> is_weighted_bucket;
-  bool add_weight = is_weighted_list.size() > 0;
+  bool add_weight = !is_weighted_list.empty();
   std::vector<int> server_index_arr;
   std::vector<int> index_mapping(server_size, -1);
   for (size_t query_idx = 0; query_idx < node_id_list.size(); ++query_idx) {
@@ -273,15 +270,14 @@ std::future<int32_t> GraphBrpcClient::remove_graph_node(
   std::vector<std::vector<int64_t>> request_bucket;
   std::vector<int> server_index_arr;
   std::vector<int> index_mapping(server_size, -1);
-  for (size_t query_idx = 0; query_idx < node_id_list.size(); ++query_idx) {
-    int server_index = get_server_index_by_id(node_id_list[query_idx]);
+  for (auto &node_id : node_id_list) {
+    int server_index = get_server_index_by_id(node_id);
     if (index_mapping[server_index] == -1) {
       index_mapping[server_index] = request_bucket.size();
       server_index_arr.push_back(server_index);
       request_bucket.push_back(std::vector<int64_t>());
     }
-    request_bucket[index_mapping[server_index]].push_back(
-        node_id_list[query_idx]);
+    request_bucket[index_mapping[server_index]].push_back(node_id);
   }
   size_t request_call_num = request_bucket.size();
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
@@ -407,8 +403,8 @@ std::future<int32_t> GraphBrpcClient::batch_sample_neighbors(
   std::vector<int> server2request(server_size, -1);
   res.clear();
   res_weight.clear();
-  for (size_t query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
-    int server_index = get_server_index_by_id(node_ids[query_idx]);
+  for (auto node_id : node_ids) {
+    int server_index = get_server_index_by_id(node_id);
     if (server2request[server_index] == -1) {
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
@@ -621,8 +617,8 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
     const std::vector<std::vector<std::string>> &features) {
   std::vector<int> request2server;
   std::vector<int> server2request(server_size, -1);
-  for (size_t query_idx = 0; query_idx < node_ids.size(); ++query_idx) {
-    int server_index = get_server_index_by_id(node_ids[query_idx]);
+  for (auto node_id : node_ids) {
+    int server_index = get_server_index_by_id(node_id);
     if (server2request[server_index] == -1) {
       server2request[server_index] = request2server.size();
       request2server.push_back(server_index);
@@ -638,7 +634,7 @@ std::future<int32_t> GraphBrpcClient::set_node_feat(
     int request_idx = server2request[server_index];
     node_id_buckets[request_idx].push_back(node_ids[query_idx]);
     query_idx_buckets[request_idx].push_back(query_idx);
-    if (features_idx_buckets[request_idx].size() == 0) {
+    if (features_idx_buckets[request_idx].empty()) {
       features_idx_buckets[request_idx].resize(feature_names.size());
     }
     for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {

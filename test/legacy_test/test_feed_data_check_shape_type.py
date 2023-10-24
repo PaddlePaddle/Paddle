@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 os.environ['CPU_NUM'] = str(4)
 np.random.seed(123)
@@ -76,7 +76,7 @@ class TestFeedData(unittest.TestCase):
             )
         )
 
-        optimizer = fluid.optimizer.Adam()
+        optimizer = paddle.optimizer.Adam()
         optimizer.minimize(loss)
         return in_data, label, loss
 
@@ -103,9 +103,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_data_shape_mismatch(use_cuda)
             self.assertEqual(
                 str(shape_mismatch_err.exception),
-                "The fed Variable %r should have dimensions = %r, "
-                "shape = %r, but received fed shape %r on each device"
-                % (
+                "The fed Variable {!r} should have dimensions = {!r}, "
+                "shape = {!r}, but received fed shape {!r} on each device".format(
                     'data',
                     len(in_shape_tuple),
                     in_shape_tuple,
@@ -117,8 +116,8 @@ class TestFeedData(unittest.TestCase):
                 self._test_feed_data_dtype_mismatch(use_cuda)
             self.assertEqual(
                 str(dtype_mismatch_err.exception),
-                "The data type of fed Variable %r must be 'int64', but "
-                "received 'float64'" % ('label'),
+                "The data type of fed Variable {!r} must be 'int64', but "
+                "received 'float64'".format('label'),
             )
 
     def _test_feed_data_dtype_mismatch(self, use_cuda):
@@ -204,16 +203,16 @@ class TestFeedData(unittest.TestCase):
         feed_in_data = np.random.uniform(size=[sum_length, 3, 4, 5]).astype(
             np.float32
         )
-        feed_data_tensor = fluid.LoDTensor()
-        feed_data_tensor.set(feed_in_data, fluid.CPUPlace())
+        feed_data_tensor = base.LoDTensor()
+        feed_data_tensor.set(feed_in_data, base.CPUPlace())
         feed_data_tensor.set_recursive_sequence_lengths(sequence_lengths)
 
         label_size = [device_count, 1]
-        feed_label_tensor = fluid.LoDTensor()
+        feed_label_tensor = base.LoDTensor()
         feed_label = np.random.randint(
             low=0, high=self.class_num, size=[sum_length, 1]
         ).astype(np.int64)
-        feed_label_tensor.set(feed_label, fluid.CPUPlace())
+        feed_label_tensor.set(feed_label, base.CPUPlace())
         feed_label_tensor.set_recursive_sequence_lengths(sequence_lengths)
 
         self._feed_data_in_executor(
@@ -232,18 +231,17 @@ class TestFeedData(unittest.TestCase):
         feed_label,
         use_cuda,
     ):
+        startup_program = base.Program()
+        main_program = base.Program()
 
-        startup_program = fluid.Program()
-        main_program = fluid.Program()
-
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             in_data, label, loss = self._simple_fc_net(
                 in_size, label_size, self.class_num, self.hidden_sizes
             )
 
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+        place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
 
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup_program)
 
         train_program = main_program

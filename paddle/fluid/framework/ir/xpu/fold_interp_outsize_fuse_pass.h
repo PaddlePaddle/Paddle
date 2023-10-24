@@ -64,7 +64,7 @@ class FoldInterpOutsizeFusePass : public FusePassBase {
               |       /
       bilinear_interp_v2
   */
-  void DetectorFuse(ir::Graph* graph) const;
+  void FoldInterpOutsize(ir::Graph* graph) const;
 
   const std::string name_scope_{"fold_interp_outsize_fuse_pass"};
 };

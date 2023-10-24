@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
-
 #include <sstream>
 
 #include "gtest/gtest.h"
@@ -38,22 +36,22 @@ TEST(TensorUtils, Test) {
 
   // Create Target Tensor
   paddle::Tensor t =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
 
   paddle::Tensor t_grad =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
 
-  CHECK_EQ(egr_utils_api::IsLeafTensor(t), true);
+  CHECK_EQ(EagerUtils::IsLeafTensor(t), true);
 
   // Test Utils
   eager_test::CompareTensorWithValue<float>(t, 5.0);

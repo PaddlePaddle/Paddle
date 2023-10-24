@@ -22,7 +22,7 @@ from .wrapper import (
     convert_to_mixed_precision,
 )
 
-from paddle.fluid.core import (
+from paddle.base.core import (
     create_predictor,
     get_version,
     _get_phi_kernel_name,
@@ -30,9 +30,11 @@ from paddle.fluid.core import (
     get_trt_runtime_version,
     get_num_bytes_of_data_type,
     PredictorPool,
+    XpuConfig,
+    InternalUtils,
 )
 
-__all__ = [  # noqa
+__all__ = [
     'Config',
     'DataType',
     'PlaceType',
@@ -47,4 +49,5 @@ __all__ = [  # noqa
     'get_trt_runtime_version',
     'get_num_bytes_of_data_type',
     'PredictorPool',
+    'XpuConfig',
 ]

@@ -116,8 +116,8 @@ void PrelnSkipLayerNormFusePass::ApplyImpl(ir::Graph *graph) const {
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
   if (!(enable_int8 && use_varseqlen && with_interleaved &&
         graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass) &&
-        graph->Has(framework::ir::kMultiheadMatmulPass) && pos_id != "" &&
-        mask_id != "" && with_dynamic_shape)) {
+        graph->Has(framework::ir::kMultiheadMatmulPass) && !pos_id.empty() &&
+        !mask_id.empty() && with_dynamic_shape)) {
     VLOG(3) << "preln_skip_layernorm_fuse_pass need: use_trt, enable_int8, "
                "with_interleaved"
                "use_varseqlen, preln_embedding_eltwise_layernorm_fuse_pass, "

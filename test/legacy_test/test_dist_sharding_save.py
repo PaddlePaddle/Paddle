@@ -37,7 +37,6 @@ class TestDistMnistFleetSave(TestDistBase):
         shutil.rmtree(dirname)
 
     def _test_saved_files(self, dirname):
-
         sharding_save_files = sorted(os.listdir(dirname))
 
         check_files = [
@@ -85,9 +84,9 @@ class TestDistMnistFleetSave(TestDistBase):
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place("dist_sharding_save.py", delta=1e-5)
 
 

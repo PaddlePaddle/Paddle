@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestConcatOp(OpTest):
@@ -74,7 +74,6 @@ class TestConcatOp2(TestConcatOp):
 
 
 def create_test_int8_class(parent):
-
     # --------------------test concat s8/u8 in with axis 1--------------------
 
     class TestAxis1Case(parent):

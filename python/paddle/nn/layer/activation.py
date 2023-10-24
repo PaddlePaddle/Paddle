@@ -43,13 +43,15 @@ class CELU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
-            m = paddle.nn.CELU(0.2)
-            out = m(x)
-            # [[-0.19865242,  6.        ],
-            #  [ 1.        , 15.60000038]]
+            >>> x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
+            >>> m = paddle.nn.CELU(0.2)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.19865242,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -91,13 +93,15 @@ class ELU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
-            m = paddle.nn.ELU(0.2)
-            out = m(x)
-            # [[-0.12642411  6.        ]
-            #  [ 1.          15.6      ]]
+            >>> x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
+            >>> m = paddle.nn.ELU(0.2)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.12642412,  6.        ],
+             [ 1.        , 15.60000038]])
     """
 
     def __init__(self, alpha=1.0, name=None):
@@ -141,15 +145,20 @@ class GELU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
-
-            m = paddle.nn.GELU()
-            out = m(x) # [-0.158655 0.345731 0.841345 1.39979]
-
-            m = paddle.nn.GELU(True)
-            out = m(x) # [-0.158808 0.345714 0.841192 1.39957]
+            >>> import paddle
+            >>> x = paddle.to_tensor([[-1, 0.5],[1, 1.5]])
+            >>> m = paddle.nn.GELU()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15865529,  0.34573123],
+             [ 0.84134471,  1.39978933]])
+            >>> m = paddle.nn.GELU(True)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[-0.15880796,  0.34571400],
+             [ 0.84119201,  1.39957154]])
     """
 
     def __init__(self, approximate=False, name=None):
@@ -193,11 +202,14 @@ class Hardshrink(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-1, 0.3, 2.5])
-            m = paddle.nn.Hardshrink()
-            out = m(x) # [-1., 0., 2.5]
+            >>> x = paddle.to_tensor([-1, 0.3, 2.5])
+            >>> m = paddle.nn.Hardshrink()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.       ,  0.       , 2.50000000])
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -244,11 +256,14 @@ class Hardswish(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-4., 5., 1.])
-            m = paddle.nn.Hardswish()
-            out = m(x) # [0., 5., 0.666667]
+            >>> x = paddle.to_tensor([-4., 5., 1.])
+            >>> m = paddle.nn.Hardswish()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.       , 5.        , 0.66666669])
     """
 
     def __init__(self, name=None):
@@ -282,14 +297,14 @@ class Tanh(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            m = paddle.nn.Tanh()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.37994894, -0.19737533,  0.09966800,  0.29131261])
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> m = paddle.nn.Tanh()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.37994900, -0.19737528,  0.09966799,  0.29131261])
     """
 
     def __init__(self, name=None):
@@ -333,11 +348,14 @@ class Hardtanh(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-1.5, 0.3, 2.5])
-            m = paddle.nn.Hardtanh()
-            out = m(x) # [-1., 0.3, 1.]
+            >>> x = paddle.to_tensor([-1.5, 0.3, 2.5])
+            >>> m = paddle.nn.Hardtanh()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-1.       , 0.30000001,  1.       ])
     """
 
     def __init__(self, min=-1.0, max=1.0, name=None):
@@ -386,25 +404,25 @@ class PReLU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.set_default_dtype("float64")
+            >>> import paddle
 
-            data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-                                    [ 3.0, -4.0,  5.0, -6.0],
-                                    [-7.0, -8.0,  8.0,  9.0]],
-                                    [[ 1.0, -2.0, -3.0,  4.0],
-                                    [-5.0,  6.0,  7.0, -8.0],
-                                    [ 6.0,  7.0,  8.0,  9.0]]]])
-
-            m = paddle.nn.PReLU(1, 0.25)
-            out = m(data)
-            print(out)
-            # [[[[-0.5 ,  3.  , -1.  ,  5.  ],
-            #    [ 3.  , -1.  ,  5.  , -1.5 ],
-            #    [-1.75, -2.  ,  8.  ,  9.  ]],
-            #   [[ 1.  , -0.5 , -0.75,  4.  ],
-            #    [-1.25,  6.  ,  7.  , -2.  ],
-            #    [ 6.  ,  7.  ,  8.  ,  9.  ]]]]
+            >>> data = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+            ...                            [ 3.0, -4.0,  5.0, -6.0],
+            ...                            [-7.0, -8.0,  8.0,  9.0]],
+            ...                           [[ 1.0, -2.0, -3.0,  4.0],
+            ...                            [-5.0,  6.0,  7.0, -8.0],
+            ...                            [ 6.0,  7.0,  8.0,  9.0]]]])
+            ...
+            >>> m = paddle.nn.PReLU(1, 0.25)
+            >>> out = m(data)
+            >>> print(out)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[-0.50000000,  3.        , -1.        ,  5.        ],
+               [ 3.        , -1.        ,  5.        , -1.50000000],
+               [-1.75000000, -2.        ,  8.        ,  9.        ]],
+              [[ 1.        , -0.50000000, -0.75000000,  4.        ],
+               [-1.25000000,  6.        ,  7.        , -2.        ],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
 
     def __init__(
@@ -495,24 +513,26 @@ class RReLU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
 
-            input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
-                                            [ 3.0, -4.0,  5.0, -6.0],
-                                            [-7.0, -8.0,  8.0,  9.0]],
-                                            [[ 1.0, -2.0, -3.0,  4.0],
-                                            [-5.0,  6.0,  7.0, -8.0],
-                                            [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
-
-            rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
-            out = rrelu_layer(input_tensor)
-            print(out)
-            #[[[[-0.20000899  3.         -0.88108218  5.        ]
-            #   [ 3.         -0.55175185  5.         -1.07761011]
-            #   [-1.06806871 -1.98962009  8.          9.        ]]
-            #  [[ 1.         -0.52382672 -0.65515128  4.        ]
-            #   [-1.37663394  6.          7.         -2.34657836]
-            #   [ 6.          7.          8.          9.        ]]]]
+            >>> input_tensor = paddle.to_tensor([[[[-2.0,  3.0, -4.0,  5.0],
+            ...                                    [ 3.0, -4.0,  5.0, -6.0],
+            ...                                    [-7.0, -8.0,  8.0,  9.0]],
+            ...                                   [[ 1.0, -2.0, -3.0,  4.0],
+            ...                                    [-5.0,  6.0,  7.0, -8.0],
+            ...                                    [ 6.0,  7.0,  8.0,  9.0]]]], dtype='float32')
+            ...
+            >>> rrelu_layer = paddle.nn.RReLU(0.1, 0.3)
+            >>> out = rrelu_layer(input_tensor)
+            >>> print(out)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[-0.54633451,  3.        , -0.81611776,  5.        ],
+               [ 3.        , -0.60768753,  5.        , -1.68630385],
+               [-1.29360127, -1.45026064,  8.        ,  9.        ]],
+              [[ 1.        , -0.58808362, -0.74662417,  4.        ],
+               [-1.01785135,  6.        ,  7.        , -1.97268605],
+               [ 6.        ,  7.        ,  8.        ,  9.        ]]]])
     """
 
     def __init__(self, lower=1.0 / 8.0, upper=1.0 / 3.0, name=None):
@@ -554,13 +574,14 @@ class ReLU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-2., 0., 1.])
-            m = paddle.nn.ReLU()
-            out = m(x)
-            print(out)
-            # [0., 0., 1.]
+            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> m = paddle.nn.ReLU()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0., 0., 1.])
     """
 
     def __init__(self, name=None):
@@ -596,13 +617,14 @@ class ReLU6(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-1., 0.3, 6.5])
-            m = paddle.nn.ReLU6()
-            out = m(x)
-            print(out)
-            # [0, 0.3, 6]
+            >>> x = paddle.to_tensor([-1., 0.3, 6.5])
+            >>> m = paddle.nn.ReLU6()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 0.30000000, 6.        ])
     """
 
     def __init__(self, name=None):
@@ -644,13 +666,15 @@ class SELU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
-            m = paddle.nn.SELU()
-            out = m(x)
-            print(out)
-            # [[0, 1.050701],[2.101402, 3.152103]]
+            >>> x = paddle.to_tensor([[0.0, 1.0],[2.0, 3.0]])
+            >>> m = paddle.nn.SELU()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 1.05070102],
+             [2.10140204, 3.15210295]])
     """
 
     def __init__(
@@ -669,9 +693,7 @@ class SELU(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'scale={:.16f}, alpha={:.16f}{}'.format(
-            self._scale, self._alpha, name_str
-        )
+        return f'scale={self._scale:.16f}, alpha={self._alpha:.16f}{name_str}'
 
 
 class LeakyReLU(Layer):
@@ -703,11 +725,14 @@ class LeakyReLU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            m = paddle.nn.LeakyReLU()
-            x = paddle.to_tensor([-2.0, 0, 1])
-            out = m(x)  # [-0.02, 0., 1.]
+            >>> m = paddle.nn.LeakyReLU()
+            >>> x = paddle.to_tensor([-2.0, 0, 1])
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.02000000,  0.        ,  1.        ])
     """
 
     def __init__(self, negative_slope=0.01, name=None):
@@ -744,11 +769,14 @@ class Sigmoid(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            m = paddle.nn.Sigmoid()
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            out = m(x) # [0.7310586, 0.880797, 0.95257413, 0.98201376]
+            >>> m = paddle.nn.Sigmoid()
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 0.88079703, 0.95257413, 0.98201376])
     """
 
     def __init__(self, name=None):
@@ -795,11 +823,14 @@ class Hardsigmoid(Layer):
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          m = paddle.nn.Hardsigmoid()
-          x = paddle.to_tensor([-4., 5., 1.])
-          out = m(x) # [0., 1, 0.666667]
+            >>> m = paddle.nn.Hardsigmoid()
+            >>> x = paddle.to_tensor([-4., 5., 1.])
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.        , 1.        , 0.66666669])
     """
 
     def __init__(self, name=None):
@@ -836,11 +867,14 @@ class Softplus(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
-            m = paddle.nn.Softplus()
-            out = m(x) # [0.513015, 0.598139, 0.744397, 0.854355]
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3], dtype='float32')
+            >>> m = paddle.nn.Softplus()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
 
     def __init__(self, beta=1, threshold=20, name=None):
@@ -854,9 +888,7 @@ class Softplus(Layer):
 
     def extra_repr(self):
         name_str = f', name={self._name}' if self._name else ''
-        return 'beta={}, threshold={}{}'.format(
-            self._beta, self._threshold, name_str
-        )
+        return f'beta={self._beta}, threshold={self._threshold}{name_str}'
 
 
 class Softshrink(Layer):
@@ -887,14 +919,14 @@ class Softshrink(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
-            m = paddle.nn.Softshrink()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.39999998,  0.        ,  0.        ,  0.30000001])
+            >>> x = paddle.to_tensor([-0.9, -0.2, 0.1, 0.8])
+            >>> m = paddle.nn.Softshrink()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.39999998,  0.        ,  0.        ,  0.30000001])
     """
 
     def __init__(self, threshold=0.5, name=None):
@@ -929,14 +961,14 @@ class Softsign(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            m = paddle.nn.Softsign()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> m = paddle.nn.Softsign()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
 
     def __init__(self, name=None):
@@ -970,14 +1002,14 @@ class Swish(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-2., 0., 1.])
-            m = paddle.nn.Swish()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.23840584,  0.        ,  0.73105854])
+            >>> x = paddle.to_tensor([-2., 0., 1.])
+            >>> m = paddle.nn.Swish()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.23840584,  0.        ,  0.73105860])
     """
 
     def __init__(self, name=None):
@@ -1017,11 +1049,14 @@ class Mish(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-5., 0., 5.])
-            m = paddle.nn.Mish()
-            out = m(x) # [-0.03357624, 0., 4.99955208]
+            >>> x = paddle.to_tensor([-5., 0., 5.])
+            >>> m = paddle.nn.Mish()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.03357624,  0.        ,  4.99955177])
 
     """
 
@@ -1056,14 +1091,14 @@ class Tanhshrink(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
-            m = paddle.nn.Tanhshrink()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [-0.02005106, -0.00262468,  0.00033200,  0.00868741])
+            >>> x = paddle.to_tensor([-0.4, -0.2, 0.1, 0.3])
+            >>> m = paddle.nn.Tanhshrink()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.02005100, -0.00262472,  0.00033201,  0.00868741])
     """
 
     def __init__(self, name=None):
@@ -1105,14 +1140,14 @@ class ThresholdedReLU(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([2., 0., 1.])
-            m = paddle.nn.ThresholdedReLU()
-            out = m(x)
-            print(out)
-            # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [2., 0., 0.])
+            >>> x = paddle.to_tensor([2., 0., 1.])
+            >>> m = paddle.nn.ThresholdedReLU()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [2., 0., 0.])
     """
 
     def __init__(self, threshold=1.0, name=None):
@@ -1148,11 +1183,14 @@ class Silu(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            m = paddle.nn.Silu()
-            out = m(x) # [ 0.731059, 1.761594, 2.857722, 3.928055 ]
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> m = paddle.nn.Silu()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [0.73105860, 1.76159406, 2.85772228, 3.92805505])
     """
 
     def __init__(self, name=None):
@@ -1187,11 +1225,14 @@ class LogSigmoid(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
-            m = paddle.nn.LogSigmoid()
-            out = m(x) # [-0.313262 -0.126928 -0.0485874 -0.0181499]
+            >>> x = paddle.to_tensor([1.0, 2.0, 3.0, 4.0])
+            >>> m = paddle.nn.LogSigmoid()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [-0.31326166, -0.12692805, -0.04858733, -0.01814996])
     """
 
     def __init__(self, name=None):
@@ -1299,22 +1340,25 @@ class Softmax(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
-                        [3.0, 4.0, 5.0, 6.0],
-                        [7.0, 8.0, 8.0, 9.0]],
-                        [[1.0, 2.0, 3.0, 4.0],
-                        [5.0, 6.0, 7.0, 8.0],
-                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
-            m = paddle.nn.Softmax()
-            out = m(x)
-            # [[[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.07232949, 0.19661193, 0.19661193, 0.53444665]],
-            # [[0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426],
-            #   [0.0320586 , 0.08714432, 0.23688282, 0.64391426]]]
+            >>> x = paddle.to_tensor([[[2.0, 3.0, 4.0, 5.0],
+            ...                        [3.0, 4.0, 5.0, 6.0],
+            ...                        [7.0, 8.0, 8.0, 9.0]],
+            ...                       [[1.0, 2.0, 3.0, 4.0],
+            ...                        [5.0, 6.0, 7.0, 8.0],
+            ...                        [6.0, 7.0, 8.0, 9.0]]], dtype='float32')
+            >>> m = paddle.nn.Softmax()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.07232949, 0.19661194, 0.19661194, 0.53444666]],
+             [[0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428],
+              [0.03205860, 0.08714432, 0.23688284, 0.64391428]]])
+
     """
 
     def __init__(self, axis=-1, name=None):
@@ -1357,23 +1401,26 @@ class LogSoftmax(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = [[[-2.0, 3.0, -4.0, 5.0],
-                  [3.0, -4.0, 5.0, -6.0],
-                  [-7.0, -8.0, 8.0, 9.0]],
-                 [[1.0, -2.0, -3.0, 4.0],
-                  [-5.0, 6.0, 7.0, -8.0],
-                  [6.0, 7.0, 8.0, 9.0]]]
-            m = paddle.nn.LogSoftmax()
-            x = paddle.to_tensor(x)
-            out = m(x)
-            # [[[ -7.1278396   -2.1278396   -9.127839    -0.12783948]
-            #   [ -2.1270514   -9.127051    -0.12705144 -11.127051  ]
-            #   [-16.313261   -17.313261    -1.3132617   -0.31326184]]
-            #  [[ -3.0518122   -6.051812    -7.051812    -0.051812  ]
-            #   [-12.313267    -1.3132664   -0.3132665  -15.313267  ]
-            #   [ -3.4401896   -2.4401896   -1.4401896   -0.44018966]]]
+            >>> x = [[[-2.0,  3.0, -4.0,  5.0],
+            ...       [ 3.0, -4.0,  5.0, -6.0],
+            ...       [-7.0, -8.0,  8.0,  9.0]],
+            ...      [[ 1.0, -2.0, -3.0,  4.0],
+            ...       [-5.0,  6.0,  7.0, -8.0],
+            ...       [ 6.0,  7.0,  8.0,  9.0]]]
+            >>> m = paddle.nn.LogSoftmax()
+            >>> x = paddle.to_tensor(x)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[-7.12783957 , -2.12783957 , -9.12783909 , -0.12783945 ],
+              [-2.12705135 , -9.12705135 , -0.12705141 , -11.12705135],
+              [-16.31326103, -17.31326103, -1.31326187 , -0.31326184 ]],
+             [[-3.05181193 , -6.05181217 , -7.05181217 , -0.05181199 ],
+              [-12.31326675, -1.31326652 , -0.31326646 , -15.31326675],
+              [-3.44018984 , -2.44018984 , -1.44018972 , -0.44018975 ]]])
+
     """
 
     def __init__(self, axis=-1, name=None):
@@ -1426,20 +1473,17 @@ class Maxout(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
 
-            x = paddle.rand([1, 2, 3, 4])
-            # [[[[0.5002636  0.22272532 0.17402348 0.2874594 ]
-            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            #    [0.02879342 0.88725346 0.61093384 0.38833922]]
-            #   [[0.5231306  0.03807496 0.91661984 0.15602879]
-            #    [0.666127   0.616567   0.30741522 0.24044901]
-            #    [0.7142536  0.7351477  0.31588817 0.23782359]]]]
-            m = paddle.nn.Maxout(groups=2)
-            out = m(x)
-            # [[[[0.5231306  0.22272532 0.91661984 0.2874594 ]
-            #    [0.95313174 0.6228939  0.7129065  0.7087491 ]
-            #    [0.7142536  0.88725346 0.61093384 0.38833922]]]]
+            >>> x = paddle.rand([1, 2, 3, 4])
+            >>> m = paddle.nn.Maxout(groups=2)
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[1, 1, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.85139430, 0.95717543, 0.43864486, 0.51577556],
+               [0.84765935, 0.45680618, 0.39412445, 0.72039396],
+               [0.59444654, 0.78120756, 0.78364515, 0.90572405]]]])
     """
 
     def __init__(self, groups, axis=1, name=None):
@@ -1473,25 +1517,20 @@ class Softmax2D(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
 
-            x = paddle.rand([1, 2, 3, 4])
-            # [[[[0.42496058 0.1172187  0.14664008 0.8151267 ]
-            #    [0.24430142 0.42052492 0.60372984 0.79307914]
-            #    [0.4539401  0.90458065 0.10235776 0.62009853]]
-
-            #   [[0.11731581 0.16053623 0.05667042 0.91876775]
-            #    [0.9413854  0.30770817 0.6788164  0.9543593 ]
-            #    [0.4145064  0.75909156 0.11598814 0.73599935]]]]
-            m = paddle.nn.Softmax2D()
-            out = m(x)
-            # [[[[0.5763103  0.48917228 0.5224772  0.4741129 ]
-            #    [0.3324591  0.5281743  0.48123717 0.45976716]
-            #    [0.5098571  0.5363083  0.49659243 0.4710572 ]]
-
-            #   [[0.42368975 0.51082766 0.47752273 0.5258871 ]
-            #    [0.66754097 0.47182566 0.5187628  0.5402329 ]
-            #    [0.49014282 0.46369177 0.50340754 0.5289428 ]]]]
+            >>> x = paddle.rand([1, 2, 3, 4])
+            >>> m = paddle.nn.Softmax2D()
+            >>> out = m(x)
+            >>> print(out)
+            Tensor(shape=[1, 2, 3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.42608523, 0.32081410, 0.39483935, 0.55642301],
+               [0.38131708, 0.45118359, 0.44891062, 0.46053308],
+               [0.35746980, 0.60766530, 0.38638926, 0.70425135]],
+              [[0.57391477, 0.67918587, 0.60516071, 0.44357699],
+               [0.61868292, 0.54881644, 0.55108935, 0.53946698],
+               [0.64253020, 0.39233473, 0.61361068, 0.29574865]]]])
 
     """
 
@@ -1503,9 +1542,7 @@ class Softmax2D(Layer):
     def forward(self, x):
         assert (
             x.ndim == 3 or x.ndim == 4
-        ), "Softmax2D requires a 3D or 4D tensor as input. Received: {}D.".format(
-            x.ndim
-        )
+        ), f"Softmax2D requires a 3D or 4D tensor as input. Received: {x.ndim}D."
         return F.softmax(x, axis=-3, dtype=self._dtype, name=self._name)
 
     def extra_repr(self):

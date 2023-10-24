@@ -22,7 +22,7 @@ import shutil
 import sys
 import tempfile
 
-import requests
+import httpx
 
 import paddle
 import paddle.dataset
@@ -91,37 +91,39 @@ def download(url, module_name, md5sum, save_name=None):
             retry += 1
         else:
             raise RuntimeError(
-                "Cannot download {} within retry limit {}".format(
-                    url, retry_limit
-                )
+                f"Cannot download {url} within retry limit {retry_limit}"
             )
         sys.stderr.write(
             f"Cache file {filename} not found, downloading {url} \n"
         )
         sys.stderr.write("Begin to download\n")
         try:
-            r = requests.get(url, stream=True)
-            total_length = r.headers.get('content-length')
-
-            if total_length is None:
-                with open(filename, 'wb') as f:
-                    shutil.copyfileobj(r.raw, f)
-            else:
-                with open(filename, 'wb') as f:
-                    chunk_size = 4096
-                    total_length = int(total_length)
-                    total_iter = total_length / chunk_size + 1
-                    log_interval = total_iter // 20 if total_iter > 20 else 1
-                    log_index = 0
-                    bar = paddle.hapi.progressbar.ProgressBar(
-                        total_iter, name='item'
-                    )
-                    for data in r.iter_content(chunk_size=chunk_size):
-                        f.write(data)
-                        log_index += 1
-                        bar.update(log_index, {})
-                        if log_index % log_interval == 0:
-                            bar.update(log_index)
+            # (risemeup1):use httpx to replace requests
+            with httpx.stream(
+                "GET", url, timeout=None, follow_redirects=True
+            ) as r:
+                total_length = r.headers.get('content-length')
+                if total_length is None:
+                    with open(filename, 'wb') as f:
+                        shutil.copyfileobj(r.raw, f)
+                else:
+                    with open(filename, 'wb') as f:
+                        chunk_size = 4096
+                        total_length = int(total_length)
+                        total_iter = total_length / chunk_size + 1
+                        log_interval = (
+                            total_iter // 20 if total_iter > 20 else 1
+                        )
+                        log_index = 0
+                        bar = paddle.hapi.progressbar.ProgressBar(
+                            total_iter, name='item'
+                        )
+                        for data in r.iter_bytes(chunk_size=chunk_size):
+                            f.write(data)
+                            log_index += 1
+                            bar.update(log_index, {})
+                            if log_index % log_interval == 0:
+                                bar.update(log_index)
 
         except Exception as e:
             # re-try
@@ -207,8 +209,7 @@ def cluster_files_reader(
         for fn in my_file_list:
             with open(fn, "r") as f:
                 lines = loader(f)
-                for line in lines:
-                    yield line
+                yield from lines
 
     return reader
 

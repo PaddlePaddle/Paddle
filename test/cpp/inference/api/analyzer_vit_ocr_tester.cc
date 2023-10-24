@@ -88,11 +88,11 @@ void compare(bool use_mkldnn = false) {
 
 TEST(Analyzer_vit_ocr, compare) { compare(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vit_ocr, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 // Check the fuse status
 TEST(Analyzer_vit_ocr, fuse_status) {
   AnalysisConfig cfg;
@@ -104,7 +104,6 @@ TEST(Analyzer_vit_ocr, fuse_status) {
 
   CHECK_EQ(fuse_statis.at("fc_mkldnn_pass"), 33);
   CHECK_EQ(fuse_statis.at("fused_conv2d_gelu_mkldnn_fuse_pass"), 2);
-  CHECK_EQ(fuse_statis.at("fc_elementwise_add_mkldnn_fuse"), 16);
 }
 #endif
 

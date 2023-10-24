@@ -124,7 +124,7 @@ class TestCudaGraphAttrAll(unittest.TestCase):
         x_data = np.random.random((3, 10)).astype('float32')
         cuda_graph_rst = self.run_with_cuda_graph(x_data)
         normal_run_rst = self.normal_run(x_data)
-        assert np.array_equal(cuda_graph_rst, normal_run_rst)
+        np.testing.assert_array_equal(cuda_graph_rst, normal_run_rst)
 
 
 if __name__ == "__main__":

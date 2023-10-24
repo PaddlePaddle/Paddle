@@ -211,6 +211,9 @@ cc_library(
 if(WITH_GPU)
   target_link_libraries(var_type_traits dynload_cuda)
 endif()
+if(WITH_XPU)
+  target_link_libraries(var_type_traits dynload_xpti)
+endif()
 
 # every source file that includes "dnnl.h" must depends on mkldnn
 # or, the first one should depends on mkldnn
@@ -225,13 +228,13 @@ cc_test(
 
 set(BRPC_DEPS "")
 if(WITH_PSCORE)
-  set(BRPC_DEPS brpc ssl crypto)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
 endif()
 if(WITH_PSLIB)
   if(WITH_PSLIB_BRPC)
     set(BRPC_DEPS pslib_brpc)
   elseif(NOT WITH_HETERPS)
-    set(BRPC_DEPS brpc ssl crypto)
+    set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
   endif()
   if(WITH_ARM_BRPC)
     set(BRPC_DEPS arm_brpc)
@@ -347,7 +350,8 @@ cc_library(
        selected_rows_utils
        data_device_transform
        data_type_transform
-       data_layout_transform)
+       data_layout_transform
+       phi)
 
 cc_library(
   attribute
@@ -514,9 +518,22 @@ cc_test(
   SRCS version_test.cc
   DEPS version)
 
+add_library(proto_desc_base OBJECT var_desc.cc op_desc.cc block_desc.cc
+                                   program_desc.cc)
+add_dependencies(
+  proto_desc_base
+  attribute
+  ops_extra_info
+  shape_inference
+  op_info
+  glog
+  version
+  xxhash
+  phi)
+
 cc_library(
   proto_desc
-  SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc program_converter.cc
+  SRCS $<TARGET_OBJECTS:proto_desc_base> program_converter.cc
   DEPS attribute
        ops_extra_info
        shape_inference
@@ -596,8 +613,8 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
-      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
+      COMMAND cp *.py ${PADDLE_BINARY_DIR}/python/paddle/base/proto/
       COMMAND cp distributed_strategy_*.py
               ${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -616,7 +633,7 @@ if(WITH_PYTHON)
     endif()
   else()
     string(REPLACE "/" "\\" proto_dstpath
-                   "${PADDLE_BINARY_DIR}/python/paddle/fluid/proto/")
+                   "${PADDLE_BINARY_DIR}/python/paddle/base/proto/")
     string(
       REPLACE "/" "\\" fleet_proto_dstpath
               "${PADDLE_BINARY_DIR}/python/paddle/distributed/fleet/proto/")
@@ -624,7 +641,7 @@ if(WITH_PYTHON)
       TARGET framework_py_proto
       POST_BUILD
       COMMAND ${CMAKE_COMMAND} -E make_directory
-              ${PADDLE_BINARY_DIR}/python/paddle/fluid/proto
+              ${PADDLE_BINARY_DIR}/python/paddle/base/proto
       COMMAND copy /Y *.py ${proto_dstpath}
       COMMAND copy /Y distributed_strategy_*.py ${fleet_proto_dstpath}
       COMMENT "Copy generated python proto into directory paddle/fluid/proto."
@@ -661,36 +678,30 @@ cc_library(
   SRCS variable_helper.cc
   DEPS lod_tensor)
 
+set(NAIVE_EXECUTOR_DEPS
+    op_registry
+    denormal
+    device_context
+    scope
+    framework_proto
+    glog
+    lod_rank_table
+    feed_fetch_method
+    graph_to_program_pass
+    variable_helper)
+
 if(TENSORRT_FOUND)
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper
-         tensorrt_engine_op)
-else()
-  cc_library(
-    naive_executor
-    SRCS naive_executor.cc
-    DEPS op_registry
-         denormal
-         device_context
-         scope
-         framework_proto
-         glog
-         lod_rank_table
-         feed_fetch_method
-         graph_to_program_pass
-         variable_helper)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} tensorrt_engine_op)
 endif()
+
+if(WITH_NVTX AND NOT WIN32)
+  set(NAIVE_EXECUTOR_DEPS ${NAIVE_EXECUTOR_DEPS} cuda_profiler)
+endif()
+
+cc_library(
+  naive_executor
+  SRCS naive_executor.cc
+  DEPS ${NAIVE_EXECUTOR_DEPS})
 
 cc_library(
   executor_gc_helper
@@ -698,6 +709,7 @@ cc_library(
   DEPS while_op_helper
        recurrent_op_helper
        conditional_block_op_helper
+       pylayer_op_helper
        scope
        proto_desc
        operator
@@ -729,8 +741,7 @@ if(WITH_DISTRIBUTE)
            section_worker.cc
            device_worker_factory.cc
            data_set.cc
-      DEPS fleet_executor
-           fleet_wrapper
+      DEPS fleet_wrapper
            recurrent_op_helper
            op_registry
            device_context
@@ -836,8 +847,7 @@ if(WITH_DISTRIBUTE)
            heter_service_proto
            fleet
            heter_server
-           brpc
-           fleet_executor
+           ${${EXTERNAL_BRPC_DEPS}}
            phi)
     set(DISTRIBUTE_COMPILE_FLAGS "")
     if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER 7.0)
@@ -907,8 +917,7 @@ if(WITH_DISTRIBUTE)
            graph_to_program_pass
            variable_helper
            timer
-           monitor
-           fleet_executor)
+           monitor)
   endif()
 elseif(WITH_PSLIB)
   set(DISTRIBUTE_COMPILE_FLAGS "")
@@ -969,7 +978,6 @@ elseif(WITH_PSLIB)
          variable_helper
          timer
          monitor
-         fleet_executor
          ${BRPC_DEP})
 else()
   cc_library(
@@ -1017,12 +1025,12 @@ else()
          graph_to_program_pass
          variable_helper
          timer
-         monitor
-         fleet_executor)
+         monitor)
 endif()
 
-target_link_libraries(executor while_op_helper executor_gc_helper
-                      recurrent_op_helper conditional_block_op_helper)
+target_link_libraries(
+  executor while_op_helper executor_gc_helper recurrent_op_helper
+  conditional_block_op_helper pylayer_op_helper)
 
 cc_library(
   parallel_executor
@@ -1041,7 +1049,8 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor)
+  DEPS parallel_executor standalone_executor pir_adaptor pd_inplace_pass
+       pd_op_to_kernel_pass pir)
 if(WITH_PSCORE)
   get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
   if(WITH_HETERPS)
@@ -1088,7 +1097,7 @@ endif()
 cc_library(
   prune
   SRCS prune.cc
-  DEPS framework_proto auto_parallel_proto)
+  DEPS framework_proto auto_parallel_proto proto_desc)
 cc_test(
   prune_test
   SRCS prune_test.cc

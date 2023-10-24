@@ -16,12 +16,12 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import switch_to_static_graph
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 
 
 class TestScatterOp(OpTest):
@@ -31,6 +31,7 @@ class TestScatterOp(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 50)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int32")
@@ -44,11 +45,14 @@ class TestScatterOp(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_prim=True)
@@ -67,12 +71,14 @@ class TestScatterFP16Op(TestScatterOp):
 class TestScatterBF16Op(TestScatterOp):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -91,6 +97,7 @@ class TestScatterOp0(OpTest):
         self.python_api = paddle.scatter
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
+        self.if_enable_cinn()
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
@@ -106,11 +113,14 @@ class TestScatterOp0(OpTest):
         self.attrs = {'overwrite': True}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_prim=True)
@@ -129,12 +139,14 @@ class TestScatterFP16Op0(TestScatterOp0):
 class TestScatterBF16Op0(TestScatterOp0):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -154,6 +166,7 @@ class TestScatterOp1(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
         zeros_np = np.zeros([2, 3]).astype(target_dtype)
@@ -171,11 +184,14 @@ class TestScatterOp1(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_prim=True)
@@ -194,12 +210,14 @@ class TestScatterFP16Op1(TestScatterOp1):
 class TestScatterBF16Op1(TestScatterOp1):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -222,6 +240,7 @@ class TestScatterOp2(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int32")
@@ -235,13 +254,16 @@ class TestScatterOp2(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_prim=True)
+            self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -270,6 +292,8 @@ class TestScatterFP16Op2(TestScatterOp2):
 class TestScatterBF16Op2(TestScatterOp2):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -283,6 +307,7 @@ class TestScatterOp3(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
         zeros_np = np.zeros([2, 3]).astype(target_dtype)
@@ -300,13 +325,16 @@ class TestScatterOp3(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_prim=True)
+            self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -335,6 +363,8 @@ class TestScatterFP16Op3(TestScatterOp3):
 class TestScatterBF16Op3(TestScatterOp3):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -345,6 +375,7 @@ class TestScatterOp4(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int64")
@@ -358,11 +389,14 @@ class TestScatterOp4(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
@@ -381,12 +415,14 @@ class TestScatterFP16Op4(TestScatterOp4):
 class TestScatterBF16Op4(TestScatterOp4):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -409,6 +445,7 @@ class TestScatterOp5(OpTest):
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
         self._set_dtype()
+        self.if_enable_cinn()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 3)).astype(target_dtype)
         index_np = np.array([1, 2]).astype("int64")
@@ -422,13 +459,16 @@ class TestScatterOp5(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-3, check_prim=True)
+            self.check_output_with_place(place, atol=1e-3)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -457,6 +497,8 @@ class TestScatterFP16Op5(TestScatterOp5):
 class TestScatterBF16Op5(TestScatterOp5):
     def _set_dtype(self):
         self.dtype = np.uint16
+
+    def if_enable_cinn(self):
         self.enable_cinn = False
 
 
@@ -466,7 +508,7 @@ class TestScatterOp6(OpTest):
         self.python_api = paddle.scatter
         self.public_python_api = paddle.scatter
         self.prim_op_type = "prim"
-        self.enable_cinn = False
+        self.if_enable_cinn()
         self._set_dtype()
         target_dtype = "float16" if self.dtype == np.float16 else "float32"
         ref_np = np.ones((3, 50)).astype(target_dtype)
@@ -481,11 +523,14 @@ class TestScatterOp6(OpTest):
         self.inputs = {'X': ref_np, 'Ids': index_np, 'Updates': updates_np}
         self.outputs = {'Out': output_np}
 
+    def if_enable_cinn(self):
+        pass
+
     def _set_dtype(self):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(["X", "Updates"], "Out", check_prim=True)
@@ -502,13 +547,16 @@ class TestScatterFP16Op6(TestScatterOp6):
     "core is not complied with CUDA and not support the bfloat16",
 )
 class TestScatterBF16Op6(TestScatterOp6):
+    def if_enable_cinn(self):
+        self.enable_cinn = False
+
     def _set_dtype(self):
         self.dtype = np.uint16
 
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, check_prim=True)
+            self.check_output_with_place(place)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -523,16 +571,16 @@ class TestScatterBF16Op6(TestScatterOp6):
 
 class TestScatterAPI(unittest.TestCase):
     def setUp(self):
-        self.places = [fluid.CPUPlace()]
+        self.places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
-            self.places.append(fluid.CUDAPlace(0))
+            self.places.append(base.CUDAPlace(0))
         self.executed_api()
 
     def executed_api(self):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[3, 2], dtype="float64"
             )
@@ -548,9 +596,9 @@ class TestScatterAPI(unittest.TestCase):
                 np.float64
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={
                     "input": input_data,
                     "index": index_data,
@@ -571,16 +619,16 @@ class TestScatterAPI(unittest.TestCase):
 
     def test_dygraph(self):
         for place in self.places:
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 x_data = np.array([[1, 1], [2, 2], [3, 3]]).astype(np.float64)
                 index_data = np.array([2, 1, 0, 1]).astype(np.int64)
                 updates_data = np.array(
                     [[1, 1], [2, 2], [3, 3], [4, 4]]
                 ).astype(np.float64)
 
-                x = fluid.dygraph.to_variable(x_data)
-                index = fluid.dygraph.to_variable(index_data)
-                updates = fluid.dygraph.to_variable(updates_data)
+                x = base.dygraph.to_variable(x_data)
+                index = base.dygraph.to_variable(index_data)
+                updates = base.dygraph.to_variable(updates_data)
 
                 output1 = self.scatter(x, index, updates, overwrite=False)
                 self.assertEqual(
@@ -600,7 +648,7 @@ class TestScatterAPI(unittest.TestCase):
         updates = np.ones(shape=[10759233, 256], dtype="float32")
 
         def test_dygraph():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 gpu_out = paddle.scatter(
                     paddle.to_tensor(x),
                     paddle.to_tensor(index),

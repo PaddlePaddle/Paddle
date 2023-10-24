@@ -64,8 +64,10 @@ class TestMaxPool3DFunc(unittest.TestCase):
         dense_out.backward(dense_out)
 
         # compare with dense
-        assert np.allclose(dense_out.numpy(), out.numpy())
-        assert np.allclose(dense_x.grad.numpy(), self.dense_x.grad.numpy())
+        np.testing.assert_allclose(dense_out.numpy(), out.numpy())
+        np.testing.assert_allclose(
+            dense_x.grad.numpy(), self.dense_x.grad.numpy()
+        )
 
 
 class TestStride(TestMaxPool3DFunc):
@@ -111,7 +113,7 @@ class TestMaxPool3DAPI(unittest.TestCase):
         dense_out = paddle.nn.functional.max_pool3d(
             dense_x, 3, data_format='NDHWC'
         )
-        assert np.allclose(dense_out.numpy(), out.numpy())
+        np.testing.assert_allclose(dense_out.numpy(), out.numpy())
 
 
 if __name__ == "__main__":

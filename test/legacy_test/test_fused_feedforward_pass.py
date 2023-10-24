@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import nn
+from paddle.base import core
 from paddle.distributed.passes import PassManager, new_pass
-from paddle.fluid import core
 
 paddle.enable_static()
 
@@ -129,7 +129,7 @@ class TestFusedFeedforwadPass(unittest.TestCase):
             out = feed_forward(data)
 
             loss = paddle.mean(out)
-            sgd_optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(loss)
 
         if use_pass:
@@ -165,7 +165,9 @@ class TestFusedFeedforwadPass(unittest.TestCase):
                         self.use_dropout_2 = use_dropout_2
                         ret_loss = self.get_value()
                         ret_loss_fused = self.get_value(use_pass=True)
-                        assert np.allclose(ret_loss, ret_loss_fused)
+                        np.testing.assert_allclose(
+                            ret_loss, ret_loss_fused, rtol=1e-5, atol=1e-8
+                        )
 
 
 if __name__ == "__main__":

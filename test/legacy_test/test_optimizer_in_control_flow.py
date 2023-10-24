@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, optimizer
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 
 BATCH_SIZE = 1
 INPUT_SIZE = 784
@@ -47,10 +47,10 @@ def static(
                 image,
                 size=FC_SIZE,
                 activation='relu',
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.99)
                 ),
-                bias_attr=fluid.ParamAttr(
+                bias_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.5)
                 ),
                 name="hidden",
@@ -60,10 +60,10 @@ def static(
                 hidden,
                 size=CLASS_NUM,
                 activation='softmax',
-                weight_attr=fluid.ParamAttr(
+                weight_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=1.2)
                 ),
-                bias_attr=fluid.ParamAttr(
+                bias_attr=base.ParamAttr(
                     initializer=paddle.nn.initializer.Constant(value=0.8)
                 ),
                 name="prediction",
@@ -92,8 +92,8 @@ def static(
         label = paddle.static.data('label', [BATCH_SIZE, 1], 'int64')
         hidden, prediction = double_fc_net(image)
 
-        adam = optimizer.Adam(learning_rate=LR)
-        sgd = optimizer.SGD(learning_rate=LR)
+        adam = paddle.optimizer.Adam(learning_rate=LR)
+        sgd = paddle.optimizer.SGD(learning_rate=LR)
 
         id = paddle.static.data('id', [1], 'int32')
         two = paddle.tensor.fill_constant([1], 'int32', 2)
@@ -121,8 +121,8 @@ def static(
                 lambda: fn_2(sgd, avg_loss_2),
             )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
     exe.run(startup_program)
 
     for epoch in range(EPOCH_NUM):
@@ -173,22 +173,22 @@ class DygraphLayer(paddle.nn.Layer):
 
 
 def dynamic(train_data, use_cuda=False, use_parallel_exe=False):
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = SEED
-        fluid.default_main_program().random_seed = SEED
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = SEED
+        base.default_main_program().random_seed = SEED
         dy_layer = DygraphLayer()
-        adam = fluid.optimizer.Adam(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        adam = paddle.optimizer.Adam(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
-        sgd = fluid.optimizer.SGD(
-            learning_rate=LR, parameter_list=dy_layer.parameters()
+        sgd = paddle.optimizer.SGD(
+            learning_rate=LR, parameters=dy_layer.parameters()
         )
 
         for epoch in range(EPOCH_NUM):
             image_data, label = train_data[epoch]
-            var_input = fluid.dygraph.to_variable(image_data)
-            var_label = fluid.dygraph.to_variable(label)
+            var_input = base.dygraph.to_variable(image_data)
+            var_label = base.dygraph.to_variable(label)
             hidden, prediction = dy_layer(var_input)
 
             if epoch % 2 == 0:

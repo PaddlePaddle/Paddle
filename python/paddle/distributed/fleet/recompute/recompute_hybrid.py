@@ -29,7 +29,6 @@ __all__ = []
 
 
 def _split_activation(tensor, mp_group):
-
     mp_degree = mp_group.nranks
     mp_rank = mp_group.rank
     if mp_degree < 2:
@@ -87,7 +86,6 @@ class _HPRecomputeFunction(PyLayer):
         *args,
         **kwargs,
     ):
-
         # store for recomputing
         ctx.run_function = run_function
 
@@ -114,9 +112,7 @@ class _HPRecomputeFunction(PyLayer):
             or 'xpu:' in paddle.get_device()
             or cur_device.split(':')[0]
             in paddle.device.get_all_custom_device_type()
-        ), "Recompute with RNG is not support current device: {}.".format(
-            cur_device
-        )
+        ), f"Recompute with RNG is not support current device: {cur_device}."
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
@@ -177,7 +173,7 @@ class _HPRecomputeFunction(PyLayer):
 
     @staticmethod
     def backward(ctx, *args):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # Restore inputs
             inputs = list(ctx.inputs)
             tensor_indices = ctx.tensor_indices

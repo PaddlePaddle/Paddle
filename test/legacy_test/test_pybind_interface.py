@@ -14,11 +14,10 @@
 
 import unittest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestPybindInference(unittest.TestCase):
-
     # call get_op_attrs_default_value for c++ coverage rate
     def test_get_op_attrs_default_value(self):
         core.get_op_attrs_default_value(b"fill_constant")

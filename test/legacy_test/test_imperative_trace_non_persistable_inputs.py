@@ -18,14 +18,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class SimpleFCLayer(paddle.nn.Layer):
     def __init__(self, feature_size, batch_size, fc_size):
         super().__init__()
         self._linear = paddle.nn.Linear(feature_size, fc_size)
-        self._offset = fluid.dygraph.to_variable(
+        self._offset = base.dygraph.to_variable(
             np.random.random((batch_size, fc_size)).astype('float32')
         )
 
@@ -36,16 +36,16 @@ class SimpleFCLayer(paddle.nn.Layer):
 
 class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
     def test_main(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
         traced_layer = None
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             feature_size = 3
             batch_size = 4
             fc_size = 2
             layer = SimpleFCLayer(feature_size, batch_size, fc_size)
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=layer.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=layer.parameters()
             )
 
             expected_persistable_vars = {
@@ -55,13 +55,13 @@ class TestTracedLayerRecordNonPersistableInput(unittest.TestCase):
             }
 
             for _ in range(10):
-                in_x = fluid.dygraph.to_variable(
+                in_x = base.dygraph.to_variable(
                     np.random.random((batch_size, feature_size)).astype(
                         'float32'
                     )
                 )
                 if traced_layer is None:
-                    dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                    dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                         layer, [in_x]
                     )
                 else:

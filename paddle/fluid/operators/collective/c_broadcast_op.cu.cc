@@ -42,9 +42,9 @@ class CBroadcastOpCUDAKernel : public framework::OpKernel<T> {
     gpuStream_t stream = ctx.cuda_device_context().stream();
     const auto& comm_context_manager =
         phi::distributed::CommContextManager::GetInstance();
-    if (comm_context_manager.Has(rid)) {
+    if (comm_context_manager.Has(std::to_string(rid))) {
       auto* comm_context = static_cast<phi::distributed::NCCLCommContext*>(
-          comm_context_manager.Get(rid));
+          comm_context_manager.Get(std::to_string(rid)));
 
       comm_context->Broadcast(out, *x, root, stream);
     } else {

@@ -71,7 +71,6 @@ class DNNLayer(nn.Layer):
                 self._mlp_layers.append(act)
 
     def forward(self, sparse_inputs, dense_inputs):
-
         sparse_embs = []
         for s_input in sparse_inputs:
             if self.sync_mode == "gpubox":
@@ -89,7 +88,7 @@ class DNNLayer(nn.Layer):
         y_dnn = paddle.concat(x=sparse_embs + [dense_inputs], axis=1)
 
         if self.sync_mode == 'heter':
-            with paddle.fluid.device_guard('gpu'):
+            with paddle.base.device_guard('gpu'):
                 for n_layer in self._mlp_layers:
                     y_dnn = n_layer(y_dnn)
         else:
@@ -197,7 +196,7 @@ class FlDNNLayer(nn.Layer):
             self._mlp_layers_top.append(act)
 
     def bottom_a_layer(self, sparse_inputs):
-        with paddle.fluid.device_guard(self.PART_A_DEVICE_FlAG):
+        with paddle.base.device_guard(self.PART_A_DEVICE_FlAG):
             sparse_embs = []
             for s_input in sparse_inputs:
                 emb = self.embedding(s_input)
@@ -209,7 +208,7 @@ class FlDNNLayer(nn.Layer):
             y = self._mlp_layers_a[1](y)
 
             y = self._mlp_layers_a[2](y)
-        with paddle.fluid.device_guard(
+        with paddle.base.device_guard(
             self.PART_A_JOINT_OP_DEVICE_FlAG
         ):  # joint point
             bottom_a = self._mlp_layers_a[3](y)
@@ -217,7 +216,7 @@ class FlDNNLayer(nn.Layer):
         return bottom_a
 
     def bottom_b_layer(self, dense_inputs):
-        with paddle.fluid.device_guard(self.PART_B_DEVICE_FlAG):
+        with paddle.base.device_guard(self.PART_B_DEVICE_FlAG):
             y = self._mlp_layers_b[0](dense_inputs)
             y = self._mlp_layers_b[1](y)
 
@@ -227,14 +226,14 @@ class FlDNNLayer(nn.Layer):
         return bottom_b
 
     def interactive_layer(self, bottom_a, bottom_b):
-        with paddle.fluid.device_guard(
+        with paddle.base.device_guard(
             self.PART_B_JOINT_OP_DEVICE_FlAG
         ):  # joint point
             interactive = paddle.add(bottom_a, bottom_b)
         return interactive
 
     def top_layer(self, interactive, label_input):
-        with paddle.fluid.device_guard(self.PART_B_DEVICE_FlAG):
+        with paddle.base.device_guard(self.PART_B_DEVICE_FlAG):
             y = self._mlp_layers_top[0](interactive)
             y_top = self._mlp_layers_top[1](y)
             predict_2d = paddle.nn.functional.softmax(y_top)

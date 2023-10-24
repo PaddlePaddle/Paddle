@@ -59,7 +59,7 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       }
     }
   }
-  pool_.reset(new ::ThreadPool(strategy.num_threads_));
+  pool_ = std::make_unique<::ThreadPool>(strategy.num_threads_);
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);

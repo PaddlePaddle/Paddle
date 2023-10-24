@@ -176,7 +176,7 @@ void CudnnLSTMKernel(
   int seq_length = x.dims()[0];
   int batch_size = x.dims()[1];
   int input_size = x.dims()[2];
-  bool state_initialized = state_out->IsInitialized() ? true : false;
+  bool state_initialized = state_out->initialized() ? true : false;
 
   size_t workspace_size;
   size_t reserve_size;
@@ -188,7 +188,7 @@ void CudnnLSTMKernel(
   auto stream = ctx.stream();
   auto *running_w = w.get_ptr();
   if (is_test && running_w != nullptr) {
-    w_initialized = running_w->IsInitialized() ? true : false;
+    w_initialized = running_w->initialized() ? true : false;
     weight_numel = running_w->numel();
   }
   if (!w_initialized) {
@@ -362,12 +362,14 @@ void CudnnLSTMKernel(
 
 #ifdef PADDLE_WITH_HIP
 PD_REGISTER_KERNEL(cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float) {
+  kernel->InputAt(5).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }
 #else
 PD_REGISTER_KERNEL(
     cudnn_lstm, GPU, ALL_LAYOUT, phi::CudnnLSTMKernel, float, double) {
+  kernel->InputAt(5).SetDataType(phi::DataType::INT32);
   kernel->OutputAt(3).SetDataType(phi::DataType::UINT8);
   kernel->OutputAt(4).SetDataType(phi::DataType::UINT8);
 }

@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-import paddle.fluid.dygraph as dg
-from paddle import fluid
-from paddle.fluid import core
+import paddle.base.dygraph as dg
+from paddle import base
+from paddle.base import core
 
 
 class TestKronOp(OpTest):
@@ -123,7 +123,7 @@ class TestKronLayer(unittest.TestCase):
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         with dg.guard(place):
             a_var = dg.to_variable(a)
             b_var = dg.to_variable(b)
@@ -134,16 +134,16 @@ class TestKronLayer(unittest.TestCase):
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
 
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.unique_name.guard():
-            with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
                 a_var = paddle.static.data("a", [-1, -1], dtype="float64")
                 b_var = paddle.static.data("b", [-1, -1], dtype="float64")
                 out_var = paddle.kron(a_var, b_var)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(start)
         (c,) = exe.run(main, feed={'a': a, 'b': b}, fetch_list=[out_var])
         np.testing.assert_allclose(c, np.kron(a, b))
@@ -158,17 +158,16 @@ class TestComplexKronOp(OpTest):
         self.out_shape = self.x_shape * self.y_shape
         self.init_base_dtype()
         self.init_input_output()
-        self.init_grad_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.attrs = {'axis': -1, 'use_mkldnn': False}
         self.outputs = {'Out': self.out}
 
     def init_base_dtype(self):
-        self.dtype = np.float64
+        self.dtype = np.complex128
 
     def init_input_output(self):
         self.x = np.random.random(self.x_shape).astype(
@@ -179,39 +178,6 @@ class TestComplexKronOp(OpTest):
         ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
         self.out = np.kron(self.x, self.y)
 
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.out_shape, self.dtype) + 1j * np.ones(
-            self.out_shape, self.dtype
-        )
-        self.grad_x = self.get_grad_x_by_numpy()
-        self.grad_y = self.get_grad_y_by_numpy()
-
-    def get_grad_x_by_numpy(self):
-        grad_x = np.zeros(self.x_shape, np.complex128)
-        for x_i in range(self.x_shape[0]):
-            for x_j in range(self.x_shape[1]):
-                for i in range(self.y_shape[0]):
-                    for j in range(self.y_shape[1]):
-                        idx_i = x_i * self.y_shape[0] + i
-                        idx_j = x_j * self.y_shape[1] + j
-                        grad_x[x_i][x_j] += self.grad_out[idx_i][
-                            idx_j
-                        ] * np.conj(self.y[i][j])
-        return grad_x
-
-    def get_grad_y_by_numpy(self):
-        grad_y = np.zeros(self.y_shape, np.complex128)
-        for y_i in range(self.y_shape[0]):
-            for y_j in range(self.y_shape[1]):
-                for x_i in range(self.x_shape[0]):
-                    for x_j in range(self.x_shape[1]):
-                        idx_i = x_i * self.y_shape[0] + y_i
-                        idx_j = x_j * self.y_shape[1] + y_j
-                        grad_y[y_i][y_j] += self.grad_out[idx_i][
-                            idx_j
-                        ] * np.conj(self.x[x_i][x_j])
-        return grad_y
-
     def test_check_output(self):
         self.check_output()
 
@@ -219,8 +185,6 @@ class TestComplexKronOp(OpTest):
         self.check_grad(
             ['X', 'Y'],
             'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_x(self):
@@ -228,8 +192,6 @@ class TestComplexKronOp(OpTest):
             ['Y'],
             'Out',
             no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
     def test_check_grad_ingore_y(self):
@@ -237,8 +199,6 @@ class TestComplexKronOp(OpTest):
             ['X'],
             'Out',
             no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
 
@@ -249,13 +209,6 @@ class TestKronOpTypePromotion(TestComplexKronOp):
             self.dtype
         ) + 1j * np.random.random(self.y_shape).astype(self.dtype)
         self.out = np.kron(self.x, self.y)
-
-    def init_grad_input_output(self):
-        self.grad_out = np.ones(self.out_shape, self.dtype) + 1j * np.ones(
-            self.out_shape, self.dtype
-        )
-        self.grad_x = self.get_grad_x_by_numpy().real
-        self.grad_y = self.get_grad_y_by_numpy()
 
 
 if __name__ == '__main__':

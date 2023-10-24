@@ -53,15 +53,12 @@ class TestParallelMarginSoftmaxCrossEntropyOp(unittest.TestCase):
 
         check_group = dist.new_group(list(range(num_trainer)))
         for dtype in ('float32', 'float64'):
-
             num_class_per_cards = [[4, 8], [2, 2], [4, 2], [3, 9]]
             for num_class_per_card in num_class_per_cards:
-
                 num_class = np.sum(num_class_per_card)
                 for margin1, margin2, margin3, scale in zip(
                     margin1s, margin2s, margin3s, scales
                 ):
-
                     for _ in range(5):
                         np_label = np.random.randint(
                             0, num_class, (batch_size,)

@@ -14,8 +14,8 @@
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _create_tensor
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import _create_tensor
 from paddle.framework import ParamAttr, core
 from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
@@ -67,12 +67,12 @@ class FakeQuanterWithAbsMaxObserver(QuanterFactory):
             For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            from paddle.quantization import QuantConfig
-            from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
-            quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
-            q_config = QuantConfig(activation=quanter, weight=quanter)
+            >>> from paddle.quantization import QuantConfig
+            >>> from paddle.quantization.quanters import FakeQuanterWithAbsMaxObserver
+            >>> quanter = FakeQuanterWithAbsMaxObserver(moving_rate=0.99)
+            >>> q_config = QuantConfig(activation=quanter, weight=quanter)
     """
 
     def __init__(

@@ -76,7 +76,7 @@ class MultiGRUHandler {
         layers_ * 2,
         platform::errors::InvalidArgument("The number of WeightH inputs does "
                                           "not match the number of layers."));
-    if (biases_.size() > 0)
+    if (!biases_.empty())
       PADDLE_ENFORCE_EQ(
           biases_.size(),
           layers_ * 2,
@@ -124,7 +124,7 @@ class MultiGRUHandler {
 
     // Create attributes for each oneDNN gru
     for (int i = 0; i < 2 * layers_; ++i) {
-      attrs_.push_back(dnnl::primitive_attr());
+      attrs_.emplace_back();
     }
 
     if (is_int8) {
@@ -198,7 +198,8 @@ class MultiGRUHandler {
                                                : OneDNNGetDataType<T>(),
                         OneDNNMemoryFormat::ntc);
 
-      auto desc = std::make_shared<dnnl::gru_forward::desc>(
+      pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
+          engine_,
           dnnl::prop_kind::forward_inference,
           dir,
           x_md,
@@ -207,9 +208,8 @@ class MultiGRUHandler {
           wh_md,
           b_md,
           h_md,
-          dnnl::memory::desc());
-      pd = std::make_shared<dnnl::gru_forward::primitive_desc>(
-          *desc, attrs_[2 * layer + (dir == R2L)], engine_);
+          dnnl::memory::desc(),
+          attrs_[2 * layer + (dir == R2L)]);
       PADDLE_ENFORCE_NOT_NULL(
           pd,
           platform::errors::InvalidArgument(
@@ -234,7 +234,7 @@ class MultiGRUHandler {
 
       std::vector<dnnl::memory::desc> src_mds{in_md, in_md};
       pd = std::make_shared<dnnl::concat::primitive_desc>(
-          axis, src_mds, engine_);
+          engine_, axis, src_mds);
       dev_ctx_.SetBlob(pd_key, pd);
     }
     concat_pds_[layer] = pd;
@@ -463,7 +463,7 @@ class MultiGRUHandler {
       auto* bias_data = reinterpret_cast<float*>(memory_p->get_data_handle());
 
       int idx = layer * 2 + (dir == R2L);
-      if (biases_.size() > 0 && biases_[idx]) {
+      if (!biases_.empty() && biases_[idx]) {
         const float* user_bias_data =
             biases_[idx]->data<float>();  // Bias in oneDNN is always float
         memcpy(bias_data, user_bias_data, sizeof(float) * 3 * OCs[layer]);
@@ -473,7 +473,7 @@ class MultiGRUHandler {
         memset(bias_data, 0, sizeof(float) * 3 * OCs[layer]);
       }
 
-      if (origin_mode_ == false && biases_.size() && biases_[idx]) {
+      if (origin_mode_ == false && !biases_.empty() && biases_[idx]) {
         for (int64_t i = 0; i < OCs[layer]; ++i) {
           bias_data[i] *= -1;
         }
@@ -612,7 +612,7 @@ class MultiGRUHandler {
 
   bool isNTC(const dnnl::memory::desc& md) {
     auto ntc_md = dnnl::memory::desc(
-        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+        md.get_dims(), md.get_data_type(), dnnl::memory::format_tag::ntc);
     return md == ntc_md;
   }
 
@@ -688,7 +688,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
     const bool force_fp32_output =
         ctx.HasAttr("force_fp32_output") && ctx.Attr<bool>("force_fp32_output");
 
-    if (force_fp32_output) {
+    if (force_fp32_output) {  // NOLINT
       RunKernel<float>(ctx);
     } else {
       RunKernel<T>(ctx);
@@ -706,7 +706,7 @@ class MultiGRUMKLDNNKernel : public framework::OpKernel<T> {
       auto gru_out_L2R = handler.executeSingleGru(input_mem, layer, L2R);
       handler.reorderInputL2RtoR2L(input_mem, layer);
       auto gru_out_R2L = handler.executeSingleGru(input_mem, layer, R2L);
-      if (layer < layers - 1)
+      if (layer < layers - 1)  // NOLINT
         handler.template reorderOutputR2LtoL2R<T>(gru_out_R2L, layer);
       else
         handler.template reorderOutputR2LtoL2R<Tout>(gru_out_R2L, layer);

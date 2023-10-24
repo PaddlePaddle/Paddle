@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/inference/analysis/passes/ir_graph_build_pass.h"
 
+#include <memory>
 #include <string>
 
 #include "paddle/fluid/framework/executor.h"
@@ -63,8 +64,7 @@ void IrGraphBuildPass::RunImpl(Argument *argument) {
         "set."));
   }
 
-  auto graph = std::unique_ptr<framework::ir::Graph>(
-      new framework::ir::Graph(argument->main_program()));
+  auto graph = std::make_unique<framework::ir::Graph>(argument->main_program());
   argument->SetMainGraph(graph.release());
   auto *scope_ptr = argument->scope_ptr();
   PADDLE_ENFORCE_NOT_NULL(scope_ptr,

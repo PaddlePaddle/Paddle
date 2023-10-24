@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <thrust/random.h>
 
-#include "gflags/gflags.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/funcs/distribution_helper.h"
 #include "paddle/phi/kernels/funcs/index_impl.cu.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 
@@ -67,7 +67,7 @@ void UniformInplaceKernel(const Context& ctx,
   ctx.template Alloc<T>(out);
   if (seed == 0) {
     // Use global Generator seed
-    using MT = typename kps::details::MPTypeTrait<T>::Type;
+    using MT = typename phi::dtype::MPTypeTrait<T>::Type;
     funcs::uniform_distribution<MT> dist;
     funcs::uniform_real_transform<MT> trans(min, max);
     funcs::distribution_and_transform<T>(ctx, out, dist, trans);

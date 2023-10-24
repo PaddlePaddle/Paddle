@@ -28,17 +28,21 @@ void DeQuantKernel(const Context& dev_ctx,
                    const float quantization_scale,
                    const float quantization_shift,
                    DenseTensor* out) {
-  const bool with_shift = quantization_shift != 0.0f;
-
   PADDLE_ENFORCE(quantization_scale != 0.0f,
                  phi::errors::InvalidArgument(
                      "Dequantization scale must be different than 0.0f"));
 
-  PADDLE_ENFORCE(quantization_shift <= 255 && quantization_shift >= 0,
-                 phi::errors::InvalidArgument(
-                     "Dequantization shift must be lower or equal to ",
-                     "255 and greater or equal to 0, but got %f",
-                     quantization_shift));
+  const auto q_shift = static_cast<int32_t>(quantization_shift);
+  PADDLE_ENFORCE_GE(q_shift,
+                    0,
+                    phi::errors::InvalidArgument(
+                        "Dequantization shift must be greater or equal to 0"));
+  PADDLE_ENFORCE_LE(q_shift,
+                    255,
+                    phi::errors::InvalidArgument(
+                        "Dequantization shift must be lower or equal to 255"));
+
+  const bool with_shift = q_shift != 0;
 
   auto x_tz = phi::vectorize<int64_t>(x.dims());
   auto x_type = phi::funcs::ToOneDNNDataType(x.dtype());
@@ -47,12 +51,10 @@ void DeQuantKernel(const Context& dev_ctx,
   dnnl::primitive_attr attrs;
   static constexpr int32_t mask = 0;  // same shift and scale for whole tensor
 
-  const float reorder_scale = 1. / quantization_scale;
-  attrs.set_output_scales(mask, {reorder_scale});
+  attrs.set_scales_mask(DNNL_ARG_DST, mask);
 
   if (with_shift) {
-    attrs.set_zero_points(
-        DNNL_ARG_SRC, mask, {static_cast<int32_t>(quantization_shift)});
+    attrs.set_zero_points_mask(DNNL_ARG_SRC, mask);
   }
 
   phi::funcs::ReorderOneDNNHandler reorder_handler(
@@ -67,7 +69,29 @@ void DeQuantKernel(const Context& dev_ctx,
       reorder_dst_memory_p, reorder_src_memory_p, attrs);
 
   auto& astream = phi::OneDNNContext::tls().get_stream();
-  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+
+  auto scales_md = dnnl::memory::desc(
+      {1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::x);
+  auto scales_mem =
+      dnnl::memory(scales_md,
+                   dev_ctx.GetEngine(),
+                   phi::funcs::to_void_cast<float>(&quantization_scale));
+
+  auto zero_points_md = dnnl::memory::desc(
+      {1}, dnnl::memory::data_type::s32, dnnl::memory::format_tag::x);
+  auto zero_points_mem =
+      dnnl::memory(zero_points_md,
+                   dev_ctx.GetEngine(),
+                   phi::funcs::to_void_cast<int32_t>(&q_shift));
+  std::unordered_map<int, dnnl::memory> reorder_args;
+  reorder_args.insert({DNNL_ARG_SRC, *reorder_src_memory_p});
+  reorder_args.insert({DNNL_ARG_DST, *reorder_dst_memory_p});
+  reorder_args.insert({DNNL_ARG_ATTR_SCALES | DNNL_ARG_DST, scales_mem});
+  if (with_shift) {
+    reorder_args.insert(
+        {DNNL_ARG_ATTR_ZERO_POINTS | DNNL_ARG_SRC, zero_points_mem});
+  }
+  reorder_p->execute(astream, reorder_args);
   astream.wait();
 
   out->set_mem_desc(reorder_dst_memory_p->get_desc());

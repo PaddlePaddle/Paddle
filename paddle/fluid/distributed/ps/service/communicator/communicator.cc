@@ -16,11 +16,11 @@ limitations under the License. */
 
 #include <google/protobuf/text_format.h>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/ps/service/brpc_ps_client.h"
 #include "paddle/fluid/distributed/ps/wrapper/fleet.h"
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/flags.h"
 
 #define LEARNING_RATE_DECAY_COUNTER "@LR_DECAY_COUNTER@"
 #define STEP_COUNTER "@PS_STEP_COUNTER@"
@@ -38,12 +38,12 @@ inline double GetCurrentUS() {
   return 1e+6 * time.tv_sec + time.tv_usec;
 }
 
-Communicator::Communicator() {}
+Communicator::Communicator() = default;
 
 void Communicator::InitGFlag(const std::string &gflags) {
   VLOG(3) << "Init With Gflags:" << gflags;
-  std::vector<std::string> flags = paddle::string::split_string(gflags);
-  if (flags.size() < 1) {
+  std::vector<std::string> flags = ::paddle::string::split_string(gflags);
+  if (flags.empty()) {
     flags.push_back("-max_body_size=314217728");
     flags.push_back("-bthread_concurrency=40");
     flags.push_back("-socket_max_unwritten_bytes=2048000000");
@@ -57,7 +57,7 @@ void Communicator::InitGFlag(const std::string &gflags) {
   }
   int params_cnt = flags.size();
   char **params_ptr = &(flags_ptr[0]);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&params_cnt, &params_ptr, true);
+  ::paddle::flags::ParseCommandLineFlags(&params_cnt, &params_ptr);
 }
 
 std::once_flag Communicator::init_flag_;
@@ -66,7 +66,7 @@ std::shared_ptr<Communicator> Communicator::communicator_(nullptr);
 void Communicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+  auto fleet = ::paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
     _worker_ptr = fleet->worker_ptr_;
   }
@@ -92,7 +92,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
   platform::RecordEvent record_event("Communicator->RpcRecvDense",
                                      platform::TracerEventType::Communication,
                                      1);
-  std::vector<paddle::distributed::Region> regions;
+  std::vector<::paddle::distributed::Region> regions;
   regions.reserve(varnames.size());
   for (auto &t : varnames) {
     Variable *var = scope->Var(t);
@@ -103,7 +103,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
       phi::DenseTensor *temp_tensor = temp_var->GetMutable<phi::DenseTensor>();
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
-      paddle::distributed::Region reg(temp_data, tensor->numel());
+      ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "Communicator::RpcRecvDense Var " << t << " table_id "
               << table_id << " Temp_data[0] " << temp_data[0]
@@ -111,7 +111,7 @@ void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
 #endif
     } else {
       float *w = tensor->mutable_data<float>(tensor->place());
-      paddle::distributed::Region reg(w, tensor->numel());
+      ::paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(std::move(reg));
     }
   }
@@ -152,7 +152,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
                                      platform::TracerEventType::Communication,
                                      1);
   auto place = platform::CPUPlace();
-  std::vector<paddle::distributed::Region> regions;
+  std::vector<::paddle::distributed::Region> regions;
   for (auto &t : varnames) {
     Variable *var = scope.FindVar(t);
     CHECK(var != nullptr) << "var[" << t << "] not found";
@@ -164,7 +164,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
       temp_tensor->Resize(tensor->dims());
       float *temp_data = temp_tensor->mutable_data<float>(platform::CPUPlace());
       framework::TensorCopy(*tensor, platform::CPUPlace(), temp_tensor);
-      paddle::distributed::Region reg(temp_data, tensor->numel());
+      ::paddle::distributed::Region reg(temp_data, tensor->numel());
       regions.emplace_back(std::move(reg));
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << temp_data[0] << " Temp_data[-1] "
@@ -172,7 +172,7 @@ void Communicator::RpcSendDenseParam(const std::vector<std::string> &varnames,
 #endif
     } else {
       float *w = tensor->mutable_data<float>(place);
-      paddle::distributed::Region reg(w, tensor->numel());
+      ::paddle::distributed::Region reg(w, tensor->numel());
       regions.emplace_back(reg);
       VLOG(1) << "rpc_send_dense_param Var " << t << " table_id " << table_id
               << " Temp_data[0] " << w[0] << " Temp_data[-1] "
@@ -201,9 +201,9 @@ void Communicator::RpcSendDense(const CommContext &ctx,
                      request_call_num);  // accessor->update_dim() = 1
   float *data = dense_data->data();
   uint32_t pos = 0;
-  for (size_t i = 0; i < var_names.size(); ++i) {
+  for (const auto &var_name : var_names) {
     const phi::DenseTensor tensor =
-        scope.FindVar(var_names[i])->Get<phi::DenseTensor>();
+        scope.FindVar(var_name)->Get<phi::DenseTensor>();
     size_t count = static_cast<size_t>(tensor.numel());
     const float *g = tensor.data<float>();
     CHECK(pos + count <= dense_data->size())
@@ -602,8 +602,7 @@ void AsyncCommunicator::PullSparseToTensorSync(
   float *output_data = nullptr;
   size_t output_index = -1;
   size_t output_len = 0;
-  for (size_t index = 0; index < inputs->size(); ++index) {
-    const phi::DenseTensor *tensor = inputs->at(index);
+  for (auto tensor : *inputs) {
     const int64_t *ids = tensor->data<int64_t>();
     size_t len = tensor->numel();
     for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
@@ -654,7 +653,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   bool batch_size_consist = true;
   for (auto *input : *inputs) {
     int cur_batch_size =
-        input->lod().size() ? input->lod()[0].size() - 1 : input->dims()[0];
+        !input->lod().empty() ? input->lod()[0].size() - 1 : input->dims()[0];
     if (batch_size == -1) {
       batch_size = cur_batch_size;
     } else if (batch_size != cur_batch_size) {
@@ -666,10 +665,10 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
   CHECK(batch_size > 0);  // NOLINT
 
   int show_size =
-      shows->lod().size() ? shows->lod()[0].size() - 1 : shows->dims()[0];
+      !shows->lod().empty() ? shows->lod()[0].size() - 1 : shows->dims()[0];
   CHECK(show_size == batch_size || show_size == 1);
   int clk_size =
-      clks->lod().size() ? clks->lod()[0].size() - 1 : clks->dims()[0];
+      !clks->lod().empty() ? clks->lod()[0].size() - 1 : clks->dims()[0];
   CHECK(clk_size == batch_size || clk_size == 1);
 
   CHECK(outputs->size() == inputs->size());
@@ -705,7 +704,7 @@ void AsyncCommunicator::PushSparseFromTensorAsync(
     size_t len = tensor->numel();
     output_len = 0;
 
-    if (tensor->lod().size() > 0) {
+    if (!tensor->lod().empty()) {
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
         for (size_t j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
@@ -797,8 +796,8 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
   send_varname_to_ctx_ = std::move(send_varname_to_ctx);
   recv_varname_to_ctx_ = std::move(recv_varname_to_ctx);
   recv_scope_ = std::move(recv_scope);
-  send_scope_.reset(new Scope());
-  xpu_temp_scope_.reset(new Scope());
+  send_scope_ = std::make_unique<Scope>();
+  xpu_temp_scope_ = std::make_unique<Scope>();
   for (auto &iter : send_varname_to_ctx_) {
     auto &ctx = iter.second;
     auto &varnames = ctx.origin_varnames;
@@ -808,7 +807,7 @@ void AsyncCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
               send_queue_size_);
     }
   }
-  send_threadpool_.reset(new ::ThreadPool(thread_pool_size_));
+  send_threadpool_ = std::make_unique<::ThreadPool>(thread_pool_size_);
 }
 
 AsyncCommunicator::~AsyncCommunicator() {
@@ -892,11 +891,11 @@ bool AsyncCommunicator::Check(const int table_id) {
 void AsyncCommunicator::Send(const std::vector<std::string> &var_names,
                              const framework::Scope &scope) {
   waiting_ = false;
-  for (size_t i = 0; i < var_names.size(); i++) {
-    auto *var = scope.FindVar(var_names[i]);
+  for (const auto &var_name : var_names) {
+    auto *var = scope.FindVar(var_name);
     auto tmp_grad_var = std::make_shared<Variable>();
     framework::CopyVariable(*var, tmp_grad_var.get());
-    send_varname_to_queue_[var_names[i]]->Push(tmp_grad_var);
+    send_varname_to_queue_[var_name]->Push(tmp_grad_var);
   }
 }
 
@@ -1045,10 +1044,10 @@ void GeoCommunicator::Send(
   // insert ids which has not been record
   // VLOG(0) << "fl-ps > table_name: " << table_name << " splited_var_nums: " <<
   // splited_var_nums << " rows size: " << rows.size();
-  for (size_t j = 0; j < rows.size(); j++) {  // batch_size == rows.size()
-    auto ep_idx = rows[j] % splited_var_nums;
+  for (auto row : rows) {  // batch_size == rows.size()
+    auto ep_idx = row % splited_var_nums;
     ids_table.at(send_varname_to_ctx_[table_name].splited_varnames[ep_idx])
-        .insert(rows[j]);
+        .insert(row);
     // VLOG(0) << " id: " << rows[j] << " ";
   }
 
@@ -1097,10 +1096,10 @@ void GeoCommunicator::InitImpl(const RpcCtxMap &send_varname_to_ctx,
       parallel_task_nums_ += 1;
       sparse_id_queues_.insert(
           std::pair<std::string,
-                    paddle::framework::Channel<
+                    ::paddle::framework::Channel<
                         std::shared_ptr<std::vector<int64_t>>>>(
               splited_var,
-              paddle::framework::MakeChannel<
+              ::paddle::framework::MakeChannel<
                   std::shared_ptr<std::vector<int64_t>>>(send_queue_size_)));
     }
   }
@@ -1299,8 +1298,8 @@ std::vector<int64_t> GeoCommunicator::MergeSparseIds(
       wait_times = 0;
       std::shared_ptr<std::vector<int64_t>> pop_ids = nullptr;
       sparse_id_queues_.at(send_varname)->Get(pop_ids);
-      for (size_t j = 0; j < pop_ids->size(); j++) {
-        sparse_ids.insert(pop_ids->at(j));
+      for (auto &pop_id : *pop_ids) {
+        sparse_ids.insert(pop_id);
       }
       merge_num += 1;
       VLOG(3) << "sparse_id_queues_(" << send_varname << ") pushed";
@@ -1326,7 +1325,7 @@ void GeoCommunicator::SendSparse(const std::string &varname,
   platform::RecordEvent record_event("GeoCommunicator->SendSparse",
                                      platform::TracerEventType::Communication,
                                      1);
-  if (sparse_ids.size() == 0) {
+  if (sparse_ids.empty()) {
     return;
   }
   std::string param_name = SplitedGradToParam(varname);
@@ -1510,7 +1509,7 @@ void GeoCommunicator::MainThread() {
 void FLCommunicator::InitBrpcClient(
     const std::string &dist_desc,
     const std::vector<std::string> &host_sign_list) {
-  auto fleet = paddle::distributed::FleetWrapper::GetInstance();
+  auto fleet = ::paddle::distributed::FleetWrapper::GetInstance();
   if (_worker_ptr.get() == nullptr) {
     VLOG(0) << "fl-ps > FLCommunicator::InitBrpcClient get _worker_ptr";
     _worker_ptr =
@@ -1518,7 +1517,7 @@ void FLCommunicator::InitBrpcClient(
                              // before, but no need for Coordinator
   }
   if (coordinator_client_ptr_ == nullptr) {
-    coordinator_client_ptr_.reset(new CoordinatorClient);
+    coordinator_client_ptr_ = std::make_unique<CoordinatorClient>();
   }
   int16_t servers = host_sign_list.size();
   coordinator_client_ptr_->_env = &ps_env_;

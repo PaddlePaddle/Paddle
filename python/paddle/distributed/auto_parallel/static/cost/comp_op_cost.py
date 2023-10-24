@@ -472,6 +472,14 @@ class ScaleOpCost(CompOpCost):
 
 
 @register_op_cost
+class ShapeOpCost(CompOpCost):
+    OP_TYPE = "shape"
+
+    def __init__(self, op=None, op_desc=None, cluster=None):
+        super().__init__(op=op, op_desc=op_desc, cluster=cluster)
+
+
+@register_op_cost
 class SliceOpCost(CompOpCost):
     OP_TYPE = "slice"
 

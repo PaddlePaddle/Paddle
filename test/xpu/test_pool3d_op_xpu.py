@@ -112,7 +112,6 @@ def pool3D_forward_naive(
     if adaptive:
         D_out, H_out, W_out = ksize
     else:
-
         D_out = (
             (D - ksize[0] + pad_d_forth + pad_d_back + strides[0] - 1)
             // strides[0]
@@ -157,7 +156,6 @@ def pool3D_forward_naive(
                     w_start = adaptive_start_index(j, W, ksize[2])
                     w_end = adaptive_end_index(j, W, ksize[2])
                 else:
-
                     d_start = k * strides[0] - pad_d_forth
                     d_end = np.min(
                         (
@@ -315,7 +313,7 @@ class XPUTestPool3DOp(XPUOpTestWrapper):
                 self.padding_algorithm,
             ).astype(self.dtype)
 
-            self.inputs = {'X': XPUOpTest.np_dtype_to_fluid_dtype(input)}
+            self.inputs = {'X': XPUOpTest.np_dtype_to_base_dtype(input)}
 
             self.attrs = {
                 'strides': self.strides,

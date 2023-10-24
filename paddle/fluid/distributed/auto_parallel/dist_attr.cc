@@ -83,7 +83,7 @@ OperatorDistAttr& OperatorDistAttr::operator=(
 
 void OperatorDistAttr::initialize(const OpDesc* op) {
   if (op == nullptr) return;
-  for (std::string name : op->InputArgumentNames()) {
+  for (std::string const& name : op->InputArgumentNames()) {
     VarDesc* input = op->Block()->FindVarRecursive(name);
     VLOG(4) << "[OperatorDistAttr create input dist attr] " << name;
     if (input == nullptr || op->Type() == "create_py_reader") {
@@ -92,7 +92,7 @@ void OperatorDistAttr::initialize(const OpDesc* op) {
       input_dist_attrs_[name] = TensorDistAttr(get_tensor_shape(input));
     }
   }
-  for (std::string name : op->OutputArgumentNames()) {
+  for (std::string const& name : op->OutputArgumentNames()) {
     VarDesc* output = op->Block()->FindVarRecursive(name);
     VLOG(4) << "[OperatorDistAttr create output dist attr] " << name;
     if (output == nullptr) {
@@ -120,6 +120,9 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_is_recompute(dist_attr.is_recompute());
   set_execution_stream(dist_attr.execution_stream());
   set_stream_priority(dist_attr.stream_priority());
+  set_force_record_event(dist_attr.force_record_event());
+  set_event_to_record(dist_attr.event_to_record());
+  set_events_to_wait(dist_attr.events_to_wait());
   set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
 }
@@ -378,13 +381,13 @@ std::string OperatorDistAttr::to_string() const {
 }
 
 void OperatorDistAttr::from_proto(const OperatorDistAttrProto& proto) {
-  for (int64_t i = 0; i < proto.input_dist_attrs_size(); ++i) {
+  for (int i = 0; i < proto.input_dist_attrs_size(); ++i) {
     TensorDistAttr dist_attr;
     std::string name = proto.input_dist_attrs(i).name();
     dist_attr.from_proto(proto.input_dist_attrs(i).tensor_dist_attr());
     input_dist_attrs_[name] = dist_attr;
   }
-  for (int64_t i = 0; i < proto.output_dist_attrs_size(); ++i) {
+  for (int i = 0; i < proto.output_dist_attrs_size(); ++i) {
     TensorDistAttr dist_attr;
     std::string name = proto.output_dist_attrs(i).name();
     dist_attr.from_proto(proto.output_dist_attrs(i).tensor_dist_attr());

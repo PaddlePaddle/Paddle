@@ -32,8 +32,8 @@ KernelSignature SliceOpArgumentMapping(const ArgumentMappingContext& ctx) {
       ends_name = "EndsTensorList";
     }
 
-    if (paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis")).size() >
-        0) {
+    if (!paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis"))
+             .empty()) {
       return KernelSignature(
           "slice_array_dense", {"Input"}, {starts_name}, {"Out"});
     } else {
@@ -131,8 +131,8 @@ KernelSignature SliceGradOpArgumentMapping(const ArgumentMappingContext& ctx) {
     } else if (ctx.InputSize("EndsTensorList") > 0) {
       ends_name = "EndsTensorList";
     }
-    if (paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis")).size() >
-        0) {
+    if (!paddle::any_cast<std::vector<int>>(ctx.Attr("decrease_axis"))
+             .empty()) {
       return KernelSignature("slice_array_dense_grad",
                              {"Input", "Out@GRAD"},
                              {starts_name},

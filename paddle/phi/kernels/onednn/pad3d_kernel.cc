@@ -24,7 +24,7 @@ KernelKey Pad3dGetKernelTypeForVar(const GetKernelTypeForVarContext* ctx) {
   const DenseTensor& tensor = ctx->GetTensor();
   const KernelKey& expected_kernel_type = ctx->GetKernelKey();
   const AttributeMap& attrs = ctx->GetAttrs();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if ((expected_kernel_type.layout() == phi::DataLayout::ONEDNN) &&
       (tensor.layout() != phi::DataLayout::ONEDNN)) {
     auto it = attrs.find("data_format");

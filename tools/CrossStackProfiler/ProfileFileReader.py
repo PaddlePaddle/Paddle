@@ -26,7 +26,7 @@ from CspFileReader import (
     getLogger,
 )
 
-from paddle.fluid.proto.profiler import profiler_pb2
+from paddle.base.proto.profiler import profiler_pb2
 
 
 class profileFileReader(FileReader):
@@ -103,7 +103,6 @@ class profileFileReader(FileReader):
         return newList
 
     def _getPipeLineInfo(self, profileList, q=None):
-
         res = {}
         for profile in profileList:
             rankId = self.getRankId(profile)
@@ -328,7 +327,6 @@ class profileFileReader(FileReader):
     def _allocate_events(self, profile_dict, devices, gpuId):
         chrome_trace = ChromeTraceFormatter()
         for k, profile_pb in profile_dict.items():
-
             rankId = int(k.split(".")[-1])
 
             for event in profile_pb.events:

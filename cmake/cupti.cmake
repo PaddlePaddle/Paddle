@@ -2,9 +2,15 @@ if(NOT WITH_GPU AND NOT WITH_ROCM)
   return()
 endif()
 
-set(CUPTI_ROOT
-    "/usr"
-    CACHE PATH "CUPTI ROOT")
+if(WITH_ROCM)
+  set(CUPTI_ROOT
+      "${ROCM_PATH}/cuda/extras/CUPTI"
+      CACHE PATH "CUPTI ROOT")
+else()
+  set(CUPTI_ROOT
+      "/usr"
+      CACHE PATH "CUPTI ROOT")
+endif()
 find_path(
   CUPTI_INCLUDE_DIR cupti.h
   PATHS ${CUPTI_ROOT}
@@ -46,6 +52,10 @@ find_library(
 get_filename_component(CUPTI_LIBRARY_PATH ${CUPTI_LIBRARY} DIRECTORY)
 if(CUPTI_INCLUDE_DIR AND CUPTI_LIBRARY)
   set(CUPTI_FOUND ON)
+  if(WITH_ROCM)
+    include_directories(${ROCM_PATH}/cuda/include)
+    add_definitions(-D__CUDA_HIP_PLATFORM_AMD__)
+  endif()
 else()
   set(CUPTI_FOUND OFF)
 endif()

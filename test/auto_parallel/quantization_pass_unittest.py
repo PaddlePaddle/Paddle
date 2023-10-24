@@ -53,7 +53,6 @@ def apply_pass():
 
 class TestQuantizationPassTrain(unittest.TestCase):
     def test_qat_pass_training(self):
-
         batch_size = 1
         batch_num = 10
 
@@ -66,7 +65,6 @@ class TestQuantizationPassTrain(unittest.TestCase):
         self.check_program(engine.main_program)
 
     def check_program(self, program):
-
         quantizable_op_and_inputs = {'matmul_v2': ['X', 'Y']}
         quantizable_grad_op_inputs = {'matmul_v2_grad': ['X', 'Y']}
 
@@ -84,7 +82,6 @@ class TestQuantizationPassTrain(unittest.TestCase):
 
                 # check forward
                 if op.type in quantizable_op_and_inputs:
-
                     for arg_name in op.input_arg_names:
                         if "c_identity" in arg_name:
                             arg_name = block.ops[idx - 1].input_arg_names[0]
@@ -118,7 +115,6 @@ class TestQuantizationPassExport(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_qat_pass_2(self):
-
         strategy = apply_pass()
         model, loss = generate_model("mp")
         engine = auto.Engine(model, loss, strategy=strategy)

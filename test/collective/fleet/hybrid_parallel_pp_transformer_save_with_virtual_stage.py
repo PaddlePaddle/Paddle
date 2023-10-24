@@ -33,7 +33,7 @@ vocab_size = 128
 transformer_layer_num = 8
 
 
-class TestDistPPSaveTraning(unittest.TestCase):
+class TestDistPPSaveTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1

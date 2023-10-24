@@ -20,8 +20,8 @@ from test_sparse_attention_op import get_cuda_version
 import paddle
 import paddle.nn.functional as F
 from paddle import _legacy_C_ops, tensor
-from paddle.fluid import core
-from paddle.fluid.framework import default_main_program
+from paddle.base import core
+from paddle.base.framework import default_main_program
 from paddle.nn.layer.common import Dropout
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
@@ -339,7 +339,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             ln1_out = tensor_query
             if self.pre_layer_norm:
                 ln1_out = self.norm(tensor_query)
-            max_v = paddle.max(paddle.abs(paddle.cast(ln1_out, 'float32')))[0]
+            max_v = paddle.max(paddle.abs(paddle.cast(ln1_out, 'float32')))
             self.qkv_in_scales.append(1 / max_v)
             self.qkv_out_scales.append(max_v / (127.0 * 127.0))
 
@@ -438,7 +438,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
 
             max_v = paddle.max(
                 paddle.abs(paddle.cast(out_linear_in, 'float32'))
-            )[0]
+            )
 
             self.out_linear_in_scales.append(1 / max_v)
             self.out_linear_out_scales.append(max_v / (127.0 * 127.0))
@@ -468,9 +468,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             if self.pre_layer_norm:
                 ffn_ln_out = self.ffn_norm(attn_out)
 
-            max_v = paddle.max(paddle.abs(paddle.cast(ffn_ln_out, 'float32')))[
-                0
-            ]
+            max_v = paddle.max(paddle.abs(paddle.cast(ffn_ln_out, 'float32')))
             self.ffn1_in_scales.append(1 / max_v)
             self.ffn1_out_scales.append(max_v / (127.0 * 127.0))
             ffn_ln_out = self.fake_quant(ffn_ln_out, self.ffn1_in_scales[i])
@@ -487,7 +485,7 @@ class TestFusedMultiTransformerInt8Op(unittest.TestCase):
             ffn1_out = ffn1_out + self.ffn1_proj_bias_tensor
             ffn1_out = self.dropout(self.activation(ffn1_out))
 
-            max_v = paddle.max(paddle.abs(paddle.cast(ffn1_out, 'float32')))[0]
+            max_v = paddle.max(paddle.abs(paddle.cast(ffn1_out, 'float32')))
             self.ffn2_in_scales.append(1 / max_v)
             self.ffn2_out_scales.append(max_v / (127.0 * 127.0))
             ffn1_out = self.fake_quant(ffn1_out, self.ffn2_in_scales[i])

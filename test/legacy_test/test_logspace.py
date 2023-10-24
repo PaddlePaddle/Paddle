@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestLogspaceOpCommonCase(OpTest):
@@ -179,7 +179,7 @@ class TestLogspaceAPI(unittest.TestCase):
 
         exe = paddle.static.Executor()
         res_1, res_2 = exe.run(prog, fetch_list=[out_1, out_2])
-        assert np.array_equal(res_1, res_2)
+        np.testing.assert_array_equal(res_1, res_2)
         paddle.disable_static()
 
     def test_name(self):

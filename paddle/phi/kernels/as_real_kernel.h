@@ -23,4 +23,9 @@ void AsRealKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   DenseTensor* out);
 
+template <typename T, typename Context>
+void AsRealStridedKernel(const Context& dev_ctx,
+                         const DenseTensor& x,
+                         DenseTensor* out);
+
 }  // namespace phi

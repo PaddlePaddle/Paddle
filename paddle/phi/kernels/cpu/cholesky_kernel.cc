@@ -35,7 +35,7 @@ void CholeskyKernel(const Context& dev_ctx,
   auto& dims = x.dims();
   int batch_count = 1;
   for (int i = 0; i < dims.size() - 2; i++) {
-    batch_count *= dims[i];
+    batch_count *= static_cast<int>(dims[i]);
   }
   auto m = dims[dims.size() - 1];
 

@@ -136,6 +136,10 @@ class FeedOp : public framework::OperatorWithKernel {
         meta.dtype = feed_tensor.dtype();
         meta.layout = feed_tensor.layout();
         meta.lod = feed_tensor.lod();
+        meta.strides = feed_tensor.strides();
+        if (meta.strides.size() == -1) {
+          meta.strides = meta.calc_strides(meta.dims);
+        }
         out_tensor->set_meta(meta);
       } else if (feed_item.index() == 1) {  // Strings
         auto& feed_str = PADDLE_GET_CONST(framework::Strings, feed_item);

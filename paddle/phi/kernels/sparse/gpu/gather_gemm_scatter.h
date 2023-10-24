@@ -14,7 +14,7 @@
 #pragma once
 
 #include <type_traits>
-#ifdef PADDLE_WITH_CUTLASS
+#if defined(PADDLE_WITH_CUTLASS) && SPCONV_WITH_CUTLASS
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/kernels/autotune/auto_tune_base.h"

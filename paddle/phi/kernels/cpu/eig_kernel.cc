@@ -24,12 +24,16 @@ void EigKernel(const Context& dev_ctx,
                const DenseTensor& x,
                DenseTensor* out_w,
                DenseTensor* out_v) {
+  PADDLE_ENFORCE_GT(
+      x.numel(),
+      0,
+      errors::InvalidArgument("EigKernel input tensor is empty."));
   if (!IsComplexType(x.dtype())) {
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_w);
     dev_ctx.template Alloc<phi::dtype::Complex<T>>(out_v);
 
     int batch_count = BatchCount(x);
-    int order = x.dims()[x.dims().size() - 1];
+    int order = static_cast<int>(x.dims()[x.dims().size() - 1]);
 
     PADDLE_ENFORCE_LT(0,
                       order,
@@ -65,7 +69,7 @@ void EigKernel(const Context& dev_ctx,
     // 2. construct complex values
     auto* real_part_data = real_part.data<phi::dtype::Real<T>>();
     auto* imag_part_data = imag_part.data<phi::dtype::Real<T>>();
-    int out_w_numel = out_w->numel();
+    int out_w_numel = static_cast<int>(out_w->numel());
 
     phi::funcs::ForRange<Context> for_range(dev_ctx, out_w_numel);
     phi::funcs::RealImagToComplexFunctor<phi::dtype::Complex<T>> functor(

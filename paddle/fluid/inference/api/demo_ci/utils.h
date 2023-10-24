@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/extension.h"      // For pr test!
 #include "paddle_inference_api.h"  // NOLINT
 
 namespace paddle {
@@ -82,6 +83,8 @@ void CheckOutput(const std::string& referfile,
   std::getline(file, line);
   auto refer = ProcessALine(line);
   file.close();
+
+  paddle::Tensor dummy;
 
   size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
   VLOG(3) << "predictor output numel " << numel;

@@ -17,6 +17,10 @@ import unittest
 from typing import Dict, List, Tuple
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -68,6 +72,7 @@ class LinearNetWithDict(BaseLayer):
         return {'out': out2}
 
 
+@dy2static_unittest
 class TestTyping(unittest.TestCase):
     def setUp(self):
         self.in_num = 16
@@ -92,6 +97,7 @@ class TestTyping(unittest.TestCase):
         out, _ = self.net(self.x)
         return out
 
+    @test_and_compare_with_new_ir(False)
     def test_type(self):
         self.net = self.build_net()
         out = self.run_dy()

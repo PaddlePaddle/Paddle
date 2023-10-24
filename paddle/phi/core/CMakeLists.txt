@@ -12,6 +12,7 @@ collect_srcs(
   flags.cc
   errors.cc
   enforce.cc
+  storage_properties.cc
   os_info.cc
   kernel_context.cc
   ddim.cc
@@ -36,5 +37,8 @@ collect_srcs(
   mixed_vector.cc
   generator.cc
   kernel_factory.cc
+  kernel_registry.cc
   tensor_utils.cc
   utils/type_info.cc)
+
+cc_library(ddim SRCS ddim.cc)

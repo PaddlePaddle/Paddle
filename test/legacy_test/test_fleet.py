@@ -33,7 +33,7 @@ class TestFleet1(unittest.TestCase):
     def test_pslib_1(self):
         """Test cases for pslib."""
         import paddle
-        from paddle import fluid
+        from paddle import base
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )
@@ -49,25 +49,25 @@ class TestFleet1(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ID"] = "0"
         role_maker = GeneralRoleMaker()
         # role_maker.generate_role()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         # fleet.init(role_maker)
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
+        with base.program_guard(train_program, startup_program):
             show = paddle.static.data(
                 name="show",
                 shape=[-1, 1],
                 dtype="int64",
                 lod_level=1,
             )
-            emb = fluid.layers.embedding(
+            emb = paddle.static.nn.embedding(
                 input=show,
                 size=[1, 1],
                 is_sparse=True,
                 is_distributed=True,
-                param_attr=fluid.ParamAttr(name="embedding"),
+                param_attr=base.ParamAttr(name="embedding"),
             )
             bow = paddle.static.nn.sequence_lod.sequence_pool(
                 input=emb, pool_type='sum'
@@ -85,7 +85,7 @@ class TestFleet1(unittest.TestCase):
             label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(
                 adam,
                 strategy={

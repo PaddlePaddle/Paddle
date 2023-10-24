@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import Program, default_main_program, program_guard
+from paddle import base
+from paddle.base.framework import Program, default_main_program, program_guard
 
 paddle.enable_static()
 
@@ -105,11 +105,11 @@ class TestProgram(unittest.TestCase):
         self.assertNotEqual(0, len(new_program.blocks[0].all_parameters()))
 
     def test_program_all_parameters(self):
-        program = fluid.default_main_program()
+        program = base.default_main_program()
         data = paddle.static.data(name='x', shape=[None, 13], dtype='float32')
         hidden = paddle.static.nn.fc(x=data, size=10)
         loss = paddle.mean(hidden)
-        fluid.optimizer.SGD(learning_rate=0.01).minimize(loss)
+        paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         # NOTE: here the parameters are fc_0.w_0 and fc_0.b_0
         param_list = program.all_parameters()
@@ -118,19 +118,19 @@ class TestProgram(unittest.TestCase):
         self.assertEqual(param_list[1].name, "fc_0.b_0")
 
     def test_prune_with_input_type_error(self):
-        program = fluid.default_main_program()
+        program = base.default_main_program()
         feed_var_names = [2, 3, 4]
         self.assertRaises(
             ValueError, program._prune_with_input, feed_var_names, []
         )
 
     def test_random_seed_error(self):
-        program = fluid.default_main_program()
+        program = base.default_main_program()
         with self.assertRaises(ValueError):
             program.random_seed = "seed"
 
     def test_copy_info_from_error(self):
-        program = fluid.default_main_program()
+        program = base.default_main_program()
         self.assertRaises(TypeError, program._copy_param_info_from, "program")
         self.assertRaises(
             TypeError, program._copy_dist_param_info_from, "program"

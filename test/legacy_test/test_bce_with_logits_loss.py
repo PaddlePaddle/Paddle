@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def call_bce_layer(
@@ -92,7 +92,7 @@ def test_dygraph(
     pos_weight_np=None,
     functional=False,
 ):
-    with paddle.fluid.dygraph.base.guard():
+    with paddle.base.dygraph.base.guard():
         logit = paddle.to_tensor(logit_np)
         label = paddle.to_tensor(label_np)
         weight = None
@@ -114,13 +114,16 @@ def test_dygraph(
 def calc_bce_with_logits_loss(
     logit_np, label_np, reduction='mean', weight_np=None, pos_weight=None
 ):
-    expected = (
-        np.maximum(logit_np, 0)
-        - logit_np * label_np
-        + np.log(1 + np.exp(-np.abs(logit_np)))
-    )
+    item1 = np.maximum(logit_np, 0)
+    item2 = logit_np * label_np
+    item3 = np.log(1 + np.exp(-np.abs(logit_np)))
+
     if pos_weight is not None:
-        expected = expected * ((pos_weight - 1) * label_np + 1)
+        pos_weight = (pos_weight - 1) * label_np + 1
+        expected = item1 - item2 + item3 * pos_weight
+    else:
+        expected = item1 - item2 + item3
+
     if weight_np is not None:
         expected = weight_np * expected
 
@@ -138,9 +141,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
     def test_BCEWithLogitsLoss(self):
         logit_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -188,9 +191,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         )
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         for reduction in ['sum', 'mean', 'none']:
             static_result = test_static(
@@ -245,9 +248,9 @@ class TestBCEWithLogitsLoss(unittest.TestCase):
         pos_weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         weight_np = np.random.random(size=(2, 3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         reduction = "mean"
         static_result = test_static(

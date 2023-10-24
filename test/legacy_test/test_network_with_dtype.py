@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 BATCH_SIZE = 20
 
@@ -27,9 +27,9 @@ class TestNetWithDtype(unittest.TestCase):
         self.init_dtype()
 
     def run_net_on_place(self, place):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype=self.dtype)
             y = paddle.static.data(name='y', shape=[-1, 1], dtype=self.dtype)
             y_predict = paddle.static.nn.fc(x, size=1, activation=None)
@@ -37,15 +37,15 @@ class TestNetWithDtype(unittest.TestCase):
                 input=y_predict, label=y
             )
             avg_cost = paddle.mean(cost)
-            sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
             sgd_optimizer.minimize(avg_cost)
 
         fetch_list = [avg_cost]
         train_reader = paddle.batch(
             paddle.dataset.uci_housing.train(), batch_size=BATCH_SIZE
         )
-        feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-        exe = fluid.Executor(place)
+        feeder = base.DataFeeder(place=place, feed_list=[x, y])
+        exe = base.Executor(place)
         exe.run(startup)
         for data in train_reader():
             exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
@@ -56,13 +56,13 @@ class TestNetWithDtype(unittest.TestCase):
         pass
 
     def test_cpu(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self.run_net_on_place(place)
 
     def test_gpu(self):
         if not core.is_compiled_with_cuda():
             return
-        place = fluid.CUDAPlace(0)
+        place = base.CUDAPlace(0)
         self.run_net_on_place(place)
 
 

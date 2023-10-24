@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 
@@ -229,7 +229,7 @@ class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
             np.testing.assert_allclose(out, expect_out, rtol=1e-05)
 
         places = ['cpu']
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
             paddle.set_device(place)
@@ -285,7 +285,7 @@ class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
 
         paddle.disable_static()
         places = ['cpu']
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append('gpu')
         for place in places:
             paddle.set_device(place)
@@ -382,11 +382,11 @@ class TestPSROIPoolStaticAPI(unittest.TestCase):
             self.x, self.boxes, self.boxes_num, 10, 1.0, 7, 7
         )
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             exe = paddle.static.Executor(place)
-            boxes_lod_data = paddle.fluid.create_lod_tensor(
+            boxes_lod_data = paddle.base.create_lod_tensor(
                 self.boxes, [[1, 2]], place
             )
             (out_res,) = exe.run(

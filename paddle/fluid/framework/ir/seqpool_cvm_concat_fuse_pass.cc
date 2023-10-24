@@ -145,7 +145,7 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
     std::vector<std::string> subgraph_ins_name;
     std::unordered_set<const Node*> marked_nodes;
 
-    Node* cvm_input_of_cvm;
+    Node* cvm_input_of_cvm = nullptr;
     Node* concat_out_var = concat_node->outputs[0];
 
     GraphPatternDetector::handle_t handler =
@@ -184,8 +184,8 @@ void SeqPoolCVMConcatFusePass::ApplyImpl(ir::Graph* graph) const {
       op_desc.SetOutput("Out", {concat_out_var->Name()});
       auto* op = graph->CreateOpNode(&op_desc);
 
-      for (size_t i = 0; i < subgraph_ins.size(); ++i) {
-        IR_NODE_LINK_TO(subgraph_ins[i], op);
+      for (auto& item : subgraph_ins) {
+        IR_NODE_LINK_TO(item, op);
       }
       IR_NODE_LINK_TO(cvm_input_of_cvm, op);
       IR_NODE_LINK_TO(op, concat_out_var);

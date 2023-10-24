@@ -20,12 +20,12 @@ import numpy as np
 import paddle
 
 sys.path.append("..")
-from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.random import random as rand
+from op_test import OpTest, convert_float_to_uint16
 
-import paddle.fluid.dygraph as dg
+import paddle.base.dygraph as dg
 from paddle import static
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -36,7 +36,6 @@ class TestConjOp(OpTest):
         self.python_api = paddle.tensor.conj
         self.init_dtype_type()
         self.init_input_output()
-        self.init_grad_input_output()
 
     def init_dtype_type(self):
         self.dtype = np.complex64
@@ -47,14 +46,8 @@ class TestConjOp(OpTest):
         ).astype(self.dtype)
         out = np.conj(x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
-
-    def init_grad_input_output(self):
-        self.grad_out = (np.ones((12, 14)) + 1j * np.ones((12, 14))).astype(
-            self.dtype
-        )
-        self.grad_in = np.conj(self.grad_out)
 
     def test_check_output(self):
         self.check_output()
@@ -63,8 +56,6 @@ class TestConjOp(OpTest):
         self.check_grad(
             ['X'],
             'Out',
-            user_defined_grads=[self.grad_in],
-            user_defined_grad_outputs=[self.grad_out],
         )
 
 

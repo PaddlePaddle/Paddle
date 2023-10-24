@@ -75,7 +75,6 @@ class TestBase(IPUOpTest):
                         learning_rate=1e-1, weight_decay=weight_decay
                     )
                 elif self.attrs['optimizer'] == 'lamb':
-
                     opt = paddle.optimizer.Lamb(
                         learning_rate=1e-1, lamb_weight_decay=weight_decay
                     )

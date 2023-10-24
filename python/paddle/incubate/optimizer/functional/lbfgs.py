@@ -80,26 +80,53 @@ def minimize_lbfgs(
 
     Examples:
         .. code-block:: python
+            :name: code-example1
 
-            import paddle
+            >>> # Example1: 1D Grid Parameters
+            >>> import paddle
+            >>> # Randomly simulate a batch of input data
+            >>> inputs = paddle. normal(shape=(100, 1))
+            >>> labels = inputs * 2.0
+            >>> # define the loss function
+            >>> def loss(w):
+            ...     y = w * inputs
+            ...     return paddle.nn.functional.square_error_cost(y, labels).mean()
+            >>> # Initialize weight parameters
+            >>> w = paddle.normal(shape=(1,))
+            >>> # Call the bfgs method to solve the weight that makes the loss the smallest, and update the parameters
+            >>> for epoch in range(0, 10):
+            ...     # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
+            ...     w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
+            ...     # Use paddle.assign to update parameters in place
+            ...     paddle.assign(w_update, w)
 
-            def func(x):
-                return paddle.dot(x, x)
+        .. code-block:: python
+            :name: code-example2
 
-            x0 = paddle.to_tensor([1.3, 2.7])
-            results = paddle.incubate.optimizer.functional.minimize_lbfgs(func, x0)
-            print("is_converge: ", results[0])
-            print("the minimum of func is: ", results[2])
-            # is_converge:  is_converge:  Tensor(shape=[1], dtype=bool, place=Place(gpu:0), stop_gradient=True,
-            #        [True])
-            # the minimum of func is:  Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [0., 0.])
+            >>> # Example2: Multidimensional Grid Parameters
+            >>> import paddle
+            >>> def flatten(x):
+            ...     return x. flatten()
+            >>> def unflatten(x):
+            ...     return x.reshape((2,2))
+            >>> # Assume the network parameters are more than one dimension
+            >>> def net(x):
+            ...     assert len(x.shape) > 1
+            ...     return x.square().mean()
+            >>> # function to be optimized
+            >>> def bfgs_f(flatten_x):
+            ...     return net(unflatten(flatten_x))
+            >>> x = paddle.rand([2,2])
+            >>> for i in range(0, 10):
+            ...     # Flatten x before using minimize_bfgs
+            ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]
+            ...     # unflatten x_update, then update parameters
+            ...     paddle.assign(unflatten(x_update), x)
+
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
-                dtype
-            )
+            f"The dtype must be 'float32' or 'float64', but the specified is {dtype}."
         )
 
     op_name = 'minimize_lbfgs'
@@ -178,16 +205,23 @@ def minimize_lbfgs(
             shape=[], fill_value=(head - 1).mod(history_size), dtype='int64'
         )
 
-        def cond(i, q):
+        def cond(i, q, ai_vec):
             return i != tail
 
-        def body(i, q):
-            ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
+        def body(i, q, ai_vec):
+            if paddle.in_dynamic_mode():
+                ai_vec[i] = rhok_vec[i] * paddle.dot(sk_vec[i], q)
+            else:
+                ai_vec = paddle.static.setitem(
+                    ai_vec, i, rhok_vec[i] * paddle.dot(sk_vec[i], q)
+                )
             q = q - ai_vec[i] * yk_vec[i]
             i = (i - 1).mod(history_size)
-            return i, q
+            return i, q, ai_vec
 
-        paddle.static.nn.while_loop(cond=cond, body=body, loop_vars=[i, q])
+        paddle.static.nn.while_loop(
+            cond=cond, body=body, loop_vars=[i, q, ai_vec]
+        )
 
         r = paddle.matmul(H0, q)
 
@@ -234,10 +268,14 @@ def minimize_lbfgs(
             lambda: paddle.full(shape=[1], fill_value=1000.0, dtype=dtype),
             lambda: 1.0 / rhok_inv,
         )
-
-        sk_vec[head] = sk
-        yk_vec[head] = yk
-        rhok_vec[head] = rhok
+        if paddle.in_dynamic_mode():
+            sk_vec[head] = sk
+            yk_vec[head] = yk
+            rhok_vec[head] = rhok
+        else:
+            sk_vec = paddle.static.setitem(sk_vec, head, sk)
+            yk_vec = paddle.static.setitem(yk_vec, head, yk)
+            rhok_vec = paddle.static.setitem(rhok_vec, head, rhok)
         head = (head + 1) % history_size
 
         def true_fn(tail):

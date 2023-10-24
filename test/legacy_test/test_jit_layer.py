@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import _dygraph_place_guard
+from paddle.base.framework import _dygraph_place_guard
 from paddle.jit.layer import Layer
 from paddle.static import InputSpec
 
@@ -57,7 +57,6 @@ class TestMultiLoad(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_multi_load(self):
-
         x = paddle.full([2, 4], 2)
         model = Net()
         paddle.jit.enable_to_static(False)

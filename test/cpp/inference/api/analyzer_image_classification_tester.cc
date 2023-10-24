@@ -17,7 +17,7 @@ limitations under the License. */
 
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
+PD_DEFINE_bool(disable_mkldnn_fc, false, "Disable usage of MKL-DNN's FC op");
 
 namespace paddle {
 namespace inference {
@@ -77,7 +77,7 @@ TEST(Analyzer_resnet50, fuse_statis) {
 }
 
 TEST(Analyzer_resnet50, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_resnet50, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
@@ -99,7 +99,7 @@ void compare(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_resnet50, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_resnet50, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

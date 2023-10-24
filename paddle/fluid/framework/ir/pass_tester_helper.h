@@ -134,6 +134,22 @@ struct Layers {
     return out;
   }
 
+  VarDesc* squeeze2(VarDesc* x,
+                    const std::vector<int> axes = {-1},
+                    bool with_xshape = false) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("squeeze2");
+    op->SetInput("X", {x->Name()});
+    op->SetOutput("Out", {out->Name()});
+    op->SetAttr("axes", axes);
+    if (with_xshape) {
+      VarDesc* xshape = lod_tensor(unique_name());
+      op->SetOutput("XShape", {xshape->Name()});
+    }
+    return out;
+  }
+
   VarDesc* unsqueeze2(VarDesc* x, const std::vector<int> axes = {-1}) {
     VarDesc* out = lod_tensor(unique_name());
     OpDesc* op = program_.MutableBlock(0)->AppendOp();
@@ -417,6 +433,17 @@ struct Layers {
     op->SetAttr("transpose_X", transpose_x);
     op->SetAttr("transpose_Y", transpose_y);
     op->SetAttr("alpha", 1.0f);
+    return out;
+  }
+
+  VarDesc* clip(VarDesc* x, VarDesc* min, VarDesc* max) {
+    VarDesc* out = lod_tensor(unique_name());
+    OpDesc* op = program_.MutableBlock(0)->AppendOp();
+    op->SetType("clip");
+    op->SetInput("X", {x->Name()});
+    op->SetInput("Min", {min->Name()});
+    op->SetInput("Max", {max->Name()});
+    op->SetOutput("Out", {out->Name()});
     return out;
   }
 

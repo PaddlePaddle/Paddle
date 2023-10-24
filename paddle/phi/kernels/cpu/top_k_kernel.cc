@@ -153,6 +153,12 @@ void TopkKernel(const Context& dev_ctx,
   }
 
   int k = k_scalar.to<int>();
+  PADDLE_ENFORCE_GE(
+      x.numel(),
+      k,
+      errors::InvalidArgument(
+          "x has only %d element, can not find %d top values.", x.numel(), k));
+
   if (k_scalar.FromTensor()) {
     auto out_dims = out->dims();
     // accroding to axis to set K value in the dim
@@ -192,17 +198,17 @@ void TopkKernel(const Context& dev_ctx,
     // get the trans input_dims, out_dims
     phi::DDim trans_dims(in_dims);
     phi::DDim trans_out_dims(out->dims());
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_dims[i] = in_dims[trans[i]];
     }
-    for (size_t i = 0; i < trans.size(); i++) {
+    for (int i = 0; i < static_cast<int>(trans.size()); i++) {
       trans_out_dims[i] = out_dims[trans[i]];
     }
 
     DenseTensor trans_inp;
     trans_inp.Resize(trans_dims);
     dev_ctx.template Alloc<T>(&trans_inp);
-    int ndims = trans.size();
+    int ndims = static_cast<int>(trans.size());
 
     // transpose the input value
     funcs::TransCompute<phi::CPUContext, T>(

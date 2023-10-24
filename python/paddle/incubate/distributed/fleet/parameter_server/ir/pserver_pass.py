@@ -710,7 +710,6 @@ def large_scale_sparse_pass(program, main_program, config, is_startup=False):
         is_entry,
         opt_idx,
     ):
-
         op = block.ops[opt_idx]
 
         if op.type == "sgd":

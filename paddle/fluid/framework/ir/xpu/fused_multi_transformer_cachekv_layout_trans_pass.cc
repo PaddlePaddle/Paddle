@@ -138,6 +138,31 @@ void FusedMultiTransformerCacheKVLayoutTransPass::FillConstantReshapePass(
   AddStatis(found_subgraph_count);
 }
 
+int FusedMultiTransformerCacheKVLayoutTransPass::
+    CountFillConstantReshapePattern(ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  GraphPatternDetector gpd;
+  patterns::FusedMultiTransformerFillConstantPattern pattern(
+      gpd.mutable_pattern(), name_scope_);
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle FillConstantReshapePass";
+    GET_IR_NODE(fused_multi_transformer);
+    GET_IR_NODE(fill_constant);
+    GET_IR_NODE(fill_constant_out);
+    auto cachekv_names = fused_multi_transformer->Op()->Input("CacheKV");
+    if (std::count(cachekv_names.begin(),
+                   cachekv_names.end(),
+                   fill_constant_out->Name()) == 0)
+      return;
+    found_subgraph_count++;
+  };
+  gpd(graph, handler);
+  return found_subgraph_count;
+}
+
 void FusedMultiTransformerCacheKVLayoutTransPass::GatherReshapePass(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -183,14 +208,54 @@ void FusedMultiTransformerCacheKVLayoutTransPass::GatherReshapePass(
   AddStatis(found_subgraph_count);
 }
 
+int FusedMultiTransformerCacheKVLayoutTransPass::CountGatherReshapePattern(
+    ir::Graph* graph) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  GraphPatternDetector gpd;
+  patterns::FusedMultiTransformerGatherPattern pattern(gpd.mutable_pattern(),
+                                                       name_scope_);
+
+  int found_subgraph_count = 0;
+  auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
+                     Graph* graph) {
+    VLOG(4) << "handle GatherReshapePass";
+    GET_IR_NODE(gather);
+    GET_IR_NODE(fused_multi_transformer);
+    GET_IR_NODE(gather_in);
+    GET_IR_NODE(gather_out);
+    auto cachekv_names = fused_multi_transformer->Op()->Input("CacheKV");
+    if (std::count(cachekv_names.begin(),
+                   cachekv_names.end(),
+                   gather_out->Name()) == 0)
+      return;
+    found_subgraph_count++;
+  };
+  gpd(graph, handler);
+  return found_subgraph_count;
+}
+
 void FusedMultiTransformerCacheKVLayoutTransPass::ApplyImpl(
     ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::PreconditionNotMet("graph should not be null."));
+  if (!graph->IsMainGraph()) {
+    VLOG(3) << "'fused_multi_transformer_cachekv_layout_pass' needs info in "
+               "all graphs, so it should be applied in the main graph.";
+    return;
+  }
   Init(name_scope_, graph);
-
-  FillConstantReshapePass(graph);
-  GatherReshapePass(graph);
+  int pattern_cnt0 = 0, pattern_cnt1 = 0;
+  for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+    pattern_cnt0 += CountFillConstantReshapePattern(graph->GetSubGraph(i));
+    pattern_cnt1 += CountGatherReshapePattern(graph->GetSubGraph(i));
+  }
+  if (pattern_cnt0 != 0 && pattern_cnt1 != 0 && pattern_cnt0 == pattern_cnt1) {
+    for (size_t i = 0; i < graph->SubGraphsSize(); i++) {
+      FillConstantReshapePass(graph->GetSubGraph(i));
+      GatherReshapePass(graph->GetSubGraph(i));
+    }
+  }
 }
 
 }  // namespace ir

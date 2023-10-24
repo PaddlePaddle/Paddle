@@ -17,6 +17,16 @@ limitations under the License. */
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
+
+namespace phi {
+class DeviceContext;
+namespace distributed {
+class DistTensor;
+class TensorDistAttr;
+}  // namespace distributed
+}  // namespace phi
 
 namespace paddle {
 namespace experimental {
@@ -78,22 +88,26 @@ static inline phi::TensorArgDef GetKernelInputArgDef(
 std::shared_ptr<phi::DenseTensor> PrepareData(
     const Tensor& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 paddle::optional<phi::DenseTensor> PrepareData(
     const paddle::optional<Tensor>& input,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 std::unique_ptr<std::vector<phi::DenseTensor>> PrepareData(
     const std::vector<Tensor>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 paddle::optional<std::vector<phi::DenseTensor>> PrepareData(
     const paddle::optional<std::vector<Tensor>>& inputs,
     const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag);
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
 
 // Only support transfering place for SelectedRows
 std::shared_ptr<phi::SelectedRows> PrepareDataForSelectedRows(
@@ -106,6 +120,27 @@ paddle::optional<phi::SelectedRows> PrepareDataForSelectedRows(
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag);
 
+// Only support transfering contiguous for SparseCooTensor
+std::shared_ptr<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCooTensor> PrepareDataForSparseCooTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous for SparseCsrTensor
+std::shared_ptr<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const Tensor& input);
+
+paddle::optional<phi::SparseCsrTensor> PrepareDataForSparseCsrTensor(
+    const paddle::optional<Tensor>& input);
+
+// Only support transfering contiguous
+std::shared_ptr<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const Tensor& input);
+
+paddle::optional<phi::DenseTensor> PrepareDataForDenseTensorInSparse(
+    const paddle::optional<Tensor>& input);
+
 void TransDataBackend(const phi::DenseTensor* tensor,
                       Backend target_backend,
                       phi::DenseTensor* out);
@@ -117,6 +152,77 @@ void TransDataBackend(const std::vector<phi::DenseTensor*>& tensor,
 void TransDataBackend(const phi::SelectedRows* tensor,
                       Backend target_backend,
                       phi::SelectedRows* out);
+
+phi::DenseTensor Trans2Contiguous(const phi::DenseTensor& tensor);
+
+void CheckAndTrans2Contiguous(phi::DenseTensor* tensor);
+inline bool NeedTransformPlace(const phi::Place& src_place,
+                               const Backend& target,
+                               const TransformFlag& transform_flag) {
+  // NOTE(dev): The default value of TransformFlag is True, if it is set with
+  // False
+  // somewhere such as ops.yaml or backward.yaml that means we should skip data
+  // transform. Because "stop_transform_" has highest priority.
+  if (!transform_flag.need_trans_backend()) {
+    return false;
+  }
+  bool ret = src_place.GetType() == AllocationType::GPUPINNED ||
+             (target != Backend::ALL_BACKEND &&
+              phi::TransToPhiBackend(src_place) !=
+                  (target != Backend::GPUDNN ? target : Backend::GPU));
+  return ret;
+}
+
+/* ------------------ for auto parallel ----------------------- */
+
+std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+std::shared_ptr<phi::distributed::DistTensor>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+void ReshardOutputPartialAxisToReplicated(
+    phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);
+
+void ReshardKernelOutputToApiOutput(
+    phi::DeviceContext* dev_ctx,
+    const std::shared_ptr<phi::distributed::DistTensor>& src_tensor,
+    Tensor* dst_tensor);
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const Tensor& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const std::shared_ptr<phi::distributed::DistTensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(const std::vector<Tensor>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel);
+
+paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
+    const paddle::optional<Tensor>& input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel);
+
+paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
+PrepareDataForDistTensor(const paddle::optional<std::vector<Tensor>>& input,
+                         const phi::TensorArgDef& target_args_def,
+                         const TransformFlag& transform_flag,
+                         bool is_stride_kernel);
 
 }  // namespace experimental
 }  // namespace paddle

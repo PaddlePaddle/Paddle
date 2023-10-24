@@ -137,7 +137,7 @@ class ParallelExecutorPrivate {
    *                                       them.
    */
   inline void SetSkipMemoryReuse(size_t scope_idx, const std::string &name) {
-    if (mem_opt_var_infos_.size() == 0) {
+    if (mem_opt_var_infos_.empty()) {
       VLOG(4) << "The mem_opt_var_infos_ is empty, maybe no memory "
                  "optimization strategy is enabled";
       return;
@@ -514,9 +514,10 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place,
+                                                             max_memory_size);
       } else {
-        gc.reset(new StreamGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<StreamGarbageCollector>(place, max_memory_size);
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -526,7 +527,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_xpu_place(place)) {
 #if defined(PADDLE_WITH_XPU)
-      gc.reset(new XPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<XPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -535,7 +536,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
 #endif
     } else if (platform::is_ipu_place(place)) {
 #if defined(PADDLE_WITH_IPU)
-      gc.reset(new IPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<IPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
       PADDLE_THROW(platform::errors::PermissionDenied(
@@ -545,10 +546,11 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
     } else if (platform::is_custom_place(place)) {
 #if defined(PADDLE_WITH_CUSTOM_DEVICE)
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(
-            new CustomDeviceUnsafeFastGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<CustomDeviceUnsafeFastGarbageCollector>(
+            place, max_memory_size);
       } else {
-        gc.reset(new CustomStreamGarbageCollector(place, max_memory_size));
+        gc = std::make_unique<CustomStreamGarbageCollector>(place,
+                                                            max_memory_size);
       }
       VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
 #else
@@ -558,7 +560,7 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Please recompile or reinstall Paddle with CustomDevice support."));
 #endif
     } else if (platform::is_cpu_place(place)) {
-      gc.reset(new CPUGarbageCollector(place, max_memory_size));
+      gc = std::make_unique<CPUGarbageCollector>(place, max_memory_size);
       VLOG(10) << "Created GarbageCollector at " << place;
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
@@ -673,7 +675,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
                                    const BuildStrategy &build_strategy,
                                    ir::Graph *graph)
     : member_(new ParallelExecutorPrivate(places, scope)) {
-  PADDLE_ENFORCE_EQ(places.size() > 0,
+  PADDLE_ENFORCE_EQ(!places.empty(),
                     true,
                     platform::errors::Unavailable(
                         "NPU is not supported in ParallelExecutor."));
@@ -691,7 +693,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
-    if (member_->build_strategy_.num_trainers_ > 1) {
+    if (member_->build_strategy_.num_trainers_ > 1) {  // NOLINT
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
     } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -726,13 +728,14 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   VLOG(3) << "use ScopeBufferedSSAGraphExecutor";
   if (!member_->build_strategy_.async_mode_) {
-    member_->executor_.reset(new details::ScopeBufferedSSAGraphExecutor(
-        exec_strategy,
-        member_->local_scopes_,
-        member_->local_exec_scopes_,
-        std::move(var_infos),
-        member_->places_,
-        std::move(member_->executor_)));
+    member_->executor_ =
+        std::make_unique<details::ScopeBufferedSSAGraphExecutor>(
+            exec_strategy,
+            member_->local_scopes_,
+            member_->local_exec_scopes_,
+            std::move(var_infos),
+            member_->places_,
+            std::move(member_->executor_));
   }
 
   ResetOpHandleScopeMapOfGraphs(final_graphs, scope_map);
@@ -751,7 +754,7 @@ ParallelExecutor::ParallelExecutor(const platform::Place &place,
                                 /*device_count=*/1,
                                 *graph);
 
-  CreateLocalScopes(scope, /*local_scope=*/{scope}, /*create_new=*/false);
+  CreateLocalScopes(scope, /*local_scopes=*/{scope}, /*create_new=*/false);
 
   // Apply BuildStrategy to compile graph.
   std::vector<ir::Graph *> graphs = {graph};
@@ -872,14 +875,8 @@ void ParallelExecutor::BCastParamsToDevices(
       std::vector<void *> buffers;
       buffers.reserve(member_->places_.size());
       size_t numel = main_tensor.numel();
-      // TODO(liuyuhui): BKCL only support parameters using float type,
-      // other parameters need to be strongly converted to float before
-      // broadcasting,
-      // but broadcast is equivalent to no type of operation, does not affect
-      // correctness.
-      BKCLDataType data_type = BKCL_FLOAT;
-      // BKCLDataType data_type =
-      // platform::ToBKCLDataType(framework::TransToProtoVarType(main_tensor.dtype()));
+      auto dtype = framework::TransToProtoVarType(main_tensor.dtype());
+      BKCLDataType data_type = platform::ToBKCLDataType(dtype);
       for (size_t i = 0; i < member_->places_.size(); ++i) {
         auto place = member_->places_[i];
         void *buffer;
@@ -904,33 +901,21 @@ void ParallelExecutor::BCastParamsToDevices(
                             member_->places_.size()));
       {
         auto *bkcl_ctxs = member_->bkcl_ctxs_->DefaultFlatCtx();
-
-        PADDLE_ENFORCE_EQ(
-            bkcl_group_start(),
-            BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl_group_start failed"));
+        platform::BKCLGroupGuard guard;
         for (size_t i = 0; i < member_->places_.size(); ++i) {
           auto &bkcl_ctx = bkcl_ctxs->at(member_->places_[i]);
-          auto broadcast_numel = numel;
-          if (framework::TransToProtoVarType(main_tensor.dtype()) ==
-              framework::proto::VarType::INT64) {
-            broadcast_numel *= 2;
-          }
           PADDLE_ENFORCE_EQ(
               bkcl_broadcast(bkcl_ctx.comm(),
                              buffers[i],
                              buffers[i],
-                             broadcast_numel,
+                             numel,
                              data_type,
                              0,
                              NULL),
               BKCL_SUCCESS,
               platform::errors::Unavailable("bkcl_broadcast failed"));
         }
-        PADDLE_ENFORCE_EQ(
-            bkcl_group_end(),
-            BKCL_SUCCESS,
-            platform::errors::Unavailable("bkcl_group_end failed"));
+        bkcl_ctxs->WaitAll();
       }
 #else
       PADDLE_THROW(
@@ -951,11 +936,9 @@ void ParallelExecutor::BCastParamsToDevices(
         auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
-        if (member_->build_strategy_.async_mode_) {
-          share_memory();
-        } else if (member_->use_all_reduce_ ||
-                   member_->IsUseCUDA(member_->use_device_) ||
-                   var == "@LR_DECAY_COUNTER@") {
+        if (member_->use_all_reduce_ ||
+            member_->IsUseCUDA(member_->use_device_) ||
+            var == "@LR_DECAY_COUNTER@") {
           copy_memory();
         } else {
           share_memory();
@@ -1480,10 +1463,9 @@ void ParallelExecutor::PrepareNCCLCommunicator(Scope *global_scope) {
     auto *nccl_ctxs = member_->nccl_ctxs_->GetSyncBatchNormCtx(
         global_scope, member_->places_);
     auto &pool = platform::DeviceContextPool::Instance();
-    for (size_t dev_id = 0; dev_id < member_->places_.size(); ++dev_id) {
-      auto *dev_ctx =
-          static_cast<phi::GPUContext *>(pool.Get(member_->places_[dev_id]));
-      auto &nccl_ctx = nccl_ctxs->at(member_->places_[dev_id]);
+    for (auto &place : member_->places_) {
+      auto *dev_ctx = static_cast<phi::GPUContext *>(pool.Get(place));
+      auto &nccl_ctx = nccl_ctxs->at(place);
       dev_ctx->set_nccl_comm(nccl_ctx.comm());
     }
 #else
@@ -1528,7 +1510,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            {member_->places_[0]},
                                            loss_var_name,
                                            {member_->local_scopes_[0]},
@@ -1546,7 +1528,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            member_->places_,
                                            loss_var_name,
                                            member_->local_scopes_,
@@ -1665,12 +1647,12 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
 
   if (member_->build_strategy_.async_mode_) {
     VLOG(3) << "use AsyncSSAGraphExecutor";
-    member_->executor_.reset(
-        new details::AsyncSSAGraphExecutor(exec_strategy,
-                                           member_->local_scopes_,
-                                           member_->local_exec_scopes_,
-                                           member_->places_,
-                                           *async_graphs));
+    member_->executor_ = std::make_unique<details::AsyncSSAGraphExecutor>(
+        exec_strategy,
+        member_->local_scopes_,
+        member_->local_exec_scopes_,
+        member_->places_,
+        *async_graphs);
     final_graphs = *async_graphs;
   } else if (member_->build_strategy_.enable_parallel_graph_) {
     VLOG(3) << "use ParallelSSAGraphExecutor";
@@ -1732,22 +1714,24 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
              "network. It is automatically turned to drop_last=True.";
       if (exec_strategy.type_ == ExecutionStrategy::kDefault) {
         VLOG(3) << "use ThreadedSSAGraphExecutor";
-        member_->executor_.reset(
-            new details::ThreadedSSAGraphExecutor(exec_strategy,
-                                                  member_->local_scopes_,
-                                                  member_->local_exec_scopes_,
-                                                  member_->places_,
-                                                  graph));
+        member_->executor_ =
+            std::make_unique<details::ThreadedSSAGraphExecutor>(
+                exec_strategy,
+                member_->local_scopes_,
+                member_->local_exec_scopes_,
+                member_->places_,
+                graph);
       } else {
         if (member_->use_device_ == p::kXPU) {
 #if defined(PADDLE_WITH_XPU)
           VLOG(3) << "use BindThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::BindThreadedSSAGraphExecutor(
-              exec_strategy,
-              member_->local_scopes_,
-              member_->local_exec_scopes_,
-              member_->places_,
-              graph));
+          member_->executor_ =
+              std::make_unique<details::BindThreadedSSAGraphExecutor>(
+                  exec_strategy,
+                  member_->local_scopes_,
+                  member_->local_exec_scopes_,
+                  member_->places_,
+                  graph);
 #else
           PADDLE_THROW(platform::errors::PermissionDenied(
               "Paddle can't use XPU device since it's not compiled with XPU,"
@@ -1755,12 +1739,13 @@ std::vector<ir::Graph *> ParallelExecutor::CreateSSAGraphExecutor(
 #endif
         } else {
           VLOG(3) << "use FastThreadedSSAGraphExecutor";
-          member_->executor_.reset(new details::FastThreadedSSAGraphExecutor(
-              exec_strategy,
-              member_->local_scopes_,
-              member_->local_exec_scopes_,
-              member_->places_,
-              graph));
+          member_->executor_ =
+              std::make_unique<details::FastThreadedSSAGraphExecutor>(
+                  exec_strategy,
+                  member_->local_scopes_,
+                  member_->local_exec_scopes_,
+                  member_->places_,
+                  graph);
         }
       }
       final_graphs.emplace_back(graph);

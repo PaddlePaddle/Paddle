@@ -81,13 +81,13 @@ class XPUTestGatherNd(XPUOpTestWrapper):
         def init_data(self):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([1]).astype("int32")
-            self.output = self.xnp[self.inp]
+            self.output = self.xnp[tuple(self.inp)]
 
     class XPUTestGatherNdOpWithIndex2(XPUTestGatherNdBase):
         def init_data(self):
             self.xnp = np.random.random((5, 20)).astype(self.in_type)
             self.inp = np.array([1]).astype("int64")
-            self.output = self.xnp[self.inp]
+            self.output = self.xnp[tuple(self.inp)]
 
     class XPUTestGatherNdOpWithLowIndex1(XPUTestGatherNdBase):
         def init_data(self):

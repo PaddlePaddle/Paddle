@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 class LeNetDygraph(paddle.nn.Layer):
@@ -39,7 +39,7 @@ class LeNetDygraph(paddle.nn.Layer):
 
 class TestLayerChildren(unittest.TestCase):
     def func_apply_init_weight(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             net = LeNetDygraph()
             net.eval()
 
@@ -60,8 +60,8 @@ class TestLayerChildren(unittest.TestCase):
         self.ori_y1, self.ori_y2 = self.func_apply_init_weight()
 
         # compare ori dygraph and new egr
-        assert np.array_equal(self.ori_y1.numpy(), self.new_y1.numpy())
-        assert np.array_equal(self.ori_y2.numpy(), self.new_y2.numpy())
+        np.testing.assert_array_equal(self.ori_y1.numpy(), self.new_y1.numpy())
+        np.testing.assert_array_equal(self.ori_y2.numpy(), self.new_y2.numpy())
 
 
 if __name__ == '__main__':

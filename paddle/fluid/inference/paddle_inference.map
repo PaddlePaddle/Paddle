@@ -21,6 +21,7 @@
 			*paddle::internal*;
 			*paddle::get_version*;
 			*paddle::LiteNNAdapterConfig*;
+			*paddle::XpuConfig*;
 			*paddle::AnalysisConfig::*;
 			*paddle::PaddlePredictor::*;
 			*paddle::CreatePaddlePredictor*;
@@ -44,6 +45,7 @@
 			*paddle::RegisterSymbolsFor*;
 			*paddle::from_blob*;
 			*paddle::InitPhi*;
+			*paddle::flags*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 

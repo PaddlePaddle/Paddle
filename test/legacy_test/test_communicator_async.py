@@ -20,7 +20,6 @@ import paddle
 
 paddle.enable_static()
 
-from paddle import fluid
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -45,7 +44,7 @@ class TestCommunicator(unittest.TestCase):
         fleet.init(role)
         avg_cost = self.net()
 
-        optimizer = fluid.optimizer.SGD(0.01)
+        optimizer = paddle.optimizer.SGD(0.01)
 
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True

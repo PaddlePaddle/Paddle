@@ -17,7 +17,7 @@ import unittest
 from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet import fleet
 
 
@@ -28,9 +28,9 @@ class TestSparseLoadProgramAdagrad(TestSparseLoadProgram):
 
     def test_server_init(self):
         scope, train_program, startup_program, loss = self.net()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(train_program, startup_program):
-                optimizer = fluid.optimizer.Adam(1e-3)
+        with base.scope_guard(scope):
+            with base.program_guard(train_program, startup_program):
+                optimizer = paddle.optimizer.Adam(1e-3)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, self.strategy
                 )

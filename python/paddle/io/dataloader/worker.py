@@ -13,8 +13,6 @@
 # limitations under the License.
 
 import os
-
-# NOTE: queue has a different name in python2 and python3
 import queue
 import sys
 import traceback
@@ -94,51 +92,64 @@ def get_worker_info():
     Returns:
         WorkerInfo: an instance of WorkerInfo which contains fields above.
 
-    .. note::
+    Notes:
         For more usage and examples, please see :code:`paddle.io.IterableDataset`
 
     Example:
 
         .. code-block:: python
 
-            import math
-            import paddle
-            import numpy as np
-            from paddle.io import IterableDataset, DataLoader, get_worker_info
+            >>> import math
+            >>> import paddle
+            >>> import numpy as np
+            >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            class SplitedIterableDataset(IterableDataset):
-                def __init__(self, start, end):
-                    self.start = start
-                    self.end = end
-
-                def __iter__(self):
-                    worker_info = get_worker_info()
-                    if worker_info is None:
-                        iter_start = self.start
-                        iter_end = self.end
-                    else:
-                        per_worker = int(
-                            math.ceil((self.end - self.start) / float(
-                                worker_info.num_workers)))
-                        worker_id = worker_info.id
-                        iter_start = self.start + worker_id * per_worker
-                        iter_end = min(iter_start + per_worker, self.end)
-
-                    for i in range(iter_start, iter_end):
-                        yield np.array([i])
-
-            place = paddle.CPUPlace()
-            dataset = SplitedIterableDataset(start=2, end=9)
-            dataloader = DataLoader(
-                dataset,
-                places=place,
-                num_workers=2,
-                batch_size=1,
-                drop_last=True)
-
-            for data in dataloader:
-                print(data)
-            # outputs: [2, 5, 3, 6, 4, 7]
+            >>> class SplitedIterableDataset(IterableDataset):
+            ...     def __init__(self, start, end):
+            ...         self.start = start
+            ...         self.end = end
+            ...
+            ...     def __iter__(self):
+            ...         worker_info = get_worker_info()
+            ...         if worker_info is None:
+            ...             iter_start = self.start
+            ...             iter_end = self.end
+            ...         else:
+            ...             per_worker = int(
+            ...                 math.ceil((self.end - self.start) / float(
+            ...                     worker_info.num_workers)))
+            ...             worker_id = worker_info.id
+            ...             iter_start = self.start + worker_id * per_worker
+            ...             iter_end = min(iter_start + per_worker, self.end)
+            ...
+            ...         for i in range(iter_start, iter_end):
+            ...             yield np.array([i])
+            ...
+            >>> place = paddle.CPUPlace()
+            >>> dataset = SplitedIterableDataset(start=2, end=9)
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     places=place,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True)
+            ...
+            >>> for data in dataloader:
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[2]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[6]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[3]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[7]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[4]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[8]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[5]])
 
     """
     return _worker_info
@@ -155,9 +166,7 @@ class WorkerInfo:
     def __setattr__(self, key, val):
         if self.__initialized:
             raise RuntimeError(
-                "Cannot assign attributes to {} objects".format(
-                    self.__class__.__name__
-                )
+                f"Cannot assign attributes to {self.__class__.__name__} objects"
             )
         return super().__setattr__(key, val)
 
@@ -359,7 +368,7 @@ def _worker_loop(
                     #       may copy CPU tensor to GPU even if users want to use
                     #       CPU tensor operation, so we add CPUPlace guard here
                     #       to make sure tensor will be operated only on CPU
-                    with paddle.fluid.dygraph.guard(place=paddle.CPUPlace()):
+                    with paddle.base.dygraph.guard(place=paddle.CPUPlace()):
                         batch = fetcher.fetch(indices)
             except Exception as e:
                 if (
@@ -384,7 +393,7 @@ def _worker_loop(
                     tensor_list = [
                         numpy2lodtensor(b)
                         if isinstance(b, np.ndarray)
-                        else b.value().get_tensor()
+                        else b.get_tensor()
                         for b in batch
                     ]
                     out_queue.put((idx, tensor_list, structure))

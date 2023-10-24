@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, OpTestTool
+from op_test import OpTest, OpTestTool
 
 
 @OpTestTool.skip_if_not_cpu()
@@ -24,15 +24,21 @@ class TestFCINT8OneDNNOp(OpTest):
         self.op_type = "fc"
         self._cpu_only = True
         self.configure()
+        self.set_shape()
         self.generate_data()
         self.set_inputs()
+
+        y_scales_size = (
+            self.bias_shape if self.per_channel_quantize_weight else 1
+        )
 
         self.attrs = {
             'use_mkldnn': True,
             'Scale_in': self.x_scale,
-            'Scale_weights': [self.y_scale],
+            'Scale_weights': [self.y_scale] * y_scales_size,
             'Scale_out': self.out_scale,
             'force_fp32_output': self.force_fp32_output,
+            'in_num_col_dims': self.in_num_col_dims,
         }
 
         if self.force_fp32_output:
@@ -45,6 +51,13 @@ class TestFCINT8OneDNNOp(OpTest):
     def configure(self):
         self.use_bias = True
         self.force_fp32_output = False
+        self.in_num_col_dims = 1
+        self.per_channel_quantize_weight = False
+
+    def set_shape(self):
+        self.input_shape = (10, 5)
+        self.weight_shape = (5, 10)
+        self.bias_shape = 10
 
     def set_inputs(self):
         self.inputs = {'Input': self.x, 'W': self.y_float, 'Bias': self.bias}
@@ -55,15 +68,26 @@ class TestFCINT8OneDNNOp(OpTest):
         return scale, quantized
 
     def generate_data(self):
-        self.x_float = np.random.random((10, 5)).astype("float32") * 10
+        self.x_float = np.random.random(self.input_shape).astype("float32") * 10
         self.x_scale, self.x = self.quantize(self.x_float)
 
-        self.y_float = np.random.random((5, 10)).astype("float32") * 10
+        self.y_float = (
+            np.random.random(self.weight_shape).astype("float32") * 10
+        )
         self.y_scale, self.y = self.quantize(self.y_float)
 
-        self.out_float = np.dot(self.x_float, self.y_float)
+        flatten_shape = [1, 1]
+        for i in range(len(self.input_shape)):
+            if i < self.in_num_col_dims:
+                flatten_shape[0] *= self.input_shape[i]
+            else:
+                flatten_shape[1] *= self.input_shape[i]
+
+        self.out_float = np.dot(
+            self.x_float.reshape(flatten_shape), self.y_float
+        )
         if self.use_bias:
-            self.bias = np.random.random(10).astype("float32") * 10
+            self.bias = np.random.random(self.bias_shape).astype("float32") * 10
             self.out_float += self.bias
 
         self.out_scale, self.out = self.quantize(self.out_float)
@@ -77,6 +101,8 @@ class TestFCINT8NoBiasOneDNNOp(TestFCINT8OneDNNOp):
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = False
+        self.in_num_col_dims = 1
+        self.per_channel_quantize_weight = False
 
     def set_inputs(self):
         self.inputs = {
@@ -89,6 +115,21 @@ class TestFCINT8ForceFP32OutputOneDNNOp(TestFCINT8NoBiasOneDNNOp):
     def configure(self):
         self.use_bias = False
         self.force_fp32_output = True
+        self.in_num_col_dims = 1
+        self.per_channel_quantize_weight = False
+
+
+class TestFCINT8ForceFP32OutputPerChannelWeightOneDNNOp(TestFCINT8OneDNNOp):
+    def configure(self):
+        self.use_bias = True
+        self.force_fp32_output = True
+        self.in_num_col_dims = 1
+        self.per_channel_quantize_weight = True
+
+    def set_shape(self):
+        self.input_shape = (1, 8, 1, 1)
+        self.weight_shape = (8, 10)
+        self.bias_shape = 10
 
 
 if __name__ == "__main__":

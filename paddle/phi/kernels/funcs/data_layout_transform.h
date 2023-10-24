@@ -14,7 +14,7 @@
 
 #pragma once
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  // NOLINT
 #endif
 
@@ -26,7 +26,7 @@
 namespace phi {
 namespace funcs {
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 
 using OneDNNDataType = dnnl::memory::data_type;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;

@@ -86,7 +86,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
                                        int64_t out_size,
                                        DenseTensor* out,
                                        DenseTensor* dst_count = nullptr) {
-  const int& index_size = src_index.dims()[0];
+  const int& index_size = src_index.dims()[0];  // NOLINT
 
   const auto& src_dims = x.dims();
   int64_t memset_size = 1;
@@ -98,7 +98,7 @@ void GraphSendRecvOpKernelLaunchHelper(const Context& ctx,
   } else {
     // Set out dim following out_size.
     std::vector<int64_t> dims_ = phi::vectorize(src_dims);
-    if (dims_.size() > 0) {
+    if (!dims_.empty()) {
       dims_[0] = out_size;
     }
     out->Resize(phi::make_ddim(dims_));

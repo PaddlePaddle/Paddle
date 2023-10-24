@@ -17,8 +17,8 @@ import numbers
 import numpy as np
 
 import paddle
+from paddle.base import framework
 from paddle.distribution import distribution
-from paddle.fluid import framework
 
 
 class Cauchy(distribution.Distribution):
@@ -39,20 +39,20 @@ class Cauchy(distribution.Distribution):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.distribution import Cauchy
+            >>> import paddle
+            >>> from paddle.distribution import Cauchy
 
-            # init Cauchy with float
-            rv = Cauchy(loc=0.1, scale=1.2)
-            print(rv.entropy())
-            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        2.71334577)
+            >>> # init Cauchy with float
+            >>> rv = Cauchy(loc=0.1, scale=1.2)
+            >>> print(rv.entropy())
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    2.71334577)
 
-            # init Cauchy with N-Dim tensor
-            rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-            print(rv.entropy())
-            # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [2.53102422, 3.22417140])
+            >>> # init Cauchy with N-Dim tensor
+            >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+            >>> print(rv.entropy())
+            Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                    [2.53102422, 3.22417140])
     """
 
     def __init__(self, loc, scale, name=None):
@@ -114,32 +114,32 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.sample([10]).shape)
-                # [10]
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.sample([10]).shape)
+                [10]
 
-                # init Cauchy with 0-Dim tensor
-                rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
-                print(rv.sample([10]).shape)
-                # [10]
+                >>> # init Cauchy with 0-Dim tensor
+                >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
+                >>> print(rv.sample([10]).shape)
+                [10]
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.sample([10]).shape)
-                # [10, 2]
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.sample([10]).shape)
+                [10, 2]
 
-                # sample 2-Dim data
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.sample([10, 2]).shape)
-                # [10, 2]
+                >>> # sample 2-Dim data
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.sample([10, 2]).shape)
+                [10, 2]
 
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.sample([10, 2]).shape)
-                # [10, 2, 2]
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.sample([10, 2]).shape)
+                [10, 2, 2]
         """
         name = name if name is not None else (self.name + '_sample')
         with paddle.no_grad():
@@ -159,32 +159,32 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.rsample([10]).shape)
-                # [10]
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.rsample([10]).shape)
+                [10]
 
-                # init Cauchy with 0-Dim tensor
-                rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
-                print(rv.rsample([10]).shape)
-                # [10]
+                >>> # init Cauchy with 0-Dim tensor
+                >>> rv = Cauchy(loc=paddle.full((), 0.1), scale=paddle.full((), 1.2))
+                >>> print(rv.rsample([10]).shape)
+                [10]
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.rsample([10]).shape)
-                # [10, 2]
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.rsample([10]).shape)
+                [10, 2]
 
-                # sample 2-Dim data
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.rsample([10, 2]).shape)
-                # [10, 2]
+                >>> # sample 2-Dim data
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.rsample([10, 2]).shape)
+                [10, 2]
 
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.rsample([10, 2]).shape)
-                # [10, 2, 2]
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.rsample([10, 2]).shape)
+                [10, 2, 2]
         """
         name = name if name is not None else (self.name + '_rsample')
 
@@ -222,32 +222,32 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.prob(paddle.to_tensor(1.5)))
-                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        0.11234467)
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.prob(paddle.to_tensor(1.5)))
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        0.11234467)
 
-                # broadcast to value
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.11234467, 0.01444674])
+                >>> # broadcast to value
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.11234467, 0.01444674])
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.10753712, 0.02195240])
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.10753712, 0.02195240])
 
-                # init Cauchy with N-Dim tensor with broadcast
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.10753712, 0.02195240])
+                >>> # init Cauchy with N-Dim tensor with broadcast
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.10753712, 0.02195240])
         """
         name = self.name + '_prob'
 
@@ -271,32 +271,32 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.log_prob(paddle.to_tensor(1.5)))
-                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        -2.18618369)
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.log_prob(paddle.to_tensor(1.5)))
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        -2.18618369)
 
-                # broadcast to value
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [-2.18618369, -4.23728657])
+                >>> # broadcast to value
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [-2.18618369, -4.23728657])
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [-2.22991920, -3.81887865])
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [-2.22991920, -3.81887865])
 
-                # init Cauchy with N-Dim tensor with broadcast
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [-2.22991920, -3.81887865])
+                >>> # init Cauchy with N-Dim tensor with broadcast
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.log_prob(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [-2.22991920, -3.81887865])
         """
         name = self.name + '_log_prob'
 
@@ -338,32 +338,32 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.cdf(paddle.to_tensor(1.5)))
-                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        0.77443725)
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.cdf(paddle.to_tensor(1.5)))
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        0.77443725)
 
-                # broadcast to value
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.77443725, 0.92502367])
+                >>> # broadcast to value
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.77443725, 0.92502367])
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.80256844, 0.87888104])
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor([0.1, 0.1]), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.80256844, 0.87888104])
 
-                # init Cauchy with N-Dim tensor with broadcast
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.80256844, 0.87888104])
+                >>> # init Cauchy with N-Dim tensor with broadcast
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.cdf(paddle.to_tensor([1.5, 5.1])))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.80256844, 0.87888104])
         """
         name = self.name + '_cdf'
 
@@ -399,20 +399,20 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                # init Cauchy with float
-                rv = Cauchy(loc=0.1, scale=1.2)
-                print(rv.entropy())
-                # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        2.71334577)
+                >>> # init Cauchy with float
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> print(rv.entropy())
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        2.71334577)
 
-                # init Cauchy with N-Dim tensor
-                rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
-                print(rv.entropy())
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [2.53102422, 3.22417140])
+                >>> # init Cauchy with N-Dim tensor
+                >>> rv = Cauchy(loc=paddle.to_tensor(0.1), scale=paddle.to_tensor([1.0, 2.0]))
+                >>> print(rv.entropy())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [2.53102422, 3.22417140])
 
         """
         name = self.name + '_entropy'
@@ -438,14 +438,14 @@ class Cauchy(distribution.Distribution):
 
             .. code-block:: python
 
-                import paddle
-                from paddle.distribution import Cauchy
+                >>> import paddle
+                >>> from paddle.distribution import Cauchy
 
-                rv = Cauchy(loc=0.1, scale=1.2)
-                rv_other = Cauchy(loc=paddle.to_tensor(1.2), scale=paddle.to_tensor([2.3, 3.4]))
-                print(rv.kl_divergence(rv_other))
-                # Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                #        [0.19819736, 0.31532931])
+                >>> rv = Cauchy(loc=0.1, scale=1.2)
+                >>> rv_other = Cauchy(loc=paddle.to_tensor(1.2), scale=paddle.to_tensor([2.3, 3.4]))
+                >>> print(rv.kl_divergence(rv_other))
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                        [0.19819736, 0.31532931])
         """
         name = self.name + '_kl_divergence'
 

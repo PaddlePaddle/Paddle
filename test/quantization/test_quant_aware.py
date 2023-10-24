@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 import os
 import unittest
 
@@ -20,6 +21,8 @@ import numpy as np
 import paddle
 from paddle.nn.initializer import KaimingUniform
 from paddle.static.quantization.quanter import convert, quant_aware
+
+logging.basicConfig(level="INFO", format="%(message)s")
 
 train_parameters = {
     "input_size": [3, 224, 224],
@@ -299,7 +302,7 @@ class TestQuantAwareCase(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'train iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -319,7 +322,7 @@ class TestQuantAwareCase(StaticCase):
                 )
                 iter += 1
                 if iter % 100 == 0:
-                    print(
+                    logging.info(
                         'eval iter={}, avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                             iter, cost, top1, top5
                         )
@@ -329,7 +332,7 @@ class TestQuantAwareCase(StaticCase):
                 result[2].append(top5)
                 if stop_iter is not None and iter == stop_iter:
                     break
-            print(
+            logging.info(
                 ' avg loss {}, acc_top1 {}, acc_top5 {}'.format(
                     np.mean(result[0]), np.mean(result[1]), np.mean(result[2])
                 )
@@ -355,8 +358,8 @@ class TestQuantAwareCase(StaticCase):
 
         top1_2, top5_2 = test(convert_eval_prog)
         # values before quantization and after quantization should be close
-        print(f"before quantization: top1: {top1_1}, top5: {top5_1}")
-        print(f"after quantization: top1: {top1_2}, top5: {top5_2}")
+        logging.info(f"before quantization: top1: {top1_1}, top5: {top5_1}")
+        logging.info(f"after quantization: top1: {top1_2}, top5: {top5_2}")
 
         convert_op_nums_1, convert_quant_op_nums_1 = self.get_convert_op_number(
             convert_eval_prog
@@ -382,7 +385,7 @@ class TestQuantAwareCase(StaticCase):
         # self.assertEqual(convert_quant_op_nums_1, convert_quant_op_nums_2)
 
     def get_op_number(self, prog):
-        graph = paddle.fluid.framework.IrGraph(
+        graph = paddle.base.framework.IrGraph(
             paddle.framework.core.Graph(prog.desc), for_test=False
         )
         quant_op_nums = 0
@@ -395,7 +398,7 @@ class TestQuantAwareCase(StaticCase):
         return op_nums, quant_op_nums
 
     def get_convert_op_number(self, prog):
-        graph = paddle.fluid.framework.IrGraph(
+        graph = paddle.base.framework.IrGraph(
             paddle.framework.core.Graph(prog.desc), for_test=True
         )
         quant_op_nums = 0

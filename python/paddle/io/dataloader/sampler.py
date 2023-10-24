@@ -44,34 +44,39 @@ class Sampler:
 
         .. code-block:: python
 
-            from paddle.io import Dataset, Sampler
+            >>> from paddle.io import Dataset, Sampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> class MySampler(Sampler):
+            ...     def __init__(self, data_source):
+            ...         self.data_source = data_source
+            ...
+            ...     def __iter__(self):
+            ...         return iter(range(len(self.data_source)))
+            ...
+            ...     def __len__(self):
+            ...         return len(self.data_source)
+            ...
+            >>> sampler = MySampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            class MySampler(Sampler):
-                def __init__(self, data_source):
-                    self.data_source = data_source
-
-                def __iter__(self):
-                    return iter(range(len(self.data_source)))
-
-                def __len__(self):
-                    return len(self.data_source)
-
-            sampler = MySampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
+            >>> for index in sampler:
+            ...     print(index)
+            0
+            1
+            2
+            ...
+            99
 
     see `paddle.io.BatchSampler`
     see `paddle.io.DataLoader`
@@ -105,24 +110,29 @@ class SequenceSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import Dataset, SequenceSampler
+            >>> from paddle.io import Dataset, SequenceSampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> sampler = SequenceSampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            sampler = SequenceSampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
+            >>> for index in sampler:
+            ...     print(index)
+            0
+            1
+            2
+            ...
+            99
 
     see `paddle.io.Sampler`
     """
@@ -160,25 +170,31 @@ class RandomSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import Dataset, RandomSampler
+            >>> import numpy as np
+            >>> from paddle.io import Dataset, RandomSampler
 
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> np.random.seed(2023)
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> sampler = RandomSampler(data_source=RandomDataset(100))
 
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            sampler = RandomSampler(data_source=RandomDataset(100))
-
-            for index in sampler:
-                print(index)
-
+            >>> for index in sampler:
+            ...     print(index)
+            56
+            12
+            68
+            ...
+            87
     """
 
     def __init__(
@@ -192,7 +208,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.replacement, bool):
             raise TypeError(
                 "expect boolean value for replacement, but got "
-                "replacement={}".format(self.replacement)
+                f"replacement={self.replacement}"
             )
 
         if self._num_samples is not None and not replacement:
@@ -203,7 +219,7 @@ class RandomSampler(Sampler):
         if not isinstance(self.num_samples, int) or self.num_samples <= 0:
             raise ValueError(
                 "num_samples should be a positive integer, "
-                "but got num_samples={}".format(self.num_samples)
+                f"but got num_samples={self.num_samples}"
             )
 
     @property
@@ -288,14 +304,22 @@ class WeightedRandomSampler(Sampler):
 
         .. code-block:: python
 
-            from paddle.io import WeightedRandomSampler
+            >>> import numpy as np
+            >>> from paddle.io import WeightedRandomSampler
 
-            sampler = WeightedRandomSampler(weights=[0.1, 0.3, 0.5, 0.7, 0.2],
-                                            num_samples=5,
-                                            replacement=True)
-
-            for index in sampler:
-                print(index)
+            >>> np.random.seed(2023)
+            >>> sampler = WeightedRandomSampler(
+            ...     weights=[0.1, 0.3, 0.5, 0.7, 0.2],
+            ...     num_samples=5,
+            ...     replacement=True
+            ... )
+            >>> for index in sampler:
+            ...     print(index)
+            2
+            4
+            3
+            1
+            1
     """
 
     def __init__(self, weights, num_samples, replacement=True):

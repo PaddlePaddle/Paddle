@@ -25,4 +25,11 @@ void IndexSelectKernel(const Context& ctx,
                        int dim,
                        DenseTensor* output);
 
+template <typename Context>
+void IndexSelectStridedKernel(const Context& ctx,
+                              const DenseTensor& x,
+                              int64_t index,
+                              int dim,
+                              DenseTensor* output);
+
 }  // namespace phi

@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <gtest/gtest.h>  // NOLINT
+#include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
@@ -95,7 +96,11 @@ TEST(CustomPluginCreater, StaticShapePlugin) {
 
   // init trt engine
   std::unique_ptr<TensorRTEngine> engine_;
-  engine_.reset(new TensorRTEngine(5, 1 << 15));
+
+  TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = 5;
+  params.max_workspace_size = 1 << 15;
+  engine_ = std::make_unique<TensorRTEngine>(params);
   engine_->InitNetwork();
 
   engine_->DeclareInput(
@@ -173,15 +178,10 @@ TEST(CustomPluginCreater, DynamicShapePlugin) {
   std::map<std::string, std::vector<int>> optim_input_shape = {
       {"x", {1, 2, 5, 5}}};
 
-  engine_.reset(new TensorRTEngine(5,
-                                   1 << 15,
-                                   phi::DataType::FLOAT32,
-                                   nullptr,
-                                   0,
-                                   true,
-                                   min_input_shape,
-                                   max_input_shape,
-                                   optim_input_shape));
+  TensorRTEngine::ConstructionParams params;
+  params.max_batch_size = 5;
+  params.max_workspace_size = 1 << 15;
+  engine_ = std::make_unique<TensorRTEngine>(params);
   engine_->InitNetwork();
 
   LOG(INFO) << "with_dynamic_shape " << engine_->with_dynamic_shape();

@@ -15,7 +15,7 @@
 import os
 
 import paddle
-from paddle.fluid.framework import Program, static_only
+from paddle.base.framework import Program, static_only
 from paddle.framework import core, dygraph_not_support
 
 
@@ -37,16 +37,17 @@ def _load_distributed_persistables(executor, dirname, main_program=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.base as base
 
-            paddle.enable_static()
-            exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
-            t = paddle.distributed.transpiler.DistributeTranspiler()
-            t.transpile(...)
-            pserver_prog = t.get_pserver_program(...)
-            _load_distributed_persistables(executor=exe, dirname=param_path, main_program=pserver_prog)
+            >>> paddle.enable_static()
+            >>> exe = base.Executor(base.CPUPlace())
+            >>> param_path = "./my_paddle_model"
+            >>> t = paddle.distributed.transpiler.DistributeTranspiler()
+            >>> t.transpile(...)
+            >>> pserver_prog = t.get_pserver_program(...)
+            >>> _load_distributed_persistables(executor=exe, dirname=param_path, main_program=pserver_prog)
     """
 
     def __is_distributed_part_var(varname):
@@ -160,15 +161,15 @@ def load_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> import paddle
+            >>> import paddle.base as base
 
-            paddle.enable_static()
-            exe = fluid.Executor(fluid.CPUPlace())
-            param_path = "./my_paddle_model"
-            prog = fluid.default_main_program()
-            paddle.distributed.io.load_persistables(executor=exe, dirname=param_path,
-                                       main_program=None)
+            >>> paddle.enable_static()
+            >>> exe = base.Executor(base.CPUPlace())
+            >>> param_path = "./my_paddle_model"
+            >>> prog = base.default_main_program()
+            >>> paddle.distributed.io.load_persistables(executor=exe, dirname=param_path,
+            ...                             main_program=None)
     """
 
     if main_program and main_program._is_distributed:
@@ -207,16 +208,17 @@ def _save_distributed_persistables(executor, dirname, main_program):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            param_path = "./my_paddle_model"
-            t = paddle.distributed.transpiler.DistributeTranspiler()
-            t.transpile(...)
-            train_program = t.get_trainer_program()
-            _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
+            >>> paddle.enable_static()
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> param_path = "./my_paddle_model"
+            >>> t = paddle.distributed.transpiler.DistributeTranspiler()
+            >>> t.transpile(...)
+            >>> train_program = t.get_trainer_program()
+            >>> _save_distributed_persistables(executor=exe, dirname=param_path, main_program=train_program)
     """
 
     def __save_remote_params(executor, dirname, remote_params_map):
@@ -366,12 +368,16 @@ def is_persistable(var):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
 
-            paddle.enable_static()
-            param = fluid.default_main_program().global_block().var('fc.b')
-            res = fluid.io.is_persistable(param)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> image = paddle.static.data(
+            ...     name='image', shape=[None, 28], dtype='float32')
+            >>> bias_attr = paddle.ParamAttr('fc.b')
+            >>> fc = paddle.static.nn.fc(image, size=10, bias_attr=bias_attr)
+            >>> param = paddle.static.default_main_program().global_block().var('fc.b')
+            >>> res = paddle.distributed.io.is_persistable(param)
+
     """
     if (
         var.desc.type() == core.VarDesc.VarType.FEED_MINIBATCH
@@ -420,24 +426,24 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            dir_path = "./my_paddle_model"
-            file_name = "persistables"
-            image = paddle.static..data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            feeder = paddle.static.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
+            >>> paddle.enable_static()
+            >>> dir_path = "./my_paddle_model"
+            >>> file_name = "persistables"
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> feeder = paddle.base.DataFeeder(feed_list=[image, label], place=paddle.CPUPlace())
 
-            predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
-            loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
-            avg_loss = paddle.mean(loss)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            paddle.distributed.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
-            # The persistables variables weights and bias in the fc layer of the network
-            # are going to be saved in the same file named "persistables" in the path
-            # "./my_paddle_model"
+            >>> predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
+            >>> loss = paddle.nn.functional.cross_entropy(input=predict, label=label)
+            >>> avg_loss = paddle.mean(loss)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> paddle.distributed.io.save_persistables(executor=exe, dirname=dir_path, filename=file_name)
+            >>> # The persistables variables weights and bias in the fc layer of the network
+            >>> # are going to be saved in the same file named "persistables" in the path
+            >>> # "./my_paddle_model"
     """
     if main_program and main_program._is_distributed:
         return _save_distributed_persistables(
@@ -465,7 +471,7 @@ def load_inference_model_distributed(
     """
     Load the inference model from a given directory. By this API, you can get the model
     structure(Inference Program) and model parameters. If you just want to load
-    parameters of the pre-trained model, please use the :ref:`api_fluid_io_load_params` API.
+    parameters of the pre-trained model, please use the :ref:`api_base_io_load_params` API.
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
@@ -504,53 +510,53 @@ def load_inference_model_distributed(
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
-            import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import numpy as np
 
-            paddle.enable_static()
-            # Build the model
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(main_prog, startup_prog):
-                data = fluid.layers.data(name="img", shape=[64, 784], append_batch_size=False)
-                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
-                b = paddle.create_parameter(shape=[200], dtype='float32')
-                hidden_w = paddle.matmul(x=data, y=w)
-                hidden_b = fluid.layers.elementwise_add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup_prog)
+            >>> paddle.enable_static()
+            >>> # Build the model
+            >>> main_prog = paddle.static.Program()
+            >>> startup_prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_prog, startup_prog):
+            ...     data = paddle.static.data(name="img", shape=[64, 784], append_batch_size=False)
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
+            ...     hidden_w = paddle.matmul(x=data, y=w)
+            ...     hidden_b = base.layers.elementwise_add(hidden_w, b)
+            >>> place = base.CPUPlace()
+            >>> exe = base.Executor(place)
+            >>> exe.run(startup_prog)
 
-            # Save the inference model
-            path = "./infer_model"
-            fluid.io.save_inference_model(dirname=path, feeded_var_names=['img'],
-                         target_vars=[hidden_b], executor=exe, main_program=main_prog)
-
-            # Demo one. Not need to set the distributed look up table, because the
-            # training doesn't use a distributed look up table.
-            [inference_program, feed_target_names, fetch_targets] = (
-                paddle.distributed.io.load_inference_model_distributed(dirname=path, executor=exe))
-            tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
-            results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
-
-            # Demo two. If the training uses a distributed look up table, the pserver
-            # endpoints list should be supported when loading the inference model.
-            # The below is just an example.
-            endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
-            [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
-                paddle.distributed.io.load_inference_model_distributed(dirname=path,
-                                              executor=exe,
-                                              pserver_endpoints=endpoints))
-
-            # In this example, the inference program was saved in the file
-            # "./infer_model/__model__" and parameters were saved in
-            # separate files under the directory "./infer_model".
-            # By the inference program, feed_target_names and
-            # fetch_targets, we can use an executor to run the inference
-            # program for getting the inference result.
+            >>> # Save the inference model
+            >>> path = "./infer_model"
+            >>> base.io.save_inference_model(dirname=path, feeded_var_names=['img'],
+            ...                 target_vars=[hidden_b], executor=exe, main_program=main_prog)
+            ...
+            >>> # Demo one. Not need to set the distributed look up table, because the
+            >>> # training doesn't use a distributed look up table.
+            >>> [inference_program, feed_target_names, fetch_targets] = (
+            ...     paddle.distributed.io.load_inference_model_distributed(dirname=path, executor=exe))
+            >>> tensor_img = np.array(np.random.random((1, 64, 784)), dtype=np.float32)
+            >>> results = exe.run(inference_program,
+            ...                 feed={feed_target_names[0]: tensor_img},
+            ...                 fetch_list=fetch_targets)
+            ...
+            >>> # Demo two. If the training uses a distributed look up table, the pserver
+            >>> # endpoints list should be supported when loading the inference model.
+            >>> # The below is just an example.
+            >>> endpoints = ["127.0.0.1:2023","127.0.0.1:2024"]
+            >>> [dist_inference_program, dist_feed_target_names, dist_fetch_targets] = (
+            ...     paddle.distributed.io.load_inference_model_distributed(dirname=path,
+            ...                                     executor=exe,
+            ...                                     pserver_endpoints=endpoints))
+            ...
+            >>> # In this example, the inference program was saved in the file
+            >>> # "./infer_model/__model__" and parameters were saved in
+            >>> # separate files under the directory "./infer_model".
+            >>> # By the inference program, feed_target_names and
+            >>> # fetch_targets, we can use an executor to run the inference
+            >>> # program for getting the inference result.
     """
     load_from_memory = False
     if dirname is not None:

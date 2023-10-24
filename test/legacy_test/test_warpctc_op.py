@@ -16,12 +16,12 @@ import sys
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 CUDA_BLOCK_SIZE = 32
 
@@ -590,7 +590,6 @@ class TestWarpCTCOpError(unittest.TestCase):
 
     def test_dygraph_errors(self):
         def test_dygraph_with_lod():
-
             logits = np.random.uniform(0.1, 1.0, [20, 15]).astype("float32")
             # labels should not be blank
             labels = np.random.randint(0, 15 - 1, [15, 1], dtype="int32")

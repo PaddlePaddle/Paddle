@@ -13,17 +13,15 @@
 # limitations under the License.
 
 import copy
+import logging
 import multiprocessing
-
-# NOTE: queue has a different name in python2 and python3
 import sys
 import time
 import warnings
 
 import paddle
-from paddle.fluid.framework import logging
 
-from ..fluid.framework import (
+from ..base.framework import (
     _current_expected_place,
     _get_paddle_place,
     _get_paddle_place_list,
@@ -234,7 +232,7 @@ class DataLoader:
 
     For :code:`batch_sampler` please see :code:`paddle.io.BatchSampler`
 
-    .. note::
+    Notes:
         GPU tensor operation is not supported in subprocess currently,
         please don't use GPU tensor operations in pipeline which will
         be performed in subprocess, such as dataset transforms, collte_fn,
@@ -250,7 +248,7 @@ class DataLoader:
     :attr:`collate_fn` or :attr:`default_collate_fn`.
 
 
-    .. note::
+    Notes:
         When automatic batching is disabled, :attr:`default_collate_fn` will
         do nothing to data from dataset.
 
@@ -321,68 +319,66 @@ class DataLoader:
 
         .. code-block:: python
 
-            import numpy as np
+            >>> import numpy as np
 
-            import paddle
-            import paddle.nn as nn
-            import paddle.nn.functional as F
-            from paddle.io import Dataset, BatchSampler, DataLoader
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.nn.functional as F
+            >>> from paddle.io import Dataset, BatchSampler, DataLoader
 
-            BATCH_NUM = 20
-            BATCH_SIZE = 16
-            EPOCH_NUM = 4
+            >>> BATCH_NUM = 20
+            >>> BATCH_SIZE = 16
+            >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> # define a random dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+            >>> class SimpleNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...
+            ...     def forward(self, image, label=None):
+            ...         return self.fc(image)
+            ...
+            >>> simple_net = SimpleNet()
+            >>> opt = paddle.optimizer.SGD(learning_rate=1e-3,
+            ...                             parameters=simple_net.parameters())
+            ...
+            >>> loader = DataLoader(dataset,
+            ...                     batch_size=BATCH_SIZE,
+            ...                     shuffle=True,
+            ...                     drop_last=True,
+            ...                     num_workers=2)
+            ...
+            >>> for e in range(EPOCH_NUM):
+            ...     for i, (image, label) in enumerate(loader()):
+            ...         out = simple_net(image)
+            ...         loss = F.cross_entropy(out, label)
+            ...         avg_loss = paddle.mean(loss)
+            ...         avg_loss.backward()
+            ...         opt.minimize(avg_loss)
+            ...         simple_net.clear_gradients()
+            ...         print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
 
-                def __len__(self):
-                    return self.num_samples
-
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-
-            class SimpleNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self.fc = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                def forward(self, image, label=None):
-                    return self.fc(image)
-
-            simple_net = SimpleNet()
-            opt = paddle.optimizer.SGD(learning_rate=1e-3,
-                                      parameters=simple_net.parameters())
-
-            loader = DataLoader(dataset,
-                                batch_size=BATCH_SIZE,
-                                shuffle=True,
-                                drop_last=True,
-                                num_workers=2)
-
-            for e in range(EPOCH_NUM):
-                for i, (image, label) in enumerate(loader()):
-                    out = simple_net(image)
-                    loss = F.cross_entropy(out, label)
-                    avg_loss = paddle.mean(loss)
-                    avg_loss.backward()
-                    opt.minimize(avg_loss)
-                    simple_net.clear_gradients()
-                    print("Epoch {} batch {}: loss = {}".format(e, i, np.mean(loss.numpy())))
-
-
-    .. note::
+    Notes:
         For reading iterable dataset with multiprocess Dataloader,
         please see :code:`paddle.io.IterableDataset`
-
     """
 
     def __init__(
@@ -450,9 +446,7 @@ class DataLoader:
             self.dataset_kind = _DatasetKind.ITER
             if shuffle:
                 raise ValueError(
-                    "IterableDataset not support shuffle, but got shuffle={}".format(
-                        shuffle
-                    )
+                    f"IterableDataset not support shuffle, but got shuffle={shuffle}"
                 )
             if batch_sampler is not None:
                 raise ValueError(

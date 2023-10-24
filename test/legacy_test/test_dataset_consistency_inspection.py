@@ -21,12 +21,12 @@ import tempfile
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 # paddle.enable_static()
-# fluid.disable_dygraph()
-fluid.disable_dygraph()
+# base.disable_dygraph()
+base.disable_dygraph()
 url_schema_len = 5
 query_schema = [
     'Q_query_basic',

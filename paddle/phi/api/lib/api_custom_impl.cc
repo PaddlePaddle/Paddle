@@ -103,7 +103,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
     temp_dense_tensots.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
       if (phi::DenseTensor::classof(x[i].impl().get())) {
-        temp_dense_tensots.push_back(PrepareData(x[i], kernel.InputAt(0), {}));
+        temp_dense_tensots.push_back(
+            PrepareData(x[i], kernel.InputAt(0), {}, false));
         input_x[i] = temp_dense_tensots.back().get();
       } else {
         input_x[i] = x[i].impl().get();
@@ -167,9 +168,9 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
-    auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, false);
+    auto input_weight = PrepareData(weight, kernel.InputAt(1), {}, false);
+    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {}, false);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
@@ -222,9 +223,9 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, false);
     auto input_weight = TensorToSelectedRows(weight);
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {}, false);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);

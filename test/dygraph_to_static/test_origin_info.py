@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import sys
 import unittest
+
+from dygraph_to_static_util import dy2static_unittest
 
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import DygraphToStaticAst
@@ -23,11 +26,10 @@ from paddle.jit.dy2static.origin_info import (
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
-    gast,
-    inspect,
     unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 def simple_func(x):
@@ -54,6 +56,7 @@ def decorated_func2(x):
     return x
 
 
+@dy2static_unittest
 class TestOriginInfo(unittest.TestCase):
     def setUp(self):
         self.set_test_func()
@@ -116,8 +119,8 @@ class TestOriginInfo(unittest.TestCase):
 
         for i in range(self.line_num):
             static_lineno = self.static_abs_lineno_list[i]
-            staic_loc = Location(static_filepath, static_lineno)
-            self.assertIn(staic_loc.line_location, origin_info_map)
+            static_loc = Location(static_filepath, static_lineno)
+            self.assertIn(static_loc.line_location, origin_info_map)
 
             dy_lineno = dygraph_abs_lineno_list[i]
             dy_col_offset = self.dy_abs_col_offset[i]
@@ -129,7 +132,7 @@ class TestOriginInfo(unittest.TestCase):
                 code,
             )
             self.assertEqual(
-                str(origin_info_map[staic_loc.line_location]), str(origin_info)
+                str(origin_info_map[static_loc.line_location]), str(origin_info)
             )
 
     def test_attach_origin_info(self):

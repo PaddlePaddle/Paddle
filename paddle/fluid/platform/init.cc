@@ -57,12 +57,13 @@ limitations under the License. */
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/custom_kernel.h"
 
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+#include "paddle/fluid/platform/device/gpu/gpu_resource_pool.h"
+#endif
+
 PHI_DECLARE_int32(paddle_num_threads);
-PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size,
-    1,
-    "Multiple of the CUPTI device buffer size. If the timestamps have "
-    "been dropped when you are profiling, try increasing this value.");
+PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {
@@ -87,7 +88,7 @@ bool InitGflags(std::vector<std::string> args) {
     args.insert(args.begin(), "dummy");
     std::vector<char *> argv;
     std::string line;
-    int argc = args.size();
+    int argc = static_cast<int>(args.size());
     for (auto &arg : args) {
       argv.push_back(const_cast<char *>(arg.data()));
       line += arg;
@@ -97,8 +98,8 @@ bool InitGflags(std::vector<std::string> args) {
             << ", Init commandline: " << line;
 
     char **arr = argv.data();
-    ::GFLAGS_NAMESPACE::AllowCommandLineReparsing();
-    ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &arr, true);
+    paddle::flags::AllowUndefinedFlags();
+    paddle::flags::ParseCommandLineFlags(&argc, &arr);
     successed = true;
 
     VLOG(1) << "After Parse: argc is " << argc;
@@ -141,7 +142,7 @@ void LoadCustomDevice(const std::string &library_dir) {
   LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
   std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
   for (const auto &lib_path : libs) {
-    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
         platform::errors::InvalidArgument(
@@ -200,22 +201,22 @@ void InitDevices() {
 void InitDevices(const std::vector<int> devices) {
   std::vector<platform::Place> places;
 
-  for (size_t i = 0; i < devices.size(); ++i) {
+  for (auto device : devices) {
     // In multi process multi gpu mode, we may have gpuid = 7
     // but count = 1.
-    if (devices[i] < 0) {
+    if (device < 0) {
       LOG(WARNING) << "Invalid devices id.";
       continue;
     }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    places.emplace_back(platform::CUDAPlace(devices[i]));
+    places.emplace_back(platform::CUDAPlace(device));
 #endif
 #ifdef PADDLE_WITH_XPU
-    places.emplace_back(platform::XPUPlace(devices[i]));
+    places.emplace_back(platform::XPUPlace(device));
 #endif
 #ifdef PADDLE_WITH_IPU
-    places.emplace_back(platform::IPUPlace(devices[i]));
+    places.emplace_back(platform::IPUPlace(device));
 #endif
   }
   places.emplace_back(platform::CPUPlace());
@@ -248,7 +249,7 @@ void InitDevices(const std::vector<int> devices) {
 #endif
   platform::DeviceContextPool::Init(places);
 
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   platform::SetNumThreads(FLAGS_paddle_num_threads);
 #endif
 }
@@ -256,7 +257,7 @@ void InitDevices(const std::vector<int> devices) {
 #ifndef _WIN32
 // Description Quoted from
 // https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/signal.h.html
-const struct {
+const struct {  // NOLINT
   int signal_number;
   const char *name;
   const char *error_string;
@@ -276,11 +277,9 @@ bool StartsWith(const char *str, const char *prefix) {
 }
 
 const char *ParseSignalErrorString(const std::string &str) {
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    if (std::string::npos != str.find(SignalErrorStrings[i].name)) {
-      return SignalErrorStrings[i].error_string;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    if (std::string::npos != str.find(SignalErrorString.name)) {
+      return SignalErrorString.error_string;
     }
   }
   return "Unknown signal";
@@ -337,15 +336,13 @@ void SignalHandle(const char *data, int size) {
 
 void DisableSignalHandler() {
 #ifndef _WIN32
-  for (size_t i = 0;
-       i < (sizeof(SignalErrorStrings) / sizeof(*(SignalErrorStrings)));
-       ++i) {
-    int signal_number = SignalErrorStrings[i].signal_number;
+  for (const auto &SignalErrorString : SignalErrorStrings) {
+    int signal_number = SignalErrorString.signal_number;
     struct sigaction sig_action;
     memset(&sig_action, 0, sizeof(sig_action));
     sigemptyset(&sig_action.sa_mask);
     sig_action.sa_handler = SIG_DFL;
-    sigaction(signal_number, &sig_action, NULL);
+    sigaction(signal_number, &sig_action, nullptr);
   }
 #endif
 }
@@ -364,10 +361,10 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
   HANDLE hDumpFile = CreateFile(lpstrDumpFilePathName,
                                 GENERIC_WRITE,
                                 0,
-                                NULL,
+                                nullptr,
                                 CREATE_ALWAYS,
                                 FILE_ATTRIBUTE_NORMAL,
-                                NULL);
+                                nullptr);
   MINIDUMP_EXCEPTION_INFORMATION dumpInfo;
   dumpInfo.ExceptionPointers = pException;
   dumpInfo.ThreadId = GetCurrentThreadId();
@@ -381,8 +378,8 @@ void CreateDumpFile(LPCSTR lpstrDumpFilePathName,
                      hDumpFile,
                      MiniDumpWithPrivateReadWriteMemory,
                      &dumpInfo,
-                     NULL,
-                     NULL);
+                     nullptr,
+                     nullptr);
   CloseHandle(hDumpFile);
 }
 
@@ -444,6 +441,41 @@ void InitMemoryMethod() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     memory_method->gpu_memory_usage = paddle::platform::GpuMemoryUsage;
 #endif
+
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+    // TODO(GhostScreaming): Use phi methods later.
+    memory_method->get_allocator =
+        [](int device_id, phi::gpuStream_t stream) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPlace(device_id), stream)
+          .get();
+    };
+    memory_method->get_host_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_zero_allocator = [](int device_id) -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::GPUPlace(device_id))
+          .get();
+    };
+    memory_method->get_host_zero_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetZeroAllocator(phi::CPUPlace())
+          .get();
+    };
+    memory_method->get_pinned_allocator = []() -> phi::Allocator * {
+      return paddle::memory::allocation::AllocatorFacade::Instance()
+          .GetAllocator(phi::GPUPinnedPlace())
+          .get();
+    };
+    memory_method->get_new_cuda_event = [](int device_id) {
+      return paddle::platform::CudaEventResourcePool::Instance().New(device_id);
+    };
+#endif
+
     memory_method->emplace_device_contexts =
         paddle::platform::EmplaceDeviceContexts;
     memory_method->init_devices = InitDevices;

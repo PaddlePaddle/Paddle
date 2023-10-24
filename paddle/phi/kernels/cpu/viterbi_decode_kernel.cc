@@ -188,8 +188,8 @@ void ViterbiDecodeKernel(const Context& dev_ctx,
   DenseTensor tpath =
       int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
   auto batch_path = funcs::Unbind(tpath);
-  for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
-    it->Resize({batch_size});
+  for (auto& item : batch_path) {
+    item.Resize({batch_size});
   }
   // create and init required tensor
   DenseTensor input_exp =

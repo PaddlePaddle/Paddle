@@ -25,13 +25,15 @@
 namespace phi {
 
 template <typename T, typename Context>
-void SigmoidCrossEntropyWithLogitsGradKernel(const Context& dev_ctx,
-                                             const DenseTensor& x,
-                                             const DenseTensor& label,
-                                             const DenseTensor& out_grad,
-                                             bool normalize,
-                                             int ignore_index,
-                                             DenseTensor* in_grad) {
+void SigmoidCrossEntropyWithLogitsGradKernel(
+    const Context& dev_ctx,
+    const DenseTensor& x,
+    const DenseTensor& label,
+    const paddle::optional<DenseTensor>& pos_weight,
+    const DenseTensor& out_grad,
+    bool normalize,
+    int ignore_index,
+    DenseTensor* in_grad) {
   using XPUType = typename XPUTypeTrait<T>::Type;
   PADDLE_ENFORCE_EQ(x.place().GetType() == phi::AllocationType::XPU,
                     true,
@@ -44,7 +46,12 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context& dev_ctx,
   int* hit = RAII_GUARD.alloc_l3_or_gm<int>(x.numel());
   PADDLE_ENFORCE_NOT_NULL(
       hit, errors::External("XPU alloc_l3_or_gm returns nullptr"));
-
+  auto pos_weight_data =
+      (pos_weight.get_ptr() == nullptr ? nullptr
+                                       : pos_weight.get_ptr()->data<T>());
+  // int sigmoid_cross_entropy_with_logits_grad(Context* ctx, const T* x, const
+  // T* label, const T* dy, T* dx, int64_t m, int64_t n, TH* hit = nullptr,
+  // int64_t ignore_index = -100, const T* pos_weight = nullptr);
   int r = xpu::sigmoid_cross_entropy_with_logits_grad(
       dev_ctx.x_context(),
       reinterpret_cast<const XPUType*>(x.data<T>()),
@@ -54,7 +61,8 @@ void SigmoidCrossEntropyWithLogitsGradKernel(const Context& dev_ctx,
       1,
       x.numel(),
       hit,
-      ignore_index);
+      ignore_index,
+      reinterpret_cast<const XPUType*>(pos_weight_data));
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "sigmoid_cross_entropy_with_logits");
   if (normalize) {
     int* non_zero = RAII_GUARD.alloc_l3_or_gm<int>(1);

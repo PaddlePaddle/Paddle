@@ -1095,7 +1095,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
       if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
         if (with_interleaved) {
@@ -1111,7 +1111,7 @@ void TrtMultiHeadMatmulV2FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(
@@ -1510,7 +1510,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
     std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
     std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-    if (use_varseqlen && pos_id != "" && mask_id != "") {
+    if (use_varseqlen && !pos_id.empty() && !mask_id.empty()) {
       if (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
           graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) {
         if (with_interleaved) {
@@ -1526,7 +1526,7 @@ void TrtMultiHeadMatmulV3FusePass::ApplyImpl(Graph* graph) const {
                                     "preln_embedding_eltwise_layernorm_fuse_"
                                     "pass. please use no_varseqlen"));
       }
-    } else if (!use_varseqlen && pos_id == "") {
+    } else if (!use_varseqlen && pos_id.empty()) {
       VLOG(3) << "start no_varseqlen_trt_multihead_matmul_fuse_pass";
     } else {
       PADDLE_THROW(

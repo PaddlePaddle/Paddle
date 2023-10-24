@@ -59,13 +59,13 @@ class WMT16(Dataset):
 
     Args:
         data_file(str): path to data tar file, can be set None if
-            :attr:`download` is True. Default None
-        mode(str): 'train', 'test' or 'val'. Default 'train'
+            :attr:`download` is True. Default None.
+        mode(str): 'train', 'test' or 'val'. Default 'train'.
         src_dict_size(int): word dictionary size for source language word. Default -1.
         trg_dict_size(int): word dictionary size for target language word. Default -1.
         lang(str): source language, 'en' or 'de'. Default 'en'.
         download(bool): whether to download dataset automatically if
-            :attr:`data_file` is not set. Default True
+            :attr:`data_file` is not set. Default True.
 
     Returns:
         Dataset: Instance of WMT16 dataset. The instance of dataset has 3 fields:
@@ -77,30 +77,37 @@ class WMT16(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.text.datasets import WMT16
+            >>> import paddle
+            >>> from paddle.text.datasets import WMT16
 
-            class SimpleNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
+            >>> class SimpleNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...
+            ...     def forward(self, src_ids, trg_ids, trg_ids_next):
+            ...         return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
 
-                def forward(self, src_ids, trg_ids, trg_ids_next):
-                    return paddle.sum(src_ids), paddle.sum(trg_ids), paddle.sum(trg_ids_next)
+            >>> wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
 
-            paddle.disable_static()
-
-            wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
-
-            for i in range(10):
-                src_ids, trg_ids, trg_ids_next = wmt16[i]
-                src_ids = paddle.to_tensor(src_ids)
-                trg_ids = paddle.to_tensor(trg_ids)
-                trg_ids_next = paddle.to_tensor(trg_ids_next)
-
-                model = SimpleNet()
-                src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
-                print(src_ids.numpy(), trg_ids.numpy(), trg_ids_next.numpy())
-
+            >>> for i in range(10):
+            ...     src_ids, trg_ids, trg_ids_next = wmt16[i]
+            ...     src_ids = paddle.to_tensor(src_ids)
+            ...     trg_ids = paddle.to_tensor(trg_ids)
+            ...     trg_ids_next = paddle.to_tensor(trg_ids_next)
+            ...
+            ...     model = SimpleNet()
+            ...     src_ids, trg_ids, trg_ids_next = model(src_ids, trg_ids, trg_ids_next)
+            ...     print(src_ids.item(), trg_ids.item(), trg_ids_next.item())
+            89 32 33
+            79 18 19
+            55 26 27
+            147 36 37
+            106 22 23
+            135 50 51
+            54 43 44
+            217 30 31
+            146 51 52
+            55 24 25
     """
 
     def __init__(
@@ -257,9 +264,9 @@ class WMT16(Dataset):
 
             .. code-block:: python
 
-                from paddle.text.datasets import WMT16
-                wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
-                en_dict = wmt16.get_dict('en')
+                >>> from paddle.text.datasets import WMT16
+                >>> wmt16 = WMT16(mode='train', src_dict_size=50, trg_dict_size=50)
+                >>> en_dict = wmt16.get_dict('en')
 
         """
         dict_size = (

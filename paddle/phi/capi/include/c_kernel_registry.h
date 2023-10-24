@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/phi/capi/include/c_data_type.h"
+#include "paddle/phi/capi/include/c_infer_meta_context.h"
 #include "paddle/phi/capi/include/c_kernel_context.h"
 #include "paddle/phi/capi/include/c_kernel_factory.h"
 
@@ -70,6 +71,15 @@ void PD_RegisterPhiKernel(const char *kernel_name_cstr,
                                               PD_Kernel *),
                           void (*fn)(PD_KernelContext *),
                           void *variadic_kernel_fn);
+
+void PD_RegisterOperator(const char *kernel_name_cstr,
+                         size_t in_nargs,
+                         PD_KernelArgumentType *in_args_type,
+                         size_t attr_nargs,
+                         PD_KernelArgumentType *attr_args_type,
+                         size_t out_nargs,
+                         PD_KernelArgumentType *out_args_type,
+                         void (*infer_shape_fn)(PD_InferMetaContext *));
 
 #ifdef __cplusplus
 }  // extern "C"

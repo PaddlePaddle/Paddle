@@ -40,7 +40,8 @@ void BindGenerator(py::module* m_ptr) {
            [](std::shared_ptr<phi::Generator::GeneratorState>& self) {
              return self->current_seed;
            })
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_CUSTOM_DEVICE) || defined(PADDLE_WITH_XPU)
       // NOTE(shenliang03): Due to the inability to serialize mt19937_64
       // type, resulting in a problem with precision under the cpu.
       .def(py::pickle(
@@ -71,7 +72,7 @@ void BindGenerator(py::module* m_ptr) {
         return ostr.str();
       });
 
-  py::class_<std::mt19937_64>(m, "mt19937_64", "");
+  py::class_<std::mt19937_64>(m, "mt19937_64", "");  // NOLINT
   py::class_<phi::Generator, std::shared_ptr<phi::Generator>>(m, "Generator")
       .def("__init__",
            [](phi::Generator& self) { new (&self) phi::Generator(); })

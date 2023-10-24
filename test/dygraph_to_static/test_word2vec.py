@@ -17,9 +17,13 @@ import random
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 from paddle.nn import Embedding
 
@@ -69,7 +73,6 @@ def build_dict(corpus, min_freq=3):
     id2word_dict[0] = '[oov]'
 
     for word, freq in word_freq_dict:
-
         if freq < min_freq:
             word2id_freq[0] += freq
             continue
@@ -131,7 +134,6 @@ def build_data(
     max_window_size=3,
     negative_sample_num=10,
 ):
-
     dataset = []
 
     for line in corpus:
@@ -177,7 +179,6 @@ for _, (center_word, target_word, label) in zip(range(50), dataset):
 
 
 def build_batch(dataset, batch_size, epoch_num):
-
     center_word_batch = []
     target_word_batch = []
     label_batch = []
@@ -228,7 +229,7 @@ class SkipGram(paddle.nn.Layer):
         self.embedding = Embedding(
             self.vocab_size,
             self.embedding_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
@@ -240,7 +241,7 @@ class SkipGram(paddle.nn.Layer):
         self.embedding_out = Embedding(
             self.vocab_size,
             self.embedding_size,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name='embedding_out_para',
                 initializer=paddle.nn.initializer.Uniform(
                     low=-0.5 / self.embedding_size,
@@ -283,20 +284,18 @@ def train(to_static):
     np.random.seed(0)
 
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 1000
-        fluid.default_main_program().random_seed = 1000
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 1000
+        base.default_main_program().random_seed = 1000
 
         skip_gram_model = SkipGram(
             "skip_gram_model", vocab_size, embedding_size
         )
-        adam = fluid.optimizer.AdamOptimizer(
+        adam = paddle.optimizer.Adam(
             learning_rate=learning_rate,
-            parameter_list=skip_gram_model.parameters(),
+            parameters=skip_gram_model.parameters(),
         )
 
         step = 0
@@ -304,9 +303,9 @@ def train(to_static):
         for center_words, target_words, label, eval_words in build_batch(
             dataset, batch_size, epoch_num
         ):
-            center_words_var = fluid.dygraph.to_variable(center_words)
-            target_words_var = fluid.dygraph.to_variable(target_words)
-            label_var = fluid.dygraph.to_variable(label)
+            center_words_var = base.dygraph.to_variable(center_words)
+            target_words_var = base.dygraph.to_variable(target_words)
+            label_var = base.dygraph.to_variable(label)
             pred, loss = skip_gram_model(
                 center_words_var, target_words_var, label_var
             )
@@ -322,7 +321,9 @@ def train(to_static):
         return np.array(ret)
 
 
+@dy2static_unittest
 class TestWord2Vec(unittest.TestCase):
+    @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

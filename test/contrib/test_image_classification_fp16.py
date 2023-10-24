@@ -22,8 +22,12 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static.amp import decorate
 
 paddle.enable_static()
@@ -76,7 +80,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+        return nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
@@ -106,11 +110,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    train_program = fluid.Program()
-    startup_prog = fluid.Program()
+    train_program = base.Program()
+    startup_prog = base.Program()
     train_program.random_seed = 123
     startup_prog.random_seed = 456
-    with fluid.program_guard(train_program, startup_prog):
+    with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
@@ -135,7 +139,7 @@ def train(net_type, use_cuda, save_dirname, is_local):
         # Test program
         test_program = train_program.clone(for_test=True)
 
-        optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+        optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
 
         amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
             custom_black_varnames={"loss", "conv2d_0.w_0"}
@@ -163,9 +167,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(place=place, feed_list=[images, label])
 
     def train_loop(main_program):
         exe.run(startup_prog)
@@ -213,12 +217,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     )
 
                     if acc_value > 0.08:  # Low threshold for speeding up CI
-                        fluid.io.save_inference_model(
+                        paddle.static.io.save_inference_model(
                             save_dirname,
-                            ["pixel"],
+                            images,
                             [predict],
                             exe,
-                            main_program=train_program,
+                            program=train_program,
                             clip_extra=True,
                         )
                         return
@@ -253,12 +257,12 @@ def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -266,7 +270,7 @@ def infer(use_cuda, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
         # Use normilized image pixels as input data, which should be in the range [0, 1.0].
@@ -283,12 +287,12 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
-        fluid.io.save_inference_model(
+        paddle.static.save_inference_model(
             save_dirname,
             feed_target_names,
             fetch_targets,
             exe,
-            inference_program,
+            parogram=inference_program,
             clip_extra=True,
         )
 
@@ -301,7 +305,7 @@ class TestImageClassification(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def main(self, net_type, use_cuda, is_local=True):
-        if use_cuda and not fluid.core.is_compiled_with_cuda():
+        if use_cuda and not base.core.is_compiled_with_cuda():
             return
 
         # Directory for saving the trained model
@@ -473,11 +477,11 @@ class TestImageClassification(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 
@@ -486,18 +490,12 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.fluid.unique_name.guard():
+            with paddle.base.unique_name.guard():
                 image = paddle.static.data(
                     name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )
                 label = paddle.static.data(
                     name='label', shape=[-1, 1], dtype='int64'
-                )
-                py_reader = fluid.io.DataLoader.from_generator(
-                    feed_list=[image, label],
-                    capacity=4,
-                    iterable=False,
-                    use_double_buffer=False,
                 )
 
                 net = vgg16_bn_drop(image)
@@ -509,7 +507,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
                 )
                 avg_cost = paddle.mean(cost)
 
-                optimizer = fluid.optimizer.Lamb(learning_rate=0.001)
+                optimizer = paddle.optimizer.Lamb(learning_rate=0.001)
                 amp_lists = paddle.static.amp.AutoMixedPrecisionLists(
                     custom_black_varnames={"loss", "conv2d_0.w_0"}
                 )

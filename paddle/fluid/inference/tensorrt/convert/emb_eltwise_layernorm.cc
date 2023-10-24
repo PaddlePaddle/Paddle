@@ -40,8 +40,8 @@ class EmbEltwiseLayerNormOpConverter : public OpConverter {
     framework::OpDesc op_desc(op, nullptr);
     auto pos_id_name = engine_->tensorrt_transformer_posid();
     auto mask_id_name = engine_->tensorrt_transformer_maskid();
-    bool flag_varseqlen =
-        engine_->use_varseqlen() && pos_id_name != "" && mask_id_name != "";
+    bool flag_varseqlen = engine_->use_varseqlen() && !pos_id_name.empty() &&
+                          !mask_id_name.empty();
     // bool with_fp16 = engine_->WithFp16() &&
     // !engine_->disable_trt_plugin_fp16(); int hidden = 0; Declare inputs
     std::vector<nvinfer1::ITensor*> input_ids;

@@ -20,7 +20,7 @@ namespace tensorrt {
 
 class SquareOpConverter : public OpConverter {
  public:
-  SquareOpConverter() {}
+  SquareOpConverter() = default;
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope,
                   bool test_mode) override {

@@ -37,24 +37,24 @@ template <>
 IntArrayBase<Tensor>::IntArrayBase(const std::vector<Tensor>& tensor_list) {
   is_from_tensor_ = true;
 
-  for (size_t i = 0; i < tensor_list.size(); ++i) {
-    DataType data_type = tensor_list[i].dtype();
+  for (const auto& tensor : tensor_list) {
+    DataType data_type = tensor.dtype();
     switch (data_type) {
       case DataType::INT32:
-        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
-          array_.push_back(*tensor_list[i].template data<int32_t>());
+        if (tensor.place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor.template data<int32_t>());
         } else {
           Tensor tensor_tmp;
-          copy(tensor_list[i], phi::CPUPlace(), true, &tensor_tmp);
+          copy(tensor, phi::CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int32_t>());
         }
         break;
       case DataType::INT64:
-        if (tensor_list[i].place().GetType() == AllocationType::CPU) {
-          array_.push_back(*tensor_list[i].template data<int64_t>());
+        if (tensor.place().GetType() == AllocationType::CPU) {
+          array_.push_back(*tensor.template data<int64_t>());
         } else {
           Tensor tensor_tmp;
-          copy(tensor_list[i], phi::CPUPlace(), true, &tensor_tmp);
+          copy(tensor, phi::CPUPlace(), true, &tensor_tmp);
           array_.push_back(*tensor_tmp.template data<int64_t>());
         }
         break;

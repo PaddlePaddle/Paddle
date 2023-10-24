@@ -152,7 +152,10 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
                 ->assert_is_op_input("conv2d", "Input")
                 ->AsInput();
 
-#if CUDNN_VERSION >= 8000
+// NOTE(liuyuanle): cudnn [8.7, 8.9 now) version has bug when act is
+// sigmoid/tanh. Ref to issue
+// https://github.com/PaddlePaddle/Paddle/issues/50853
+#if CUDNN_VERSION >= 8000 && CUDNN_VERSION < 8700
   std::unordered_set<std::string> cudnn_act_set(
       {"identity", "relu", "sigmoid", "tanh"});
 #else
@@ -174,7 +177,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
 
   patterns::ConvElementwiseaddAct pattern(gpd.mutable_pattern(), pattern_name);
   pattern(x, all_act_set);
-
+  int found_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
     if (!IsCompat(subgraph, g)) {
@@ -226,9 +229,11 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
     GraphSafeRemoveNodes(
         graph,
         {conv_op, conv_out, elementwise_add_op, elementwise_add_out, act_op});
+    found_count++;
   };
 
   gpd(graph, handler);
+  AddStatis(found_count);
 }
 
 }  // namespace ir

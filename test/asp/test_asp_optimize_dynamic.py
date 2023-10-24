@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.asp import ASPHelper
 
 
@@ -43,7 +43,6 @@ class MyLayer(paddle.nn.Layer):
 
 class TestASPDynamicOptimize(unittest.TestCase):
     def setUp(self):
-
         self.layer = MyLayer()
 
         self.place = paddle.CPUPlace()
@@ -228,7 +227,6 @@ class TestASPDynamicOptimize(unittest.TestCase):
                         paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )
                 else:
-
                     self.assertTrue(
                         paddle.incubate.asp.check_sparsity(mat.T, n=2, m=4)
                     )

@@ -34,13 +34,14 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/functors.h"
 #include "paddle/phi/kernels/primitive/compute_primitives.h"
 #include "paddle/phi/kernels/primitive/datamover_primitives.h"
+#include "paddle/phi/kernels/scale_kernel.h"
 
 namespace phi {
 namespace funcs {
 
 template <typename T>
 struct DstFunctor {
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   HOSTDEVICE inline DstFunctor(const float retain_prob,
                                const bool is_upscale_in_train,
@@ -90,7 +91,7 @@ struct MaskFunctor {
 
 template <typename T>
 struct DstMaskFunctor {
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
   HOSTDEVICE inline DstMaskFunctor(const float retain_prob,
                                    const bool is_upscale_in_train)
       : retain_prob_(retain_prob), is_upscale_in_train_(is_upscale_in_train) {
@@ -255,17 +256,6 @@ __global__ void VectorizedGeneratorMask(const size_t n,
   }
 }
 
-template <typename T, typename MT>
-void ScaleByDropoutFactor(const phi::GPUContext& dev_ctx,
-                          const phi::DenseTensor& x,
-                          phi::DenseTensor* y,
-                          MT factor) {
-  std::vector<const phi::DenseTensor*> ins = {&x};
-  std::vector<phi::DenseTensor*> outs = {y};
-  auto functor = phi::funcs::ScaleFunctor<T>(factor);
-  phi::funcs::ElementwiseKernel<T>(dev_ctx, ins, &outs, functor);
-}
-
 template <typename T>
 void DropoutFwGPUKernelDriver(
     const phi::GPUContext& dev_ctx,
@@ -386,17 +376,17 @@ void DropoutFwGPUKernelDriver(
       // y = x
       phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, y);
     } else {
-      using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+      using MT = typename phi::dtype::MPTypeTrait<T>::Type;
       MT factor = static_cast<MT>(1.0f - dropout_prob);
       // y = factor * x
-      ScaleByDropoutFactor<T, MT>(dev_ctx, x, y, factor);
+      phi::ScaleKernel<T, phi::GPUContext>(dev_ctx, x, factor, 0.0f, false, y);
     }
   }
 }
 
 template <typename T>
 struct CudaDropoutGradFunctor {
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   explicit CudaDropoutGradFunctor(const MT factor) : factor_(factor) {}
 
@@ -419,13 +409,14 @@ void DropoutGradGPUKernelDriver(const phi::GPUContext& dev_ctx,
                                 const phi::DenseTensor& mask,
                                 phi::DenseTensor* grad_x,
                                 bool is_dropout_nd = false) {
-  using MT = typename phi::kps::details::MPTypeTrait<T>::Type;
+  using MT = typename phi::dtype::MPTypeTrait<T>::Type;
 
   auto stream = dev_ctx.stream();
   if (is_test) {
     MT factor = static_cast<MT>(upscale_in_train ? 1.0f : 1.0f - dropout_prob);
     // y = factor * x
-    ScaleByDropoutFactor<T, MT>(dev_ctx, grad_y, grad_x, factor);
+    phi::ScaleKernel<T, phi::GPUContext>(
+        dev_ctx, grad_y, factor, 0.0f, false, grad_x);
   } else {
     if (upscale_in_train && dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP

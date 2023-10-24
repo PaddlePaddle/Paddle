@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <array>
 #define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
 #include "paddle/fluid/framework/io/shell.h"
 
@@ -82,7 +83,7 @@ static int close_open_fds_internal() {
       break;
     }
 
-    linux_dirent* entry = NULL;
+    linux_dirent* entry = nullptr;
 
     for (int offset = 0; offset < bytes; offset += entry->d_reclen) {
       entry = reinterpret_cast<linux_dirent*>(buffer + offset);
@@ -116,7 +117,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
   int child_pid = -1;
   // Too frequent calls to fork() makes openmpi very slow. Use vfork() instead.
   // But vfork() is very dangerous. Be careful.
-  if ((child_pid = vfork()) < 0) {
+  if ((child_pid = vfork()) < 0) {  // NOLINT
     return -1;
   }
 
@@ -126,7 +127,7 @@ static int shell_popen_fork_internal(const char* real_cmd,
     return child_pid;
   }
 
-  int child_std_end = do_read ? 1 : 0;
+  int child_std_end = do_read ? 1 : 0;  // NOLINT
   close(parent_end);
 
   if (child_end != child_std_end) {
@@ -140,9 +141,9 @@ static int shell_popen_fork_internal(const char* real_cmd,
   close_open_fds_internal();
 
 #if defined(PADDLE_WITH_MUSL)
-  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, NULL) >= 0);
+  PCHECK(execl("/bin/sh", "sh", "-c", real_cmd, nullptr) >= 0);
 #else
-  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, NULL) >= 0);
+  PCHECK(execl("/bin/bash", "bash", "-c", real_cmd, nullptr) >= 0);
 #endif
   // Note: just for compilation. the child don't run this line.
   _exit(0);
@@ -150,14 +151,14 @@ static int shell_popen_fork_internal(const char* real_cmd,
 }
 
 static int read_from_pipe(FILE* fp, std::string* output) {
-  char buf[4096];
-  while (1) {
-    int n = fread(buf, 1, 4096, fp);
+  std::array<char, 4096> buf;
+  while (true) {
+    int n = static_cast<int>(fread(buf.data(), 1, 4096, fp));
     if (n <= 0) {
       break;
     }
 
-    output->append(buf, n);
+    output->append(buf.data(), n);
   }
 
   if (!feof(fp)) {
@@ -179,7 +180,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
   bool do_write = mode == "w";
   if (!(do_read || do_write)) {
     *err_no = -1;
-    return NULL;
+    return nullptr;
   }
 
   VLOG(3) << "Opening pipe[" << cmd << "] with mode[" << mode << "]";
@@ -189,7 +190,7 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
     *err_no = -1;
-    return NULL;
+    return nullptr;
   }
   int parent_end = 0;
   int child_end = 0;
@@ -212,11 +213,11 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 
   close(child_end);
 
-  FILE* fp = NULL;
-  if ((fp = fdopen(parent_end, mode.c_str())) == NULL) {
+  FILE* fp = nullptr;
+  if ((fp = fdopen(parent_end, mode.c_str())) == nullptr) {
     *err_no = -1;
     signal(SIGCHLD, old_handler);
-    return NULL;
+    return nullptr;
   }
 
   return {fp, [cmd, child_pid, old_handler, err_no, status](FILE* fp) {
@@ -249,8 +250,8 @@ std::shared_ptr<FILE> shell_popen(const std::string& cmd,
 }
 
 static int shell_p2open_fork_internal(const char* real_cmd,
-                                      int pipein_fds[2],
-                                      int pipeout_fds[2]) {
+                                      int pipein_fds[2],     // NOLINT
+                                      int pipeout_fds[2]) {  // NOLINT
 #if defined(_WIN32) || defined(__APPLE__) || defined(PADDLE_ARM)
   return 0;
 #else
@@ -281,7 +282,7 @@ static int shell_p2open_fork_internal(const char* real_cmd,
   }
 
   close_open_fds_internal();
-  if (execl("/bin/sh", "sh", "-c", real_cmd, NULL) < 0) {
+  if (execl("/bin/sh", "sh", "-c", real_cmd, nullptr) < 0) {
     return -1;
   }
   exit(127);
@@ -302,10 +303,10 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
   int pipein_fds[2];
   int pipeout_fds[2];
   if (pipe(pipein_fds) != 0) {
-    return {NULL, NULL};
+    return {nullptr, nullptr};
   }
   if (pipe(pipeout_fds) != 0) {
-    return {NULL, NULL};
+    return {nullptr, nullptr};
   }
 
   int child_pid =
@@ -317,7 +318,7 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
   fcntl(pipeout_fds[1], F_SETFD, FD_CLOEXEC);
 
   std::shared_ptr<int> child_life = {
-      NULL, [child_pid, cmd](void*) {
+      nullptr, [child_pid, cmd](void*) {
         if (shell_verbose()) {
           LOG(INFO) << "Closing bidirectional pipe[" << cmd << "]";
         }
@@ -340,9 +341,9 @@ std::pair<std::shared_ptr<FILE>, std::shared_ptr<FILE>> shell_p2open(
       }};
 
   FILE* in_fp;
-  PCHECK((in_fp = fdopen(pipein_fds[0], "r")) != NULL);
+  PCHECK((in_fp = fdopen(pipein_fds[0], "r")) != nullptr);
   FILE* out_fp;
-  PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != NULL);
+  PCHECK((out_fp = fdopen(pipeout_fds[1], "w")) != nullptr);
   return {{in_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }},
           {out_fp, [child_life](FILE* fp) { PCHECK(fclose(fp) == 0); }}};
 #endif

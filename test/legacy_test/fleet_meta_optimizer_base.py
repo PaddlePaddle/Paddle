@@ -17,7 +17,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -41,9 +41,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         startup_prog_op_types = [op.type for op in startup_prog_ops]
 
         print(
-            "=== debug program and ops in func [{}] ===".format(
-                inspect.stack()[1].function
-            )
+            f"=== debug program and ops in func [{inspect.stack()[1].function}] ==="
         )
         print(main_prog)
         print(main_prog_op_types)
@@ -51,8 +49,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         print(startup_prog_op_types)
 
     def net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
-            with fluid.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
+            with base.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
                 input_x = paddle.static.data(
@@ -87,11 +85,11 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             fc_3 = paddle.static.nn.fc(x=fc_2, size=64, activation='tanh')
             return fc_3
 
-        with fluid.program_guard(main_prog, startup_prog):
-            with fluid.unique_name.guard():
+        with base.program_guard(main_prog, startup_prog):
+            with base.unique_name.guard():
                 role = role_maker.PaddleCloudRoleMaker(is_collective=True)
                 fleet.init(role)
-                with fluid.device_guard("gpu:0"):
+                with base.device_guard("gpu:0"):
                     input_x = paddle.static.data(
                         name="x", shape=[-1, 32], dtype='float32'
                     )
@@ -100,10 +98,10 @@ class TestFleetMetaOptimizer(unittest.TestCase):
                     )
 
                 for stage_idx in range(pp_degree):
-                    with fluid.device_guard("gpu:" + str(stage_idx)):
+                    with base.device_guard("gpu:" + str(stage_idx)):
                         input_x = fc_block(input_x)
 
-                with fluid.device_guard("gpu:" + str(pp_degree - 1)):
+                with base.device_guard("gpu:" + str(pp_degree - 1)):
                     prediction = paddle.static.nn.fc(
                         x=[input_x], size=2, activation='softmax'
                     )
@@ -119,7 +117,7 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         return avg_cost, strategy
 
     def boundary_net(self, main_prog, startup_prog):
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             fleet.init(is_collective=True)
             x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
             with paddle.static.device_guard('gpu:0'):
@@ -142,19 +140,19 @@ class TestFleetMetaOptimizer(unittest.TestCase):
         regularization=None,
         grad_clip=None,
     ):
-        with fluid.program_guard(train_prog, startup_prog):
-            with fluid.unique_name.guard():
+        with base.program_guard(train_prog, startup_prog):
+            with base.unique_name.guard():
                 if name == 'momentum':
-                    optimizer = paddle.fluid.optimizer.Momentum(
+                    optimizer = paddle.optimizer.Momentum(
                         learning_rate=0.01,
                         momentum=0.9,
-                        regularization=regularization,
+                        weight_decay=regularization,
                         grad_clip=grad_clip,
                     )
                 elif name == 'adam':
-                    optimizer = paddle.fluid.optimizer.Adam(
+                    optimizer = paddle.optimizer.Adam(
                         learning_rate=0.01,
-                        regularization=regularization,
+                        weight_decay=regularization,
                         grad_clip=grad_clip,
                     )
                 elif name == 'adamw':

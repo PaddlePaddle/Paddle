@@ -45,7 +45,7 @@ class SendOpV2 : public framework::OperatorWithKernel {
       auto t_arr = var->Get<framework::LoDTensorArray>();
       // NOTE(sandyhouse): Support an empty tensor array as Input.
       // And set the kernel type is float.
-      if (t_arr.size() == 0) {
+      if (t_arr.empty()) {
         return phi::KernelKey(framework::proto::VarType::FP32, ctx.GetPlace());
       }
     }
@@ -56,7 +56,7 @@ class SendOpV2 : public framework::OperatorWithKernel {
 
 class SendOpV2Maker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be sent.");
     AddAttr<int>("ring_id", "(int default 0) nccl communication ring id.")
         .SetDefault(0);

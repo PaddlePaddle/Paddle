@@ -21,12 +21,12 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base.framework import dygraph_only
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_parallel.sharding.group_sharded_stage3 import (
     GroupShardedStage3,
 )
 from paddle.distributed.fleet.utils.log_util import logger
-from paddle.fluid.framework import dygraph_only
 
 __all__ = ["save_for_auto_inference"]
 
@@ -254,7 +254,6 @@ def _get_abs_saved_prefix(path_prefix):
 
 
 def _name_mapping_dist2single(state_dict, pp_group):
-
     key_list = []
     param_keys = [
         v.name
@@ -332,7 +331,6 @@ def _name_mapping_dist2single(state_dict, pp_group):
 
 
 def _get_wrapped_dist_state_dict(dist_state_dict):
-
     wrapped_state_dict = {}
     if dist.get_world_size() <= 1:
         for _, v in dist_state_dict.items():

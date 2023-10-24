@@ -82,7 +82,6 @@ def update_operator_cmake(cmake_file):
 
 
 if __name__ == '__main__':
-
     args = parse_args()
 
     tool_dir = os.path.dirname(os.path.abspath(__file__))

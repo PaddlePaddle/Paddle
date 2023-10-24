@@ -83,7 +83,6 @@ def loss_fn(predict, label):
 
 class TestSubblock(unittest.TestCase):
     def test_subblock(self):
-
         mlp = MLPLayer()
 
         strategy = auto.Strategy()

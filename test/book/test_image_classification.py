@@ -21,8 +21,12 @@ import unittest
 
 import numpy
 
+# TODO: remove sys.path.append
+sys.path.append("../legacy_test")
+import nets
+
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -74,7 +78,7 @@ def resnet_cifar10(input, depth=32):
 
 def vgg16_bn_drop(input):
     def conv_block(input, num_filter, groups, dropouts):
-        return fluid.nets.img_conv_group(
+        return nets.img_conv_group(
             input=input,
             pool_size=2,
             pool_stride=2,
@@ -126,9 +130,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
     acc = paddle.static.accuracy(input=predict, label=label)
 
     # Test program
-    test_program = fluid.default_main_program().clone(for_test=True)
+    test_program = base.default_main_program().clone(for_test=True)
 
-    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
+    optimizer = paddle.optimizer.Adam(learning_rate=0.001)
     optimizer.minimize(avg_cost)
 
     BATCH_SIZE = 128
@@ -145,12 +149,12 @@ def train(net_type, use_cuda, save_dirname, is_local):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(place=place, feed_list=[images, label])
 
     def train_loop(main_program):
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         loss = 0.0
         for pass_id in range(PASS_NUM):
             for batch_id, data in enumerate(train_reader()):
@@ -184,13 +188,13 @@ def train(net_type, use_cuda, save_dirname, is_local):
                     )
 
                     if acc_value > 0.01:  # Low threshold for speeding up CI
-                        fluid.io.save_inference_model(
-                            save_dirname, ["pixel"], [predict], exe
+                        paddle.static.io.save_inference_model(
+                            save_dirname, images, [predict], exe
                         )
                         return
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -219,12 +223,12 @@ def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
@@ -232,7 +236,7 @@ def infer(use_cuda, save_dirname=None):
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         # The input's dimension of conv should be 4-D or 5-D.
         # Use normilized image pixels as input data, which should be in the range [0, 1.0].
@@ -248,24 +252,27 @@ def infer(use_cuda, save_dirname=None):
         )
 
         print("infer results: ", results[0])
-
-        fluid.io.save_inference_model(
+        feeded_vars = [
+            inference_program.global_block().var(name)
+            for name in feed_target_names
+        ]
+        paddle.static.io.save_inference_model(
             save_dirname,
-            feed_target_names,
+            feeded_vars,
             fetch_targets,
             exe,
-            inference_program,
+            program=inference_program,
         )
 
 
 def main(net_type, use_cuda, is_local=True):
-    if use_cuda and not fluid.core.is_compiled_with_cuda():
+    if use_cuda and not base.core.is_compiled_with_cuda():
         return
 
     # Directory for saving the trained model
     temp_dir = tempfile.TemporaryDirectory()
     save_dirname = os.path.join(
-        temp_dir.name, "image_classification_" + net_type + ".inference.model"
+        temp_dir.name, "image_classification_" + net_type + "_inference_model"
     )
 
     train(net_type, use_cuda, save_dirname, is_local)
@@ -292,11 +299,11 @@ class TestImageClassification(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 

@@ -31,7 +31,7 @@ def _check_using_all_reduce(group):
     data = paddle.to_tensor([1, 2, 3])
     result = paddle.to_tensor([2, 4, 6])
     dist.all_reduce(data, group=group)
-    assert np.array_equal(data, result)
+    np.testing.assert_array_equal(data, result)
 
 
 def _check_using_send(group, dst):
@@ -43,7 +43,7 @@ def _check_using_recv(group, src):
     result = paddle.to_tensor([1, 2, 3])
     data = paddle.to_tensor([0, 0, 0])
     dist.recv(data, src=src, group=group)
-    assert np.array_equal(data, result)
+    np.testing.assert_array_equal(data, result)
 
 
 class TestStrategyGroupAPI(unittest.TestCase):

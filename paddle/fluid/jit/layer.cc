@@ -71,8 +71,8 @@ const std::shared_ptr<jit::FunctionInfo>& Layer::FunctionInfo(
 
 std::vector<std::string> Layer::FunctionNames() const {
   std::vector<std::string> names;
-  for (auto it = info_map_.begin(); it != info_map_.end(); ++it) {
-    names.emplace_back(it->first);
+  for (const auto& info : info_map_) {
+    names.emplace_back(info.first);
   }
   return names;
 }

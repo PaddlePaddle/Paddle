@@ -53,8 +53,8 @@ def _import_module(name, repo_dir):
 
 def _git_archive_link(repo_owner, repo_name, branch, source):
     if source == 'github':
-        return 'https://github.com/{}/{}/archive/{}.zip'.format(
-            repo_owner, repo_name, branch
+        return (
+            f'https://github.com/{repo_owner}/{repo_name}/archive/{branch}.zip'
         )
     elif source == 'gitee':
         return 'https://gitee.com/{}/{}/repository/archive/{}.zip'.format(
@@ -130,7 +130,7 @@ def _get_cache_or_reload(repo, force_reload, verbose=True, source='github'):
 
         _remove_if_exists(cached_file)
         _remove_if_exists(repo_dir)
-        # rename the repo
+        # Rename the repo
         shutil.move(extracted_repo, repo_dir)
 
     return repo_dir
@@ -177,31 +177,29 @@ def list(repo_dir, source='github', force_reload=False):
     List all entrypoints available in `github` hubconf.
 
     Args:
-        repo_dir(str): github or local path.
+        repo_dir(str): Github or local path.
 
-            github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-            tag/branch. The default branch is `main` if not specified.
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
+            - local path (str): Local repo path.
 
-            local path (str): local repo path
+        source (str): `github` | `gitee` | `local`. Default is `github`.
+        force_reload (bool, optional): Whether to discard the existing cache and force a fresh download. Default is `False`.
 
-        source (str): `github` | `gitee` | `local`, default is `github`.
-        force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
-        entrypoints: a list of available entrypoint names
+        entrypoints: A list of available entrypoint names.
 
-    Example:
+    Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
+            >>> paddle.hub.list('lyuwenyu/paddlehub_demo:main', source='github', force_reload=False)
 
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):
@@ -225,32 +223,30 @@ def help(repo_dir, model, source='github', force_reload=False):
     Show help information of model
 
     Args:
-        repo_dir(str): github or local path.
+        repo_dir(str): Github or local path.
 
-            github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-            tag/branch. The default branch is `main` if not specified.
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
+            local path (str): Local repo path.
 
-            local path (str): local repo path.
+        model (str): Model name.
+        source (str): `github` | `gitee` | `local`. Default is `github`.
+        force_reload (bool, optional): Default is `False`.
 
-        model (str): model name.
-        source (str): `github` | `gitee` | `local`, default is `github`.
-        force_reload (bool, optional): default is `False`.
-    Return:
+    Returns:
         docs
 
-    Example:
+    Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.hub.help('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
+            >>> paddle.hub.help('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
 
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):
@@ -270,31 +266,30 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
     Load model
 
     Args:
-        repo_dir(str): github or local path.
+        repo_dir(str): Github or local path.
 
-            github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
-            tag/branch. The default branch is `main` if not specified.
+            - github path (str): A string with format "repo_owner/repo_name[:tag_name]" with an optional
+              tag/branch. The default branch is `main` if not specified.
+            - local path (str): Local repo path.
 
-            local path (str): local repo path.
+        model (str): Model name.
+        source (str): `github` | `gitee` | `local`. Default is `github`.
+        force_reload (bool, optional): Default is `False`.
+        **kwargs: Parameters using for model.
 
-        model (str): model name.
-        source (str): `github` | `gitee` | `local`, default is `github`.
-        force_reload (bool, optional): default is `False`.
-        **kwargs: parameters using for model
-    Return:
-        paddle model
-    Example:
+    Returns:
+        paddle model.
+
+    Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
+            >>> import paddle
+            >>> paddle.hub.load('lyuwenyu/paddlehub_demo:main', model='MM', source='github')
 
     """
     if source not in ('github', 'gitee', 'local'):
         raise ValueError(
-            'Unknown source: "{}". Allowed values: "github" | "gitee" | "local".'.format(
-                source
-            )
+            f'Unknown source: "{source}". Allowed values: "github" | "gitee" | "local".'
         )
 
     if source in ('github', 'gitee'):

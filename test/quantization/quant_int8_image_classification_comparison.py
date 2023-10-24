@@ -23,7 +23,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import QuantInt8MkldnnPass
 
@@ -92,9 +92,7 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                 while step < num:
                     fp.seek(imgs_offset + img_size * step)
                     img = fp.read(img_size)
-                    img = struct.unpack_from(
-                        '{}f'.format(img_ch * img_w * img_h), img
-                    )
+                    img = struct.unpack_from(f'{img_ch * img_w * img_h}f', img)
                     img = np.array(img)
                     img.shape = (img_ch, img_w, img_h)
                     fp.seek(labels_offset + label_size * step)
@@ -173,7 +171,9 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
                     inference_program,
                     feed_target_names,
                     fetch_targets,
-                ] = paddle.fluid.io.load_inference_model(model_path, exe)
+                ] = paddle.static.io.load_inference_model(
+                    model_path, exe, model_filename=None, params_filename=None
+                )
             else:
                 [
                     inference_program,
@@ -259,14 +259,10 @@ class QuantInt8ImageClassificationComparisonTest(unittest.TestCase):
     def _summarize_performance(self, fp32_fps, fp32_lat, int8_fps, int8_lat):
         _logger.info('--- Performance summary ---')
         _logger.info(
-            'FP32: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
-                fp32_fps, fp32_lat
-            )
+            f'FP32: avg fps: {fp32_fps:.2f}, avg latency: {fp32_lat:.4f} ms'
         )
         _logger.info(
-            'INT8: avg fps: {:.2f}, avg latency: {:.4f} ms'.format(
-                int8_fps, int8_lat
-            )
+            f'INT8: avg fps: {int8_fps:.2f}, avg latency: {int8_lat:.4f} ms'
         )
 
     def _compare_accuracy(

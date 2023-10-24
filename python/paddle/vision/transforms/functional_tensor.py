@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from ...fluid.framework import Variable
+from ...base.framework import Variable
 
 __all__ = []
 
@@ -222,12 +222,12 @@ def _affine_grid(theta, w, h, ow, oh):
     base_grid = paddle.ones((1, oh, ow, 3), dtype=theta.dtype)
 
     x_grid = paddle.linspace(-ow * 0.5 + d, ow * 0.5 + d - 1, ow)
-    base_grid[..., 0] = x_grid
 
     if paddle.in_dynamic_mode():
         y_grid = paddle.linspace(
             -oh * 0.5 + d, oh * 0.5 + d - 1, oh
         ).unsqueeze_(-1)
+        base_grid[..., 0] = x_grid
         base_grid[..., 1] = y_grid
         tmp = paddle.to_tensor([0.5 * w, 0.5 * h])
     else:
@@ -236,7 +236,8 @@ def _affine_grid(theta, w, h, ow, oh):
         y_grid = paddle.linspace(-oh * 0.5 + d, oh * 0.5 + d - 1, oh).unsqueeze(
             -1
         )
-        base_grid[..., 1] = y_grid
+        base_grid = paddle.static.setitem(base_grid, (..., 0), x_grid)
+        base_grid = paddle.static.setitem(base_grid, (..., 1), y_grid)
         tmp = paddle.assign(np.array([0.5 * w, 0.5 * h], dtype="float32"))
 
     scaled_theta = theta.transpose((0, 2, 1)) / tmp
@@ -397,6 +398,17 @@ def rotate(
             0.0,
         ]
         matrix = paddle.to_tensor(matrix, place=img.place)
+
+        matrix[2] += (
+            matrix[0] * (-rotn_center[0] - post_trans[0])
+            + matrix[1] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[0]
+        )
+        matrix[5] += (
+            matrix[3] * (-rotn_center[0] - post_trans[0])
+            + matrix[4] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[1]
+        )
     else:
         angle = angle / 180 * math.pi
         matrix = paddle.concat(
@@ -409,16 +421,22 @@ def rotate(
                 paddle.zeros([1]),
             ]
         )
-
-    matrix[2] += matrix[0] * (-rotn_center[0] - post_trans[0]) + matrix[1] * (
-        -rotn_center[1] - post_trans[1]
-    )
-    matrix[5] += matrix[3] * (-rotn_center[0] - post_trans[0]) + matrix[4] * (
-        -rotn_center[1] - post_trans[1]
-    )
-
-    matrix[2] += rotn_center[0]
-    matrix[5] += rotn_center[1]
+        matrix = paddle.static.setitem(
+            matrix,
+            2,
+            matrix[2]
+            + matrix[0] * (-rotn_center[0] - post_trans[0])
+            + matrix[1] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[0],
+        )
+        matrix = paddle.static.setitem(
+            matrix,
+            5,
+            matrix[5]
+            + matrix[3] * (-rotn_center[0] - post_trans[0])
+            + matrix[4] * (-rotn_center[1] - post_trans[1])
+            + rotn_center[1],
+        )
 
     matrix = matrix.reshape((1, 2, 3))
 
@@ -621,7 +639,12 @@ def erase(img, i, j, h, w, v, inplace=False):
     if not inplace:
         img = img.clone()
 
-    img[..., i : i + h, j : j + w] = v
+    if paddle.in_dynamic_mode():
+        img[..., i : i + h, j : j + w] = v
+    else:
+        img = paddle.static.setitem(
+            img, (..., slice(i, i + h), slice(j, j + w)), v
+        )
     return img
 
 
@@ -780,9 +803,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         # We should consider to support this case in future.
         if w <= 0 or h <= 0:
             raise NotImplementedError(
-                "Not support while w<=0 or h<=0, but received w={}, h={}".format(
-                    w, h
-                )
+                f"Not support while w<=0 or h<=0, but received w={w}, h={h}"
             )
         if (w <= h and w == size) or (h <= w and h == size):
             return img

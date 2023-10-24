@@ -38,12 +38,19 @@ set(PYBIND_DEPS
     global_utils
     phi_utils
     phi
+    pir_adaptor
+    pd_op_dialect
+    program_translator
+    pd_inplace_pass
+    fusion_passes
+    pir
     new_profiler
     jit_layer
     jit_property
     prim_utils
     static_tensor_operants
-    type_info)
+    type_info
+    auto_parallel)
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
@@ -52,18 +59,7 @@ if(WITH_PSCORE)
   endif()
 endif()
 if(WITH_RPC)
-  set(PYBIND_DEPS
-      ${PYBIND_DEPS}
-      paddle_rpc
-      brpc
-      ssl
-      crypto
-      protobuf
-      zlib
-      leveldb
-      snappy
-      phi
-      glog)
+  set(PYBIND_DEPS ${PYBIND_DEPS} paddle_rpc ${EXTERNAL_BRPC_DEPS} zlib phi)
 endif()
 if(WITH_GPU OR WITH_ROCM)
   set(PYBIND_DEPS ${PYBIND_DEPS} dynload_cuda)
@@ -80,6 +76,10 @@ endif()
 if(WITH_NCCL OR WITH_RCCL)
   set(PYBIND_DEPS ${PYBIND_DEPS} nccl_wrapper)
   set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
+endif()
+
+if(WITH_XPU)
+  set(PYBIND_DEPS ${PYBIND_DEPS} dynload_xpti)
 endif()
 
 if(WITH_XPU_BKCL)
@@ -115,7 +115,10 @@ set(PYBIND_SRCS
     pybind.cc
     imperative.cc
     inference_api.cc
-    ir.cc
+    ops_api.cc
+    static_op_function.cc
+    pir.cc
+    graph.cc
     bind_fleet_executor.cc
     reader_py.cc
     protobuf.cc
@@ -142,7 +145,8 @@ set(PYBIND_SRCS
     custom_device_py.cc
     xpu_streams_py.cc
     jit.cc
-    auto_parallel_py.cc)
+    auto_parallel_py.cc
+    eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)
   set(PYBIND_DEPS ${PYBIND_DEPS} custom_device_common_op_registry)
@@ -272,8 +276,12 @@ if(WITH_PYTHON)
 
   add_executable(eager_legacy_op_function_generator
                  eager_legacy_op_function_generator.cc)
-  target_link_libraries(eager_legacy_op_function_generator
-                        ${OP_FUNCTION_GENERETOR_DEPS})
+  set(GENERATOR_DEPS ${PYBIND_DEPS})
+  list(REMOVE_DUPLICATES GENERATOR_DEPS)
+  if(NOT WITH_ARM)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
+  target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)
     target_link_libraries(kernel_signature_generator
@@ -330,12 +338,20 @@ if(WITH_PYTHON)
       ")\n"
       "exit /b 0")
 
-    if(WITH_PHI_SHARED)
+    if(WITH_SHARED_PHI)
       add_custom_command(
         OUTPUT ${op_impl_path}/phi.dll
         COMMAND ${CMAKE_COMMAND} -E copy ${PHI_LIB} ${op_impl_path}
         DEPENDS phi)
-      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/libiomp5md.dll)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/phi.dll)
+    endif()
+
+    if(WITH_SHARED_IR)
+      add_custom_command(
+        OUTPUT ${op_impl_path}/ir.dll
+        COMMAND ${CMAKE_COMMAND} -E copy ${IR_LIB} ${op_impl_path}
+        DEPENDS pir)
+      list(APPEND EAGER_OP_IMPL_DEPS ${op_impl_path}/ir.dll)
     endif()
 
     if(${CBLAS_PROVIDER} STREQUAL MKLML)
@@ -516,6 +532,7 @@ if(WITH_PYTHON)
   #                PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
   # endif()
 
+  add_dependencies(${SHARD_LIB_NAME} ops_api_gen)
   if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     add_dependencies(${SHARD_LIB_NAME} legacy_eager_codegen)
     add_dependencies(${SHARD_LIB_NAME} eager_legacy_op_function_generator_cmd)

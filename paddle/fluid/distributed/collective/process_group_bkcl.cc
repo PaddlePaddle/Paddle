@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 #include "paddle/fluid/distributed/collective/common.h"
-#include "paddle/fluid/distributed/collective/utils.h"
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/platform/device/xpu/bkcl_helper.h"
 #include "paddle/fluid/platform/device/xpu/xpu_info.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
@@ -265,7 +265,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupBKCL::Collective(
   const auto* calc_ctx = place_to_calc_ctx_[key];
   const auto& comm_ctx = place_to_comm_ctx_[key];
   auto bkcl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
-  fn(out_tensor, in_tensor, comm_ctx->bkcl_context(), bkcl_stream);
+  PADDLE_ENFORCE_XPU_SUCCESS(
+      fn(out_tensor, in_tensor, comm_ctx->bkcl_context(), bkcl_stream));
 
   if (!use_calc_stream) {
     PADDLE_ENFORCE_NOT_NULL(

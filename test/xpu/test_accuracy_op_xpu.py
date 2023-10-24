@@ -48,11 +48,9 @@ class XPUTestAccuracyOp(XPUOpTestWrapper):
                         num_correct += 1
                         break
             self.outputs = {
-                'Accuracy': np.array([num_correct / float(n)]).astype(
-                    self.dtype
-                ),
-                'Correct': np.array([num_correct]).astype("int32"),
-                'Total': np.array([n]).astype("int32"),
+                'Accuracy': np.array(num_correct / float(n)).astype(self.dtype),
+                'Correct': np.array(num_correct).astype("int32"),
+                'Total': np.array(n).astype("int32"),
             }
             self.attrs = {'use_xpu': True}
 

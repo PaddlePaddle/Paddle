@@ -19,7 +19,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 
 namespace paddle {
@@ -93,10 +93,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
           .GetAllCapturingDeviceContexts();
   auto num_stream = all_capturing_dev_ctxs.size();
   if (num_stream > 1) {
-    for (auto iter = all_capturing_dev_ctxs.begin();
-         iter != all_capturing_dev_ctxs.end();
-         ++iter) {
-      auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+    for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
+      auto* capturing_dev_ctx =
+          reinterpret_cast<phi::GPUContext*>(all_capturing_dev_ctx);
       InitCUDNNRelatedHandle(capturing_dev_ctx);
     }
   }
@@ -129,10 +128,9 @@ void BeginCUDAGraphCapture(phi::GPUPlace place,
             dev_ctx->GetPlace(), platform::GenerateDeviceEventFlag());
     cuda_graph_event->Record(dev_ctx);
 
-    for (auto iter = all_capturing_dev_ctxs.begin();
-         iter != all_capturing_dev_ctxs.end();
-         ++iter) {
-      auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+    for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
+      auto* capturing_dev_ctx =
+          reinterpret_cast<phi::GPUContext*>(all_capturing_dev_ctx);
       auto capturing_stream = capturing_dev_ctx->stream();
       capturing_dev_ctx->SetCUDAGraphAllocator(
           memory::allocation::AllocatorFacade::Instance()
@@ -164,10 +162,9 @@ std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
   auto num_stream = all_capturing_dev_ctxs.size();
   if (num_stream > 1) {
     // join all other streams back to origin cuda graph stream.
-    for (auto iter = all_capturing_dev_ctxs.begin();
-         iter != all_capturing_dev_ctxs.end();
-         ++iter) {
-      auto* capturing_dev_ctx = reinterpret_cast<phi::GPUContext*>(*iter);
+    for (auto all_capturing_dev_ctx : all_capturing_dev_ctxs) {
+      auto* capturing_dev_ctx =
+          reinterpret_cast<phi::GPUContext*>(all_capturing_dev_ctx);
       std::shared_ptr<platform::DeviceEvent> capturing_event =
           std::make_shared<platform::DeviceEvent>(
               capturing_dev_ctx->GetPlace(),

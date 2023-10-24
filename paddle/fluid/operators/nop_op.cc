@@ -33,7 +33,7 @@ class NopOp : public framework::OperatorWithKernel {
 
 class NopOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) The input tensor of nop op.").AsDuplicable();
     AddOutput("Out", "(Tensor) The output tensor of nop op.").AsDuplicable();
     AddComment(R"DOC(
@@ -45,21 +45,9 @@ establish the dependency between input and output tensors.
   }
 };
 
-template <typename T, typename DeviceContext>
-class NopKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 
 REGISTER_OP_WITHOUT_GRADIENT(nop, ops::NopOp, ops::NopOpMaker);
-
-PD_REGISTER_STRUCT_KERNEL(nop, CPU, ALL_LAYOUT, ops::NopKernel, float) {}
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PD_REGISTER_STRUCT_KERNEL(nop, GPU, ALL_LAYOUT, ops::NopKernel, float) {}
-#endif

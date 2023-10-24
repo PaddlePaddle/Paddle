@@ -30,7 +30,7 @@ micro_batch_size = 2
 vocab_size = 128
 
 
-class TestDistPPSaveLoadTraning(unittest.TestCase):
+class TestDistPPSaveLoadTraining(unittest.TestCase):
     def setUp(self):
         strategy = fleet.DistributedStrategy()
         self.model_parallel_size = 1

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy.special import expit, logit
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def l1loss(x, y):
@@ -475,4 +475,5 @@ class TestYolov3LossStatic(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()

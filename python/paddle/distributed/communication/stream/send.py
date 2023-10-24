@@ -13,12 +13,12 @@
 # limitations under the License.
 
 from paddle import framework
+from paddle.base import data_feeder
 from paddle.distributed.communication.group import (
     _get_global_group,
     _get_or_throw_group_rank,
     _warn_cur_rank_not_in_group,
 )
-from paddle.fluid import data_feeder
 
 
 def _send_in_dygraph(
@@ -58,7 +58,6 @@ def _send_in_static_mode(
             'use_calc_stream': sync_op,
         },
     )
-    return None
 
 
 def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
@@ -80,21 +79,22 @@ def send(tensor, dst=0, group=None, sync_op=True, use_calc_stream=False):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            local_rank = dist.get_rank()
-            if local_rank == 0:
-                data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
-                task = dist.stream.send(data, dst=1, sync_op=False)
-            else:
-                data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
-                task = dist.stream.recv(data, src=0, sync_op=False)
-            task.wait()
-            out = data.numpy()
-            # [[4, 5, 6], [4, 5, 6]] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> local_rank = dist.get_rank()
+            >>> if local_rank == 0:
+            ...     data = paddle.to_tensor([[4, 5, 6], [4, 5, 6]])
+            ...     task = dist.stream.send(data, dst=1, sync_op=False)
+            >>> else:
+            ...     data = paddle.to_tensor([[1, 2, 3], [1, 2, 3]])
+            ...     task = dist.stream.recv(data, src=0, sync_op=False)
+            >>> task.wait()
+            >>> out = data.numpy()
+            >>> print(out)
+            [[4, 5, 6], [4, 5, 6]]
     """
     if _warn_cur_rank_not_in_group(group):
         return

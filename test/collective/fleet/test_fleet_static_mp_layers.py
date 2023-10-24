@@ -66,7 +66,7 @@ class EmbeddingNet(paddle.nn.Layer):
         return output
 
 
-class TestDistTraning(unittest.TestCase):
+class TestDistTraining(unittest.TestCase):
     def setUp(self):
         os.environ["PADDLE_TRAINER_ID"] = "2"
         os.environ[

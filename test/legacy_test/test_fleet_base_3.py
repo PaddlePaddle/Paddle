@@ -46,7 +46,7 @@ class TestFleetBase_1(unittest.TestCase):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
         strategy = fleet.DistributedStrategy()
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -81,7 +81,7 @@ class TestFleetBase(unittest.TestCase):
         self.assertEqual(len(graph_list), 0)
 
         strategy = fleet.DistributedStrategy()
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.001)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

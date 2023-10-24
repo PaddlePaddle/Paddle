@@ -29,7 +29,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.layer_helper import LayerHelper
 
 
 class XPUTestSetValueOp(XPUOpTestWrapper):
@@ -57,9 +57,15 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def set_dtype(self):
             self.dtype = self.in_type
+            if self.in_type == np.bool_:
+                self.dtype = "bool"
 
         def _call_setitem(self, x):
             x[0, 0] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, 0), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, 0] = self.value
@@ -69,7 +75,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.enable_static()
             with paddle.static.program_guard(self.program):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                self._call_setitem(x)
+                x = self._call_setitem_static_api(x)
 
             exe = paddle.static.Executor(self.place)
             out = exe.run(self.program, fetch_list=[x])
@@ -107,6 +113,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, 0, self.value)
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
@@ -116,6 +126,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def _call_setitem(self, x):
             x[0, 3, 4] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, 3, 4), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, 3, 4] = self.value
@@ -127,6 +141,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[1] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (1), self.value)
+            return x
+
         def _get_answer(self):
             self.data[1] = self.value
 
@@ -136,12 +154,20 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:2] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(0, 2), self.value)
+            return x
+
         def _get_answer(self):
             self.data[0:2] = self.value
 
     class XPUTestSetValueItemSlice2(XPUTestSetValueApi):
         def _call_setitem(self, x):
             x[0:-1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(0, -1), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0:-1] = self.value
@@ -150,12 +176,26 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:-1, 0:2] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(0, -1), slice(0, 2)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:-1, 0:2] = self.value
 
     class XPUTestSetValueItemSlice4(XPUTestSetValueApi):
         def _call_setitem(self, x):
             x[0:, 1:2, :] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (slice(0, None), slice(1, 2), slice(None, None, None)),
+                self.value,
+            )
+            return x
 
         def _get_answer(self):
             self.data[0:, 1:2, :] = self.value
@@ -164,6 +204,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:, 1:1, :] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(0), slice(1, 1), slice(None, None, None)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:, 1:1, :] = self.value
 
@@ -171,6 +217,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -186,6 +234,19 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             i = paddle.zeros(shape=(1,), dtype='int32')
             i, x = paddle.static.nn.while_loop(cond, body, [i, x])
 
+        def _call_setitem_static_api(self, x):
+            def cond(i, x):
+                return i < 1
+
+            def body(i, x):
+                x = paddle.static.setitem(x, i, self.value)
+                i = i + 1
+                return i, x
+
+            i = paddle.zeros(shape=(1,), dtype='int32')
+            i, x = paddle.static.nn.while_loop(cond, body, [i, x])
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
@@ -197,6 +258,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:2:2] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(0, 2, 2), self.value)
+            return x
+
         def _get_answer(self):
             self.data[0:2:2] = self.value
 
@@ -207,6 +272,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:-1:3] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(0, -1, 3), self.value)
+            return x
+
         def _get_answer(self):
             self.data[0:-1:3] = self.value
 
@@ -214,12 +283,26 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:-1, 0:2, ::2] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(0, -1), slice(0, 2), slice(None, None, 2)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:-1, 0:2, ::2] = self.value
 
     class XPUTestSetValueItemSliceStep4(XPUTestSetValueApi):
         def _call_setitem(self, x):
             x[0:, 1:2:2, :] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (slice(0, None), slice(1, 2, 2), slice(None, None, None)),
+                self.value,
+            )
+            return x
 
         def _get_answer(self):
             self.data[0:, 1:2:2, :] = self.value
@@ -229,6 +312,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -241,16 +326,16 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[5:2:-1] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(5, 2, -1), self.value)
+            return x
+
         def _get_answer(self):
             self.data[5:2:-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemSliceNegetiveStep2(
+        XPUTestSetValueItemSliceNegetiveStep
+    ):
         def set_shape(self):
             self.shape = [5]
 
@@ -261,16 +346,16 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[1::-1] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(1, None, -1), self.value)
+            return x
+
         def _get_answer(self):
             self.data[1::-1] = self.value
 
-    class XPUTestSetValueItemSliceNegetiveStep3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemSliceNegetiveStep3(
+        XPUTestSetValueItemSliceNegetiveStep
+    ):
         def set_shape(self):
             self.shape = [3]
 
@@ -280,15 +365,35 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[::-1] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(None, None, -1), self.value)
+            return x
+
         def _get_answer(self):
             self.data[::-1] = self.value
 
     class XPUTestSetValueItemSliceNegetiveStep4(XPUTestSetValueApi):
+        def set_dtype(self):
+            if self.in_type == np.float16:
+                self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
+            else:
+                self.dtype = self.in_type
+
         def set_shape(self):
             self.shape = [3, 4, 5]
 
         def _call_setitem(self, x):
             x[2:0:-1, 0:2, ::-1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (slice(2, 0, -1), slice(0, 2), slice(None, None, -1)),
+                self.value,
+            )
+            return x
 
         def _get_answer(self):
             self.data[2:0:-1, 0:2, ::-1] = self.value
@@ -296,17 +401,29 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         # 1.2.3 step < 0 and stride < -1
 
     class XPUTestSetValueItemSliceNegetiveStep5(XPUTestSetValueApi):
+        def set_dtype(self):
+            if self.in_type == np.float16:
+                self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
+            else:
+                self.dtype = self.in_type
+
         def set_shape(self):
             self.shape = [5, 5, 5]
 
         def _call_setitem(self, x):
             x[2:-1:-2] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(2, -1, -2), self.value)
+            return x
+
         def _get_answer(self):
             paddle.enable_static()
             with paddle.static.program_guard(self.program):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                self._call_setitem(x)
+                x = self._call_setitem_static_api(x)
 
             exe = paddle.static.Executor(paddle.CPUPlace())
             self.data = exe.run(self.program, fetch_list=[x])
@@ -334,12 +451,22 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0:, ..., 1:] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(0, None), ..., slice(1, None)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:, ..., 1:] = self.value
 
     class XPUTestSetValueItemEllipsis2(XPUTestSetValueApi):
         def _call_setitem(self, x):
             x[0:, ...] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (slice(0, None), ...), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0:, ...] = self.value
@@ -348,12 +475,20 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[..., 1:] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (..., slice(1, None)), self.value)
+            return x
+
         def _get_answer(self):
             self.data[..., 1:] = self.value
 
     class XPUTestSetValueItemEllipsis4(XPUTestSetValueApi):
         def _call_setitem(self, x):
             x[...] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (...), self.value)
+            return x
 
         def _get_answer(self):
             self.data[...] = self.value
@@ -363,6 +498,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -370,76 +507,83 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             zero = paddle.full([1], 0, dtype="int32")
             x[zero] = self.value
 
+        def _call_setitem_static_api(self, x):
+            zero = paddle.full([1], 0, dtype="int32")
+            x = paddle.static.setitem(x, zero, self.value)
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueItemTensor2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor2(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
             x[zero:two] = self.value
 
+        def _call_setitem_static_api(self, x):
+            zero = paddle.full([1], 0, dtype="int32")
+            two = paddle.full([1], 2, dtype="int64")
+            x = paddle.static.setitem(x, slice(zero, two), self.value)
+            return x
+
         def _get_answer(self):
             self.data[0:2] = self.value
 
-    class XPUTestSetValueItemTensor3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor3(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
             x[zero:-1, 0:two] = self.value
 
+        def _call_setitem_static_api(self, x):
+            zero = paddle.full([1], 0, dtype="int32")
+            two = paddle.full([1], 2, dtype="int64")
+            x = paddle.static.setitem(
+                x, (slice(zero, -1), slice(0, two)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:-1, 0:2] = self.value
 
-    class XPUTestSetValueItemTensor4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor4(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
             x[0:-1, zero:2, 0:6:two] = self.value
 
+        def _call_setitem_static_api(self, x):
+            zero = paddle.full([1], 0, dtype="int32")
+            two = paddle.full([1], 2, dtype="int64")
+            x = paddle.static.setitem(
+                x, (slice(0, -1), slice(zero, 2), slice(0, 6, two)), self.value
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:-1, 0:2, ::2] = self.value
 
-    class XPUTestSetValueItemTensor5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor5(XPUTestSetValueItemTensor):
         def _call_setitem(self, x):
             zero = paddle.full([1], 0, dtype="int32")
             two = paddle.full([1], 2, dtype="int64")
             x[zero:, 1:2:two, :] = self.value
 
+        def _call_setitem_static_api(self, x):
+            zero = paddle.full([1], 0, dtype="int32")
+            two = paddle.full([1], 2, dtype="int64")
+            x = paddle.static.setitem(
+                x,
+                (slice(zero, None), slice(1, 2, two), slice(None, None, None)),
+                self.value,
+            )
+            return x
+
         def _get_answer(self):
             self.data[0:, 1:2:2, :] = self.value
 
-    class XPUTestSetValueItemTensor6(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemTensor6(XPUTestSetValueItemTensor):
         def set_shape(self):
             self.shape = [3, 4, 5]
 
@@ -447,6 +591,16 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             minus1 = paddle.full([1], -1, dtype="int32")
             zero = paddle.full([1], 0, dtype="int32")
             x[2:zero:minus1, 0:2, 10:-6:minus1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            minus1 = paddle.full([1], -1, dtype="int32")
+            zero = paddle.full([1], 0, dtype="int32")
+            x = paddle.static.setitem(
+                x,
+                (slice(2, zero, minus1), slice(0, 2), slice(10, -6, minus1)),
+                self.value,
+            )
+            return x
 
         def _get_answer(self):
             self.data[2:0:-1, 0:2, ::-1] = self.value
@@ -456,130 +610,136 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
         def _call_setitem(self, x):
             x[None] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, None, self.value)
+            return x
+
         def _get_answer(self):
             self.data[None] = self.value
 
-    class XPUTestSetValueItemNone2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone2(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, None, 1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, None, 1), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone3(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, None, None, 1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(None, None, None), None, None, 1), self.value
+            )
+            return x
 
         def _get_answer(self):
             self.data[:, None, None, 1] = self.value
 
-    class XPUTestSetValueItemNone4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone4(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, 0, None, 1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, 0, None, 1), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, 0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone5(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[0, None, 0, None, 1] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, None, 0, None, 1), self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, None, 0, None, 1] = self.value
 
-    class XPUTestSetValueItemNone6(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone6(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[None, 0, 0, None, 0] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (None, 0, 0, None, 0), self.value)
+            return x
 
         def _get_answer(self):
             self.data[None, 0, 0, None, 0] = self.value
 
-    class XPUTestSetValueItemNone7(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone7(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, None, 1] = np.zeros(self.shape)[:, None, 0]
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (slice(None, None, None), None, 1),
+                np.zeros(self.shape)[:, None, 0],
+            )
+            return x
 
         def _get_answer(self):
             self.data[:, None, 1] = np.zeros(self.shape)[:, None, 0]
 
-    class XPUTestSetValueItemNone8(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone8(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[:, 1, None] = np.zeros(self.shape)[:, 0, None]
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (slice(None, None, None), 1, None),
+                np.zeros(self.shape)[:, 0, None],
+            )
+            return x
 
         def _get_answer(self):
             self.data[:, 1, None] = np.zeros(self.shape)[:, 0, None]
 
-    class XPUTestSetValueItemNone9(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone9(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[None, :, 1, ..., None] = np.zeros(self.shape)[0, 0, :, None]
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (None, slice(None, None, None), 1, ..., None),
+                np.zeros(self.shape)[0, 0, :, None],
+            )
+            return x
 
         def _get_answer(self):
             self.data[None, :, 1, ..., None] = np.zeros(self.shape)[
                 0, 0, :, None
             ]
 
-    class XPUTestSetValueItemNone10(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueItemNone10(XPUTestSetValueItemNone1):
         def _call_setitem(self, x):
             x[..., None, :, None] = np.zeros(self.shape)[..., None, :, None]
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x,
+                (..., None, slice(None, None, None), None),
+                np.zeros(self.shape)[..., None, :, None],
+            )
+            return x
 
         def _get_answer(self):
             self.data[..., None, :, None] = np.zeros(self.shape)[
@@ -589,69 +749,78 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
     # 1.6 item is list or Tensor of bol
     class XPUTestSetValueItemBool1(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[True, False]] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, [True, False], self.value)
+            return x
 
         def _get_answer(self):
             self.data[[True, False]] = self.value
 
     class XPUTestSetValueItemBool2(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[False, False]] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, [False, False], self.value)
+            return x
 
         def _get_answer(self):
             self.data[[False, False]] = self.value
 
     class XPUTestSetValueItemBool3(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[[False, True]] = np.zeros(self.shape[2])
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, [False, True], np.zeros(self.shape[2]))
+            return x
 
         def _get_answer(self):
             self.data[[False, True]] = np.zeros(self.shape[2])
 
     class XPUTestSetValueItemBool4(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             idx = paddle.assign(np.array([False, True]))
             x[idx] = np.zeros(self.shape[2])
+
+        def _call_setitem_static_api(self, x):
+            idx = paddle.assign(np.array([False, True]))
+            x = paddle.static.setitem(x, idx, np.zeros(self.shape[2]))
+            return x
 
         def _get_answer(self):
             self.data[np.array([False, True])] = np.zeros(self.shape[2])
 
     class XPUTestSetValueItemBool5(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             idx = paddle.assign(
                 np.array([[False, True, False], [True, True, False]])
             )
             x[idx] = self.value
+
+        def _call_setitem_static_api(self, x):
+            idx = paddle.assign(
+                np.array([[False, True, False], [True, True, False]])
+            )
+            x = paddle.static.setitem(x, idx, self.value)
+            return x
 
         def _get_answer(self):
             self.data[
@@ -660,14 +829,16 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
     class XPUTestSetValueItemBool6(XPUTestSetValueApi):
         def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
+            self.dtype = "float32"
 
         def _call_setitem(self, x):
             x[0, ...] = 0
             x[x > 0] = self.value
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, (0, ...), 0)
+            x = paddle.static.setitem(x, x > 0, self.value)
+            return x
 
         def _get_answer(self):
             self.data[0, ...] = 0
@@ -683,6 +854,11 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _call_setitem(self, x):
                 value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
                 x[0, 1] = value
+
+            def _call_setitem_static_api(self, x):
+                value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
+                x = paddle.static.setitem(x, (0, 1), value)
+                return x
 
             def _get_answer(self):
                 self.data[0, 1] = 3
@@ -706,6 +882,11 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
                 x[0, 1] = value
 
+            def _call_setitem_static_api(self, x):
+                value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
+                x = paddle.static.setitem(x, (0, 1), value)
+                return x
+
             def _get_answer(self):
                 self.data[0, 1] = 3
 
@@ -727,6 +908,11 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             def _call_setitem(self, x):
                 value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
                 x[0, 1] = value
+
+            def _call_setitem_static_api(self, x):
+                value = paddle.full(shape=[1], fill_value=3, dtype=self.dtype)
+                x = paddle.static.setitem(x, (0, 1), value)
+                return x
 
             def _get_answer(self):
                 self.data[0, 1] = 3
@@ -752,6 +938,13 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 )
                 x[0, 1] = value
 
+            def _call_setitem_static_api(self, x):
+                value = paddle.full(
+                    shape=[1], fill_value=False, dtype=self.dtype
+                )
+                x = paddle.static.setitem(x, (0, 1), value)
+                return x
+
             def _get_answer(self):
                 self.data[0, 1] = False
 
@@ -770,6 +963,8 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def set_dtype(self):
             if self.in_type == np.float16:
                 self.dtype = "float32"
+            elif self.in_type == np.bool_:
+                self.dtype = "bool"
             else:
                 self.dtype = self.in_type
 
@@ -779,32 +974,28 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, 0, self.value)
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape2(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape2(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array([[3, 4, 5, 6]])  # shape is (1,4)
 
         def _call_setitem(self, x):
             x[0:1] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, slice(0, 1), self.value)
+            return x
+
         def _get_answer(self):
             self.data[0:1] = self.value
 
-    class XPUTestSetValueValueShape3(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape3(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array(
                 [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
@@ -813,16 +1004,14 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0] = self.value
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, 0, self.value)
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape4(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape4(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array(
                 [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
@@ -833,16 +1022,14 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _call_setitem(self, x):
             x[0] = paddle.assign(self.value)  # x is Paddle.Tensor
 
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(x, 0, paddle.assign(self.value))
+            return x
+
         def _get_answer(self):
             self.data[0] = self.value
 
-    class XPUTestSetValueValueShape5(XPUTestSetValueApi):
-        def set_dtype(self):
-            if self.in_type == np.float16:
-                self.dtype = "float32"
-            else:
-                self.dtype = self.in_type
-
+    class XPUTestSetValueValueShape5(XPUTestSetValueValueShape1):
         def set_value(self):
             self.value = np.array([3, 3, 3]).astype(self.dtype)
 
@@ -851,6 +1038,12 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def _call_setitem(self, x):
             x[:, 0] = paddle.assign(self.value)  # x is Paddle.Tensor
+
+        def _call_setitem_static_api(self, x):
+            x = paddle.static.setitem(
+                x, (slice(None, None, None), 0), paddle.assign(self.value)
+            )
+            return x
 
         def _get_answer(self):
             self.data[:, 0] = self.value
@@ -864,7 +1057,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             ):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
                 value = [1]
-                x[0] = value
+                if paddle.in_dynamic_mode():
+                    x[0] = value
+                else:
+                    x = paddle.static.setitem(x, 0, value)
 
         def _dtype_error(self):
             with self.assertRaisesRegex(
@@ -877,7 +1073,10 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _step_error(self):
             with self.assertRaisesRegex(ValueError, "step can not be 0"):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                x[0:1:0] = self.value
+                if paddle.in_dynamic_mode():
+                    x[0:1:0] = self.value
+                else:
+                    x = paddle.static.setitem(x, slice(0, 1, 0), self.value)
 
         def _ellipsis_error(self):
             with self.assertRaisesRegex(
@@ -893,24 +1092,35 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
         def _bool_list_error(self):
             with self.assertRaises(TypeError):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                x[[True, False, 0]] = 0
+                if paddle.in_dynamic_mode():
+                    x[[True, False, 0]] = 0
+                else:
+                    x = paddle.static.setitem(x, [True, False, 0], 0)
 
             with self.assertRaises(IndexError):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
-                x[[True, False], [True, False]] = 0
+                if paddle.in_dynamic_mode():
+                    x[[True, False], [True, False]] = 0
+                else:
+                    x = paddle.static.setitem(
+                        x, ([True, False], [True, False]), 0
+                    )
 
         def _bool_tensor_error(self):
             with self.assertRaises(IndexError):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
                 idx = paddle.assign([True, False, True])
-                x[idx] = 0
+                if paddle.in_dynamic_mode():
+                    x[idx] = 0
+                else:
+                    x = paddle.static.setitem(x, idx, 0)
 
         def _broadcast_mismatch(self):
             program = paddle.static.Program()
             with paddle.static.program_guard(program):
                 x = paddle.ones(shape=self.shape, dtype=self.dtype)
                 value = np.array([3, 4, 5, 6, 7])
-                x[0] = value
+                x = paddle.static.setitem(x, 0, value)
             exe = paddle.static.Executor(paddle.XPUPlace(0))
             with self.assertRaises(ValueError):
                 exe.run(program)
@@ -952,7 +1162,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
                 z = paddle.add(x, y)
                 var = y[0, :]
-                z[0, :] = var
+                z = paddle.static.setitem(z, (0, slice(None)), var)
 
                 prediction = paddle.static.nn.fc(
                     x=z, size=2, activation='softmax'
@@ -1428,7 +1638,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
 
         def test_inplace(self):
             paddle.disable_static()
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 a.stop_gradient = False
@@ -1452,7 +1662,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
             paddle.disable_static()
 
             a_grad_1, b_grad_1, a_grad_2, b_grad_2 = 0, 1, 2, 3
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])
@@ -1463,7 +1673,7 @@ class XPUTestSetValueOp(XPUOpTestWrapper):
                 a_grad_1 = a.grad.numpy()
                 b_grad_1 = b.grad.numpy()
 
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 paddle.seed(100)
                 a = paddle.rand(shape=[1, 4])
                 b = paddle.rand(shape=[1, 4])

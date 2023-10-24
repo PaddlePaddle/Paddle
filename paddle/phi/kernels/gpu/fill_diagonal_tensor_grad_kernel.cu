@@ -48,11 +48,7 @@ void FillDiagonalTensorGradKernel(const Context &ctx,
                                   int dim1,
                                   int dim2,
                                   DenseTensor *x_grad) {
-#ifdef __HIPCC__
-  const int64_t kMaxBlockDim = 256;
-#else
   const int64_t kMaxBlockDim = 512;
-#endif
   auto matrows = 1;
 
   if (x_grad) {

@@ -21,8 +21,8 @@ paddle.enable_static()
 
 
 def make_program_dp2():
-    main_program = paddle.fluid.Program()
-    start_program = paddle.fluid.Program()
+    main_program = paddle.base.Program()
+    start_program = paddle.base.Program()
     with paddle.static.program_guard(main_program, start_program):
         x = paddle.static.data(name='x', shape=[4, 12, 16], dtype='float32')
         x.stop_gradient = False
@@ -57,12 +57,11 @@ def parallelizer(program_func, rank):
 
 class TestDistSplit(unittest.TestCase):
     def test_dist_split_dp2(self):
-
         for rank in range(2):
             dist_main_prog, dist_context = parallelizer(make_program_dp2, rank)
             ops = dist_main_prog.global_block().ops
             op_dist_attr = dist_context.get_op_dist_attr_for_program(ops[0])
-            assert op_dist_attr.impl_type == "split"
+            assert op_dist_attr.impl_type == "default"
             assert op_dist_attr.impl_idx == 0
 
 

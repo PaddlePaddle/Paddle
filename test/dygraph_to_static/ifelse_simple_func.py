@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def add_fn(x):
@@ -21,9 +21,9 @@ def add_fn(x):
     return x
 
 
-def loss_fn(x, lable):
+def loss_fn(x, label):
     loss = paddle.nn.functional.cross_entropy(
-        x, lable, reduction='none', use_softmax=False
+        x, label, reduction='none', use_softmax=False
     )
     return loss
 
@@ -57,7 +57,7 @@ def dyfunc_with_if_else(x_v, label=None):
 def dyfunc_with_if_else2(x, col=100):
     row = 0
     if abs(col) > x.shape[-1]:
-        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` statement currently.
         #  `x` is Tensor, `col` is not Tensor, and `col` is the return value of `true_fn` after transformed.
         # col = -1
         col = paddle.tensor.fill_constant(shape=[1], value=-1, dtype="int64")
@@ -136,7 +136,7 @@ def dyfunc_with_if_else_early_return2():
     return e, None
 
 
-def dyfunc_with_if_else_with_list_geneator(x):
+def dyfunc_with_if_else_with_list_generator(x):
     if 10 > 5:
         y = paddle.add_n(
             [paddle.full(shape=[2], fill_value=v) for v in range(5)]
@@ -151,7 +151,7 @@ def nested_if_else(x_v):
     feat_size = x_v.shape[-1]
     bias = paddle.tensor.fill_constant([feat_size], dtype='float32', value=1)
     if x_v.shape[0] != batch_size:
-        # TODO: Don't support return non-Tensor in Tensor-dependent `if` stament currently.
+        # TODO: Don't support return non-Tensor in Tensor-dependent `if` statement currently.
         #  `x_v.shape[0]` is not Tensor, and `batch_size` is the return value of `true_fn` after transformed.
         # col = -1
         # batch_size = x_v.shape[0]
@@ -378,7 +378,7 @@ def if_with_class_var(x, y=None):
 
 
 def if_tensor_case(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     mean = paddle.mean(x)
     # It is equivalent to `if mean != 0`

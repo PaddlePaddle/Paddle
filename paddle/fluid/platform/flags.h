@@ -23,7 +23,7 @@
 
 #define __PADDLE_DEFINE_EXPORTED_FLAG(                                        \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \
-  DEFINE_##__gflag_type(__name, __default_value, __doc);                      \
+  PD_DEFINE_##__gflag_type(__name, __default_value, __doc); /* NOLINT */      \
   struct __PaddleRegisterFlag_##__name {                                      \
     __PaddleRegisterFlag_##__name() {                                         \
       using FlagDeclaredType =                                                \

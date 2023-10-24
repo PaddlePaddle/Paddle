@@ -32,19 +32,19 @@ def recv(tensor, src=0, group=None, sync_op=True):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([7, 8, 9])
-                dist.send(data, dst=1)
-            else:
-                data = paddle.to_tensor([1, 2, 3])
-                dist.recv(data, src=0)
-            print(data)
-            # [7, 8, 9] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([7, 8, 9])
+            ...     dist.send(data, dst=1)
+            >>> else:
+            ...     data = paddle.to_tensor([1, 2, 3])
+            ...     dist.recv(data, src=0)
+            >>> print(data)
+            >>> # [7, 8, 9] (2 GPUs)
     """
     return stream.recv(
         tensor, src=src, group=group, sync_op=sync_op, use_calc_stream=False
@@ -70,19 +70,19 @@ def irecv(tensor, src=None, group=None):
     Examples:
         .. code-block:: python
 
-            # required: distributed
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            dist.init_parallel_env()
-            if dist.get_rank() == 0:
-                data = paddle.to_tensor([7, 8, 9])
-                task = dist.isend(data, dst=1)
-            else:
-                data = paddle.to_tensor([1, 2, 3])
-                task = dist.irecv(data, src=0)
-            task.wait()
-            print(data)
-            # [7, 8, 9] (2 GPUs)
+            >>> dist.init_parallel_env()
+            >>> if dist.get_rank() == 0:
+            ...     data = paddle.to_tensor([7, 8, 9])
+            ...     task = dist.isend(data, dst=1)
+            >>> else:
+            ...     data = paddle.to_tensor([1, 2, 3])
+            ...     task = dist.irecv(data, src=0)
+            >>> task.wait()
+            >>> print(data)
+            >>> # [7, 8, 9] (2 GPUs)
     """
     return recv(tensor, src, group, sync_op=False)

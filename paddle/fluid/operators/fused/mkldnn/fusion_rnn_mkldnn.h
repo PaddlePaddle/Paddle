@@ -81,7 +81,7 @@ class RNNMKLDNNHandler : public phi::funcs::OneDNNHandlerT<T, T_alg> {
 
   bool is_NTC(const dnnl::memory::desc& md) {
     auto ntc_md = dnnl::memory::desc(
-        md.dims(), md.data_type(), dnnl::memory::format_tag::ntc);
+        md.get_dims(), md.get_data_type(), dnnl::memory::format_tag::ntc);
     return md == ntc_md;
   }
 

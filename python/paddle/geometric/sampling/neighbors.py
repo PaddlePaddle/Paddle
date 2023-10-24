@@ -13,8 +13,8 @@
 # limitations under the License.
 
 from paddle import _C_ops, _legacy_C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 __all__ = []
@@ -77,18 +77,18 @@ def sample_neighbors(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
-            #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
-            row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
-            colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
-            nodes = [0, 8, 1, 2]
-            sample_size = 2
-            row = paddle.to_tensor(row, dtype="int64")
-            colptr = paddle.to_tensor(colptr, dtype="int64")
-            nodes = paddle.to_tensor(nodes, dtype="int64")
-            out_neighbors, out_count = paddle.geometric.sample_neighbors(row, colptr, nodes, sample_size=sample_size)
+            >>> # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
+            >>> #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
+            >>> row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
+            >>> colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
+            >>> nodes = [0, 8, 1, 2]
+            >>> sample_size = 2
+            >>> row = paddle.to_tensor(row, dtype="int64")
+            >>> colptr = paddle.to_tensor(colptr, dtype="int64")
+            >>> nodes = paddle.to_tensor(nodes, dtype="int64")
+            >>> out_neighbors, out_count = paddle.geometric.sample_neighbors(row, colptr, nodes, sample_size=sample_size)
 
     """
 
@@ -228,20 +228,20 @@ def weighted_sample_neighbors(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
-            #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
-            row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
-            colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
-            weight = [0.1, 0.5, 0.2, 0.5, 0.9, 1.9, 2.0, 2.1, 0.01, 0.9, 0,12, 0.59, 0.67]
-            nodes = [0, 8, 1, 2]
-            sample_size = 2
-            row = paddle.to_tensor(row, dtype="int64")
-            colptr = paddle.to_tensor(colptr, dtype="int64")
-            weight = paddle.to_tensor(weight, dtype="float32")
-            nodes = paddle.to_tensor(nodes, dtype="int64")
-            out_neighbors, out_count = paddle.geometric.weighted_sample_neighbors(row, colptr, weight, nodes, sample_size=sample_size)
+            >>> # edges: (3, 0), (7, 0), (0, 1), (9, 1), (1, 2), (4, 3), (2, 4),
+            >>> #        (9, 5), (3, 5), (9, 6), (1, 6), (9, 8), (7, 8)
+            >>> row = [3, 7, 0, 9, 1, 4, 2, 9, 3, 9, 1, 9, 7]
+            >>> colptr = [0, 2, 4, 5, 6, 7, 9, 11, 11, 13, 13]
+            >>> weight = [0.1, 0.5, 0.2, 0.5, 0.9, 1.9, 2.0, 2.1, 0.01, 0.9, 0,12, 0.59, 0.67]
+            >>> nodes = [0, 8, 1, 2]
+            >>> sample_size = 2
+            >>> row = paddle.to_tensor(row, dtype="int64")
+            >>> colptr = paddle.to_tensor(colptr, dtype="int64")
+            >>> weight = paddle.to_tensor(weight, dtype="float32")
+            >>> nodes = paddle.to_tensor(nodes, dtype="int64")
+            >>> out_neighbors, out_count = paddle.geometric.weighted_sample_neighbors(row, colptr, weight, nodes, sample_size=sample_size)
 
     """
 

@@ -27,6 +27,11 @@ paddle::Tensor conv2d_ad_func(const paddle::Tensor& input,
                               int groups,
                               std::string data_format);
 
+paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
+                                const paddle::Tensor& y);
+paddle::Tensor& multiply__ad_func(paddle::Tensor& x,  // NOLINT
+                                  const paddle::Tensor& y);
+
 std::tuple<paddle::Tensor,
            paddle::Tensor&,
            paddle::Tensor&,
@@ -62,4 +67,8 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                          std::string data_layout,
                          bool use_global_stats,
                          bool trainable_statistics);
+
+paddle::Tensor multiply_ad_func(const paddle::Tensor& x,
+                                const paddle::Tensor& y);
+
 }  // namespace sparse

@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -29,7 +29,7 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
         os.environ["PADDLE_TRAINER_ENDPOINTS"] = "127.0.0.1:36001"
 
     def net(self, main_prog, startup_prog, dtype='float32'):
-        with fluid.program_guard(main_prog, startup_prog):
+        with base.program_guard(main_prog, startup_prog):
             input_x = paddle.static.data(name="x", shape=[-1, 32], dtype=dtype)
             input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
@@ -53,10 +53,10 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
     def test_fp16_allreduce_optimizer(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -80,10 +80,10 @@ class TestFleetFP16CompressOptimizer(unittest.TestCase):
     def test_fp16_allreduce_not_apply_fp16_net(self):
         role = role_maker.PaddleCloudRoleMaker(is_collective=True)
         fleet.init(role)
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
+        train_prog, startup_prog = base.Program(), base.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog, dtype='float16')
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

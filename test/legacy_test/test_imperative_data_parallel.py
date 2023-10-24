@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn import Linear
 
 
@@ -37,7 +37,7 @@ class MLP(paddle.nn.Layer):
 
 class TestDataParallelStateDict(unittest.TestCase):
     def test_data_parallel_state_dict(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.distributed.init_parallel_env()
             mlp = MLP()
             parallel_mlp = paddle.DataParallel(mlp)
@@ -47,9 +47,9 @@ class TestDataParallelStateDict(unittest.TestCase):
 
             base_para = {}
             place = (
-                fluid.CPUPlace()
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
             for k, v in single_state.items():
                 self.assertTrue(k in parallel_state)

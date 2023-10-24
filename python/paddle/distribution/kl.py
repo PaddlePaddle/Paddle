@@ -53,14 +53,14 @@ def kl_divergence(p, q):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
-            q = paddle.distribution.Beta(alpha=0.3, beta=0.7)
+            >>> p = paddle.distribution.Beta(alpha=0.5, beta=0.5)
+            >>> q = paddle.distribution.Beta(alpha=0.3, beta=0.7)
 
-            print(paddle.distribution.kl_divergence(p, q))
-            # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
-            #        0.21193528)
+            >>> print(paddle.distribution.kl_divergence(p, q))
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                0.21193528)
 
     """
     return _dispatch(type(p), type(q))(p, q)
@@ -82,11 +82,11 @@ def register_kl(cls_p, cls_q):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            @paddle.distribution.register_kl(paddle.distribution.Beta, paddle.distribution.Beta)
-            def kl_beta_beta():
-                pass # insert implementation here
+            >>> @paddle.distribution.register_kl(paddle.distribution.Beta, paddle.distribution.Beta)
+            >>> def kl_beta_beta():
+            ...     pass # insert implementation here
     """
     if not issubclass(cls_p, Distribution) or not issubclass(
         cls_q, Distribution

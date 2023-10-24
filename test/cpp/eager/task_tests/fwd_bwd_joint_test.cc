@@ -50,7 +50,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 5.0;
+    ret_ptr[i] = t_ptr[i] + 5.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
@@ -66,12 +66,12 @@ TEST(FwdBwdJoint, SingleNode) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -110,12 +110,12 @@ TEST(FwdBwdJoint, LinearNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -164,12 +164,12 @@ TEST(FwdBwdJoint, BranchedNodes) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -237,12 +237,12 @@ TEST(FwdBwdJoint, GradientHook) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -310,12 +310,12 @@ TEST(FwdBwdJoint, CrossBatchAccumulation) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -365,12 +365,12 @@ TEST(FwdBwdJoint, SingleNodeCUDA) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CUDAPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CUDAPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward
@@ -406,12 +406,12 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   // 1. Prepare Input
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CUDAPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           5.0 /*value*/,
-                                           true /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CUDAPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        5.0 /*value*/,
+                                        true /*is_leaf*/);
   egr_utils_api::RetainGradForTensor(tensor);
 
   // 3. Run Forward

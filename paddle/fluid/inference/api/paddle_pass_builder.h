@@ -181,8 +181,6 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   bool use_ipu_{false};
   bool use_mkldnn_{false};
   bool use_custom_device_{false};
-
-  bool use_gpu_low_precision_{false};
   /// \endcond
 };
 

@@ -20,9 +20,9 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base import core
+from paddle.base.dygraph import to_variable
 from paddle.common_ops_import import dygraph_only
-from paddle.fluid import core
-from paddle.fluid.dygraph import to_variable
 from paddle.nn import clip
 
 
@@ -162,8 +162,14 @@ class GroupShardedClipGrad:
 
         # add all reduce to get global norm of distributed params_and_grads
         dev_id = int(self._device.split(":")[1])
+        dev_type = self._device.split(':')[0]
         if paddle.device.get_device() == "cpu":
-            global_norm_var = global_norm_var.cuda(dev_id)
+            if dev_type in paddle.device.get_all_custom_device_type():
+                global_norm_var = global_norm_var._copy_to(
+                    paddle.CustomPlace(dev_type, dev_id), True
+                )
+            else:
+                global_norm_var = global_norm_var.cuda(dev_id)
 
         with device_guard(dev_id, self._device.split(":")[0]):
             paddle.distributed.all_reduce(global_norm_var, group=self._group)
@@ -207,6 +213,8 @@ def device_guard(dev_id=0, device="cpu"):
         paddle.set_device(device)
     elif device in ["gpu", "xpu"]:
         paddle.set_device(f"{device}:{dev_id}")
+    elif device in paddle.device.get_all_custom_device_type():
+        paddle.set_device(f"{device}:{dev_id}")
 
     try:
         yield
@@ -230,33 +238,45 @@ def GroupShardedScaler(scaler):
         if getattr(optimizer._optim, '_param_groups', None) and isinstance(
             optimizer._optim._param_groups[0], dict
         ):
-
             for group in optimizer._optim._param_groups:
                 for param in group['params']:
-                    if param.grad is not None:
-                        param_grads.append(param.grad)
-                        if param.grad.dtype in [
+                    tgt_grad = None
+                    if (
+                        hasattr(param, "main_grad")
+                        and param.main_grad is not None
+                    ):
+                        tgt_grad = param.main_grad
+                    elif param.grad is not None:
+                        tgt_grad = param.grad
+                    if tgt_grad is not None:
+                        param_grads.append(tgt_grad)
+                        if tgt_grad.dtype in [
                             core.VarDesc.VarType.FP16,
                             paddle.float16,
                         ]:
-                            param_grads_fp16.append(param.grad)
-                        elif param.grad.dtype in [paddle.bfloat16]:
-                            param_grads_bfp16.append(param.grad)
+                            param_grads_fp16.append(tgt_grad)
+                        elif tgt_grad.dtype in [paddle.bfloat16]:
+                            param_grads_bfp16.append(tgt_grad)
                         else:
-                            param_grads_fp32.append(param.grad)
+                            param_grads_fp32.append(tgt_grad)
         else:
             for param in optimizer._optim._parameter_list:
-                if param.grad is not None:
-                    param_grads.append(param.grad)
-                    if param.grad.dtype in [
+                tgt_grad = None
+                if hasattr(param, "main_grad") and param.main_grad is not None:
+                    tgt_grad = param.main_grad
+                elif param.grad is not None:
+                    tgt_grad = param.grad
+                if tgt_grad is not None:
+                    param_grads.append(tgt_grad)
+                    if tgt_grad.dtype in [
                         core.VarDesc.VarType.FP16,
                         paddle.float16,
                     ]:
-                        param_grads_fp16.append(param.grad)
-                    elif param.grad.dtype in [paddle.bfloat16]:
-                        param_grads_bfp16.append(param.grad)
+                        param_grads_fp16.append(tgt_grad)
+                    elif tgt_grad.dtype in [paddle.bfloat16]:
+                        param_grads_bfp16.append(tgt_grad)
                     else:
-                        param_grads_fp32.append(param.grad)
+                        param_grads_fp32.append(tgt_grad)
 
         temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool_))
         temp_found_inf_bfp16 = to_variable(np.array([0]).astype(np.bool_))

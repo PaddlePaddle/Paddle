@@ -116,16 +116,16 @@ TEST(RecordEvent, RecordEvent) {
 
   int cuda_startup_count = 0;
   int start_profiler_count = 0;
-  for (size_t i = 0; i < events.size(); ++i) {
-    for (size_t j = 0; j < events[i].size(); ++j) {
-      if (events[i][j].name() == "_cuda_startup_") ++cuda_startup_count;
-      if (events[i][j].name() == "_start_profiler_") ++start_profiler_count;
-      if (events[i][j].name() == "push") {
-        EXPECT_EQ(events[i][j + 1].name(), "pop");
+  for (auto& item : events) {
+    for (size_t j = 0; j < item.size(); ++j) {
+      if (item[j].name() == "_cuda_startup_") ++cuda_startup_count;
+      if (item[j].name() == "_start_profiler_") ++start_profiler_count;
+      if (item[j].name() == "push") {
+        EXPECT_EQ(item[j + 1].name(), "pop");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-        EXPECT_GT(events[i][j].CudaElapsedMs(events[i][j + 1]), 0);
+        EXPECT_GT(item[j].CudaElapsedMs(item[j + 1]), 0);
 #else
-        EXPECT_GT(events[i][j].CpuElapsedMs(events[i][j + 1]), 0);
+        EXPECT_GT(item[j].CpuElapsedMs(item[j + 1]), 0);
 #endif
       }
     }

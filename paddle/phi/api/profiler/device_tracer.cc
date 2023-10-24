@@ -21,11 +21,11 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(enable_host_event_recorder_hook);
+PD_DECLARE_bool(enable_host_event_recorder_hook);
 
 namespace phi {
 
@@ -296,7 +296,7 @@ void CUPTIAPI bufferCompleted(CUcontext ctx,
       } else {
         CUPTI_CALL(status);
       }
-    } while (1);
+    } while (true);
 
     size_t dropped;
     CUPTI_CALL(
@@ -323,7 +323,7 @@ class DeviceTracerImpl : public DeviceTracer {
 #endif
   }
 
-  void AddAnnotation(uint32_t id, Event *event) {
+  void AddAnnotation(uint32_t id, Event *event) override {
 #ifdef PADDLE_WITH_SW
     std::forward_list<std::pair<uint32_t, Event *>> *local_correlations_pairs =
         nullptr;
@@ -339,7 +339,8 @@ class DeviceTracerImpl : public DeviceTracer {
     local_correlations_pairs->push_front(std::make_pair(id, event));
   }
 
-  void AddAnnotations(const std::map<uint64_t, ThreadEvents> &thr_events) {
+  void AddAnnotations(
+      const std::map<uint64_t, ThreadEvents> &thr_events) override {
     for (auto &tmp : active_kind_records_) {
       for (const ActiveKindRecord &r : tmp) {
         auto iter = thr_events.find(r.thread_id);
@@ -384,7 +385,7 @@ class DeviceTracerImpl : public DeviceTracer {
                      uint64_t start_ns,
                      uint64_t end_ns,
                      int64_t device_id,
-                     uint64_t thread_id) {
+                     uint64_t thread_id) override {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -409,7 +410,7 @@ class DeviceTracerImpl : public DeviceTracer {
                      int64_t device_id,
                      int64_t stream_id,
                      uint32_t correlation_id,
-                     uint64_t bytes) {
+                     uint64_t bytes) override {
     // 0 means timestamp information could not be collected for the kernel.
     if (start_ns == 0 || end_ns == 0 || start_ns == end_ns) {
       VLOG(3) << name << " cannot be traced";
@@ -427,7 +428,7 @@ class DeviceTracerImpl : public DeviceTracer {
                         const Place &place,
                         const std::string &alloc_in,
                         const std::string &free_in,
-                        uint64_t thread_id) {
+                        uint64_t thread_id) override {
     if (0 == start_ns || 0 == end_ns) {
       VLOG(3) << alloc_in << ", " << free_in << " Cannot be traced.";
       return;
@@ -452,7 +453,7 @@ class DeviceTracerImpl : public DeviceTracer {
                             uint64_t end_ns,
                             int64_t device_id,
                             uint64_t thread_id,
-                            uint32_t correlation_id) {
+                            uint32_t correlation_id) override {
     if (anno.empty()) {
       VLOG(1) << "Empty timeline annotation.";
       return;
@@ -478,7 +479,7 @@ class DeviceTracerImpl : public DeviceTracer {
                         uint64_t end,
                         int64_t device_id,
                         int64_t stream_id,
-                        uint32_t correlation_id) {
+                        uint32_t correlation_id) override {
     // 0 means timestamp information could not be collected for the kernel.
     if (start == 0 || end == 0 || start == end) {
       VLOG(3) << correlation_id << " cannot be traced";
@@ -490,12 +491,12 @@ class DeviceTracerImpl : public DeviceTracer {
         KernelRecord{name, start, end, device_id, stream_id, correlation_id});
   }
 
-  bool IsEnabled() {
+  bool IsEnabled() override {
     std::lock_guard<std::mutex> l(trace_mu_);
     return enabled_;
   }
 
-  void Enable() {
+  void Enable() override {
     std::lock_guard<std::mutex> l(trace_mu_);
     if (enabled_) {
       return;
@@ -544,7 +545,7 @@ class DeviceTracerImpl : public DeviceTracer {
     enabled_ = true;
   }
 
-  void Reset() {
+  void Reset() override {
 #ifdef PADDLE_WITH_CUPTI
     CUPTI_CALL(
         dynload::cuptiActivityFlushAll(CUPTI_ACTIVITY_FLAG_FLUSH_FORCED));
@@ -559,7 +560,7 @@ class DeviceTracerImpl : public DeviceTracer {
     for (auto &tmp : active_kind_records_) tmp.clear();
   }
 
-  void GenEventKernelCudaElapsedTime() {
+  void GenEventKernelCudaElapsedTime() override {
 #ifdef PADDLE_WITH_CUPTI
     if (correlations_.empty())
       for (auto &tmp : correlations_pairs)
@@ -591,7 +592,7 @@ class DeviceTracerImpl : public DeviceTracer {
 #endif
   }
 
-  proto::Profile GenProfile(const std::string &profile_path) {
+  proto::Profile GenProfile(const std::string &profile_path) override {
     proto::Profile profile_pb = this->GetProfile();
     std::ofstream profile_f;
     profile_f.open(profile_path,
@@ -601,7 +602,7 @@ class DeviceTracerImpl : public DeviceTracer {
     return profile_pb;
   }
 
-  proto::Profile GetProfile() {
+  proto::Profile GetProfile() override {
     int miss = 0, find = 0;
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
@@ -711,7 +712,7 @@ class DeviceTracerImpl : public DeviceTracer {
     return profile_pb;
   }
 
-  void Disable() {
+  void Disable() override {
 #ifdef PADDLE_WITH_CUPTI
     // flush might cause additional calls to DeviceTracker.
     CUPTI_CALL(
@@ -796,8 +797,8 @@ void ClearCurAnnotation() {
   if (!main_thread_annotation_stack.empty()) {
     std::string name = annotation_stack.back()->name();
     std::string main_name = main_thread_annotation_stack.back()->name();
-    int main_name_len = main_name.length();
-    int name_len = name.length();
+    int main_name_len = static_cast<int>(main_name.length());
+    int name_len = static_cast<int>(name.length());
     int prefix_len = main_name_len - name_len;
 
     if ((prefix_len > 0 && main_name.at(prefix_len - 1) == '/' &&
@@ -824,7 +825,7 @@ void SetCurBlock(int block_id) { block_id_stack.push_back(block_id); }
 
 void ClearCurBlock() { block_id_stack.pop_back(); }
 
-int BlockDepth() { return block_id_stack.size(); }
+int BlockDepth() { return static_cast<int>(block_id_stack.size()); }
 
 uint32_t GetCurSystemThreadId() {
   std::stringstream ss;

@@ -18,7 +18,6 @@ from legacy_test.test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestParallelizer(TestMultipleGpus):
-
     # check sharding logic as well as the accuracy with single mode
     def test_parallelizer_logic(self):
         self.run_mnist_2gpu('auto_parallel_parallelizer.py')

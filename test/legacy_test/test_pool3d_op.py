@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -106,7 +106,6 @@ def pool3D_forward_naive(
     if adaptive:
         D_out, H_out, W_out = ksize
     else:
-
         D_out = (
             (D - ksize[0] + pad_d_forth + pad_d_back + strides[0] - 1)
             // strides[0]
@@ -151,7 +150,6 @@ def pool3D_forward_naive(
                     w_start = adaptive_start_index(j, W, ksize[2])
                     w_end = adaptive_end_index(j, W, ksize[2])
                 else:
-
                     d_start = k * strides[0] - pad_d_forth
                     d_end = np.min(
                         (
@@ -365,7 +363,7 @@ class TestPool3D_Op(OpTest):
             self.padding_algorithm,
         ).astype(self.dtype)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(input)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(input)}
 
         self.attrs = {
             'strides': self.strides,

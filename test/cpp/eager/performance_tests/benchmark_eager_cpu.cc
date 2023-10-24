@@ -33,14 +33,6 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(matmul_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(add_grad, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum, CPU, ALL_LAYOUT);
-PD_DECLARE_KERNEL(sum_grad, CPU, ALL_LAYOUT);
-
 using namespace egr;            // NOLINT
 using namespace egr_utils_api;  // NOLINT
 
@@ -50,12 +42,13 @@ TEST(Benchmark, EagerScaleCPU) {
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddim = phi::make_ddim({2, 4, 4, 4});
-    paddle::Tensor tensor = CreateTensorWithValue(ddim,
-                                                  paddle::platform::CPUPlace(),
-                                                  phi::DataType::FLOAT32,
-                                                  phi::DataLayout::NCHW,
-                                                  5.0,
-                                                  true);
+    paddle::Tensor tensor =
+        eager_test::CreateTensorWithValue(ddim,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          5.0,
+                                          true);
     RetainGradForTensor(tensor);
 
     if (mode == "Accuracy") {
@@ -89,21 +82,23 @@ TEST(Benchmark, EagerMatmulCPU) {
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CPUPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             1.0,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          1.0,
+                                          true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
-    paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CPUPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             2.0,
-                                             true);
+    paddle::Tensor Y =
+        eager_test::CreateTensorWithValue(ddimY,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          2.0,
+                                          true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -139,21 +134,23 @@ TEST(Benchmark, EagerIntermediateMatmulCPU) {
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({2, 2});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CPUPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             1.0,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          1.0,
+                                          true);
     RetainGradForTensor(X);
 
     paddle::framework::DDim ddimY = phi::make_ddim({2, 2});
-    paddle::Tensor Y = CreateTensorWithValue(ddimY,
-                                             paddle::platform::CPUPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             2.0,
-                                             true);
+    paddle::Tensor Y =
+        eager_test::CreateTensorWithValue(ddimY,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          2.0,
+                                          true);
     RetainGradForTensor(Y);
 
     if (mode == "Accuracy") {
@@ -189,33 +186,36 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
 
   for (const std::string mode : {"Accuracy", "Performance"}) {
     paddle::framework::DDim ddimX = phi::make_ddim({MLP_M, MLP_N});
-    paddle::Tensor X = CreateTensorWithValue(ddimX,
-                                             paddle::platform::CPUPlace(),
-                                             phi::DataType::FLOAT32,
-                                             phi::DataLayout::NCHW,
-                                             MLP_X_VAL,
-                                             true);
+    paddle::Tensor X =
+        eager_test::CreateTensorWithValue(ddimX,
+                                          paddle::platform::CPUPlace(),
+                                          phi::DataType::FLOAT32,
+                                          phi::DataLayout::NCHW,
+                                          MLP_X_VAL,
+                                          true);
     RetainGradForTensor(X);
 
     std::vector<paddle::Tensor> Ws;
     std::vector<paddle::Tensor> Bs;
     for (size_t i = 0; i < MLP_NUM_LINEAR; i++) {
       paddle::framework::DDim ddimW = phi::make_ddim({MLP_N, MLP_K});
-      paddle::Tensor W = CreateTensorWithValue(ddimW,
-                                               paddle::platform::CPUPlace(),
-                                               phi::DataType::FLOAT32,
-                                               phi::DataLayout::NCHW,
-                                               MLP_W_VAL,
-                                               true);
+      paddle::Tensor W =
+          eager_test::CreateTensorWithValue(ddimW,
+                                            paddle::platform::CPUPlace(),
+                                            phi::DataType::FLOAT32,
+                                            phi::DataLayout::NCHW,
+                                            MLP_W_VAL,
+                                            true);
       RetainGradForTensor(W);
 
       paddle::framework::DDim ddimB = phi::make_ddim({MLP_K});
-      paddle::Tensor B = CreateTensorWithValue(ddimB,
-                                               paddle::platform::CPUPlace(),
-                                               phi::DataType::FLOAT32,
-                                               phi::DataLayout::NCHW,
-                                               MLP_B_VAL,
-                                               true);
+      paddle::Tensor B =
+          eager_test::CreateTensorWithValue(ddimB,
+                                            paddle::platform::CPUPlace(),
+                                            phi::DataType::FLOAT32,
+                                            phi::DataLayout::NCHW,
+                                            MLP_B_VAL,
+                                            true);
       RetainGradForTensor(B);
 
       Ws.emplace_back(std::move(W));
@@ -245,8 +245,3 @@ TEST(Benchmark, EagerIntermediateMLPCPU) {
     }
   }
 }
-
-USE_OP_ITSELF(scale);
-USE_OP_ITSELF(elementwise_add);
-USE_OP_ITSELF(matmul_v2);
-USE_OP_ITSELF(reduce_sum);

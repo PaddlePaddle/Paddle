@@ -13,6 +13,16 @@
 // limitations under the License.
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
+#include <cuda.h>
+#include <cuda_runtime.h>
+#endif
+
+#ifdef PADDLE_WITH_HIP
+#include <hip/hip_runtime.h>
+#endif
+
+#include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
@@ -30,21 +40,47 @@ namespace distributed {
 class NCCLCommContext final : public CommContext {
  public:
   NCCLCommContext(int rank, int size, ncclUniqueId nccl_id);
+  ~NCCLCommContext() override = default;
+
+  int GetNcclVersion();
 
   ncclComm_t GetNcclComm();
+
+  gpuStream_t GetStream();
+
+  gpuEvent_t GetComputeEvent();
+
+  void SetComputeEvent(
+      std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&&
+          compute_event);
+
+  gpuEvent_t GetCommEvent();
+
+  void SetCommEvent(
+      std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type>&& comm_event);
+
+  phi::GPUContext* GetDevContext();
+
+  void SetDevContext(std::unique_ptr<phi::GPUContext>&& dev_ctx);
 
   void Broadcast(phi::DenseTensor* out_tensor,
                  const phi::DenseTensor& in_tensor,
                  int root,
                  gpuStream_t stream);
+
   void Send(const phi::DenseTensor& in_tensor,
+            const int64_t& count,
             const int& peer,
             gpuStream_t stream);
 
-  void Recv(phi::DenseTensor* out_tensor, const int& peer, gpuStream_t stream);
+  void Recv(phi::DenseTensor* out_tensor,
+            const int64_t& count,
+            const int& peer,
+            gpuStream_t stream);
 
   void ReduceScatter(phi::DenseTensor* out_tensor,
                      const phi::DenseTensor& in_tensor,
+                     ncclRedOp_t reduce_type,
                      gpuStream_t stream);
 
   void AllGather(phi::DenseTensor* out_tensor,
@@ -62,10 +98,37 @@ class NCCLCommContext final : public CommContext {
               int root,
               gpuStream_t stream);
 
+  void GroupStart();
+
+  void GroupEnd();
+
+#if NCCL_VERSION_CODE >= 21100
+  // Creates a new reduction operator which pre-multiplies input values by a
+  // given scalar locally before reducing them with peer values via summation.
+  void RedOpCreatePreMulSum(ncclRedOp_t* op,
+                            void* scalar,
+                            ncclDataType_t dtype,
+                            ncclScalarResidence_t residence);
+
+  // Destroys the reduction operator op. The operator must have been created by
+  // ncclRedOpCreatePreMul with the matching communicator comm.
+  void RedOpDestroy(ncclRedOp_t op);
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(NCCLCommContext);
 
+  int nccl_version_;
+
   ncclComm_t nccl_comm_;
+
+  std::unique_ptr<phi::GPUContext> dev_ctx_;
+
+  // used for comm wait compute, compute_stream-->event-->comm_stream
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> compute_event_;
+
+  // used for compute wait comm, comm_stream-->event-->compute_stream
+  std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> comm_event_;
 };
 
 }  // namespace distributed

@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle.static import InputSpec
@@ -51,7 +52,6 @@ def test_slice_in_if(x):
     return out
 
 
-@paddle.jit.to_static
 def test_slice_in_while_loop(x, iter_num=3):
     x = paddle.to_tensor(x)
     iter_num_var = paddle.full(shape=[1], fill_value=iter_num, dtype="int32")
@@ -108,6 +108,7 @@ class LayerWithSetValue(paddle.nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.init_input()
@@ -129,8 +130,12 @@ class TestSliceWithoutControlFlow(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        paddle.jit.enable_to_static(to_static)
-        res = self.dygraph_func(self.input)
+        func = (
+            paddle.jit.to_static(self.dygraph_func)
+            if to_static
+            else self.dygraph_func
+        )
+        res = func(self.input)
         return res.numpy()
 
     def run_static_mode(self):
@@ -149,7 +154,7 @@ class TestSliceInIf(TestSliceWithoutControlFlow):
 
 class TestSliceInWhileLoop(TestSliceWithoutControlFlow):
     def init_dygraph_func(self):
-        self.dygraph_func = test_slice_in_while_loop
+        self.dygraph_func = paddle.jit.to_static(test_slice_in_while_loop)
 
 
 class TestSliceInForLoop(TestSliceWithoutControlFlow):
@@ -165,6 +170,7 @@ class TestSetValue(TestSliceWithoutControlFlow):
         self.dygraph_func = test_set_value
 
 
+@dy2static_unittest
 class TestSetValueWithLayerAndSave(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -175,6 +181,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @ast_only_test
     def test_set_value_with_save(self):
         paddle.jit.enable_to_static(True)
         model = LayerWithSetValue(input_dim=10, hidden=1)
@@ -184,6 +191,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
         )
 
 
+@dy2static_unittest
 class TestSliceSupplementSpecialCase(unittest.TestCase):
     # unittest for slice index which abs(step)>0. eg: x[::2]
     def test_static_slice_step(self):
@@ -227,6 +235,7 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
         )
 
 
+@dy2static_unittest
 class TestPaddleStridedSlice(unittest.TestCase):
     def test_compare_paddle_strided_slice_with_numpy(self):
         paddle.disable_static()
@@ -288,6 +297,7 @@ def slice_zero_shape_tensor(x):
     return y
 
 
+@dy2static_unittest
 class TestSliceZeroShapeTensor(unittest.TestCase):
     def test_slice(self):
         paddle.disable_static()

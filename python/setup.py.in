@@ -103,28 +103,7 @@ def is_taged():
 def get_cinn_version():
     if '@WITH_CINN@' != 'ON':
         return "False"
-
-    cinn_git_version = 'Unknown'
-    try:
-        cmd = ['git', 'describe', '--exact-match', '--tags', 'HEAD', '2>/dev/null']
-        cinn_tag = subprocess.Popen(cmd, stdout = subprocess.PIPE, cwd='@CINN_SOURCE_DIR@').communicate()[0].strip()
-        if len(cinn_tag) > 0:
-            cinn_git_version = cinn_tag
-    except:
-        pass
-
-    if cinn_git_version == 'Unknown':
-        try:
-            cmd = ['git', 'rev-parse', 'HEAD']
-            cinn_commit = subprocess.Popen(cmd, stdout = subprocess.PIPE,
-                cwd='@CINN_SOURCE_DIR@').communicate()[0].strip()
-            if len(cinn_commit) > 0:
-                cinn_git_version = cinn_commit
-        except:
-            pass
-
-    cinn_git_version = cinn_git_version.decode('utf-8')
-    return str(cinn_git_version)
+    return "0.3.0"
 
 def write_version_py(filename='paddle/version/__init__.py'):
     cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
@@ -175,29 +154,34 @@ def show():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # Case 1: paddle is tagged with 2.2.0
-            paddle.version.show()
-            # full_version: 2.2.0
-            # major: 2
-            # minor: 2
-            # patch: 0
-            # rc: 0
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 1: paddle is tagged with 2.2.0
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            full_version: 2.2.0
+            major: 2
+            minor: 2
+            patch: 0
+            rc: 0
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
 
-            # Case 2: paddle is not tagged
-            paddle.version.show()
-            # commit: cfa357e984bfd2ffa16820e354020529df434f7d
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 2: paddle is not tagged
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            commit: cfa357e984bfd2ffa16820e354020529df434f7d
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
+
     """
     if istaged:
         print('full_version:', full_version)
@@ -225,10 +209,11 @@ def cuda():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cuda()
-            # '10.2'
+            >>> paddle.version.cuda()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '10.2'
 
     """
     return cuda_version
@@ -242,10 +227,11 @@ def cudnn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cudnn()
-            # '7.6.5'
+            >>> paddle.version.cudnn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '7.6.5'
 
     """
     return cudnn_version
@@ -259,10 +245,11 @@ def xpu():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu()
-            # '20230114'
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
 
     """
     return xpu_version
@@ -276,10 +263,11 @@ def xpu_xccl():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu_xccl()
-            # '1.0.7'
+            >>> paddle.version.xpu_xccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '1.0.7'
 
     """
     return xpu_xccl_version
@@ -293,10 +281,11 @@ def cinn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cinn()
-            # False
+            >>> paddle.version.cinn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            False
 
     """
     return cinn_version
@@ -401,6 +390,7 @@ packages=['paddle',
           'paddle.distributed.sharding',
           'paddle.distributed.fleet',
           'paddle.distributed.launch',
+          'paddle.distributed.auto_tuner',
           'paddle.distributed.launch.context',
           'paddle.distributed.launch.controllers',
           'paddle.distributed.launch.job',
@@ -439,19 +429,25 @@ packages=['paddle',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
+          'paddle.jit.newir_dy2static',
+          'paddle.jit.sot',
+          'paddle.jit.sot.opcode_translator',
+          'paddle.jit.sot.opcode_translator.executor',
+          'paddle.jit.sot.opcode_translator.executor.variables',
+          'paddle.jit.sot.opcode_translator.instruction_utils',
+          'paddle.jit.sot.symbolic',
+          'paddle.jit.sot.utils',
           'paddle.inference',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
-          'paddle.fluid',
-          'paddle.fluid.dygraph',
-          'paddle.fluid.proto',
-          'paddle.fluid.proto.profiler',
-          'paddle.fluid.layers',
-          'paddle.fluid.contrib',
-          'paddle.fluid.contrib.extend_optimizer',
-          'paddle.fluid.incubate',
+          'paddle.base',
+          'paddle.base.dygraph',
+          'paddle.base.proto',
+          'paddle.base.proto.profiler',
+          'paddle.base.layers',
+          'paddle.base.incubate',
           'paddle.incubate.distributed.fleet',
-          'paddle.fluid.incubate.checkpoint',
+          'paddle.base.incubate.checkpoint',
           'paddle.amp',
           'paddle.cost_model',
           'paddle.hapi',
@@ -521,6 +517,8 @@ packages=['paddle',
           'paddle.geometric',
           'paddle.geometric.message_passing',
           'paddle.geometric.sampling',
+          'paddle.pir',
+          'paddle.decomposition',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -544,28 +542,32 @@ if not '${WIN32}':
     paddle_bins = ['${PADDLE_BINARY_DIR}/paddle/scripts/paddle']
 
 if os.name != 'nt':
-    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.so']}
+    package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.so']}
 else:
-    package_data={'paddle.fluid': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
+    package_data={'paddle.base': ['${FLUID_CORE_NAME}' + '.pyd', '${FLUID_CORE_NAME}' + '.lib']}
 
-package_data['paddle.fluid'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
+package_data['paddle.base'] += ['${PADDLE_BINARY_DIR}/python/paddle/cost_model/static_op_benchmark.json']
 
 package_dir={
     '': '${PADDLE_BINARY_DIR}/python',
-    # The paddle.fluid.proto will be generated while compiling.
+    # The paddle.base.proto will be generated while compiling.
     # So that package points to other directory.
-    'paddle.fluid.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
-    'paddle.fluid.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
-    'paddle.fluid': '${PADDLE_BINARY_DIR}/python/paddle/fluid',
+    'paddle.base.proto.profiler': '${PADDLE_BINARY_DIR}/paddle/fluid/platform',
+    'paddle.base.proto': '${PADDLE_BINARY_DIR}/paddle/fluid/framework',
+    'paddle.base': '${PADDLE_BINARY_DIR}/python/paddle/base',
 }
 
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
 package_data['paddle.libs']= []
-if('${WITH_PHI_SHARED}' == 'ON'):
-    package_data['paddle.libs'] = [('libphi' if os.name != 'nt' else 'phi') + ext_name]
+if('${WITH_SHARED_PHI}' == 'ON'):
+    package_data['paddle.libs'] += [('libphi' if os.name != 'nt' else 'phi') + ext_name]
     shutil.copy('${PHI_LIB}', libs_path)
+
+if('${WITH_SHARED_IR}' == 'ON'):
+    package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
+    shutil.copy('${IR_LIB}', libs_path)
 
 package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
@@ -632,16 +634,16 @@ if '${WITH_LITE}' == 'ON':
 
 if '${WITH_CINN}' == 'ON':
     shutil.copy('${CINN_LIB_LOCATION}/${CINN_LIB_NAME}', libs_path)
-    shutil.copy('${CINN_INCLUDE_DIR}/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
+    shutil.copy('${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh', libs_path)
     package_data['paddle.libs']+=['libcinnapi.so']
     package_data['paddle.libs']+=['cinn_cuda_runtime_source.cuh']
 
-    cinn_fp16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/float16.h'
+    cinn_fp16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/float16.h'
     if os.path.exists(cinn_fp16_file):
         shutil.copy(cinn_fp16_file, libs_path)
         package_data['paddle.libs']+=['float16.h']
 
-    cinn_bf16_file = '${CINN_INCLUDE_DIR}/cinn/runtime/cuda/bfloat16.h'
+    cinn_bf16_file = '${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/bfloat16.h'
     if os.path.exists(cinn_bf16_file):
         shutil.copy(cinn_bf16_file, libs_path)
         package_data['paddle.libs']+=['bfloat16.h']
@@ -673,9 +675,7 @@ if '${WITH_MKLDNN}' == 'ON':
             raise Exception("patch libdnnl.so failed, command: %s" % command)
     shutil.copy('${MKLDNN_SHARED_LIB}', libs_path)
     if os.name != 'nt':
-        shutil.copy('${MKLDNN_SHARED_LIB_1}', libs_path)
-        shutil.copy('${MKLDNN_SHARED_LIB_2}', libs_path)
-        package_data['paddle.libs']+=['libmkldnn.so.0', 'libdnnl.so.1', 'libdnnl.so.2']
+        package_data['paddle.libs']+=['libdnnl.so.3']
     else:
         package_data['paddle.libs']+=['mkldnn.dll']
 
@@ -712,6 +712,10 @@ if '${WITH_XPU_XFT}' == 'ON':
     shutil.copy('${XPU_XFT_LIB}', libs_path)
     package_data['paddle.libs']+=['${XPU_XFT_LIB_NAME}']
 
+if '${WITH_XPTI}' == 'ON':
+    shutil.copy('${XPU_XPTI_LIB}', libs_path)
+    package_data['paddle.libs']+=['${XPU_XPTI_LIB_NAME}']
+
 # remove unused paddle/libs/__init__.py
 if os.path.isfile(libs_path+'/__init__.py'):
     os.remove(libs_path+'/__init__.py')
@@ -720,22 +724,28 @@ package_dir['paddle.libs']=libs_path
 
 # change rpath of ${FLUID_CORE_NAME}.ext, add $ORIGIN/../libs/ to it.
 # The reason is that libwarpctc.ext, libiomp5.ext etc are in paddle.libs, and
-# ${FLUID_CORE_NAME}.ext is in paddle.fluid, thus paddle/fluid/../libs will pointer to above libraries.
+# ${FLUID_CORE_NAME}.ext is in paddle.base, thus paddle/fluid/../libs will pointer to above libraries.
 # This operation will fix https://github.com/PaddlePaddle/Paddle/issues/3213
 if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
         # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
         if "@APPLE@" == "1":
-            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
-            if('${WITH_PHI_SHARED}' == 'ON'):
+            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so')
+            if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${WITH_SHARED_IR}' == 'ON'):
+                # change rpath of pir.ext for loading 3rd party libb
+                commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
-            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
-            if('${WITH_PHI_SHARED}' == 'ON'):
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
+            if('${WITH_SHARED_PHI}' == 'ON'):
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
+            if('${WITH_SHARED_IR}' == 'ON'):
+                # change rpath of pir.ext for loading 3rd party lib
+                commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
             for command in commands:
@@ -909,7 +919,7 @@ if '${WITH_STRIP}' == 'ON':
 def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     """install cpp distribution and build test target
 
-    TODO(huangjiyi): 
+    TODO(huangjiyi):
     1. This function will be moved when seperating C++ distribution
     installation from python package installation.
     2. Reduce the header and library files to be installed.
@@ -918,7 +928,7 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
         return
     os.makedirs(paddle_install_dir, exist_ok=True)
     # install C++ header files
-    for header in headers: 
+    for header in headers:
         install_dir = get_header_install_dir(header)
         install_dir = os.path.join(
             paddle_install_dir, 'include', os.path.dirname(install_dir)
@@ -938,7 +948,7 @@ def install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir):
     for lib in package_data['paddle.libs']:
         lib_path = os.path.join(libs_path, lib)
         shutil.copy(lib_path, lib_install_dir)
-    
+
     # build test target
     cmake_args = ["cmake", paddle_lib_test_dir, "-B", paddle_lib_test_dir]
     if os.getenv("GENERATOR") == "Ninja":
@@ -952,7 +962,7 @@ if '${WITH_CPP_DIST}' == 'ON':
     paddle_install_dir = '${PADDLE_INSTALL_DIR}'
     paddle_lib_test_dir = '${PADDLE_LIB_TEST_DIR}'
     install_cpp_dist_and_build_test(paddle_install_dir, paddle_lib_test_dir)
-    
+
 
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',

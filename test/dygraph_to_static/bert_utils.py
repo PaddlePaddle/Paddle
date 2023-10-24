@@ -235,7 +235,6 @@ class DataReader:
         is_test=False,
         generate_neg_sample=False,
     ):
-
         self.batch_size = batch_size
         self.in_tokens = in_tokens
         self.shuffle_files = shuffle_files

@@ -46,7 +46,7 @@ class CopyCrossScopeOp : public framework::OperatorBase {
  private:
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
-    int num_micro_scopes = scope.kids().size();
+    int num_micro_scopes = static_cast<int>(scope.kids().size());
     int num_micro_batches = Attr<int>("num_micro_batches");
     bool ToM = Attr<bool>("to_main_scope");
     PADDLE_ENFORCE_EQ(num_micro_scopes,

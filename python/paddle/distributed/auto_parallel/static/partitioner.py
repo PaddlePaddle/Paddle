@@ -112,7 +112,6 @@ class Partitioner:
     def partition_startup_program(
         self, serial_main_program, serial_startup_program
     ):
-
         if not isinstance(serial_startup_program, (Program)):
             raise TypeError(
                 "dist_context be paddle.framework.Program, got %s here"
@@ -141,14 +140,10 @@ class Partitioner:
             output_vars = op.desc.output_arg_names()
             assert (
                 len(output_vars) == 1
-            ), "initializer should output only ONE variable, but got [{}]".format(
-                str(op.desc)
-            )
+            ), f"initializer should output only ONE variable, but got [{str(op.desc)}]"
             assert (
                 temp_varname_map[output_vars[0]] in var2shape
-            ), "try to initialize [{}] which is not a persistable var".format(
-                output_vars[0]
-            )
+            ), f"try to initialize [{output_vars[0]}] which is not a persistable var"
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(
@@ -232,7 +227,6 @@ class Partitioner:
         return partitioned_main_prog, partitioned_params_and_grads
 
     def partition_block(self, ref_block, target_block):
-
         dist_op_context = self._dist_context.dist_op_context
         serial_ops = ref_block.ops
 
@@ -256,7 +250,6 @@ class Partitioner:
         # partition
         appended_grad_times = 0
         for idx, op in enumerate(serial_ops):
-
             op_dist_attr = self._dist_context.get_op_dist_attr_for_program(op)
             if is_backward_op(op) and (
                 is_forward_op(serial_ops[idx - 1])
@@ -358,7 +351,6 @@ class Partitioner:
                 )
 
     def _is_valid_annotated_program(self, program):
-
         # TODO (ZJ-LIANG) should check all block
         ops = program.global_block().ops
         vars_ = program.list_vars()
@@ -381,7 +373,6 @@ class Partitioner:
         return all_ops_annotated and all_vars_annotated
 
     def _get_dist_var_by_serial_var(self, serial_var, partitioned_main_prog):
-
         block_idx = serial_var.block.idx
         target_block = partitioned_main_prog.blocks[block_idx]
         dist_var_name = self._serial2dist_varname_mapping[serial_var.name]
@@ -390,7 +381,6 @@ class Partitioner:
 
 
 def _get_dist_shape(var, dist_attr):
-
     var_shape = var.shape
     mapping = dist_attr.dims_mapping
     mesh = dist_attr.process_mesh.shape
@@ -399,9 +389,7 @@ def _get_dist_shape(var, dist_attr):
 
     assert len(var_shape) == len(
         mapping
-    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
-        var_shape, mapping
-    )
+    ), f"variable shape [{var_shape}] and dim_mapping [{mapping}] is NOT match !"
     new_shape = []
     for idx in range(len(var_shape)):
         if var_shape[idx] == -1 or mapping[idx] == -1:

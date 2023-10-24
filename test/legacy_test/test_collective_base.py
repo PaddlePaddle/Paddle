@@ -24,9 +24,10 @@ from contextlib import closing
 
 import numpy as np
 
-import paddle.fluid.unique_name as nameGen
-from paddle import fluid
-from paddle.fluid import core
+import paddle.base.unique_name as nameGen
+from paddle import base
+from paddle.base import core
+from paddle.distributed.collective import _init_parallel_env
 
 
 class TestCollectiveRunnerBase:
@@ -104,29 +105,35 @@ class TestCollectiveRunnerBase:
         )
 
     def run_trainer(self, args):
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
+        train_prog = base.Program()
+        startup_prog = base.Program()
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        self.initCommunicator(
-            startup_prog, rank, nranks, True, current_endpoint, endpoints
-        )
+        if args["dynamic_static_unified_comm"]:
+            _init_parallel_env("nccl")
+        else:
+            self.initCommunicator(
+                startup_prog, rank, nranks, True, current_endpoint, endpoints
+            )
+
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
         device_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-        place = fluid.CUDAPlace(
+        place = base.CUDAPlace(
             device_id
-        )  # if args.use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        )  # if args.use_gpu else base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(startup_prog)
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000))
         out = exe.run(
             train_prog, feed={'tindata': indata}, fetch_list=[result.name]
         )
-        sys.stdout.buffer.write(pickle.dumps(out))
+        dump_file = os.environ['DUMP_FILE']
+        with open(dump_file, 'wb') as f:
+            pickle.dump(out, f)
 
 
 def runtime_main(test_class, col_type, sub_type):
@@ -138,6 +145,10 @@ def runtime_main(test_class, col_type, sub_type):
     args["endpoints"] = os.getenv('PADDLE_TRAINER_ENDPOINTS')
     args["currentendpoint"] = os.getenv("PADDLE_CURRENT_ENDPOINT")
     args["col_type"] = col_type
+    args["dtype"] = os.getenv("DTYPE")
+    args["dynamic_static_unified_comm"] = bool(
+        int(os.getenv("FLAGS_dynamic_static_unified_comm", "0"))
+    )
     model.run_trainer(args)
 
 
@@ -189,9 +200,17 @@ class TestDistBase(unittest.TestCase):
             "PADDLE_TRAINER_ENDPOINTS": self._ps_endpoints,
             "PADDLE_CURRENT_ENDPOINT": w1_ep,
         }
+
+        cur_pid = os.getpid()
+        dump_file_0 = f'./out_data_0_{cur_pid}.pickled'
+        dump_file_1 = f'./out_data_1_{cur_pid}.pickled'
+
         # update environment
         env0.update(envs)
         env1.update(envs)
+        env0['DUMP_FILE'] = dump_file_0
+        env1['DUMP_FILE'] = dump_file_1
+
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
@@ -221,9 +240,16 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
+
+        def load_and_remove(path):
+            with open(path, 'rb') as f:
+                out = pickle.load(f)
+            os.remove(path)
+            return out
+
         return (
-            pickle.loads(tr0_out),
-            pickle.loads(tr1_out),
+            load_and_remove(dump_file_0),
+            load_and_remove(dump_file_1),
             tr0_proc.pid,
             tr1_proc.pid,
         )
@@ -240,6 +266,8 @@ class TestDistBase(unittest.TestCase):
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
             "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1",
+            "FLAGS_dynamic_static_unified_comm": "0",
+            "DTYPE": "float32",
         }
         required_envs.update(need_envs)
         if check_error_log:

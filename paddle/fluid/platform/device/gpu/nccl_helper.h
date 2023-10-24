@@ -32,6 +32,8 @@
 #ifdef PADDLE_WITH_RCCL
 #include "paddle/fluid/platform/dynload/rccl.h"
 #endif
+#include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #include "paddle/fluid/platform/enforce.h"

@@ -463,3 +463,14 @@
     func : fused_attention_csr_grad{dense, dense, dense, sparse_csr, dense -> dense, dense, dense}
     layout : softmax
     data_type: query
+
+- backward_op: slice_grad
+  forward : slice(Tensor x, IntArray axes, IntArray starts, IntArray ends) -> Tensor(out)
+  args : (Tensor x, Tensor out_grad, IntArray axes, IntArray starts, IntArray ends)
+  output : Tensor(x_grad)
+  infer_meta :
+    func : UnchangedInferMeta
+    param : [x]
+  kernel :
+    func : slice_coo_grad{sparse_coo, sparse_coo -> sparse_coo},
+           slice_csr_grad{sparse_csr, sparse_csr -> sparse_csr}

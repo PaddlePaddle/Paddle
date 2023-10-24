@@ -152,6 +152,6 @@ class FP16AllReduceOptimizer(MetaOptimizerBase):
 
     def apply_optimize(self, loss, startup_program, params_grads):
         new_params_grads = self.fp16_compression(params_grads)
-        return self.inner_opt.apply_optimize(
+        return self.inner_opt._apply_optimize(
             loss, startup_program=startup_program, params_grads=new_params_grads
         )

@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -41,6 +45,7 @@ def apply_to_static(net, use_cinn):
     return paddle.jit.to_static(net, build_strategy=build_strategy)
 
 
+@dy2static_unittest
 class TestCINN(unittest.TestCase):
     def setUp(self):
         self.x = paddle.randn([2, 4])
@@ -64,8 +69,21 @@ class TestCINN(unittest.TestCase):
             sgd.clear_grad()
 
             res.append(out.numpy())
+
+            if use_cinn and paddle.device.is_compiled_with_cinn():
+                self.assertTrue(
+                    paddle.framework.core.is_run_with_cinn(),
+                    msg="The test was not running with CINN! Please check.",
+                )
+            else:
+                self.assertFalse(
+                    paddle.framework.core.is_run_with_cinn(),
+                    msg="The test should not running with CINN when the whl package was not compiled with CINN! Please check.",
+                )
+
         return res
 
+    @test_and_compare_with_new_ir(False)
     def test_cinn(self):
         dy_res = self.train(use_cinn=False)
         cinn_res = self.train(use_cinn=True)

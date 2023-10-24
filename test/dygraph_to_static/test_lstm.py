@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle import nn
@@ -44,6 +45,7 @@ class Net(nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestLstm(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -69,6 +71,7 @@ class TestLstm(unittest.TestCase):
         static_out = self.run_lstm(to_static=True)
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
+    @ast_only_test
     def test_save_in_eval(self, with_training=True):
         paddle.jit.enable_to_static(True)
         net = Net(12, 2)
@@ -100,9 +103,7 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             static_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, static_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{static_out}',
         )
         # switch back into train mode.
         net.train()
@@ -111,9 +112,7 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             train_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, train_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{train_out}',
         )
 
     def test_save_without_training(self):
@@ -133,6 +132,7 @@ class LinearNet(nn.Layer):
         return y
 
 
+@dy2static_unittest
 class TestSaveInEvalMode(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -172,12 +172,11 @@ class TestSaveInEvalMode(unittest.TestCase):
             eval_out.numpy(),
             infer_out.numpy(),
             rtol=1e-05,
-            err_msg='eval_out is {}\n infer_out is \n{}'.format(
-                eval_out, infer_out
-            ),
+            err_msg=f'eval_out is {eval_out}\n infer_out is \n{infer_out}',
         )
 
 
+@dy2static_unittest
 class TestEvalAfterSave(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

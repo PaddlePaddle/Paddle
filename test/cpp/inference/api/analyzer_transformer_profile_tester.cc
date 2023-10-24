@@ -36,7 +36,7 @@ void profile(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_Transformer, profile) { profile(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_Transformer, profile_mkldnn) { profile(true); }
 #endif
 

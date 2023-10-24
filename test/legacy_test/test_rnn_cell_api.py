@@ -15,7 +15,6 @@
 import sys
 import unittest
 
-import numpy
 import numpy as np
 
 sys.path.append("../../test/rnn")
@@ -23,10 +22,10 @@ from rnn_numpy import LSTMCell
 from rnn_numpy import rnn as numpy_rnn
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.executor import Executor
+from paddle.base.framework import Program, program_guard
 from paddle.nn.layer.rnn import rnn as dynamic_rnn
 
 paddle.enable_static()
@@ -144,7 +143,6 @@ class TestRnn(unittest.TestCase):
         self.seq_len = 4
 
     def test_run(self):
-
         numpy_cell = LSTMCell(self.input_size, self.hidden_size)
         dynamic_cell = paddle.nn.LSTMCell(self.input_size, self.hidden_size)
 
@@ -161,7 +159,7 @@ class TestRnn(unittest.TestCase):
                 'float64'
             )
             setattr(numpy_cell, k, param)
-            fluid.global_scope().find_var(v.name).get_tensor().set(param, place)
+            base.global_scope().find_var(v.name).get_tensor().set(param, place)
 
         sequence_length = paddle.static.data(
             name="sequence_length", shape=[None], dtype='int64'

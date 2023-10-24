@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import Tensor, nn
+from paddle.base.data_feeder import convert_dtype
 from paddle.distributed.fleet.utils import recompute
-from paddle.fluid.data_feeder import convert_dtype
 from paddle.io import DataLoader, Dataset
 from paddle.nn import MultiHeadAttention
 
@@ -164,7 +164,6 @@ class BertEmbeddings(nn.Layer):
         position_ids: Optional[Tensor] = None,
         past_key_values_length: Optional[int] = None,
     ):
-
         if position_ids is None:
             ones = paddle.ones_like(input_ids, dtype="int64")
             seq_length = paddle.cumsum(ones, axis=-1)
@@ -252,7 +251,7 @@ class BertModel(nn.Layer):
                 if enable_cinn:
                     build_strategy.build_cinn_pass = True
                 self.encoder = paddle.jit.to_static(
-                    self.encoder, None, build_strategy
+                    self.encoder, None, build_strategy, full_graph=True
                 )
         self.pooler = BertPooler(config)
         # self.apply(self.init_weights)
@@ -275,7 +274,6 @@ class BertModel(nn.Layer):
         output_attentions: Optional[bool] = None,
         return_dict: Optional[bool] = None,
     ):
-
         return_dict = (
             return_dict
             if return_dict is not None
@@ -811,7 +809,6 @@ class PretrainingDataset(Dataset):
         return len(self.inputs[0])
 
     def __getitem__(self, index):
-
         [
             input_ids,
             input_mask,

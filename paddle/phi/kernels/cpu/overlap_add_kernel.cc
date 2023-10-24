@@ -26,13 +26,16 @@ void OverlapAddKernel(const Context& dev_ctx,
                       int axis,
                       DenseTensor* out) {
   dev_ctx.template Alloc<T>(out);
-  const size_t x_rank = x.dims().size();
+  const int x_rank = x.dims().size();
   const size_t out_rank = out->dims().size();
 
-  const int n_frames = (axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1];
-  const int frame_length = (axis == 0) ? x.dims()[1] : x.dims()[x_rank - 2];
-  const int seq_length =
-      (axis == 0) ? out->dims()[0] : out->dims()[out_rank - 1];
+  const int n_frames =
+      static_cast<int>((axis == 0) ? x.dims()[0] : x.dims()[x_rank - 1]);
+  const int frame_length =
+      static_cast<int>((axis == 0) ? x.dims()[1] : x.dims()[x_rank - 2]);
+  const int seq_length = static_cast<int>(
+      (axis == 0) ? out->dims()[0]
+                  : out->dims()[static_cast<int>(out_rank) - 1]);
 
   // auto& dev_ctx = ctx.device_context<Context>();
 
@@ -46,11 +49,13 @@ void OverlapAddKernel(const Context& dev_ctx,
     phi::DDim x_resized_dims;
     phi::DDim out_resized_dims;
     if (axis == 0) {
-      preserved_dims = phi::slice_ddim(out->dims(), 1, out_rank);
+      preserved_dims =
+          phi::slice_ddim(out->dims(), 1, static_cast<int>(out_rank));
       x_resized_dims = {n_frames, frame_length, phi::product(preserved_dims)};
       out_resized_dims = {seq_length, phi::product(preserved_dims)};
     } else {
-      preserved_dims = phi::slice_ddim(out->dims(), 0, out_rank - 1);
+      preserved_dims =
+          phi::slice_ddim(out->dims(), 0, static_cast<int>(out_rank) - 1);
       x_resized_dims = {phi::product(preserved_dims), frame_length, n_frames};
       out_resized_dims = {phi::product(preserved_dims), seq_length};
     }

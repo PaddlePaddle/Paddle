@@ -67,8 +67,8 @@ class TestWeightQuantization(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 
@@ -85,7 +85,6 @@ class TestWeightQuantization(unittest.TestCase):
         generate_test_model,
         threshold_rate,
     ):
-
         model_dir = self.download_model(
             model_name, model_data_url, model_data_md5
         )

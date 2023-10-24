@@ -23,15 +23,18 @@ namespace framework {
 namespace ir {
 namespace patterns {
 void EmbEltwiseLayernorm::operator()() {
-  // Create nodes for fused_embedding_eltwise_layernorm.
-  auto* emb_elt_layernorm_op =
-      pattern->NewNode(emb_elt_layernorm_op_repr())
-          ->assert_is_op("fused_embedding_eltwise_layernorm");
+  // Create nodes for fused_embedding_eltwise_layernorm or
+  // prompt_tuning_emb_eltwise_layernorm.
+  std::unordered_set<std::string> embedding_ops{
+      "fused_embedding_eltwise_layernorm",
+      "prompt_tuning_emb_eltwise_layernorm"};
+  auto* emb_elt_layernorm_op = pattern->NewNode(emb_elt_layernorm_op_repr())
+                                   ->assert_is_ops(embedding_ops);
   auto* emb_elt_layernorm_out =
       pattern->NewNode(emb_elt_layernorm_out_repr())
-          ->assert_is_op_output("fused_embedding_eltwise_layernorm", "Out");
+          ->assert_is_ops_output(embedding_ops, "Out");
 
-  // Add links for fused_embedding_eltwise_layernorm op.
+  // Add links for embedding_ops.
   emb_elt_layernorm_op->LinksTo({emb_elt_layernorm_out});
 }
 
@@ -168,7 +171,7 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
 
-  if (use_varseqlen && pos_id != "" && mask_id != "" &&
+  if (use_varseqlen && !pos_id.empty() && !mask_id.empty() &&
       (graph->Has(framework::ir::kEmbEltwiseLayernormPass) ||
        graph->Has(framework::ir::kPrelnEmbEltwiseLayernormPass)) &&
       graph->Has(framework::ir::kMultiheadMatmulPass)) {
@@ -453,7 +456,9 @@ void RemovePaddingRecoverPaddingPass::ApplyImpl(ir::Graph* graph) const {
     }
 
     if (PADDLE_GET_CONST(
-            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != 2) {
+            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != 2 &&
+        PADDLE_GET_CONST(
+            int, matrix_multiply_op->Op()->GetAttr("x_num_col_dims")) != -1) {
       check_flag = false;
     }
     if (!check_flag) {

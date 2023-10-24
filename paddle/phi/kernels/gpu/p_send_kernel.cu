@@ -65,7 +65,8 @@ void send_shape_info(const Context& dev_ctx,
                      cpu_shape_size_tensor.numel() * sizeof(int),
                      stream);
 
-  comm_ctx->Send(*gpu_shape_size_tensor, peer, stream);
+  comm_ctx->Send(
+      *gpu_shape_size_tensor, gpu_shape_size_tensor->numel(), peer, stream);
   VLOG(3) << "send the shape size: " << shape_size << " to peer";
 
   // step2: send the shape
@@ -87,7 +88,7 @@ void send_shape_info(const Context& dev_ctx,
                      cpu_shape_tensor.data(),
                      cpu_shape_tensor.numel() * sizeof(int),
                      stream);
-  comm_ctx->Send(*gpu_shape_tensor, peer, stream);
+  comm_ctx->Send(*gpu_shape_tensor, gpu_shape_tensor->numel(), peer, stream);
   VLOG(3) << "send the shape: (" << dims << ") to peer";
 }
 
@@ -131,7 +132,7 @@ void PSendKernel(const Context& dev_ctx,
     send_shape_info<Context>(dev_ctx, x, comm_ctx, peer, stream);
   }
 
-  comm_ctx->Send(x, peer, stream);
+  comm_ctx->Send(x, x.numel(), peer, stream);
 #else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."
@@ -153,7 +154,7 @@ void PSendArrayKernel(const Context& dev_ctx,
     auto x = x_array.at(idx);
     int numel = x.numel();
     ncclDataType_t dtype = ToNCCLDataType(x.type());
-    comm_ctx->Send(x, peer, stream);
+    comm_ctx->Send(x, x.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " send "
             << phi::product(x.dims()) << " to " << peer;
   }
@@ -177,6 +178,7 @@ PD_REGISTER_KERNEL(p_send,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -205,6 +207,7 @@ PD_REGISTER_KERNEL(p_send,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 

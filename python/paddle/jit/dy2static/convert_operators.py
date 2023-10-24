@@ -15,15 +15,12 @@
 import re
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-)
-from paddle.fluid.framework import Variable, core
-from paddle.fluid.layers import control_flow
-from paddle.fluid.layers.control_flow import while_loop
+from paddle.autograd.py_layer import PyLayerMeta
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
+from paddle.base.framework import Variable, core, default_main_program
 
+from .py_layer import StaticPyLayer
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
@@ -43,11 +40,31 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
-        """
-        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
-        """
-        return _convert_into_variable(x)
+    if in_to_static_mode():
+        if isinstance(x, paddle.base.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
+
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
+
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
+
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
+
     return x
 
 
@@ -168,7 +185,9 @@ def _run_paddle_while(
         return_name_ids, loop_vars
     )  # change the non-local var to variable
     # variable maybe modified to inner var. change it into
-    loop_vars = control_flow.while_loop(new_cond_fn, new_body_fn, loop_vars)
+    from paddle.static.nn import while_loop
+
+    loop_vars = while_loop(new_cond_fn, new_body_fn, loop_vars)
     helper.set(return_name_ids, loop_vars)
     return loop_vars
 
@@ -368,9 +387,13 @@ def _run_paddle_cond(
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
+    from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+    inplace_map = ProgramTranslator.get_instance()._inplace_map
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
@@ -379,21 +402,22 @@ def _run_paddle_cond(
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     def new_false_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
         )
         ret = false_fn()
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     try:
         cond_outs = paddle.static.nn.cond(
@@ -546,7 +570,7 @@ def convert_zip(*args):
         if isinstance(arg, Variable) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i))
+                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 
@@ -599,7 +623,7 @@ def convert_shape(x):
     """
 
     def has_negative(list_shape):
-        return any([x < 0 for x in list_shape])
+        return any(x < 0 for x in list_shape)
 
     # When `x` is Variable:
     #  (1) if x.shape contains -1, such as [2, -1, 64], returns [2, var, 64],
@@ -805,8 +829,11 @@ def _run_paddle_pop(array, *args):
 
     pop_item = paddle.tensor.array_read(array, idx)
 
-    new_array = _slice_tensor_array(array, 0, idx)
+    tmp = paddle.assign(array)
+    new_array = _slice_tensor_array(tmp, 0, idx)
     i = idx + 1
+    from paddle.static.nn import while_loop
+
     _, new_array = while_loop(cond, body, [i, new_array])
     paddle.assign(new_array, output=array)
 

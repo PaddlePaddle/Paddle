@@ -19,7 +19,7 @@
 namespace paddle {
 namespace framework {
 namespace details {
-SSAGraphExecutor::~SSAGraphExecutor() {}
+SSAGraphExecutor::~SSAGraphExecutor() = default;
 
 void ClearFetchOp(ir::Graph* graph, std::vector<OpHandleBase*>* fetch_ops) {
   if (fetch_ops->empty()) return;

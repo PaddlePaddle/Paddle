@@ -15,6 +15,7 @@
 #include "paddle/fluid/platform/collective_helper.h"
 
 #include <utility>
+#include <vector>
 
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/device/device_wrapper.h"
@@ -537,7 +538,8 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
   VLOG(1) << "Begin CreateXCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
-  phi::ccl::CCLComm comms[kDevices];
+  std::vector<phi::ccl::CCLComm> comms;
+  comms.resize(kDevices);
   {
     for (int i = 0; i < kDevices; i++) {
       phi::DeviceManager::SetDevice(device_type_, i);
@@ -545,7 +547,7 @@ void XCCLCommContext::CreateXCCLCommMultiTrainer(
                                           kDevices * ntrainers,
                                           xccl_id,
                                           train_id * kDevices + i,
-                                          comms + i);
+                                          comms.data() + i);
       VLOG(1) << "CCLCommInitRank: " << i;
     }
   }

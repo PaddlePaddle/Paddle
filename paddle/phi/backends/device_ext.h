@@ -638,6 +638,17 @@ struct C_DeviceInterface {
                         C_CCLComm comm,
                         C_Stream stream);
 
+  C_Status (*xccl_all_to_all)(const void** send_buf,
+                              const size_t* send_count,
+                              const C_DataType* send_dtype,
+                              void** recv_buf,
+                              const size_t* recv_count,
+                              const C_DataType* recv_dtype,
+                              size_t rank,
+                              size_t nranks,
+                              C_CCLComm comm,
+                              C_Stream stream);
+
   void* reserved_ccl_api[8];
 
   //////////////////

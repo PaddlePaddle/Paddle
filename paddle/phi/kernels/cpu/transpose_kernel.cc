@@ -32,7 +32,7 @@ void TransposeKernel(const Context& ctx,
   std::vector<int> formated_axis = axis;
   for (size_t i = 0; i < axis.size(); i++) {
     if (axis[i] < 0) {
-      formated_axis[i] = axis[i] + x_rank;
+      formated_axis[i] = static_cast<int>(axis[i] + x_rank);
     }
   }
 
@@ -40,7 +40,7 @@ void TransposeKernel(const Context& ctx,
   if (out->numel() == 0) {
     return;
   }
-  int rank = formated_axis.size();
+  int rank = static_cast<int>(formated_axis.size());
   switch (rank) {
     case 0:
       phi::Copy<Context>(ctx, x, ctx.GetPlace(), false, out);
@@ -87,6 +87,9 @@ PD_REGISTER_KERNEL(transpose,
                    double,
                    int32_t,
                    int64_t,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

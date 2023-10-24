@@ -68,7 +68,6 @@ class TestCutlassConv2dFusionOp1(CutlassAutoScanTest):
             data_format,
             act,
         ) in product(*configurations):
-
             weight_shape[1] = input_shape[1]
             attrs = [
                 {

@@ -37,6 +37,11 @@ class FillAnyLikeOpConverter : public OpConverter {
         (dtype == -1 && input->getType() == nvinfer1::DataType::kINT32)) {
       value_tensor = Add1DConstantLayer(static_cast<int32_t>(value),
                                         output_name + "_value_tensor_");
+    } else if (dtype == 3) {
+      LOG(WARNING) << "the fill_any_like has int64 dtype, it "
+                      "will be cast to int32.";
+      value_tensor = Add1DConstantLayer(static_cast<int32_t>(value),
+                                        output_name + "_value_tensor_");
     } else {
       value_tensor = Add1DConstantLayer(value, output_name + "_value_tensor_");
     }

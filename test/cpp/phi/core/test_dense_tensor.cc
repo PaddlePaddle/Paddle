@@ -138,7 +138,7 @@ TEST(dense_tensor, storage_properties) {
   DenseTensor tensor(fancy_allocator.get(), meta);
 
   // test error type storage properties
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   bool caught_exception = false;
   try {
     tensor.storage_properties<OneDNNStorageProperties>();

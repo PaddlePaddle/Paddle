@@ -12,10 +12,10 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/phi/backends/gpu/gpu_device_function.h"
+#include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 
 namespace paddle {
@@ -23,7 +23,7 @@ namespace operators {
 
 template <typename T>
 struct CudaSoftReluFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
   float threshold;
 
@@ -44,7 +44,7 @@ struct CudaSoftReluFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct CudaSoftReluGradFunctor : public BaseActivationFunctor<T> {
-  using MPType = typename details::MPTypeTrait<T>::Type;
+  using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType one = static_cast<MPType>(1.0f);
   float threshold;
 

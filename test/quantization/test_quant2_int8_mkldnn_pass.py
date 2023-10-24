@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 from paddle.static.quantization import Quant2Int8MkldnnPass
 
@@ -92,7 +92,7 @@ class TestQuant2Int8MkldnnPassMul(unittest.TestCase):
             param.set(self.variables_mul["mul_weights"], self.place)
             qpass._dequantize_op_weights(graph, op_node, "Y", "Out")
 
-            assert np.allclose(
+            np.testing.assert_allclose(
                 self.scope.find_var("mul_weights").get_tensor(),
                 [
                     [

@@ -44,6 +44,7 @@ disable_wingpu_test="^test_model$|\
 ^test_dataloader_unkeep_order$|\
 ^test_multiprocess_dataloader_iterable_dataset_static$|\
 ^test_fuse_bn_act_pass$|\
+^test_fuse_bn_act_pass_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_gather_op$|\
 ^test_activation_op$|\
@@ -144,7 +145,6 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_tensor_scalar_type_promotion_dynamic$|\
 ^test_model$|\
 ^test_py_reader_combination$|\
-^test_trt_convert_flatten$|\
 ^test_py_reader_push_pop$|\
 ^test_parallel_executor_feed_persistable_var$|\
 ^test_parallel_executor_inference_feed_partial_data$|\
@@ -165,6 +165,7 @@ disable_win_inference_test="^trt_quant_int8_yolov3_r50_test$|\
 ^test_sync_batch_norm_op$|\
 ^test_sync_batch_norm_op_static_build$|\
 ^test_fuse_bn_act_pass$|\
+^test_fuse_bn_act_pass_static_build$|\
 ^test_fuse_bn_add_act_pass$|\
 ^test_decoupled_py_reader_data_check$|\
 ^test_parallel_dygraph_sync_batch_norm$|\
@@ -215,7 +216,6 @@ long_time_test="^test_gru_op$|\
 ^test_gather_op$|\
 ^test_gather_nd_op$|\
 ^test_sequence_conv$|\
-^test_space_to_depth_op$|\
 ^test_activation_nn_grad$|\
 ^test_activation_op$|\
 ^test_bicubic_interp_v2_op$|\

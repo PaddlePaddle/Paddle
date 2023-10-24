@@ -16,7 +16,7 @@ import numpy as np
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.incubate.nn import FusedFeedForward
 
@@ -107,7 +107,7 @@ class TestModelParallel(TestDistRunnerBase):
         )
 
         if dist_strategy:
-            data_loader = fluid.io.DataLoader.from_generator(
+            data_loader = base.io.DataLoader.from_generator(
                 feed_list=[data_in],
                 capacity=64,
                 use_double_buffer=False,
@@ -122,7 +122,7 @@ class TestModelParallel(TestDistRunnerBase):
 
         rank = fleet.worker_index() if dist_strategy else None
         avg_cost = create_model(data_in, rank)
-        opt = fluid.optimizer.SGD(0.1)
+        opt = paddle.optimizer.SGD(0.1)
 
         if dist_strategy:
             dist_opt = fleet.distributed_optimizer(

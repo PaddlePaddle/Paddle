@@ -75,8 +75,8 @@ void FakeDot(const Context& dev_ctx,
   assert(fake_attr_double == 3);
   assert(fake_attr_int64 == 4);
   assert(fake_attr_dtype == phi::DataType::UINT32);
-  assert(fake_attr_int64_vec.size() == 0);
-  assert(fake_attr_int_vec.size() == 0);
+  assert(fake_attr_int64_vec.empty());
+  assert(fake_attr_int_vec.empty());
   assert(fake_out_vec.size() == 2);
 
   auto const *x_ptr = x.data<T>(), *x_ptr_ = &x_ptr[0];

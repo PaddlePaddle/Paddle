@@ -146,7 +146,6 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
         pass
 
     def check_pass(self, *args, **kwargs):
-
         from common import init_parallel_env
 
         import paddle
@@ -198,7 +197,9 @@ class TestDygrapgHybridDPPPMP(TestCollectiveAPIRunnerBase):
 
             loss_base_arr.append(loss_base.numpy())
             loss_hybrid_arr.append(loss.numpy())
-        assert np.allclose(loss_base_arr, loss_hybrid_arr, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(
+            loss_base_arr, loss_hybrid_arr, rtol=1e-5, atol=1e-5
+        )
 
 
 if __name__ == "__main__":

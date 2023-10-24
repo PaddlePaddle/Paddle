@@ -77,7 +77,8 @@ std::string AESCipher::EncryptInternal(const std::string& plaintext,
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
-  CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(plaintext, true, filter_redirector);
   if (need_iv) {
     return iv_ + ciphertext;
   }
@@ -107,9 +108,9 @@ std::string AESCipher::DecryptInternal(const std::string& ciphertext,
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
-  CryptoPP::StringSource(ciphertext.substr(ciphertext_beg),
-                         true,
-                         new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(
+      ciphertext.substr(ciphertext_beg), true, filter_redirector);
 
   return plaintext;
 }
@@ -135,7 +136,8 @@ std::string AESCipher::AuthenticatedEncryptInternal(
 
   std::string ciphertext;
   m_filter->Attach(new CryptoPP::StringSink(ciphertext));
-  CryptoPP::StringSource(plaintext, true, new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(plaintext, true, filter_redirector);
   if (need_iv) {
     ciphertext = iv_.append(ciphertext);
   }
@@ -165,9 +167,9 @@ std::string AESCipher::AuthenticatedDecryptInternal(
   }
   std::string plaintext;
   m_filter->Attach(new CryptoPP::StringSink(plaintext));
-  CryptoPP::StringSource(ciphertext.substr(ciphertext_beg),
-                         true,
-                         new CryptoPP::Redirector(*m_filter));
+  CryptoPP::Redirector* filter_redirector = new CryptoPP::Redirector(*m_filter);
+  CryptoPP::StringSource(
+      ciphertext.substr(ciphertext_beg), true, filter_redirector);
   PADDLE_ENFORCE_EQ(
       m_filter->GetLastResult(),
       true,
@@ -185,38 +187,42 @@ void AESCipher::BuildCipher(
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_ECB_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption);
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CBC_PKCSPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CBC_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         CryptoPP::BlockPaddingSchemeDef::PKCS_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        *(*m_cipher).get(),
+        nullptr,
+        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else if (aes_cipher_name_ == "AES_CTR_NoPadding" && !for_encrypt) {
     m_cipher->reset(new CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption);
     *need_iv = true;
     m_filter->reset(new CryptoPP::StreamTransformationFilter(
-        *(*m_cipher).get(), NULL, CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
+        *(*m_cipher).get(),
+        nullptr,
+        CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
   } else {
     PADDLE_THROW(paddle::platform::errors::Unimplemented(
         "Create cipher error. "
@@ -234,7 +240,7 @@ void AESCipher::BuildAuthEncCipher(
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedEncryptionFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         false,
         tag_size_ / 8,
         CryptoPP::DEFAULT_CHANNEL,
@@ -256,7 +262,7 @@ void AESCipher::BuildAuthDecCipher(
     *need_iv = true;
     m_filter->reset(new CryptoPP::AuthenticatedDecryptionFilter(
         *(*m_cipher).get(),
-        NULL,
+        nullptr,
         CryptoPP::AuthenticatedDecryptionFilter::DEFAULT_FLAGS,
         tag_size_ / 8,
         CryptoPP::BlockPaddingSchemeDef::NO_PADDING));
@@ -286,7 +292,7 @@ void AESCipher::EncryptToFile(const std::string& plaintext,
                               const std::string& filename) {
   std::ofstream fout(filename, std::ios::binary);
   std::string ciphertext = this->Encrypt(plaintext, key);
-  fout.write(ciphertext.data(), ciphertext.size());
+  fout.write(ciphertext.data(), ciphertext.size());  // NOLINT
   fout.close();
 }
 

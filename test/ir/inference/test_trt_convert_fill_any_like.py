@@ -25,7 +25,7 @@ import paddle.inference as paddle_infer
 
 class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        if self.dtype in [0, 3, 4]:
+        if self.dtype in [0, 1, 4]:
             return False
         if self.dims != 4 and self.dtype != 2:
             return False
@@ -37,14 +37,20 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
                 self.input_shape = [1, 1, 4, 6]
                 if self.dtype == 0:
                     return np.random.random([1, 1, 4, 6]).astype(np.bool_)
-                elif self.dtype == 2 or self.dtype == -1:
+                elif self.dtype == 1:
+                    return np.random.random([1, 1, 4, 6]).astype(np.int16)
+                elif self.dtype == 2:
                     return np.random.random([1, 1, 4, 6]).astype(np.int32)
                 elif self.dtype == 3:
                     return np.random.random([1, 1, 4, 6]).astype(np.int64)
                 elif self.dtype == 4:
                     return np.random.random([1, 1, 4, 6]).astype(np.float16)
-                else:
+                elif self.dtype == 5:
                     return np.random.random([1, 1, 4, 6]).astype(np.float32)
+                elif self.dtype == 6:
+                    return np.random.random([1, 1, 4, 6]).astype(np.float64)
+                else:
+                    return np.random.random([1, 1, 4, 6]).astype(np.int32)
             elif self.dims == 3:
                 self.input_shape = [1, 8, 6]
                 return np.random.random([1, 8, 6]).astype(np.int32)
@@ -66,7 +72,7 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
         for dims in [1, 2, 3, 4]:
             for value in [2]:
-                for dtype in [-1, 0, 2, 3, 4, 5]:
+                for dtype in [-1, 0, 1, 2, 3, 4, 5, 6]:
                     dics = [
                         {
                             "value": value,
@@ -161,10 +167,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
 
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False
         ), 1e-5
@@ -172,10 +180,12 @@ class TrtConvertExpandV2Test(TrtLayerAutoScanTest):
         # for dynamic_shape
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        program_config.set_input_type(np.float32)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
+        program_config.set_input_type(np.float16)
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, True
         ), 1e-5

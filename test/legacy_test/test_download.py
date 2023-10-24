@@ -90,10 +90,8 @@ class TestDownload(unittest.TestCase):
             uncompressed_path = get_path_from_url(url, root_dir='./test_tar')
             self.assertTrue(
                 all(
-                    [
-                        os.path.exists(os.path.join("./test_tar", filepath))
-                        for filepath in uncompressd_res
-                    ]
+                    os.path.exists(os.path.join("./test_tar", filepath))
+                    for filepath in uncompressd_res
                 )
             )
 
@@ -106,10 +104,8 @@ class TestDownload(unittest.TestCase):
             uncompressed_path = get_path_from_url(url, root_dir='./test_zip')
             self.assertTrue(
                 all(
-                    [
-                        os.path.exists(os.path.join("./test_zip", filepath))
-                        for filepath in uncompressd_res
-                    ]
+                    os.path.exists(os.path.join("./test_zip", filepath))
+                    for filepath in uncompressd_res
                 )
             )
 

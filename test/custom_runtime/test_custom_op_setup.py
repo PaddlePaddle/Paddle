@@ -104,12 +104,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         self.cur_dir = os.path.dirname(os.path.abspath(__file__))
         self.temp_dir = tempfile.TemporaryDirectory()
         cmd = 'cd {} \
-            && git clone {} \
+            && git clone --depth 1 {} \
             && cd PaddleCustomDevice \
             && git fetch origin \
             && git checkout {} -b dev \
             && cd backends/custom_cpu \
-            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} && make -j8 \
+            && mkdir build && cd build && cmake .. -DPython_EXECUTABLE={} -DWITH_TESTING=OFF && make -j8 \
             && cd {}'.format(
             self.temp_dir.name,
             os.getenv('PLUGIN_URL'),
@@ -123,9 +123,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
             self.cur_dir,
-            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
-                self.temp_dir.name
-            ),
+            f'{self.temp_dir.name}/PaddleCustomDevice/backends/custom_cpu/build',
         )
 
         # `import paddle` loads custom_cpu.so, hence we must import paddle after finishing build PaddleCustomDevice
@@ -133,7 +131,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
 
         # [Why specific paddle_includes directory?]
         # Add paddle_includes to pass CI, for more details,
-        # please refer to the comments in `paddle/fluid/tests/custom_op/utils.py``
+        # please refer to the comments in `paddle/tests/custom_op/utils.py``
         paddle_includes = []
         for site_packages_path in getsitepackages():
             paddle_includes.append(
@@ -185,9 +183,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
 
     def _test_dynamic(self):
@@ -202,16 +198,12 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
             np.testing.assert_array_equal(
                 x_grad,
                 pd_x_grad,
-                err_msg="custom op x grad: {},\n paddle api x grad: {}".format(
-                    x_grad, pd_x_grad
-                ),
+                err_msg=f"custom op x grad: {x_grad},\n paddle api x grad: {pd_x_grad}",
             )
 
     def _test_double_grad_dynamic(self):
@@ -226,9 +218,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
             np.testing.assert_array_equal(
                 dx_grad,
@@ -264,9 +254,7 @@ class TestNewCustomOpSetUpInstall(unittest.TestCase):
             np.testing.assert_array_equal(
                 out,
                 pd_out,
-                err_msg="custom op out: {},\n paddle api out: {}".format(
-                    out, pd_out
-                ),
+                err_msg=f"custom op out: {out},\n paddle api out: {pd_out}",
             )
 
             if batch_id == 5:

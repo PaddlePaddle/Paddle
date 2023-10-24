@@ -14,6 +14,7 @@
 
 #include "paddle/utils/array_ref.h"
 
+#include <array>
 #include <cstdlib>
 #include <ctime>
 
@@ -35,15 +36,15 @@ TEST(array_ref, array_ref) {
   CHECK_EQ(c.data(), &v);
   CHECK_EQ(c.equals(paddle::make_array_ref(v)), true);
 
-  int v1[5] = {1, 2, 3, 4, 5};
-  paddle::array_ref<int> d(v1, 5);
+  std::array<int, 5> v1 = {1, 2, 3, 4, 5};
+  paddle::array_ref<int> d(v1.data(), 5);
   CHECK_EQ(d.size(), size_t(5));
-  CHECK_EQ(d.data(), v1);
-  CHECK_EQ(d.equals(paddle::make_array_ref(v1, 5)), true);
+  CHECK_EQ(d.data(), v1.data());
+  CHECK_EQ(d.equals(paddle::make_array_ref(v1.data(), 5)), true);
 
   paddle::array_ref<int> e(&v1[0], &v1[4]);
   CHECK_EQ(e.size(), size_t(4));
-  CHECK_EQ(e.data(), v1);
+  CHECK_EQ(e.data(), v1.data());
   CHECK_EQ(e.equals(paddle::make_array_ref(&v1[0], &v1[4])), true);
 
   paddle::small_vector<int, 3> small_vector{1, 2, 3};

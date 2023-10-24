@@ -47,7 +47,7 @@ TEST(Analyzer_bert, profile) {
   profile();
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_bert, profile_mkldnn) {
   auto use_mkldnn = true;
   profile(use_mkldnn);
@@ -79,7 +79,7 @@ TEST(Analyzer_bert, compare) {
 #endif
   CompareNativeAndAnalysisWrapper();
 }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_bert, compare_mkldnn) {
   auto use_mkldnn = true;
   CompareNativeAndAnalysisWrapper(use_mkldnn);

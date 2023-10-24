@@ -38,8 +38,8 @@ void ConcatKernel(const Context& dev_ctx,
 
   std::vector<phi::DDim> x_dims;
   x_dims.reserve(x.size());
-  for (size_t i = 0; i < x.size(); ++i) {
-    x_dims.push_back(x[i]->dims());
+  for (auto item : x) {
+    x_dims.push_back(item->dims());
   }
 
   phi::DDim out_dims = phi::funcs::ComputeAndCheckShape(true, x_dims, axis);
@@ -47,11 +47,11 @@ void ConcatKernel(const Context& dev_ctx,
   dev_ctx.template Alloc<T>(out);
 
   // If axis is 0, the lod of the output is not the same as inputs.
-  if (axis == 0 && x[0]->lod().size() > 0) {
+  if (axis == 0 && !x[0]->lod().empty()) {
     size_t lod_size_0 = x[0]->lod().size();
     size_t lod_size = lod_size_0;
     for (size_t i = 1; i < x.size(); ++i) {
-      if (x[i]->lod().size() > 0) {
+      if (!x[i]->lod().empty()) {
         PADDLE_ENFORCE_EQ(
             x[i]->lod().size(),
             lod_size_0,
@@ -93,16 +93,16 @@ void ConcatKernel(const Context& dev_ctx,
           out_stride,
           in->data<T>(),
           in_stride,
-          in_stride[axis]);
-      output_offset += in_stride[axis];
+          in_stride[static_cast<int>(axis)]);
+      output_offset += in_stride[static_cast<int>(axis)];
     }
   } else {
     // TODO(chenweihang): concat functor support vector<DenseTensor*> input
     std::vector<phi::DenseTensor> inputs;
     inputs.reserve(x.size());
-    for (size_t j = 0; j < x.size(); ++j) {
-      if (x[j]->numel() > 0) {
-        inputs.emplace_back(*x[j]);
+    for (auto item : x) {
+      if (item->numel() > 0) {
+        inputs.emplace_back(*item);
       } else {
         continue;
       }
@@ -125,6 +125,7 @@ PD_REGISTER_KERNEL(concat,
                    int,
                    uint8_t,
                    int8_t,
+                   int16_t,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
                    phi::dtype::complex<float>,

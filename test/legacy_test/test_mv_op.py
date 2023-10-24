@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle.static import Program, program_guard
@@ -58,7 +58,6 @@ class TestMVAPI(unittest.TestCase):
     def test_static_graph(self):
         for x_stop_gradient in [False, True]:
             for vec_stop_gradient in [False, True]:
-
                 paddle.enable_static()
 
                 train_program = Program()

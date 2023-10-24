@@ -36,12 +36,9 @@ namespace paddle_infer {
 /// Strings for text data.
 using Strings = std::vector<std::string>;
 
-class Tensor;
-using OutputTensorHookFunc =
-    std::function<void(const std::string&, const std::string&, const Tensor&)>;
-
-using OutputTensorHookFunc_V2 = std::function<void(
+using OutputTensorHookFunc = std::function<void(
     const std::string&, const std::string&, const paddle::Tensor&)>;
+using InputTensorHookFunc = OutputTensorHookFunc;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -67,6 +64,7 @@ enum DataType {
   FLOAT16,
   BOOL,
   FLOAT64,
+  BFLOAT16,
   // TODO(Inference): support more data types if needed.
 };
 

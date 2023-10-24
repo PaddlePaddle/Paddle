@@ -166,11 +166,10 @@ void RnnGradKernel(const Context &dev_ctx,
   }
 #else
   int offset = 0;
-  for (size_t i = 0; i < weight_grad_list.size(); ++i) {
-    size_t len = weight_grad_list[i]->numel();
-    auto dim = weight_grad_list[i]->dims();
-    weight_grad_list[i]
-        ->ShareDataWith(weight_grad.Slice(static_cast<int64_t>(offset),
+  for (auto &item : weight_grad_list) {
+    size_t len = item->numel();
+    auto dim = item->dims();
+    item->ShareDataWith(weight_grad.Slice(static_cast<int64_t>(offset),
                                           static_cast<int64_t>(offset + len)))
         .Resize(dim);
     offset += len;
@@ -189,7 +188,7 @@ void RnnGradKernel(const Context &dev_ctx,
   const T *init_c_data = nullptr;
   // const T *last_c_data = nullptr;
   const T *last_c_grad_data = nullptr;
-  T *init_h_grad_data = pre_state_grad.size() != 0 && pre_state_grad[0]
+  T *init_h_grad_data = !pre_state_grad.empty() && pre_state_grad[0]
                             ? dev_ctx.template Alloc<T>(pre_state_grad[0])
                             : nullptr;
   T *init_c_grad_data = nullptr;

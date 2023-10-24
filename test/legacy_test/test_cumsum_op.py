@@ -17,12 +17,12 @@ import tempfile
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.inference as paddle_infer
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestCumsumOp(unittest.TestCase):
@@ -53,7 +53,7 @@ class TestCumsumOp(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
 
     def run_static(self, use_gpu=False):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)
             x = paddle.static.data('X', [100, 100])
             y = paddle.cumsum(x)
@@ -63,9 +63,9 @@ class TestCumsumOp(unittest.TestCase):
             y5 = paddle.cumsum(x, dtype=np.int32)
             y6 = paddle.cumsum(x, axis=-2)
 
-            place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             out = exe.run(
                 feed={'X': data_np},
                 fetch_list=[
@@ -90,23 +90,23 @@ class TestCumsumOp(unittest.TestCase):
             np.testing.assert_allclose(z, out[5], rtol=1e-05)
 
     def test_cpu(self):
-        paddle.disable_static(paddle.fluid.CPUPlace())
+        paddle.disable_static(paddle.base.CPUPlace())
         self.run_cases()
         paddle.enable_static()
 
         self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
-        paddle.disable_static(paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(paddle.base.CUDAPlace(0))
         self.run_cases()
         paddle.enable_static()
 
         self.run_static(use_gpu=True)
 
     def test_name(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             x = paddle.static.data('x', [3, 4])
             y = paddle.cumsum(x, name='out')
             self.assertTrue('out' in y.name)
@@ -122,7 +122,7 @@ class TestSumOp1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
         if self.dtype == np.uint16:
@@ -141,13 +141,23 @@ class TestSumOp1(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
     def set_attrs_input_output(self):
         self.attrs = {'axis': 2}
         self.x = np.random.random((5, 6, 10)).astype(self.dtype_)
         self.out = self.x.cumsum(axis=2)
+
+
+class TestSumOp1_ZeroDim(TestSumOp1):
+    def set_attrs_input_output(self):
+        self.attrs = {'axis': 0}
+        self.x = np.random.random(()).astype(self.dtype_)
+        self.out = self.x
+
+    def if_enable_cinn(self):
+        self.enable_cinn = False
 
 
 class TestSumOp2(TestSumOp1):
@@ -221,7 +231,7 @@ class TestSumOpExclusive1(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.set_attrs_input_output()
         if self.dtype == np.uint16:
@@ -240,8 +250,8 @@ class TestSumOpExclusive1(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
     def set_attrs_input_output(self):
         self.attrs = {'axis': 2, 'exclusive': True}
@@ -314,7 +324,6 @@ class TestSumOpExclusiveFP16(OpTest):
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
         self.init_dtype()
-        self.enable_cinn = True
         self.attrs = {'axis': 2, "exclusive": True}
         self.x = np.random.random((4, 5, 20)).astype(self.dtype)
         self.out = np.concatenate(
@@ -347,7 +356,7 @@ class TestSumOpReverseExclusive(OpTest):
         self.prim_op_type = "prim"
         self.python_api = cumsum_wrapper
         self.public_python_api = paddle.cumsum
-        self.set_enable_cinn()
+        self.if_enable_cinn()
         self.init_dtype()
         self.attrs = {
             'axis': 2,
@@ -379,8 +388,8 @@ class TestSumOpReverseExclusive(OpTest):
     def init_dtype(self):
         self.dtype = self.dtype_ = np.float64
 
-    def set_enable_cinn(self):
-        self.enable_cinn = True
+    def if_enable_cinn(self):
+        pass
 
 
 def create_test_fp16_class(parent, max_relative_error=1e-2):
@@ -388,8 +397,8 @@ def create_test_fp16_class(parent, max_relative_error=1e-2):
         def init_dtype(self):
             self.dtype = self.dtype_ = np.float16
 
-        def set_enable_cinn(self):
-            self.enable_cinn = True
+        def if_enable_cinn(self):
+            pass
 
         def test_check_output(self):
             self.check_output()
@@ -431,7 +440,7 @@ def create_test_bf16_class(parent):
             self.dtype = np.uint16
             self.dtype_ = np.float32
 
-        def set_enable_cinn(self):
+        def if_enable_cinn(self):
             self.enable_cinn = False
 
         def test_check_output(self):
@@ -440,7 +449,9 @@ def create_test_bf16_class(parent):
 
         def test_check_grad(self):
             place = paddle.CUDAPlace(0)
-            self.check_grad_with_place(place, ["X"], "Out", check_prim=True)
+            self.check_grad_with_place(
+                place, ["X"], "Out", check_prim=True, numeric_grad_delta=0.05
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16")
     TestCumsumBF16Op.__name__ = cls_name
@@ -464,7 +475,7 @@ create_test_bf16_class(TestSumOpReverseExclusive)
 class BadInputTest(unittest.TestCase):
     def test_error(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 data = [1, 2, 4]

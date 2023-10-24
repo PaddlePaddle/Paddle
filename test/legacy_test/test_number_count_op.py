@@ -14,12 +14,12 @@
 
 import unittest
 
-import eager_op_test
 import numpy as np
+import op_test
 
 import paddle
+from paddle.base import core
 from paddle.distributed.models.moe import utils
-from paddle.fluid import core
 
 
 def count(x, upper_num):
@@ -30,13 +30,18 @@ def count(x, upper_num):
     return res
 
 
+def number_count_wrapper(numbers, upper_num):
+    return paddle._legacy_C_ops.number_count(numbers, 'upper_range', upper_num)
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
-class TestNumberCountOpInt64(eager_op_test.OpTest):
+class TestNumberCountOpInt64(op_test.OpTest):
     def setUp(self):
         upper_num = 16
         self.op_type = "number_count"
+        self.python_api = number_count_wrapper
         x = np.random.randint(-1, upper_num, size=(1000, 2)).astype('int64')
         self.inputs = {'numbers': x}
         self.outputs = {'Out': count(x, upper_num)}
@@ -71,7 +76,7 @@ class TestNumberCountAPI(unittest.TestCase):
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
         out = utils._number_count(x, self.upper_num)
-        assert np.allclose(out.numpy(), self.out)
+        np.testing.assert_allclose(out.numpy(), self.out)
 
 
 if __name__ == '__main__':

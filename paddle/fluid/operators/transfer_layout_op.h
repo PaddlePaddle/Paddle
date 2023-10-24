@@ -57,7 +57,7 @@ class TransferLayoutFunctor {
     auto out_layout = static_cast<DataLayout>(dst_layout_);
     out_tensor.set_layout(out_layout);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // NOTE(zhiqiu): to handle the special case in ApplyDataTransform() in
     // data_transfer.cc
     auto in_layout = static_cast<DataLayout>(src_layout_);

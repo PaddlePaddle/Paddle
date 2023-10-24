@@ -297,7 +297,7 @@ TEST(Attribute, ProtoAttrToAttribute_scalars) {
 
   std::vector<paddle::experimental::Scalar> scalars;
   for (int i = 0; i < 10; i++) {
-    scalars.push_back(paddle::experimental::Scalar(i));
+    scalars.emplace_back(i);
   }
   std::vector<paddle::framework::proto::Scalar> proto_scalars;
   proto_scalars.reserve(scalars.size());

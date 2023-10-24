@@ -50,7 +50,7 @@ class DemoPredictor : public PaddlePredictor {
     return nullptr;
   }
 
-  ~DemoPredictor() override {}
+  ~DemoPredictor() override = default;
 };
 
 template <>

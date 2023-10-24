@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 class TestFlattenOp(OpTest):
@@ -42,6 +42,13 @@ class TestFlattenOp(OpTest):
 
     def init_attrs(self):
         self.attrs = {"axis": self.axis}
+
+
+class TestFlattenOp_ZeroDim(TestFlattenOp):
+    def init_test_case(self):
+        self.in_shape = ()
+        self.axis = 0
+        self.new_shape = 1
 
 
 class TestFlattenOp1(TestFlattenOp):

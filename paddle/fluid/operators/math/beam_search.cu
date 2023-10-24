@@ -21,7 +21,7 @@ namespace operators {
 namespace math {
 
 struct Triple {
-  __device__ __forceinline__ Triple() {}
+  __device__ __forceinline__ Triple() = default;
   __device__ __forceinline__ Triple(int o, int i, float s)
       : offset(o), id(i), score(s) {}
 

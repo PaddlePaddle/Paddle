@@ -38,26 +38,24 @@ def _remove_and_get_optimizer_op(main_program, dist_context):
     # 2 mv optimizer op from global program to tmp block
     # 3 del the op from dist_context
     main_block = main_program.global_block()
-    temp_block = main_program._create_block()
+    optimize_ops_block = paddle.static.Program().global_block()
     removed_op_idx = []
-    optimize_ops_desc = []
     for idx, op in enumerate(main_block.ops):
         if is_optimize_op(op):
             # append optimizer op to tmp block
-            new_op_desc = temp_block.desc.append_op()
+            new_op_desc = optimize_ops_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
-            optimize_ops_desc.append(new_op_desc)
             removed_op_idx.append(idx)
 
             # del op from dist_context
-            if dist_context:
-                dist_context.del_dist_op_for_program(op)
+            # if dist_context:
+            #     dist_context.del_dist_op_for_program(op)
 
     for idx in removed_op_idx[::-1]:
         main_block._remove_op(idx, sync=False)
     main_block._sync_with_cpp()
 
-    return optimize_ops_desc
+    return optimize_ops_block
 
 
 def _get_gm_cond_var(main_program, k_steps, dist_context):
@@ -76,7 +74,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     zero_var = paddle.static.create_global_var(
         name="gradient_merge_zero",
         shape=[1],
-        value=int(0),
+        value=0,
         dtype='int32',
         persistable=True,
         force_cpu=True,
@@ -87,15 +85,20 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
     step_var = paddle.static.create_global_var(
         name="gradient_merge_step",
         shape=[1],
-        value=int(0),
+        value=0,
         dtype='int32',
         persistable=True,
         force_cpu=True,
     )
     set_var_dist_attr(dist_context, step_var, [-1], world_process_group.ranks)
 
-    cond_var = main_block.create_var(
-        name="gradient_merge_cond", shape=[1], dtype='bool'
+    cond_var = paddle.static.create_global_var(
+        name="gradient_merge_cond",
+        shape=[1],
+        value=bool(0),
+        dtype='bool',
+        persistable=True,
+        force_cpu=True,
     )
     set_var_dist_attr(dist_context, cond_var, [-1], world_process_group.ranks)
 
@@ -105,7 +108,7 @@ def _get_gm_cond_var(main_program, k_steps, dist_context):
             type='increment',
             inputs={'X': [step_var]},
             outputs={'Out': [step_var]},
-            attrs={'step': float(1.0), OP_ROLE_KEY: OpRole.Backward},
+            attrs={'step': 1.0, OP_ROLE_KEY: OpRole.Backward},
         )
         naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
             increment_op,
@@ -163,58 +166,97 @@ def _append_gradient_merge_backward_op(
     grad_to_gradient_merge = {}
     # {param: gradient_merge_var} to insert scale op and fill_constant op
     new_params_to_grads = []
+
     # step2: create gradient_merge var and init with 0
+    main_program_clone = main_program.clone()
+    main_block_clone = main_program_clone.global_block()
+    grad_to_param_names = {}
     for param, grad in params_grads:
-        param_name = param.name
-        param_var = main_block.var(param_name)
-        assert param_var is not None
-        ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(param_var)
-        assert ref_dist_attr is not None
-        gradient_merge_var = main_block.create_var(
-            name=param_name + "@GRAD@GradientMerge",
-            shape=param_var.shape,
-            dtype=param_var.dtype,
-            persistable=True,
-        )
-        ref_process_mesh = ref_dist_attr.process_mesh
-        ref_dims_mapping = ref_dist_attr.dims_mapping
+        grad_to_param_names[grad.name] = param.name
 
-        set_var_dist_attr(
-            dist_context, gradient_merge_var, ref_dims_mapping, ref_process_mesh
-        )
+    for index, op in reversed(list(enumerate(main_block_clone.ops))):
+        output_var_names = op.desc.output_arg_names()
+        if len(grad_to_param_names) == 0:
+            break
+        for output_var_name in output_var_names:
+            if len(grad_to_param_names) == 0:
+                break
+            if output_var_name in grad_to_param_names:
+                param_var = main_block.var(grad_to_param_names[output_var_name])
+                assert param_var is not None
+                ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    param_var
+                )
+                assert ref_dist_attr is not None
+                # Add persistable gradient variables in main_program
+                gradient_merge_var = main_block.create_var(
+                    name=param_var.name + "@GRAD@GradientMerge",
+                    shape=param_var.shape,
+                    dtype=param_var.dtype,
+                    persistable=True,
+                )
+                ref_process_mesh = ref_dist_attr.process_mesh
+                ref_dims_mapping = ref_dist_attr.dims_mapping
 
-        startup_gradient_merge_var = startup_block.create_var(
-            name=param_name + "@GRAD@GradientMerge",
-            shape=param_var.shape,
-            dtype=param_var.dtype,
-            persistable=True,
-        )
-        startup_block.append_op(
-            type="fill_constant",
-            outputs={"Out": startup_gradient_merge_var},
-            attrs={
-                "shape": param_var.shape,
-                "dtype": param_var.dtype,
-                "value": float(0),
-            },
-        )
+                set_var_dist_attr(
+                    dist_context,
+                    gradient_merge_var,
+                    ref_dims_mapping,
+                    ref_process_mesh,
+                )
 
-        # grad_merge += grad
-        new_grad_op = main_block.append_op(
-            type="elementwise_add",
-            inputs={'X': grad, 'Y': gradient_merge_var},
-            outputs={'Out': gradient_merge_var},
-            attrs={
-                'axis': -1,
-                'use_mkldnn': False,
-                OP_ROLE_KEY: OpRole.Backward,
-            },
-        )
-        new_params_to_grads.append([param, gradient_merge_var])
-        grad_to_gradient_merge[grad.name] = gradient_merge_var.name
-        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-            new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context
-        )
+                # Add persistable gradient variables in startup_program
+                startup_gradient_merge_var = startup_block.create_var(
+                    name=param_var.name + "@GRAD@GradientMerge",
+                    shape=param_var.shape,
+                    dtype=param_var.dtype,
+                    persistable=True,
+                )
+                # Initial persistable gradient variables in startup_program
+                startup_block.append_op(
+                    type="fill_constant",
+                    outputs={"Out": startup_gradient_merge_var},
+                    attrs={
+                        "shape": param_var.shape,
+                        "dtype": param_var.dtype,
+                        "value": float(0),
+                    },
+                )
+
+                # Accumulate persistable gradient variables in main_program
+                grad_var = main_block.var(output_var_name)
+                assert grad_var is not None
+                new_grad_op = main_block._insert_op_without_sync(
+                    index + 1,
+                    type="elementwise_add",
+                    inputs={'X': grad_var, 'Y': gradient_merge_var},
+                    outputs={'Out': gradient_merge_var},
+                    attrs={
+                        'axis': -1,
+                        'use_mkldnn': False,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+
+                # Construct new_params_to_grads and grad_to_gradient_merge
+                new_params_to_grads.append([param_var, gradient_merge_var])
+                grad_to_gradient_merge[grad_var.name] = gradient_merge_var.name
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    new_grad_op,
+                    ref_process_mesh,
+                    ref_dims_mapping,
+                    dist_context,
+                )
+
+                del grad_to_param_names[output_var_name]
+
+    assert (
+        len(grad_to_param_names) == 0
+    ), "grad_to_param_names must be empty right now, but it has {} items".format(
+        len(grad_to_param_names)
+    )
+    main_block._sync_with_cpp()
+
     return new_params_to_grads, grad_to_gradient_merge
 
 
@@ -223,9 +265,10 @@ def _create_cond_block_and_update_optimizer(
     cond_var,
     new_params_to_grads: List[Tuple[Any, Any]],
     grad_to_gradient_merge: Dict[str, str],
-    optimize_ops_desc: List[Any],
+    optimize_ops_block,
     k_steps,
     avg,
+    dist_context,
 ):
     def true_apply_gradient():
         cur_block_idx = main_program.current_block_idx
@@ -250,7 +293,8 @@ def _create_cond_block_and_update_optimizer(
                 new_grad.op._set_attr(OP_ROLE_KEY, OpRole.Optimize)
 
         # append optimizer ops
-        for op_desc in optimize_ops_desc:
+        for opt_op_idx in range(optimize_ops_block.desc.op_size()):
+            op_desc = optimize_ops_block.desc.op(opt_op_idx)
             new_op_desc = cur_block.desc.append_op()
             new_op_desc.copy_from(op_desc)
 
@@ -281,6 +325,14 @@ def _create_cond_block_and_update_optimizer(
         main_program.global_block()._sync_with_cpp()
         cur_block._sync_with_cpp()
 
+        # update serial op
+        for idx, op in enumerate(cur_block.ops):
+            if is_optimize_op(op):
+                dist_op = dist_context.get_dist_op_for_program(op)
+                if dist_op:
+                    # dist_op.set_input_dist_attr
+                    dist_op._serial_op = op
+
         # clear gradient_merge_vars
         for param, new_grad in new_params_to_grads:
             paddle.tensor.fill_constant(
@@ -300,7 +352,9 @@ def parse_program(
     main_program, startup_program, params_grads, k_steps, avg, dist_context
 ):
     # 1 remove optimizer_op from main_program
-    optimize_ops_desc = _remove_and_get_optimizer_op(main_program, dist_context)
+    optimize_ops_block = _remove_and_get_optimizer_op(
+        main_program, dist_context
+    )
 
     # back to block 0
     main_program._rollback()
@@ -322,9 +376,10 @@ def parse_program(
         cond_var,
         new_params_to_grads,
         grad_to_gradient_merge,
-        optimize_ops_desc,
+        optimize_ops_block,
         k_steps,
         avg,
+        dist_context,
     )
 
 

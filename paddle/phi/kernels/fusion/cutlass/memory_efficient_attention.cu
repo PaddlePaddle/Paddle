@@ -202,10 +202,13 @@ void MemoryEfficientAttentionForwardKernel(
 
     if (bias) {
       p.attn_bias_ptr = phi::SafeGetTensorPtr<scalar_t>(bias);
+      const auto& bias_dims = bias.get().dims();
       PD_MEA_CHECK_OVERFLOW(
           p.bias_strideB,
-          GetMemoryEfficientBiasStrideB(bias.get().dims(), q_dims, k_dims));
-      PD_MEA_CHECK_OVERFLOW(p.bias_strideH, q_dims[1] * k_dims[1]);
+          GetMemoryEfficientBiasStrideB(bias_dims, q_dims, k_dims));
+      PD_MEA_CHECK_OVERFLOW(
+          p.bias_strideH,
+          GetMemoryEfficientBiasStrideH(bias_dims, q_dims, k_dims));
       PD_MEA_CHECK_OVERFLOW(p.bias_strideM, k_dims[1]);
     } else {
       p.attn_bias_ptr = nullptr;

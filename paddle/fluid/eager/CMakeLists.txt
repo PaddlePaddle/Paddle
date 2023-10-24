@@ -1,7 +1,6 @@
 set(eager_deps
     phi
     hook_utils
-    tensor_utils
     utils
     global_utils
     backward
@@ -76,3 +75,8 @@ cc_library(
        generated_op
        autograd_meta
        hook_utils)
+
+# FIXME(Aurelius84): It seems utils library is depended in cycle, but
+# CMake only find it twice to deal cycle depend problem. If it is still
+# not found, ld error will be raised.
+set_target_properties(utils PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)

@@ -15,6 +15,7 @@
 
 #include <queue>
 
+#include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
@@ -34,6 +35,8 @@ class InterpreterCoreGarbageCollector {
 
   virtual void Add(Variable* var, const Instruction& instruction) = 0;
 
+  virtual void Add(Variable* var, const InstructionBase* instruction) = 0;
+
   DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
 
  protected:
@@ -49,6 +52,11 @@ std::unique_ptr<InterpreterCoreGarbageCollector>
 CreateInterpreterCoreGarbageCollector(
     const platform::Place& place,
     const std::vector<Instruction>& vec_instruction);
+
+std::unique_ptr<InterpreterCoreGarbageCollector>
+CreateInterpreterCoreGarbageCollector(
+    const platform::Place& place,
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction);
 
 }  // namespace framework
 }  // namespace paddle

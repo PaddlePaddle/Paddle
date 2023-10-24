@@ -105,8 +105,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
         InferShapeSqueezeOp(ctx, x_dims, out_dims);
         break;
       case ReshapeKernelOpName::flatten:
-        InferShapeFlattenOp(ctx, x_dims, out_dims);
-        break;
       case ReshapeKernelOpName::flatten2:
         InferShapeFlattenOp(ctx, x_dims, out_dims);
         break;
@@ -134,7 +132,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
       framework::DDim& out_dims) const {  // NOLINT
     auto list_new_shape_tensor =
         ctx.MultiInput<phi::DenseTensor>("ShapeTensor");
-    if (list_new_shape_tensor.size() > 0) {
+    if (!list_new_shape_tensor.empty()) {
       auto new_shape = extract_shape(list_new_shape_tensor);
       out_dims = ValidateShape(new_shape, x_dims);
     } else if (ctx.HasInput("Shape")) {
@@ -163,7 +161,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     x_dims = x->dims();
     auto axes = ctx.Attr<int>("axis");
     out_dims = phi::make_ddim(
-        FlattenKernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
+        Flatten2Kernel<phi::CPUContext, float>::GetOutputShape(axes, x_dims));
   }
 
  protected:

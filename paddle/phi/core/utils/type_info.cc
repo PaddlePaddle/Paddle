@@ -14,10 +14,12 @@ limitations under the License. */
 
 #include <string>
 
+#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
@@ -48,6 +50,8 @@ template class TypeInfoTraits<phi::TensorBase, SparseCooTensor>;
 template class TypeInfoTraits<phi::TensorBase, SparseCsrTensor>;
 template class TypeInfoTraits<phi::TensorBase, StringTensor>;
 template class TypeInfoTraits<phi::TensorBase, TensorArray>;
+template class TypeInfoTraits<phi::TensorBase, phi::distributed::DistTensor>;
+template class TypeInfoTraits<phi::TensorBase, paddle::dialect::IrMetaTensor>;
 
 template class TypeInfoTraits<phi::DeviceContext, CPUContext>;
 template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
@@ -55,6 +59,9 @@ template class TypeInfoTraits<phi::DeviceContext, CustomContext>;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
     defined(PADDLE_WITH_XPU_KP)
 template class TypeInfoTraits<phi::DeviceContext, GPUContext>;
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 #endif
 
@@ -62,7 +69,7 @@ template class TypeInfoTraits<phi::DeviceContext, GPUPinnedContext>;
 template class TypeInfoTraits<phi::DeviceContext, XPUContext>;
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 template class TypeInfoTraits<phi::StorageProperties, OneDNNStorageProperties>;
 #endif
 

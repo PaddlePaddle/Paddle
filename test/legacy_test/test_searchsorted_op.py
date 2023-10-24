@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -132,7 +132,6 @@ class TestSearchSortedAPI(unittest.TestCase):
 
     def test_dygraph_api(self):
         def run(place):
-
             paddle.disable_static(place)
             sorted_sequence = paddle.to_tensor(self.sorted_sequence)
             values = paddle.to_tensor(self.values)

@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -23,7 +24,7 @@ namespace phi {
 template <typename T, typename Context>
 void FrobeniusNormKernel(const Context& ctx,
                          const DenseTensor& x,
-                         const std::vector<int64_t>& axis,
+                         const IntArray& axis,
                          bool keep_dim,
                          bool reduce_all,
                          DenseTensor* out);

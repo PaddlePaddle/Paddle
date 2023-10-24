@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import paddle
-from paddle.fluid.optimizer import PipelineOptimizer as PO
+from paddle.incubate.optimizer import PipelineOptimizer as PO
 
 from .common import (
     OP_ROLE_KEY,

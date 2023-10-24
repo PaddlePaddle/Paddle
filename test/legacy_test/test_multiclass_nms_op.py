@@ -16,12 +16,12 @@ import copy
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.layer_helper import LayerHelper
 
 
 def multiclass_nms3(
@@ -39,7 +39,6 @@ def multiclass_nms3(
     return_rois_num=True,
     name=None,
 ):
-
     helper = LayerHelper('multiclass_nms3', **locals())
 
     if paddle.in_dynamic_mode():

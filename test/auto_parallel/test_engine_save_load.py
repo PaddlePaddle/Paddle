@@ -71,7 +71,6 @@ class MLPLayer(nn.Layer):
 
 class TestSaveLoad(unittest.TestCase):
     def test_fp32_save_fp16_load(self):
-
         mlp = MLPLayer(
             hidden_size=hidden_size,
             intermediate_size=4 * hidden_size,

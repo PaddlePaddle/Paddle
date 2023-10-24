@@ -14,9 +14,21 @@
 
 import collections
 import re
+from typing import List
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+
+
+def parse_plain_list(s: str, sep=",") -> List[str]:
+    """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 class BaseAPI:
@@ -367,14 +379,13 @@ class BaseAPI:
         data_transform = {'skip_transform': [], 'support_trans_dtype': []}
         if 'data_transform' in api_item_yaml:
             if 'skip_transform' in api_item_yaml['data_transform']:
-                data_transform['skip_transform'] = api_item_yaml[
-                    'data_transform'
-                ]['skip_transform']
+                data_transform['skip_transform'] = parse_plain_list(
+                    api_item_yaml['data_transform']['skip_transform']
+                )
             if 'support_trans_dtype' in api_item_yaml['data_transform']:
-                data_transform['support_trans_dtype'] = api_item_yaml[
-                    'data_transform'
-                ]['support_trans_dtype']
-
+                data_transform['support_trans_dtype'] = parse_plain_list(
+                    api_item_yaml['data_transform']['support_trans_dtype']
+                )
         return data_transform
 
     # Override by child class
@@ -666,6 +677,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                     + out_name.replace('kernel_', PREFIX_META_TENSOR_NAME)
                     + "("
                     + out_name
+                    + ", kernel_result.is_stride_kernel"
                     + ");\n"
                 )
                 if len(kernel_output_names) == 1:
@@ -709,7 +721,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         input_tensor_code = (
             input_tensor_code
             + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);"""
         )
         return input_tensor_code
 
@@ -761,7 +773,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -799,7 +811,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag});
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -1204,6 +1216,20 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             code_indent,
             inplace_flag,
         )
+        pre_save_stride = ""
+        transdata2strided = ""
+        if inplace_flag and kernel_name not in [
+            "squeeze",
+            "unsqueeze",
+            "reshape",
+            "flatten",
+            "transpose",
+        ]:
+            i = 0
+            for kernel_out in outputs_args:
+                pre_save_stride += f"""{code_indent}  auto backup{i} = ProcessStrideBackup(&{kernel_out});\n"""
+                transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});\n"""
+                i = i + 1
         fallback_kernel_output_trans = ""
         for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
@@ -1211,7 +1237,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}});
+{code_indent}      "{kernel_name}", {{kernel_backend, kernel_layout, kernel_data_type}}, true);
 {code_indent}  const auto& kernel = kernel_result.kernel;
 {code_indent}  if (FLAGS_low_precision_op_list) {{
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
@@ -1220,6 +1246,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 {input_tensors}
 {output_create}
+{pre_save_stride}
 {code_indent}  phi::RecordEvent *infer_shape_record_event = nullptr;
 {code_indent}  if(phi::RecordEvent::IsEnabled()){{
 {code_indent}    infer_shape_record_event = new phi::RecordEvent(\"{self.api} infer_meta\", phi::TracerEventType::OperatorInner, 1);
@@ -1238,6 +1265,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}  if(kernel_record_event != nullptr){{
 {code_indent}    delete kernel_record_event;
 {code_indent}  }}
+{transdata2strided}
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
 {fallback_kernel_output_trans}
 {self.reset_view_after_fallback(self.outputs['types'], code_indent, inplace_flag)}

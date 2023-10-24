@@ -312,20 +312,20 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
     }
   }
 
-  for (size_t num = 0; num < fusion_ids.size(); ++num) {
-    int i = fusion_ids[num].first;
-    int k = fusion_ids[num].second.first;
-    std::vector<size_t> js = fusion_ids[num].second.second;
+  for (auto& fusion_id : fusion_ids) {
+    int i = fusion_id.first;
+    int k = fusion_id.second.first;
+    std::vector<size_t> js = fusion_id.second.second;
 
     std::vector<std::string> ids;
     std::vector<std::string> embs;
-    for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-      ids.push_back(start_pattern_in_nodes[i][iter].first->Name());
-      embs.push_back(start_pattern_in_nodes[i][iter].second->Name());
+    for (auto& item : start_pattern_in_nodes[i]) {
+      ids.push_back(item.first->Name());
+      embs.push_back(item.second->Name());
     }
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      ids.push_back(inner_pattern_ins[js[iter]].first->Name());
-      embs.push_back(inner_pattern_ins[js[iter]].second->Name());
+    for (auto item : js) {
+      ids.push_back(inner_pattern_ins[item].first->Name());
+      embs.push_back(inner_pattern_ins[item].second->Name());
     }
 
     OpDesc new_op_desc(end_patter_layernorms[0]->Op()->Block());
@@ -355,16 +355,14 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
 
     auto* preln_embedding_eltwise_layernorm = graph->CreateOpNode(&new_op_desc);
 
-    for (size_t iter = 0; iter < start_pattern_in_nodes[i].size(); ++iter) {
-      IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].first,
-                      preln_embedding_eltwise_layernorm);
-      IR_NODE_LINK_TO(start_pattern_in_nodes[i][iter].second,
-                      preln_embedding_eltwise_layernorm);
+    for (auto& item : start_pattern_in_nodes[i]) {
+      IR_NODE_LINK_TO(item.first, preln_embedding_eltwise_layernorm);
+      IR_NODE_LINK_TO(item.second, preln_embedding_eltwise_layernorm);
     }
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].first,
+    for (auto item : js) {
+      IR_NODE_LINK_TO(inner_pattern_ins[item].first,
                       preln_embedding_eltwise_layernorm);
-      IR_NODE_LINK_TO(inner_pattern_ins[js[iter]].second,
+      IR_NODE_LINK_TO(inner_pattern_ins[item].second,
                       preln_embedding_eltwise_layernorm);
     }
     IR_NODE_LINK_TO(end_pattern_biases[k], preln_embedding_eltwise_layernorm);
@@ -378,9 +376,9 @@ int PrelnEmbeddingEltwiseLayerNormFusePass::BuildFusion(
                         start_pattern_remove_nodes[i].end());
     marked_nodes.insert(end_pattern_remove_nodes[k].begin(),
                         end_pattern_remove_nodes[k].end());
-    for (size_t iter = 0; iter < js.size(); ++iter) {
-      marked_nodes.insert(inner_pattern_remove_nodes[js[iter]].begin(),
-                          inner_pattern_remove_nodes[js[iter]].end());
+    for (auto item : js) {
+      marked_nodes.insert(inner_pattern_remove_nodes[item].begin(),
+                          inner_pattern_remove_nodes[item].end());
     }
     GraphSafeRemoveNodes(graph, marked_nodes);
     ++fusion_count;
@@ -439,8 +437,8 @@ void PrelnEmbeddingEltwiseLayerNormFusePass::ApplyImpl(Graph* graph) const {
   bool with_dynamic_shape = Get<bool>("with_dynamic_shape");
   std::string pos_id = Get<std::string>("tensorrt_transformer_posid");
   std::string mask_id = Get<std::string>("tensorrt_transformer_maskid");
-  if (!(enable_int8 && use_varseqlen && with_interleaved && pos_id != "" &&
-        mask_id != "" && with_dynamic_shape)) {
+  if (!(enable_int8 && use_varseqlen && with_interleaved && !pos_id.empty() &&
+        !mask_id.empty() && with_dynamic_shape)) {
     VLOG(3) << "preln_embedding_eltwise_layernorm_fuse_pass need: use_trt, "
                "enable_int8, set pos_id, set mask_id, "
                "use_varseqlen, with_interleaved, with_dynamic_shape. Stop this "

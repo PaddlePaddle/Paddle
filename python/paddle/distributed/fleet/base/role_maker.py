@@ -20,10 +20,12 @@ from multiprocessing import Manager, Process
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-from paddle.fluid import core
+
+from ...backup_env import getenv_or_backup
 
 __all__ = []
 
@@ -56,8 +58,8 @@ class Gloo:
             "gloo is not initialized, will not communicator with other nodes"
         )
         self._err_type = "gloo initialized error, please check arguments"
-        self._err_world = "argument error, comm_world must in {}".format(
-            self._comm_world
+        self._err_world = (
+            f"argument error, comm_world must in {self._comm_world}"
         )
 
         self._is_initialized = False
@@ -83,7 +85,6 @@ class Gloo:
         need_init_all=False,
         kwargs=None,
     ):
-
         self._rendezvous = rendezvous
         self._role = role
         self._role_id = role_id
@@ -496,7 +497,6 @@ class RoleMakerBase:
 
     def _all_gather(self, input, comm_world="worker"):
         print("warning: RoleMakerBase does not have all gather worker.")
-        return None
 
     def _all_reduce(self, input, mode="sum", comm_world="worker"):
         """
@@ -506,7 +506,6 @@ class RoleMakerBase:
             mode(str): "sum" or "min" or "max"
         """
         print("warning: RoleMakerBase does not have all reduce worker.")
-        return None
 
     def _barrier(self, comm_world):
         """
@@ -545,6 +544,30 @@ class RoleMakerBase:
 
 
 class PaddleCloudRoleMaker(RoleMakerBase):
+
+    """
+    PaddleCloudRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from environment variables.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import os
+            >>> import paddle.distributed.fleet as fleet
+
+            >>> os.environ["PADDLE_PSERVER_NUMS"] = "2"
+            >>> os.environ["PADDLE_TRAINERS_NUM"] = "2"
+
+            >>> os.environ["POD_IP"] = "127.0.0.1"
+            >>> os.environ["PADDLE_PORT"] = "36001"
+            >>> os.environ["TRAINING_ROLE"] = "PSERVER"
+            >>> os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36001,127.0.0.2:36001"
+
+            >>> os.environ["PADDLE_TRAINER_ID"] = "0"
+
+            >>> fleet.PaddleCloudRoleMaker(is_collective=False)
+
+    """
+
     def __init__(self, is_collective=False, **kwargs):
         super().__init__()
         self._is_collective = is_collective
@@ -845,7 +868,9 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
         self._server_endpoints = self._server_endpoints.split(",")
 
-        self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS", None)
+        self._worker_endpoints = getenv_or_backup(
+            "PADDLE_TRAINER_ENDPOINTS", None
+        )
         if self._worker_endpoints is not None:
             self._worker_endpoints = self._worker_endpoints.split(",")
         else:
@@ -1067,7 +1092,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         self._training_role = os.getenv("PADDLE_TRAINING_ROLE", "TRAINER")
         assert self._training_role == "TRAINER"
         self._role = Role.WORKER
-        self._worker_endpoints = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+        self._worker_endpoints = getenv_or_backup("PADDLE_TRAINER_ENDPOINTS")
         self._cur_endpoint = os.getenv("PADDLE_CURRENT_ENDPOINT")
         if self._worker_endpoints is None:
             # back to non_distributed execution.
@@ -1148,9 +1173,7 @@ class PaddleCloudRoleMaker(RoleMakerBase):
         else:
             type = "FILE"
         print(
-            "Gloo init with {}: need_init_all: {}, args: {}".format(
-                type, need_init_all, kwargs
-            )
+            f"Gloo init with {type}: need_init_all: {need_init_all}, args: {kwargs}"
         )
 
         self._gloo.init(
@@ -1181,6 +1204,23 @@ class PaddleCloudRoleMaker(RoleMakerBase):
 
 
 class UserDefinedRoleMaker(PaddleCloudRoleMaker):
+
+    """
+    UserDefinedRoleMaker is an interface for distributed configuration initialization based on obtaining distributed related information from user-defined parameters.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle.distributed.fleet as fleet
+            >>> from paddle.distributed.fleet.base.role_maker import Role
+
+            >>> fleet.UserDefinedRoleMaker(
+            ...     current_id=0,
+            ...     role=Role.SERVER,
+            ...     worker_num=2,
+            ...     server_endpoints=["127.0.0.1:36011", "127.0.0.1:36012"])
+    """
+
     def __init__(self, is_collective=False, init_gloo=False, **kwargs):
         super().__init__(
             is_collective=is_collective, init_gloo=init_gloo, **kwargs

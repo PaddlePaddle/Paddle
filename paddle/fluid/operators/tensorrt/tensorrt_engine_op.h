@@ -14,30 +14,34 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/platform/place.h"
-#include "paddle/phi/common/data_type.h"
-#include "paddle/phi/common/place.h"
-#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #ifdef PADDLE_WITH_CUDA
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "paddle/phi/kernels/cast_kernel.h"
 
 #include "paddle/fluid/framework/data_device_transform.h"
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/inference/analysis/helper.h"
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
+#include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/platform/place.h"
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
+#include "paddle/phi/core/enforce.h"
+#include "paddle/phi/core/errors.h"
+#include "paddle/phi/kernels/cast_kernel.h"
+#include "paddle/phi/kernels/funcs/data_type_transform.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -171,10 +175,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::string model_opt_cache_dir_;
   bool use_static_engine_;
   phi::DataType precision_mode_;
-  std::map<std::string, std::vector<int>> min_input_shape_{};
-  std::map<std::string, std::vector<int>> max_input_shape_{};
-  std::map<std::string, std::vector<int>> opt_input_shape_{};
-  phi::DataType model_precision_{phi::DataType::FLOAT32};
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -185,7 +185,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
     input_names_ = Inputs("Xs");
     max_batch_size_ = Attr<int>("max_batch_size");
     workspace_size_ = Attr<int64_t>("workspace_size");
-    device_id_ = Attr<int>("gpu_id");
+    device_id_ = Attr<int>("gpu_device_id");
     enable_int8_ = Attr<bool>("enable_int8");
     enable_fp16_ = Attr<bool>("enable_fp16");
     use_calib_mode_ = Attr<bool>("use_calib_mode");
@@ -200,43 +200,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
     }
-    model_precision_ = static_cast<phi::DataType>(Attr<int>("model_precision"));
-
-    if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
-        HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
-      std::vector<std::string> dynamic_shape_names;
-      std::vector<std::vector<int>> min_input_shapes;
-      std::vector<std::vector<int>> max_input_shapes;
-      std::vector<std::vector<int>> opt_input_shapes;
-      std::vector<int> dynamic_shape_lens;
-      dynamic_shape_names =
-          Attr<std::vector<std::string>>("dynamic_shape_names");
-      std::vector<int> min_shapes = Attr<std::vector<int>>("min_input_shape");
-      std::vector<int> max_shapes = Attr<std::vector<int>>("max_input_shape");
-      std::vector<int> opt_shapes = Attr<std::vector<int>>("opt_input_shape");
-      dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
-      int idx = 0;
-      for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
-        std::vector<int> tmp1, tmp2, tmp3;
-        for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
-          tmp1.push_back(min_shapes[idx]);
-          tmp2.push_back(max_shapes[idx]);
-          tmp3.push_back(opt_shapes[idx++]);
-        }
-        min_input_shapes.emplace_back(tmp1);
-        max_input_shapes.emplace_back(tmp2);
-        opt_input_shapes.emplace_back(tmp3);
-      }
-
-      for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
-        min_input_shape_.insert(
-            std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
-        max_input_shape_.insert(
-            std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
-        opt_input_shape_.insert(
-            std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
-      }
-    }
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {
@@ -249,11 +212,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
     // calibration_mode is true represents we need to
     // generate the calibration table data.
     calibration_mode_ =
-        (enable_int8_ && calibration_data_.size() == 0 && use_calib_mode_);
+        (enable_int8_ && calibration_data_.empty() && use_calib_mode_);
 
     VLOG(4) << "calibration_mode: " << calibration_mode_;
-    if (enable_int8_ && calibration_data_.size()) {
-      calibrator_.reset(new TRTInt8Calibrator(calibration_data_));
+    if (enable_int8_ && !calibration_data_.empty()) {
+      calibrator_ = std::make_unique<TRTInt8Calibrator>(calibration_data_);
     }
     bool has_engine =
         inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
@@ -486,36 +449,29 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto t_shape = phi::vectorize(t.dims());
         runtime_batch = t_shape[0];
       }
-      calib_res->calib_.reset(new TRTInt8Calibrator(
-          calib_buffers, runtime_batch, calibration_engine_key_, dev_place));
+      calib_res->calib_ = std::make_unique<TRTInt8Calibrator>(
+          calib_buffers, runtime_batch, calibration_engine_key_, dev_place);
       calib_res->thr_.reset(new std::thread([&]() {
-        std::map<std::string, std::vector<int>> min_input_shape;
-        std::map<std::string, std::vector<int>> max_input_shape;
-        std::map<std::string, std::vector<int>> opt_input_shape;
-        std::map<std::string, std::vector<int>> min_shape_tensor;
-        std::map<std::string, std::vector<int>> max_shape_tensor;
-        std::map<std::string, std::vector<int>> opt_shape_tensor;
-        if (shape_range_info_path_.size())
+        TensorRTEngine::ConstructionParams params;
+        params.max_batch_size = max_batch_size_;
+        params.max_workspace_size = workspace_size_;
+        params.precision = precision_mode_;
+        params.calibrator = calib_res->calib_.get();
+        params.device_id = dev_place.device;
+        params.with_dynamic_shape = with_dynamic_shape_;
+        if (!shape_range_info_path_.empty()) {
           inference::DeserializeShapeRangeInfo(shape_range_info_path_,
-                                               &min_input_shape,
-                                               &max_input_shape,
-                                               &opt_input_shape,
-                                               &min_shape_tensor,
-                                               &max_shape_tensor,
-                                               &opt_shape_tensor);
+                                               &params.min_input_shape,
+                                               &params.max_input_shape,
+                                               &params.optim_input_shape,
+                                               &params.min_shape_tensor,
+                                               &params.max_shape_tensor,
+                                               &params.optim_shape_tensor);
+        }
+        params.context_memory_sharing = Attr<bool>("context_memory_sharing");
+        params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+        calib_res->engine_ = std::make_unique<TensorRTEngine>(params);
 
-        calib_res->engine_.reset(new TensorRTEngine(max_batch_size_,
-                                                    workspace_size_,
-                                                    precision_mode_,
-                                                    calib_res->calib_.get(),
-                                                    dev_place.device,
-                                                    with_dynamic_shape_,
-                                                    min_input_shape,
-                                                    max_input_shape,
-                                                    opt_input_shape,
-                                                    min_shape_tensor,
-                                                    max_shape_tensor,
-                                                    opt_shape_tensor));
         VLOG(3) << "start the calib trt engine thread";
         PrepareTRTEngine(scope, calib_res->engine_.get());
       }));
@@ -594,6 +550,18 @@ class TensorRTEngineOp : public framework::OperatorBase {
         t.ShareDataWith(out);
       }
       auto t_shape = phi::vectorize<int64_t>(t.dims());
+
+      // This must be a zero dimension tensor.
+      // At present, we convert it to a 1D tensor to feed them into Trt.
+      if (t_shape.empty()) {
+        PADDLE_ENFORCE_EQ(
+            t.numel(),
+            1UL,
+            platform::errors::PreconditionNotMet(
+                "This tensor must have one element, but got %ld.", t.numel()));
+        t_shape.push_back(1);
+      }
+
       // Get index of profile 0 first, then plus binding offset
       const int bind_index =
           engine->engine()->getBindingIndex(x.c_str()) + binding_offset;
@@ -657,8 +625,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
                                  t.numel() * sizeof(int),
                                  nullptr);
           } else if (t.dtype() == phi::DataType::INT64) {
-            auto int32_tensor = scope.FindVar(x + "_cast_to_INT32")
-                                    ->GetMutable<phi::DenseTensor>();
+            std::string x_t = x + "_cast_to_INT32";
+            if (scope.FindVar(x_t) == nullptr) {
+              const_cast<framework::Scope *>(&scope)->Var(x_t);
+            }
+            auto int32_tensor =
+                scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
             *int32_tensor = phi::Cast<int64_t>(
                 reinterpret_cast<const phi::GPUContext &>(dev_ctx),
                 t,
@@ -690,9 +662,23 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
       if (t.dtype() == phi::DataType::FLOAT32) {
         buffers[bind_index] = static_cast<void *>(t.data<float>());
+      } else if (t.dtype() == phi::DataType::FLOAT64) {
+        std::string x_t = x + "_cast_to_FP32";
+        if (scope.FindVar(x_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(x_t);
+        }
+        auto fp32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
+        *fp32_tensor = phi::Cast<double>(
+            reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+            t,
+            phi::DataType::FLOAT32);
+        buffers[bind_index] = static_cast<void *>(fp32_tensor->data<float>());
       } else if (t.dtype() == phi::DataType::INT64) {
-        auto int32_tensor =
-            scope.FindVar(x + "_cast_to_INT32")->GetMutable<phi::DenseTensor>();
+        std::string x_t = x + "_cast_to_INT32";
+        if (scope.FindVar(x_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(x_t);
+        }
+        auto int32_tensor = scope.FindVar(x_t)->GetMutable<phi::DenseTensor>();
         *int32_tensor = phi::Cast<int64_t>(
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             t,
@@ -710,7 +696,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
       } else {
         PADDLE_THROW(platform::errors::Fatal(
             "The TRT Engine OP only support "
-            "float/int32_t/int64_t/float16/bool input."));
+            "float/double/int32_t/int64_t/float16/bool input."));
       }
     }
 
@@ -807,8 +793,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
         auto y = Outputs("Ys")[i];
         auto *fluid_v = scope.FindVar(y);
         auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
-        auto int32_tensor =
-            scope.FindVar(y + "_cast_to_INT64")->GetMutable<phi::DenseTensor>();
+        std::string y_t = y + "_cast_to_INT64";
+        if (scope.FindVar(y_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(y_t);
+        }
+        auto int32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
         int32_tensor->Resize(fluid_t->dims());
         dev_ctx.Alloc<int32_t>(int32_tensor);
         framework::TensorCopy(*fluid_t, dev_place, dev_ctx, int32_tensor);
@@ -816,6 +805,22 @@ class TensorRTEngineOp : public framework::OperatorBase {
             reinterpret_cast<const phi::GPUContext &>(dev_ctx),
             *int32_tensor,
             phi::DataType::INT64);
+      } else if (type == framework::proto::VarType::FP64) {
+        auto y = Outputs("Ys")[i];
+        auto *fluid_v = scope.FindVar(y);
+        auto *fluid_t = fluid_v->GetMutable<phi::DenseTensor>();
+        std::string y_t = y + "_cast_to_FP64";
+        if (scope.FindVar(y_t) == nullptr) {
+          const_cast<framework::Scope *>(&scope)->Var(y_t);
+        }
+        auto fp32_tensor = scope.FindVar(y_t)->GetMutable<phi::DenseTensor>();
+        fp32_tensor->Resize(fluid_t->dims());
+        dev_ctx.Alloc<float>(fp32_tensor);
+        framework::TensorCopy(*fluid_t, dev_place, dev_ctx, fp32_tensor);
+        *fluid_t =
+            phi::Cast<float>(reinterpret_cast<const phi::GPUContext &>(dev_ctx),
+                             *fp32_tensor,
+                             phi::DataType::FLOAT64);
       }
     }
   }
@@ -823,20 +828,93 @@ class TensorRTEngineOp : public framework::OperatorBase {
   TensorRTEngine *GetEngine(const framework::Scope &scope,
                             const platform::Place &dev_place) const {
     if (!trt_engine_) {
+      TensorRTEngine::ConstructionParams params;
+      params.max_batch_size = max_batch_size_;
+      params.max_workspace_size = workspace_size_;
+      params.precision = precision_mode_;
+      params.calibrator = calibrator_.get();
+      params.device_id = dev_place.device;
+      params.with_dynamic_shape = with_dynamic_shape_;
+      params.context_memory_sharing = Attr<bool>("context_memory_sharing");
+      params.use_dla = Attr<bool>("use_dla");
+      params.dla_core = Attr<int>("dla_core");
+      params.disable_trt_plugin_fp16 = Attr<bool>("disable_trt_plugin_fp16");
+      params.enable_low_precision_io = Attr<bool>("enable_low_precision_io");
+      params.use_inspector = Attr<bool>("use_inspector");
+      params.engine_info_path = Attr<std::string>("engine_info_path");
+
+      if (!shape_range_info_path_.empty()) {
+        inference::DeserializeShapeRangeInfo(shape_range_info_path_,
+                                             &params.min_input_shape,
+                                             &params.max_input_shape,
+                                             &params.optim_input_shape,
+                                             &params.min_shape_tensor,
+                                             &params.max_shape_tensor,
+                                             &params.optim_shape_tensor);
+      } else {
+        if (HasAttr("dynamic_shape_names") &&
+            HasAttr("min_input_shape_vector") &&
+            HasAttr("max_input_shape_vector") &&
+            HasAttr("opt_input_shape_vector")) {
+          std::vector<std::string> dynamic_shape_names;
+          std::vector<std::vector<int>> min_input_shapes;
+          std::vector<std::vector<int>> max_input_shapes;
+          std::vector<std::vector<int>> opt_input_shapes;
+          std::vector<int> dynamic_shape_lens;
+          dynamic_shape_names =
+              Attr<std::vector<std::string>>("dynamic_shape_names");
+          std::vector<int> min_shapes =
+              Attr<std::vector<int>>("min_input_shape_vector");
+          std::vector<int> max_shapes =
+              Attr<std::vector<int>>("max_input_shape_vector");
+          std::vector<int> opt_shapes =
+              Attr<std::vector<int>>("opt_input_shape_vector");
+          dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+          int idx = 0;
+          for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+            std::vector<int> tmp1, tmp2, tmp3;
+            for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+              tmp1.push_back(min_shapes[idx]);
+              tmp2.push_back(max_shapes[idx]);
+              tmp3.push_back(opt_shapes[idx++]);
+            }
+            min_input_shapes.emplace_back(tmp1);
+            max_input_shapes.emplace_back(tmp2);
+            opt_input_shapes.emplace_back(tmp3);
+          }
+
+          for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+            params.min_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+            params.max_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+            params.optim_input_shape.insert(
+                std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+          }
+        }
+      }
+
       trt_engine_ =
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
-              .Create(engine_key_ + std::to_string(predictor_id_),
-                      max_batch_size_,
-                      workspace_size_,
-                      precision_mode_,
-                      calibrator_.get(),
-                      device_id_,
-                      with_dynamic_shape_,
-                      min_input_shape_,
-                      max_input_shape_,
-                      opt_input_shape_);
-      PrepareTRTEngine(scope, trt_engine_);
+              .Create(engine_key_ + std::to_string(predictor_id_), params);
+
+      if (use_static_engine_) {
+        LOG(INFO) << "Load TRT Optimized Info from "
+                  << inference::analysis::GetTrtEngineSerializedPath(
+                         model_opt_cache_dir_, engine_key_);
+        std::string trt_engine_serialized_data =
+            inference::analysis::GetTrtEngineSerializedData(
+                model_opt_cache_dir_, engine_key_);
+        trt_engine_->Deserialize(trt_engine_serialized_data);
+      } else {
+        // This brach mainly used to ut.
+        PrepareTRTEngine(scope, trt_engine_);
+      }
     }
+    PADDLE_ENFORCE_NOT_NULL(
+        trt_engine_,
+        platform::errors::Fatal(
+            "The pointer to tensorrt engine should not be null."));
     return trt_engine_;
   }
 };

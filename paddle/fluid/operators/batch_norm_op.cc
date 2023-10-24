@@ -19,7 +19,7 @@ limitations under the License. */
 #include <unordered_map>
 
 #include "paddle/fluid/framework/data_layout.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
@@ -35,8 +35,6 @@ namespace operators {
 
 void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Scale"), "Input", "Scale", "BatchNorm");
-  OP_INOUT_CHECK(ctx->HasInput("Bias"), "Input", "Bias", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasInput("Mean"), "Input", "Mean", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasInput("Variance"), "Input", "Variance", "BatchNorm");
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "BatchNorm");
@@ -118,48 +116,54 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
            ? x_dims[1]
            : x_dims[x_dims.size() - 1]);
 
-  auto scale_dim = ctx->GetInputDim("Scale");
-  auto bias_dim = ctx->GetInputDim("Bias");
+  if (ctx->HasInput("Scale")) {
+    auto scale_dim = ctx->GetInputDim("Scale");
+    PADDLE_ENFORCE_EQ(
+        scale_dim.size(),
+        1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of scale must equal to 1."
+            "But received: the shape of scale is [%s], the dimension "
+            "of scale is [%d]",
+            scale_dim,
+            scale_dim.size()));
+  }
 
-  PADDLE_ENFORCE_EQ(
-      scale_dim.size(),
-      1UL,
-      platform::errors::InvalidArgument(
-          "ShapeError: the dimension of scale must equal to 1."
-          "But received: the shape of scale is [%s], the dimension "
-          "of scale is [%d]",
-          scale_dim,
-          scale_dim.size()));
-  PADDLE_ENFORCE_EQ(bias_dim.size(),
-                    1UL,
-                    platform::errors::InvalidArgument(
-                        "ShapeError: the dimension of bias must equal to 1."
-                        "But received: the shape of bias is [%s],the dimension "
-                        "of bias is [%d]",
-                        bias_dim,
-                        bias_dim.size()));
+  if (ctx->HasInput("Bias")) {
+    auto bias_dim = ctx->GetInputDim("Bias");
+    PADDLE_ENFORCE_EQ(
+        bias_dim.size(),
+        1UL,
+        platform::errors::InvalidArgument(
+            "ShapeError: the dimension of bias must equal to 1."
+            "But received: the shape of bias is [%s],the dimension "
+            "of bias is [%d]",
+            bias_dim,
+            bias_dim.size()));
+  }
 
   bool check = true;
-  if ((!ctx->IsRuntime()) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+  if (!ctx->HasInput("Scale") || !ctx->HasInput("Bias") ||
+      ((!ctx->IsRuntime()) && (phi::product(ctx->GetInputDim("Scale")) <= 0 ||
+                               phi::product(ctx->GetInputDim("Bias")) <= 0))) {
     check = false;
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0],
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Scale")[0],
                       C,
                       platform::errors::InvalidArgument(
                           "ShapeError: the shape of scale must equal to [%d]"
                           "But received: the shape of scale is [%d]",
                           C,
-                          scale_dim[0]));
-    PADDLE_ENFORCE_EQ(bias_dim[0],
+                          ctx->GetInputDim("Scale")[0]));
+    PADDLE_ENFORCE_EQ(ctx->GetInputDim("Bias")[0],
                       C,
                       platform::errors::InvalidArgument(
                           "ShapeError: the shape of bias must equal to [%d]"
                           "But received: the shape of bias is [%d]",
                           C,
-                          bias_dim[0]));
+                          ctx->GetInputDim("Bias")[0]));
   }
   ctx->SetOutputDim("Y", x_dims);
   ctx->ShareLoD("X", "Y");
@@ -185,16 +189,20 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
   if (input_data_type == framework::proto::VarType::FP64) {
     bn_param_type = framework::proto::VarType::FP64;
   }
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
-      platform::errors::InvalidArgument("Scale input should be of float type"));
-  PADDLE_ENFORCE_EQ(
-      bn_param_type,
-      framework::TransToProtoVarType(
-          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
-      platform::errors::InvalidArgument("Bias input should be of float type"));
+  if (ctx.HasInput("Scale")) {
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Scale")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Scale input should be of float type"));
+  }
+  if (ctx.HasInput("Bias")) {
+    PADDLE_ENFORCE_EQ(bn_param_type,
+                      framework::TransToProtoVarType(
+                          ctx.Input<phi::DenseTensor>("Bias")->dtype()),
+                      platform::errors::InvalidArgument(
+                          "Bias input should be of float type"));
+  }
   PADDLE_ENFORCE_EQ(
       bn_param_type,
       framework::TransToProtoVarType(
@@ -205,7 +213,6 @@ phi::KernelKey BatchNormOp::GetExpectedKernelType(
                         ctx.Input<phi::DenseTensor>("Variance")->dtype()),
                     platform::errors::InvalidArgument(
                         "Variance input should be of float type"));
-
   return phi::KernelKey(input_data_type, ctx.GetPlace());
 }
 
@@ -213,7 +220,7 @@ phi::KernelKey BatchNormOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if ((var_name == "X") &&
@@ -257,10 +264,12 @@ void BatchNormOpMaker::Make() {
   AddInput("X", "The input tensor");
   AddInput("Scale",
            "Scale is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
-           "that is applied to the output");
+           "that is applied to the output")
+      .AsDispensable();
   AddInput("Mean",
            "The global mean (for training) or "
            "estimated mean (for testing)");
@@ -361,10 +370,10 @@ void BatchNormGradOp::InferShape(framework::InferShapeContext *ctx) const {
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
 
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   // has_scale_grad == has_bias_grad, judge has_scale_grad is enough
   if (has_scale_grad) {
@@ -386,8 +395,6 @@ phi::KernelKey BatchNormGradOp::GetExpectedKernelType(
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {
     PADDLE_THROW(
@@ -402,7 +409,7 @@ phi::KernelKey BatchNormGradOp::GetKernelTypeForVar(
     const std::string &var_name,
     const phi::DenseTensor &tensor,
     const phi::KernelKey &expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Only input require reshaping, weights and
   // bias are having shape in NCHW order
   if (((var_name == "X") || (var_name == framework::GradVarName("Y"))) &&
@@ -443,6 +450,9 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
+
+  op->SetInput("MeanOut", this->Output("MeanOut"));
+  op->SetInput("VarianceOut", this->Output("VarianceOut"));
 
   op->SetAttrMap(this->Attrs());
 
@@ -501,10 +511,10 @@ void BatchNormDoubleGradOp::InferShape(
   const auto x_dims = ctx->GetInputDim("X");
   const DataLayout data_layout =
       phi::StringToDataLayout(ctx->Attrs().Get<std::string>("data_layout"));
-  const int C =
+  const int C = static_cast<int>(
       ((ctx->IsRunMKLDNNKernel() == true) || (data_layout == DataLayout::kNCHW)
            ? x_dims[1]
-           : x_dims[x_dims.size() - 1]);
+           : x_dims[x_dims.size() - 1]));
 
   if (ctx->HasOutput("DX")) {
     ctx->SetOutputDim("DX", x_dims);
@@ -526,8 +536,6 @@ phi::KernelKey BatchNormDoubleGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {

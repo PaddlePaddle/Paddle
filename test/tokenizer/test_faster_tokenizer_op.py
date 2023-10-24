@@ -21,8 +21,8 @@ from bert_tokenizer import BertTokenizer
 
 import paddle
 from paddle import _legacy_C_ops, nn
-from paddle.fluid.framework import core
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import core
+from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode
 
 
@@ -150,7 +150,6 @@ class Predictor:
         ]
 
     def predict(self, data):
-
         self.input_handles[0].copy_from_cpu(data)
         self.predictor.run()
         input_ids = self.output_handles[0].copy_to_cpu()

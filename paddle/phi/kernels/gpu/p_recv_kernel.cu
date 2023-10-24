@@ -48,7 +48,8 @@ DDim recv_shape_info(const Context& dev_ctx,
   phi::DenseTensor* gpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
   gpu_shape_size_tensor->Resize({1});
   dev_ctx.Alloc(gpu_shape_size_tensor, shape_dtype);
-  comm_ctx->Recv(gpu_shape_size_tensor, peer, stream);
+  comm_ctx->Recv(
+      gpu_shape_size_tensor, gpu_shape_size_tensor->numel(), peer, stream);
 
   // copy the shape size tensor to cpu
   phi::DenseTensor* cpu_shape_size_tensor = new phi::DenseTensor(shape_dtype);
@@ -71,7 +72,7 @@ DDim recv_shape_info(const Context& dev_ctx,
   phi::DenseTensor* gpu_shape_tensor = new phi::DenseTensor(shape_dtype);
   gpu_shape_tensor->Resize({shape_size});
   dev_ctx.Alloc(gpu_shape_tensor, shape_dtype);
-  comm_ctx->Recv(gpu_shape_tensor, peer, stream);
+  comm_ctx->Recv(gpu_shape_tensor, gpu_shape_tensor->numel(), peer, stream);
 
   // copy the shape tensor to cpu
   phi::DenseTensor* cpu_shape_tensor = new phi::DenseTensor(shape_dtype);
@@ -141,7 +142,7 @@ void PRecvKernel(const Context& dev_ctx,
     out->Resize(new_dim);
   }
   dev_ctx.Alloc(out, dtype);
-  comm_ctx->Recv(out, peer, stream);
+  comm_ctx->Recv(out, out->numel(), peer, stream);
 #else
   PADDLE_THROW(
       errors::PreconditionNotMet("PaddlePaddle should compile with GPU."
@@ -165,7 +166,7 @@ void PRecvArrayKernel(const Context& dev_ctx,
     auto out = out_array->at(idx);
     auto out_dims = out.dims();
     dev_ctx.Alloc(&out, dtype);
-    comm_ctx->Recv(&out, peer, stream);
+    comm_ctx->Recv(&out, out.numel(), peer, stream);
     VLOG(3) << "rank " << comm_ctx->GetRank() << " recv "
             << phi::product(out_dims) << " from " << peer;
   }
@@ -189,6 +190,7 @@ PD_REGISTER_KERNEL(p_recv,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::bfloat16,
                    phi::dtype::float16) {}
@@ -217,6 +219,7 @@ PD_REGISTER_KERNEL(p_recv,
                    bool,
                    int8_t,
                    uint8_t,
+                   int16_t,
                    int64_t,
                    phi::dtype::float16) {}
 

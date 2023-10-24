@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -20,7 +22,9 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/inference/capi_exp/pd_inference_api.h"
-#include "test/cpp/inference/api/tester_helper.h"
+#include "paddle/utils/flags.h"
+
+PD_DEFINE_string(infer_model, "", "model path");
 
 namespace paddle {
 namespace inference {
@@ -67,7 +71,7 @@ TEST(PD_Config, interface) {
 #endif
 
   PD_ConfigSwitchIrDebug(config, TRUE);
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   const char* ops_name = "conv_2d";
   PD_ConfigEnableMKLDNN(config);
   PD_ConfigSetMkldnnOp(config, 1, &ops_name);

@@ -40,10 +40,10 @@ void InstanceNormKernel(const Context& dev_ctx,
                         DenseTensor* saved_variance) {
   const auto& x_dims = x.dims();
   T epsilon = static_cast<T>(epsilon_f);
-  const int N = x_dims[0];
-  const int C = x_dims[1];
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(x_dims[1]);
   const int NxC = N * C;
-  const int sample_size = x.numel() / N / C;
+  const int sample_size = static_cast<int>(x.numel() / N / C);
   auto* place = dev_ctx.eigen_device();
 
   Eigen::DSizes<int, 2> shape(NxC, sample_size);

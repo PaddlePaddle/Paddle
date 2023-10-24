@@ -83,7 +83,7 @@ class CSoftmaxWithCrossEntropyOp : public framework::OperatorWithKernel {
 class CSoftmaxWithCrossEntropyOpMaker
     : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("Logits",
              "(Tensor, default: Tensor<float>), The input tensor of unscaled "
              "log probabilities, whose dimension :attr:`axis` should be scaled "

@@ -85,8 +85,11 @@ find_package_and_include(rocsparse)
 find_package_and_include(rocfft)
 
 # set CXX flags for HIP
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__")
+set(CMAKE_C_FLAGS
+    "${CMAKE_C_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING")
+set(CMAKE_CXX_FLAGS
+    "${CMAKE_CXX_FLAGS} -D__HIP_PLATFORM_HCC__ -DROCM_NO_WRAPPER_HEADER_WARNING"
+)
 set(CMAKE_CXX_FLAGS
     "${CMAKE_CXX_FLAGS} -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP")
 set(THRUST_DEVICE_SYSTEM THRUST_DEVICE_SYSTEM_HIP)
@@ -96,6 +99,7 @@ list(APPEND HIP_CXX_FLAGS -fPIC)
 list(APPEND HIP_CXX_FLAGS -D__HIP_PLATFORM_HCC__=1)
 # Note(qili93): HIP has compile conflicts of float16.h as platform::float16 overload std::is_floating_point and std::is_integer
 list(APPEND HIP_CXX_FLAGS -D__HIP_NO_HALF_CONVERSIONS__=1)
+list(APPEND HIP_CXX_FLAGS -DROCM_NO_WRAPPER_HEADER_WARNING)
 list(APPEND HIP_CXX_FLAGS -Wno-macro-redefined)
 list(APPEND HIP_CXX_FLAGS -Wno-inconsistent-missing-override)
 list(APPEND HIP_CXX_FLAGS -Wno-exceptions)
@@ -106,7 +110,21 @@ list(APPEND HIP_CXX_FLAGS -Wno-duplicate-decl-specifier)
 list(APPEND HIP_CXX_FLAGS -Wno-implicit-int-float-conversion)
 list(APPEND HIP_CXX_FLAGS -Wno-pass-failed)
 list(APPEND HIP_CXX_FLAGS -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_HIP)
-list(APPEND HIP_CXX_FLAGS -std=c++14)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-result)
+list(APPEND HIP_CXX_FLAGS -Wno-deprecated-declarations)
+list(APPEND HIP_CXX_FLAGS -Wno-format)
+list(APPEND HIP_CXX_FLAGS -Wno-dangling-gsl)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-value)
+list(APPEND HIP_CXX_FLAGS -Wno-braced-scalar-init)
+list(APPEND HIP_CXX_FLAGS -Wno-return-type)
+list(APPEND HIP_CXX_FLAGS -Wno-pragma-once-outside-header)
+
+if(WITH_CINN)
+  list(APPEND HIP_CXX_FLAGS -std=c++14)
+else()
+  list(APPEND HIP_CXX_FLAGS -std=c++17)
+endif()
+list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND HIP_CXX_FLAGS -g2)
@@ -119,11 +137,11 @@ set(HIP_CLANG_FLAGS ${HIP_CXX_FLAGS})
 # Ask hcc to generate device code during compilation so we can use
 # host linker to link.
 list(APPEND HIP_HCC_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx906)
-list(APPEND HIP_HCC_FLAGS --amdgpu-target=gfx908)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx906)
+list(APPEND HIP_HCC_FLAGS --offload-arch=gfx908)
 list(APPEND HIP_CLANG_FLAGS -fno-gpu-rdc)
-list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx906)
-list(APPEND HIP_CLANG_FLAGS --amdgpu-target=gfx908)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx906)
+list(APPEND HIP_CLANG_FLAGS --offload-arch=gfx908)
 
 if(HIP_COMPILER STREQUAL clang)
   set(hip_library_name amdhip64)

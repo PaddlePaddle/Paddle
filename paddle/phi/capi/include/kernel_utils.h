@@ -24,6 +24,9 @@ namespace capi {
 #define CUSTOM_PHI_KERNEL(...) \
   ::phi::capi::CustomKernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
+#define PHI_CAPI_INFER_META(...) \
+  ::phi::capi::InferMetaFnImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Call
+
 #define CUSTOM_PHI_VARIADIC_KERNEL(...)                      \
   reinterpret_cast<void *>(                                  \
       &::phi::capi::CustomKernelImpl<decltype(&__VA_ARGS__), \
@@ -907,6 +910,151 @@ struct CustomKernelArgsParseFunctor<Return_ (*)(Args_...)> {
       std::index_sequence<INDEX...>) {
     return {std::type_index(typeid(Arg<INDEX>))...};
   }
+};
+
+#define PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(attr_type)      \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<attr_type, Tail...> {                           \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {       \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_InferMetaAttrAt<attr_type>(ctx, attr_idx);            \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 arg);         \
+    }                                                                          \
+  }
+
+#define PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(      \
+    attr_type)                                                                 \
+  template <typename... Tail>                                                  \
+  struct InferMetaFnCallHelper<const attr_type &, Tail...> {                   \
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs> \
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {       \
+      static_assert(out_idx == 0,                                              \
+                    "InferMeta's Attributes should appear before Outputs.");   \
+      attr_type arg = PD_InferMetaAttrAt<attr_type>(ctx, attr_idx);            \
+      InferMetaFnCallHelper<                                                   \
+          Tail...>::template Call<in_idx, attr_idx + 1, out_idx>(ctx,          \
+                                                                 pargs...,     \
+                                                                 arg);         \
+    }                                                                          \
+  }
+
+template <typename T>
+struct InferMetaTypeTag {};
+
+template <typename Fn, Fn fn>
+struct InferMetaFnImpl;
+
+template <typename Return, typename... Args, Return (*infer_meta_fn)(Args...)>
+struct InferMetaFnImpl<Return (*)(Args...), infer_meta_fn> {
+  static void Call(PD_InferMetaContext *ctx) {
+    InferMetaFnCallHelper<Args...,
+                          InferMetaTypeTag<int>>::template Call<0, 0, 0>(ctx);
+  }
+
+ private:
+  template <typename... RemainingArgs>
+  struct InferMetaFnCallHelper;
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const MetaTensor &, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      auto arg = MetaTensor(PD_InferMetaContextInputAt(ctx, in_idx));
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx + 1, attr_idx, out_idx>(ctx,
+                                                                 pargs...,
+                                                                 arg);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<const std::vector<const MetaTensor *> &,
+                               Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      static_assert(attr_idx == 0,
+                    "InferMeta's Input should appear before Attributes.");
+      static_assert(out_idx == 0,
+                    "InferMeta's Input should appear before Outputs.");
+      auto arg = PD_InferMetaMultiInputAt(ctx, in_idx);
+      std::vector<const MetaTensor *> tensor_ptr_vec;
+      for (auto &tensor : arg) {
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);
+      }
+      InferMetaFnCallHelper<Tail...>::
+          template Call<in_idx + 1, attr_idx, out_idx>(
+              ctx, pargs..., tensor_ptr_vec);
+    }
+  };
+
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(bool);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(int);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(int64_t);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(float);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataType);
+  // PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(Backend);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_ATTRIBUTE(DataLayout);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(std::string);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(Scalar);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(IntArray);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<bool>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<int64_t>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<float>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<double>);
+  PD_SPECIALIZE_CAPI_InferMetaFnCallHelper_FOR_CONST_ATTRIBUTE_REF(
+      std::vector<std::string>);
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<MetaTensor *, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      auto arg = MetaTensor(PD_InferMetaContextOutputAt(ctx, out_idx));
+      auto *arg_ptr = &arg;
+      InferMetaFnCallHelper<
+          Tail...>::template Call<in_idx, attr_idx, out_idx + 1>(ctx,
+                                                                 pargs...,
+                                                                 arg_ptr);
+    }
+  };
+
+  template <typename... Tail>
+  struct InferMetaFnCallHelper<std::vector<MetaTensor *>, Tail...> {
+    template <int in_idx, int attr_idx, int out_idx, typename... PreviousArgs>
+    static void Call(PD_InferMetaContext *ctx, PreviousArgs &...pargs) {
+      auto arg = PD_InferMetaMultiOutputAt(ctx, out_idx);
+      std::vector<MetaTensor *> tensor_ptr_vec;
+      for (auto &tensor : arg) {
+        tensor_ptr_vec.push_back(tensor.raw_data() ? &tensor : nullptr);
+      }
+      InferMetaFnCallHelper<Tail...>::
+          template Call<in_idx, attr_idx, out_idx + 1>(
+              ctx, pargs..., tensor_ptr_vec);
+    }
+  };
+
+  /* End case */
+  template <typename T>
+  struct InferMetaFnCallHelper<InferMetaTypeTag<T>> {
+    template <int in_idx, int attr_idx, int out_idx>
+    static void Call(PD_InferMetaContext *ctx, Args &...args) {
+      return infer_meta_fn(args...);
+    }
+  };
 };
 
 }  // namespace capi

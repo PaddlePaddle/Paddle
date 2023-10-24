@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 
 class TestVarConv2DOp(OpTest):
@@ -41,7 +41,6 @@ class TestVarConv2DOp(OpTest):
     def init_data(
         self, input_channel, output_channel, filter_size, stride, row, col
     ):
-
         feature = [row[i] * col[i] for i in range(len(row))]
         numel = sum(feature) * input_channel
         x_data = np.random.random((numel, 1)).astype('float32')

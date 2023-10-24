@@ -96,7 +96,7 @@ void zero_copy_run() {
   delete[] inputs;
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(PD_ZeroCopyRun, zero_copy_run) { zero_copy_run(); }
 #endif
 

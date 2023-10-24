@@ -109,7 +109,7 @@ def mlp_pretrain_forward(train_program, start_program):
         error_cost = paddle.nn.functional.square_error_cost(predict, label)
         loss = paddle.mean(error_cost)
 
-        loader = paddle.fluid.io.DataLoader.from_generator(
+        loader = paddle.base.io.DataLoader.from_generator(
             feed_list=[input, label], capacity=4 * batch_size, iterable=True
         )
 
@@ -132,7 +132,7 @@ def train():
         train_program, start_program
     )
 
-    optimizer = paddle.fluid.optimizer.AdamOptimizer(
+    optimizer = paddle.optimizer.Adam(
         learning_rate=0.00001,
         beta1=0.9,
         beta2=0.999,

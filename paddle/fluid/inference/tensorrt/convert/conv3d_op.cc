@@ -98,7 +98,7 @@ void ConvertConv3d(TensorRTEngine* engine,
   layer->setStrideNd(nv_strides);
   layer->setPrePadding(nv_pre_paddings);
   nvinfer1::Dims3 nv_post_paddings = nv_pre_paddings;
-  if (output_padding.size() > 0) {
+  if (!output_padding.empty()) {
 // Here is consistent with op_teller.cc
 #if IS_TRT_VERSION_GE(8400)
     nv_post_paddings.d[0] -= output_padding[0];

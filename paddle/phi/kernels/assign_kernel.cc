@@ -132,6 +132,8 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
+                   int8_t,
                    int64_t) {}
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -158,6 +160,8 @@ PD_REGISTER_KERNEL(assign_value,
                    bool,
                    int,
                    float,
+                   double,
+                   int8_t,
                    int64_t) {}
 #endif
 

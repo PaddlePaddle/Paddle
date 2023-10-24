@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/async_executor.h"
 
-#include "gflags/gflags.h"
 #include "google/protobuf/io/zero_copy_stream_impl.h"
 #include "google/protobuf/message.h"
 #include "google/protobuf/text_format.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/io.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/pybind.h"
+#include "paddle/utils/flags.h"
 
 // phi
 #include "paddle/phi/kernels/declarations.h"
@@ -136,12 +136,12 @@ void AsyncExecutor::RunFromFile(const ProgramDesc& main_program,
   for (auto& worker : workers) {
 #ifdef PADDLE_WITH_PSLIB
     if (mode == "mpi") {
-      worker.reset(new AsyncExecutorThreadWorker);
+      worker = std::make_unique<AsyncExecutorThreadWorker>();
     } else {
-      worker.reset(new ExecutorThreadWorker);
+      worker = std::make_unique<ExecutorThreadWorker>();
     }
 #else
-    worker.reset(new ExecutorThreadWorker);
+    worker = std::make_unique<ExecutorThreadWorker>();
 #endif
   }
 

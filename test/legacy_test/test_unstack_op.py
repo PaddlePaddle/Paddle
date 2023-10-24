@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestUnStackOpBase(OpTest):
@@ -167,7 +167,7 @@ class TestUnStackBF16Op(OpTest):
         self.check_output_with_place(place)
 
     def test_check_grad(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(self.inputs['X'])
             x.stop_gradient = False
             y = paddle.unstack(
@@ -182,7 +182,6 @@ class TestUnStackBF16Op(OpTest):
 
 class TestUnstackZeroInputOp(unittest.TestCase):
     def unstack_zero_input_static(self):
-
         paddle.enable_static()
 
         array = np.array([], dtype=np.float32)
@@ -190,7 +189,6 @@ class TestUnstackZeroInputOp(unittest.TestCase):
         paddle.unstack(x, axis=1)
 
     def unstack_zero_input_dynamic(self):
-
         array = np.array([], dtype=np.float32)
         x = paddle.to_tensor(np.reshape(array, [0]), dtype='float32')
         paddle.unstack(x, axis=1)

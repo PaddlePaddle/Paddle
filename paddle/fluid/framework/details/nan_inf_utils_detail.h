@@ -19,8 +19,11 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/phi/kernels/check_numerics_kernel.h"
 #include "paddle/phi/kernels/funcs/eigen/extensions.h"
+
+PHI_DECLARE_int32(check_nan_inf_level);
 
 namespace paddle {
 namespace framework {
@@ -58,9 +61,18 @@ struct TensorCheckerVisitor {
     auto* dev_ctx = reinterpret_cast<Context*>(
         platform::DeviceContextPool::Instance().Get(tensor.place()));
 
+    phi::DenseTensor stats;
+    phi::DenseTensor values;
     auto file_path = GetNanPath();
-    phi::CheckNumericsKernel<T, Context>(
-        *dev_ctx, tensor, op_type, var_name, GetNanInfStackLimit(), file_path);
+    phi::CheckNumericsKernel<T, Context>(*dev_ctx,
+                                         tensor,
+                                         op_type,
+                                         var_name,
+                                         FLAGS_check_nan_inf_level,
+                                         GetNanInfStackLimit(),
+                                         file_path,
+                                         &stats,
+                                         &values);
   }
 
   std::string op_type;

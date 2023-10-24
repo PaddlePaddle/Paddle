@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -46,6 +48,12 @@ class element_visitor {
  private:
   int index_;
 };
+
+template <>
+Attribute element_visitor::operator()(
+    const std::vector<::pir::Value>& attr UNUSED) const {
+  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+}
 
 class operation_visitor {
  public:
@@ -90,7 +98,7 @@ Attribute GetVarAttrValue(const VarDesc* desc,
     } else if (attr.has_element_index()) {
       int element_index = attr.element_index();
       if (attr.element_index() < 0) {
-        element_index += shape.size();
+        element_index += static_cast<int>(shape.size());
       }
       if (element_index >= 0 &&
           static_cast<size_t>(element_index) < shape.size()) {
@@ -220,6 +228,16 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
       });
     }
   }
+
+  // The output of the pattern must be marked as AsOutput.
+  for (const proto::PassDesc::VarMap& var_map : pass_desc.var_maps()) {
+    PDNode* var_pdnode = pattern->RetrieveNode(var_map.pattern_var());
+    PADDLE_ENFORCE_NOT_NULL(
+        var_pdnode,
+        platform::errors::NotFound("Not found the var %s in the pattern.",
+                                   var_map.pattern_var()));
+    var_pdnode->AsOutput();
+  }
 }
 
 // There are some duplicate patterns.
@@ -268,7 +286,7 @@ GraphPatternDetector::handle_t GetGenerateDelete(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           remove_nodes.erase(iter.second);
         }
         GraphSafeRemoveNodes(graph, remove_nodes);
@@ -314,10 +332,10 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
         }
         // `var_node_maps` record the mapping of variable to the pattern
         // subgraph.
-        std::map<std::string, Node*> var_node_maps;
+        std::map<std::string, std::vector<Node*>> var_node_maps;
         for (const proto::PassDesc::VarMap& var_map : pass_desc.var_maps()) {
           Node* node = subgraph.at(pattern.RetrieveNode(var_map.pattern_var()));
-          var_node_maps.insert({var_map.replace_var(), node});
+          var_node_maps[var_map.replace_var()].emplace_back(node);
         }
         // Traverse all operators to create subgraph.
         for (int index = 0; index < pass_desc.replace_size(); ++index) {
@@ -330,17 +348,13 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The input may be mapped on the operator of pattern subgraph.
-              Node* node = nullptr;
-              auto iter = var_node_maps.find(argument);
-              if (var_node_maps.end() == iter) {
+              if (var_node_maps[argument].size() == 0) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
-                node = graph->CreateVarNode(&var_desc);
-                var_node_maps.insert({argument, node});
-              } else {
-                node = iter->second;
+                var_node_maps[argument].emplace_back(
+                    graph->CreateVarNode(&var_desc));
               }
-              in_nodes.push_back(node);
-              arguments.push_back(node->Name());
+              in_nodes.push_back(var_node_maps[argument][0]);
+              arguments.push_back(var_node_maps[argument][0]->Name());
             }
             op_desc.SetInput(var.parameter(), arguments);
           }
@@ -349,22 +363,20 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
             std::vector<std::string> arguments;
             for (const std::string& argument : var.arguments()) {
               // The output may be mapped on the operator of pattern subgraph.
-              Node* node = nullptr;
-              auto iter = var_node_maps.find(argument);
-              if (var_node_maps.end() == iter) {
+              if (var_node_maps[argument].size() == 0) {
                 VarDesc var_desc(patterns::UniqueKey(argument));
-                node = graph->CreateVarNode(&var_desc);
-                var_node_maps.insert({argument, node});
-              } else {
-                if (in_nodes.end() ==
-                    std::find(in_nodes.begin(), in_nodes.end(), iter->second)) {
-                  node = iter->second;
-                } else {
-                  node = graph->CreateVarNode(iter->second->Var());
-                }
+                var_node_maps[argument].emplace_back(
+                    graph->CreateVarNode(&var_desc));
               }
-              out_nodes.push_back(node);
-              arguments.push_back(node->Name());
+              if (in_nodes.end() == std::find(in_nodes.begin(),
+                                              in_nodes.end(),
+                                              var_node_maps[argument][0])) {
+                out_nodes.push_back(var_node_maps[argument][0]);
+              } else {
+                out_nodes.push_back(
+                    graph->CreateVarNode(var_node_maps[argument][0]->Var()));
+              }
+              arguments.push_back(var_node_maps[argument][0]->Name());
             }
             op_desc.SetOutput(var.parameter(), arguments);
           }
@@ -412,8 +424,41 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
+        for (auto const& iter : var_node_maps) {
+          for (auto& node : iter.second) {
+            remove_nodes.erase(node);
+          }
+        }
+        GraphSafeRemoveNodes(graph, remove_nodes);
+
+        // Replace the redundant node by the first node in var_nodes_nmaps.
+        remove_nodes.clear();
         for (auto iter : var_node_maps) {
-          remove_nodes.erase(iter.second);
+          auto var_node = iter.second[0];
+          for (size_t i = 1; i < iter.second.size(); ++i) {
+            auto replaced_var_node = iter.second[i];
+            for (auto op_node : replaced_var_node->outputs) {
+              auto index = std::find(op_node->inputs.begin(),
+                                     op_node->inputs.end(),
+                                     replaced_var_node) -
+                           op_node->inputs.begin();
+              op_node->inputs[index] = var_node;
+
+              auto& input_name_maps = *op_node->Op()->MutableInputs();
+              for (auto& item : input_name_maps) {
+                auto iter = std::find(item.second.begin(),
+                                      item.second.end(),
+                                      replaced_var_node->Name());
+                if (iter != item.second.end()) {
+                  item.second[iter - item.second.begin()] = var_node->Name();
+                  input_name_maps[item.first] = item.second;
+                  break;
+                }
+              }
+              op_node->Op()->Flush();
+            }
+            remove_nodes.emplace(replaced_var_node);
+          }
         }
         GraphSafeRemoveNodes(graph, remove_nodes);
       };

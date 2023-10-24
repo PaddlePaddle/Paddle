@@ -81,6 +81,5 @@ PROTOBUF3_NEEDED_TESTING_LIST = [
 ]
 
 if __name__ == "__main__":
-
     for test in PROTOBUF3_NEEDED_TESTING_LIST:
         print(test)

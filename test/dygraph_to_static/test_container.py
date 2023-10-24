@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 
@@ -69,6 +70,7 @@ class NestSequentialNet(paddle.nn.Layer):
         return self.layers(x)
 
 
+@dy2static_unittest
 class TestSequential(unittest.TestCase):
     def setUp(self):
         paddle.set_device('cpu')
@@ -112,9 +114,7 @@ class TestSequential(unittest.TestCase):
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph_res is {dy_out}\nstatic_res is {st_out}',
         )
 
     def _test_load(self, net, x):

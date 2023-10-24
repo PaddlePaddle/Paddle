@@ -17,7 +17,7 @@ import unittest
 
 from hdfs_test_utils import FSTestBase
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet.utils.fs import FSTimeOut, HDFSClient
 
 java_home = os.environ["JAVA_HOME"]
@@ -42,7 +42,7 @@ class FSTest1(FSTestBase):
         except FSTimeOut as e:
             print(f"execute mv {src} to {dst} timeout")
 
-        ret, output = fluid.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
+        ret, output = base.core.shell_execute_cmd(cmd, 6 * 1000, 2 * 1000)
         self.assertNotEqual(ret, 0)
         print(f"second mv ret:{ret} output:{output}")
 
@@ -54,17 +54,17 @@ class FSTest1(FSTestBase):
         s = """
 java.io.IOException: Input/output error
  responseErrorMsg : failed to getFileStatus, errorCode: 3, path: /user/PUBLIC_KM_Data/wangxi16/data/serving_model, lparam: d868f6bb6822c621, errorMessage: inner error
-    at org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
-    at org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
-    at org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
-    at org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
-    at org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
-    at org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
-    at org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
-    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
-    at org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
-    at org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
-        """  # fmt: off, avoid remove tabs in string
+\tat org.apache.hadoop.util.FileSystemUtil.throwException(FileSystemUtil.java:164)
+\tat org.apache.hadoop.util.FileSystemUtil.dealWithResponse(FileSystemUtil.java:118)
+\tat org.apache.hadoop.lite.client.LiteClientImpl.getFileStatus(LiteClientImpl.java:696)
+\tat org.apache.hadoop.fs.LibDFileSystemImpl.getFileStatus(LibDFileSystemImpl.java:297)
+\tat org.apache.hadoop.fs.LiteFileSystem.getFileStatus(LiteFileSystem.java:514)
+\tat org.apache.hadoop.fs.FsShell.test(FsShell.java:1092)
+\tat org.apache.hadoop.fs.FsShell.run(FsShell.java:2285)
+\tat org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:65)
+\tat org.apache.hadoop.util.ToolRunner.run(ToolRunner.java:79)
+\tat org.apache.hadoop.fs.FsShell.main(FsShell.java:2353)
+        """
 
         print("split lines:", s.splitlines())
         self.assertIsNotNone(fs._test_match(s.splitlines()))

@@ -143,18 +143,19 @@ void BlockDesc::PrependAllocatedOp(std::unique_ptr<OpDesc> &&op_desc) {
 
 OpDesc *BlockDesc::InsertOp(size_t index) {
   need_update_ = true;
-  auto it = ops_.begin() + index;
+  auto it = ops_.begin() + index;  // NOLINT
   std::unique_ptr<OpDesc> new_op(new OpDesc(this));
   it = ops_.insert(it, std::move(new_op));
   return (*it).get();
 }
 
 void BlockDesc::RemoveOp(size_t s, size_t e) {
-  if (ops_.begin() + s >= ops_.end() || ops_.begin() + e > ops_.end()) {
+  if (ops_.begin() + s >= ops_.end() ||  // NOLINT
+      ops_.begin() + e > ops_.end()) {   // NOLINT
     return;
   }
   need_update_ = true;
-  ops_.erase(ops_.begin() + s, ops_.begin() + e);
+  ops_.erase(ops_.begin() + s, ops_.begin() + e);  // NOLINT
 }
 
 void BlockDesc::RemoveOpInternal(const OpDesc *op_desc) {
@@ -236,7 +237,7 @@ proto::BlockDesc *BlockDesc::Proto() {
 BlockDesc::BlockDesc(ProgramDesc *prog, proto::BlockDesc *desc)
     : prog_(prog), desc_(desc), need_update_(false) {
   for (const proto::VarDesc &var_desc : desc_->vars()) {
-    vars_[var_desc.name()].reset(new VarDesc(var_desc));
+    vars_[var_desc.name()] = std::make_unique<VarDesc>(var_desc);
   }
 
   for (const proto::OpDesc &op_desc : desc_->ops()) {

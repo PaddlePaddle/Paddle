@@ -307,7 +307,7 @@ TEST(AccumulationNode, Tensor) {
                ->data<paddle::platform::float16>()[0],
            paddle::platform::float16(10.0f));
 
-  auto reduce_hook_1 = [&](void) -> void {
+  auto reduce_hook_1 = [&]() -> void {
     auto* input_et_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(input_et.impl())
             ->mutable_data<paddle::platform::float16>(
@@ -334,7 +334,7 @@ TEST(AccumulationNode, Tensor) {
 
   // Reduce Hook case 2: Call RegisterReduceHook and ApplyReduceHooks directly
   VLOG(6) << "Test Reduce Hook";
-  auto reduce_hook_2 = [&](void) -> void {
+  auto reduce_hook_2 = [&]() -> void {
     auto* ret_et0_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(et0.impl())
                             ->mutable_data<paddle::platform::float16>(
                                 paddle::platform::CPUPlace());

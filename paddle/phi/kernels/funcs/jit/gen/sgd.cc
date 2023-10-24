@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/funcs/jit/gen/sgd.h"
 
-#include <stddef.h>  // offsetof
+#include <cstddef>  // offsetof
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/registry.h"
@@ -83,7 +83,7 @@ void SgdJitCode::genCode() {
 
     Label inner_loop;
     Label escape_loop;
-    mov(rax, 0);
+    mov(rax, 0);  // NOLINT
     L(inner_loop);
     {
       cmp(rax, num_groups);

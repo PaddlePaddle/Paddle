@@ -64,7 +64,7 @@ void SetInput(std::vector<std::vector<PaddleTensor>> *inputs) {
   PADDLE_ENFORCE_EQ(
       FLAGS_test_all_data,
       0,
-      paddle::platform::errors::Fatal("Only have single batch of data."));
+      ::paddle::platform::errors::Fatal("Only have single batch of data."));
   std::string line;
   std::ifstream file(FLAGS_infer_data);
   std::getline(file, line);
@@ -107,7 +107,7 @@ void profile(bool use_mkldnn = false) {
 
     PADDLE_ENFORCE_GT(outputs.size(),
                       0,
-                      paddle::platform::errors::Fatal(
+                      ::paddle::platform::errors::Fatal(
                           "The size of output should be greater than 0."));
     auto &output = outputs.back().front();
     size_t numel = output.data.length() / PaddleDtypeSize(output.dtype);
@@ -121,7 +121,7 @@ void profile(bool use_mkldnn = false) {
 
 TEST(Analyzer_vis, profile) { profile(); }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vis, profile_mkldnn) { profile(true /* use_mkldnn */); }
 #endif
 
@@ -149,7 +149,7 @@ void compare(bool use_mkldnn = false) {
 }
 
 TEST(Analyzer_vis, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_vis, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

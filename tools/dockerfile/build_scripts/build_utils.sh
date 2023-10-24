@@ -95,8 +95,11 @@ function do_cpython_build {
     if [ -e ${prefix}/bin/python3.10 ]; then
         ln -s python3.10 ${prefix}/bin/python
     fi
+    if [ -e ${prefix}/bin/python3.11 ]; then
+        ln -s python3.11 ${prefix}/bin/python
+    fi
     # NOTE Make libpython shared library visible to python calls below
-    if [ -e ${prefix}/bin/python3.10 ]; then
+    if [ -e ${prefix}/bin/python3.10 ] || [ -e ${prefix}/bin/python3.11 ]; then
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.trusted-host mirrors.aliyun.com
         LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/python -m pip config set global.index-url http://mirrors.aliyun.com/pypi/simple/
     fi

@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import nn
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 
@@ -182,7 +182,7 @@ def build_conv_model(
         model = SimpleConvNet()
         optimizer = _build_optimizer(use_amp=False, model=model)
         if use_amp and amp_dtype == "float16":
-            scaler = paddle.amp.GradScaler()
+            scaler = paddle.amp.GradScaler(init_loss_scaling=32768.0)
         else:
             scaler = None
         if use_amp and amp_level == "O2":
@@ -397,7 +397,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[{debug_info}] The number of bf16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+                f"[{debug_info}] The number of bf16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
         for op_type, expected_value in expected_fp16_calls.items():
             # print(f"[FP16] op_type={op_type}, value={value}")
@@ -408,7 +408,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
 
     def run_program(

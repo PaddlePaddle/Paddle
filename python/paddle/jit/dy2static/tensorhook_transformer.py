@@ -49,7 +49,6 @@ class RegisterHookTransformer(BaseTransformer):
         assignment_pos_map = self.assignment_pos_map
 
         for i in range(len(func_def.body) - 1, -1, -1):
-
             body = func_def.body[i]
             # Check if the code body contains the register_hook
             if isinstance(body, gast.Expr):

@@ -9,6 +9,9 @@ set(api_header_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/include/api.h)
 set(api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/api.cc)
 set(api_header_file_tmp ${api_header_file}.tmp)
 set(api_source_file_tmp ${api_source_file}.tmp)
+# dist forward api file
+set(dist_api_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/dist_api_gen.py)
 
 # backward api file
 set(bw_api_gen_file
@@ -21,6 +24,9 @@ set(bw_api_header_file
 set(bw_api_source_file ${CMAKE_SOURCE_DIR}/paddle/phi/api/lib/backward_api.cc)
 set(bw_api_header_file_tmp ${bw_api_header_file}.tmp)
 set(bw_api_source_file_tmp ${bw_api_source_file}.tmp)
+# dist backward api file
+set(dist_bw_api_gen_file
+    ${CMAKE_SOURCE_DIR}/paddle/phi/api/yaml/generator/dist_bw_api_gen.py)
 
 # dygraph(intermediate) api file
 set(im_api_gen_file
@@ -124,19 +130,37 @@ endif()
 
 execute_process(COMMAND ${PYTHON_EXECUTABLE} -m pip install pyyaml)
 
-# generate forward api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
-    ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
-    --api_source_path ${api_source_file_tmp})
+if(WITH_DISTRIBUTE)
+  # generate dist forward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_api_gen_file} --api_yaml_path
+      ${api_yaml_file} ${legacy_api_yaml_file} --api_header_path
+      ${api_header_file_tmp} --api_source_path ${api_source_file_tmp})
 
-# generate backward api
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${bw_api_gen_file} --backward_yaml_path
-    ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} --backward_header_path
-    ${bw_api_header_file_tmp} --backward_source_path ${bw_api_source_file_tmp})
+  # generate dist backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${dist_bw_api_gen_file} --backward_yaml_path
+      ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} --backward_header_path
+      ${bw_api_header_file_tmp} --backward_source_path
+      ${bw_api_source_file_tmp})
+else()
+  # generate forward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${api_gen_file} --api_yaml_path ${api_yaml_file}
+      ${legacy_api_yaml_file} --api_header_path ${api_header_file_tmp}
+      --api_source_path ${api_source_file_tmp})
+
+  # generate backward api
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${bw_api_gen_file} --backward_yaml_path
+      ${bw_api_yaml_file} ${legacy_bw_api_yaml_file} --backward_header_path
+      ${bw_api_header_file_tmp} --backward_source_path
+      ${bw_api_source_file_tmp})
+endif()
 
 # generate fused_op api
 execute_process(
@@ -182,14 +206,6 @@ execute_process(
     ${legacy_api_yaml_file} --sparse_api_yaml_path ${sparse_api_yaml_file}
     --dygraph_api_header_path ${dygraph_api_header_file_tmp}
     --dygraph_api_source_path ${dygraph_api_source_file_tmp})
-
-# generate wrapped infermeta
-execute_process(
-  COMMAND
-    ${PYTHON_EXECUTABLE} ${wrapped_infermeta_gen_file} --api_yaml_path
-    ${api_yaml_file} ${legacy_api_yaml_file} --wrapped_infermeta_header_path
-    ${wrapped_infermeta_header_file} --wrapped_infermeta_source_path
-    ${wrapped_infermeta_source_file})
 
 # generate tensor and tensor operants file
 message("create or copy auto-geneated tensor files")
@@ -264,7 +280,6 @@ collect_srcs(
 collect_generated_srcs(
   api_srcs
   SRCS
-  ${wrapped_infermeta_source_file}
   ${api_source_file}
   ${bw_api_source_file}
   ${fused_api_source_file}

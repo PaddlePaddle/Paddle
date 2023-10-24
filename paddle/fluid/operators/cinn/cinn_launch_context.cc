@@ -19,18 +19,19 @@
 #include <utility>
 #include <vector>
 
-#include "cinn/frontend/op_mapper_registry.h"
-#include "cinn/hlir/framework/graph_compiler.h"
-#include "cinn/hlir/framework/instruction.h"
-#include "cinn/hlir/framework/scope.h"
-#include "cinn/hlir/framework/tensor.h"
-#include "cinn/runtime/cinn_runtime.h"
-#include "cinn/runtime/intrinsic.h"
+#include "paddle/cinn/frontend/op_mapper_registry.h"
+#include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
+#include "paddle/cinn/hlir/framework/scope.h"
+#include "paddle/cinn/hlir/framework/tensor.h"
+#include "paddle/cinn/runtime/cinn_runtime.h"
+#include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/details/build_strategy.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 #include "paddle/fluid/framework/paddle2cinn/cinn_compiler.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
@@ -42,6 +43,8 @@
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/phi/core/ddim.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/string/string_helper.h"
 
 namespace paddle {
@@ -186,6 +189,14 @@ void CinnLaunchContext::BuildVarNameMap(
           "Size of variables is not euqal, paddle[%ld] vs cinn[%ld]",
           paddle2cinn_varmap_.size(),
           cinn2paddle_varmap_.size()));
+}
+
+std::unordered_set<std::string> CinnLaunchContext::GetVisibleVarNames() const {
+  std::unordered_set<std::string> remain_var_names;
+  for (const auto& pair : paddle2cinn_varmap_) {
+    remain_var_names.insert(this->RedirectVarName(pair.first));
+  }
+  return remain_var_names;
 }
 
 void CinnLaunchContext::UpdateCapturedEnv(const framework::Scope& scope,
@@ -547,7 +558,8 @@ framework::InterpreterCore* CinnLaunchContext::InitializeInterpreterCore(
   return interpreter_core_.get();
 }
 
-std::string CinnLaunchContext::RedirectVarName(const std::string& var_name) {
+std::string CinnLaunchContext::RedirectVarName(
+    const std::string& var_name) const {
   auto pos = var_name.find(InplaceOutSuffix);
   if (pos == std::string::npos) {
     return var_name;

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph import guard, to_variable
+from paddle import base
+from paddle.base.dygraph import guard, to_variable
 
 
 class TestImperativeUsingNonZeroGpu(unittest.TestCase):
@@ -28,15 +28,15 @@ class TestImperativeUsingNonZeroGpu(unittest.TestCase):
             np.testing.assert_array_equal(np_arr, var.numpy())
 
     def test_non_zero_gpu(self):
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             return
 
         np_arr = np.random.random([11, 13]).astype('float32')
         if paddle.device.cuda.device_count() > 1:
             # should use non zero gpu if there are more than 1 gpu
-            self.run_main(np_arr, fluid.CUDAPlace(1))
+            self.run_main(np_arr, base.CUDAPlace(1))
         else:
-            self.run_main(np_arr, fluid.CUDAPlace(0))
+            self.run_main(np_arr, base.CUDAPlace(0))
 
 
 if __name__ == '__main__':

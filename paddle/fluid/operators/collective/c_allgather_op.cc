@@ -44,7 +44,7 @@ class CAllGatherOp : public framework::OperatorWithKernel {
 
 class CAllGatherOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) tensor to be allgather");
     AddOutput("Out", "(Tensor) the allgather result");
     AddAttr<int>("ring_id", "(int default 0) communication ring id.")

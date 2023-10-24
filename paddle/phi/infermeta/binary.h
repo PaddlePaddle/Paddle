@@ -203,12 +203,18 @@ void ElementwiseInferMeta(const MetaTensor& x,
 void ElementwiseRawInferMeta(const MetaTensor& x_meta,
                              const MetaTensor& y_meta,
                              int axis,
-                             MetaTensor* out);
+                             MetaTensor* out,
+                             MetaConfig config = MetaConfig());
 
 void EmbeddingInferMeta(const MetaTensor& x,
                         const MetaTensor& weight,
                         int64_t padding_idx,
                         MetaTensor* out);
+
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out);
 
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
@@ -286,6 +292,11 @@ void IndexSelectInferMeta(const MetaTensor& x,
                           int dim,
                           MetaTensor* output);
 
+void IndexSelectStridedInferMeta(const MetaTensor& x,
+                                 int64_t index,
+                                 int dim,
+                                 MetaTensor* output);
+
 void IndexAddInferMeta(const MetaTensor& x,
                        const MetaTensor& index,
                        const MetaTensor& add_value,
@@ -293,6 +304,10 @@ void IndexAddInferMeta(const MetaTensor& x,
                        MetaTensor* output);
 
 void KronInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
+
+void LogicalBinaryInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            MetaTensor* out);
 
 void LogLossInferMeta(const MetaTensor& input,
                       const MetaTensor& label,
@@ -416,13 +431,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
 
-void SigmoidCrossEntropyWithLogitsInferMeta(const MetaTensor& x,
-                                            const MetaTensor& label,
-                                            bool normalize,
-                                            int ignore_index,
-                                            MetaTensor* out,
-                                            MetaConfig config = MetaConfig());
-
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,
@@ -484,5 +492,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        const std::string& data_format,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
+
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out);
 
 }  // namespace phi

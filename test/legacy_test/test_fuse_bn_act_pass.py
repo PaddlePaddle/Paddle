@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestFuseBatchNormActPass(unittest.TestCase):
     def build_program(self, main_program, startup_program, use_cuda, seed=1):
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[-1, 1, 28, 28], dtype='float32'
             )
@@ -35,11 +35,11 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 bias_attr=False,
                 data_format='NHWC',
             )
-            param_attr = fluid.ParamAttr(
+            param_attr = base.ParamAttr(
                 name='batch_norm_w',
                 initializer=paddle.nn.initializer.Constant(value=1.0),
             )
-            bias_attr = fluid.ParamAttr(
+            bias_attr = base.ParamAttr(
                 name='batch_norm_b',
                 initializer=paddle.nn.initializer.Constant(value=0.0),
             )
@@ -61,7 +61,7 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 input=prediction, label=y, reduction='none', use_softmax=False
             )
             loss = paddle.mean(loss)
-            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd = paddle.optimizer.SGD(learning_rate=0.001)
             if use_cuda:
                 sgd = paddle.static.amp.decorate(
                     sgd, use_dynamic_loss_scaling=True, init_loss_scaling=128.0
@@ -72,26 +72,26 @@ class TestFuseBatchNormActPass(unittest.TestCase):
     def check(self, place, use_cuda):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
         x, y, loss = self.build_program(main_program, startup_program, use_cuda)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         iters = 8
         batch_size = 16
-        feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
+        feeder = base.DataFeeder(feed_list=[x, y], place=place)
 
         # close fused_bn_act_ops
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.fuse_bn_act_ops = False
-        binary = fluid.CompiledProgram(
+        binary = base.CompiledProgram(
             main_program, build_strategy=build_strategy
         )
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
         loss_vals = []
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader())
@@ -101,17 +101,17 @@ class TestFuseBatchNormActPass(unittest.TestCase):
                 loss_vals.append(loss_v[0])
 
         # open fused_bn_act_ops
-        build_strategy_fused = fluid.BuildStrategy()
+        build_strategy_fused = base.BuildStrategy()
         build_strategy_fused.fuse_bn_act_ops = True
-        binary_fused = fluid.CompiledProgram(
+        binary_fused = base.CompiledProgram(
             main_program, build_strategy=build_strategy_fused
         )
         train_reader_fused = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
         loss_vals_fused = []
-        scope_fused = fluid.Scope()
-        with fluid.scope_guard(scope_fused):
+        scope_fused = base.Scope()
+        with base.scope_guard(scope_fused):
             exe.run(startup_program)
             for _ in range(iters):
                 data = next(train_reader_fused())
@@ -125,12 +125,12 @@ class TestFuseBatchNormActPass(unittest.TestCase):
             self.assertAlmostEqual(loss_vals[i], loss_vals_fused[i], delta=1e-5)
 
     def test_fuse_bn_act_pass_cpu(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self.check(place, use_cuda=False)
 
     def test_fuse_bn_act_pass_cuda(self):
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self.check(place, use_cuda=True)
 
 

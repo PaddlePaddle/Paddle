@@ -170,7 +170,8 @@ void FuseQuantTranspose2DequantOneDNNPass::ApplyImpl(Graph *graph) const {
   FuseTranspose2Dequantize(graph, "transpose2");
 }
 
-FuseQuantTranspose2DequantOneDNNPass::FuseQuantTranspose2DequantOneDNNPass() {
+FuseQuantTranspose2DequantOneDNNPass::
+    FuseQuantTranspose2DequantOneDNNPass() {  // NOLINT
   AddOpCompat(OpCompat("transpose2"))
       .AddInput("X")
       .IsTensor()

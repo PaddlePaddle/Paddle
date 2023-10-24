@@ -14,10 +14,10 @@
 
 from paddle import _C_ops
 
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.layer_helper import LayerHelper
-from ...framework import in_dynamic_mode
+from ...framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -72,16 +72,20 @@ def one_hot(x, num_classes, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
-            label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
-            # label.shape = [4]
-            one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
-            # one_hot_label.shape = [4, 4]
-            # one_hot_label = [[0., 1., 0., 0.],
-            #                  [0., 1., 0., 0.],
-            #                  [0., 0., 0., 1.],
-            #                  [1., 0., 0., 0.]]
+            >>> import paddle
+            >>> # Correspond to the first example above, where label.shape is 4 and one_hot_label.shape is [4, 4].
+            >>> label = paddle.to_tensor([1, 1, 3, 0], dtype='int64')
+            >>> print(label.shape)
+            [4]
+            >>> one_hot_label = paddle.nn.functional.one_hot(label, num_classes=4)
+            >>> print(one_hot_label.shape)
+            [4, 4]
+            >>> print(one_hot_label)
+            Tensor(shape=[4, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                   [[0., 1., 0., 0.],
+                    [0., 1., 0., 0.],
+                    [0., 0., 0., 1.],
+                    [1., 0., 0., 0.]])
 
     """
 
@@ -166,24 +170,43 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
-            w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
+            >>> x0 = paddle.arange(3, 6).reshape((3, 1)).astype(paddle.int64)
+            >>> w0 = paddle.full(shape=(10, 3), fill_value=2).astype(paddle.float32)
 
-            # x.data = [[3], [4], [5]]
-            # x.shape = [3, 1]
-            x = paddle.to_tensor(x0, stop_gradient=False)
+            >>> x = paddle.to_tensor(x0, stop_gradient=False)
+            >>> print(x.numpy())
+            [[3]
+             [4]
+             [5]]
+            >>> print(x.shape)
+            [3, 1]
 
-            # w.data = [[2. 2. 2.] ... [2. 2. 2.]]
-            # w.shape = [10, 3]
-            w = paddle.to_tensor(w0, stop_gradient=False)
+            >>> w = paddle.to_tensor(w0, stop_gradient=False)
+            >>> print(w.numpy())
+            [[2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]
+             [2. 2. 2.]]
+            >>> print(w.shape)
+            [10, 3]
 
-            # emb.data = [[[2., 2., 2.]], [[2., 2., 2.]], [[2., 2., 2.]]]
-            # emb.shape = [3, 1, 3]
-            emb = nn.functional.embedding(
-                    x=x, weight=w, sparse=True, name="embedding")
+            >>> emb = nn.functional.embedding(
+            ...         x=x, weight=w, sparse=True, name="embedding")
+            >>> print(emb.numpy())
+            [[[2. 2. 2.]]
+             [[2. 2. 2.]]
+             [[2. 2. 2.]]]
+            >>> print(emb.shape)
+            [3, 1, 3]
 
     """
     padding_idx = (
@@ -196,12 +219,10 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
 
     if padding_idx >= weight.shape[0] or padding_idx < -weight.shape[0]:
         raise ValueError(
-            "padding_idx must be within [-{}, {})".format(
-                weight.shape[0], weight.shape[0]
-            )
+            f"padding_idx must be within [-{weight.shape[0]}, {weight.shape[0]})"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.embedding(x, weight, padding_idx, sparse)
     else:
         helper = LayerHelper('embedding', **locals())

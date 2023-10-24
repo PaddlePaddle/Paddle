@@ -71,7 +71,6 @@ class TestCustomOpReluModelStaticMultiDevice(unittest.TestCase):
         self.output_log_dir.cleanup()
 
     def test_train_and_eval(self):
-
         self.train(use_custom_op=True)
         self.train(use_custom_op=False)
 

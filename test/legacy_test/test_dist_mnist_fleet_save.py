@@ -33,47 +33,46 @@ class TestDistMnistFleetSave(TestDistBase):
         self._save_model = True
 
     def _rm_temp_files(self, dirname):
-        fluid_model_path = os.path.join(dirname, 'fluid_persistables')
+        base_model_path = os.path.join(dirname, 'base_persistables')
         fleet_model_path = os.path.join(dirname, 'fleet_persistables')
-        fluid_infer_path = os.path.join(dirname, 'fluid_infer')
+        base_infer_path = os.path.join(dirname, 'base_infer')
         fleet_infer_path = os.path.join(dirname, 'fleet_infer')
-        fluid_model_path_2 = os.path.join(dirname, 'fluid_persistables_2')
+        base_model_path_2 = os.path.join(dirname, 'base_persistables_2')
         fleet_model_path_2 = os.path.join(dirname, 'fleet_persistables_2')
-        fluid_infer_path_2 = os.path.join(dirname, 'fluid_infer_2')
+        base_infer_path_2 = os.path.join(dirname, 'base_infer_2')
         fleet_infer_path_2 = os.path.join(dirname, 'fleet_infer_2')
 
-        shutil.rmtree(fluid_model_path)
+        shutil.rmtree(base_model_path)
         shutil.rmtree(fleet_model_path)
-        shutil.rmtree(fluid_infer_path)
+        shutil.rmtree(base_infer_path)
         shutil.rmtree(fleet_infer_path)
-        shutil.rmtree(fluid_model_path_2)
+        shutil.rmtree(base_model_path_2)
         shutil.rmtree(fleet_model_path_2)
-        shutil.rmtree(fluid_infer_path_2)
+        shutil.rmtree(base_infer_path_2)
         shutil.rmtree(fleet_infer_path_2)
 
     def _test_saved_files(self, dirname):
-        fluid_model_path = os.path.join(dirname, 'fluid_persistables')
-        fluid_persistables = sorted(os.listdir(fluid_model_path))
+        base_model_path = os.path.join(dirname, 'base_persistables')
+        base_persistables = sorted(os.listdir(base_model_path))
         fleet_model_path = os.path.join(dirname, 'fleet_persistables')
         fleet_persistables = sorted(os.listdir(fleet_model_path))
-        fluid_infer_path = os.path.join(dirname, 'fluid_infer')
-        fluid_infer_files = sorted(os.listdir(fluid_infer_path))
+        base_infer_path = os.path.join(dirname, 'base_infer')
+        base_infer_files = sorted(os.listdir(base_infer_path))
         fleet_infer_path = os.path.join(dirname, 'fleet_infer')
         fleet_infer_files = sorted(os.listdir(fleet_infer_path))
 
-        if len(fluid_persistables) != len(fleet_persistables):
+        if len(base_persistables) != len(fleet_persistables):
             self._rm_temp_files(dirname)
             raise ValueError("Test Failed.")
-        for i in range(len(fluid_persistables)):
-            if fluid_persistables[i] != fleet_persistables[i]:
+        for i in range(len(base_persistables)):
+            if base_persistables[i] != fleet_persistables[i]:
                 self._rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
-
-        if len(fluid_infer_files) != len(fleet_infer_files):
+        if len(base_infer_files) != len(fleet_infer_files):
             self._rm_temp_files(dirname)
             raise ValueError("Test Failed.")
-        for i in range(len(fluid_infer_files)):
-            if fluid_infer_files[i] != fleet_infer_files[i]:
+        for i in range(len(base_infer_files)):
+            if base_infer_files[i] != fleet_infer_files[i]:
                 self._rm_temp_files(dirname)
                 raise ValueError("Test Failed.")
         self._rm_temp_files(dirname)
@@ -101,9 +100,9 @@ class TestDistMnistFleetSave(TestDistBase):
         self._test_saved_files(dirname)
 
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
 

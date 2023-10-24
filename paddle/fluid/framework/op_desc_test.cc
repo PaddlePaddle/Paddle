@@ -30,7 +30,7 @@ TEST(OpDesc, SetScalarsAttr) {
 
   std::vector<paddle::experimental::Scalar> scalars;
   for (int i = 0; i < 4; i++) {
-    scalars.push_back(paddle::experimental::Scalar(i));
+    scalars.emplace_back(i);
   }
   opdesc.SetPlainAttr("scalars", scalars);
   ASSERT_EQ(opdesc.GetAttrType("scalars"), paddle::framework::proto::SCALARS);

@@ -235,14 +235,16 @@ class ProgramHelper:
 
         self._logger.info("start to build program for mode = %s." % mode)
         input_spec = [self.inputs_spec, self.labels_spec]
-        static_func = to_static(self.static_func(), input_spec=input_spec)
+        static_func = to_static(
+            self.static_func(), input_spec=input_spec, full_graph=True
+        )
 
         func_name = '_' + mode
         setattr(self.proxy_layer, func_name, static_func)
 
         # NOTE(dev): Because @to_static is a Lazy mechanism, so we explicitly call this to trigger
         # generating Program IR immediately.
-        getattr(self.proxy_layer, func_name).concrete_program
+        getattr(self.proxy_layer, func_name).concrete_program  # noqa: B018
 
         self._build_startup_program()
 

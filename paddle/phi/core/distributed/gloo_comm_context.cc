@@ -17,8 +17,11 @@
 
 #include <gloo/allgather.h>
 #include <gloo/allreduce.h>
+#include <gloo/barrier.h>
 #include <gloo/broadcast.h>
+#include <gloo/gather.h>
 #include <gloo/reduce.h>
+#include <gloo/scatter.h>
 #include <gloo/types.h>
 
 #include "paddle/phi/common/data_type.h"
@@ -41,7 +44,8 @@ GlooCommContext::GlooCommContext(
 
 void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                int root) {
+                                int root,
+                                uint32_t tag) {
   // gloo only uses CPU now
   CommStaticCheck::SameShape(*out_tensor,
                              in_tensor,
@@ -56,15 +60,18 @@ void GlooCommContext::Broadcast(phi::DenseTensor* out_tensor,
     GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   }
   opts.setRoot(root);
+  opts.setTag(tag);
   gloo::broadcast(opts);
 }
 
 void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
-                                const phi::DenseTensor& in_tensor) {
+                                const phi::DenseTensor& in_tensor,
+                                uint32_t tag) {
   // gloo only uses CPU now
 
   gloo::AllgatherOptions opts(gloo_context_);
   const auto& dtype = in_tensor.dtype();
+  opts.setTag(tag);
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   gloo::allgather(opts);
@@ -72,8 +79,10 @@ void GlooCommContext::AllGather(phi::DenseTensor* out_tensor,
 
 void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
                                 const phi::DenseTensor& in_tensor,
-                                int reduce_type) {
+                                int reduce_type,
+                                uint32_t tag) {
   gloo::AllreduceOptions opts(gloo_context_);
+  opts.setTag(tag);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
@@ -84,14 +93,76 @@ void GlooCommContext::AllReduce(phi::DenseTensor* out_tensor,
 void GlooCommContext::Reduce(phi::DenseTensor* out_tensor,
                              const phi::DenseTensor& in_tensor,
                              int reduce_type,
-                             int root) {
+                             int root,
+                             uint32_t tag) {
   gloo::ReduceOptions opts(gloo_context_);
   opts.setRoot(root);
+  opts.setTag(tag);
   const auto& dtype = in_tensor.dtype();
   GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
   GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
   GENERATE_FUNC(dtype, SetReduceFunc, &opts, reduce_type);
   gloo::reduce(opts);
+}
+
+void GlooCommContext::Gather(phi::DenseTensor* out_tensor,
+                             const phi::DenseTensor& in_tensor,
+                             int src,
+                             uint32_t tag) {
+  gloo::GatherOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  opts.setTag(tag);
+  opts.setRoot(src);
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  if (rank_ == src) {
+    GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  }
+  gloo::gather(opts);
+}
+
+void GlooCommContext::Scatter(phi::DenseTensor* out_tensor,
+                              const phi::DenseTensor& in_tensor,
+                              int src,
+                              int size,
+                              uint32_t tag) {
+  gloo::ScatterOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  if (rank_ == src) {
+    GENERATE_FUNC(dtype, SetInputForScatter, &opts, in_tensor, size);
+  }
+  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  opts.setRoot(src);
+  opts.setTag(tag);
+  gloo::scatter(opts);
+}
+
+void GlooCommContext::Barrier() {
+  gloo::BarrierOptions opts(gloo_context_);
+  gloo::barrier(opts);
+}
+
+void GlooCommContext::Send(const phi::DenseTensor& in_tensor,
+                           int dst,
+                           uint32_t tag) {
+  SendRecvOptions opts(gloo_context_);
+  const auto& dtype = in_tensor.dtype();
+  GENERATE_FUNC(dtype, SetInput, &opts, in_tensor);
+  opts.setSrc(gloo_context_.get()->rank);
+  opts.setDst(dst);
+  opts.setTag(tag);
+  send_recv(&opts);
+}
+
+void GlooCommContext::Recv(phi::DenseTensor* out_tensor,
+                           int src,
+                           uint32_t tag) {
+  SendRecvOptions opts(gloo_context_);
+  const auto& dtype = out_tensor->dtype();
+  GENERATE_FUNC(dtype, SetOutput, &opts, out_tensor);
+  opts.setSrc(src);
+  opts.setDst(gloo_context_.get()->rank);
+  opts.setTag(tag);
+  send_recv(&opts);
 }
 
 }  // namespace distributed

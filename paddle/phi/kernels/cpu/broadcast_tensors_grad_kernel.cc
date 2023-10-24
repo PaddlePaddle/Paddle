@@ -108,7 +108,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
       int out_axis = out_rank - j - 1;
       int in_axis = in_rank - j - 1;
 
-      reshape_dims_vec.push_back(input_dims[j]);
+      reshape_dims_vec.push_back(static_cast<int>(input_dims[j]));
       if (out_axis < 0 || output_dims[out_axis] != input_dims[in_axis]) {
         reduce_dims_vec.push_back(in_axis);
       }
@@ -116,7 +116,7 @@ void BroadcastTensorsGradKernel(const Context& ctx,
 
     size_t reduce_size = reduce_dims_vec.size();
     size_t reshape_size = reshape_dims_vec.size();
-    bool just_copy = (reduce_dims_vec.size() == 0);
+    bool just_copy = (reduce_dims_vec.empty());
     ctx.template Alloc<T>(output_tensor);
     if (just_copy) {
       // If this turns out to be a No-Op, simply perform a tensor copy

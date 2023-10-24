@@ -19,7 +19,6 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/api/generated/eager_generated/backwards/scale_node.h"
-#include "paddle/fluid/eager/api/utils/tensor_utils.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 #include "paddle/fluid/eager/grad_node_info.h"
@@ -39,12 +38,12 @@ TEST(CrossBatchAccumulation, SingleScaleNode) {
   paddle::framework::DDim ddim = phi::make_ddim({4, 16, 16, 32});
 
   paddle::Tensor tensor =
-      egr_utils_api::CreateTensorWithValue(ddim,
-                                           paddle::platform::CPUPlace(),
-                                           phi::DataType::FLOAT32,
-                                           phi::DataLayout::NCHW,
-                                           1.0 /*value*/,
-                                           false /*is_leaf*/);
+      eager_test::CreateTensorWithValue(ddim,
+                                        paddle::platform::CPUPlace(),
+                                        phi::DataType::FLOAT32,
+                                        phi::DataLayout::NCHW,
+                                        1.0 /*value*/,
+                                        false /*is_leaf*/);
   target_tensors.emplace_back(std::move(tensor));
   paddle::Tensor& target_tensor = target_tensors[0];
 

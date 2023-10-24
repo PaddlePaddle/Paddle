@@ -72,7 +72,7 @@ Event::Event(EventType type,
 const EventType &Event::type() const { return type_; }
 
 double Event::CpuElapsedMs(const Event &e) const {
-  return (e.cpu_ns_ - cpu_ns_) / (1000000.0);
+  return (static_cast<double>(e.cpu_ns_ - cpu_ns_)) / (1000000.0);
 }
 
 double Event::CudaElapsedMs(const Event &e) const {

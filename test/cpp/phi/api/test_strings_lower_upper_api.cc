@@ -47,13 +47,17 @@ TEST(API, case_convert) {
 
   pstring* cpu_strings_x_data =
       dev_ctx->template Alloc<pstring>(cpu_strings_x.get());
-  std::string strs[] = {"A Short Pstring.",
+  std::string strs[] = {"A Short Pstring.",  // NOLINT
                         "A Large Pstring Whose Length Is Longer Than 22."};
   for (int i = 0; i < 2; ++i) {
     cpu_strings_x_data[i] = strs[i];
   }
   // 2. get expected results
-  std::string expected_results[] = {strs[0], strs[0], strs[1], strs[1]};
+  std::string expected_results[] = {// NOLINT
+                                    strs[0],
+                                    strs[0],
+                                    strs[1],
+                                    strs[1]};
   std::transform(
       strs[0].begin(), strs[0].end(), expected_results[0].begin(), ::tolower);
   std::transform(
@@ -77,7 +81,8 @@ TEST(API, case_convert) {
   auto lower_tensor_ptr = lower_tensor->data();
   auto upper_tensor_ptr = upper_tensor->data();
 
-  const std::string cpu_results[] = {lower_tensor_ptr[0].data(),
+  const std::string cpu_results[] = {// NOLINT
+                                     lower_tensor_ptr[0].data(),
                                      upper_tensor_ptr[0].data(),
                                      lower_tensor_ptr[1].data(),
                                      upper_tensor_ptr[1].data()};
@@ -101,12 +106,14 @@ TEST(API, case_convert_utf8) {
 
   pstring* cpu_strings_x_data =
       dev_ctx->template Alloc<pstring>(cpu_strings_x.get());
-  std::string strs[] = {"óÓsscHloëË", "óÓsscHloëËóÓsscHloëËóÓsscHloëË"};
+  std::string strs[] = {"óÓsscHloëË",  // NOLINT
+                        "óÓsscHloëËóÓsscHloëËóÓsscHloëË"};
   for (int i = 0; i < 2; ++i) {
     cpu_strings_x_data[i] = strs[i];
   }
   // 2. get expected results
-  std::string expected_results[] = {"óósschloëë",
+  std::string expected_results[] = {// NOLINT
+                                    "óósschloëë",
                                     "ÓÓSSCHLOËË",
                                     "óósschloëëóósschloëëóósschloëë",
                                     "ÓÓSSCHLOËËÓÓSSCHLOËËÓÓSSCHLOËË"};
@@ -125,7 +132,8 @@ TEST(API, case_convert_utf8) {
   auto lower_tensor_ptr = lower_tensor->data();
   auto upper_tensor_ptr = upper_tensor->data();
 
-  const char* cpu_results[] = {lower_tensor_ptr[0].data(),
+  const char* cpu_results[] = {// NOLINT
+                               lower_tensor_ptr[0].data(),
                                upper_tensor_ptr[0].data(),
                                lower_tensor_ptr[1].data(),
                                upper_tensor_ptr[1].data()};

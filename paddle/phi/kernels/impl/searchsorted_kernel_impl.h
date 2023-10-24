@@ -123,8 +123,18 @@ class SearchSortedFunctor {
     const phi::DDim& val_dims = value_->dims();
 
     bool is_1d_boundaries = seq_dims.size() == 1;
-    int64_t val_size = val_dims[val_dims.size() - 1];
-    int64_t seq_size = seq_dims[seq_dims.size() - 1];
+    int64_t val_size = 0;
+    int64_t seq_size = 0;
+    if (val_dims.size()) {
+      val_size = val_dims[val_dims.size() - 1];
+    } else {
+      val_size = 1;
+    }
+    if (seq_dims.size()) {
+      seq_size = seq_dims[seq_dims.size() - 1];
+    } else {
+      seq_size = 1;
+    }
 
     funcs::ForRange<Context> for_range(context_, value_->numel());
     GpuAndCpuSearchSortedCompute<T1, T2, OutType>

@@ -95,8 +95,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::ProgramDesc *program) const {
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
-  for (size_t i = 0; i < block_list.size(); ++i) {
-    auto blkid = block_list[i];
+  for (auto blkid : block_list) {
     auto it = message_to_block_id.find_value(blkid);
     heter_server_->RegisterServiceHandler(
         it->first,
@@ -177,7 +176,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
 class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
-  void Make() {
+  void Make() override {
     AddInput("X", "(Tensor) Variables that server recv.").AsDuplicable();
     AddComment(
         R"DOC(" + "HeterListenAndServ operator" + "\n" + "This operator" +
