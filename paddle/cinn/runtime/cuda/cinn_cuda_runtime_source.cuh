@@ -474,11 +474,11 @@ __device__ inline bool cinn_any(const bool left, const bool right) { return left
       tmp_val = __shfl_sync(mask, tmp_val, 0, 32);                                        \
       return tmp_val;                                                                     \
     } else {                                                                              \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 16, 32));     \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 8, 32));      \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 4, 32));      \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 2, 32));      \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 1, 32));      \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 16, 32));      \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 8, 32));       \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 4, 32));       \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 2, 32));       \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, __shfl_xor_sync(mask, tmp_val, 1, 32));       \
       return tmp_val;                                                                     \
     }                                                                                     \
   }
@@ -534,25 +534,24 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf, int offset, 
   if (blockDim.x <= 32) {                                                                    \
     return tmp_val;                                                                          \
   }                                                                                          \
-  __shared__ TYPE tmp[32];                                                                   \
   if (warp_id == 0) {                                                                        \
-    tmp[threadIdx.x] = init_value;                                                           \
+    shm[threadIdx.x] = init_value;                                                           \
   }                                                                                          \
   __syncthreads();                                                                           \
   if ((threadIdx.x & 31) == 0) {                                                             \
-    tmp[warp_id] = tmp_val;                                                                  \
+    shm[warp_id] = tmp_val;                                                                  \
   }                                                                                          \
   __syncthreads();                                                                           \
   if (warp_id == 0) {                                                                        \
-    tmp_val = tmp[threadIdx.x];                                                              \
-    tmp[threadIdx.x] = cinn_warp_shuffle_internal(tmp_val);                                  \
+    tmp_val = shm[threadIdx.x];                                                              \
+    shm[threadIdx.x] = cinn_warp_shuffle_internal(tmp_val);                                  \
   }                                                                                          \
   __syncthreads();                                                                           \
-  return tmp[0];
+  return shm[0];
 
-#define CINN_BLOCK_REDUCE_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                            \
-  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal(const DTYPE value) {                              \
-    CINN_BLOCK_REDUCE_INTERNAL_IMPL(DTYPE, value, (DTYPE)(INITIAL_VALUE), cinn_warp_shuffle_##REDUCE_TYPE##_internal); \
+#define CINN_BLOCK_REDUCE_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                                        \
+  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal(const DTYPE value, DTYPE* shm) {                              \
+    CINN_BLOCK_REDUCE_INTERNAL_IMPL(DTYPE, value, (DTYPE)(INITIAL_VALUE), cinn_warp_shuffle_##REDUCE_TYPE##_internal);             \
   }
 
 EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
@@ -571,31 +570,6 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 
 #undef CINN_BLOCK_REDUCE_INTERNAL_IMPL
 #undef CINN_BLOCK_REDUCE_INTERNAL_MACRO
-
-#define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                     \
-  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(const DTYPE *buf, int offset, int extend) { \
-    DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);                                                           \
-    for (int i = threadIdx.x; i < extend; i += blockDim.x) {                                          \
-      tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);                                         \
-    }                                                                                                 \
-    return cinn_block_reduce_##REDUCE_TYPE##_internal(tmp_val);                                       \
-  }
-
-EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_IMPL)
-EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_IMPL)
-EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_IMPL)
-EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_IMPL)
-EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_IMPL)
-
-#ifdef CINN_CUDA_BF16
-EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_IMPL)
-#endif
-
-#ifdef CINN_CUDA_FP16
-EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
-#endif
-
-#undef CINN_BLOCK_REDUCE_IMPL
 
 #undef EXPAND_REDUCE_INT32_MARCO
 #undef EXPAND_REDUCE_INT64_MARCO
