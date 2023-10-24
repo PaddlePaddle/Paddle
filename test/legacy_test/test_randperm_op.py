@@ -144,7 +144,9 @@ class TestRandpermBF16Op(OpTest):
         self.np_dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place_customized(self.verify_output, self.place)
+        self.check_output_with_place_customized(
+            self.verify_output, self.place, check_pir=True
+        )
 
     def verify_output(self, outs):
         out_np = convert_uint16_to_float(np.array(outs[0]))

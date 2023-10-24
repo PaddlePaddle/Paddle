@@ -382,7 +382,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -2621,7 +2621,7 @@ def eig(x, name=None):
               (-0.21026138961315155+0j)])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2692,7 +2692,7 @@ def eigvals(x, name=None):
             )
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(

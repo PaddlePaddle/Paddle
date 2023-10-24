@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 
+#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -23,13 +24,32 @@ namespace phi {
 namespace distributed {
 
 SpmdInfo ReductionInferSpmd(const DistMetaTensor& x,
-                            const std::vector<int>& axis,
+                            const std::vector<int64_t>& axis,
                             bool keep_dim);
+
+// This infer spmd function only use in dynamic mode for it uses
+// IntArray as parameter. The IntArray may contain vector of tensor
+// which is not support in static mode. So we separate these two and
+// use dynamic infer_spmd invoke static infer_spmd function.
+SpmdInfo ReductionMeanInferSpmdDynamic(const DistMetaTensor& x,
+                                       const IntArray& axis,
+                                       bool keep_dim);
+
+SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
+                                      const IntArray& axis,
+                                      DataType dtype,
+                                      bool keep_dim);
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& out,
-                                   const std::vector<int>& axis,
+                                   const std::vector<int64_t>& axis,
                                    bool keep_dim);
+
+SpmdInfo ReductionGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& out_grad,
+                                const IntArray& axis,
+                                bool keep_dim,
+                                bool reduce_all);
 
 }  // namespace distributed
 }  // namespace phi

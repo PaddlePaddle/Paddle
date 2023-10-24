@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/distributed/collective/bkcl_tools.h"
 
-#include "paddle/fluid/distributed/collective/types.h"
-
 namespace paddle {
 namespace distributed {
 

@@ -42,7 +42,7 @@ class SimpleFcLayer(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -69,7 +69,7 @@ class SimplePyLayerNet(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         y = self._linear(x)
         out = cus_tanh.apply(y)
