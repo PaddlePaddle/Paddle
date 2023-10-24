@@ -79,7 +79,8 @@ void Conv2dTransposeGradKernel(const Context& ctx,
       (dfilter ? reinterpret_cast<XPUT*>(dfilter->data<T>()) : nullptr);
   int fccal_type = FCCalcType<XPUT>(ctx.x_context());
   PD_VISIT_XPU_QUANT_TYPES(XPUT, fccal_type, "conv2d_transpose_grad", [&] {
-    // conv2d_tranpose_grad do not support float quantization currently.
+    // conv2d_tranpose_grad do not support float quantization currently
+    // use int16_t quant as default.
     using RealTGEMM = typename std::
         conditional<std::is_same<TGEMM, float>::value, int16_t, TGEMM>::type;
     int ret =
