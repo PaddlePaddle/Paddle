@@ -81,6 +81,16 @@
   args : (Tensor[] x)
   output : Tensor(out)
 
+- op : memcpy
+  args : (Tensor x, int dst_place_type)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func : memcpy
+    param: [x, dst_place_type]
+
 - op : print
   args : (Tensor in, int first_n, str message, int summarize, bool print_tensor_name = true, bool print_tensor_type = true, bool print_tensor_shape = true, bool print_tensor_layout = true, bool print_tensor_lod = true, str print_phase = "BOTH", bool is_forward = true)
   output : Tensor(out)
@@ -130,7 +140,7 @@
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
 
 - op : set_value
-  args : (Tensor x, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
   infer_meta:
     func: SetValueInferMeta
@@ -142,7 +152,7 @@
   backward: set_value_grad
 
 - op : set_value_with_tensor
-  args : (Tensor x, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
   infer_meta:
     func: SetValueInferMeta

@@ -43,7 +43,13 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
         with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(
+                tanh_op,
+                [[tanh_op.operand_source(0)]],
+                [[tanh_op.result(0)]],
+                out_grads,
+                stop_gradients,
+            )
         self.assertEqual(
             grad_outs[0][0].get_defining_op().name(), "pd_op.tanh_grad"
         )
@@ -74,7 +80,13 @@ class TestTanhVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
         with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(tanh_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(
+                tanh_op,
+                [[tanh_op.operand_source(0)]],
+                [[tanh_op.result(0)]],
+                out_grads,
+                stop_gradients,
+            )
         self.assertEqual(grad_outs[0][0], None)
 
 
@@ -95,7 +107,13 @@ class TestMeanVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
         with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(
+                mean_op,
+                [[mean_op.operand_source(0)]],
+                [[mean_op.result(0)]],
+                out_grads,
+                stop_gradients,
+            )
             self.assertEqual(
                 grad_outs[0][0].get_defining_op().name(), "pd_op.mean_grad"
             )
@@ -135,7 +153,13 @@ class TestMeanVjp(unittest.TestCase):
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
         with paddle.pir.core.program_guard(newir_program):
-            grad_outs = call_vjp(mean_op, out_grads, stop_gradients)
+            grad_outs = call_vjp(
+                mean_op,
+                [[mean_op.operand_source(0)]],
+                [[mean_op.result(0)]],
+                out_grads,
+                stop_gradients,
+            )
             self.assertEqual(grad_outs[0][0], None)
 
 

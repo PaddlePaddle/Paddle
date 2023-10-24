@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
@@ -27,6 +27,7 @@ from paddle.jit.sot import symbolic_translate
 from paddle.jit.sot.opcode_translator.executor.executor_cache import (
     OpcodeExecutorCache,
 )
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def gener():
@@ -294,5 +295,5 @@ class TestUndefinedVarInRiskyCodes(TestCaseBase):
 
 
 if __name__ == "__main__":
-    with strict_mode_guard(0):
+    with strict_mode_guard(False):
         unittest.main()

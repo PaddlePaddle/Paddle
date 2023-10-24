@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
+
 #include <limits.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-
-#include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_pass.h"
 
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -40,6 +40,8 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.full", OpPatternKind::kElementWise},
     {"pd_op.relu", OpPatternKind::kElementWise},
     {"pd_op.exp", OpPatternKind::kElementWise},
+    {"pd_op.sin", OpPatternKind::kElementWise},
+    {"pd_op.cos", OpPatternKind::kElementWise},
     {"pd_op.sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
@@ -143,19 +145,18 @@ using ConditionFunction =
 // code generation.
 class OpFusionPassHelper {
  public:
-  explicit OpFusionPassHelper(const ::pir::Program& graph) {
+  explicit OpFusionPassHelper(const std::vector<pir::Operation*>& op_list) {
     // init fusion relation
     InitFusionRelation();
     // filter node data, create group for each node
     // auto nodes_inorder = std::get<0>(graph->topological_order());
 
-    for (auto it = graph.block()->begin(); it != graph.block()->end(); ++it) {
-      auto node = *it;
-      local_ops_.insert(node);
+    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
+      local_ops_.insert(*it);
     }
 
     int index = 0;
-    for (auto it = graph.block()->begin(); it != graph.block()->end(); ++it) {
+    for (auto it = op_list.begin(); it != op_list.end(); ++it) {
       auto node = *it;
       if (node) {
         nodes_.push_back(node);
@@ -491,9 +492,9 @@ class OpFusionPassHelper {
   std::unordered_map<OpPatternKind, FusionRelation> fusion_relation_map_;
 };
 
-GroupList OpFusionPassInternal(const ::pir::Program& program) {
+GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
   VLOG(3) << "OpFusionPass...!";
-  auto op_fusion_helper = OpFusionPassHelper(program);
+  auto op_fusion_helper = OpFusionPassHelper(op_list);
   auto res = op_fusion_helper();
 
   for (size_t i = 0; i < res.size(); ++i) {
@@ -502,26 +503,10 @@ GroupList OpFusionPassInternal(const ::pir::Program& program) {
     for (size_t j = 0; j < group->nodes.size(); ++j) {
     }
   }
-
-  // for (auto& group : graph->fusion_groups) {
-  //   VLOG(3) << "Group Id : " << group->group_id;
-  //   for (const auto& producer : group->producer_groups()) {
-  //     VLOG(3) << "  producer group -> " << producer->group_id;
-  //   }
-  //   for (const auto& consumer : group->consumer_groups()) {
-  //     VLOG(3) << "  consumer group -> " << consumer->group_id;
-  //   }
-  // }
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;
 }
-
-// void BuildNonFusedGroupsPassInternal(framework::Graph* graph) {
-//   auto op_fusion_helper = OpFusionPassHelper(graph);
-//   VLOG(3) << "Apply OpFusionPass to generate initial non-fusion groups";
-//   graph->fusion_groups = op_fusion_helper(false);
-// }
 
 }  // namespace ir
 }  // namespace dialect
