@@ -252,13 +252,6 @@ void ProgramInterpreter::ProfileInstructionList(
     }
   }
 
-  platform::Timer timer;
-
-  auto SyncDevice = []() {
-    // implement device sync for different platforms (hip, cuda, ...)
-    platform::GpuDeviceSync();
-  };
-
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto& instr = vec_instruction_[trace_execute_order_[idx]];
     OperatorBase* op_base = instr.OpBase();
@@ -295,6 +288,9 @@ void ProgramInterpreter::ProfileInstructionList(
 
 void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
+
+  platform::RecordEvent instruction_event(
+      op->Type(), platform::TracerEventType::Operator, 1);
 
   SetDeviceId(instr_node.DeviceContext().GetPlace());
 
@@ -389,13 +385,19 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
 #endif
     };
 
+    platform::RecordEvent compute_event(
+        "compute",
+        platform::TracerEventType::OperatorInner,
+        1,
+        platform::EventRole::kInnerOp);
+
     // compute
     if (op_with_kernel == nullptr) {  // operator base
       if (require_sync) SyncDevice();
       timer.Start();
       instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
-      timer.Pause();
       if (require_sync) SyncDevice();
+      timer.Pause();
       op_runtime_us = timer.ElapsedUS();
 
     } else {
@@ -412,16 +414,16 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
           if (require_sync) SyncDevice();
           timer.Start();
           (*kernel)(&phi_kernel_context);  // op run case 2
-          timer.Pause();
           if (require_sync) SyncDevice();
+          timer.Pause();
           op_runtime_us = timer.ElapsedUS();
 
         } else {
           if (require_sync) SyncDevice();
           timer.Start();
           (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
-          timer.Pause();
           if (require_sync) SyncDevice();
+          timer.Pause();
           op_runtime_us = timer.ElapsedUS();
         }
       } else {  // fluid kernel
@@ -429,8 +431,8 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
         timer.Start();
         instr_node.KernelFunc()(
             *instr_node.InnerExecutionContext().get());  // op run case 4
-        timer.Pause();
         if (require_sync) SyncDevice();
+        timer.Pause();
         op_runtime_us = timer.ElapsedUS();
       }
     }
@@ -443,7 +445,6 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
 
   if (!instr_node.InplaceBackMap().empty()) {
     auto& m = instr_node.InplaceBackMap();
-    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
     for (auto& p : m) {
       auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
           var_scope_.VarRef(p.first));
