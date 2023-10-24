@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -33,6 +34,8 @@ namespace distributed {
 class ProcessMesh;
 
 bool IsCurRankInMesh(const ProcessMesh& process_mesh);
+
+bool NeedComputationClipForPP(const paddle::Tensor& input);
 
 Place GetDefaultPlace();
 

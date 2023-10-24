@@ -15,7 +15,6 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 #include "glog/logging.h"
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
@@ -144,6 +143,16 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
   const auto& process_ids = process_mesh.process_ids();
   return (std::find(process_ids.begin(), process_ids.end(), cur_global_rank) !=
           process_ids.end());
+}
+
+// Only Input is DistTensor and current device id isn't in DistTensor's mesh
+// will return true.
+bool NeedComputationClipForPP(const paddle::Tensor& input) {
+  return input.is_dist_tensor() &&
+         IsCurRankInMesh(std::static_pointer_cast<phi::distributed::DistTensor>(
+                             input.impl())
+                             ->dist_attr()
+                             .process_mesh());
 }
 
 Place GetDefaultPlace() {
