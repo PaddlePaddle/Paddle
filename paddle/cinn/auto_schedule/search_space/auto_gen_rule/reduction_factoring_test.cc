@@ -25,6 +25,8 @@
 #include "paddle/cinn/ir/ir_printer.h"
 #include "test/cpp/cinn/concrete_program_builder.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace auto_schedule {
 
@@ -38,6 +40,8 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
                          const std::string& block_name,
                          const std::string& expected_ir) {
     Initialize(common::DefaultNVGPUTarget());
+    // In order to forcibly use the most basic Compute of reduction
+    FLAGS_cinn_new_group_scheduler = 1;
     auto test_program = tests::ReduceBuilder().Build(
         {{"X", shape}}, {{"reduce_dim", reduce_dim}});
     // construct input parameter
@@ -45,7 +49,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
     SearchState state(ir_schedule, 0, {});
     std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
     ASSERT_EQ(func_bodys.size(), 1UL);
-    LOG(INFO) << "Original Expr:\n" << func_bodys[0];
+    VLOG(6) << "Original Expr:\n" << func_bodys[0];
 
     // apply
     ReductionFactoring reduction_factoring(target_);
@@ -56,7 +60,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
     EXPECT_EQ(exprs.size(), 1UL);
     std::stringstream ir;
     ir << exprs[0];
-    LOG(INFO) << "ReductionFactoring applied Expr: " << exprs[0];
+    VLOG(6) << "ReductionFactoring applied Expr: " << exprs[0];
 
     // check
     const std::vector<ir::Expr>& blocks = ir_schedule.GetAllBlocks();
@@ -71,7 +75,7 @@ TEST_F(TestReductionFactoring, AnalyseApplyType) {
   auto test_program =
       tests::OpBuilder("elementwise_add").Build({{"X", {4, 5}}, {"Y", {4, 5}}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(test_program);
-  LOG(INFO) << "Original Expr:\n" << ir_schedule.GetModule().GetExprs()[0];
+  VLOG(6) << "Original Expr:\n" << ir_schedule.GetModule().GetExprs()[0];
   SearchState state(ir_schedule, 0, {});
   ReductionFactoring reduction_factoring(target_);
   EXPECT_EQ(reduction_factoring.AnalyseApplyType(state, "var_1"),
