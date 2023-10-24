@@ -203,10 +203,10 @@ class TestReplicatedSPmdApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        # self.test_unbind()
-        # self.test_expand_as()
+        self.test_unbind()
+        self.test_expand_as()
         self.test_adamax()
-        # self.test_mse_loss()
+        self.test_mse_loss()
 
 
 if __name__ == '__main__':

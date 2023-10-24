@@ -28,15 +28,16 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create Temporary Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
+    // 4. Set Output Dist Attr For Default Impl{}\n
     if (rank_is_in_current_mesh){{
-      // 4. Select Kernel{}
-      // 5. Reshard Input{}\n
-      // 6. PrepareData (DataTransform & Prepare Dense Input){}
-      // 7. Infer Local DenseTensor Meta{}
-      // 8. DenseTensor Kernel Call{}
-      // 9. Reshard Partial Output to Replicated (Temporary){}\n
+      // 5. Select Kernel{}
+      // 6. Reshard Input{}\n
+      // 7. PrepareData (DataTransform & Prepare Dense Input){}
+      // 8. Infer Local DenseTensor Meta{}
+      // 9. DenseTensor Kernel Call{}
+      // 10. Reshard Partial Output to Replicated (Temporary){}\n
     }}
-    // 10. Return
+    // 11. Return
     {}
   }}
 """
@@ -265,13 +266,13 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.generate_infer_spmd_code(),
             self.generate_output_creation_code(),
             self.generate_infer_global_shape_code(),
+            self.generate_output_dist_attr_setting(),
             self.generate_kernel_selection_code(),
             self.generate_reshard_input_code(),
             self.generate_prepare_data_code(),
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
             self.generate_reshard_output_code(),
-            self.generate_output_dist_attr_setting(),
             self.generate_return_code(),
         )
 
