@@ -45,7 +45,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
     SearchState state(ir_schedule, 0, {});
     std::vector<ir::Expr> func_bodys = ir_schedule.GetModule().GetExprs();
     ASSERT_EQ(func_bodys.size(), 1UL);
-    VLOG(6) << "Original Expr:\n" << func_bodys[0];
+    LOG(INFO) << "Original Expr:\n" << func_bodys[0];
 
     // apply
     ReductionFactoring reduction_factoring(target_);
@@ -56,7 +56,7 @@ class TestReductionFactoring : public TestAutoGenRuleBase {
     EXPECT_EQ(exprs.size(), 1UL);
     std::stringstream ir;
     ir << exprs[0];
-    VLOG(6) << "ReductionFactoring applied Expr: " << exprs[0];
+    LOG(INFO) << "ReductionFactoring applied Expr: " << exprs[0];
 
     // check
     const std::vector<ir::Expr>& blocks = ir_schedule.GetAllBlocks();
@@ -71,7 +71,7 @@ TEST_F(TestReductionFactoring, AnalyseApplyType) {
   auto test_program =
       tests::OpBuilder("elementwise_add").Build({{"X", {4, 5}}, {"Y", {4, 5}}});
   ir::IRSchedule ir_schedule = MakeIRSchedule(test_program);
-  VLOG(6) << "Original Expr:\n" << ir_schedule.GetModule().GetExprs()[0];
+  LOG(INFO) << "Original Expr:\n" << ir_schedule.GetModule().GetExprs()[0];
   SearchState state(ir_schedule, 0, {});
   ReductionFactoring reduction_factoring(target_);
   EXPECT_EQ(reduction_factoring.AnalyseApplyType(state, "var_1"),

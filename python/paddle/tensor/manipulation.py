@@ -4572,6 +4572,8 @@ def repeat_interleave(x, repeats, axis=None, name=None):
             [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6])
     """
 
+    if isinstance(repeats, Variable) and not repeats.shape:
+        repeats = paddle.reshape(repeats, [1])
     if axis is None:
         x = paddle.flatten(x)
         axis = 0

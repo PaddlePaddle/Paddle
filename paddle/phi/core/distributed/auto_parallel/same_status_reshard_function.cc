@@ -46,18 +46,20 @@ std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
 
 bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= (in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping());
-  flag &= (in_dist_attr.partial_dims() == out_dist_attr.partial_dims());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() ==
+                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.partial_dims() ==
+                            out_dist_attr.partial_dims());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
-  flag &= (in_process_mesh != out_process_mesh);
-  flag &= (in_process_mesh.shape() == out_process_mesh.shape());
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
 
-  return flag;
+  return true;
 }
 
 void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,

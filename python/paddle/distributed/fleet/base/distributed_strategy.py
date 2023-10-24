@@ -930,6 +930,8 @@ class DistributedStrategy:
 
             use_pure_fp16(bool): Whether to use the pure fp16 training. Default False.
 
+            use_pure_bf16(bool): Whether to use the pure bf16 training. Default False.
+
             use_fp16_guard(bool): Whether to use `fp16_guard` when constructing the program.
                    Default True. Only takes effect when `use_pure_fp16` is turned on.
 

@@ -135,7 +135,7 @@ TensorDistAttr CopyTensorDistAttrForOutput(
   TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
-  new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
+  // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
   new_dist_attr.clean_partial_status();  // in partial-stage I, partial is allow
                                          // to propagate

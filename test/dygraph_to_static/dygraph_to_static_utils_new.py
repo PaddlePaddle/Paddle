@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import contextlib
 import inspect
 import logging
 import os
@@ -24,6 +23,7 @@ import numpy as np
 
 from paddle import set_flags, static
 from paddle.base import core
+from paddle.jit.api import sot_mode_guard
 
 """
 # Usage:
@@ -69,21 +69,6 @@ DEFAULT_TO_STATIC_MODE = ToStaticMode.LEGACY_AST | ToStaticMode.SOT
 DEFAULT_IR_MODE = IrMode.LEGACY_PROGRAM
 
 
-def in_sot_mode():
-    return os.getenv("ENABLE_FALL_BACK", "False") == "True"
-
-
-@contextlib.contextmanager
-def enable_fallback_guard(enable):
-    flag = os.environ.get("ENABLE_FALL_BACK", None)
-    os.environ["ENABLE_FALL_BACK"] = enable
-    yield
-    if flag is not None:
-        os.environ["ENABLE_FALL_BACK"] = flag
-    else:
-        del os.environ["ENABLE_FALL_BACK"]
-
-
 def to_legacy_ast_test(fn):
     """
     convert run fall_back to ast
@@ -92,7 +77,7 @@ def to_legacy_ast_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[AST] running AST")
-        with enable_fallback_guard("False"):
+        with sot_mode_guard(False):
             fn(*args, **kwargs)
 
     return impl
@@ -106,7 +91,7 @@ def to_sot_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         logger.info("[SOT] running SOT")
-        with enable_fallback_guard("True"):
+        with sot_mode_guard(True):
             fn(*args, **kwargs)
 
     return impl
@@ -263,22 +248,27 @@ def disable_test_case(flags):
 
 # Suger decorators
 # These decorators can be simply composed by base decorators
-def ast_only_test(fn):
+def test_ast_only(fn):
     fn = set_to_static_mode(ToStaticMode.LEGACY_AST)(fn)
     return fn
 
 
-def sot_only_test(fn):
+def test_sot_only(fn):
     fn = set_to_static_mode(ToStaticMode.SOT)(fn)
     return fn
 
 
-def test_with_new_ir(fn):
+def test_pir_only(fn):
     fn = set_ir_mode(IrMode.PIR)(fn)
     return fn
 
 
-def _test_and_compare_with_new_ir(fn):
+def test_legacy_and_pir(fn):
+    fn = set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)(fn)
+    return fn
+
+
+def compare_legacy_with_pir(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
         outs = fn(*args, **kwargs)
@@ -295,17 +285,6 @@ def _test_and_compare_with_new_ir(fn):
         return outs
 
     return impl
-
-
-def test_and_compare_with_new_ir(need_check_output: bool = True):
-    def decorator(fn):
-        fn = set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)(fn)
-        if need_check_output:
-            logger.info(f"[need_check_output] {fn.__name__}")
-            fn = _test_and_compare_with_new_ir(fn)
-        return fn
-
-    return decorator
 
 
 # For debug
