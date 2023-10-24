@@ -116,7 +116,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             self._local_params.extend(list(params))
 
-        strategy = fleet._user_defined_strategy
+        strategy = fleet.fleet._user_defined_strategy
         self._delay_scale_loss = strategy.hybrid_configs[
             "sharding_configs"
         ].delay_scale_loss
