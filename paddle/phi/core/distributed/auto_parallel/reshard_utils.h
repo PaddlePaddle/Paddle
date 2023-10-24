@@ -39,7 +39,8 @@ bool NeedComputationClipForPP(const paddle::Tensor& input);
 
 Place GetDefaultPlace();
 
-phi::DeviceContext* GetDistTensorDeviceContext(const paddle::Tensor& input);
+phi::DeviceContext* GetDistTensorDeviceContext(
+    const std::shared_ptr<phi::distributed::DistTensor>& input);
 
 std::shared_ptr<phi::distributed::DistTensor> Reshard(
     const paddle::Tensor& input,

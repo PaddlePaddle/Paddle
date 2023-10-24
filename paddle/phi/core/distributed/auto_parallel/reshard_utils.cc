@@ -149,10 +149,11 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
 // will return true.
 bool NeedComputationClipForPP(const paddle::Tensor& input) {
   return input.is_dist_tensor() &&
-         IsCurRankInMesh(std::static_pointer_cast<phi::distributed::DistTensor>(
-                             input.impl())
-                             ->dist_attr()
-                             .process_mesh());
+         !IsCurRankInMesh(
+             std::static_pointer_cast<phi::distributed::DistTensor>(
+                 input.impl())
+                 ->dist_attr()
+                 .process_mesh());
 }
 
 Place GetDefaultPlace() {
@@ -164,25 +165,11 @@ Place GetDefaultPlace() {
   return paddle::CPUPlace();
 }
 
-phi::DeviceContext* GetDistTensorDeviceContext(const paddle::Tensor& input) {
-  PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The input tensor of ReshardFunction should be "
-                        "``phi::distributed::DistTensor``. "
-                        "However it's %s",
-                        typeid(input.impl().get()).name()));
+phi::DeviceContext* GetDistTensorDeviceContext(
+    const std::shared_ptr<phi::distributed::DistTensor>& input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
-  Place place;
-  auto input_tensor_impl = input.impl();
-  if (input_tensor_impl &&
-      static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get())
-          ->defined()) {
-    place = input.place();
-  } else {
-    place = GetDefaultPlace();
-  }
+  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
 }
 
@@ -190,7 +177,15 @@ phi::DeviceContext* GetDistTensorDeviceContext(const paddle::Tensor& input) {
 std::shared_ptr<phi::distributed::DistTensor> Reshard(
     const paddle::Tensor& input,
     const phi::distributed::TensorDistAttr& dist_attr) {
-  auto dev_ctx = GetDistTensorDeviceContext(input);
+  PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input tensor of ReshardFunction should be "
+                        "``phi::distributed::DistTensor``. "
+                        "However it's %s",
+                        typeid(input.impl().get()).name()));
+  auto dev_ctx = GetDistTensorDeviceContext(
+      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()));
   auto input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {
