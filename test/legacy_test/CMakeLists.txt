@@ -92,14 +92,6 @@ list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_op)
 list(REMOVE_ITEM TEST_OPS test_fused_gemm_epilogue_grad_op)
 list(REMOVE_ITEM TEST_OPS test_fuse_gemm_epilogue_pass)
 
-list(REMOVE_ITEM TEST_OPS test_cuda_graph)
-list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph)
-list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static)
-list(REMOVE_ITEM TEST_OPS test_cuda_graph_partial_graph_static_run)
-list(REMOVE_ITEM TEST_OPS test_cuda_graph_static_mode)
-list(REMOVE_ITEM TEST_OPS test_cuda_graph_static_mode_error)
-list(REMOVE_ITEM TEST_OPS test_cuda_graphed_layer)
-
 if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_c_comm_init_all_op)
   list(REMOVE_ITEM TEST_OPS test_c_embedding_op)
@@ -616,21 +608,6 @@ if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.6))
     FLAGS_cublaslt_exhaustive_search_times=30)
   py_test_modules(test_fuse_gemm_epilogue_pass MODULES
                   test_fuse_gemm_epilogue_pass)
-endif()
-
-if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.0))
-  py_test_modules(test_cuda_graph MODULES test_cuda_graph)
-  py_test_modules(test_cuda_graph_partial_graph MODULES
-                  test_cuda_graph_partial_graph)
-  py_test_modules(test_cuda_graph_partial_graph_static MODULES
-                  test_cuda_graph_partial_graph_static)
-  py_test_modules(test_cuda_graph_partial_graph_static_run MODULES
-                  test_cuda_graph_partial_graph_static_run)
-  py_test_modules(test_cuda_graph_static_mode MODULES
-                  test_cuda_graph_static_mode)
-  py_test_modules(test_cuda_graph_static_mode_error MODULES
-                  test_cuda_graph_static_mode_error)
-  py_test_modules(test_cuda_graphed_layer MODULES test_cuda_graphed_layer)
 endif()
 
 set_tests_properties(test_conv2d_op PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE")
@@ -1283,15 +1260,12 @@ if(WITH_CINN AND WITH_TESTING)
   )
 endif()
 
-if((WITH_GPU) AND (CUDA_VERSION GREATER_EQUAL 11.0))
-  set_tests_properties(
-    test_cuda_graph_static_mode
-    PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
-  set_tests_properties(
-    test_cuda_graph_static_mode_error
-    PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
-endif()
-
+set_tests_properties(
+  test_cuda_graph_static_mode
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
+set_tests_properties(
+  test_cuda_graph_static_mode_error
+  PROPERTIES ENVIRONMENT "FLAGS_CUDA_GRAPH_USE_STANDALONE_EXECUTOR=1")
 # In test_conditional_block, the sub block changes the dtype and place of the output variable.
 # The changed variable is used in the following op. Static build is not supported for this case.
 set_tests_properties(test_conditional_block

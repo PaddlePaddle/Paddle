@@ -22,6 +22,10 @@ from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.device.cuda.graphs import CUDAGraph
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
 class TestCUDAGraphInFirstBatch(unittest.TestCase):
     def setUp(self):
         if can_use_cuda_graph():

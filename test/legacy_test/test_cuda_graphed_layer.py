@@ -53,6 +53,10 @@ class DropoutModel(nn.Layer):
         return x
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
 class TestSimpleModel(unittest.TestCase):
     def train(self, model):
         paddle.seed(seed)
