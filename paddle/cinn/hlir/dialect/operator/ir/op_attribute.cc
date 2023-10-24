@@ -20,7 +20,7 @@ const GroupInfo &GroupInfoAttribute::data() const {
   return storage()->GetAsKey();
 }
 
-const cinn::hlir::framework::newir::CUDAJITInfo &CUDAJITInfoAttribute::data()
+const cinn::hlir::framework::pir::CUDAJITInfo &CUDAJITInfoAttribute::data()
     const {
   return storage()->GetAsKey();
 }

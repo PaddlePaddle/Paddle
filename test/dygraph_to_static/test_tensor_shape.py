@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    ast_only_test,
-    test_and_compare_with_new_ir,
+    compare_legacy_with_pir,
+    test_ast_only,
 )
 
 import paddle
@@ -266,7 +266,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         return self._run(to_static=True)
 
@@ -293,7 +293,7 @@ class TestTensorShapeBasic(Dy2StTestBase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -526,7 +526,7 @@ class TestOpNumBasicWithTensorShape(Dy2StTestBase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -617,7 +617,7 @@ def dyfunc_with_static_convert_var_shape(x):
 
 
 class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
-    @ast_only_test
+    @test_ast_only
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])

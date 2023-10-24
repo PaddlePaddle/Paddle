@@ -96,14 +96,14 @@ class TestDistributedFusedLambWithClip(unittest.TestCase):
         run_test(
             clip_after_allreduce=True,
             max_global_norm=0.01,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_2_new_comm(self):
         run_test(
             clip_after_allreduce=False,
             max_global_norm=0.01,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 
