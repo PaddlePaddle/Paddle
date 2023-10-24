@@ -23,6 +23,12 @@ set(fused_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
+set(cinn_op_yaml_file
+    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated/ops.parsed.yaml)
+
+set(cinn_op_yaml_source_file
+    ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
+
 set(parsed_op_dir
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated)
 
@@ -38,6 +44,12 @@ set(op_creator_file
 set(op_creator_file_tmp ${op_creator_file}.tmp)
 
 set(dialect_name pd_op)
+
+set(cinn_op_creator_file
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/drr/cinn_op_factory_generated.cc)
+set(cinn_op_creator_file_tmp ${cinn_op_creator_file}.tmp)
+
+set(cinn_dialect_name cinn_op)
 
 add_custom_command(
   OUTPUT ${op_creator_file}
@@ -59,7 +71,27 @@ add_custom_command(
           pd_op_dialect_op
   VERBATIM)
 
+if(WITH_CINN AND NOT CINN_ONLY)
+  add_custom_command(
+    OUTPUT ${cinn_op_creator_file}
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${op_creator_gen_file} --op_yaml_files
+      ${cinn_op_yaml_file} --op_compat_yaml_file ${op_compat_yaml_file}
+      --dialect_name ${cinn_dialect_name} --op_creator_file
+      ${cinn_op_creator_file_tmp}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_creator_file_tmp}
+            ${cinn_op_creator_file}
+    COMMENT "copy_if_different ${cinn_op_creator_file}"
+    DEPENDS ${op_creator_gen_file} ${op_compat_yaml_file}
+            ${cinn_op_yaml_source_file} pd_op_dialect_op cinn_op_dialect
+    VERBATIM)
+  set(CINN_SOURCE_FILE ${cinn_op_creator_file})
+
+  set(CINN_DEPS cinn_op_dialect)
+
+endif()
+
 cc_library(
   drr
-  SRCS ${DRR_SRCS} ${op_creator_file}
-  DEPS pd_op_dialect pir)
+  SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
+  DEPS pd_op_dialect ${CINN_DEPS} pir)
