@@ -7,15 +7,13 @@ if(WITH_DISTRIBUTE)
                                 parallel_executor)
 endif()
 
-cc_test_old(
-  pattern_rewrite_test 
-  SRCS pattern_rewrite_test.cc 
-  DEPS ${PATTERN_REWRITE_TEST_DEPS})
+cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
+            ${PATTERN_REWRITE_TEST_DEPS})
 
 cc_test(
   drr_test
   SRCS drr_test.cc
-  DEPS drr gtest pd_op_dialect pir)
+  DEPS drr)
 
 cc_test(
   drr_same_type_binding_test
