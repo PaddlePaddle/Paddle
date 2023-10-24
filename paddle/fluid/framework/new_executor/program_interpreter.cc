@@ -1016,7 +1016,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
-      interpreter::LogDeviceMemoryStats(place_);
+      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
     }
 
     instr_node.RecordEvent(place_);
@@ -1446,7 +1446,7 @@ bool ProgramInterpreter::HasLocalScope() const {
 // miss. When a model is all KQueueAsync type OPs, all OPs will be distributed
 // to the DeviceThread for execution, and the multithreading scheduling will not
 // have any benefits. Therefore, in the dynamic to static, when the number of
-// KQueueAsync Ops is 0, we choose Trace mode.
+// KQueueSync Ops is 0, we choose Trace mode.
 void ProgramInterpreter::TraceInstructionList(
     const std::vector<Instruction>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();

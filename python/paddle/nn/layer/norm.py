@@ -37,7 +37,13 @@ from paddle.device import get_all_custom_device_type
 
 from ...base import dygraph_utils
 from ...base.data_feeder import check_variable_and_dtype
-from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
+from ...framework import (
+    ParamAttr,
+    _global_flags,
+    get_default_dtype,
+    in_dynamic_or_pir_mode,
+    no_grad,
+)
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
@@ -721,46 +727,25 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-            )
-            self.weight.stop_gradient = True
-        else:
+        if weight_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
-                and self._weight_attr.learning_rate == 0.0
-            )
 
-        if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
-                and self._bias_attr.learning_rate == 0.0
-            )
+        else:
+            self.bias = None
 
         moving_mean_name = None
         moving_variance_name = None
@@ -986,10 +971,6 @@ class BatchNorm(Layer):
         self._act = act
         self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
-        assert (
-            bias_attr is not False
-        ), "bias_attr should not be False in batch_norm."
-
         if dtype == "float16":
             self._dtype = "float32"
         else:
@@ -998,25 +979,24 @@ class BatchNorm(Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            default_initializer=Constant(1.0),
-        )
-        self.weight.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
-
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self.bias.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
+        if param_attr is not False:
+            self.weight = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+        else:
+            self.weight = None
+        if bias_attr is not False:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True,
+            )
+        else:
+            self.bias = None
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -1076,7 +1056,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1092,9 +1072,13 @@ class BatchNorm(Layer):
             )
             if self._act is None:
                 return batch_norm_out
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-            )
+            if in_dynamic_mode():
+                return dygraph_utils._append_activation_in_dygraph(
+                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                )
+            else:
+                act_op = getattr(_C_ops, self._act)
+                return act_op(input)
         else:
             # create output
             # mean and mean_out share the same memory
@@ -1600,6 +1584,24 @@ class SyncBatchNorm(_BatchNormBase):
             None,
             name,
         )
+        param_shape = [num_features]
+        if weight_attr is False:
+            self.weight = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+            self.weight.stop_gradient = True
+        if bias_attr is False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+            )
+            self.bias.stop_gradient = True
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:

@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -220,11 +220,10 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
             if base.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        self.set_program()
 
-    def set_program(self):
-        self.program = base.Program()
-        with base.program_guard(self.program):
+    def test_case(self):
+        self.program = paddle.static.Program()
+        with paddle.static.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = paddle.tensor.fill_constant(
@@ -235,8 +234,6 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
-
-    def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = base.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
@@ -260,11 +257,10 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
             if base.is_compiled_with_cuda()
             else base.CPUPlace()
         )
-        self.set_program()
 
-    def set_program(self):
-        self.program = base.Program()
-        with base.program_guard(self.program):
+    def test_case(self):
+        self.program = paddle.static.Program()
+        with paddle.static.program_guard(self.program):
             input = paddle.assign(self.x)
             tensor_array = paddle.tensor.create_array(dtype='float32')
             zero = paddle.tensor.fill_constant(
@@ -275,8 +271,6 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
                 paddle.tensor.array_write(input, zero + i, tensor_array)
 
             self.out_var = paddle.stack(tensor_array, axis=self.axis)
-
-    def test_case(self):
         self.assertTrue(self.out_var.shape[self.axis] == -1)
         exe = base.Executor(self.place)
         res = exe.run(self.program, fetch_list=self.out_var)
@@ -286,8 +280,11 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
 
 
 class API_test(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             data1 = paddle.static.data('data1', shape=[1, 2], dtype='float64')
             data2 = paddle.static.data('data2', shape=[1, 2], dtype='float64')
             data3 = paddle.static.data('data3', shape=[1, 2], dtype='float64')
@@ -308,6 +305,11 @@ class API_test(unittest.TestCase):
         with base.program_guard(base.Program(), base.Program()):
             x = paddle.rand([2, 3])
             self.assertRaises(TypeError, paddle.stack, x)
+
+    def test_pir_single_tensor_error(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.rand([2, 3])
+            self.assertRaises(ValueError, paddle.stack, x)
 
 
 class API_DygraphTest(unittest.TestCase):
@@ -338,9 +340,10 @@ class API_DygraphTest(unittest.TestCase):
 
 
 class TestStackOpWithNegativeShape(unittest.TestCase):
+    @test_with_pir_api
     def test_out(self):
-        main_prg, startup_prg = Program(), Program()
-        with program_guard(main_prg, startup_prg):
+        main_prg, startup_prg = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(main_prg, startup_prg):
             b = paddle.static.data(name='b', shape=[-1], dtype='int64')
             e = paddle.static.data(name='e', shape=[3], dtype='int64')
             k = paddle.stack([b, e], axis=0)
