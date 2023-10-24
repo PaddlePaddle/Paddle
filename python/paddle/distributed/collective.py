@@ -144,6 +144,7 @@ def _new_process_group_impl(
     rank,
     world_size,
     group_name,
+    ranks,
     pg_options,
     group_id=0,
 ):
@@ -158,7 +159,7 @@ def _new_process_group_impl(
         )
     elif backend == "xccl":
         pg = core.ProcessGroupCustom.create(
-            store, genv.device_type, rank, world_size, group_id
+            store, genv.device_type, rank, world_size, group_id, ranks
         )
     elif backend == "bkcl":
         pg = core.ProcessGroupBKCL.create(store, rank, world_size, group_id)
@@ -228,6 +229,7 @@ def new_group(ranks=None, backend=None, timeout=_default_timeout):
                 rank,
                 size,
                 group_name,
+                ranks,
                 pg_options=None,
                 group_id=gid,
             )

@@ -1271,6 +1271,7 @@ void BindDistributed(py::module *m) {
                   py::arg("rank"),
                   py::arg("world_size"),
                   py::arg("group_id") = 0,
+                  py::arg("ranks") = std::vector<int64_t>{0},
                   py::call_guard<py::gil_scoped_release>());
 
 #endif

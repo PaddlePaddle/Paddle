@@ -29,8 +29,29 @@ constexpr int64_t kWaitBlockTImeout = 10;
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
+#define ENUM_TO_STRING(name, ...)                   \
+  inline const char* name##_to_string(name value) { \
+    switch (value) {                                \
+      __VA_ARGS__                                   \
+      default:                                      \
+        return "UNKNOWN";                           \
+    }                                               \
+  }
+#define ENUM_CASE(name, val) \
+  case name::val:            \
+    return #val;
 namespace paddle {
 namespace distributed {
+ENUM_TO_STRING(CommType,
+               ENUM_CASE(CommType, BROADCAST) ENUM_CASE(CommType, ALLREDUCE)
+                   ENUM_CASE(CommType, REDUCE) ENUM_CASE(CommType, ALLGATHER)
+                       ENUM_CASE(CommType, GATHER) ENUM_CASE(CommType, SCATTER)
+                           ENUM_CASE(CommType, REDUCE_SCATTER)
+                               ENUM_CASE(CommType, ALLTOALL)
+                                   ENUM_CASE(CommType, SEND)
+                                       ENUM_CASE(CommType, RECV)
+                                           ENUM_CASE(CommType, BARRIER)
+                                               ENUM_CASE(CommType, UNKNOWN))
 
 using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::GetPointerByOffset;
@@ -115,10 +136,12 @@ ProcessGroupCustom::ProcessGroupCustom(
     const std::string& device_type,
     int rank,
     int size,
-    int gid)
+    int gid,
+    const std::vector<int64_t>& ranks)
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
-      device_type_(device_type) {
+      device_type_(device_type),
+      comm_group_(ranks) {
   comm_type_.resize(9);
 }
 
@@ -163,38 +186,6 @@ phi::ccl::CCLComm ProcessGroupCustom::XCCLComm(const Place& place) const {
   return iter->second->xccl_comm();
 }
 
-void ProcessGroupCustom::BuildCommunicationField(std::vector<Place> places,
-                                                 std::string key,
-                                                 int i,
-                                                 bool use_calc_stream) {
-  comm_group_.resize(size_);
-
-  const auto* calc_ctx = place_to_calc_ctx_.at(key);
-  const auto& comm_ctx = place_to_comm_ctx_.at(key);
-  auto& xccl_stream =
-      use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
-
-  Tensor rank_tensor = paddle::experimental::full({1},
-                                                  places[0].GetDeviceId(),
-                                                  phi::DataType::INT64,
-                                                  phi::CustomPlace(places[i]));
-  Tensor store_tensor = paddle::experimental::empty(
-      IntArray({size_}), phi::DataType::INT64, phi::CustomPlace(places[i]));
-
-  auto p_out_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(store_tensor.impl());
-  auto* out_dense = p_out_tensor.get();
-  auto p_in_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(rank_tensor.impl());
-  auto in_dense = *p_in_tensor;
-
-  auto comm_context = this->GetCommContext();
-  comm_context->AllGather(out_dense, in_dense, xccl_stream);
-
-  const auto* dev_ctx_cus =
-      platform::DeviceContextPool::Instance().Get(phi::CustomPlace(places[i]));
-  framework::TensorToVector<int64_t>(*out_dense, *dev_ctx_cus, &comm_group_);
-}
 // create CustomCCLManager cache for places_key
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
@@ -637,15 +628,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
   auto& xccl_stream =
       use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
 
-  std::string event_name;
-  if (comm_group_.empty() && device_type_.find("swai") != std::string::npos) {
-    BuildCommunicationField({place}, key, /*i*/ 0, use_calc_stream);
-    event_name = "first_all_gather";
-  } else {
-    event_name =
-        PROFILER_PERFIX +
-        static_cast<std::string>(CommType_Name[static_cast<int>(comm_type)]);
-  }
+  std::string event_name =
+      std::string(PROFILER_PERFIX) + CommType_to_string(comm_type);
   platform::RecordEvent record_event(
       event_name, platform::TracerEventType::Communication, 1);
   const std::vector<int64_t> size_vec{tensor.numel()};
@@ -780,25 +764,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
   auto task = CreateTask(places, rank_, op_type, inputs);
 
   // construct uninitialize guard for device
+  std::string event_name =
+      std::string(PROFILER_PERFIX) + CommType_to_string(op_type);
   {
     GroupStart(device_type_);
-    std::string event_name;
     for (size_t i = 0; i < inputs.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
       const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
-      if (comm_group_.empty() &&
-          device_type_.find("swai") != std::string::npos) {
-        BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
-        event_name = "first_all_gather";
-      } else {
-        event_name = PROFILER_PERFIX +
-                     std::string(CommType_Name[static_cast<int>(op_type)]);
-      }
       platform::RecordEvent record_event(
           event_name, platform::TracerEventType::Communication, 1);
       const std::vector<int64_t> size_vec{inputs[i].numel()};
       const std::vector<int64_t> dtype_vec{static_cast<int>(inputs[i].dtype())};
-
       std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
           comm_groups{
               {"size", {size_vec}},
@@ -853,20 +829,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
   auto task = CreateTask(places, rank_, op_type, tensors);
 
   // construct uninitialize guard for device
-
+  std::string event_name =
+      std::string(PROFILER_PERFIX) + CommType_to_string(op_type);
   {
     GroupStart(device_type_);
-    std::string event_name;
     for (size_t i = 0; i < tensors.size(); ++i) {
       phi::DeviceGuard guard(places[i]);
-      if (comm_group_.empty() &&
-          device_type_.find("swai") != std::string::npos) {
-        BuildCommunicationField(places, key, i, /*use_calc_stream*/ false);
-        event_name = "first_all_gather";
-      } else {
-        event_name = PROFILER_PERFIX +
-                     std::string(CommType_Name[static_cast<int>(op_type)]);
-      }
       const auto& xccl_stream = *places_to_ctx_.at(key)[i]->GetStream();
       platform::RecordEvent record_event(
           event_name, platform::TracerEventType::Communication, 1);
@@ -1173,9 +1141,10 @@ ProcessGroupCustom::CreateProcessGroupCustom(
     const std::string& device_type,
     int rank,
     int size,
-    int gid) {
-  auto process_group =
-      std::make_shared<ProcessGroupCustom>(store, device_type, rank, size, gid);
+    int gid,
+    const std::vector<int64_t>& ranks) {
+  auto process_group = std::make_shared<ProcessGroupCustom>(
+      store, device_type, rank, size, gid, ranks);
   ProcessGroupIdMap::GetInstance().emplace(gid, process_group);
   return process_group;
 }

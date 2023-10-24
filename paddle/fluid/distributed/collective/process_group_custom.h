@@ -83,13 +83,15 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       const std::string& device_type,
       int rank,
       int size,
-      int gid);
+      int gid,
+      const std::vector<int64_t>& ranks = {0});
 
   ProcessGroupCustom(const std::shared_ptr<phi::distributed::Store>& store,
                      const std::string& device_type,
                      int rank,
                      int size,
-                     int gid);
+                     int gid,
+                     const std::vector<int64_t>& ranks);
 
   std::string GetBackendName() const override { return "XCCL"; }
 
