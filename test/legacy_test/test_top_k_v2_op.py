@@ -472,10 +472,10 @@ class TestTopKAPI(unittest.TestCase):
     def test_errors(self):
         with paddle.base.dygraph.guard():
             x = paddle.to_tensor([1, 2, 3])
-            with self.assertRaises(BaseException):
+            with self.assertRaises(ValueError):
                 paddle.topk(x, k=-1)
 
-            with self.assertRaises(BaseException):
+            with self.assertRaises(ValueError):
                 paddle.topk(x, k=0)
 
 

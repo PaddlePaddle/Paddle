@@ -30,6 +30,7 @@ import opcode
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
+    ENV_MIN_GRAPH_SIZE,
     BreakGraphError,
     FallbackError,
     InnerError,
@@ -37,7 +38,6 @@ from ...utils import (
     SotUndefinedVar,
     log,
     log_do,
-    min_graph_size,
 )
 from ..custom_code import CustomCode
 from ..instruction_utils import (
@@ -1701,7 +1701,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # stopped by RETURN_VALUE and has sir len is enough => disable_eval_frame
         simulate_complete = bool(self.stop_state == "Return")
         if simulate_complete:
-            if self._graph.sir_ctx.TOS.graph_size() < min_graph_size():
+            if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
                 raise FallbackError(
                     "Fallback after simulate for reasons.",
                     disable_eval_frame=True,
