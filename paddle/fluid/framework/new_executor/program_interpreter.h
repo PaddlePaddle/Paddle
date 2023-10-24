@@ -49,8 +49,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
                                    bool need_fetch = true) override;
 
   void RunProfile(const std::vector<std::string>& feed_names) override;
-  void RunProfileImpl();
-  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
 
   void Build(
       const std::vector<std::string>& feed_names,
@@ -131,8 +129,15 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void RunNextInstructions(const Instruction& instr_id,
                            SchedulingQueue* reserved_next_ops);
   void RunOperator(const Instruction& instr_node);
+
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
+
+  // profiling
+  void RunProfileImpl();
+  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
+  void ProfileInstruction(const Instruction& instr_node);
+  void ProfileOperator(const Instruction& instr_node);
 
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,

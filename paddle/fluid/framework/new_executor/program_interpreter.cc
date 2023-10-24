@@ -245,12 +245,9 @@ void ProgramInterpreter::ProfileInstructionList(
     VLOG(4) << "No op to run, return";
     return;
   }
-
   exception_holder_.Clear();
-
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
-      // NOTE(zhiqiu): hot fix for jit input var
       RecordMemcpyD2H(vec_instr.at(i));
     }
   }
@@ -264,46 +261,14 @@ void ProgramInterpreter::ProfileInstructionList(
 
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto& instr = vec_instruction_[trace_execute_order_[idx]];
-    VLOG(4) << "** Profiling op: [id=" << instr.Id()
-            << ",name=" << instr.OpBase()->Type() << "]";
-
     OperatorBase* op_base = instr.OpBase();
 
-    std::string op_ident_name_for_prof =
-        std::string("op:") + std::to_string(trace_execute_order_[idx]) + "," +
-        op_base->Type();
-    double dt_us = -1.0;
+    VLOG(4) << "** Profile instruction " << idx;
 
     if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
       // if this instruction supports runtime profiling and op_base ID is
       // correctly set, then run op profiling
-
-      // step 1: prepare
-      OpDesc* op_desc = block_.Op(op_base->Id());
-      VLOG(4) << "** op_desc type: " << op_desc->Type();
-      OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
-      OpFuncType op_func_type = instr.KernelType();
-      bool require_sync = false;
-      if (!platform::is_cpu_place(place_)) {
-        if (op_func_type == OpFuncType::kGpuAsync ||
-            op_func_type == OpFuncType::kGpuSync) {
-          require_sync = true;
-        }
-      }
-
-      // step 2: start run
-      if (require_sync) SyncDevice();
-      timer.Start();
-      RunInstruction(instr);
-      timer.Pause();
-      if (require_sync) SyncDevice();
-
-      // step 3: record run time to operator dist attr
-      dt_us = timer.ElapsedUS();
-      op_dist_attr->set_run_time_us(dt_us);
-      VLOG(4) << "** op "
-              << "[" << instr.Id() << "," << instr.OpBase()->Type() << "]"
-              << " run time: " << int(op_dist_attr->run_time_us()) << " us.";
+      ProfileInstruction(instr);
     } else {
       // don't need profiling
       RunInstruction(instr);
@@ -325,6 +290,214 @@ void ProgramInterpreter::ProfileInstructionList(
             "main_thread_blocker_.Clear() return -1, clear failed"));
     VLOG(4) << "clear ok";
     exception_holder_.ReThrow();
+  }
+}
+
+void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
+  auto* op = instr_node.OpBase();
+
+  SetDeviceId(instr_node.DeviceContext().GetPlace());
+
+  try {
+    instr_node.WaitEvent(place_);
+    if (!instr_node.IsArtificial()) {
+      ProfileOperator(instr_node);
+      CheckGC(instr_node);
+      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+    }
+    instr_node.RecordEvent(place_);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(ex));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
+void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
+  auto* op = instr_node.OpBase();
+  auto place = instr_node.DeviceContext().GetPlace();
+  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
+                                       : var_scope_.GetMutableScope();
+
+  auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
+  {
+    // If it is OperatorBase, InferShape do nothing.
+    if (op_with_kernel != nullptr) {
+      platform::RecordEvent infershape_event(
+          "infer_shape",
+          platform::TracerEventType::OperatorInner,
+          1,
+          platform::EventRole::kInnerOp);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
+      infershape_event.End();
+      platform::RecordOpInfoSupplement(op->Type(),
+                                       op->Attrs(),
+                                       *(instr_node.InnerInferShapeContext()),
+                                       *(instr_node.InnerRuntimeContext()),
+                                       op->Id());
+    }
+  }
+  if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.InplaceInfo()) {
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
+  }
+
+  // before profiling, do some preparations
+  platform::Timer timer;
+
+  auto SyncDevice = []() {
+  // implement device sync for different platforms here (hip, cuda, ...)
+#if defined(PADDLE_WITH_CUDA)
+    platform::GpuDeviceSync();
+#else
+#error "Unsupported platform, cannot find a proper way to sync device."
+#endif
+  };
+
+  // step 1: prepare
+  OpDesc* op_desc = block_.Op(op->Id());
+  VLOG(4) << "** op_desc type: " << op_desc->Type();
+  OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
+  OpFuncType op_func_type = instr_node.KernelType();
+  bool require_sync = false;
+  if (!platform::is_cpu_place(place_)) {
+    if (op_func_type == OpFuncType::kGpuAsync ||
+        op_func_type == OpFuncType::kGpuSync) {
+      require_sync = true;
+    }
+  }
+  double op_runtime_us = -1.0;
+  VLOG(4) << "** Profiling instruction: [id=" << instr_node.Id()
+          << ",name=" << instr_node.OpBase()->Type() << "]";
+
+  {
+    // compute
+    if (op_with_kernel == nullptr) {  // operator base
+      if (require_sync) SyncDevice();
+      timer.Start();
+      instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
+      timer.Pause();
+      if (require_sync) SyncDevice();
+      op_runtime_us = timer.ElapsedUS();
+
+    } else {
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
+
+          if (require_sync) SyncDevice();
+          timer.Start();
+          (*kernel)(&phi_kernel_context);  // op run case 2
+          timer.Pause();
+          if (require_sync) SyncDevice();
+          op_runtime_us = timer.ElapsedUS();
+
+        } else {
+          if (require_sync) SyncDevice();
+          timer.Start();
+          (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
+          timer.Pause();
+          if (require_sync) SyncDevice();
+          op_runtime_us = timer.ElapsedUS();
+        }
+      } else {  // fluid kernel
+        if (require_sync) SyncDevice();
+        timer.Start();
+        instr_node.KernelFunc()(
+            *instr_node.InnerExecutionContext().get());  // op run case 4
+        timer.Pause();
+        if (require_sync) SyncDevice();
+        op_runtime_us = timer.ElapsedUS();
+      }
+    }
+  }
+
+  op_dist_attr->set_run_time_us(op_runtime_us);
+  VLOG(4) << "** instruction "
+          << "[" << instr_node.Id() << "," << instr_node.OpBase()->Type() << "]"
+          << " run time: " << int(op_dist_attr->run_time_us()) << " us.";
+
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    // NOTE(zhiqiu): same logic as TransferInplaceVarsBack() in operator.cc
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          var_scope_.VarRef(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          var_scope_.VarRef(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+    }
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    instr_node.DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+#endif
+  }
+
+  for (auto& hook : hookfuncs_) {
+    hook(op, local_scope);
+  }
+
+  // for debug nan/inf
+  if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
+    VLOG(4) << "Check nan/inf";
+    try {
+      framework::details::CheckOpHasNanOrInf(
+          *op,
+          *local_scope,
+          place);  // TODO(xiongkun03) change it to inner scope.
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = op->Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::cout << sout.str() << std::endl;
+      std::rethrow_exception(std::current_exception());
+    }
   }
 }
 
