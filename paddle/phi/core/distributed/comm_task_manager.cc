@@ -112,9 +112,9 @@ void CommTaskManager::CommTaskLoop() {
         iter = comm_task_list_.erase(iter);
       } else {
         if (task->IsStarted() && task->IsCompleted()) {
-            iter = comm_task_list_.erase(iter);
+          iter = comm_task_list_.erase(iter);
         } else {
-            ++iter;
+          ++iter;
         }
       }
     }

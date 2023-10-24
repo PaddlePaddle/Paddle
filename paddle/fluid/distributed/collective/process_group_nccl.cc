@@ -115,9 +115,9 @@ ProcessGroupNCCL::ProcessGroupNCCL(
   LOG(INFO) << "ProcessGroupNCCL pg_timeout_ " << pg_timeout_;
 }
 ProcessGroupNCCL::~ProcessGroupNCCL() {
-    LOG(INFO) << "ProcessGroupNCCL destruct ";
-    auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
-    comm_task_manager.Stop();
+  LOG(INFO) << "ProcessGroupNCCL destruct ";
+  auto& comm_task_manager = phi::distributed::CommTaskManager::GetInstance();
+  comm_task_manager.Stop();
 }
 
 void ProcessGroupNCCL::GroupStart() {
