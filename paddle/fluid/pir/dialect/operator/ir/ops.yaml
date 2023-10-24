@@ -189,6 +189,7 @@
   kernel:
     func: shuffle_batch
     param: [x, seed, startup_seed]
+  inplace: (seed -> seed_out)
 
 - op : write_to_array
   args : (Tensor i, Tensor x)

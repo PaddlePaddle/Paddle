@@ -82,6 +82,7 @@ class TestWhileOp(unittest.TestCase):
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
+    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array, support while_grad).
     def test_simple_net(self):
         main_program = base.Program()
         startup_program = base.Program()
@@ -103,14 +104,13 @@ class TestWhileOp(unittest.TestCase):
             )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
-    @test_and_compare_with_new_ir()
+    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array)
     def test_simple_net_forward(self):
         main_program = base.Program()
         startup_program = base.Program()
         with base.program_guard(main_program, startup_program):
             self.simple_net()
             binary = base.compiler.CompiledProgram(main_program)
-            print("main_program:\n", main_program, flush=True)
             cpu = core.CPUPlace()
             exe = Executor(cpu)
             d = []
@@ -121,6 +121,7 @@ class TestWhileOp(unittest.TestCase):
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
+    @test_and_compare_with_new_ir()
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -135,6 +136,7 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
+    @test_and_compare_with_new_ir()
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -146,7 +148,7 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
-    @test_and_compare_with_new_ir()
+    # @test_and_compare_with_new_ir()
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten
@@ -196,6 +198,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
+    @test_and_compare_with_new_ir()
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.

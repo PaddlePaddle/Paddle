@@ -63,7 +63,6 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(dynamic_static_unified_comm);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 
@@ -742,7 +741,7 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 // TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
 // To support all the operators for communicating in the future.
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  if (instr->Name() == "send_v2") {
+  if (instr->Name() == "pd_op.send_v2") {
     ::pir::Operation* op = instr->Operation();
     if (op->HasAttribute("use_calc_stream") &&
         op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
