@@ -29,6 +29,7 @@ from ...profiler import EventGuard, event_register
 from ...symbolic.statement_ir import Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
+    ENV_SHOW_TRACKERS,
     NameGenerator,
     OrderedSet,
     inner_error_default_handler,
@@ -37,7 +38,6 @@ from ...utils import (
     log,
     log_do,
     map_if,
-    show_trackers,
     tmp_name_guard,
 )
 from .guard import Guard, StringifyExpression, make_guard
@@ -341,7 +341,7 @@ class FunctionGraph:
         self.restore_side_effects(self.side_effects.proxy_variables)
         self.pycode_gen.gen_enable_eval_frame()
 
-        tracker_output_path = show_trackers()
+        tracker_output_path = ENV_SHOW_TRACKERS.get()
         if tracker_output_path:
             from .tracker_viewer import view_tracker
 
