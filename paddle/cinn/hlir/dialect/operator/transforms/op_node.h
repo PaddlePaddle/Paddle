@@ -137,10 +137,10 @@ class OpNode {
   const OutputTensorListView& outputs() const { return output_tensors_; }
 
   template <typename T>
-  const T& GetAttr(const std::string& attr_name) const {
+  T GetAttr(const std::string& attr_name) const {
     auto attr =
         paddle::dialect::GetAttributeData(node_->attributes().at(attr_name));
-    return PADDLE_GET_CONST(T, attr);
+    return paddle::get<T>(attr);
   }
 
  private:

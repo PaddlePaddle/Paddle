@@ -388,7 +388,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseBroadcast(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+  return ReduceFuseReduce1(src, dst);
 }
 
 template <typename FusePassCtxT>
