@@ -55,8 +55,9 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
       // 9. Reshard Partial Output to Replicated (Temporary){}\n
-    }}
-    // 10. Return
+    }}\n
+    // 10. Set Output Dist Attr For Default Impl{}\n
+    // 11. Return
     {}
   }}
 """
@@ -216,16 +217,6 @@ VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE = """
 INFER_GLOBAL_SHAPE_TEMPLATE = """
     phi::{}({}{});
 """
-# Dist Branch will not generated in the API that doesn't have input tensor.
-CURRENT_PROCESS_MESH_TEMPLATE = """
-    auto current_process_mesh = spmd_info.first[0].process_mesh();"""
-SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
-    SetReplicatedDistAttrForOutput({}, current_process_mesh);"""
-SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
-    for (size_t i = 0; i < {name}.size(); ++i) {{
-        SetReplicatedDistAttrForOutput({name}[i], current_process_mesh);
-    }}
-"""
 
 # 4. Select Kernel
 KERNEL_SELECTION_TEMPLATE = """
@@ -269,7 +260,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
 """
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
       dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
-      paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
+      paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>((*dist_input_{name})->value()) : paddle::none;
 """
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
       auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
@@ -361,8 +352,21 @@ RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
       ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
 UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
-      // API `{}` does not need to support ReshardOutput now
+      // API `{}` does not need to support ReshardOutput now."""
+
+# 10. Set Output DistAttr for Default impl
+# Dist Branch will not generated in the API that doesn't have input tensor.
+CURRENT_PROCESS_MESH_TEMPLATE = """
+    auto current_process_mesh = spmd_info.first[0].process_mesh();"""
+SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
+    SetReplicatedDistAttrForOutput({}, current_process_mesh);"""
+SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
+    for (size_t i = 0; i < {name}.size(); ++i) {{
+        SetReplicatedDistAttrForOutput({name}[i], current_process_mesh);
+    }}
 """
+NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE = """
+    // API `{}` does not need to set DistAttr for output."""
 
 # BaseAPI members:
 # inputs:
@@ -950,21 +954,12 @@ class DistForwardAPI(ForwardAPI):
         # 3. get meta tensor output args
         output_decl_code = ""
         output_args_code = ""
-        set_out_dist_attr_code = ""
-        if self.generate_general_infer_spmd is True:
-            set_out_dist_attr_code += CURRENT_PROCESS_MESH_TEMPLATE
         for i, out_name in enumerate(self.dist_output_args):
             if self.outputs['types'][i] == 'std::vector<Tensor>':
                 output_decl_code += VECTOR_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     name=out_name
                 )
                 output_args_code += f"{out_name}_meta_ptr_vec, "
-                if self.generate_general_infer_spmd is True:
-                    set_out_dist_attr_code += (
-                        SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
-                            name=out_name
-                        )
-                    )
             else:
                 output_decl_code += SINGLE_GLOBAL_META_OUT_DECL_TEMPLATE.format(
                     out_name, out_name
@@ -975,12 +970,6 @@ class DistForwardAPI(ForwardAPI):
                     output_args_code += (
                         f"{out_name} ? &meta_{out_name} : nullptr, "
                     )
-                if self.generate_general_infer_spmd is True:
-                    set_out_dist_attr_code += (
-                        SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
-                            out_name
-                        )
-                    )
         output_args_code = output_args_code[:-2]
 
         return (
@@ -989,7 +978,6 @@ class DistForwardAPI(ForwardAPI):
             + INFER_GLOBAL_SHAPE_TEMPLATE.format(
                 infer_meta_func_code, input_args_code, output_args_code
             )
-            + set_out_dist_attr_code
         )
 
     def generate_kernel_selection_code(self) -> str:
@@ -1380,6 +1368,29 @@ class DistForwardAPI(ForwardAPI):
 
         return reshard_p2r_code
 
+    def generate_output_dist_attr_setting(self) -> str:
+        set_out_dist_attr_code = ""
+        if self.generate_general_infer_spmd is True:
+            set_out_dist_attr_code += CURRENT_PROCESS_MESH_TEMPLATE
+            for i, out_name in enumerate(self.dist_output_args):
+                if self.outputs['types'][i] == 'std::vector<Tensor>':
+                    set_out_dist_attr_code += (
+                        SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
+                            name=out_name
+                        )
+                    )
+                else:
+                    set_out_dist_attr_code += (
+                        SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE.format(
+                            out_name
+                        )
+                    )
+        else:
+            set_out_dist_attr_code = (
+                NONEED_TO_SET_DIST_ATTR_COMMENT_TEMPLATE.format(self.api)
+            )
+        return set_out_dist_attr_code
+
     def generate_return_code(self) -> str:
         return self.gene_return_code()
 
@@ -1397,6 +1408,7 @@ class DistForwardAPI(ForwardAPI):
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
             self.generate_reshard_partial_out_to_replicated_code(),
+            self.generate_output_dist_attr_setting(),
             self.generate_return_code(),
         )
 

@@ -186,7 +186,7 @@ ReshardApiInputToReplicatedKernelInput(
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
 
-paddle::optional<phi::distributed::DistTensor>
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<Tensor>& tensor,
@@ -206,8 +206,10 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
     const TransformFlag& transform_flag,
     bool is_stride_kernel);
 
-paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const paddle::optional<phi::distributed::DistTensor>& input,
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(
+    const paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>&
+        input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel);

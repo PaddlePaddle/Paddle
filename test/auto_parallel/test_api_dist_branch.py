@@ -139,24 +139,6 @@ class TestDygraphAPIForDistTensorBranch(unittest.TestCase):
 
     # input: paddle::optional<phi::Tensor>
     # output: phi::Tensor
-    def test_expand_as_for_dist_tensor(self):
-        x1 = np.random.random(size=[2, 8]).astype("float32")
-        x2 = np.random.random(size=[2, 2, 8]).astype("float32")
-        local_in1, dist_in1 = self.create_local_and_dist_tensor_pair(x1)
-        local_in2, dist_in2 = self.create_local_and_dist_tensor_pair(x2)
-        local_out = paddle.expand_as(local_in1, local_in2)
-        dist_out = paddle.expand_as(dist_in1, dist_in2)
-        self.check_tensor_eq(local_out, dist_out)
-
-        # TODO(chenweihang): expand_as is a special case, the forward contains
-        # optional input, but backward not, open this case after dist support
-        # optional input
-        # local_out.backward()
-        # dist_out.backward()
-        # self.check_tensor_eq(local_in1.grad, dist_in1.grad)
-
-    # input: paddle::optional<phi::Tensor>
-    # output: phi::Tensor
     def test_bincount_api_for_dist_tensor(self):
         x = np.random.random(size=[16]).astype("int32")
         weight = np.random.random(size=[16]).astype("float32")

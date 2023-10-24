@@ -661,14 +661,15 @@ ReshardApiInputToReplicatedKernelInput(
   return nullptr;
 }
 
-paddle::optional<phi::distributed::DistTensor>
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<Tensor>& tensor,
     const phi::distributed::TensorDistAttr& dist_attr) {
   if (tensor) {
-    return {
-        *ReshardApiInputToReplicatedKernelInput(dev_ctx, *tensor, dist_attr)};
+    VLOG(6) << "Optional ApiIn to Replicated KernelIn.";
+    return paddle::make_optional<std::shared_ptr<phi::distributed::DistTensor>>(
+        ReshardApiInputToReplicatedKernelInput(dev_ctx, *tensor, dist_attr));
   }
   return paddle::none;
 }
@@ -752,35 +753,19 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
   return nullptr;
 }
 
-paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const paddle::optional<phi::distributed::DistTensor>& input,
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(
+    const paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>&
+        input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
   if (input) {
-    const phi::distributed::DistTensor& dist_tensor = *input;
-    const phi::DenseTensor& dense_tensor = dist_tensor.value();
-    if (!transform_flag.NeedTransform() || !dense_tensor.initialized() ||
-        (!NeedTransformPlace(
-             dense_tensor.place(), target_args_def.backend, transform_flag) &&
-         !NeedTransformDataType(
-             dense_tensor.dtype(), target_args_def.dtype, transform_flag) &&
-         !NeedTransformLayout(dense_tensor.layout(),
-                              target_args_def.layout,
-                              dense_tensor.place(),
-                              transform_flag) &&
-         !NeedTransform2Contiguous(is_stride_kernel,
-                                   dense_tensor.meta().is_contiguous()))) {
-      return input;
-    }
     VLOG(6) << "PrepareDataForDistTensor for optional return transformed dist "
                "tensor";
-    phi::distributed::DistTensor dist_out(dist_tensor.dims(),
-                                          dist_tensor.dist_attr());
-    auto* out = dist_out.unsafe_mutable_value();
-    *out = TransformData(
-        dense_tensor, target_args_def, transform_flag, is_stride_kernel);
-    return paddle::make_optional<phi::distributed::DistTensor>(dist_out);
+    return paddle::make_optional<std::shared_ptr<phi::distributed::DistTensor>>(
+        PrepareDataForDistTensor(
+            *input, target_args_def, transform_flag, is_stride_kernel));
   }
   return paddle::none;
 }

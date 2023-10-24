@@ -271,6 +271,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
             self.generate_infer_meta_code(),
             self.generate_kernel_call_code(),
             self.generate_reshard_output_code(),
+            self.generate_output_dist_attr_setting(),
             self.generate_return_code(),
         )
 
