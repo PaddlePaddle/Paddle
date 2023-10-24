@@ -261,14 +261,16 @@ def monkey_patch_opresult():
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_opresult = paddle.fill_constant(
-                            self.shape,
-                            lhs_dtype,
-                            other_var,
+                        other_var_opresult = (
+                            paddle.tensor.creation.fill_constant(
+                                self.shape,
+                                lhs_dtype,
+                                other_var,
+                            )
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_opresult = paddle.fill_constant(
+                    other_var_opresult = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
@@ -389,6 +391,33 @@ def monkey_patch_opresult():
         (
             '__matmul__',
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
+        ),
+        #  for logical compare
+        (
+            '__eq__',
+            _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        ),
+        (
+            '__ne__',
+            _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),
+        ),
+        (
+            '__lt__',
+            _binary_creator_('__lt__', paddle.tensor.less_than, False, None),
+        ),
+        (
+            '__le__',
+            _binary_creator_('__le__', paddle.tensor.less_equal, False, None),
+        ),
+        (
+            '__gt__',
+            _binary_creator_('__gt__', paddle.tensor.greater_than, False, None),
+        ),
+        (
+            '__ge__',
+            _binary_creator_(
+                '__ge__', paddle.tensor.greater_equal, False, None
+            ),
         ),
     ]
 
