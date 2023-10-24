@@ -19,8 +19,8 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    ast_only_test,
-    test_and_compare_with_new_ir,
+    test_ast_only,
+    test_legacy_and_pir,
 )
 from test_basic_api_transformation import dyfunc_to_variable
 
@@ -124,8 +124,8 @@ class TestInputSpec(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_and_compare_with_new_ir(False)
-    @ast_only_test
+    @test_legacy_and_pir
+    @test_ast_only
     def test_with_input_spec(self):
         with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -186,7 +186,7 @@ class TestInputSpec(Dy2StTestBase):
                 )
                 net.add_func(x, y)
 
-    @ast_only_test
+    @test_ast_only
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
             x = to_variable(np.ones([4, 10]).astype('float32'))
@@ -226,8 +226,8 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
     def setUp(self):
         paddle.jit.enable_to_static(True)
 
-    @test_and_compare_with_new_ir(False)
-    @ast_only_test
+    @test_legacy_and_pir
+    @test_ast_only
     def test_with_different_input(self):
         with base.dygraph.guard(base.CPUPlace()):
             x_data = np.ones([16, 10]).astype('float32')
@@ -273,7 +273,7 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
             recent_program = foo.program_cache.last()
             self.assertTrue(first_program == recent_program)
 
-    @ast_only_test
+    @test_ast_only
     def test_get_concrete_program(self):
         foo = to_static(foo_func)
 
@@ -314,8 +314,8 @@ class TestDifferentInputSpecCacheProgram(Dy2StTestBase):
                 InputSpec([10]), InputSpec([10]), e=4
             )
 
-    @test_and_compare_with_new_ir(False)
-    @ast_only_test
+    @test_legacy_and_pir
+    @test_ast_only
     def test_concrete_program(self):
         with base.dygraph.guard(base.CPUPlace()):
             # usage 1
@@ -364,7 +364,7 @@ class TestInputDefaultName(Dy2StTestBase):
 
 
 class TestDeclarativeAPI(Dy2StTestBase):
-    @ast_only_test
+    @test_ast_only
     def test_error(self):
         func = to_static(dyfunc_to_variable)
 
@@ -388,15 +388,15 @@ class TestDecorateModelDirectly(Dy2StTestBase):
         paddle.jit.enable_to_static(True)
         self.x = to_variable(np.ones([4, 10]).astype('float32'))
 
-    @test_and_compare_with_new_ir(False)
-    @ast_only_test
+    @test_legacy_and_pir
+    @test_ast_only
     def test_fake_input(self):
         net = SimpleNet()
         net = to_static(net)
         y = net(self.x)
         self.assertTrue(len(net.forward.program_cache) == 1)
 
-    @ast_only_test
+    @test_ast_only
     def test_input_spec(self):
         net = SimpleNet()
         net = to_static(net, input_spec=[InputSpec([None, 8, 10])])
@@ -454,7 +454,7 @@ class CallNonForwardFuncSubNet(paddle.nn.Layer):
 
 
 class TestCallNonForwardFunc(Dy2StTestBase):
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_call_non_forward(self):
         paddle.disable_static()
         net = CallNonForwardFuncNet()
@@ -494,7 +494,7 @@ class TestSetBuffers(Dy2StTestBase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_set_buffers1(self):
         paddle.disable_static()
         net = SetBuffersNet1()
@@ -503,7 +503,7 @@ class TestSetBuffers(Dy2StTestBase):
         paddle.jit.save(net, self.model_path)
         paddle.enable_static()
 
-    @ast_only_test
+    @test_ast_only
     def test_set_buffers2(self):
         paddle.disable_static()
         net = SetBuffersNet2()
