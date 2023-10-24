@@ -14,6 +14,7 @@
 
 import sys
 import unittest
+
 sys.path.append("../legacy_test")
 import numpy as np
 from op_test import OpTest, OpTestTool

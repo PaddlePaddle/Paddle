@@ -228,6 +228,9 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Erase MKLDNN fc passes.
   void EraseFcMkldnnPasses();
 
+  /// \brief Erase MKLDNN fc_elementise_add passes.
+  void EraseFcAddMkldnnPasses();
+
   /// \cond Protected
   bool use_mkldnn_quantizer_{false};
   bool use_mkldnn_bfloat16_{false};
