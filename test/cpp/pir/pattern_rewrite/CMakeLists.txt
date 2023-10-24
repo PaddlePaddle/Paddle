@@ -33,6 +33,3 @@ cc_test(
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT
                                   "FLAGS_enable_new_ir_in_executor=true")
-# set_source_files_properties(
-#   pattern_rewrite_test PROPERTIES ENVIRONMENT
-#                                      "FLAGS_enable_new_ir_in_executor=true")
