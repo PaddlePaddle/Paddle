@@ -143,36 +143,34 @@ class TestAccuracyOpError(unittest.TestCase):
 
 
 class TestAccuracyAPI1(unittest.TestCase):
-    def setUp(self):
-        with paddle_static_guard():
-            self.predictions = paddle.static.data(
-                shape=[2, 5], name="predictions", dtype="float32"
-            )
-            self.label = paddle.static.data(
-                shape=[2, 1], name="labels", dtype="int64"
-            )
-            self.result = paddle.static.accuracy(
-                input=self.predictions, label=self.label, k=1
-            )
-            self.input_predictions = np.array(
-                [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
-                dtype="float32",
-            )
-            self.input_labels = np.array([[2], [0]], dtype="int64")
-            self.expect_value = np.array([0.5], dtype='float32')
-
     @test_with_pir_api
     def test_api(self):
         with paddle_static_guard():
-            exe = paddle.static.Executor()
-            (result,) = exe.run(
-                feed={
-                    "predictions": self.input_predictions,
-                    'labels': self.input_labels,
-                },
-                fetch_list=[self.result.name],
-            )
-            self.assertEqual((result == self.expect_value).all(), True)
+            with paddle.static.program_guard(paddle.static.Program()):
+                self.predictions = paddle.static.data(
+                    shape=[2, 5], name="predictions", dtype="float32"
+                )
+                self.label = paddle.static.data(
+                    shape=[2, 1], name="labels", dtype="int64"
+                )
+                self.result = paddle.static.accuracy(
+                    input=self.predictions, label=self.label, k=1
+                )
+                self.input_predictions = np.array(
+                    [[0.2, 0.1, 0.4, 0.1, 0.1], [0.2, 0.3, 0.1, 0.15, 0.25]],
+                    dtype="float32",
+                )
+                self.input_labels = np.array([[2], [0]], dtype="int64")
+                self.expect_value = np.array([0.5], dtype='float32')
+                exe = paddle.static.Executor()
+                (result,) = exe.run(
+                    feed={
+                        "predictions": self.input_predictions,
+                        'labels': self.input_labels,
+                    },
+                    fetch_list=[self.result],
+                )
+                self.assertEqual((result == self.expect_value).all(), True)
 
 
 class TestAccuracyAPI2(unittest.TestCase):
