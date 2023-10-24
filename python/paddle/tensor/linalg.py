@@ -2801,9 +2801,9 @@ def eigh(x, UPLO='L', name=None):
     Returns:
         2-element tuple containing
 
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
+        - out_value(Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
           The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
+        - out_vector(Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32, float64,
           complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
