@@ -205,7 +205,7 @@ class StaticCode2:
 
 
 class NetWithError(paddle.nn.Layer):
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
@@ -263,7 +263,7 @@ class SwitchModeNet(paddle.nn.Layer):
         return True
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def switch_mode_function():
     return True
 

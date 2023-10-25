@@ -110,6 +110,8 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << "(Int64)" << i.data();
+  } else if (auto i = attr.dyn_cast<IndexAttribute>()) {
+    os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {

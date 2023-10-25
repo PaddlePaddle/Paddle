@@ -1583,8 +1583,6 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

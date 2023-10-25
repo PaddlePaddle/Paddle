@@ -18,14 +18,16 @@ from collections.abc import Sequence
 from uuid import uuid4
 from weakref import WeakKeyDictionary
 
+import numpy as np
+
 import paddle
+from paddle.pir.core import convert_np_dtype_to_dtype_
 
 from ..base.data_feeder import check_dtype, convert_dtype
 from ..base.framework import (
     Block,
     Variable,
     _current_expected_place,
-    core,
     in_dygraph_mode,
 )
 
@@ -386,20 +388,27 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def get_pir_shape_tensor(list_shape, place=_current_expected_place()):
-    shape_tensor_list = []
-    for dim in list_shape:
-        if isinstance(dim, paddle.pir.OpResult):
-            dim.stop_gradient = True
-            if convert_dtype(dim.dtype) != 'int32':
-                dim = paddle.cast(x=dim, dtype='int32')
-            if dim.shape == []:
-                dim = paddle.reshape(dim, [-1])
-            shape_tensor_list.append(dim)
+def get_int_tensor_list(
+    ele_list, place=_current_expected_place(), default_dtype='int64'
+):
+    int_tensor_list = []
+    for ele in ele_list:
+        if isinstance(ele, paddle.pir.OpResult):
+            ele.stop_gradient = True
+            if convert_dtype(ele.dtype) != default_dtype:
+                ele = paddle.cast(x=ele, dtype=default_dtype)
+            if ele.shape == []:
+                ele = paddle.reshape(ele, [-1])
+            int_tensor_list.append(ele)
         else:
-            temp_out = paddle.full([1], dim, core.DataType.INT32, place)
-            shape_tensor_list.append(temp_out)
-    return shape_tensor_list
+            temp_out = paddle.full(
+                [1],
+                ele,
+                convert_np_dtype_to_dtype_(np.dtype(default_dtype)),
+                place,
+            )
+            int_tensor_list.append(temp_out)
+    return int_tensor_list
 
 
 def get_shape_tensor_inputs(inputs, attrs, shape, op_type):

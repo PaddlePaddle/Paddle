@@ -46,10 +46,6 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_log_memory_stats,
-    false,
-    "Log memory stats after each op runs, just used for debug.");
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
@@ -986,7 +982,7 @@ void BuildOpFuncList(const platform::Place& place,
       // gc---------------------------------------------
       auto iter = unused_var_map.find(op);
       if (iter == unused_var_map.end()) {
-        interpreter::LogDeviceMemoryStats(place);
+        memory::LogDeviceMemoryStats(place, op_type);
         continue;
       }
 
@@ -1036,7 +1032,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       delete garbages;  // free mem
 
-      interpreter::LogDeviceMemoryStats(place);
+      memory::LogDeviceMemoryStats(place, op_type);
     }
   }
 
@@ -1128,21 +1124,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
-  }
-}
-
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
   }
 }
 

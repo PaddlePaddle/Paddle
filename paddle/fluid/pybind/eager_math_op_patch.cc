@@ -579,6 +579,11 @@ static PyObject* tensor__mul__method(TensorObject* self,
     }
   }
 
+  const phi::distributed::ProcessMesh* mesh = nullptr;
+  if (InputsContainDistTensor(&mesh, self_tensor, other_tensor)) {
+    ConvertAllInputsToDistTensor(mesh, self_tensor, other_tensor);
+  }
+
   // 4. calculation
   VLOG(6) << "Calling multiply_ad_func in tensor__mul__method";
   {

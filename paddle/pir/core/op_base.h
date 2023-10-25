@@ -141,6 +141,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);

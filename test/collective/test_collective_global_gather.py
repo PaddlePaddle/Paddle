@@ -44,7 +44,7 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
             "collective_global_gather.py",
             "global_gather",
             "nccl",
-            need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 
