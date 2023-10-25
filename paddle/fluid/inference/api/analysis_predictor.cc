@@ -98,6 +98,10 @@
 #include "paddle/phi/backends/xpu/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_NVTX
+#include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
+#endif
+
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -336,12 +340,8 @@ bool AnalysisPredictor::Init(
   VLOG(3) << "Predictor::init()";
   if (config_.with_profile_) {
     LOG(WARNING) << "Profiler is activated, which might affect the performance";
-    auto tracking_device = config_.use_gpu() ? platform::ProfilerState::kAll
-                                             : platform::ProfilerState::kCPU;
-    platform::EnableProfiler(tracking_device);
-  } else {
-    VLOG(2) << "Profiler is deactivated, and no profiling report will be "
-               "generated.";
+    platform::CudaProfilerStart();
+    platform::NvprofEnableRecordEvent();
   }
 
   if (!status_is_cloned_) {
@@ -1096,8 +1096,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
   if (config_.use_mkldnn_) MkldnnPreSet(inputs);
 #endif
   VLOG(3) << "Predictor::predict";
-  inference::Timer timer;
-  timer.tic();
   // set feed variable
   framework::Scope *scope = sub_scope_ ? sub_scope_ : scope_.get();
   PADDLE_ENFORCE_NOT_NULL(
@@ -1134,8 +1132,6 @@ bool AnalysisPredictor::Run(const std::vector<PaddleTensor> &inputs,
     LOG(ERROR) << "fail to get fetches";
     return false;
   }
-
-  VLOG(3) << "predict cost: " << timer.toc() << "ms";
 
   // All the containers in the scope will be hold in inference, but the
   // operators assume that the container will be reset after each batch.
@@ -1811,9 +1807,6 @@ CreatePaddlePredictor<AnalysisConfig, PaddleEngineKind::kAnalysis>(
         if (std::getenv("FLAGS_initial_cpu_memory_in_mb") == nullptr) {
           SetGflag("initial_cpu_memory_in_mb", "0");
         }
-        if (std::getenv("FLAGS_new_executor_serial_run") == nullptr) {
-          SetGflag("new_executor_serial_run", "1");
-        }
       });
 
       if (config.thread_local_stream_enabled() &&
@@ -2119,11 +2112,7 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
   if (config_.dist_config().use_dist_model()) {
     VLOG(3) << "ZeroCopyRun will use the fleet executor.";
-    inference::Timer timer;
-    timer.tic();
     fleet_exe_->Run(config_.dist_config().carrier_id());
-    VLOG(3) << "Fleet executor inf runs once use: "
-            << std::to_string(timer.toc()) << "ms";
     return true;
   }
 #endif
@@ -2637,8 +2626,8 @@ AnalysisPredictor::~AnalysisPredictor() {  // NOLINT
   }
 #endif
   if (config_.with_profile_) {
-    platform::DisableProfiler(platform::EventSortingKey::kTotal,
-                              "./profile.log");
+    platform::NvprofDisableRecordEvent();
+    platform::CudaProfilerStop();
   }
   if (sub_scope_) {
     if (framework::global_transfer_scope_key().find(sub_scope_) !=
