@@ -261,14 +261,14 @@ def monkey_patch_opresult():
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_opresult = paddle.tensor.fill_constant(
+                        other_var_opresult = paddle.fill_constant(
                             self.shape,
                             lhs_dtype,
                             other_var,
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_opresult = paddle.tensor.fill_constant(
+                    other_var_opresult = paddle.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
