@@ -1393,8 +1393,8 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
 endforeach()
 
 file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_no_check_list"
-     NEW_IR_OP_TESTS)
-foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
+     NEW_IR_OP_NO_CHECK_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_NO_CHECK_TESTS})
   if(TEST ${IR_OP_TEST})
     set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                                   "FLAGS_NEW_IR_NO_CHECK=True")
