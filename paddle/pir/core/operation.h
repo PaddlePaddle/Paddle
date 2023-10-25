@@ -125,6 +125,16 @@ class IR_API alignas(8) Operation final {
   pir::OpInfo info() const { return info_; }
   std::string name() const;
 
+  ///
+  /// \brief Remove this operation from its parent block and delete it.
+  ///
+  void Erase();
+
+  ///
+  /// \brief Returns true if this operation has no uses.
+  ///
+  bool use_empty();
+
   template <typename T>
   T dyn_cast() {
     return CastUtil<T>::call(this);
