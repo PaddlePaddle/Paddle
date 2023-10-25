@@ -181,9 +181,11 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         exe = base.Executor(base.CPUPlace())
         exe.run(base.default_startup_program())
 
-        input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
+        input_x = numpy.array(
+            [[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]], dtype=numpy.int64
+        )
         input_x = input_x.reshape(3, 1, 4)
-        input_y = numpy.array([[10], [12], [33]])
+        input_y = numpy.array([[10], [12], [33]], dtype=numpy.int64)
         input_y = input_y.reshape(3, 1, 1)
 
         (res,) = exe.run(
