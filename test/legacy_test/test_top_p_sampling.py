@@ -33,8 +33,12 @@ def TopPProcess(probs, top_p):
     sorted_indices_to_remove = paddle.cast(
         sorted_indices_to_remove, dtype='int64'
     )
-    sorted_indices_to_remove[:, 1:] = sorted_indices_to_remove[:, :-1].clone()
-    sorted_indices_to_remove[:, 0] = 0
+    paddle.static.setitem(
+        sorted_indices_to_remove,
+        slice[:, 1:],
+        sorted_indices_to_remove[:, :-1].clone(),
+    )
+    paddle.static.setitem(sorted_indices_to_remove, 0, 0)
 
     # Scatter sorted tensors to original indexing
     sorted_indices = (
