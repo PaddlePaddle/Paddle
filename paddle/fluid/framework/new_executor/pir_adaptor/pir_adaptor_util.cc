@@ -426,7 +426,7 @@ void HandleForSpecialOp(pir::Operation* op,
 
     if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
       const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
-      LOG(WARNING) << "var " << var_name << " has been removed from scope";
+      VLOG(1) << "var " << var_name << " has been removed from scope";
     }
     const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
     VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
