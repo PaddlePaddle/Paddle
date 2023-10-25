@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/fluid/framework/new_executor/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -136,8 +137,12 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // profiling
   void RunProfileImpl();
   void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
-  void ProfileInstruction(const Instruction& instr_node);
-  void ProfileOperator(const Instruction& instr_node);
+  void ProfileInstruction(const Instruction& instr_node,
+                          profiler::OpRuntimeProfiler* op_runtime_profiler,
+                          const std::string& profile_signature);
+  void ProfileOperator(const Instruction& instr_node,
+                       profiler::OpRuntimeProfiler* op_runtime_profiler,
+                       const std::string& profile_signature);
 
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,

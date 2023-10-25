@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <glog/logging.h>
 #include <stdlib.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
@@ -65,19 +66,30 @@ namespace profiler {
 
 class OpDeviceProfileEvent {
  public:
-  explicit OpDeviceProfileEvent(const DeviceContext& device_context);
+  explicit OpDeviceProfileEvent(const platform::DeviceContext& device_context);
   virtual ~OpDeviceProfileEvent();
 
+  // record event on host and device side (making a time stamp)
   void Record();
 
+  // measure time lapse with respect to another event
+  std::tuple<double, double> MeasureTimeLapseWrtOtherEvent(
+      const OpDeviceProfileEvent& end_event) const;
+
  private:
-  // CUDA
+  ///////////////////////////////////
+  //        CUDA profiling         //
+  ///////////////////////////////////
 #if defined(PADDLE_WITH_CUDA)
-  cudaEvent_t event_obj_cuda_ = nullptr;  // owned
-  cudaStream_t cuda_stream_ =
-      nullptr;  // (not owned) which stream the event is recorded onto
+  // (owned) CUDA event object
+  cudaEvent_t event_obj_cuda_ = nullptr;
+  // (not owned) which stream the event is recorded onto
+  cudaStream_t cuda_stream_ = nullptr;
 #endif
-  // CPU
+
+  ///////////////////////////////////
+  //      HOST side profiling      //
+  ///////////////////////////////////
   struct cpuEvent_t {
     // cpu can also be treated as a compute device
     double event_time_us_;
@@ -86,26 +98,28 @@ class OpDeviceProfileEvent {
 };
 
 class OpRuntimeProfiler {
-  // cross platform event recorder for op runtime profiling
-  // for cpu device, recorder uses a simple timer to record op runtime
-  // while for GPU device, recorder uses cuda event to record op runtime
+  // Cross-platform event recorder for op runtime profiling.
+  // For CPU device, recorder uses a simple timer to record op runtime.
+  // For GPU device, recorder uses cuda event and stream to record op runtime.
  public:
-  explicit OpRuntimeProfiler(const DeviceContext& device_context);
+  OpRuntimeProfiler();
   virtual ~OpRuntimeProfiler();
 
-  void RecordEvent(
-      const std::string& event_name);  // this will record event on both host
-                                       // and device side (if exist)
+  // this will record event on both host and device side (if exist)
+  void RecordEvent(const std::string& event_name,
+                   const platform::DeviceContext& device_context);
+
   // return time lapse between two events in both host and device side
   std::tuple<double, double> MeasureTimeLapseBetweenEvents(
-      const OpDeviceProfileEvent& event_start,
-      const OpDeviceProfileEvent& event_end) const;
+      const std::string& start_event_name,
+      const std::string& end_event_name) const;
 
  protected:
-  const DeviceContext& device_context_;  // (not owned)
+  // mapping event name to event object, users just need to use event name
+  // to record event of measure time lapse between events.
   std::unordered_map<std::string, std::shared_ptr<OpDeviceProfileEvent>>
-      name_to_device_profile_events_;  // mapping event name to event object
-}
+      name_to_device_profile_events_;
+};
 
 }  // namespace profiler
 }  // namespace framework

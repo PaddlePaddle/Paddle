@@ -252,6 +252,8 @@ void ProgramInterpreter::ProfileInstructionList(
     }
   }
 
+  profiler::OpRuntimeProfiler op_runtime_profiler;
+
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto& instr = vec_instruction_[trace_execute_order_[idx]];
     OperatorBase* op_base = instr.OpBase();
@@ -261,7 +263,8 @@ void ProgramInterpreter::ProfileInstructionList(
     if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
       // if this instruction supports runtime profiling and op_base ID is
       // correctly set, then run op profiling
-      ProfileInstruction(instr);
+      std::string profile_signature = std::to_string(op_base->Id());
+      ProfileInstruction(instr, &op_runtime_profiler, profile_signature);
     } else {
       // don't need profiling
       RunInstruction(instr);
@@ -271,6 +274,27 @@ void ProgramInterpreter::ProfileInstructionList(
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";
       break;
+    }
+  }
+
+  // make sure all instructions are executed on device side, then we starts
+  // collecting profiling information
+  platform::GpuDeviceSync();
+
+  // then starts collecting profiling information, and write op run time
+  // info into dist_attr.
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto& instr = vec_instruction_[trace_execute_order_[idx]];
+    OperatorBase* op_base = instr.OpBase();
+    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
+      OpDesc* op_desc = block_.Op(op_base->Id());
+      OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
+      std::string profile_signature = std::to_string(op_base->Id());
+      double cpu_us = -1.0, device_us = -1.0;
+      std::tie(cpu_us, device_us) =
+          op_runtime_profiler->MeasureTimeLapseBetweenEvents(
+              profile_signature + "@start", profile_signature + "@end");
+      op_dist_attr->set_run_time_us(device_us);  // cpu_us is ignored here
     }
   }
 
@@ -286,7 +310,10 @@ void ProgramInterpreter::ProfileInstructionList(
   }
 }
 
-void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
+void ProgramInterpreter::ProfileInstruction(
+    const Instruction& instr_node,
+    profiler::OpRuntimeProfiler* op_runtime_profiler,
+    const std::string& profile_signature) {
   auto* op = instr_node.OpBase();
 
   platform::RecordEvent instruction_event(
@@ -297,7 +324,7 @@ void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
   try {
     instr_node.WaitEvent(place_);
     if (!instr_node.IsArtificial()) {
-      ProfileOperator(instr_node);
+      ProfileOperator(instr_node, op_runtime_profiler, profile_signature);
       CheckGC(instr_node);
       memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
     }
@@ -317,7 +344,10 @@ void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
   }
 }
 
-void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
+void ProgramInterpreter::ProfileOperator(
+    const Instruction& instr_node,
+    profiler::OpRuntimeProfiler* op_runtime_profiler,
+    const std::string& profile_signature) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
@@ -358,48 +388,22 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
     }
   }
 
-  // before profiling, do some preparations
-  platform::Timer timer;
-  OpDesc* op_desc = block_.Op(op->Id());
-  VLOG(4) << "** op_desc type: " << op_desc->Type();
-  OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
-  OpFuncType op_func_type = instr_node.KernelType();
-  bool require_sync = false;
-  if (!platform::is_cpu_place(place_)) {
-    if (op_func_type == OpFuncType::kGpuAsync ||
-        op_func_type == OpFuncType::kGpuSync) {
-      require_sync = true;
-    }
-  }
-  double op_runtime_us = -1.0;
-  VLOG(4) << "** Profiling instruction: [id=" << instr_node.Id()
-          << ",name=" << instr_node.OpBase()->Type() << "]";
-
   {
-    auto SyncDevice = []() {
-    // implement device sync for different platforms here (hip, cuda, ...)
-#if defined(PADDLE_WITH_CUDA)
-      platform::GpuDeviceSync();
-#else
-#error "Unsupported platform, cannot find a proper way to sync device."
-#endif
-    };
-
     platform::RecordEvent compute_event(
         "compute",
         platform::TracerEventType::OperatorInner,
         1,
         platform::EventRole::kInnerOp);
 
+    std::string op_start_event_signature = profile_signature + "@start";
+    std::string op_end_event_signature = profile_signature + "@end";
+    const platform::DeviceContext& dev_ctx = instr_node.DeviceContext();
+
     // compute
     if (op_with_kernel == nullptr) {  // operator base
-      if (require_sync) SyncDevice();
-      timer.Start();
+      op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
       instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
-      if (require_sync) SyncDevice();
-      timer.Pause();
-      op_runtime_us = timer.ElapsedUS();
-
+      op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
     } else {
       phi::Kernel* kernel = instr_node.PhiKernel();
       if (kernel && kernel->IsValid()) {  // phi kernel
@@ -411,37 +415,23 @@ void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
               const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
               &phi_kernel_context);
 
-          if (require_sync) SyncDevice();
-          timer.Start();
+          op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
           (*kernel)(&phi_kernel_context);  // op run case 2
-          if (require_sync) SyncDevice();
-          timer.Pause();
-          op_runtime_us = timer.ElapsedUS();
+          op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
 
         } else {
-          if (require_sync) SyncDevice();
-          timer.Start();
+          op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
           (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
-          if (require_sync) SyncDevice();
-          timer.Pause();
-          op_runtime_us = timer.ElapsedUS();
+          op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
         }
       } else {  // fluid kernel
-        if (require_sync) SyncDevice();
-        timer.Start();
+        op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
         instr_node.KernelFunc()(
             *instr_node.InnerExecutionContext().get());  // op run case 4
-        if (require_sync) SyncDevice();
-        timer.Pause();
-        op_runtime_us = timer.ElapsedUS();
+        op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
       }
     }
   }
-
-  op_dist_attr->set_run_time_us(op_runtime_us);
-  VLOG(4) << "** instruction "
-          << "[" << instr_node.Id() << "," << instr_node.OpBase()->Type() << "]"
-          << " run time: " << int(op_dist_attr->run_time_us()) << " us.";
 
   if (!instr_node.InplaceBackMap().empty()) {
     auto& m = instr_node.InplaceBackMap();
