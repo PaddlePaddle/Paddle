@@ -229,7 +229,7 @@
   output : Tensor(out)
   infer_meta :
     func : CastInferMeta
-    spmd_rule : ElementwiseUnaryInferSpmd
+    spmd_rule : CastInferSpmd
   kernel :
     func : cast
     param : [x, dtype]
