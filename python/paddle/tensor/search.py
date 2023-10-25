@@ -1005,7 +1005,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
         out, indices = _C_ops.topk(x, k, axis, largest, sorted)
