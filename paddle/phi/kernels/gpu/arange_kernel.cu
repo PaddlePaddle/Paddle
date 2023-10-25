@@ -34,11 +34,11 @@ __global__ void Range(T start, T step, int64_t size, OUT_TYPE* out) {
 }
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType start_value =
       static_cast<MPType>(GetValue<T, Context>(dev_ctx, start));
@@ -81,11 +81,11 @@ void ArangeNullaryKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ArangeValueKernel(const Context& dev_ctx,
-                       const Scalar& start,
-                       const Scalar& end,
-                       const Scalar& step,
-                       DenseTensor* out) {
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out) {
   using MPType = typename phi::dtype::MPTypeTrait<T>::Type;
   MPType start_value = start.to<MPType>();
   MPType end_value = end.to<MPType>();
@@ -100,10 +100,10 @@ template decltype(ArangeNullaryKernel<int, phi::GPUContext>)
     ArangeNullaryKernel;
 }  // namespace phi
 
-PD_REGISTER_KERNEL(arange,
+PD_REGISTER_KERNEL(arange_tensor,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ArangeKernel,
+                   phi::ArangeTensorKernel,
                    float,
                    double,
                    int64_t,
@@ -115,10 +115,10 @@ PD_REGISTER_KERNEL(arange,
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);
 }
 
-PD_REGISTER_KERNEL(arange_value,
+PD_REGISTER_KERNEL(arange,
                    GPU,
                    ALL_LAYOUT,
-                   phi::ArangeValueKernel,
+                   phi::ArangeKernel,
                    float,
                    double,
                    int64_t,

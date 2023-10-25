@@ -38,11 +38,11 @@ void ArangeFunc(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   T start_value = start.data<T>()[0];
   T end_value = end.data<T>()[0];
   T step_value = step.data<T>()[0];
@@ -50,11 +50,11 @@ void ArangeKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void ArangeValueKernel(const Context& dev_ctx,
-                       const Scalar& start,
-                       const Scalar& end,
-                       const Scalar& step,
-                       DenseTensor* out) {
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out) {
   T start_value = start.to<T>();
   T end_value = end.to<T>();
   T step_value = step.to<T>();
@@ -63,13 +63,13 @@ void ArangeValueKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    arange, CPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {}
-PD_REGISTER_KERNEL(arange_value,
+PD_REGISTER_KERNEL(arange_tensor,
                    CPU,
                    ALL_LAYOUT,
-                   phi::ArangeValueKernel,
+                   phi::ArangeTensorKernel,
                    float,
                    double,
                    int,
                    int64_t) {}
+PD_REGISTER_KERNEL(
+    arange, CPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {}

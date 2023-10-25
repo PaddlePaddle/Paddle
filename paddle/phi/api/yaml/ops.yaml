@@ -133,18 +133,6 @@
     func : angle
   backward : angle_grad
 
-- op : arange_value
-  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
-  output : Tensor(out)
-  infer_meta :
-    func : ArangeValueInferMeta
-    param : [start, end, step]
-  kernel :
-    func : arange_value
-    param : [start, end, step]
-    data_type : dtype
-    backend : place
-
 - op : argmax
   args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)

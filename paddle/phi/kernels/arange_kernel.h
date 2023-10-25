@@ -20,18 +20,18 @@
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out);
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out);
 
 template <typename T, typename Context>
-void ArangeValueKernel(const Context& dev_ctx,
-                       const Scalar& start,
-                       const Scalar& end,
-                       const Scalar& step,
-                       DenseTensor* out);
+void ArangeKernel(const Context& dev_ctx,
+                  const Scalar& start,
+                  const Scalar& end,
+                  const Scalar& step,
+                  DenseTensor* out);
 
 template <typename T, typename Context>
 void ArangeNullaryKernel(const Context& dev_ctx,

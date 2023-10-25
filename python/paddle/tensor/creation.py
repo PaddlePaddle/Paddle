@@ -1381,9 +1381,7 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
     if is_value_input and in_pir_mode():
-        return _C_ops.arange_value(
-            start, end, step, dtype, _current_expected_place()
-        )
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):

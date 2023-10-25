@@ -31,10 +31,11 @@ namespace phi {
 //
 // The InferMeta Functions in this file are arranged in alphabetic order.
 
-void ArangeValueInferMeta(const Scalar& start,
-                          const Scalar& end,
-                          const Scalar& step,
-                          MetaTensor* out);
+void ArangeInferMeta(const Scalar& start,
+                     const Scalar& end,
+                     const Scalar& step,
+                     DataType dtype,
+                     MetaTensor* out);
 
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
