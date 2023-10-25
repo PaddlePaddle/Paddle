@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class Value;
-class NewIRInterpreter;
+class PirInterpreter;
 class ValueExecutionInfo;
 
 /// The execute semantics of while op ['output' = while_op('cond', 'intput')]
@@ -65,7 +65,7 @@ class WhileInstruction : public InstructionBase {
   std::vector<Variable*> inputs_;
   std::vector<Variable*> outputs_;
 
-  std::unique_ptr<NewIRInterpreter> body_inter_;
+  std::unique_ptr<PirInterpreter> body_inter_;
   std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
 

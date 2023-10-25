@@ -1319,6 +1319,11 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
 
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
+
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
 PHI_DEFINE_EXPORTED_bool(
