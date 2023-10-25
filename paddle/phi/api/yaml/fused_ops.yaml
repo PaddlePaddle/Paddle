@@ -208,7 +208,7 @@
     data_type : x
 
 - op : fusion_gru
-  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool use_onednn = false, str onednn_data_type = "float32", float scale_data = 1.0f, float shift_data = 0.0f, float[] scale_weights = {1.0f}, bool force_fp32_output = false)
+  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", float scale_data = 1.0f, float shift_data = 0.0f, float[] scale_weights = {1.0f}, bool force_fp32_output = false)
   output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
   infer_meta :
     func : FusionGRUInferMeta

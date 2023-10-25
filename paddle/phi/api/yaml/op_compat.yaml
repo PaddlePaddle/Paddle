@@ -1339,8 +1339,6 @@
     batched_out : BatchedOut
     hidden : Hidden
   attrs :
-    use_onednn : use_mkldnn
-    onednn_data_type : mkldnn_data_type
     scale_data : Scale_data
     shift_data : Shift_data
     scale_weights : Scale_weights
