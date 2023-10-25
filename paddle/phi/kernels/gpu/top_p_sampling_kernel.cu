@@ -330,19 +330,16 @@ __global__ void KeMatrixTopPBeamTopK(const T* src,
     for (int i = 0; i < TopPBeamTopK; i++) {
       sum_prob += static_cast<float>(beam_max[i].v);
 #ifdef DEBUG_TOPP
-      printf("bi: %d, top_p: %f, rand_top_p: %f, sum_prob: %f\n",
-             bid,
-             top_p_num,
-             rand_top_p,
-             sum_prob);
+      VLOG(0) << "bi: " << bid << ", top_p: " << top_p_num
+              << ", rand_top_p: " << rand_top_p << ", sum_prob: " << sum_prob;
 #endif
       if (sum_prob >= rand_top_p) {
         count_iter_begin[bid] += 1;
         out_id[bid] = (int64_t)beam_max[i].id;
         out_val[bid] = beam_max[i].v;
 #ifdef DEBUG_TOPP
-        printf(
-            "bi: %d, early stop id: %d\n", bid, static_cast<int>(out_id[bid]));
+        VLOG(0) << "bi: " << bid
+                << ", early stop id: n" << static_cast<int>(out_id[bid]));
 #endif
         break;
       }
@@ -406,7 +403,8 @@ __global__ void topp_sampling(T* sorted_probs,
     stop_shared = 0;
     rand_p = p_t;
 #ifdef DEBUG_TOPP
-    printf("bi: %d, p: %f\n", bid, rand_p);
+    VLOG(0) << "bi: " << bid << ", p: " << rand_p;
+
 #endif
   }
   if (count_iter_begin[bid] == count_iter[bid + 1]) {
@@ -429,13 +427,10 @@ __global__ void topp_sampling(T* sorted_probs,
   int offset = bid * vocab_size;
 #ifdef DEBUG_TOPP
   if (tid == 0) {
-    printf(
-        "first_elem1_1: %f, first_elem1_2: %f, first_id1_1: %d, first_id1_2: "
-        "%d\n",
-        static_cast<float>(sorted_probs[offset]),
-        static_cast<float>(sorted_probs[offset + 1]),
-        static_cast<int>(sorted_id[offset]),
-        static_cast<int>(sorted_id[offset + 1]);
+    VLOG(0) << "first_elem1_1: " << static_cast<float>(sorted_probs[offset]),
+        << ", first_elem1_2: " << static_cast<float>(sorted_probs[offset + 1]),
+        << ", first_id1_1: " << static_cast<int>(sorted_id[offset]),
+        << ", first_id1_2: " << static_cast<int>(sorted_id[offset + 1]);
   }
 #endif
   int end = ((vocab_size + BLOCK_SIZE - 1) / BLOCK_SIZE) * BLOCK_SIZE;
@@ -467,10 +462,9 @@ __global__ void topp_sampling(T* sorted_probs,
       out_id[bid] = sorted_id[offset + vocab_size - 1];
       out_val[bid] = sorted_probs[offset + vocab_size - 1];
 #ifdef DEBUG_TOPP
-      printf("stop_shared: %d, out_id: %d, out_val: %f\n",
-             static_cast<int>(stop_shared),
-             static_cast<int>(out_id[bid]),
-             static_cast<float>(out_val[bid]);
+      VLOG(0) << "stop_shared: " << static_cast<int>(stop_shared),
+          << ", out_id: " << static_cast<int>(out_id[bid]),
+          << ", out_val: " << static_cast<float>(out_val[bid]);
 #endif
     }
     return;
@@ -478,13 +472,10 @@ __global__ void topp_sampling(T* sorted_probs,
 
 #ifdef DEBUG_TOPP
   if (tid == 0) {
-    printf(
-        "first_elem2_1: %f, first_elem2_2: %f, first_id2_1: %d, first_id2_2: "
-        "%d\n",
-        static_cast<float>(sorted_probs[offset]),
-        static_cast<float>(sorted_probs[offset + 1]),
-        static_cast<int>(sorted_id[offset]),
-        static_cast<int>(sorted_id[offset + 1]);
+    VLOG(0) << "first_elem2_1: " << static_cast<float>(sorted_probs[offset]),
+        << ", first_elem2_2: " << static_cast<float>(sorted_probs[offset + 1]),
+        << ", first_id2_1: " << static_cast<int>(sorted_id[offset]),
+        << ", first_id2_2: " << static_cast<int>(sorted_id[offset + 1]);
   }
 #endif
   bool skip = (selected_shared[warp_id] > 0) ? false : true;
@@ -498,12 +489,11 @@ __global__ void topp_sampling(T* sorted_probs,
         WARP_SIZE - __popc(selected_shared[warp_id]);  // first not 0
     if (lane_id == active_lane_id) {
 #ifdef DEBUG_TOPP
-      printf(
-          "active_lane_id: %d, i_activate: %d.\n", active_lane_id, i_activate);
+      VLOG(0) << "active_lane_id: " << active_lane_id
+              << ", i_activate: " << i_activate;
       for (int i = 0; i < active_lane_id; i++) {
-        printf("p %d, value: %f\n",
-               i,
-               static_cast<float>(sorted_probs[offset + i]));
+        VLOG(0) << "p " << i
+                << ", value: " << static_cast<float>(sorted_probs[offset + i]);
       }
 #endif
       out_id[bid] = sorted_id[offset + i_activate];
@@ -532,13 +522,15 @@ __global__ void set_sorted_num(int* need_sorted_num, int bs) {
 
 template <typename T>
 __global__ void print_kernel(T* input, int size) {
-  printf("[");
   for (int i = 0; i < size; i++) {
+    std::stringstream ss;
+    ss << "[";
     if (i != size - 1) {
-      printf("%f, ", static_cast<float>(input[i]));
+      ss << static_cast<float>(input[i]) << ", ";
     } else {
-      printf("%f]\n", static_cast<float>(input[i]));
+      ss << static_cast<float>(input[i]) << "]\n";
     }
+    VLOG(0) << ss.str();
   }
 }
 
