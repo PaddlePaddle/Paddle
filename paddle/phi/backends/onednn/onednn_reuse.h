@@ -1681,14 +1681,20 @@ class PoolingOneDNNHandler
     auto OH = static_cast<double>(kernel_size->at(0));
     auto OW = static_cast<double>(kernel_size->at(1));
 
-    strides->at(0) =
-        static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
-    strides->at(1) =
-        static_cast<int64_t>(floor((IW * 2.0) / OW) - floor(IW / OW));
-    kernel_size->at(0) =
-        static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
-    kernel_size->at(1) =
-        static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+    /*
+    The previous calculation formula is given by OneDNN rfc, but in some odd
+    cases there will be problems with the calculation results.
+    Now change the formula to the general calculation formula of
+    AdaptivePool:
+    stride=floor(input_size/output_size)
+    kernel_size=input_size-(output_size-1)*stride
+    */
+    strides->at(0) = static_cast<int64_t>(floor(IH / OH));
+    strides->at(1) = static_cast<int64_t>(floor(IW / OW));
+    kernel_size->at(0) = static_cast<int64_t>(IH + padding_l[0] + padding_r[0] -
+                                              floor((OH - 1) * strides->at(0)));
+    kernel_size->at(1) = static_cast<int64_t>(IW + padding_l[1] + padding_r[1] -
+                                              floor((OW - 1) * strides->at(1)));
   }
 
  private:
