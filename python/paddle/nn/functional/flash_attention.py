@@ -45,6 +45,15 @@ def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
         g_enable_mem_efficient = original_enable_mem_efficient
 
 
+# special for XPU device
+def get_triangle_upper_mask(x):
+    mask = paddle.full_like(x, -1e4)
+    mask.stop_gradient = True
+    mask = paddle.triu(mask, diagonal=1)
+    mask.stop_gradient = True
+    return mask
+
+
 def _math_attention(
     query,
     key,
@@ -65,11 +74,19 @@ def _math_attention(
     product = paddle.matmul(
         x=query * (head_dim**-0.5), y=key, transpose_y=True
     )
-    weights = (
-        paddle.incubate.softmax_mask_fuse_upper_triangle(product)
-        if causal
-        else F.softmax(product)
-    )
+
+    if not causal:
+        weights = F.softmax(product)
+    else:
+        # special for XPU device
+        place = paddle.get_device()
+        if "xpu" in place:
+            # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
+            mask = get_triangle_upper_mask(product)
+            product = product + mask
+            weights = F.softmax(product)
+        else:
+            weights = paddle.incubate.softmax_mask_fuse_upper_triangle(product)
     if dropout_rate > 0.0:
         weights = F.dropout(
             weights, dropout_rate, training=training, mode="upscale_in_train"
