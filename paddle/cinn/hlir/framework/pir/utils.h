@@ -15,7 +15,6 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/type.h"
 #include "paddle/cinn/utils/type_defs.h"
@@ -30,7 +29,7 @@ struct CUDAJITInfo {
   void* fn_ptr;
   std::vector<int> block_dims;
   std::vector<int> grid_dims;
-  backends::Compiler* compiler;
+  void* compiler;
 };
 
 struct CompatibleInfo {

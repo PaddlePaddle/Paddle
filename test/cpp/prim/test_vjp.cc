@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"

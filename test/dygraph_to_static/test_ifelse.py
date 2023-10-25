@@ -147,7 +147,7 @@ class TestDygraphNestedIfElse(unittest.TestCase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
-    # TODO(zhangbo): open pir test (sub block cannot find var in parent block)
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -305,7 +305,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
             ret = net(x_v)
             return ret.numpy()
 
-    # TODO(zhangbo): open pir test (sub block cannot find var in parent block)
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 

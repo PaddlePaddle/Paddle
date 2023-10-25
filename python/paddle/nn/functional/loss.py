@@ -713,7 +713,7 @@ def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
     r"""
-    Combine the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.

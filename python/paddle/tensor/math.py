@@ -130,7 +130,7 @@ def _get_reduce_axis(axis, x):
 
 
 def _get_reduce_axis_with_tensor(axis, x):
-    if isinstance(axis, Variable):
+    if isinstance(axis, (Variable, paddle.pir.OpResult)):
         if axis.shape[0] == len(x.shape):
             reduce_all = True
         else:
@@ -3429,7 +3429,7 @@ def log10(x, name=None):
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
@@ -3670,7 +3670,7 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             "But received axis1 = %d, axis2 = %d\n" % (axis1, axis2)
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.trace(x, offset, axis1, axis2)
     else:
         __check_input(x, offset, axis1, axis2)
@@ -3925,7 +3925,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is None:
             axis = -1
         return _C_ops.cumsum(x, axis, flatten, False, False)
@@ -4437,7 +4437,7 @@ def isnan(x, name=None):
             Tensor(shape=[7], dtype=bool, place=Place(cpu), stop_gradient=True,
             [False, False, False, False, False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isnan(x)
     else:
         helper = LayerHelper("isnan_v2", **locals())
@@ -4538,7 +4538,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
             x = cast(x, dtype)
 
     reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.prod(x, axis, keepdim, reduce_all)
     else:
         helper = LayerHelper('reduce_prod', **locals())
@@ -5209,7 +5209,7 @@ def logit(x, eps=None, name=None):
     """
     if eps is None:
         eps = 0.0
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logit(x, eps)
     else:
         check_variable_and_dtype(

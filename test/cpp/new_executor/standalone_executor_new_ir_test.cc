@@ -22,7 +22,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -146,6 +146,10 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_2";
   test_core.SetSkipGcVars({out_name});
 
   phi::DenseTensorMeta meta(
@@ -197,6 +201,10 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_0";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
@@ -260,6 +268,10 @@ TEST(StandaloneExecutor, if_op) {
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_1";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
@@ -330,6 +342,10 @@ TEST(StandaloneExecutor, while_op) {
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
+  std::stringstream os;
+  os << reinterpret_cast<NewIRInterpreter*>(
+      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
+  std::string out_name = os.str() + "_inner_var_3";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
