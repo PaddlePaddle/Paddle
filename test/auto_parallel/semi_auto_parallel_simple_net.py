@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+import paddle.nn.functional as F
 from paddle import nn
 from paddle.distributed.fleet.utils import recompute
 
@@ -27,7 +28,6 @@ IMAGE_SIZE = 784
 CLASS_NUM = 10
 
 
-# TODO(chenweihang): update to MLP Layer later
 class DemoNet(nn.Layer):
     def __init__(self, np_w0, np_w1, param_suffix=""):
         super().__init__()
@@ -47,9 +47,11 @@ class DemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(x, self.w0)
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.linear(x, self.w0)
+        out = F.relu(out)
+        out = F.linear(out, self.w1)
+
+        return out
 
 
 class DPDemoNet(nn.Layer):
@@ -72,7 +74,7 @@ class DPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(
+        out = F.linear(
             dist.shard_tensor(
                 x,
                 dist_attr=dist.DistAttr(
@@ -81,8 +83,10 @@ class DPDemoNet(nn.Layer):
             ),
             self.w0,
         )
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.relu(out)
+        out = F.linear(out, self.w1)
+
+        return out
 
 
 class MPDemoNet(nn.Layer):
@@ -110,9 +114,11 @@ class MPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(x, self.w0)
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.linear(x, self.w0)
+        out = F.relu(out)
+        out = F.linear(out, self.w1)
+
+        return out
 
 
 class MPDemoNetRecompute(nn.Layer):
@@ -180,10 +186,11 @@ class PPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(x, self.w0)
-        y = dist.reshard(y, dist_attr=self.replicate_dist_attr1)
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.linear(x, self.w0)
+        out = F.relu(out)
+        out = dist.reshard(out, dist_attr=self.replicate_dist_attr1)
+        out = F.linear(out, self.w1)
+        return out
 
 
 class TestSimpleNetForSemiAutoParallel:
