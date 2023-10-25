@@ -21,6 +21,6 @@
 
 namespace phi {
 namespace distributed {
-SpmdInfo CastInferSpmd(const DistMetaTensor& x, DataType dtype);
+SpmdInfo CastInferSpmd(const DistMetaTensor& x, phi::DataType dtype);
 }
 }  // namespace phi
