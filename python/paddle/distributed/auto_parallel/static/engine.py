@@ -18,6 +18,7 @@ import logging
 import numbers
 import os
 import random
+import warnings
 
 import numpy as np
 
@@ -247,6 +248,11 @@ class Engine:
             ), "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
 
         self.history = None
+
+        self.newir_prune_startup_prog = None
+        self.newir_program_initialized = False
+        self.newir_program = None
+        self.param_mapping = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -836,7 +842,17 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                self._executor.run(prune_startup_prog)
+
+                if os.environ.get("FLAGS_lxd_debug") is not None:
+                    self.newir_prune_startup_prog = (
+                        paddle.pir.translate_to_new_ir(prune_startup_prog.desc)
+                    )
+                    with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+                        self.newir_prune_startup_prog
+                    ):
+                        self._executor.run(self.newir_prune_startup_prog)
+                else:
+                    self._executor.run(prune_startup_prog)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
@@ -1472,14 +1488,37 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def run(self, data=None, feed=None, fetch_list=None, mode=None):
-        print("main program: ", self.main_program)
-        print("newir program: ", self.newir_program)
-        print(
-            "distributed context: ",
-            self._dist_contexts[self._mode]._dist_op_context.grad_var_to_var,
-        )
+    def _add_data_ops(
+        self,
+        program,
+        feed,
+    ):
+        tmp_program = program.clone()
 
+        global_block = tmp_program.global_block()
+        # prepend data operators
+        for i, name in enumerate(feed):
+            if global_block.has_var(name):
+                out = global_block.var(name)
+                global_block._prepend_op(
+                    type='data',
+                    inputs={},
+                    outputs={'out': out},
+                    attrs={
+                        'shape': out.shape,
+                        'dtype': out.dtype,
+                        'place': 2,
+                        'name': out.name,
+                    },
+                )
+            else:
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % name
+                )
+        return tmp_program
+
+    def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
         feed_dict = self._prepare_feed(data, feed, self._mode)
@@ -1489,13 +1528,57 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
-        outs = self._executor.run(
-            self.main_program,
-            feed=feed_dict,
-            fetch_list=fetch_names,
-            use_program_cache=self._strategy.use_cache,
-            return_numpy=self._strategy.return_numpy,
-        )
+
+        if os.environ.get("FLAGS_lxd_debug") is not None:
+            if not self.newir_program_initialized:
+                tmp_program = self._add_data_ops(self.main_program, feed_dict)
+                (
+                    newir_program,
+                    param_mappings,
+                ) = paddle.pir.translate_to_new_ir_with_param_map(
+                    tmp_program.desc
+                )  # print("newir_program: ", newir_program)
+
+                data_ops = []
+                global_block = newir_program.global_block()
+                for op in global_block.ops:
+                    if op.name() == "pd_op.data":
+                        data_ops.append(op)
+                insert_point = 0
+                for data_op in data_ops:
+                    global_block.move_op(data_op, insert_point)
+
+                self.newir_program = newir_program
+                self.param_mapping = param_mappings
+                self.newir_program_initialized = True
+
+            fetch_list = []
+            for fetch_name in fetch_names:
+                result = self.param_mapping[fetch_name]
+                assert len(result) == 1
+                op = result[0].get_defining_op()
+                fetch_list.append(op.result(0))
+
+            with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+                self.newir_program, self.newir_prune_startup_prog
+            ):
+                outs = self._executor.run(
+                    self.newir_program,
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy,
+                )
+
+        else:
+            outs = self._executor.run(
+                self.main_program,
+                feed=feed_dict,
+                fetch_list=fetch_names,
+                use_program_cache=self._strategy.use_cache,
+                return_numpy=self._strategy.return_numpy,
+            )
+
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
@@ -1963,13 +2046,6 @@ class Engine:
     def main_program(self):
         dist_context = self._dist_contexts[self._mode]
         return dist_context.dist_main_programs[self._cur_rank]
-
-    @property
-    def newir_program(self):
-        dist_context_ = self._dist_contexts[self._mode]
-        main_program_ = dist_context_.dist_main_programs[self._cur_rank]
-        newir_program = paddle.pir.translate_to_new_ir(main_program_.desc)
-        return newir_program
 
     @property
     def startup_program(self):
