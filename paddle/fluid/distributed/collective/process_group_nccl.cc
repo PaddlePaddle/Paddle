@@ -573,9 +573,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor->dtype()))
                 << ", src_in_group: " << src_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
-                << ", stream: " << stream << ", rank_in_group: " << rank_in_group
-                << ", nranks: " << size_ << ", offset: " << offset
-                << ", sync_op: " << sync_op
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream
                 << GetGroupMessage();
 
@@ -610,9 +610,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                        phi::ToNCCLDataType(tensor_maybe_partial.dtype()))
                 << ", dst_in_group: " << dst_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
-                << ", stream: " << stream << ", rank_in_group: " << rank_in_group
-                << ", nranks: " << size_ << ", offset: " << offset
-                << ", sync_op: " << sync_op
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream
                 << GetGroupMessage();
 

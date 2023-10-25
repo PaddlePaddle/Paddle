@@ -83,8 +83,7 @@ void CommContextManager::CreateNCCLCommContext(
     rank = p2p_opt->rank;
     size = p2p_opt->num_ranks;
   }
-  VLOG(3) << "init NCCLCommContext rank: " << rank
-          << ", size: " << size
+  VLOG(3) << "init NCCLCommContext rank: " << rank << ", size: " << size
           << ", unique_comm_key: " << unique_comm_key
           << ", unique_key: " << unique_key
           << ", nccl_id: " << SerializeNCCLUniqueId(nccl_id);
