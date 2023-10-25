@@ -2602,7 +2602,7 @@
   backward : thresholded_relu_grad
 
 - op : top_p_sampling
-  args : (Tensor x, Tensor ps, int random_seed=-1)
+  args : (Tensor x, Tensor ps, int seed=-1)
   output : Tensor (out), Tensor(ids)
   infer_meta :
     func : TopPSamplingInferMeta
