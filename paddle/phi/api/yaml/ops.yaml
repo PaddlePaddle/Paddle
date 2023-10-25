@@ -1012,10 +1012,10 @@
   backward : frame_grad
 
 - op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
-    func : CreateIntArrayInferMeta
+    func : CreateVecShapeInferMeta
     param : [value, dtype]
   kernel :
     func : full_int_array

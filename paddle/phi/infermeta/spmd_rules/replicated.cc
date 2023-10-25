@@ -54,7 +54,11 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
   // Step3: Merge and get Inputs' Batch Axis New Dims Mapping.
   std::vector<TensorDistAttr> dst_input_dist_attrs;
   for (int64_t i = 0; i < ninputs; i++) {
+    // `ndim == -1` means input is nullptr
     int ndim = ins[i]->dims().size();
+    if (ndim == -1) {
+      continue;
+    }
     TensorDistAttr dist_attr_dst =
         CopyTensorDistAttrForOutput(ins[i]->dist_attr());
     std::vector<int64_t> dst_dims_maping = GetReplicatedDimsmapping(ndim);
@@ -64,6 +68,9 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
 
   VLOG(4) << "ReplicatedSpmd InferForward:";
   for (int64_t i = 0; i < ninputs; i++) {
+    if (ins[i]->dims().size() == -1) {
+      continue;
+    }
     VLOG(4) << "Input" << std::to_string(i) << " shape: ["
             << str_join(phi::vectorize(ins[i]->dims())) << "] "
             << "src_dims_mapping: ["
