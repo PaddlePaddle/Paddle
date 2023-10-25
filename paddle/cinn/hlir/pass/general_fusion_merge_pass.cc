@@ -178,7 +178,6 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
     // update fusion_groups_
     for (auto& group : fusion_groups_) {
       if (!group->belong_groups.size()) {
-        std::cerr << "grou to update " << group->group_id << std::endl;
         fusion_groups.push_back(group);
         fusion_groups_set.insert(group);
       }
@@ -190,14 +189,12 @@ class GeneralFusionMergePassHelper : public FusionHelperBase {
       bool is_ring = true;
       for (int idx = 0; idx < fusion_groups.size(); ++idx) {
         auto& group = fusion_groups[idx];
-        std::cerr << "id " << group->group_id << std::endl;
         if (!group.get()) {
           continue;
         }
 
         bool exist = false;
         for (const auto& producer : group->producer_groups()) {
-          std::cerr << "producer " << producer->group_id << std::endl;
           if (fusion_groups_set.count(producer)) {
             VLOG(4) << group->group_id << " " << producer->group_id;
             exist = true;

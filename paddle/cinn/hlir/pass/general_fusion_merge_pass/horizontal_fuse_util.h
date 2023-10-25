@@ -38,12 +38,7 @@ struct HorizontalFuseUtil {
     if (iter == map.end()) {
       return false;
     }
-    std::cerr << "src dst " << src.group_id() << "\t" << dst.group_id()
-              << std::endl;
-    std::cerr << "src sdst " << src.kind() << "\t" << dst.kind() << std::endl;
-    auto out = iter->second(ctx, src, dst);
-    std::cerr << "fuse result " << out << std::endl;
-    return out;
+    return iter->second(ctx, src, dst);
   }
 
   typedef bool (*ConditionT)(FusePassCtxT* ctx,
