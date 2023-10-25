@@ -27,8 +27,11 @@ set(fused_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
-set(pd_op_forward_yaml_file
+set(pd_op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
+
+set(pd_op_forward_yaml_file2
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 
 set(pd_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
@@ -38,9 +41,10 @@ set(parsed_op_dir
 
 set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
+set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd_op)
@@ -55,7 +59,9 @@ set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 execute_process(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
+          ${pd_op_forward_yaml_file1} --output_path ${op_yaml_file3}
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+          ${pd_op_forward_yaml_file2} --output_path ${op_yaml_file5}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
           ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward)
 
@@ -83,10 +89,11 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 set(api_gen_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/api_gen.py)
@@ -115,6 +122,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 set(python_c_gen_file
@@ -146,6 +154,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}

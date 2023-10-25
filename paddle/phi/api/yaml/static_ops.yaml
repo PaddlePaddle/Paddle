@@ -72,9 +72,9 @@
   args : (Tensor start, Tensor end, Tensor step)
   output : Tensor(out)
   infer_meta :
-    func : ArangeInferMeta
+    func : ArangeTensorInferMeta
   kernel :
-    func : arange
+    func : arange_tensor
   data_transform :
     skip_transform : start, end, step
 
