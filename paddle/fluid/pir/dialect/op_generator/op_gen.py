@@ -1038,9 +1038,11 @@ def OpGenerator(
             and op_info.op_phi_name[0] not in vjp_interface_black_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
+        op_interfaces_tmp = op_interfaces
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
+        exclusive_interface_str_tmp = exclusive_interface_str
 
         # if op has custom vjp rule, then append a CustomVjpTrait to it
         if op_info.op_phi_name[0] in custom_vjp_op_name_list:
@@ -1057,6 +1059,9 @@ def OpGenerator(
             if op_name in decomp_interface_declare_gen_op_list:
                 op_interfaces += ["paddle::dialect::DecompInterface"]
                 exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+            else:
+                op_interfaces = op_interfaces_tmp
+                exclusive_interface_str = exclusive_interface_str_tmp
             if op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:
