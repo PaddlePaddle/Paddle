@@ -30,6 +30,7 @@ from ..base.data_feeder import (
 from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
+    _current_expected_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -3517,7 +3518,19 @@ def broadcast_to(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
+        place = _current_expected_place()
+        if in_dynamic_mode():
+            if isinstance(shape, (list, tuple)):
+                shape = paddle.utils.convert_shape_to_list(shape)
+        else:
+            if isinstance(shape, (list, tuple)):
+                if paddle.utils._contain_var(shape):
+                    shape = paddle.utils.get_int_tensor_list(shape, place)
+            elif isinstance(shape, paddle.pir.OpResult):
+                pass
+            else:
+                TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
