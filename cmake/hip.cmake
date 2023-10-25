@@ -68,9 +68,17 @@ find_hip_version(${HIP_PATH}/include/hip/hip_version.h)
 
 macro(find_package_and_include PACKAGE_NAME)
   find_package("${PACKAGE_NAME}" REQUIRED)
-  include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  if (HIP_VERSION LESS 50200000)
+    include_directories("${ROCM_PATH}/${PACKAGE_NAME}/include")
+  endif()
   message(STATUS "${PACKAGE_NAME} version: ${${PACKAGE_NAME}_VERSION}")
 endmacro()
+
+list(APPEND CMAKE_PREFIX_PATH ${ROCM_PATH})
+
+if (HIP_VERSION GREATER 50200000)
+  include_directories(${ROCM_PATH}/include)
+endif()
 
 find_package_and_include(miopen)
 find_package_and_include(rocblas)
@@ -113,6 +121,7 @@ list(APPEND HIP_CXX_FLAGS -Wno-dangling-gsl)
 list(APPEND HIP_CXX_FLAGS -Wno-unused-value)
 list(APPEND HIP_CXX_FLAGS -Wno-braced-scalar-init)
 list(APPEND HIP_CXX_FLAGS -Wno-return-type)
+list(APPEND HIP_CXX_FLAGS -Wno-unused-result)
 list(APPEND HIP_CXX_FLAGS -Wno-pragma-once-outside-header)
 
 if(WITH_CINN)
@@ -124,7 +133,7 @@ list(APPEND HIP_CXX_FLAGS --gpu-max-threads-per-block=1024)
 
 if(CMAKE_BUILD_TYPE MATCHES Debug)
   list(APPEND HIP_CXX_FLAGS -g2)
-  list(APPEND HIP_CXX_FLAGS -O0)
+  list(APPEND HIP_CXX_FLAGS -O1)
   list(APPEND HIP_HIPCC_FLAGS -fdebug-info-for-profiling)
 endif()
 
