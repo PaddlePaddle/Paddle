@@ -363,6 +363,7 @@ def append_backward_ops(
         outputs = []
         output_grads = []
         for i, value in enumerate(op.results()):
+            new_value = [value]
             if (
                 value in state.value_to_valuegrad
                 and len(state.value_to_valuegrad[value]) > 1
@@ -405,7 +406,7 @@ def append_backward_ops(
                     zero_flag[i] = all(split_zero_flag)
                     grad_values = [value[0] for value in split_output_grad]
                     state.value_to_valuegrad[value] = [grad_values]
-                    outputs.append([info[0] for info in split_outputs])
+                    new_value = [info[0] for info in split_outputs]
                 else:
                     # first case:
                     # this fwd_op's output didn't used by other fwd_op,
@@ -428,7 +429,7 @@ def append_backward_ops(
 
                     state.value_to_valuegrad[value] = [[grad_value]]
 
-                    outputs.append([value])
+            outputs.append(new_value)
             output_grads.append(state.value_to_valuegrad[value][0])
 
         return zero_flag, outputs, output_grads
@@ -445,6 +446,7 @@ def append_backward_ops(
             op.operands_source(), grad_semantic_info
         ):
             if not grad_semantic:
+                inputs.append([input])
                 continue
             if (
                 input.get_defining_op() is not None

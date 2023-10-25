@@ -37,11 +37,13 @@ std::vector<std::vector<pir::OpResult>> AddNOp::Vjp(
   PADDLE_ENFORCE_EQ(
       inputs_.size(),
       1u,
-      platform::errors::InvalidArgument("addn op's inputs size should be 1"));
+      platform::errors::InvalidArgument(
+          "addn op's inputs size should be 1 but now is %d", inputs_.size()));
   PADDLE_ENFORCE_EQ(
       outputs.size(),
       1u,
-      platform::errors::InvalidArgument("addn op's outputs size should be 1"));
+      platform::errors::InvalidArgument(
+          "addn op's outputs size should be 1 but now is %d", outputs.size()));
   PADDLE_ENFORCE(
       inputs_[0].size() != 0,
       paddle::platform::errors::Fatal("addn op's inputs[0] can't be null"));

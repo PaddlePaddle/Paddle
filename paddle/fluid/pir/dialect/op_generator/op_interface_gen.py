@@ -23,9 +23,19 @@ void {op_name}::InferMeta( phi::InferMetaContext *infer_meta ) {{
   fn(infer_meta);
 }}
 """
+CHECK_INPUT_TEMPLATE = """
+    PADDLE_ENFORCE_EQ(
+      inputs_.size(),
+      {inputs_size},
+      platform::errors::InvalidArgument("{op_name} op's inputs size should be {inputs_size}, but now is %d.", inputs_.size()));
+    PADDLE_ENFORCE_EQ(
+      outputs.size(),
+      {outputs_size},
+      platform::errors::InvalidArgument("{op_name} op's outputs size should be {outputs_size}, but now is %d.", outputs.size()));
+"""
 
 OP_VJP_FORWARD_INPUT_OR_OUTPUT_TEMPLATE = """
-    {input_type} {input_name}(std::make_shared<primitive::LazyTensor>({vjp_param_name}[{input_name}][0]));"""
+    {input_type} {input_name}(std::make_shared<primitive::LazyTensor>({vjp_param_name}[{input_idx}][0]));"""
 
 OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE = """
     std::vector<Tensor> {input_name};
@@ -43,24 +53,13 @@ OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE = """
 OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE = """
     paddle::optional<std::vector<Tensor>> {input_name};
     std::vector<Tensor> optional_{input_name};
-    if (!IsEmptyValue({vjp_param_name}[{input_idx}])){{
-        for (size_t idx = 0; idx < i{vjp_param_name}[{input_idx}].size(); idx++) {{
+    if (!IsEmptyValue({vjp_param_name}[{input_idx}][0])){{
+        for (size_t idx = 0; idx < {vjp_param_name}[{input_idx}].size(); idx++) {{
             optional_{input_name}.emplace_back(
                 std::make_shared<primitive::LazyTensor>({vjp_param_name}[{input_idx}][idx]));
         }}
         {input_name} = paddle::make_optional<std::vector<Tensor>>(optional_{input_name});
     }}"""
-
-OP_VJP_FORWARD_OUTPUT_GRAD_TEMPLATE = """
-    Tensor {output_grad_name}(std::make_shared<primitive::LazyTensor>(out_grads[{idx1}][{idx2}]));"""
-
-OP_VJP_FORWARD_OUTPUT_GRAD_LIST_TEMPLATE = """
-    std::vector<Tensor> {output_grad_name};
-    for (size_t idx = 0; idx < out_grads[{index}].size(); idx++) {{
-        {output_grad_name}.emplace_back(
-            std::make_shared<primitive::LazyTensor>(out_grads[{index}][idx]));
-    }}"""
-
 
 OP_VJP_ATTRIBUTE_TEMPLATE = """
     {attr_type} {attr_name} = op->attribute("{attr_name}").dyn_cast<{attr_parse_type}>().{func}();"""
@@ -92,7 +91,7 @@ OP_VJP_STOPGRADIENT_TEMPLATE = """
 
 OP_VJP_DEFINE_TEMPLATE = """
 std::vector<std::vector<pir::OpResult>> {op_class_name}::Vjp(pir::Operation* op, const std::vector<std::vector<pir::Value>>& inputs_, const std::vector<std::vector<pir::OpResult>>& outputs, const std::vector<std::vector<pir::Value>>& out_grads, const std::vector<std::vector<bool>>& stop_gradients){{
-
+{check_param}
     VLOG(6) << "Prepare inputs of {op_grad_name}";
 {backward_input_code}
 
@@ -135,25 +134,24 @@ def gen_op_vjp_str(
         input_type = input_types_map[op_grad_info.input_type_list[idx]]
 
         vjp_param_name = ''
-        idx = -1
+        index_0 = -1
         if bw_input_name in fwd_input_and_mutable_attr_name_list:
             vjp_param_name = 'inputs_'
-            idx = fwd_input_and_mutable_attr_name_list.index(bw_input_name)
+            index_0 = fwd_input_and_mutable_attr_name_list.index(bw_input_name)
         elif bw_input_name in op_info.output_name_list:
             vjp_param_name = 'outputs'
-            idx = op_info.output_name_list.index(bw_input_name)
+            index_0 = op_info.output_name_list.index(bw_input_name)
         else:
             vjp_param_name = 'out_grads'
             grad_idx += 1
-            idx = grad_idx
-
+            index_0 = grad_idx
         if op_grad_info.input_optional_list[idx] == 'true':
             if input_type == 'Tensor':
                 backward_input_code += (
                     OP_VJP_FORWARD_OPTIONAL_INPUT_TEMPLATE.format(
                         vjp_param_name=vjp_param_name,
                         input_name=bw_input_name,
-                        input_idx=idx,
+                        input_idx=index_0,
                     )
                 )
             else:
@@ -161,7 +159,7 @@ def gen_op_vjp_str(
                     OP_VJP_FORWARD_OPTIONAL_VECTOR_INPUT_TEMPLATE.format(
                         vjp_param_name=vjp_param_name,
                         input_name=bw_input_name,
-                        input_idx=idx,
+                        input_idx=index_0,
                     )
                 )
         else:
@@ -171,7 +169,7 @@ def gen_op_vjp_str(
                         vjp_param_name=vjp_param_name,
                         input_type=input_type,
                         input_name=bw_input_name,
-                        input_idx=idx,
+                        input_idx=index_0,
                     )
                 )
             else:
@@ -179,7 +177,7 @@ def gen_op_vjp_str(
                     OP_VJP_FORWARD_MULTI_INPUT_TEMPLATE.format(
                         vjp_param_name=vjp_param_name,
                         input_name=bw_input_name,
-                        input_idx=idx,
+                        input_idx=index_0,
                     )
                 )
 
@@ -247,8 +245,15 @@ def gen_op_vjp_str(
         inputs_list=build_args_str,
     )
     stop_gradient_input_grad_code = OP_VJP_STOPGRADIENT_TEMPLATE
+    check_param = CHECK_INPUT_TEMPLATE.format(
+        op_name=op_phi_name_format,
+        inputs_size=len(fwd_input_and_mutable_attr_name_list),
+        outputs_size=len(op_info.output_name_list),
+        out_grads_size=grad_idx + 1,
+    )
 
     str = OP_VJP_DEFINE_TEMPLATE.format(
+        check_param=check_param,
         op_class_name=op_class_name,
         op_grad_name=op_grad_name,
         op_phi_name=op_phi_name,
