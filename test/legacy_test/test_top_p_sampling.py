@@ -35,7 +35,7 @@ def TopPProcess(probs, top_p):
     )
     paddle.static.setitem(
         sorted_indices_to_remove,
-        slice[:, 1:],
+        slice((None, None, None), (1, None, None)),
         sorted_indices_to_remove[:, :-1].clone(),
     )
     paddle.static.setitem(sorted_indices_to_remove, 0, 0)
