@@ -3375,7 +3375,7 @@ class OpTest(unittest.TestCase):
                     x, y, err_msg=z, atol=1e-6, rtol=1e-6
                 )
 
-            if os.getenv("FLAGS_FLAGS_NEW_IR_NO_CHECK", None):
+            if os.getenv("FLAGS_NEW_IR_NO_CHECK", None):
                 check_method = lambda x, y, err_msg: None
 
             for i in range(len(new_gradients)):
