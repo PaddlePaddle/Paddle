@@ -2194,7 +2194,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
-    spmd_rule : ElementwiseUnaryInferSpmd
+    spmd_rule : ScaleInferSpmd
     param : [x]
   kernel :
     func : scale {dense -> dense},
