@@ -944,6 +944,7 @@ class TestSinhAPI(unittest.TestCase):
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
@@ -984,6 +985,7 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with program_guard(Program()):
