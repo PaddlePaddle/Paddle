@@ -36,18 +36,27 @@ cc_test(
        device_context
        enforce
        generated_static_op)
-
-cc_test(
-  test_mkldnn_pool_adaptive_op
-  SRCS test_mkldnn_pool_adaptive_op.cc
-  DEPS executor
-       op_registry
-       tensor
-       phi
-       scope
-       device_context
-       enforce
-       generated_static_op)
+if(WIN32 AND WITH_TESTING)
+  cc_test_old(
+    test_mkldnn_pool_adaptive_op
+    SRCS
+    test_mkldnn_pool_adaptive_op.cc
+    DEPS
+    fleet_executor
+    conditional_block_op
+    standalone_executor
+    executor
+    op_registry
+    generated_static_op
+    generated_op
+    phi
+    scope
+    device_context
+    enforce)
+else()
+  cc_test_old(test_mkldnn_pool_adaptive_op SRCS test_mkldnn_pool_adaptive_op.cc
+              DEPS ${paddle_lib} python)
+endif()
 
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
