@@ -19,7 +19,6 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import core
 from paddle.base.framework import Program, program_guard
 
 sys.path.append("../dygraph_to_static")
@@ -46,11 +45,7 @@ class TestApiWhileLoop(unittest.TestCase):
             )
             out = paddle.static.nn.while_loop(cond, body, (i,))
 
-        place = (
-            base.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else base.CPUPlace()
-        )
+        place = base.CUDAPlace(0)
         exe = base.Executor(place)
         print("main_program: ", main_program, flush=True)
         res = exe.run(main_program, fetch_list=out)

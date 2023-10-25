@@ -66,12 +66,12 @@ WhileInstruction::WhileInstruction(size_t id,
 
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
     inputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(0))));
+        parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
     outputs_.push_back(parent_exe_info->GetScope()->FindVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(0))));
+        parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
   body_block_ = while_op.body_block();
@@ -152,6 +152,7 @@ void WhileInstruction::GetValueFromBodyBlock() {
         out_var->Get<phi::DenseTensor>());
   }
 }
+
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
   VLOG(0) << "[WhileInstruction] copy inouts to outputs";
@@ -163,7 +164,7 @@ void WhileInstruction::Run() {
     VLOG(0) << "cond var data is nullptr";
   }
   VLOG(0) << "222";
-  while (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+  while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     VLOG(0) << "[WhileInstruction] run body...";
     PassArgsToBodyBlock();
     VLOG(0) << "[WhileInstruction] end pass args to body block";
