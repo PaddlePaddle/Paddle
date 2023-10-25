@@ -534,6 +534,50 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf, int offset, 
   if (blockDim.x <= 32) {                                                                    \
     return tmp_val;                                                                          \
   }                                                                                          \
+  __shared__ TYPE tmp[32];                                                                   \
+  if (warp_id == 0) {                                                                        \
+    tmp[threadIdx.x] = init_value;                                                           \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  if ((threadIdx.x & 31) == 0) {                                                             \
+    tmp[warp_id] = tmp_val;                                                                  \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  if (warp_id == 0) {                                                                        \
+    tmp_val = tmp[threadIdx.x];                                                              \
+    tmp[threadIdx.x] = cinn_warp_shuffle_internal(tmp_val);                                  \
+  }                                                                                          \
+  __syncthreads();                                                                           \
+  return tmp[0];
+
+#define CINN_BLOCK_REDUCE_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                            \
+  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal(const DTYPE value) {                              \
+    CINN_BLOCK_REDUCE_INTERNAL_IMPL(DTYPE, value, (DTYPE)(INITIAL_VALUE), cinn_warp_shuffle_##REDUCE_TYPE##_internal); \
+  }
+
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+
+#ifdef CINN_CUDA_BF16
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+#endif
+
+#ifdef CINN_CUDA_FP16
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
+#endif
+
+#undef CINN_BLOCK_REDUCE_INTERNAL_IMPL
+#undef CINN_BLOCK_REDUCE_INTERNAL_MACRO
+
+#define CINN_BLOCK_REDUCE_INTERNAL_IMPL(TYPE, value, init_value, cinn_warp_shuffle_internal) \
+  int warp_id = threadIdx.x / 32;                                                            \
+  TYPE tmp_val = cinn_warp_shuffle_internal(value);                                          \
+  if (blockDim.x <= 32) {                                                                    \
+    return tmp_val;                                                                          \
+  }                                                                                          \
   if (warp_id == 0) {                                                                        \
     shm[threadIdx.x] = init_value;                                                           \
   }                                                                                          \
@@ -550,7 +594,7 @@ __device__ inline float cinn_warp_reduce_avg_fp32(const float *buf, int offset, 
   return shm[0];
 
 #define CINN_BLOCK_REDUCE_INTERNAL_MACRO(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                                        \
-  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal(const DTYPE value, DTYPE* shm) {                              \
+  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE##_internal_shm(const DTYPE value, DTYPE* shm) {                              \
     CINN_BLOCK_REDUCE_INTERNAL_IMPL(DTYPE, value, (DTYPE)(INITIAL_VALUE), cinn_warp_shuffle_##REDUCE_TYPE##_internal);             \
   }
 
@@ -570,6 +614,32 @@ EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_INTERNAL_MACRO)
 
 #undef CINN_BLOCK_REDUCE_INTERNAL_IMPL
 #undef CINN_BLOCK_REDUCE_INTERNAL_MACRO
+
+#define CINN_BLOCK_REDUCE_IMPL(REDUCE_TYPE, INITIAL_VALUE, DTYPE)                                     \
+  __device__ inline DTYPE cinn_block_reduce_##REDUCE_TYPE(const DTYPE *buf, int offset, int extend) { \
+    __shared__ DTYPE shm[32];                                                                         \
+    DTYPE tmp_val = (DTYPE)(INITIAL_VALUE);                                                           \
+    for (int i = threadIdx.x; i < extend; i += blockDim.x) {                                          \
+      tmp_val = cinn_##REDUCE_TYPE(tmp_val, buf[offset + i]);                                         \
+    }                                                                                                 \
+    return cinn_block_reduce_##REDUCE_TYPE##_internal_shm(tmp_val,shm);                                       \
+  }
+
+EXPAND_REDUCE_INT32_MARCO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_INT64_MARCO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_FP32_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_FP64_MACRO(CINN_BLOCK_REDUCE_IMPL)
+EXPAND_REDUCE_BOOL_MACRO(CINN_BLOCK_REDUCE_IMPL)
+
+#ifdef CINN_CUDA_BF16
+EXPAND_REDUCE_BF16_MACRO(CINN_BLOCK_REDUCE_IMPL)
+#endif
+
+#ifdef CINN_CUDA_FP16
+EXPAND_REDUCE_FP16_MACRO(CINN_BLOCK_REDUCE_IMPL)
+#endif
+
+#undef CINN_BLOCK_REDUCE_IMPL
 
 #undef EXPAND_REDUCE_INT32_MARCO
 #undef EXPAND_REDUCE_INT64_MARCO
