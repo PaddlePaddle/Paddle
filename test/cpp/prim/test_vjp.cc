@@ -237,7 +237,7 @@ TEST(VJP, ConcatBackwardTest) {
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
   std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()},
-                                              op3.axis()};
+                                              {op3.axis()}};
   std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
