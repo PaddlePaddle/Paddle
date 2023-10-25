@@ -271,46 +271,14 @@ class ForwardAPI(BaseAPI):
                                 "SetInplaceOptionalVectorKernelOutput"
                             )
                             get_out_code = f"std::get<{i}>(api_output)"
-                    if self.outputs['names'][i] in self.inplace_map:
-                        if (
-                            self.inplace_map[self.outputs['names'][i]]
-                            not in self.optional_vars
-                        ):
-                            output_create = (
-                                output_create
-                                + f"""
-{code_indent}  std::vector<phi::DenseTensor*> kernel_out_{i};
+                    output_create = (
+                        output_create
+                        + f"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
 {code_indent}  if (kernel_result.has_fallback_cpu) {{
-{code_indent}    kernel_out_{i}.resize({self.outputs['out_size_expr'][i]});
-{code_indent}    for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][i]]}.size(); ++i) {{
-{code_indent}      kernel_out_{i}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][i]]}.at(i));
-{code_indent}    }}
-{code_indent}  }}
-{code_indent}  else {{
-{code_indent}    kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
+{code_indent}    TransDataBackend(kernel_out_{i}, actual_kernel_backend, kernel_out_{i});
 {code_indent}  }}"""
-                            )
-                        else:
-                            output_create = (
-                                output_create
-                                + f"""
-{code_indent}  std::vector<phi::DenseTensor*> kernel_out_{i};
-{code_indent}  if (kernel_result.has_fallback_cpu && {PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][i]]}) {{
-{code_indent}    kernel_out_{i}.resize({self.outputs['out_size_expr'][i]});
-{code_indent}    for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][i]]}->size(); ++i) {{
-{code_indent}      kernel_out_{i}[i] = const_cast<phi::DenseTensor*>({PREFIX_TENSOR_NAME}{self.inplace_map[self.outputs['names'][i]]}->at(i));
-{code_indent}    }}
-{code_indent}  }}
-{code_indent}  else {{
-{code_indent}    kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
-{code_indent}  }}"""
-                            )
-                    else:
-                        output_create = (
-                            output_create
-                            + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
-                        )
+                    )
 
                 else:
                     output_create = (

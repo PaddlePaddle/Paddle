@@ -1230,37 +1230,6 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
     ):
         return ''
 
-    # copy output vector of tensors in CPU back to its original backend
-    def copy_inplace_vec_to_original_backend_after_fallback(
-        self, code_indent, index, kernel_out
-    ):
-        out_name = self.outputs['names'][index]
-        is_vec = (
-            True
-            if self.outputs['types'][index] == 'std::vector<Tensor>'
-            else False
-        )
-        if (
-            out_name in self.inplace_map
-            and out_name not in self.view_map
-            and is_vec
-        ):
-            if self.inplace_map[out_name] in self.optional_vars:
-                return f"""
-{code_indent}    if ({self.inplace_map[out_name]}) {{
-{code_indent}      for (size_t i = 0; i < {kernel_out}.size(); ++i) {{
-{code_indent}        auto {self.inplace_map[out_name]}_tmp = static_cast<phi::DenseTensor*>({self.inplace_map[out_name]}->at(i).impl().get());
-{code_indent}        *{self.inplace_map[out_name]}_tmp = *({kernel_out}[i]);
-{code_indent}      }}
-{code_indent}    }}"""
-            else:
-                return f"""
-{code_indent}    for (size_t i = 0; i < {kernel_out}.size(); ++i) {{
-{code_indent}        auto {self.inplace_map[out_name]}_tmp = static_cast<phi::DenseTensor*>({self.inplace_map[out_name]}[i].impl().get());
-{code_indent}        *{self.inplace_map[out_name]}_tmp = *({kernel_out}[i]);
-{code_indent}    }}"""
-        return ""
-
     def gen_kernel_code(self, kernel_name, code_indent, inplace_flag=False):
         kernel_dispatch = self.kernel['dispatch'][kernel_name]
         input_tensors, kernel_args, kernel_signature = self.get_kernel_args(
@@ -1288,14 +1257,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
                 transdata2strided += f"""{code_indent}  TransStride(dev_ctx, {kernel_out}, backup{i});\n"""
                 i = i + 1
         fallback_kernel_output_trans = ""
-        for index, kernel_out in enumerate(outputs_args):
+        for kernel_out in outputs_args:
             fallback_kernel_output_trans += f"""
 {code_indent}    TransDataBackend({kernel_out}, kernel_backend, {kernel_out});"""
-            fallback_kernel_output_trans += (
-                self.copy_inplace_vec_to_original_backend_after_fallback(
-                    code_indent, index, kernel_out
-                )
-            )
         return f"""
 {code_indent}  VLOG(6) << "{self.api} API kernel key: [" << kernel_backend << ", " << kernel_layout << ", "<< kernel_data_type << "]";
 {code_indent}  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
