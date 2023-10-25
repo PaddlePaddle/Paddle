@@ -438,6 +438,12 @@ def monkey_patch_opresult():
             if method_impl:
                 setattr(OpResult, method_name, method_impl)
 
+        # Bit operation symbol
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl:
+                setattr(OpResult, magic_method, impl)
+
         # Handling __getitem__
         from ..base.variable_index import _getitem_static
 
