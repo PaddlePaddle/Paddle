@@ -3490,10 +3490,13 @@ class TestLog10(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestLog10_ZeroDim(TestLog10):
@@ -4737,7 +4740,7 @@ if core.is_compiled_with_rocm():
     create_test_act_fp16_class(TestLog2)
 else:
     create_test_act_fp16_class(TestLog2)
-create_test_act_fp16_class(TestLog10)
+create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
@@ -4885,7 +4888,7 @@ if core.is_compiled_with_rocm():
     create_test_act_bf16_class(TestLog2)
 else:
     create_test_act_bf16_class(TestLog2)
-create_test_act_bf16_class(TestLog10)
+create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
