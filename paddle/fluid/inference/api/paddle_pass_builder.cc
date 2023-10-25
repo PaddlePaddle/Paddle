@@ -547,6 +547,7 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "squeeze2_matmul_xpu_fuse_pass",
       "redundant_squeeze_unsqueeze_elimination_pass",
       "fc_xpu_fuse_pass",
+      "conv2d_pooling_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "conv2d_transpose_xpu_fuse_pass",
       "squeeze_excitation_fuse_pass",
