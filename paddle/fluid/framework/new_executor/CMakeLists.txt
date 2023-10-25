@@ -6,7 +6,7 @@ add_subdirectory(pir_adaptor)
 
 set(STANDALONE_EXECUTOR_SRCS
     feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc new_ir_interpreter.cc)
+    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
     interpreter

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
