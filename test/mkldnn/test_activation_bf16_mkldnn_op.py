@@ -202,20 +202,6 @@ class TestMKLDNNLeakyReluBF16Op(MKLDNNBF16ActivationOp, TestActivation):
         self.alpha = 0.2
         self.attrs = {"use_mkldnn": True, "alpha": self.alpha}
 
-    def test_check_output(self):
-        self.check_output_with_place(core.CPUPlace(), check_pir=True)
-
-    def test_check_grad(self):
-        self.calculate_grads()
-        self.check_grad_with_place(
-            core.CPUPlace(),
-            ["X"],
-            "Out",
-            user_defined_grads=[self.dx],
-            user_defined_grad_outputs=[convert_float_to_uint16(self.out)],
-            check_pir=True,
-        )
-
 
 class TestMKLDNNSwishBF16Op(MKLDNNBF16ActivationOp, TestActivation):
     def config(self):
