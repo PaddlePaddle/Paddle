@@ -1284,7 +1284,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         )
 
         self._backward_step_count = 0
-
         skip_steps = self.accumulate_steps - self.num_stages
         send_recv_buffer_queue = queue.Queue()
 
@@ -1294,11 +1293,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self.output_tensor_grads = [[] for _ in range(self.num_model_chunks)]
 
         micro_dataset = self._wrap_data(data)
-
         num_steps = self.accumulate_steps * self.num_model_chunks
-
-        startup_steps = num_steps
-        all_startup_steps = True
 
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
@@ -1308,7 +1303,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         )
 
         # run startup steps
-        for micro_step in range(startup_steps):
+        for micro_step in range(num_steps):
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
@@ -1351,14 +1346,14 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         # remaining backward steps
         if not forward_only:
-            if all_startup_steps:
-                self.output_tensor_grads[self.num_model_chunks - 1].append(
-                    self._p2p_helper.recv_backward(
-                        self.is_pipeline_last_stage(), sync_recv=False
-                    )
-                )
 
-            for micro_step in range(startup_steps):
+            self.output_tensor_grads[self.num_model_chunks - 1].append(
+                self._p2p_helper.recv_backward(
+                    self.is_pipeline_last_stage(), sync_recv=False
+                )
+            )
+
+            for micro_step in range(num_steps):
                 # cooldown loop
                 input_tensor_grad = self._backward_step_helper(micro_step)
                 next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
