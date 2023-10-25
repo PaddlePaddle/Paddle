@@ -9,7 +9,7 @@
     param : [x, broadcast_axes]
 
 - op : reduce_max
-  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
@@ -17,7 +17,7 @@
     func : frobenius_norm
 
 - op : reduce_sum
-  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  args : (Tensor x, int64_t[] dim,  bool keep_dim)
   output : Tensor(out)
   infer_meta :
     func : ReduceInferMeta
