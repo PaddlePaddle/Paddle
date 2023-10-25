@@ -5218,11 +5218,8 @@ def dstack(x, name=None):
             >>> print(c)
             Tensor(shape=[3, 1, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
                 [[[1, 4]],
-
                     [[2, 5]],
-
                     [[3, 6]]])
-
     """
     check_type(x, 'x', (list, tuple), 'dstack')
     if not x:
@@ -5242,7 +5239,7 @@ def dstack(x, name=None):
                 "For 'dstack', each elements of 'inputs' can not be empty."
             )
         ndim = tensor.ndim
-        #similar to the function of atleast_3d
+        # similar to the function of atleast_3d
         if ndim == 0:
             tensor = paddle.reshape(tensor, (1, 1, 1))
         if ndim == 1:
@@ -5292,8 +5289,6 @@ def hstack(x, name=None):
                 [[1, 4],
                     [2, 5],
                     [3, 6]])
-
-
     """
     check_type(x, 'x', (list, tuple), 'hstack')
     if not x:
@@ -5308,7 +5303,7 @@ def hstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-        #similar to the function of atleast_1d
+        # similar to the function of atleast_1d
         if tensor.ndim == 0:
             tensor = paddle.reshape(tensor, [1])
         rep += (tensor,)
@@ -5360,8 +5355,6 @@ def vstack(x, name=None):
                     [4],
                     [5],
                     [6]])
-
-
     """
     check_type(x, 'x', (list, tuple), 'vstack')
     if not x:
@@ -5377,7 +5370,7 @@ def vstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-        #similar to the function of atleast_2d
+        # similar to the function of atleast_2d
         if tensor.ndim == 0:
             tensor = paddle.reshape(tensor, [1, 1])
         elif tensor.ndim == 1:
@@ -5422,8 +5415,6 @@ def row_stack(x, name=None):
                     [4],
                     [5],
                     [6]])
-
-
     """
     rep = paddle.vstack(x)
     return rep
