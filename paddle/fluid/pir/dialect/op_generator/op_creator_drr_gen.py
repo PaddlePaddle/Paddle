@@ -20,13 +20,13 @@ from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+{op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace pir {{
 namespace drr {{
 
-void OperationFactory::RegisterGeneratedOpCreator() {{
+void OperationFactory::Register{dialect}GeneratedOpCreator() {{
 {body}
 }}
 
@@ -41,7 +41,7 @@ NORMAL_FUNCTION_TEMPLATE = """
       [](const std::vector<Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
-        return rewriter.Build<paddle::dialect::{op_class_name}>(
+        return rewriter.Build<{namespace}::{op_class_name}>(
          {params_code});
       }});
 """
@@ -62,6 +62,12 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
         }}
       }});
 """
+
+Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2OpHeaderMap = {
+    "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
+    "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+}
 
 
 class OpCreatorCodeGen:
@@ -107,6 +113,7 @@ class OpCreatorCodeGen:
                 if len(op_info_item.mutable_attribute_name_list) == 0:
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
+                        namespace=Dialect2NameSpaceMap[self.dialect_name],
                         op_class_name=(to_pascal_case(phi_op_name) + "Op"),
                         params_code=", ".join(params_no_mutable_attr),
                     )
@@ -139,7 +146,13 @@ class OpCreatorCodeGen:
                     )
 
         with open(cpp_file_path, 'w') as f:
-            f.write(CPP_FILE_TEMPLATE.format(body=body_code))
+            f.write(
+                CPP_FILE_TEMPLATE.format(
+                    dialect=to_pascal_case(self.dialect_name),
+                    op_header=Dialect2OpHeaderMap[self.dialect_name],
+                    body=body_code,
+                )
+            )
 
 
 def ParseArguments():

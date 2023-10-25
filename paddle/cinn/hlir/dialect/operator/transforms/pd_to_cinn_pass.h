@@ -14,23 +14,30 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
-namespace pir::shape {
-///
-/// \brief Shape Dialect:
-///
-class IR_API ShapeDialect : public Dialect {
+namespace cinn {
+namespace dialect {
+namespace ir {
+
+class PdOpToCinnOpPass : public pir::Pass {
  public:
-  explicit ShapeDialect(IrContext* context);
-  static const char* name() { return "shape"; }
-  void PrintOperation(Operation* op,
-                      IrPrinter& printer) const override;  // NOLINT
+  PdOpToCinnOpPass();
+
+  bool Initialize(pir::IrContext *context) override;
+
+  void Run(pir::Operation *op) override;
+
+  bool CanApplyOn(pir::Operation *op) const override;
 
  private:
-  void initialize();
+  pir::FrozenRewritePatternSet patterns_;
 };
 
-}  // namespace pir::shape
+void PdOp2CinnOpConverter(::pir::Program *program);
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)
+}  // namespace ir
+}  // namespace dialect
+}  // namespace cinn

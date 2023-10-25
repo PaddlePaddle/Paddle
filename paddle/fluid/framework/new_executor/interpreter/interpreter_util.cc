@@ -598,6 +598,11 @@ void BuildOpFuncList(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
+    if (execution_config.used_for_inference) {
+      if (op_type == "feed" || op_type == "fetch") {
+        continue;
+      }
+    }
 
     op->SetId(i);  // save op id info into op base
                    // (note: op id is equivalent to

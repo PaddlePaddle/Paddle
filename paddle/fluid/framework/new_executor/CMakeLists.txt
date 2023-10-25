@@ -10,7 +10,7 @@ set(STANDALONE_EXECUTOR_SRCS
     new_executor_defs.cc
     standalone_executor.cc
     program_interpreter.cc
-    new_ir_interpreter.cc
+    pir_interpreter.cc
     profiler.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
