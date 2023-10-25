@@ -1413,7 +1413,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.flip(x, axis)
     else:
         helper = LayerHelper("flip", **locals())
@@ -3430,7 +3430,7 @@ def expand_as(x, y, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expand_as(x, None, y.shape)
     else:
         check_variable_and_dtype(

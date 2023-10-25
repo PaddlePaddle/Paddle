@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -85,7 +85,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->argument(i), var_name);
   }
-  body_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
+  body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, {}));
 
   std::set<std::string> body_skip_gc_names_set;
