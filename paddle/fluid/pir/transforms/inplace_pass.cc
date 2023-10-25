@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include <regex>
+#include <string>
+#include <unordered_set>
+
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -21,10 +24,15 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
+
+PHI_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace details {
 // NOTE(zhangbo): Which kind of value can be deleted?
@@ -53,7 +61,44 @@ static bool CanBeDeleted(pir::Value value) {
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
                          pir::Value output) {
-  if (input.type() != output.type()) {
+  if (!input.type() || !output.type()) {
+    return false;
+  }
+
+  if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+      output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    auto input_alloc_tensor_type =
+        input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    auto output_alloc_tensor_type =
+        output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+
+    if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
+      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
+      return false;
+    }
+
+    int64_t in_numel = 1;
+    int64_t out_numel = 1;
+    for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
+      if (input_alloc_tensor_type.dims()[i] == -1) {
+        VLOG(9) << "     -- input's shape has -1, can't do inplace";
+        return false;
+      }
+      in_numel *= input_alloc_tensor_type.dims()[i];
+    }
+
+    for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
+      if (output_alloc_tensor_type.dims()[i] == -1) {
+        VLOG(9) << "     -- output's shape has -1, can't do inplace";
+        return false;
+      }
+      out_numel *= output_alloc_tensor_type.dims()[i];
+    }
+    if (in_numel != out_numel) {
+      VLOG(9) << "     -- input's numel != output's numel, can't do inplace";
+      return false;
+    }
+  } else if (input.type() != output.type()) {
     VLOG(9) << "     -- input's type != output's type, can't do inplace";
     return false;
   }
@@ -140,14 +185,12 @@ static void GetEagerDelValueOfOp(
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto input = op->operand_source(i);
-      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input) ||
-          IsNoNeedBuffer(op, input)) {
+      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
                 << upper_op_name << ") can not be deleted.";
         VLOG(8) << " -- skip dels: " << skip_dels.count(input);
         VLOG(8) << " -- value is null: " << !input;
         VLOG(8) << " -- can be deleted: " << !CanBeDeleted(input);
-        VLOG(8) << " -- is no_need_buffer: " << IsNoNeedBuffer(op, input);
         continue;
       }
       (*del_value_2_op)[input] = op;
@@ -248,7 +291,29 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     pir::OpInfo upper_inplace_op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
-    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
+    std::regex reg(",");
+    std::unordered_set<std::string> elems{
+        std::sregex_token_iterator(FLAGS_ir_inplace_kernel_blacklist.begin(),
+                                   FLAGS_ir_inplace_kernel_blacklist.end(),
+                                   reg,
+                                   -1),
+        std::sregex_token_iterator()};
+    elems.erase("");
+
+    if (elems.count(upper_op_name)) {
+      VLOG(6) << upper_op_name
+              << "'s value can't delete or doesn't have inplace op, so that "
+                 "can't do inplace.";
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        visited_values.insert(op->result(i));
+      }
+      continue;
+    }
+    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info) ||
+        upper_op_name == "pd_op.transpose") {
+      // NOTE(wanghuancoder): pd_op.transpose is not an
+      // inplace op, only strided transpose support
+      // inplace in dygraph
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
                  "can't do inplace.";
@@ -312,6 +377,11 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
     for (auto& result : op->results()) {
       visited_values.insert(result);
+    }
+  }
+  if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
+    for (auto i : inplace_ops) {
+      std::cout << i.second << std::endl;
     }
   }
   return inplace_ops;
