@@ -807,14 +807,37 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-    if (i == 0)
+    if (i == 0) {
       cond_val = new_in;
-    else
+      // NOTE(zhangbo): IfOp's input cond should be a cpu type.
+      AllocatedDenseTensorType new_cond_type =
+          cond_val.type().dyn_cast<dialect::AllocatedDenseTensorType>();
+      if (new_cond_type) {
+        if (new_cond_type.place().GetType() == phi::AllocationType::GPU) {
+          auto out_type = dialect::AllocatedDenseTensorType::get(
+              ctx,
+              phi::CPUPlace(),
+              cur_in.type().dyn_cast<dialect::DenseTensorType>());
+          phi::KernelKey kernel_key(phi::Backend::GPU,
+                                    phi::DataLayout::ALL_LAYOUT,
+                                    phi::DataType::BOOL);
+          cond_val = AddPlaceTransferOp(cond_val,
+                                        out_type,
+                                        new_cond_type.place(),
+                                        phi::CPUPlace(),
+                                        kernel_key,
+                                        block);
+        }
+      } else {
+        PADDLE_THROW(
+            phi::errors::Unimplemented("IfOp onlu support DenseTensorType"));
+      }
+    } else {
       vec_in.push_back(new_in);
+    }
   }
 
   pir::Builder builder(ctx, block);
-
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
   auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();

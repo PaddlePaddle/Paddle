@@ -53,8 +53,6 @@ WhileInstruction::WhileInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-
   VLOG(6) << "finish process inputs outputs index";
 
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
@@ -63,16 +61,17 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = inner_scope->GetVar(
+  cond_var_ = parent_exe_info->GetScope()->FindVar(
       parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(inner_scope->GetVar(
-        parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
+    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
+        parent_exe_info->GetValue2VarName().at(while_op.operand_source(0))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(inner_scope->GetVar(
-        parent_exe_info->GetValue2VarName().at(while_op.result(i))));
+    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
+        parent_exe_info->GetValue2VarName().at(while_op.operand_source(0))));
   }
 
   body_block_ = while_op.body_block();
@@ -155,10 +154,23 @@ void WhileInstruction::GetValueFromBodyBlock() {
 }
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
+  VLOG(0) << "[WhileInstruction] copy inouts to outputs";
+  if (cond_var_ == nullptr) {
+    VLOG(0) << "cond var is nullptr";
+  }
+  VLOG(0) << "111";
+  if (cond_var_->Get<phi::DenseTensor>().data<bool>() == nullptr) {
+    VLOG(0) << "cond var data is nullptr";
+  }
+  VLOG(0) << "222";
   while (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+    VLOG(0) << "[WhileInstruction] run body...";
     PassArgsToBodyBlock();
+    VLOG(0) << "[WhileInstruction] end pass args to body block";
     body_inter_->Run({}, false);
+    VLOG(0) << "[WhileInstruction] end executor run";
     GetValueFromBodyBlock();
+    VLOG(0) << "[WhileInstruction] end get value from body block";
   }
 }
 
