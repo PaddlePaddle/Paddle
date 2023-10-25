@@ -573,13 +573,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Recv(
                 << NCCLDTypeToString(phi::ToNCCLDataType(tensor->dtype()))
                 << ", src_in_group: " << src_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
-                << ", stream: " << stream << ", rank_in_group: " << rank_
-                << ", nranks: " << size_ << ", offset: " << offset
-                << ", sync_op: " << sync_op
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream
                 << GetGroupMessage();
 
-        comm_context->Recv(tensor, tensor->numel(), src_rank, stream);
+        comm_context->Recv(tensor, tensor->numel(), rank_in_group, stream);
       },
       src_rank,
       *tensor,
@@ -610,15 +610,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Send(
                        phi::ToNCCLDataType(tensor_maybe_partial.dtype()))
                 << ", dst_in_group: " << dst_rank
                 << ", ncclcomm: " << comm_context->GetNcclComm()
-                << ", stream: " << stream << ", rank_in_group: " << rank_
-                << ", nranks: " << size_ << ", offset: " << offset
-                << ", sync_op: " << sync_op
+                << ", stream: " << stream
+                << ", rank_in_group: " << rank_in_group << ", nranks: " << size_
+                << ", offset: " << offset << ", sync_op: " << sync_op
                 << ", use_calc_stream: " << use_calc_stream
                 << GetGroupMessage();
 
         comm_context->Send(tensor_maybe_partial,
                            tensor_maybe_partial.numel(),
-                           dst_rank,
+                           rank_in_group,
                            stream);
       },
       dst_rank,
@@ -656,11 +656,9 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                                           const std::string& store_key,
                                           CommType comm_type,
                                           int p2p_rank) {
-  ncclUniqueId nccl_id;
-
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
-          << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
+          << ", store_key: " << store_key;
 
   for (size_t i = 0; i < s_group_call_counter; ++i) {
     NCCL_CHECK(phi::dynload::ncclGroupEnd());
