@@ -67,7 +67,7 @@ class TestFCAddMKLDNNOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False)
+        self.check_output()
 
     def test_check_grad_normal(self):
         pass
