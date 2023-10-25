@@ -251,8 +251,12 @@ inline void newir_run_program_ad_func(
   std::shared_ptr<NewIRGradNodeRunProgram> grad_node;
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
 
-  if (require_any_grad) {
+  if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     grad_node = std::make_shared<NewIRGradNodeRunProgram>(1, 2);
     grad_node->GetMiddle().resize(middle_size);
@@ -280,7 +284,7 @@ inline void newir_run_program_ad_func(
   // if require_any_grad is False, don't save any middle vars.
   NewIRRunProgramAPI(
       x, params, out, middles, step_scope, dout, require_any_grad, attrs);
-  if (require_any_grad) {
+  if (!is_test && require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
 
     // Set Attributes
