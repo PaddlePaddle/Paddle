@@ -140,6 +140,10 @@ bool IsSupportCinn(pir::Operation* op) {
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
+  if (op_name == "broadcast") {
+    return true;
+  }
+
   OpTransInfo trans_info;
   bool is_support = registered && !trans_info.default_deny_ops().count(op_name);
   // if the op type is registered in CINN and allow_ops is not empty, return

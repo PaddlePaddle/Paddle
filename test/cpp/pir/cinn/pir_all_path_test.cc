@@ -19,6 +19,7 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
@@ -93,6 +94,8 @@ TEST(GroupOp, TestBuild) {
 
   program->Print(std::cout);
   pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
   std::cerr << "fin build cinn pass process " << std::endl;

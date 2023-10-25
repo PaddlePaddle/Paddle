@@ -61,7 +61,8 @@ if(WITH_TESTING AND WITH_CINN)
     op_with_group_merge_pass
     pd_build_cinn_pass
     cinn_op_dialect
-    pd_to_cinn_pass)
+    pd_to_cinn_pass
+    add_broadcast_to_elementwise_pass)
   set_tests_properties(test_pir_all_path PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
