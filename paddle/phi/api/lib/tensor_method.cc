@@ -136,6 +136,7 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
+  if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(src);
   bool rank_is_in_current_mesh = false;
@@ -146,11 +147,9 @@ void Tensor::copy_(const Tensor &src,
 
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs)
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
-    auto spmd_info = phi::distributed::ElementwiseUnaryInferSpmd(
-                          meta_dist_input_x);
 
     // 2. Create API Output & Prepare Dist and Dense Output
-    auto dist_out = SetKernelDistOutput(this, spmd_info.second[0]);
+    auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
     auto dense_out = dist_out->unsafe_mutable_value();
     if (!rank_is_in_current_mesh) {
       *dense_out = phi::DenseTensor(
@@ -167,8 +166,8 @@ void Tensor::copy_(const Tensor &src,
       // 4. Select Kernel
 
       // 5. Reshard Input
-      auto dist_input_x = ReshardApiInputToKernelInput(
-                          dev_ctx, src, spmd_info.first[0]);
+      auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
+                          src.impl().get());;
 
       // 6. PrepareData (DataTransform & Prepare Dense Input)
       auto input_x = &dist_input_x->value();
@@ -181,7 +180,6 @@ void Tensor::copy_(const Tensor &src,
       phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
 
       // 9. Reshard Partial Output to Replicated (Temporary)
-      ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);
     }
 
     // 10. Set Output Dist Attr For Default Impl
@@ -189,8 +187,6 @@ void Tensor::copy_(const Tensor &src,
     return;
   }
 #endif
-
-  if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
