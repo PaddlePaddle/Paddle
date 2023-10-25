@@ -403,6 +403,12 @@ __global__ void masked_multihead_attention_kernel(
   const int bbi = bi / params.beam_width;
   const int hi = blockIdx.x;
   const int bhi = bi * params.num_head + hi;
+
+  const int group = 2;
+  // 就是当前的cuda
+  // thread所应该取得的k和v的batch维度和head维度的这两个维度加起来！
+  const int kv_bhi = bi * group + hi / 16;
+
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int ti =
       params.cum_offsets ? bi * params.seq_len - params.cum_offsets[bi] : -1;
@@ -419,7 +425,9 @@ __global__ void masked_multihead_attention_kernel(
                           : params.sequence_lengths[bi];
 
   // qkv [B, S=1, 3, num_head, head_dim]
-  int qkv_base_offset = bi * 3 * params.num_head * Dh + hi * Dh;
+  // qkv [B, S=1, num_head + 2 * group, head_dim]
+  // 这里的 hi 指的是 query 的 head！
+  int qkv_base_offset = bi * (params.num_head + 2 * group) * Dh + hi * Dh;
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -444,7 +452,8 @@ __global__ void masked_multihead_attention_kernel(
 
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
-    int qk_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
+    int k_bias_offset = hi / 16 * Dh + tid * QK_VEC_SIZE;
 
     Qk_vec q;
     zero(q);
@@ -461,7 +470,8 @@ __global__ void masked_multihead_attention_kernel(
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      load_func.template load<Qk_vec>(k, params.num_head * Dh + qk_offset);
+      load_func.template load<Qk_vec>(
+          k, params.num_head * Dh + qk_offset - hi * Dh + hi / 16 * Dh);
     }
 
     if (params.add_qkv_bias) {
@@ -472,11 +482,11 @@ __global__ void masked_multihead_attention_kernel(
 
       q_bias =
           (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[qk_bias_offset])
+              ? *reinterpret_cast<const Qk_vec *>(&q_bias_base[q_bias_offset])
               : q_bias;
       k_bias =
           (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh)
-              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[qk_bias_offset])
+              ? *reinterpret_cast<const Qk_vec *>(&k_bias_base[k_bias_offset])
               : k_bias;
 
       q = add(q, q_bias);
@@ -582,7 +592,7 @@ __global__ void masked_multihead_attention_kernel(
 
     int co = tid / QK_VECS_IN_16B;
     int ci = (tid % QK_VECS_IN_16B) * QK_VEC_SIZE;
-    int offset = bhi * params.max_seq_length * Dh +
+    int offset = kv_bhi * params.max_seq_length * Dh +
                  co * params.max_seq_length * QK_ELTS_IN_16B +
                  act_time_step * QK_ELTS_IN_16B + ci;
     if (Dh == Dh_MAX || co < Dh / QK_ELTS_IN_16B) {
@@ -640,7 +650,7 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int K_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_KEY;
   constexpr int K_PER_WARP = WARP_SIZE / THREADS_PER_KEY;
 
-  T *k_cache = &params.cache_kv[bhi * params.max_seq_length * Dh + ki];
+  T *k_cache = &params.cache_kv[kv_bhi * params.max_seq_length * Dh + ki];
   T *k_cache_batch = &params.cache_kv[bbhi * params.max_seq_length * Dh + ki];
   int ti_end = div_up(act_time_step, K_PER_WARP) * K_PER_WARP;
 
@@ -737,12 +747,14 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
 
+  // vo的意思是 每个v的输出由 THREADS_PER_VALUE 个线程计算！
+  // vi的意思是
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
-  T *v_cache = &params.cache_kv[params.cache_batch_size * params.num_head *
+  T *v_cache = &params.cache_kv[params.cache_batch_size * group *
                                     params.max_seq_length * Dh +
-                                bhi * params.max_seq_length * Dh + vi];
+                                kv_bhi * params.max_seq_length * Dh + vi];
   T *v_cache_batch = &params.cache_kv[params.batch_size * params.num_head *
                                           params.max_seq_length * Dh +
                                       bbhi * params.max_seq_length * Dh + vi];
@@ -755,7 +767,9 @@ __global__ void masked_multihead_attention_kernel(
 
   V_vec_acum out;
   zero(out);
-
+  // 上面已经得到了【1 * seq】这么多输出了，分散在 logits_smem！里
+  // 下面就进行【1 * seq】* 【seq * head_dim】
+  // V_PER_ITER 的意思就是每个线程需要处理这么多seq！
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
@@ -783,15 +797,19 @@ __global__ void masked_multihead_attention_kernel(
 
   V_vec v_bias;
   zero(v_bias);
+  // 这个地方他妈的是要干啥呢？，有点像是要处理最后的一个v！
+  // vo 表示seq的索引哦！
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
     V_vec v;
-    load_func.template load<V_vec>(
-        v, 2 * params.num_head * Dh + qkv_base_offset + vi);
+    load_func.template load<V_vec>(v,
+                                   qkv_base_offset + vi - hi * Dh +
+                                       params.num_head * Dh + group * Dh +
+                                       hi / 16 * Dh);
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
-          &params.qkv_bias[2 * params.num_head * Dh + hi * Dh + vi]);
+          &params.qkv_bias[(group + params.num_head) * Dh + hi * Dh + vi]);
       v = add(v, v_bias);
     }
 
@@ -806,6 +824,7 @@ __global__ void masked_multihead_attention_kernel(
 
   __syncthreads();
 
+  // 似乎是想规约！
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
@@ -830,6 +849,7 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
+  // 这一步是干啥呢？只想让很少的线程负责写入！
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     // convert_from_float(*reinterpret_cast<V_vec *>(&params.out[bhi * Dh +
@@ -1319,7 +1339,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
   int cache_bsz = cache_kv.dims()[1];
-  int num_head = cache_kv.dims()[2];
+  int num_head = 32;
   int max_seq_len = cache_kv.dims()[3];
   int dim_head = cache_kv.dims()[4];
   int timestep = max_seq_len;

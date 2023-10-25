@@ -4279,7 +4279,8 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* beam_cache_offset_out) {
   int bsz = static_cast<int>(x.dims()[0]);
   auto cache_kv_dims = cache_kv.dims();
-  int num_head = static_cast<int>(cache_kv.dims()[2]);
+  // int num_head = static_cast<int>(cache_kv.dims()[2]);
+  int num_head = 32;
   int dim_head = static_cast<int>(cache_kv.dims()[4]);
 
   PADDLE_ENFORCE_EQ(

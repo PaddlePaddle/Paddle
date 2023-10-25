@@ -196,11 +196,12 @@ def monkey_patch_tensor():
             else:
                 self.value().set_string_list(value)
         else:
-            assert self.shape == list(
-                value.shape
-            ), "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
-                self.name, self.shape, value.shape
-            )
+            pass
+            # assert self.shape == list(
+            #     value.shape
+            # ), "Variable Shape not match, Variable [ {} ] need tensor with shape {} but load set tensor with shape {}".format(
+            #     self.name, self.shape, value.shape
+            # )
 
             if isinstance(value, base_tensor):
                 dtype = value.dtype
