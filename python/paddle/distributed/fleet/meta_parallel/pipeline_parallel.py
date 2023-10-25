@@ -1205,10 +1205,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             self.num_stages > 2
         ), "virtual pipeline must run under pp degree > 2"
 
-        # assert (
-        #     self.accumulate_steps % self.num_stages == 0
-        # ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
-
     def _get_virtual_pp_rank(self, micro_step, forward):
 
         virtual_pp_stage = micro_step % (
@@ -1217,16 +1213,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         virtual_pp_stage = virtual_pp_stage // self.accumulate_steps
         if not forward:
             virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
-
-        # virtual_pp_stage = micro_step // self.accumulate_steps
-        # if not forward:
-        #     virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
-
-        # virtual_pp_stage = micro_step % (
-        #     self.num_stages * self.num_model_chunks)
-        # virtual_pp_stage = virtual_pp_stage // self.num_stages
-        # if not forward:
-        #     virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
 
         return virtual_pp_stage
 
@@ -1286,13 +1272,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         self.micro_batch_id = 0
         self._forward_only = forward_only
 
-        # store the number of backward steps
-        # assert (
-        #     self.accumulate_steps % self.num_stages == 0
-        # ), "accumulate_steps({}) should be evenly divisible by num_stages({}) for pipeline with interleave".format(
-        #     self.accumulate_steps, self.num_stages
-        # )
-
         assert (
             self.accumulate_steps >= self.num_stages
         ), "accumulate_steps({}) should be larger than num_stages({}) for pipeline with interleave".format(
@@ -1304,17 +1283,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             self.accumulate_steps, self.num_stages
         )
 
-        # per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
-        # self._backward_step_count = (
-        #     -(per_stage_accumulate_steps - 1)
-        #     * self.num_stages
-        #     * self.num_model_chunks
-        # )
-
         self._backward_step_count = 0
 
         skip_steps = self.accumulate_steps - self.num_stages
-        # print("Skip steps: ", skip_steps)
         send_recv_buffer_queue = queue.Queue()
 
         # init some data buffers for interleave scheduler
@@ -1325,20 +1296,9 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
         micro_dataset = self._wrap_data(data)
 
         num_steps = self.accumulate_steps * self.num_model_chunks
-        # all_startup_steps = False
-        # if forward_only:
-        #     # If only forward, since there is no backward during running, all steps are startup steps
-        #     startup_steps = num_steps
-        # else:
-        #     if self.accumulate_steps == self.num_stages:
+
         startup_steps = num_steps
         all_startup_steps = True
-        # else:
-        #     startup_steps = (self.num_stages - self.stage_id - 1) * 2
-        #     startup_steps += (self.num_model_chunks - 1) * self.num_stages
-        #     startup_steps = min(startup_steps, num_steps)
-
-        # steady_steps = num_steps - startup_steps
 
         self.set_virtual_pipeline_rank(0)
         self.input_tensors[0].append(
@@ -1349,21 +1309,18 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
 
         # run startup steps
         for micro_step in range(startup_steps):
-            # print(f"Start forward in micro_step {micro_step}")
             output_tensor = self._forward_step_helper(micro_dataset, micro_step)
-            # print(f"Finish forward in micro_step {micro_step}")
-
             # determine whether recv forward tensor or not
             next_virtual_pp_rank = self._get_virtual_pp_rank(
                 micro_step + 1, forward=True
             )
-            # print("next_virtual_pp_rank: " , next_virtual_pp_rank)
 
             recv_prev = True
             if self.is_pipeline_first_stage(ignore_virtual=True):
                 if next_virtual_pp_rank == 0:
                     # next chunk is the first chunk, not need to pre recv an input tensor
                     recv_prev = False
+
             # last micro step, no next run
             if micro_step == (num_steps - 1):
                 recv_prev = False
@@ -1371,9 +1328,7 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
             if self.is_pipeline_last_stage(ignore_virtual=True):
                 # last stage skip send/recv
                 if not self.is_pipeline_last_stage():
-                    # output_tensor = None
                     send_recv_buffer_queue.put(output_tensor)
-                    # print("start put output tensor.", output_tensor)
 
                 if micro_step < skip_steps or (
                     self.is_pipeline_last_stage()
@@ -1382,10 +1337,6 @@ class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
                     output_tensor = None
                 else:
                     output_tensor = send_recv_buffer_queue.get()
-
-            # # last stage shouldn't send tensor to downstream
-            # if self.is_pipeline_last_stage():
-            #     output_tensor = None
 
             input_tensor = self._p2p_helper.send_forward_recv_forward(
                 output_tensor, recv_prev=recv_prev
