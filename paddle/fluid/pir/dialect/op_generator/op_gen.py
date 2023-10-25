@@ -26,6 +26,7 @@ from op_interface_gen import (
     gen_op_infer_meta_str,
     gen_op_vjp_str,
 )
+from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
 from vjp_interface_black_list import vjp_interface_black_list
@@ -228,6 +229,12 @@ def to_phi_and_fluid_grad_op_name(op_item):
     return rtn
 
 
+def get_param_list_alias(param_list, args_map):
+    return [
+        args_map[param] if param in args_map else param for param in param_list
+    ]
+
+
 # =====================================
 # Parse Op Compat From Yaml
 # =====================================
@@ -376,6 +383,9 @@ class OpInfoParser:
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
+
+        # parse data_transform
+        self.data_transform_map = self.parse_data_transform_info()
 
         # parse has_custom_verify
         self.custom_verify = self.parse_custom_verify()
@@ -833,6 +843,15 @@ class OpInfoParser:
         else:
             return None
 
+    def parse_data_transform_info(self):
+        if (
+            'data_transform' in self.op_yaml_item
+            and self.op_yaml_item['data_transform']
+        ):
+            data_trans_item = self.op_yaml_item['data_transform']
+            return data_trans_item
+        return None
+
     def parse_backward_name(self):
         if 'backward' in self.op_yaml_item:
             return self.op_yaml_item['backward']
@@ -1024,6 +1043,7 @@ def OpGenerator(
         op_invoke_map = op_info.invoke_map
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
+        op_data_transform_map = op_info.data_transform_map
         op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
         op_traits = []
 
@@ -1427,6 +1447,18 @@ def OpGenerator(
                         op_output_optional_list,
                     )
 
+                # generate op GetKernelKeyForVar function str
+                op_get_kernel_type_for_var_str = ''
+                if op_data_transform_map is not None:
+                    op_get_kernel_type_for_var_str = (
+                        gen_kernel_type_for_var_str(
+                            op_class_name,
+                            op_data_transform_map,
+                            op_kernel_map,
+                            op_info_items.op_compat_item,
+                        )
+                    )
+
                 op_infer_meta_str = gen_op_infer_meta_str(
                     op_info, op_class_name, op_info_items
                 )
@@ -1471,6 +1503,8 @@ def OpGenerator(
 
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
+                    ops_defined_list.append(op_get_kernel_type_for_var_str)
+
                     # NOTE(chenxi67)skip if dialect_name==cinn
                     if dialect_name == "cinn":
                         pass
