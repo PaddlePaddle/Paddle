@@ -1692,18 +1692,31 @@ class PoolingOneDNNHandler
 
     /*
     The previous calculation formula is given by OneDNN rfc, but in some odd
-    cases there will be problems with the calculation results.
+    cases(mod(I/O)>=O/2) there will be problems with the calculation results.
     Now change the formula to the general calculation formula of
-    AdaptivePool:
+    AdaptivePool when in mod(I/O)>=O/2 case:
     stride=floor(input_size/output_size)
     kernel_size=input_size-(output_size-1)*stride
     */
-    strides->at(0) = static_cast<int64_t>(floor(IH / OH));
-    strides->at(1) = static_cast<int64_t>(floor(IW / OW));
-    kernel_size->at(0) = static_cast<int64_t>(IH + padding_l[0] + padding_r[0] -
-                                              floor((OH - 1) * strides->at(0)));
-    kernel_size->at(1) = static_cast<int64_t>(IW + padding_l[1] + padding_r[1] -
-                                              floor((OW - 1) * strides->at(1)));
+    int mod_H = IH - floor(IH / OH) * OH;
+    int mod_W = IW - floor(IW / OW) * OW;
+    if (2 * mod_H < OH && 2 * mod_W < OW) {
+      strides->at(0) =
+          static_cast<int64_t>(floor((IH * 2.0) / OH) - floor(IH / OH));
+      strides->at(1) =
+          static_cast<int64_t>(floor((IW * 2.0) / OW) - floor(IW / OW));
+      kernel_size->at(0) =
+          static_cast<int64_t>(ceil((IH * 2.0) / OH) - floor(IH / OH));
+      kernel_size->at(1) =
+          static_cast<int64_t>(ceil((IW * 2.0) / OW) - floor(IW / OW));
+    } else {
+      strides->at(0) = static_cast<int64_t>(floor(IH / OH));
+      strides->at(1) = static_cast<int64_t>(floor(IW / OW));
+      kernel_size->at(0) = static_cast<int64_t>(
+          IH + padding_l[0] + padding_r[0] - floor((OH - 1) * strides->at(0)));
+      kernel_size->at(1) = static_cast<int64_t>(
+          IW + padding_l[1] + padding_r[1] - floor((OW - 1) * strides->at(1)));
+    }
   }
 
  private:
