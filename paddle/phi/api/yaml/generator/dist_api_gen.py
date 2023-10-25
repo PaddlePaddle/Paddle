@@ -103,11 +103,11 @@ INPLACE_API_OUT_CREATION_TEMPLATE = """
 SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out = SetKernelDistOutput(&api_output);
     auto dense_out = dist_out->unsafe_mutable_value();
-    if (!rank_is_in_current_mesh) {{
+    if (!rank_is_in_current_mesh) {
       *dense_out = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
             phi::DenseTensorMeta());
-    }}
+    }
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({out});
