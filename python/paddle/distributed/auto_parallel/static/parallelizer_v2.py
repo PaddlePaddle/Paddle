@@ -356,6 +356,13 @@ class Parallelizer:
             params_grads = self._pass_context.get_attr("params_grads")
 
         if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
+            if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+                self.logger.warning(
+                    "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
             allreduce_matmul_grad_overlapping_pass = new_pass(
                 "allreduce_matmul_grad_overlapping", {}
             )
@@ -436,10 +443,11 @@ class Parallelizer:
                 enable_send_recv_overlap
                 and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
             ):
-                self._logger.warning(
-                    "enable_send_recv_overlap requires environment variable CUDA_DEVICE_MAX_CONNECTIONS=1, but you did not set it. Paddle has been automatically set CUDA_DEVICE_MAX_CONNECTIONS to 1, try export CUDA_DEVICE_MAX_CONNECTIONS=1 to make this warning disappear."
+                self.logger.warning(
+                    "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
-                os.environ["CUDA_DEVICE_MAX_CONNECTIONS"] = "1"
 
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
