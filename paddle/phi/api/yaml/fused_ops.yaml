@@ -71,6 +71,15 @@
     data_type : x
   optional : bias, branch, branch_max ,x_max, scale_max, out_max_in
 
+- op : dequantize_xpu
+  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : DeQuantizeXPUInferMeta
+  kernel :
+    func : dequantize_xpu
+    data_type: x
+
 - op : embedding_with_eltwise_add_xpu
   args : (Tensor[] ids, Tensor[] tables, Tensor mask, int64_t padding_idx)
   output: Tensor(out), Tensor(seq_lod), Tensor(max_seq_len)
@@ -253,6 +262,15 @@
     func : multihead_matmul
     data_type : input
   optional : bias_qk
+
+- op : quantize_xpu
+  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : QuantizeXPUInferMeta
+  kernel :
+    func : quantize_xpu
+    data_type : x
 
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
