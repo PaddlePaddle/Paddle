@@ -48,6 +48,7 @@ class ScalarAttribute : public pir::Attribute {
            (val.type_id() == pir::FloatAttribute::type_id()) ||
            (val.type_id() == pir::DoubleAttribute::type_id()) ||
            (val.type_id() == pir::Int32Attribute::type_id()) ||
+           (val.type_id() == pir::IndexAttribute::type_id()) ||
            (val.type_id() == pir::Int64Attribute::type_id()) ||
            (val.type_id() == pir::StrAttribute::type_id());
   }
