@@ -143,8 +143,7 @@ class TestAccuracyOpError(unittest.TestCase):
 
 
 class TestAccuracyAPI1(unittest.TestCase):
-    @test_with_pir_api
-    def test_api(self):
+    def run_api(self, accuracy_api):
         with paddle_static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 self.predictions = paddle.static.data(
@@ -153,7 +152,7 @@ class TestAccuracyAPI1(unittest.TestCase):
                 self.label = paddle.static.data(
                     shape=[2, 1], name="labels", dtype="int64"
                 )
-                self.result = paddle.static.accuracy(
+                self.result = accuracy_api(
                     input=self.predictions, label=self.label, k=1
                 )
                 self.input_predictions = np.array(
@@ -171,6 +170,11 @@ class TestAccuracyAPI1(unittest.TestCase):
                     fetch_list=[self.result],
                 )
                 self.assertEqual((result == self.expect_value).all(), True)
+
+    @test_with_pir_api
+    def test_api(self):
+        self.run_api(accuracy_api=paddle.static.accuracy)
+        self.run_api(accuracy_api=paddle.metric.accuracy)
 
 
 class TestAccuracyAPI2(unittest.TestCase):
