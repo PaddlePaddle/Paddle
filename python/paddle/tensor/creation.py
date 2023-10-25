@@ -2678,7 +2678,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2757,7 +2757,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(
