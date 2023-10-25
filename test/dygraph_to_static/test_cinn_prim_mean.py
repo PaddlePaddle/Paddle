@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    show_all_test_cases,
+    test_ast_only,
+)
 
 import paddle
 from paddle import tensor
@@ -55,8 +59,7 @@ class PrimeNet(
         return out
 
 
-@dy2static_unittest
-class TestPrimForward(unittest.TestCase):
+class TestPrimForward(Dy2StTestBase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
     set this flag as False to avoid prim_backward.
@@ -112,7 +115,7 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
-    @ast_only_test
+    @test_ast_only
     def test_cinn_prim_forward(self):
         for shape in self.shapes:
             for dtype in self.dtypes:
@@ -134,8 +137,7 @@ class TestPrimForward(unittest.TestCase):
                 )
 
 
-@dy2static_unittest
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimForwardAndBackward(Dy2StTestBase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
     """
@@ -187,7 +189,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that reduce_mean is splitted into small ops
         self.assertTrue('reduce_mean' not in fwd_ops)
 
-    @ast_only_test
+    @test_ast_only
     def test_cinn_prim(self):
         for shape in self.shapes:
             for dtype in self.dtypes:
@@ -210,4 +212,6 @@ class TestPrimForwardAndBackward(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    show_all_test_cases(TestPrimForwardAndBackward)
+    show_all_test_cases(TestPrimForward)
     unittest.main()
