@@ -357,6 +357,20 @@ if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
 endif()
 if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
   bash_test_modules(
+    test_dygraph_sharding_stage1_dp
+    START_BASH
+    ../../legacy_test/dist_test.sh
+    TIMEOUT
+    "200"
+    LABELS
+    "RUN_TYPE=DIST"
+    ENVS
+    "PADDLE_DIST_UT_PORT=22024;NVIDIA_TF32_OVERRIDE=0;http_proxy=;https_proxy=;PYTHONPATH=../..:${PADDLE_BINARY_DIR}/python"
+  )
+  set_tests_properties(test_dygraph_sharding_stage1_dp PROPERTIES TIMEOUT "200")
+endif()
+if(LOCAL_ALL_ARCH AND LOCAL_ALL_PLAT)
+  bash_test_modules(
     test_dygraph_sharding_stage1_fp16
     START_BASH
     ../../legacy_test/dist_test.sh

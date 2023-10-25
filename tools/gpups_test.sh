@@ -32,6 +32,7 @@ serial_list="^test_conv2d_op$|\
 ^test_dygraph_dataparallel_bf16$|\
 ^test_dygraph_sharding_stage1_fp16$|\
 ^test_dygraph_sharding_stage1_bf16$|\
+^test_dygraph_sharding_stage1_dp$|\
 ^test_dygraph_sharding_stage2_bf16$|\
 ^test_dygraph_sharding_stage3_bf16$|\
 ^test_conv3d_op$"
