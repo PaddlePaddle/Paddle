@@ -62,7 +62,7 @@ PD_DEFINE_bool(general_fusion_merge_pass,
                "Whether to use general fusion_merge pass.");
 
 PD_DEFINE_bool(cinn_new_group_scheduler,
-               BoolFromEnv("FLAGS_cinn_new_group_scheduler", false),
+               BoolFromEnv("FLAGS_cinn_new_group_scheduler", true),
                "Whether to use new group scheduler.");
 
 PD_DEFINE_bool(cinn_use_common_subexpression_elimination,
