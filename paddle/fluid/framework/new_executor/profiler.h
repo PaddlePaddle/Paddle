@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #pragma once
+#include <stdlib.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -56,5 +60,53 @@ class ProfilerGuard {
 };
 
 }  // namespace interpreter
+
+namespace profiler {
+
+class OpDeviceProfileEvent {
+ public:
+  explicit OpDeviceProfileEvent(const DeviceContext& device_context);
+  virtual ~OpDeviceProfileEvent();
+
+  void Record();
+
+ private:
+  // CUDA
+#if defined(PADDLE_WITH_CUDA)
+  cudaEvent_t event_obj_cuda_ = nullptr;  // owned
+  cudaStream_t cuda_stream_ =
+      nullptr;  // (not owned) which stream the event is recorded onto
+#endif
+  // CPU
+  struct cpuEvent_t {
+    // cpu can also be treated as a compute device
+    double event_time_us_;
+  };
+  cpuEvent_t event_obj_cpu_;
+};
+
+class OpRuntimeProfiler {
+  // cross platform event recorder for op runtime profiling
+  // for cpu device, recorder uses a simple timer to record op runtime
+  // while for GPU device, recorder uses cuda event to record op runtime
+ public:
+  explicit OpRuntimeProfiler(const DeviceContext& device_context);
+  virtual ~OpRuntimeProfiler();
+
+  void RecordEvent(
+      const std::string& event_name);  // this will record event on both host
+                                       // and device side (if exist)
+  // return time lapse between two events in both host and device side
+  std::tuple<double, double> MeasureTimeLapseBetweenEvents(
+      const OpDeviceProfileEvent& event_start,
+      const OpDeviceProfileEvent& event_end) const;
+
+ protected:
+  const DeviceContext& device_context_;  // (not owned)
+  std::unordered_map<std::string, std::shared_ptr<OpDeviceProfileEvent>>
+      name_to_device_profile_events_;  // mapping event name to event object
+}
+
+}  // namespace profiler
 }  // namespace framework
 }  // namespace paddle
