@@ -96,6 +96,12 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   return {{x_dist_attr_dst}, out_dist_attrs};
 }
 
+SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
+                                      int num,
+                                      const Scalar& axis) {
+  return SplitWithNumInferSpmd(x, num, axis.to<int32_t>());
+}
+
 SpmdInfo SplitWithNumInferSpmdReverse(
     const DistMetaTensor& x,
     const std::vector<const DistMetaTensor*>& outs,
