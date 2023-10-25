@@ -1889,6 +1889,127 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
   }
 };
 
+struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      target_op_name = "pd_op.repeat_interleave_with_tensor_index";
+    } else {
+      target_op_name = "pd_op.repeat_interleave";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    return op_info;
+  }
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      auto x_names = op_desc.Input("X", true);
+      IR_ENFORCE(x_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 x_names.size());
+      auto input = param_map->at(x_names[0]).value;
+      op_inputs.push_back(input);
+      auto repeats_names = op_desc.Input("RepeatsTensor", true);
+      IR_ENFORCE(repeats_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 repeats_names.size());
+      input = param_map->at(repeats_names[0]).value;
+      op_inputs.push_back(input);
+      std::cout << "return repeat_interleave_with_tensor_index inputs"
+                << std::endl;
+      return op_inputs;
+    } else {
+      auto x_names = op_desc.Input("X", true);
+      IR_ENFORCE(x_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 x_names.size());
+      auto input = param_map->at(x_names[0]).value;
+      op_inputs.push_back(input);
+      return op_inputs;
+    }
+  }
+};
+
+struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      target_op_name = "pd_op.repeat_interleave_with_tensor_index_grad";
+    } else {
+      target_op_name = "pd_op.repeat_interleave_grad";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      auto x_names = op_desc.Input("X", true);
+      IR_ENFORCE(x_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 x_names.size());
+      auto input = param_map->at(x_names[0]).value;
+      op_inputs.push_back(input);
+      auto repeats_names = op_desc.Input("RepeatsTensor", true);
+      IR_ENFORCE(repeats_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 repeats_names.size());
+      input = param_map->at(repeats_names[0]).value;
+      op_inputs.push_back(input);
+
+      auto out_grad_names = op_desc.Input("Out@GRAD", true);
+      IR_ENFORCE(out_grad_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 out_grad_names.size());
+      input = param_map->at(out_grad_names[0]).value;
+      op_inputs.push_back(input);
+      return op_inputs;
+    } else {
+      auto x_names = op_desc.Input("X", true);
+      IR_ENFORCE(x_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 x_names.size());
+      auto input = param_map->at(x_names[0]).value;
+      op_inputs.push_back(input);
+
+      auto out_grad_names = op_desc.Input("Out@GRAD", true);
+      IR_ENFORCE(out_grad_names.size() == 1,
+                 "Expected op[%s]'s input X has only 1 variable, but got %d",
+                 op_desc.Type(),
+                 out_grad_names.size());
+      input = param_map->at(out_grad_names[0]).value;
+      op_inputs.push_back(input);
+      return op_inputs;
+    }
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -1918,6 +2039,9 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
+  special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();
+  special_handlers["repeat_interleave_grad"] =
+      RepeatInterLeaveGradOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable

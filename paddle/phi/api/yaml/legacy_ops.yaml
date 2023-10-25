@@ -904,6 +904,7 @@
     func : RepeatInterleaveInferMeta
   kernel :
     func : repeat_interleave
+    data_type : x
   backward: repeat_interleave_grad
 
 - op : repeat_interleave_with_tensor_index
