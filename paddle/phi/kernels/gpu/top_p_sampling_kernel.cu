@@ -697,4 +697,7 @@ PD_REGISTER_KERNEL(top_p_sampling,
                    ALL_LAYOUT,
                    phi::TopPSamplingKernel,
                    float,
+                   double,
+                   int,
+                   int64_t,
                    phi::dtype::float16) {}
