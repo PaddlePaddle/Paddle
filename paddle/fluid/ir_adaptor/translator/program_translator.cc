@@ -581,30 +581,6 @@ void ProgramTranslator::TranslateGeneralOperation(
   VLOG(10) << "[op translated][general]" << operation << "end";
 }
 
-inline pir::Operation* InsertDataOp(pir::IrContext* ctx, const VarDesc* var) {
-  auto& type_translator = TypeTranslator::instance();
-  std::string data_op_name(::paddle::dialect::DataOp::name());
-  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(data_op_name);
-
-  pir::AttributeMap op_attribute_map = {
-      {"name", pir::StrAttribute::get(ctx, var->Name())},
-      {"shape",
-       paddle::dialect::IntArrayAttribute::get(pir::IrContext::Instance(),
-                                               phi::IntArray(var->GetShape()))},
-      {"dtype",
-       paddle::dialect::DataTypeAttribute::get(
-           ctx, paddle::framework::TransToPhiDataType(var->GetDataType()))},
-      {"place",
-       paddle::dialect::PlaceAttribute::get(
-           ctx, phi::Place(phi::AllocationType::UNDEFINED))},
-  };
-
-  pir::Type translated_var_type = type_translator[var->GetType()](ctx, *var);
-  pir::Operation* operation = pir::Operation::Create(
-      {}, op_attribute_map, {translated_var_type}, op_info);
-  return operation;
-}
-
 inline pir::Operation* InsertGetParamaterOp(pir::IrContext* ctx,
                                             const VarDesc* var) {
   auto& type_translator = TypeTranslator::instance();
@@ -632,56 +608,6 @@ inline pir::Operation* InsertSetParamaterOp(pir::IrContext* ctx,
   pir::Operation* operation = pir::Operation::Create(
       {defining_op_result}, op_attribute_map, {}, op_info);
   return operation;
-}
-
-void ProgramTranslator::GetDataOpForSingleBlock(const BlockDesc& block) {
-  for (auto& var : block.AllVars()) {
-    if (var->Persistable()) continue;
-    if (param_map_.count(var->Name()) != 0) continue;
-    if (no_cast_var_names.count(var->Name()) != 0) continue;
-
-    temp_var_name_mappings_[var->Name()] = var;
-  }
-
-  std::unordered_set<std::string> inner_defining_variables;
-
-  for (auto op_desc : block.AllOps()) {
-    for (const auto& n : op_desc->Inputs()) {
-      const auto& input_var_names = n.second;
-      for (const auto& var_name : input_var_names) {
-        if (no_cast_var_names.count(var_name) != 0) continue;
-        VarDesc* var_desc = nullptr;
-        bool is_temp_var = (temp_var_name_mappings_.find(var_name) !=
-                            temp_var_name_mappings_.end());
-        if (is_temp_var) {
-          var_desc = temp_var_name_mappings_[var_name];
-        }
-        bool is_unseen_var = (inner_defining_variables.count(var_name) == 0);
-        if (is_unseen_var) {
-          var_desc = block.FindVarRecursive(var_name);
-        }
-
-        bool need_data_op = is_temp_var && is_unseen_var;
-        if (need_data_op) {
-          PADDLE_ENFORCE_NOT_NULL(
-              var_desc,
-              phi::errors::PreconditionNotMet(
-                  "VarDesc of [%s] can not be nullptr", var_name));
-          pir::Operation* op = InsertDataOp(ctx_, var_desc);
-          program_->block()->push_back(op);
-          param_map_.PushValue(var_name, VariableDefiningInfo(op->result(0)));
-          VLOG(10) << "[op translated][data]" << var_name;
-          inner_defining_variables.insert(var_name);
-        }
-      }
-    }
-    for (const auto& n : op_desc->Outputs()) {
-      const auto& output_var_names = n.second;
-      for (const auto& var_name : output_var_names) {
-        inner_defining_variables.insert(var_name);
-      }
-    }
-  }
 }
 
 void ProgramTranslator::GetParameterForSingleBlock(const BlockDesc& block) {

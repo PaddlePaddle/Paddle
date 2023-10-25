@@ -151,7 +151,6 @@ class ProgramTranslator {
   void TranslateGeneralOperation(const OpDesc* src_op,
                                  TranslationContext* translation_ctx,
                                  pir::Block* dst_block);
-  void GetDataOpForSingleBlock(const BlockDesc& block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);

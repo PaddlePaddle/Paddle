@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/pir/core/block_argument.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -230,6 +231,9 @@ std::vector<pir::Value> GetOutsideOpInputs(
     for (size_t i = 0; i < op->num_results(); ++i) {
       inner_outputs.insert(op->result(i));
     }
+  }
+  for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
+    inner_outputs.insert(block->argument(arg_id));
   }
 
   std::vector<pir::Value> outside_op_inputs;
