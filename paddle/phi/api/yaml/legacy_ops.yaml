@@ -507,6 +507,7 @@
   output: Tensor(out)
   infer_meta :
     func : CreateLikeInferMeta
+    spmd_rule: FullLikeInferSpmd
     param : [x, dtype]
   kernel :
     func : full_like
