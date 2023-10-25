@@ -139,7 +139,7 @@ def logical_and(x, y, out=None, name=None):
             [True , False, True , False])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_and(x, y)
 
     return _logical_op(
@@ -413,7 +413,7 @@ def equal_all(x, y, name=None):
             Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
             False)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_all(x, y)
     else:
         helper = LayerHelper("equal_all", **locals())
