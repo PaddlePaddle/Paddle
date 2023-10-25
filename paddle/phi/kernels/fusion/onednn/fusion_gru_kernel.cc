@@ -32,10 +32,10 @@ using phi::funcs::RNNReorderType;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T, typename T_out = T>
-class GRUMKLDNNHandler
+class GRUOneDNNHandler
     : public phi::funcs::OneDNNHandlerT<T, dnnl::gru_forward> {
  public:
-  GRUMKLDNNHandler(const OneDNNContext& dev_ctx,
+  GRUOneDNNHandler(const OneDNNContext& dev_ctx,
                    const dnnl::engine onednn_engine,
                    phi::Place cpu_place UNUSED,
                    const phi::DenseTensor* input,
@@ -55,13 +55,18 @@ class GRUMKLDNNHandler
             dev_ctx,
             dev_ctx.GetEngine(),
             cpu_place,
-            CreateKey(dev_ctx, "XWeightH", OneDNNGetDataType<T>(), Ti)),
+            CreateKey(dev_ctx,
+                      dev_ctx.GetInputsName("X")[0] +
+                          dev_ctx.GetInputsName("WeightH")[0],
+                      OneDNNGetDataType<T>(),
+                      Ti)),
         N(N),
         Ti(Ti),
         IC(IC),
         OC(OC),
         G(3) {
-    std::string unique_name = "XWeightH";
+    std::string unique_name =
+        dev_ctx.GetInputsName("X")[0] + dev_ctx.GetInputsName("WeightH")[0];
     // Create memory key without Ti because weights, bias and h0 memories
     // do not depend on Ti size but primitive and input/output memory do
     memory_key_ = phi::funcs::ExtendKeyWithThreadInfoIfNeeded(
@@ -431,8 +436,8 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
                const bool is_reverse,
                const bool use_seq,
                const bool origin_mode,
-               const bool use_mkldnn,
-               const std::string& mkldnn_data_type,
+               const bool use_onednn,
+               const std::string& onednn_data_type,
                const float scale_data,
                const float shift_data,
                const std::vector<float>& scale_weights,
@@ -467,7 +472,7 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   const int64_t IC = x_mat_dims_vec[1];  // Input channels
   const int64_t OC = weight_h_dims[0];   // Output channels
 
-  GRUMKLDNNHandler<T, Tout> handler(dev_ctx,
+  GRUOneDNNHandler<T, Tout> handler(dev_ctx,
                                     onednn_engine,
                                     dev_ctx.GetPlace(),
                                     &x,
@@ -548,28 +553,28 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
 }
 
 template <typename T, typename Context>
-void FusionGRUKernel(const Context& dev_ctx,
-                     const DenseTensor& x,
-                     const paddle::optional<DenseTensor>& h0,
-                     const DenseTensor& weight_x,
-                     const DenseTensor& weight_h,
-                     const paddle::optional<DenseTensor>& bias,
-                     const std::string& activation,
-                     const std::string& gate_activation,
-                     const bool is_reverse,
-                     const bool use_seq,
-                     const bool origin_mode,
-                     const bool use_mkldnn,
-                     const std::string& mkldnn_data_type,
-                     const float scale_data,
-                     const float shift_data,
-                     const std::vector<float>& scale_weights,
-                     const bool force_fp32_output,
-                     DenseTensor* reordered_h0,
-                     DenseTensor* xx,
-                     DenseTensor* batched_input,
-                     DenseTensor* batched_out,
-                     DenseTensor* hidden) {
+void FusionGRUOneDNNKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           const paddle::optional<DenseTensor>& h0,
+                           const DenseTensor& weight_x,
+                           const DenseTensor& weight_h,
+                           const paddle::optional<DenseTensor>& bias,
+                           const std::string& activation,
+                           const std::string& gate_activation,
+                           const bool is_reverse,
+                           const bool use_seq,
+                           const bool origin_mode,
+                           const bool use_onednn,
+                           const std::string& onednn_data_type,
+                           const float scale_data,
+                           const float shift_data,
+                           const std::vector<float>& scale_weights,
+                           const bool force_fp32_output,
+                           DenseTensor* reordered_h0,
+                           DenseTensor* xx,
+                           DenseTensor* batched_input,
+                           DenseTensor* batched_out,
+                           DenseTensor* hidden) {
   const bool is_bf16 = std::is_same<T, phi::dtype::bfloat16>::value;
   // BF16 does not support force output
   if (!is_bf16 && force_fp32_output) {  // NOLINT
@@ -584,8 +589,8 @@ void FusionGRUKernel(const Context& dev_ctx,
                         is_reverse,
                         use_seq,
                         origin_mode,
-                        use_mkldnn,
-                        mkldnn_data_type,
+                        use_onednn,
+                        onednn_data_type,
                         scale_data,
                         shift_data,
                         scale_weights,
@@ -607,8 +612,8 @@ void FusionGRUKernel(const Context& dev_ctx,
                  is_reverse,
                  use_seq,
                  origin_mode,
-                 use_mkldnn,
-                 mkldnn_data_type,
+                 use_onednn,
+                 onednn_data_type,
                  scale_data,
                  shift_data,
                  scale_weights,
@@ -627,7 +632,7 @@ void FusionGRUKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(fusion_gru,
                    OneDNN,
                    ONEDNN,
-                   phi::fusion::FusionGRUKernel,
+                   phi::fusion::FusionGRUOneDNNKernel,
                    float,
                    phi::dtype::bfloat16,
                    uint8_t) {}
