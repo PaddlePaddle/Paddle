@@ -127,7 +127,6 @@ class ProgramTranslator {
   TranslationContext param_map_;
   std::unordered_map<std::string, VarDesc*> parameter_name_mappings_;
   std::unordered_set<std::string> parameter_visited_;
-  std::unordered_map<std::string, VarDesc*> temp_var_name_mappings_;
 
   /// In the legacy program desc, there are two special named varibales:
   /// 1. "feed", the input variable of feed op

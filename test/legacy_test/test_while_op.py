@@ -186,11 +186,6 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = numpy.array([[10], [12], [33]])
         input_y = input_y.reshape(3, 1, 1)
 
-        print(
-            "base.default_main_program(): \n",
-            base.default_main_program(),
-            flush=True,
-        )
         (res,) = exe.run(
             base.default_main_program(),
             feed={'x': input_x, 'y': input_y},
