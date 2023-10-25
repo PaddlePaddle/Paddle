@@ -14,50 +14,16 @@
 
 
 import numpy as np
+from semi_auto_parallel_simple_net import MPDemoNetRecompute
 
 import paddle
 import paddle.distributed as dist
 from paddle import nn
-from paddle.distributed.fleet.utils import recompute
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
 IMAGE_SIZE = 784
 CLASS_NUM = 10
-
-
-class MPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh, param_suffix=""):
-        super().__init__()
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="mp_demo_weight_1" + param_suffix,
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
-        )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="mp_nemo_weight_2" + param_suffix,
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['x', None]),
-        )
-
-    def _inner_forward_fn(self, x):
-        y = paddle.matmul(x, self.w0)
-        z = paddle.matmul(y, self.w1)
-        return z
-
-    def forward(self, x):
-        z = recompute(self._inner_forward_fn, x)
-        return z
 
 
 def run_dynamic(layer, image, label):
@@ -82,7 +48,9 @@ class TestSemiAutoParallelRecompute:
         label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
         w0 = np.random.random([IMAGE_SIZE, IMAGE_SIZE]).astype('float32')
         w1 = np.random.random([IMAGE_SIZE, CLASS_NUM]).astype('float32')
-        run_dynamic(layer=MPDemoNet(w0, w1, mesh), image=image, label=label)
+        run_dynamic(
+            layer=MPDemoNetRecompute(w0, w1, mesh), image=image, label=label
+        )
 
 
 if __name__ == "__main__":
