@@ -3515,21 +3515,23 @@ class TestLog10_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
-        with static_guard():
-            with static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x = [[2, 3, 4], [7, 8, 9]]
-                x = paddle.to_tensor(x, dtype='bfloat16')
-                out = paddle.log10(x)
-                if core.is_compiled_with_cuda():
-                    place = paddle.CUDAPlace(0)
-                    exe = paddle.static.Executor(place)
-                    (res,) = exe.run(fetch_list=[out])
+        paddle.enable_static()
+        with static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = [[2, 3, 4], [7, 8, 9]]
+            x = paddle.to_tensor(x, dtype='bfloat16')
+            out = paddle.log10(x)
+            if core.is_compiled_with_cuda():
+                place = paddle.CUDAPlace(0)
+                exe = paddle.static.Executor(place)
+                (res,) = exe.run(fetch_list=[out])
 
 
 class TestLog10API(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
