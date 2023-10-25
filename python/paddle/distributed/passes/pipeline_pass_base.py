@@ -13,6 +13,7 @@
 # limitations under the License.
 
 
+import paddle
 from paddle.base import core
 
 from .pass_base import PassBase
@@ -61,6 +62,13 @@ class PipelinePassBase(PassBase):
         )
 
         for type in type_to_program.keys():
-            type_to_program[type] = type_to_program[type].desc
+            if paddle.framework.get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                type_to_program[type] = paddle.ir.translate_to_new_ir(
+                    type_to_program[type].desc
+                )
+            else:
+                type_to_program[type] = type_to_program[type].desc
         plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

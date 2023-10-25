@@ -1005,8 +1005,16 @@ class _ExecutorCache:
                 new_program, new_program, pass_name, standalone_opt
             )
         else:
+            import paddle
+
             default_job = core.Job("default")
-            type_to_program = {"default": new_program.desc}
+            if get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                ir_program = paddle.ir.translate_to_new_ir(new_program.desc)
+                type_to_program = {"default": ir_program}
+            else:
+                type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)
