@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -77,7 +77,7 @@ TEST(VJP, TanhBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -135,7 +135,7 @@ TEST(VJP, Tanh_BackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -193,7 +193,7 @@ TEST(VJP, MeanBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -252,7 +252,7 @@ TEST(VJP, ConcatBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_3",
@@ -321,7 +321,7 @@ TEST(VJP, AddBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_2",
@@ -389,7 +389,7 @@ TEST(VJP, Add_BackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_0",
@@ -456,7 +456,7 @@ TEST(VJP, SplitBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_4",
