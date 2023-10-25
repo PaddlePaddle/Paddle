@@ -323,14 +323,15 @@ static bool isIntegerOrScalarTensor(PyObject* obj) {
 
 static void ParseIndex(phi::DenseTensor* tensor,
                        PyObject* _index,
-                       std::vector<int>* slice_axes,
+                       std::vector<int64_t>* slice_axes,
                        std::vector<int>* slice_starts,
                        std::vector<int>* slice_ends,
                        std::vector<int>* slice_strides,
-                       std::vector<int>* decrease_axis,
+                       std::vector<int64_t>* decrease_axis,
                        std::vector<int>* none_axes,
-                       std::vector<int>* infer_flags,
-                       std::vector<int>* advanced_index,
+                       std::vector<int64_t>* infer_flags,
+                       std::vector<int>* advanced_index_dim,
+                       std::vector<phi::DenseTensor>* advanced_index,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
   // NOTE(zhiqiu): PyTuple_Pack increases refcount.
@@ -368,7 +369,7 @@ static void ParseIndex(phi::DenseTensor* tensor,
                         "An index can only have a single ellipsis ('...')"));
 }
 
-// deal with None
+// deal with indexing_item
 int none_count = 0;
 for (int i = 0, dim = 0; i < size; ++i) {
   PyObject* slice_item = PyTuple_GetItem(index, i);
@@ -413,61 +414,39 @@ for (int i = 0, dim = 0; i < size; ++i) {
     slice_ends->push_back(end);
     slice_strides->push_back(step);
     dim++;
+
+    if (step != 1) {
+      *use_strided_slice = true;
+    }
   } else if (slice_item == Py_Ellipsis) {
     dim += rank - specified_dims;
   } else if (slice_item == Py_None) {
     none_axes->push_back(dim + none_count);
     none_count++;
-  } else if (PyList_Check(slice_item)) {
-    *list_select_flag = true;
-    PADDLE_ENFORCE_EQ(
-        size,
-        1,
-        platform::errors::InvalidArgument(
-            "When index contains a list, its length is excepted to 1, "
-            "but received %d",
-            size));
-    bool all_bool = true;
-    int list_size = PyList_GET_SIZE(slice_item);
-    for (int j = 0; j < list_size; ++j) {
-      PyObject* list_item = PyList_GetItem(slice_item, j);
-      if (PyCheckInteger(list_item)) {
-        all_bool = false;
-      } else if (!PyBool_Check(list_item)) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Only support int or bool in index list."));
-      }
-    }
-    if (all_bool) {
-      PADDLE_ENFORCE_EQ(
-          list_size,
-          shape[0],
-          platform::errors::InvalidArgument(
-              "The dimension of bool index doesn't match indexed array along "
-              "dimension 0, the target dimension is %d, but received %d.",
-              shape[0],
-              list_size));
-
-      for (int j = 0; j < list_size; ++j) {
-        PyObject* list_item = PyList_GetItem(slice_item, j);
-        if (list_item == Py_True) {
-          list_select_idxs->push_back(j);
-        }
-      }
+  } else if (PyList_Check(slice_item) || PyTuple_Check(slice_item)) {
+    *has_advanced_index = true;
+    auto index_tensor = CastPyArg2Tensor(slice_item, 0);
+    advanced_index->push_back(index_tensor);
+    advanced_index_dim[dim] = dim;
+    dim++;
+  } else if (PyCheckTensor(slice_item)) {
+    if (slice_item.dims().size() == 0 &&
+        slice_item.dtype() != framework::proto::VarType::BOOL) {
+      // 0-D tensor is same with scalar
+      Py_ssize_t start = GetSliceIndexFromTensor(slice_item);
+      slice_axes->push_back(dim);
+      slice_starts->push_back(start);
+      slice_ends->push_back(start + 1);
+      slice_strides->push_back(1);
+      decrease_axis->push_back(dim);
     } else {
-      for (int j = 0; j < list_size; ++j) {
-        PyObject* list_item = PyList_GetItem(slice_item, j);
-        if (PyCheckInteger(list_item)) {
-          list_select_idxs->push_back(
-              static_cast<int>(PyLong_AsLong(list_item)));
-        } else if (list_item == Py_True) {
-          list_select_idxs->push_back(1);
-        } else {
-          list_select_idxs->push_back(0);
-        }
-      }
-    }
+      *has_advanced_index = true;
 
+      advanced_index->push_back(
+          reinterpret_cast<TensorObject*>(slice_item)->tensor);
+      advanced_index_dim[dim] = dim;
+    }
+    dim++;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Currently, Tensor.__indices__() only allows indexing "
@@ -486,6 +465,115 @@ for (int i = 0, dim = 0; i < size; ++i) {
                         "Too many indices (%d) for tensor of dimension %d.",
                         valid_indexs,
                         rank));
+}
+
+static phi::DenseTensor getTensorWithBasicIndexing(
+    phi::DenseTensor* tensor,
+    std::vector<int64_t>* slice_axes,
+    std::vector<int>* slice_starts,
+    std::vector<int>* slice_ends,
+    std::vector<int>* slice_strides,
+    std::vector<int64_t>* decrease_axis,
+    std::vector<int>* none_axes,
+    std::vector<int64_t>* infer_flags,
+    bool* use_strided_slice) {
+  phi::DenseTensor out;
+  if (slice_axes.empty()) {
+    out = *tensor;
+  } else {
+    out = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+    if (!use_strided_slice) {
+      eager_gil_scoped_release guard;
+      out = slice_ad_func(tensor,
+                          slice_axes,
+                          slice_starts,
+                          slice_ends,
+                          infer_flags,
+                          decrease_axis);
+    } else {
+      eager_gil_scoped_release guard;
+      std::vector<int> slice_axes_int32(slice_axes.begin(), slice_axes.end());
+
+      out = strided_slice_ad_func(
+          tensor, slice_axes_int32, slice_starts, slice_ends, slice_strides);
+      if (!decrease_axis.empty()) {
+        out = squeeze_ad_func(out, decrease_axis);
+      }
+    }
+  }
+  if (!none_axes.empty()) {
+    eager_gil_scoped_release guard;
+    // Deal with cases that decrease_axes is not empty
+    // For example:
+    // # x.shape: (2,3,4)
+    // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+    for (auto& axis : none_axes) {
+      int len = 0;
+      for (int da : decrease_axis) {
+        if (da < axis) {
+          len++;
+        }
+      }
+      axis -= len;
+    }
+    out = unsqueeze_ad_func(out, none_axes);
+  }
+  return out;
+}
+
+static phi::DenseTensor dealWithAdvancedIndex(
+    phi::DenseTensor* tensor,
+    std::vector<int>* advanced_index_dim,
+    std::vector<phi::DenseTensor>* advanced_index,
+    bool is_for_setitem,
+    std::vector<phi::DenseTensor>* transed_index,
+    std::vector<int>* trans_back_dim,
+    int* pos_of_new_dim,
+    int* rank_of_new_dim) {
+  std::vector<int> trans_dim;
+
+  for (int i = 0, int p = 0; i < advanced_index_dim->size(); ++i) {
+    auto index_dim = *advanced_index_dim[i];
+    if (index_dim != -1) {
+      // size of advanced_index is same to number of non -1 element in
+      // advanced_index_dim
+      auto index = *advanced_index[p++];
+
+      if (!is_for_setitem) {
+        if (index_dim == 0) {
+          // case 1: advanced indices at axis 0, the new dim will be at first.
+          *pos_of_new_dim = 0;
+        } else if (index_dim > 0 && trans_dim.size() > 0 &&
+                   trans_dim[trans_dim.size() - 1] != index_dim - 1) {
+          // case 2: there are not adjacent advanced indices, the new dim will
+          // be at first.
+          *pos_of_new_dim = 0;
+        } else {
+          *pos_of_new_dim = min(index_dim, *pos_of_new_dim);
+        }
+        *rank_of_new_dim = max(*rank_of_new_dim, index.shape().size());
+      }
+
+      trans_dim.push_back(index_dim);
+      transed_index->push_back(index);
+    }
+  }
+
+  for (int i = 0; i < tensor->shape().size(); ++i) {
+    if (*advanced_index_dim[i] == -1) {
+      trans_dim.push_back(i);
+    }
+  }
+  phi::DenseTensor transed_tensor = transpose_ad_func(*tensor, trans_dim);
+
+  if (is_for_setitem) {
+    std::sort(trans_back_dim->begin(),
+              trans_back_dim->end(),
+              [&trans_dim](int left, int right) {
+                return trans_dim[left] < trans_dim[right];
+              });
+  }
+  return transed_tensor;
 }
 
 }  // namespace pybind

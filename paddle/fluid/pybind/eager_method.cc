@@ -1425,14 +1425,68 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   auto tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
 
   const int rank = tensor.shape().size();
-  std::vector<int> slice_starts, slice_ends, slice_strides, slice_axes,
-      none_axes, decrease_axis, infer_flags;
+  std::vector<int> slice_starts, slice_ends, slice_strides, none_axes;
+  std::vector<int64_t> slice_axes, decrease_axis, infer_flags;
 
   bool has_advanced_index = false;
   bool use_strided_slice = false;
-  std::vector<int> advanced_index(rank * 2, -1);  // content is (dim, index)
+  std::vector<int> advanced_index_dim(
+      rank * 2, -1);  // content is dim, *2 is to avoid all index are None
+  std::vector<phi::DenseTensor> advanced_index()  // content is index tensor
 
-  // step1: parsing the index and recording them
+      // step1: parsing the index and recording them
+      ParseIndex(tensor,
+                 _index,
+                 &slice_axes,
+                 &slice_starts,
+                 &slice_ends,
+                 &slice_strides,
+                 &decrease_axis,
+                 &none_axes,
+                 &infer_flags,
+                 &advanced_index_dim,
+                 &advanced_index,
+                 &has_advanced_index,
+                 &use_strided_slice);
+
+  // step2: Dealing with basic indexing
+  auto out = getTensorWithBasicIndexing(tensor,
+                                        &slice_axes,
+                                        &slice_starts,
+                                        &slice_ends,
+                                        &slice_strides,
+                                        &decrease_axis,
+                                        &none_axes,
+                                        &infer_flags,
+                                        &use_strided_slice);
+  if (!has_advanced_index) {
+    return ToPyObject(out);
+  }
+
+  // step3: Dealing with advanced indexing
+  std::vector<phi::DenseTensor> transed_index;
+  std::vector<int> trans_back_dim;
+  int pos_of_new_dim, rank_of_new_dim;
+
+  auto transed_tensor = dealWithAdvancedIndex(tensor,
+                                              &advanced_index_dim,
+                                              &advanced_index,
+                                              false,
+                                              &transed_index,
+                                              &trans_back_dim,
+                                              &pos_of_new_dim,
+                                              &rank_of_new_dim);
+
+  if (advanced_index.size() == 1 &&
+      advanced_index[0].dtype() == phi::DataType::BOOL) {
+    // get value for bool tensor
+    auto item = advanced_index[0];
+    auto item_shape = item.shape();
+  } else {
+    // get value for int tensor
+  }
+
+  return ToPyObject(transed_tensor);
 }
 
 static PyObject* tensor__getitem_from_offset(TensorObject* self,
