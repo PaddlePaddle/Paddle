@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-SpmdInfo castInferSpmd(const DistMetaTensor& x, phi::DataType dtype) {
+SpmdInfo CastInferSpmd(const DistMetaTensor& x, phi::DataType dtype) {
   return ElementwiseUnaryInferSpmd(x);
 }
 }  // namespace distributed
