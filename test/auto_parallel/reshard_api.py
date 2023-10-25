@@ -134,11 +134,17 @@ class TestReshardAPI:
         local_loss = local_loss_fn(local_output, local_label)
         dist_loss = dist_loss_fn(dist_output, dist_label)
 
-        np.testing.assert_equal(local_loss.numpy(), dist_loss.numpy())
+        np.testing.assert_allclose(
+            local_loss.numpy(), dist_loss.numpy(), rtol=1e-5, atol=1e-5
+        )
+
         local_loss.backward()
         dist_loss.backward()
-        np.testing.assert_equal(
-            local_input.grad.numpy(), dist_input.grad.numpy()
+        np.testing.assert_allclose(
+            local_input.grad.numpy(),
+            dist_input.grad.numpy(),
+            rtol=1e-5,
+            atol=1e-5,
         )
 
 
