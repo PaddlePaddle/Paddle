@@ -90,8 +90,12 @@ void CheckTensorHasNanOrInf(const std::string& api_name, const Tensor& tensor) {
     } else if (tensor.is_selected_rows()) {
       dense_tensor = &(
           static_cast<const phi::SelectedRows*>(tensor.impl().get())->value());
+    } else if (tensor.is_dist_tensor()) {
+      dense_tensor = &(
+          static_cast<const phi::distributed::DistTensor*>(tensor.impl().get())
+              ->value());
     } else {
-      VLOG(10) << "Only DenseTensor or SelectedRows need to check, "
+      VLOG(10) << "Only DenseTensor,SelectedRows,DistTensor need to check, "
                << tensor_name << " is no need.";
       return;
     }
