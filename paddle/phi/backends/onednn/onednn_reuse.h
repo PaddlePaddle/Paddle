@@ -1519,8 +1519,11 @@ class PoolingOneDNNHandler
     }
 
     if (adaptive) {
-      ComputeAdaptivePoolParameters(
-          src_tz, &copied_kernel_size, &copied_strides);
+      ComputeAdaptivePoolParameters(src_tz,
+                                    onednn_paddings[0],
+                                    onednn_paddings[1],
+                                    &copied_kernel_size,
+                                    &copied_strides);
     }
 
     bool is_test = dev_ctx.HasDnnAttr("is_test")
@@ -1612,8 +1615,11 @@ class PoolingOneDNNHandler
     }
 
     if (adaptive) {
-      ComputeAdaptivePoolParameters(
-          diff_src_tz, &copied_kernel_size, &copied_strides);
+      ComputeAdaptivePoolParameters(src_tz,
+                                    onednn_paddings[0],
+                                    onednn_paddings[1],
+                                    &copied_kernel_size,
+                                    &copied_strides);
     }
     memory::dims dilation = {0, 0};
 
@@ -1672,9 +1678,12 @@ class PoolingOneDNNHandler
     return mem_p;
   }
 
-  static void ComputeAdaptivePoolParameters(const std::vector<int64_t>& src_tz,
-                                            std::vector<int64_t>* kernel_size,
-                                            std::vector<int64_t>* strides) {
+  static void ComputeAdaptivePoolParameters(
+      const std::vector<int64_t>& src_tz,
+      const std::vector<int64_t>& padding_l,
+      const std::vector<int64_t>& padding_r,
+      std::vector<int64_t>* kernel_size,
+      std::vector<int64_t>* strides) {
     // https://github.com/oneapi-src/oneDNN/tree/bkocot/adaptive-pooling/rfcs/20200818-adaptive-pooling
     auto IH = static_cast<double>(src_tz[src_tz.size() - 2]);
     auto IW = static_cast<double>(src_tz[src_tz.size() - 1]);
