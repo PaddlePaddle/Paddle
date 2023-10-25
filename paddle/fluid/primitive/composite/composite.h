@@ -62,6 +62,11 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
   }
 }
 
+template <typename T>
+Tensor relu_decomp(const Tensor& x) {
+  return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
+}
+
 }  // namespace details
 
 }  // namespace primitive

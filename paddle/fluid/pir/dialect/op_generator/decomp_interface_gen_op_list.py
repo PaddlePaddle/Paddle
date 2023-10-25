@@ -17,6 +17,6 @@
 # =====================================
 
 
-decomp_interface_declare_gen_op_list = ['mean']
+decomp_interface_declare_gen_op_list = ['mean', 'relu']
 
-decomp_interface_implementation_gen_op_list = ["mean"]
+decomp_interface_implementation_gen_op_list = ["mean", "relu"]

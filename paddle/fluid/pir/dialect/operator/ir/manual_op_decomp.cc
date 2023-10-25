@@ -61,5 +61,27 @@ std::vector<std::vector<pir::OpResult>> MeanOp::Decomp(pir::Operation* op) {
   return res;
 }
 
+std::vector<std::vector<pir::OpResult>> ReluOp::Decomp(pir::Operation* op) {
+  ReluOp op_obj = op->dyn_cast<ReluOp>();
+  (void)op_obj;
+
+  VLOG(4) << "Decomp Prepare inputs of relu";
+
+  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+
+  VLOG(4) << "Decomp prepare call relu's decomp interface";
+
+  Tensor op_res =
+      paddle::primitive::details::relu_decomp<primitive::LazyTensor>(x);
+
+  auto org_res = op->results();
+  std::vector<std::vector<pir::OpResult>> res(org_res.size());
+  res[0].push_back(
+      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
+          ->value()
+          .dyn_cast<pir::OpResult>());
+  return res;
+}
+
 }  // namespace dialect
 }  // namespace paddle
