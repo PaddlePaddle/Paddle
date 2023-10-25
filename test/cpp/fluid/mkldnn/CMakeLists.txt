@@ -37,6 +37,18 @@ cc_test(
        enforce
        generated_static_op)
 
+cc_test(
+  test_mkldnn_pool_adaptive_op
+  SRCS test_mkldnn_pool_adaptive_op.cc
+  DEPS executor
+       op_registry
+       tensor
+       phi
+       scope
+       device_context
+       enforce
+       generated_static_op)
+
 set(TEST_MKLDNN_CACHING_DEPS
     op_registry
     elementwise_mul_op
