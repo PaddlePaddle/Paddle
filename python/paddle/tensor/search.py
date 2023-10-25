@@ -459,7 +459,7 @@ def nonzero(x, as_tuple=False):
     shape = x.shape
     rank = len(shape)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         outs = _C_ops.nonzero(x)
     else:
         check_variable_and_dtype(

@@ -28,13 +28,13 @@ SEED = 2020
 np.random.seed(SEED)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_base(x):
     x = base.dygraph.to_variable(x)
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_inside_func_base(x):
     x = base.dygraph.to_variable(x)
 
@@ -44,7 +44,7 @@ def test_inside_func_base(x):
     return inner_func(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if(x):
     x = base.dygraph.to_variable(x)
     if x < 0:
@@ -54,7 +54,7 @@ def test_return_if(x):
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if_else(x):
     x = base.dygraph.to_variable(x)
     if x > 0:
@@ -67,7 +67,7 @@ def test_return_if_else(x):
         x -= 8888  # useless statement to test our code can handle it.
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_while(x):
     x = base.dygraph.to_variable(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
@@ -80,7 +80,7 @@ def test_return_in_while(x):
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_for(x):
     x = base.dygraph.to_variable(x)
     for i in range(10):
@@ -92,13 +92,13 @@ def test_return_in_for(x):
     return x - 1
 
 
-@to_static
+@to_static(full_graph=True)
 def test_recursive_return(x):
     x = base.dygraph.to_variable(x)
     return dyfunc_with_if_else(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_different_length_if_body(x):
     x = base.dygraph.to_variable(x)
     y = x + 1
@@ -109,7 +109,7 @@ def test_return_different_length_if_body(x):
         return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_different_length_else(x):
     x = base.dygraph.to_variable(x)
     y = x + 1
@@ -120,13 +120,13 @@ def test_return_different_length_else(x):
         return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_no_return(x):
     x = base.dygraph.to_variable(x)
     y = x + 1
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_none(x):
     x = base.dygraph.to_variable(x)
     y = x + 1
@@ -137,7 +137,7 @@ def test_return_none(x):
         return x, y
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_no_variable(x):
     x = base.dygraph.to_variable(x)
     y = x + 1
@@ -148,14 +148,14 @@ def test_return_no_variable(x):
         return
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_list_one_value(x):
     x = base.dygraph.to_variable(x)
     x += 1
     return [x]
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_list_many_values(x):
     x = base.dygraph.to_variable(x)
     x += 1
@@ -164,14 +164,14 @@ def test_return_list_many_values(x):
     return [x, y, z]
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_tuple_one_value(x):
     x = base.dygraph.to_variable(x)
     x += 1
     return (x,)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_tuple_many_values(x):
     x = base.dygraph.to_variable(x)
     x += 1
@@ -189,7 +189,7 @@ def inner_func(x):
     return y
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_without_paddle_cond(x):
     # y shape is [10]
     y = paddle.ones([10])
@@ -213,7 +213,7 @@ def diff_return_hepler(x):
         return two_value(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_diff_return(x):
     x = paddle.to_tensor(x)
     y, z = diff_return_hepler(x)
@@ -222,7 +222,7 @@ def test_diff_return(x):
     return y, z
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if_else_2(x):
     rr = 0
     if True:
@@ -232,7 +232,7 @@ def test_return_if_else_2(x):
         a = 0
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_while_2(x):
     while True:
         a = 12
@@ -240,7 +240,7 @@ def test_return_in_while_2(x):
     return 10
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_for_2(x):
     a = 12
     for i in range(10):
@@ -248,7 +248,7 @@ def test_return_in_for_2(x):
     return 10
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_nested(x):
     def func():
         rr = 0

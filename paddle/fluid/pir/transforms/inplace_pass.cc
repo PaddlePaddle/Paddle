@@ -153,8 +153,8 @@ static void GetEagerDelValueOfOp(
       (*del_value_2_op)[input] = op;
     }
 
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      pir::Value output = op->result(i);
+    for (auto& result : op->results()) {
+      pir::Value output = result;
       if (output && CanBeDeleted(output)) {
         (*del_value_2_op)[output] = op;
       }
@@ -206,8 +206,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       VLOG(6) << op->name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -226,8 +226,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
              .dyn_cast<paddle::dialect::KernelAttribute>()
              .data()
              .backend() == phi::Backend::CPU)) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -238,9 +238,9 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       for (size_t i = 0; i < op->num_operands(); ++i) {
         reused_input_values.insert(op->operand_source(i));
       }
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        reused_output_values.insert(op->result(i));
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        reused_output_values.insert(result);
+        visited_values.insert(result);
       }
       continue;
     }
@@ -252,8 +252,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
                  "can't do inplace.";
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -310,8 +310,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
               << " will change to inplace version op: " << upper_op_name + "_";
     }
 
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      visited_values.insert(op->result(i));
+    for (auto& result : op->results()) {
+      visited_values.insert(result);
     }
   }
   return inplace_ops;

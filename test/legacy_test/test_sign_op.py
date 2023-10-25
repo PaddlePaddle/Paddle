@@ -76,28 +76,12 @@ class TestSignBF16Op(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-class TestSignOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            # The input type of sign_op must be Variable or numpy.ndarray.
-            input1 = 12
-            self.assertRaises(TypeError, paddle.sign, input1)
-            # The input dtype of sign_op must be float16, float32, float64.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            input3 = paddle.static.data(
-                name='input3', shape=[-1, 12, 10], dtype="int64"
-            )
-            self.assertRaises(TypeError, paddle.sign, input2)
-            self.assertRaises(TypeError, paddle.sign, input3)
-            input4 = paddle.static.data(
-                name='input4', shape=[-1, 4], dtype="float16"
-            )
-            paddle.sign(input4)
-
-
 class TestSignAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = [base.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(base.CUDAPlace(0))
+
     def test_dygraph(self):
         with base.dygraph.guard():
             np_x = np.array([-1.0, 0.0, -0.0, 1.2, 1.5], dtype='float64')
@@ -108,23 +92,51 @@ class TestSignAPI(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
     def test_static(self):
-        with program_guard(Program(), Program()):
-            # The input type of sign_op must be Variable or numpy.ndarray.
-            input1 = 12
-            self.assertRaises(TypeError, paddle.tensor.math.sign, input1)
-            # The input dtype of sign_op must be float16, float32, float64.
-            input2 = paddle.static.data(
-                name='input2', shape=[-1, 12, 10], dtype="int32"
-            )
-            input3 = paddle.static.data(
-                name='input3', shape=[-1, 12, 10], dtype="int64"
-            )
-            self.assertRaises(TypeError, paddle.tensor.math.sign, input2)
-            self.assertRaises(TypeError, paddle.tensor.math.sign, input3)
-            input4 = paddle.static.data(
-                name='input4', shape=[-1, 4], dtype="float16"
-            )
-            paddle.sign(input4)
+        np_input2 = np.random.uniform(-10, 10, (12, 10)).astype("int16")
+        np_input3 = np.random.uniform(-10, 10, (12, 10)).astype("int32")
+        np_input4 = np.random.uniform(-10, 10, (12, 10)).astype("int64")
+        np_out2 = np.sign(np_input2)
+        np_out3 = np.sign(np_input3)
+        np_out4 = np.sign(np_input4)
+
+        def run(place):
+            with program_guard(Program(), Program()):
+                # The input type of sign_op must be Variable or numpy.ndarray.
+                input1 = 12
+                self.assertRaises(TypeError, paddle.tensor.math.sign, input1)
+                # The result of sign_op must correct.
+                input2 = paddle.static.data(
+                    name='input2', shape=[12, 10], dtype="int16"
+                )
+                input3 = paddle.static.data(
+                    name='input3', shape=[12, 10], dtype="int32"
+                )
+                input4 = paddle.static.data(
+                    name='input4', shape=[12, 10], dtype="int64"
+                )
+                out2 = paddle.sign(input2)
+                out3 = paddle.sign(input3)
+                out4 = paddle.sign(input4)
+                exe = paddle.static.Executor(place)
+                res2, res3, res4 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={
+                        "input2": np_input2,
+                        "input3": np_input3,
+                        "input4": np_input4,
+                    },
+                    fetch_list=[out2, out3, out4],
+                )
+                self.assertEqual((res2 == np_out2).all(), True)
+                self.assertEqual((res3 == np_out3).all(), True)
+                self.assertEqual((res4 == np_out4).all(), True)
+                input5 = paddle.static.data(
+                    name='input5', shape=[-1, 4], dtype="float16"
+                )
+                paddle.sign(input5)
+
+        for place in self.place:
+            run(place)
 
 
 class TestSignDoubleGradCheck(unittest.TestCase):

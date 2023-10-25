@@ -1,20 +1,24 @@
 if(WITH_TESTING AND WITH_CINN)
-  cc_test_old(
-    test_new_ir_compiler
-    SRCS
-    new_ir_compiler_test.cc
-    DEPS
-    new_ir_compiler
-    cinn_runtime_dialect
-    pir
-    phi
-    gtest
-    glog)
-  set_tests_properties(test_new_ir_compiler PROPERTIES LABELS "RUN_TYPE=CINN")
+  paddle_test(test_pir_compiler SRCS pir_compiler_test.cc DEPS pir_compiler
+              cinn_runtime_dialect)
+  set_tests_properties(test_pir_compiler PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(test_jit_instruction SRCS jit_instruction_test.cc DEPS
-              interpreter new_ir_compiler)
+  paddle_test(test_jit_instruction SRCS jit_instruction_test.cc DEPS
+              cinn_runtime_dialect pir_compiler)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
+
+  cc_test_old(
+    dialect_convert_test
+    SRCS
+    dialect_convert_test.cc
+    DEPS
+    drr
+    gtest
+    pd_to_cinn_pass
+    pd_op_dialect
+    cinn_op_dialect
+    pir)
+  set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(
     ir_op_fusion_test
@@ -27,8 +31,10 @@ if(WITH_TESTING AND WITH_CINN)
     pir
     gtest
     glog)
+  set_tests_properties(ir_op_fusion_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  paddle_test(test_group_op SRCS group_op_test.cc DEPS cinn_op_dialect)
+  paddle_test(test_group_op SRCS group_op_test.cc DEPS op_with_group_merge_pass
+              cinn_op_dialect)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS

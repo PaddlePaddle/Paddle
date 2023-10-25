@@ -27,8 +27,8 @@ from .pass_utils import AutoParallelStreamType
 #   dY = matmul(X^T, dOut)
 #
 # Then the c_allreduce_sum can overlap with the compute of dY.
-@register_pass("column_parallel_linear_backward_overlapping")
-class ColumnParallelLinearBackwardOverlappingPass(PassBase):
+@register_pass("allreduce_matmul_grad_overlapping")
+class AllreduceMatmulGradOverlappingPass(PassBase):
     def __init__(self):
         super().__init__()
         self.set_attr("allreduce_stream", None)

@@ -16,14 +16,14 @@
 #include <string>
 #include <vector>
 
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
-namespace newir {
+namespace pir {
 using framework::OpPatternKind;
 
 // TODO(Aurelius84): Need to be replaced with CinnGroupOp
@@ -53,7 +53,7 @@ struct Group {
   }
 };
 
-}  // namespace newir
+}  // namespace pir
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn

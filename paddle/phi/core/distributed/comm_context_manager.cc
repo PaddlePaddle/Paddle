@@ -56,18 +56,19 @@ void CommContextManager::CreateNCCLCommContext(
     const std::string& unique_comm_key,
     int rank,
     int size,
-    const std::string& hash_key) {
+    const std::string& hash_key,
+    const P2POption* p2p_opt) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
   ncclUniqueId nccl_id;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
   std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
@@ -77,6 +78,12 @@ void CommContextManager::CreateNCCLCommContext(
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
 
+  if (p2p_opt && p2p_opt->rank > 0) {
+    rank = p2p_opt->rank;
+  }
+  if (p2p_opt && p2p_opt->num_ranks > 0) {
+    size = p2p_opt->num_ranks;
+  }
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
   if (CommContextManager::device_id != -1) {

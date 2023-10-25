@@ -43,6 +43,8 @@ PD_SPECIALIZE_CppTypeToIrAttribute(phi::Place, paddle::dialect::PlaceAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int32_t>, pir::ArrayAttribute);
 PD_SPECIALIZE_CppTypeToIrAttribute(std::vector<int64_t>,
                                    paddle::dialect::IntArrayAttribute);
+PD_SPECIALIZE_CppTypeToIrAttribute(phi::IntArray,
+                                   paddle::dialect::IntArrayAttribute);
 
 template <typename T>
 struct IrAttrbuteCreator {
