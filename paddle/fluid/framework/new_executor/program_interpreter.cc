@@ -292,7 +292,7 @@ void ProgramInterpreter::ProfileInstructionList(
       std::string profile_signature = std::to_string(op_base->Id());
       double cpu_us = -1.0, device_us = -1.0;
       std::tie(cpu_us, device_us) =
-          op_runtime_profiler->MeasureTimeLapseBetweenEvents(
+          op_runtime_profiler.MeasureTimeLapseBetweenEvents(
               profile_signature + "@start", profile_signature + "@end");
       op_dist_attr->set_run_time_us(device_us);  // cpu_us is ignored here
     }
@@ -401,9 +401,9 @@ void ProgramInterpreter::ProfileOperator(
 
     // compute
     if (op_with_kernel == nullptr) {  // operator base
-      op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
+      op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
       instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
-      op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
+      op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
     } else {
       phi::Kernel* kernel = instr_node.PhiKernel();
       if (kernel && kernel->IsValid()) {  // phi kernel
@@ -415,20 +415,20 @@ void ProgramInterpreter::ProfileOperator(
               const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
               &phi_kernel_context);
 
-          op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
+          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
           (*kernel)(&phi_kernel_context);  // op run case 2
-          op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
+          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
 
         } else {
-          op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
+          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
           (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
-          op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
+          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
         }
       } else {  // fluid kernel
-        op_runtime_profiler->RecordEvent(op_start_event_signature, dev_ctx);
+        op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
         instr_node.KernelFunc()(
             *instr_node.InnerExecutionContext().get());  // op run case 4
-        op_runtime_profiler->RecordEvent(op_end_event_signature, dev_ctx);
+        op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
       }
     }
   }

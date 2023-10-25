@@ -19,18 +19,21 @@ namespace framework {
 namespace profiler {
 
 OpDeviceProfileEvent::OpDeviceProfileEvent(
-    const platform::DeviceContext& device_context) {
+    const platform::DeviceContext* device_context) {
 #if defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&this->event_obj_cuda_));
-  auto* gpu_context = dynamic_cast<const phi::GPUContext*>(&device_context);
-  if (gpu_context) {
-    this->cuda_stream_ = gpu_context->stream();
-    VLOG(4) << "Successfully obtained cuda stream from device context.";
+  PADDLE_ENFORCE_NOT_NULL(
+      device_context,
+      platform::errors::PreconditionNotMet("device_context is nullptr."));
+  auto* gpu_context = dynamic_cast<const phi::GPUContext*>(device_context);
+  if (gpu_context == nullptr) {
+    VLOG(4) << "Dynamic cast from DeviceContext to GPUContext failed. "
+            << "This might because the op does not run on GPU. Here device "
+               "time stamp "
+            << "creation will slient fail.";
   } else {
-    VLOG(1) << "Cannot obtain cuda stream from device context. Use default "
-               "cuda stream (null stream) instead. "
-               "This may cause error during profiling!";
-    this->cuda_stream_ = nullptr;
+    this->cuda_stream_ = gpu_context->stream();
+    VLOG(4) << "Successfully get cuda stream from device context.";
   }
 #endif
 }
@@ -49,8 +52,12 @@ OpDeviceProfileEvent::~OpDeviceProfileEvent() {
 
 void OpDeviceProfileEvent::Record() {
 #if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(
-      cudaEventRecord(this->event_obj_cuda_, this->cuda_stream_));
+  if (this->cuda_stream_) {
+    // if cuda stream is successfully set, this means the op is running on GPU
+    // and everything is OK for recording the event.
+    PADDLE_ENFORCE_GPU_SUCCESS(
+        cudaEventRecord(this->event_obj_cuda_, this->cuda_stream_));
+  }
 #endif
   platform::Timer timer;
   timeval _now;
@@ -68,6 +75,10 @@ std::tuple<double, double> OpDeviceProfileEvent::MeasureTimeLapseWrtOtherEvent(
     VLOG(1) << "cuda event not set yet, time lapse measurment will return an "
                "invalid value.";
     return std::make_tuple(-1.0, -1.0);
+  } else if (this->cuda_stream_ == nullptr) {
+    // cuda stream not set, maybe the op is not running on GPU.
+    device_time_lapse_us = 0.0;  // simply set to 0.0 to imply that the op
+                                 // does not require GPU to finish.
   } else {
     float dt_ms = -1.0f;
     PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
@@ -79,6 +90,8 @@ std::tuple<double, double> OpDeviceProfileEvent::MeasureTimeLapseWrtOtherEvent(
 #else
   // implement other platforms
 #endif
+
+  // measure CPU time cost
   double cpu_time_lapse_us =
       static_cast<double>(end_event.event_obj_cpu_.event_time_us_ -
                           this->event_obj_cpu_.event_time_us_);
@@ -91,14 +104,14 @@ OpRuntimeProfiler::~OpRuntimeProfiler() {}
 
 void OpRuntimeProfiler::RecordEvent(
     const std::string& event_name,
-    const platform::DeviceContext& device_context) {
+    const platform::DeviceContext* device_context) {
   if (this->name_to_device_profile_events_.find(event_name) !=
       this->name_to_device_profile_events_.end()) {
     VLOG(1) << "An event with name \"" << event_name
             << "\" already exists. "
                "RecordEvent will overwrite this event.";
   }
-  // create a new event
+  // create a new event and record
   std::shared_ptr event_ptr =
       std::make_shared<OpDeviceProfileEvent>(device_context);
   event_ptr->Record();

@@ -66,7 +66,7 @@ namespace profiler {
 
 class OpDeviceProfileEvent {
  public:
-  explicit OpDeviceProfileEvent(const platform::DeviceContext& device_context);
+  explicit OpDeviceProfileEvent(const platform::DeviceContext* device_context);
   virtual ~OpDeviceProfileEvent();
 
   // record event on host and device side (making a time stamp)
@@ -107,7 +107,7 @@ class OpRuntimeProfiler {
 
   // this will record event on both host and device side (if exist)
   void RecordEvent(const std::string& event_name,
-                   const platform::DeviceContext& device_context);
+                   const platform::DeviceContext* device_context);
 
   // return time lapse between two events in both host and device side
   std::tuple<double, double> MeasureTimeLapseBetweenEvents(
