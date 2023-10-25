@@ -1983,7 +1983,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
-    spmd_rule : ElementwiseUnaryInferSpmd
+    spmd_rule : PowInferSpmd
     param: [x]
   kernel :
     func : pow
