@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 
 import os
+import queue
 import sys
 from collections import defaultdict
 
@@ -768,16 +769,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
     def __init__(self, layers, hcg, strategy):
         super().__init__(layers=layers, hcg=hcg, strategy=strategy)
         assert layers.get_num_virtual_stages() > 1
-        assert (
-            framework.in_dygraph_mode()
-        ), "virtual pipeline stage with interleave only support eager dygraph mode"
-        assert (
-            self.num_stages > 2
-        ), "virtual pipeline must run under pp degree > 2"
-        assert (
-            self.accumulate_steps % self.num_stages == 0
-        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
-        # setup for interleave scheduler
+        self._check_sanity()
         self.num_model_chunks = layers.get_num_virtual_stages()
         self.model_chunks = layers.get_model_chunks()
         assert self.model_chunks is not None
@@ -785,6 +777,18 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_world_size = self.num_model_chunks
         self._virtual_pp_rank = 0
         self._assign_vpp_info(self.model_chunks)
+
+    def _check_sanity(self):
+        assert (
+            framework.in_dygraph_mode()
+        ), "virtual pipeline stage with interleave only support eager dygraph mode"
+
+        assert (
+            self.num_stages > 2
+        ), "virtual pipeline must run under pp degree > 2"
+        assert (
+            self.accumulate_steps % self.num_stages == 0
+        ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
 
     def _assign_vpp_info(self, chunks):
         chunk_num = len(chunks)
@@ -1186,3 +1190,281 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._compute_loss = compute_loss
 
         return self.forward_backward_pipeline(data, None, forward_only=True)
+
+
+class PipelineParallelWithInterleaveFthenB(PipelineParallelWithInterleave):
+    def __init__(self, layers, hcg, strategy):
+        super().__init__(layers=layers, hcg=hcg, strategy=strategy)
+
+    def _check_sanity(self):
+        assert (
+            framework.in_dygraph_mode()
+        ), "virtual pipeline stage with interleave only support eager dygraph mode"
+
+        assert (
+            self.num_stages > 2
+        ), "virtual pipeline must run under pp degree > 2"
+
+        # assert (
+        #     self.accumulate_steps % self.num_stages == 0
+        # ), "accumulate_steps should be evenly divisible by num_stages for pipeline with interleave"
+
+    def _get_virtual_pp_rank(self, micro_step, forward):
+
+        virtual_pp_stage = micro_step % (
+            self.accumulate_steps * self.num_model_chunks
+        )
+        virtual_pp_stage = virtual_pp_stage // self.accumulate_steps
+        if not forward:
+            virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
+
+        # virtual_pp_stage = micro_step // self.accumulate_steps
+        # if not forward:
+        #     virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
+
+        # virtual_pp_stage = micro_step % (
+        #     self.num_stages * self.num_model_chunks)
+        # virtual_pp_stage = virtual_pp_stage // self.num_stages
+        # if not forward:
+        #     virtual_pp_stage = self.num_model_chunks - virtual_pp_stage - 1
+
+        return virtual_pp_stage
+
+    def _overlap_comm_grads(self):
+        if not self._comm_overlap:
+            return
+        self._backward_step_count += 1
+        sync_step = self._backward_step_count - self.stage_id
+
+        if sync_step > 0 and sync_step % self.accumulate_steps == 0:
+            chunk_idx = self._virtual_pp_world_size - (
+                sync_step // self.accumulate_steps
+            )
+            for buffer in self._chunk_2_comm_buffers[chunk_idx]:
+                buffer.comm_grads()
+
+        if self.stage_id == 0:
+            return
+
+        if (
+            self._backward_step_count
+            == self.accumulate_steps * self._virtual_pp_world_size
+        ):
+            for buffer in self._chunk_2_comm_buffers[0]:
+                buffer.comm_grads()
+
+    def _sync_overlap_grads(self):
+        if not self._comm_overlap:
+            return
+
+        expected_count = self.accumulate_steps * self._virtual_pp_world_size
+        assert self._backward_step_count == expected_count, (
+            f"backward step count should be equal to accumulate steps * virtual pp world size, "
+            f"but got {self._backward_step_count}, expected result is {expected_count}"
+        )
+
+        for buffers in self._chunk_2_comm_buffers.values():
+            for buffer in buffers:
+                buffer.scale_and_split_grads()
+
+    def forward_backward_pipeline(
+        self, data, scaler, forward_only=False, compute_loss=True
+    ):
+        if not compute_loss:
+            assert (
+                not forward_only
+            ), "compute_loss can only be set to False when forward_only is set to True"
+
+        # NOTE(shenliang03): Due to ring_exchange for pipeline with interleave, cache should be enabled
+        assert (
+            self._using_cache
+        ), "cache should be enabled for pipeline with interleave"
+
+        # init some attributes for this batch run
+        self.scaler = scaler
+        self.total_loss = None
+        self.micro_batch_id = 0
+        self._forward_only = forward_only
+
+        # store the number of backward steps
+        # assert (
+        #     self.accumulate_steps % self.num_stages == 0
+        # ), "accumulate_steps({}) should be evenly divisible by num_stages({}) for pipeline with interleave".format(
+        #     self.accumulate_steps, self.num_stages
+        # )
+
+        assert (
+            self.accumulate_steps >= self.num_stages
+        ), "accumulate_steps({}) should be larger than num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps, self.num_stages
+        )
+        assert (
+            self.accumulate_steps < 2 * self.num_stages
+        ), "accumulate_steps({}) should be smaller than 2 * num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps, self.num_stages
+        )
+
+        # per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
+        # self._backward_step_count = (
+        #     -(per_stage_accumulate_steps - 1)
+        #     * self.num_stages
+        #     * self.num_model_chunks
+        # )
+
+        self._backward_step_count = 0
+
+        skip_steps = self.accumulate_steps - self.num_stages
+        # print("Skip steps: ", skip_steps)
+        send_recv_buffer_queue = queue.Queue()
+
+        # init some data buffers for interleave scheduler
+        self.input_tensors = [[] for _ in range(self.num_model_chunks)]
+        self.output_tensors = [[] for _ in range(self.num_model_chunks)]
+        self.output_tensor_grads = [[] for _ in range(self.num_model_chunks)]
+
+        micro_dataset = self._wrap_data(data)
+
+        num_steps = self.accumulate_steps * self.num_model_chunks
+        # all_startup_steps = False
+        # if forward_only:
+        #     # If only forward, since there is no backward during running, all steps are startup steps
+        #     startup_steps = num_steps
+        # else:
+        #     if self.accumulate_steps == self.num_stages:
+        startup_steps = num_steps
+        all_startup_steps = True
+        # else:
+        #     startup_steps = (self.num_stages - self.stage_id - 1) * 2
+        #     startup_steps += (self.num_model_chunks - 1) * self.num_stages
+        #     startup_steps = min(startup_steps, num_steps)
+
+        # steady_steps = num_steps - startup_steps
+
+        self.set_virtual_pipeline_rank(0)
+        self.input_tensors[0].append(
+            self._p2p_helper.recv_forward(
+                self.is_pipeline_first_stage(), sync_recv=False
+            )
+        )
+
+        # run startup steps
+        for micro_step in range(startup_steps):
+            # print(f"Start forward in micro_step {micro_step}")
+            output_tensor = self._forward_step_helper(micro_dataset, micro_step)
+            # print(f"Finish forward in micro_step {micro_step}")
+
+            # determine whether recv forward tensor or not
+            next_virtual_pp_rank = self._get_virtual_pp_rank(
+                micro_step + 1, forward=True
+            )
+            # print("next_virtual_pp_rank: " , next_virtual_pp_rank)
+
+            recv_prev = True
+            if self.is_pipeline_first_stage(ignore_virtual=True):
+                if next_virtual_pp_rank == 0:
+                    # next chunk is the first chunk, not need to pre recv an input tensor
+                    recv_prev = False
+            # last micro step, no next run
+            if micro_step == (num_steps - 1):
+                recv_prev = False
+
+            if self.is_pipeline_last_stage(ignore_virtual=True):
+                # last stage skip send/recv
+                if not self.is_pipeline_last_stage():
+                    # output_tensor = None
+                    send_recv_buffer_queue.put(output_tensor)
+                    # print("start put output tensor.", output_tensor)
+
+                if micro_step < skip_steps or (
+                    self.is_pipeline_last_stage()
+                    and micro_step % self.accumulate_steps >= skip_steps
+                ):
+                    output_tensor = None
+                else:
+                    output_tensor = send_recv_buffer_queue.get()
+
+            # # last stage shouldn't send tensor to downstream
+            # if self.is_pipeline_last_stage():
+            #     output_tensor = None
+
+            input_tensor = self._p2p_helper.send_forward_recv_forward(
+                output_tensor, recv_prev=recv_prev
+            )
+            self.input_tensors[next_virtual_pp_rank].append(input_tensor)
+
+            self._release_output(output_tensor)
+
+        assert (
+            send_recv_buffer_queue.empty()
+        ), "send_recv buffer should be empty"
+
+        # remaining backward steps
+        if not forward_only:
+            if all_startup_steps:
+                self.output_tensor_grads[self.num_model_chunks - 1].append(
+                    self._p2p_helper.recv_backward(
+                        self.is_pipeline_last_stage(), sync_recv=False
+                    )
+                )
+
+            for micro_step in range(startup_steps):
+                # cooldown loop
+                input_tensor_grad = self._backward_step_helper(micro_step)
+                next_backward_virtual_pp_rank = self._get_virtual_pp_rank(
+                    micro_step + 1, forward=False
+                )
+
+                recv_next = True
+                if self.is_pipeline_last_stage(ignore_virtual=True):
+                    if next_backward_virtual_pp_rank == (
+                        self.num_model_chunks - 1
+                    ):
+                        recv_next = False
+
+                if micro_step == (num_steps - 1):
+                    recv_next = False
+
+                if self.is_pipeline_first_stage(ignore_virtual=True):
+                    if not self.is_pipeline_first_stage():
+                        send_recv_buffer_queue.put(input_tensor_grad)
+
+                    if micro_step < skip_steps or (
+                        self.is_pipeline_first_stage()
+                        and micro_step % self.accumulate_steps >= skip_steps
+                    ):
+                        input_tensor_grad = None
+                    else:
+                        input_tensor_grad = send_recv_buffer_queue.get()
+
+                self.output_tensor_grads[next_backward_virtual_pp_rank].append(
+                    self._p2p_helper.send_backward_recv_backward(
+                        input_tensor_grad, recv_next=recv_next
+                    )
+                )
+
+            assert (
+                send_recv_buffer_queue.empty()
+            ), "send_recv buffer should be empty"
+
+            self._sync_overlap_grads()
+
+            if self._enable_timer:
+                self.timers("allreduce_shared_weight_gradients").start()
+            self._layers.allreduce_shared_weight_gradients()
+            if self._enable_timer:
+                self.timers("allreduce_shared_weight_gradients").stop()
+
+        if compute_loss:
+            # return loss if compute loss
+            if self._enable_timer:
+                self.timers("broadcast_final_loss").start()
+            with paddle.amp.auto_cast(enable=False):
+                train_loss = self._broadcast_final_loss()
+            if self._enable_timer:
+                self.timers("broadcast_final_loss").stop()
+        else:
+            # else just return all intermediate output tensor for all micro steps
+            train_loss = self.output_tensors
+
+        self.timer_printer()
+        return train_loss
