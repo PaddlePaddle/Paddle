@@ -154,7 +154,6 @@ SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
 
 SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
-                                      DataType dtype,
                                       bool keep_dim) {
   return ReductionInferSpmdBase(
       x, axis.GetData(), keep_dim, static_cast<int>(ReduceType::kRedAll));

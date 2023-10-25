@@ -42,7 +42,6 @@ SpmdInfo ReductionSumInferSpmdDynamic(const DistMetaTensor& x,
 
 SpmdInfo ReductionAllInferSpmdDynamic(const DistMetaTensor& x,
                                       const IntArray& axis,
-                                      DataType dtype,
                                       bool keep_dim);
 
 SpmdInfo ReductionInferSpmdReverse(const DistMetaTensor& x,
