@@ -35,7 +35,7 @@ PADDLE_DEFINE_EXPORTED_bool(new_executor_use_local_scope,
                             "Use local_scope in new executor(especially used "
                             "in UT), can turn off for better performance");
 PADDLE_DEFINE_EXPORTED_bool(auto_parallel_profiler,
-                            true,
+                            false,
                             "Enable auto parallel profiler, collecting the "
                             "runtime of jobs in different devices");
 
