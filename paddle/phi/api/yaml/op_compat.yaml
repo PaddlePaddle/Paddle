@@ -3354,6 +3354,12 @@
   outputs :
     out : Out
 
+- op: skip_layernorm
+  inputs :
+    {x: X, y: Y, scale: Scale, bias : Bias}
+  outputs :
+    out : Out
+
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
   inputs :

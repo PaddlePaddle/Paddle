@@ -2167,4 +2167,16 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void SkipLayerNormInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            MetaTensor* out) {
+  auto dim_input = x.dims();
+  out->set_dims(dim_input);
+  out->share_lod(x);
+}
+
 }  // namespace phi

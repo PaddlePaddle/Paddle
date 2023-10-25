@@ -515,4 +515,12 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
+void SkipLayerNormInferMeta(const MetaTensor& x,
+                            const MetaTensor& y,
+                            const MetaTensor& scale,
+                            const MetaTensor& bias,
+                            const float epsilon,
+                            const int begin_norm_axis,
+                            MetaTensor* out);
+
 }  // namespace phi

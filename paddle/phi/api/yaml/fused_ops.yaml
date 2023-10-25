@@ -254,6 +254,15 @@
     data_type : input
   optional : bias_qk
 
+- op : skip_layernorm
+  args : (Tensor x, Tensor y, Tensor scale, Tensor bias, float epsilon, int begin_norm_axis)
+  output : Tensor(out)
+  infer_meta :
+    func : SkipLayerNormInferMeta
+  kernel :
+    func : skip_layernorm
+    data_type : x
+
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)
