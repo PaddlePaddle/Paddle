@@ -357,7 +357,7 @@ class Parallelizer:
 
         if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
             if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
-                self.logger.warning(
+                self._logger.warning(
                     "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
                     "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
@@ -443,7 +443,7 @@ class Parallelizer:
                 enable_send_recv_overlap
                 and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
             ):
-                self.logger.warning(
+                self._logger.warning(
                     "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
                     "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
