@@ -100,13 +100,16 @@ class Conv1DTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv1d(
                     x_var,
                     w_var,
-                    b_var if not self.no_bias else None,
+                    b_var,
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
@@ -118,6 +121,7 @@ class Conv1DTestCase(unittest.TestCase):
             feed_dict["bias"] = self.bias
         exe = base.Executor(place)
         exe.run(start)
+        # breakpoint()
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
