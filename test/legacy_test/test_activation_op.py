@@ -911,10 +911,13 @@ class TestSinh(TestActivation):
 
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSinh_Complex64(TestSinh):
