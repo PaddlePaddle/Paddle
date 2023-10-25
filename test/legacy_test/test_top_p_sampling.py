@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def TopPProcess(probs, top_p):
@@ -63,7 +63,7 @@ class TestTopPAPI(unittest.TestCase):
         self.input_data = np.random.rand(self.batch_size, self.vocab_size)
 
     def run_dygraph(self, place):
-        with paddle.fluid.dygraph.guard(place):
+        with paddle.base.dygraph.guard(place):
             input_tensor = paddle.to_tensor(self.input_data, self.dtype)
             topp_tensor = paddle.to_tensor(
                 [
