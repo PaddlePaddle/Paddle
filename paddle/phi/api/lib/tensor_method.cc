@@ -136,7 +136,7 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-// #ifdef PADDLE_WITH_DISTRIBUTE
+#ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(src);
   bool rank_is_in_current_mesh = false;
   if (run_auto_parallel) {
@@ -188,7 +188,7 @@ void Tensor::copy_(const Tensor &src,
     // API `copy_` does not need to set DistAttr for output.
     return;
   }
-// #endif
+#endif
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
     SetKernelOutput(this);
