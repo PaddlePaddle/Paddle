@@ -54,7 +54,7 @@ InterpreterCore::InterpreterCore(
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
-  impl_ = std::make_unique<NewIRInterpreter>(
+  impl_ = std::make_unique<PirInterpreter>(
       place, fetch_var_names, ir_block, scope, execution_config);
 }
 

@@ -243,7 +243,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,

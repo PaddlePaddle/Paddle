@@ -25,7 +25,7 @@ class Block;
 namespace paddle {
 namespace framework {
 class ValueExecutionInfo;
-class NewIRInterpreter : public InterpreterBaseImpl {
+class PirInterpreter : public InterpreterBaseImpl {
   using ExecutionConfig = interpreter::ExecutionConfig;
   using InstructionSchedulingPriorityLess = std::function<bool(size_t, size_t)>;
   using SchedulingQueue =
@@ -34,20 +34,20 @@ class NewIRInterpreter : public InterpreterBaseImpl {
                           InstructionSchedulingPriorityLess>;
 
  public:
-  NewIRInterpreter(const platform::Place& place,
-                   const std::vector<std::string>& fetch_var_names,
-                   const ::pir::Block* ir_block,
-                   Scope* scope,
-                   const ExecutionConfig& execution_config = ExecutionConfig());
+  PirInterpreter(const platform::Place& place,
+                 const std::vector<std::string>& fetch_var_names,
+                 const ::pir::Block* ir_block,
+                 Scope* scope,
+                 const ExecutionConfig& execution_config = ExecutionConfig());
 
-  NewIRInterpreter(const platform::Place& place,
-                   const std::vector<std::string>& fetch_var_names,
-                   const ::pir::Block* ir_block,
-                   Scope* scope,
-                   std::shared_ptr<ValueExecutionInfo> value_exe_info,
-                   const ExecutionConfig& execution_config = ExecutionConfig());
+  PirInterpreter(const platform::Place& place,
+                 const std::vector<std::string>& fetch_var_names,
+                 const ::pir::Block* ir_block,
+                 Scope* scope,
+                 std::shared_ptr<ValueExecutionInfo> value_exe_info,
+                 const ExecutionConfig& execution_config = ExecutionConfig());
 
-  ~NewIRInterpreter();
+  ~PirInterpreter();
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,

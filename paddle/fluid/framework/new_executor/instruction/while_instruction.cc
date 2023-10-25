@@ -85,7 +85,7 @@ WhileInstruction::WhileInstruction(size_t id,
     body_scope->Var(var_name);
     body_exe_info->Add(body_block_->argument(i), var_name);
   }
-  body_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
+  body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
       place, {}, body_block_, body_scope, body_exe_info, {}));
 
   std::set<std::string> body_skip_gc_names_set;
