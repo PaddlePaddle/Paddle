@@ -94,8 +94,8 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
       }
       out_numel *= output_alloc_tensor_type.dims()[i];
     }
-    if (in_numel < out_numel) {
-      VLOG(9) << "     -- input's numel < output's numel, can't do inplace";
+    if (in_numel != out_numel) {
+      VLOG(9) << "     -- input's numel != output's numel, can't do inplace";
       return false;
     }
   } else if (input.type() != output.type()) {
