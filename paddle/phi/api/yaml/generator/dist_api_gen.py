@@ -71,7 +71,7 @@ GET_MESH_TEMPLATE = """
 # Auto Parallel condition
 AUTO_PARALLEL_COND_TEMPLATE = """
   bool run_auto_parallel = AllInputsAreDistTensor({input_args});
-  bool rank_is_in_current_mesh = true;
+  bool rank_is_in_current_mesh = false;
   if (run_auto_parallel) {{{mesh}
   }}
   if (rank_is_in_current_mesh) {{{kernel_code}
