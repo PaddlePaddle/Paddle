@@ -40,7 +40,7 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
                                         const DistMetaTensor& out_grad,
-                                        int64_t axis);
+                                        int64_t axis = -1);
 
 }  // namespace distributed
 }  // namespace phi
