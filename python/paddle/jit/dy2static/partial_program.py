@@ -214,7 +214,9 @@ class PartialProgramLayer:
             )
 
         # program_id -> list(scope)
-        self._scope_cache = {}
+        self._pir_scope_cache = {}
+        self._legacy_scope_cache = {}
+        self._scope_cache = self._legacy_scope_cache
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
@@ -267,6 +269,12 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
+        if get_flags('FLAGS_enable_new_ir_in_executor')[
+            'FLAGS_enable_new_ir_in_executor'
+        ]:
+            self._scope_cache = self._pir_scope_cache
+        else:
+            self._scope_cache = self._legacy_scope_cache
         if use_scope_cache:
             if program_id not in self._scope_cache:
                 scope = core.Scope()
