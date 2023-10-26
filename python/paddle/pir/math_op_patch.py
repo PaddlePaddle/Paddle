@@ -393,10 +393,11 @@ def monkey_patch_opresult():
             _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
         ),
         #  for logical compare
-        (
-            '__eq__',
-            _binary_creator_('__eq__', paddle.tensor.equal, False, None),
-        ),
+        # TODO(gouzil): Open after deleting c++ logic
+        # (
+        #     '__eq__',
+        #     _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        # ),
         (
             '__ne__',
             _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),
