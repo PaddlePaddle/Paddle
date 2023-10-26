@@ -18,6 +18,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
@@ -30,6 +31,10 @@ void SplitFeedTensor(const std::vector<std::string>& feed_names,
                      const int64_t micro_batch_num,
                      Scope* scope,
                      std::vector<std::vector<phi::DenseTensor>>* out);
+
+void MergeFetchTensor(const FetchUnmergedList& unmerged_fetch_list,
+                      const int64_t micro_batch_num,
+                      FetchList* out);
 
 }  // namespace framework
 }  // namespace paddle
