@@ -281,9 +281,9 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
           << ") to InterpreterCore(" << this << ")";
 }
 
-std::tuple<double, double> NewIRInterpreter::InterpreterRunTime() {
+std::tuple<double, double> PirInterpreter::InterpreterRunTime() {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "NewIRInterpreter::InterpreterRunTime is not implemented."));
+      "PirInterpreter::InterpreterRunTime is not implemented."));
 }
 
 const interpreter::NewIrDependencyBuilder&
