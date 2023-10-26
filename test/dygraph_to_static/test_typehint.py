@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -33,7 +36,8 @@ def function(x: A) -> A:
     return 2 * x
 
 
-class TestTransformWhileLoop(unittest.TestCase):
+@dy2static_unittest
+class TestTypeHint(unittest.TestCase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -71,11 +75,6 @@ class TestTransformWhileLoop(unittest.TestCase):
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
-
-
-class TestTypeHint(TestTransformWhileLoop):
-    def _init_dyfunc(self):
-        self.dyfunc = function
 
 
 if __name__ == '__main__':

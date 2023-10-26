@@ -17,8 +17,7 @@ from paddle.base import core
 from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import deprecated
 
-from .streams import Stream  # noqa: F401
-from .streams import Event  # noqa: F401
+from .streams import Stream, Event
 
 __all__ = [
     'Stream',

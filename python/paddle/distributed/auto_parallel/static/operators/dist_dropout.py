@@ -62,24 +62,18 @@ class DistributedDropout(DistributedOperatorImplContainer):
         fw_results = rule.infer_forward(x_spec)
         bw_results = rule.infer_backward(x_spec, output_spec)
 
-        # step3: merge fw & bw results
-        (
-            infered_input_dims_mappings,
-            infered_output_dims_mappings,
-        ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
-
-        # step4: update dist_attr
+        # step3: update dist_attr
         # tensor order following order in PHI defition
         changed = update_op_dims_mapping(
-            dist_op,
-            [x_name],
-            infered_input_dims_mappings,
-            [out_name],
-            infered_output_dims_mappings,
+            dist_op, [x_name], [out_name], fw_results, bw_results
         )
 
         # step5: update mask and seed dropout special
         if changed:
+            (
+                _,
+                infered_output_dims_mappings,
+            ) = merge_forward_backward_dims_mapping(fw_results, bw_results)
             dist_op.dist_attr.set_output_dims_mapping(
                 mask_name, infered_output_dims_mappings[0]
             )

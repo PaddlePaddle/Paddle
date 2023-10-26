@@ -221,6 +221,14 @@ void ReplaceExpr(Expr* source,
   return;
 }
 
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map) {
+  if (replacing_map.empty()) return;
+  MappingVarToExprMutator mapper(replacing_map);
+  mapper(source);
+  return;
+}
+
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
                                  const ModuleExpr& module_expr) {

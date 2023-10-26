@@ -135,15 +135,15 @@ Returns:
     same as current Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
-        linear = paddle.nn.Linear(32, 64)
-        data = paddle.to_tensor(data)
-        x = linear(data)
-        print(x.numpy())
+        >>> data = paddle.uniform([30, 10, 32], dtype="float32", min=-1, max=1)
+        >>> linear = paddle.nn.Linear(32, 64)
+        >>> data = paddle.to_tensor(data)
+        >>> x = linear(data)
 )DOC");
 
 static PyObject* tensor_method_numpy(TensorObject* self,
@@ -629,16 +629,17 @@ Returns:
     None.
 
 Examples:
+
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      t1 = paddle.to_tensor([1.0], stop_gradient=False)
-      t2 = paddle.to_tensor([2.0], stop_gradient=True)
+        >>> t1 = paddle.to_tensor([1.0], stop_gradient=False)
+        >>> t2 = paddle.to_tensor([2.0], stop_gradient=True)
 
-      t1.reconstruct_from_(t2)
-
-      print(t1)
+        >>> t1.reconstruct_from_(t2)
+        >>> print(t1)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True, [2.])
 )DOC");
 
 static PyObject* tensor_method_reconstruct_from_(TensorObject* self,
@@ -706,28 +707,38 @@ Returns:
     Tensor, The cloned Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1.0, stop_gradient=False)
-        clone_x = x.clone()
-        y = clone_x**2
-        y.backward()
-        print(clone_x.stop_gradient) # False
-        print(clone_x.grad)          # [2.0], support gradient propagation
-        print(x.stop_gradient)       # False
-        print(x.grad)                # [2.0], clone_x support gradient propagation for x
+        >>> x = paddle.to_tensor(1.0, stop_gradient=False)
+        >>> clone_x = x.clone()
+        >>> clone_x.retain_grads()
+        >>> y = clone_x**2
+        >>> y.backward()
+        >>> print(clone_x.stop_gradient)
+        False
+        >>> print(clone_x.grad)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False, 2.)
+        >>> print(x.stop_gradient)
+        False
+        >>> print(x.grad)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False, 2.)
 
-        x = paddle.to_tensor(1.0)
-        clone_x = x.clone()
-        clone_x.stop_gradient = False
-        z = clone_x**3
-        z.backward()
-        print(clone_x.stop_gradient) # False
-        print(clone_x.grad)          # [3.0], support gradient propagation
-        print(x.stop_gradient) # True
-        print(x.grad)          # None
+        >>> x = paddle.to_tensor(1.0)
+        >>> clone_x = x.clone()
+        >>> clone_x.stop_gradient = False
+        >>> z = clone_x**3
+        >>> z.backward()
+        >>> print(clone_x.stop_gradient)
+        False
+        >>> print(clone_x.grad)
+        Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False, 3.)
+        >>> print(x.stop_gradient)
+        True
+        >>> print(x.grad)
+        None
 )DOC");
 
 static PyObject* tensor_method_clone(TensorObject* self,
@@ -760,27 +771,32 @@ Returns:
     None.
 
 Examples:
+
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1.0, 2.0, 3.0])
-      x.stop_gradient = False
-      y = x + x
-      y.retain_grads()
-      loss = y.sum()
-      loss.backward()
+        >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
+        >>> x.stop_gradient = False
+        >>> y = x + x
+        >>> y.retain_grads()
+        >>> loss = y.sum()
+        >>> loss.backward()
 
-      print(y.grad) # [1., 1., 1.]
+        >>> print(y.grad)
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
 
-      x = paddle.to_tensor([1.0, 2.0, 3.0])
-      x.stop_gradient = False
-      y = x + x
-      # y.retain_grads()
-      loss = y.sum()
-      loss.backward()
+        >>> x = paddle.to_tensor([1.0, 2.0, 3.0])
+        >>> x.stop_gradient = False
+        >>> y = x + x
+        >>> y.retain_grads()
+        >>> loss = y.sum()
+        >>> loss.backward()
 
-      print(y.grad) # None
+        >>> print(y.grad)
+        Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [1., 1., 1.])
 )DOC");
 
 static PyObject* tensor_retain_grads(TensorObject* self,
@@ -820,16 +836,26 @@ Returns:
     None.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
-        input = paddle.uniform([10, 2])
-        linear = paddle.nn.Linear(2, 3)
-        out = linear(input)
-        out.backward()
-        print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
-        linear.weight.clear_gradient()
-        print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        >>> import paddle
+        >>> input = paddle.uniform([10, 2])
+        >>> linear = paddle.nn.Linear(2, 3)
+        >>> out = linear(input)
+        >>> out.backward()
+        >>> print("Before clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        >>> # doctest: +SKIP("Random output")
+        Before clear_gradient, linear.weight.grad: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [[-0.03178465, -0.03178465, -0.03178465],
+         [-0.98546225, -0.98546225, -0.98546225]])
+        >>> # doctest: -SKIP
+        >>> linear.weight.clear_gradient()
+        >>> print("After clear_gradient, linear.weight.grad: {}".format(linear.weight.grad))
+        After clear_gradient, linear.weight.grad: Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+        [[0., 0., 0.],
+         [0., 0., 0.]])
+
 )DOC");
 
 static PyObject* tensor_clear_gradient(TensorObject* self,
@@ -844,7 +870,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
     set_to_zero = CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
   }
 
-  paddle::Tensor* grad;
+  paddle::Tensor* grad = nullptr;
   bool is_leaf = egr::EagerUtils::IsLeafTensor(self->tensor);
   if (is_leaf) {
     grad = egr::EagerUtils::mutable_grad(self->tensor);
@@ -1037,33 +1063,41 @@ Returns:
     Tensor, The detached Tensor.
 
 Examples:
+
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1.0], stop_gradient=False)
-      detach_x = x.detach()
-      detach_x[0] = 10.0
-      print(x)  # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False,
-                  #        [10.])
-      y = x**2
-      y.backward()
-      print(x.grad)         # [20.0]
-      print(detach_x.grad)  # None, 'stop_gradient=True' by default
+        >>> x = paddle.to_tensor([1.0], stop_gradient=False)
+        >>> detach_x = x.detach()
+        >>> detach_x[0] = 10.0
+        >>> print(x)
+        Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=False, [10.])
 
-      detach_x.stop_gradient = False # Set stop_gradient to be False, supported auto-grad
-      z = detach_x**3
-      z.backward()
+        >>> y = x**2
+        >>> y.backward()
+        >>> print(x.grad)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False, [20.])
 
-      print(x.grad)         # [20.0], detach_x is detached from x's graph, not affect each other
-      print(detach_x.grad)  # [300.0], detach_x has its own graph
+        >>> print(detach_x.grad) # None, 'stop_gradient=True' by default
+        None
 
-      # Due to sharing of data with origin Tensor, There are some unsafe operations:
-      # y = 2 * x
-      # detach_x[:] = 5.0
-      # y.backward()
-      # It will raise Error:
-      #   one of the variables needed for gradient computation has been modified by an inplace operation.
+        >>> detach_x.stop_gradient = False # Set stop_gradient to be False, supported auto-grad
+        >>> z = detach_x**3
+        >>> z.backward()
+
+        >>> print(x.grad)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False, [20.])
+
+        >>> print(detach_x.grad)
+        Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=False, [300.])
+
+        >>> # Due to sharing of data with origin Tensor, There are some unsafe operations:
+        >>> # y = 2 * x
+        >>> # detach_x[:] = 5.0
+        >>> # y.backward()
+        >>> # It will raise Error:
+        >>> #   one of the variables needed for gradient computation has been modified by an inplace operation.
 )DOC");
 
 static PyObject* tensor_method_detach(TensorObject* self,
@@ -1132,13 +1166,19 @@ Returns:
     Underline tensor.
 
 Examples:
+
     .. code-block:: python
 
-      import paddle
+        >>> import paddle
 
-      x = paddle.to_tensor([1.0], stop_gradient=False)
-      underline_x = x.get_tensor()
-      print(underline_x) # a Dense Tensor info
+        >>> x = paddle.to_tensor([1.0], stop_gradient=False)
+        >>> underline_x = x.get_tensor()
+        >>> print(underline_x)
+          - place: Place(cpu)
+          - shape: [1]
+          - layout: NCHW
+          - dtype: float32
+          - data: [1]
 )DOC");
 
 static PyObject* tensor_method_get_underline_tensor(TensorObject* self,
@@ -1729,7 +1769,7 @@ static PyObject* tensor_register_grad_hook(TensorObject* self,
                                            PyObject* args,
                                            PyObject* kwargs) {
   EAGER_TRY
-  int64_t hook_id;
+  int64_t hook_id = 0;
   if (egr::EagerUtils::IsLeafTensor(self->tensor)) {
     VLOG(6) << "Register hook for leaf tensor: " << self->tensor.name();
 
@@ -2022,16 +2062,17 @@ Returns:
     int
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.nnz()
-        # 3
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.nnz()
+        3
 
 )DOC");
 
@@ -2069,18 +2110,19 @@ Returns:
     DenseTesnor
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.indices()
-        # Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-        #        [[0, 1, 2],
-        #         [1, 2, 0]])
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.indices()
+        Tensor(shape=[2, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        [[0, 1, 2],
+         [1, 2, 0]])
 
 )DOC");
 
@@ -2112,17 +2154,18 @@ Returns:
     DenseTesnor
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.values()
-        # Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-        #        [1., 2., 3.])
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.values()
+        Tensor(shape=[3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+        [1., 2., 3.])
 
 )DOC");
 
@@ -2164,18 +2207,19 @@ Returns:
     DenseTesnor
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        crows = [0, 2, 3, 5]
-        cols = [1, 3, 2, 0, 1]
-        values = [1, 2, 3, 4, 5]
-        dense_shape = [3, 4]
-        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        csr.crows()
-        # Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-        #        [0, 2, 3, 5])
+        >>> crows = [0, 2, 3, 5]
+        >>> cols = [1, 3, 2, 0, 1]
+        >>> values = [1, 2, 3, 4, 5]
+        >>> dense_shape = [3, 4]
+        >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        >>> csr.crows()
+        Tensor(shape=[4], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        [0, 2, 3, 5])
 
 )DOC");
 
@@ -2207,18 +2251,19 @@ Returns:
     DenseTesnor
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        crows = [0, 2, 3, 5]
-        cols = [1, 3, 2, 0, 1]
-        values = [1, 2, 3, 4, 5]
-        dense_shape = [3, 4]
-        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        csr.cols()
-        # Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
-        #        [1, 3, 2, 0, 1])
+        >>> crows = [0, 2, 3, 5]
+        >>> cols = [1, 3, 2, 0, 1]
+        >>> values = [1, 2, 3, 4, 5]
+        >>> dense_shape = [3, 4]
+        >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        >>> csr.cols()
+        Tensor(shape=[5], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+        [1, 3, 2, 0, 1])
 
 )DOC");
 
@@ -2246,12 +2291,14 @@ Returns:
     Whether the Tensor is a Dense Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1.0], stop_gradient=False)
-        print(x.is_dense())
+        >>> x = paddle.to_tensor([1.0], stop_gradient=False)
+        >>> print(x.is_dense())
+        True
 )DOC");
 
 static PyObject* tensor_method_is_dense(TensorObject* self,
@@ -2274,12 +2321,14 @@ Returns:
     Whether the Tensor is a Distributed Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1.0], stop_gradient=False)
-        print(x.is_dist()) # False
+        >>> x = paddle.to_tensor([1.0], stop_gradient=False)
+        >>> print(x.is_dist())
+        False
 )DOC");
 
 static PyObject* tensor_method_is_dist(TensorObject* self,
@@ -2305,16 +2354,17 @@ Returns:
     bool
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.is_sparse()
-        # True
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.is_sparse()
+        True
 
 )DOC");
 static PyObject* tensor_method_is_sparse(TensorObject* self,
@@ -2341,16 +2391,17 @@ Returns:
     bool
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.is_sparse_coo()
-        # True
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.is_sparse_coo()
+        True
 
 )DOC");
 
@@ -2377,17 +2428,18 @@ Returns:
     bool
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        crows = [0, 2, 3, 5]
-        cols = [1, 3, 2, 0, 1]
-        values = [1, 2, 3, 4, 5]
-        dense_shape = [3, 4]
-        csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
-        csr.is_sparse_csr()
-        # True
+        >>> crows = [0, 2, 3, 5]
+        >>> cols = [1, 3, 2, 0, 1]
+        >>> values = [1, 2, 3, 4, 5]
+        >>> dense_shape = [3, 4]
+        >>> csr = paddle.sparse.sparse_csr_tensor(crows, cols, values, dense_shape)
+        >>> csr.is_sparse_csr()
+        True
 
 )DOC");
 
@@ -2417,19 +2469,20 @@ Returns:
     SparseCsrTensor
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        indices = [[0, 1, 2], [1, 2, 0]]
-        values = [1.0, 2.0, 3.0]
-        dense_shape = [3, 3]
-        coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
-        coo.to_sparse_csr()
-        # Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-        #        crows=[0, 1, 2, 3],
-        #        cols=[1, 2, 0],
-        #        values=[1., 2., 3.])
+        >>> indices = [[0, 1, 2], [1, 2, 0]]
+        >>> values = [1.0, 2.0, 3.0]
+        >>> dense_shape = [3, 3]
+        >>> coo = paddle.sparse.sparse_coo_tensor(indices, values, dense_shape)
+        >>> coo.to_sparse_csr()
+        Tensor(shape=[3, 3], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
+        crows=[0, 1, 2, 3],
+        cols=[1, 2, 0],
+        values=[1., 2., 3.])
 
 )DOC");
 
@@ -2466,17 +2519,17 @@ Examples:
 
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.rand([2, 3, 8])
-        y = paddle.rand([2, 3, 8])
-        y = y.to_sparse_csr()
-        z = paddle.rand([2, 5])
+        >>> x = paddle.rand([2, 3, 8])
+        >>> y = paddle.rand([2, 3, 8])
+        >>> y = y.to_sparse_csr()
+        >>> z = paddle.rand([2, 5])
 
-        x.is_same_shape(y)
-        # True
-        x.is_same_shape(z)
-        # False
+        >>> x.is_same_shape(y)
+        True
+        >>> x.is_same_shape(z)
+        False
 
 )DOC");
 
@@ -2509,24 +2562,30 @@ Returns:
     int, The size in bytes of an element in the Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor(1, dtype='bool')
-        x.element_size() # 1
+        >>> x = paddle.to_tensor(1, dtype='bool')
+        >>> x.element_size()
+        1
 
-        x = paddle.to_tensor(1, dtype='float16')
-        x.element_size() # 2
+        >>> x = paddle.to_tensor(1, dtype='float16')
+        >>> x.element_size()
+        2
 
-        x = paddle.to_tensor(1, dtype='float32')
-        x.element_size() # 4
+        >>> x = paddle.to_tensor(1, dtype='float32')
+        >>> x.element_size()
+        4
 
-        x = paddle.to_tensor(1, dtype='float64')
-        x.element_size() # 8
+        >>> x = paddle.to_tensor(1, dtype='float64')
+        >>> x.element_size()
+        8
 
-        x = paddle.to_tensor(1, dtype='complex128')
-        x.element_size() # 16
+        >>> x = paddle.to_tensor(1, dtype='complex128')
+        >>> x.element_size()
+        16
 )DOC");
 
 static PyObject* tensor_method_element_size(TensorObject* self,
@@ -2753,12 +2812,16 @@ Returns:
     int, The address of the first element of current Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1, 2, 3])
-        print(x.data_ptr())
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> print(x.data_ptr())
+        >>> # doctest: +SKIP('return the address')
+        93220864
+        >>> # doctest: -SKIP
 )DOC");
 
 static PyObject* tensor_data_ptr(TensorObject* self,
@@ -2800,13 +2863,15 @@ Returns:
     List, the strides of current Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1, 2, 3])
-        y = x[1]
-        print(y.get_strides())
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> y = x[1]
+        >>> print(y.get_strides())
+        []
 )DOC");
 
 static PyObject* tensor_method_strides(TensorObject* self,
@@ -2838,14 +2903,16 @@ Returns:
     Tensor, The contiguous Tensor.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1, 2, 3])
-        y = x[1]
-        y = y.contiguous()
-        print(y)
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> y = x[1]
+        >>> y = y.contiguous()
+        >>> print(y)
+        Tensor(shape=[], dtype=int64, place=Place(cpu), stop_gradient=True, 2)
 )DOC");
 
 static PyObject* tensor_contiguous(TensorObject* self,
@@ -2883,13 +2950,14 @@ Returns:
     Bool, Whether the Tensor is contiguous.
 
 Examples:
+
     .. code-block:: python
 
-        import paddle
+        >>> import paddle
 
-        x = paddle.to_tensor([1, 2, 3])
-        y = x[1]
-        print(y.is_contiguous())
+        >>> x = paddle.to_tensor([1, 2, 3])
+        >>> y = x[1]
+        >>> print(y.is_contiguous())
 )DOC");
 static PyObject* tensor_is_contiguous(TensorObject* self,
                                       PyObject* args,

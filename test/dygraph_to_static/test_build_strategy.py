@@ -84,6 +84,7 @@ class TestResnetWithPass(unittest.TestCase):
             paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
+@dy2static_unittest
 class TestError(unittest.TestCase):
     def test_type_error(self):
         def foo(x):

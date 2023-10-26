@@ -324,12 +324,12 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto* block = desc.Block();
       if (block) {
         auto* filter_var_desc = block->FindVar(desc.Input("Filter")[0]);
-        if (!filter_var_desc->Persistable() && !use_explicit_quantization) {
+        if (!filter_var_desc->Persistable()) {
 #if IS_TRT_VERSION_GE(8600)
 #else
           LOG(INFO)
               << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TenroRT.";
+                 "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
         }
@@ -2918,7 +2918,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3086,7 +3087,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {

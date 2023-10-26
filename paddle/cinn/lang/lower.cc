@@ -104,7 +104,7 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<Tensor>& tensor_args,
   auto all_temp_tensors =
       ir::ir_utils::CollectIRNodesWithoutTensor(body, [&](const Expr* x) {
         return x->as_tensor() && x->as_tensor()->buffer.defined() &&
-               (!tensor_group.Contain(x->as_tensor()->name) &&
+               (!tensor_group.Contain(x->as_tensor()->name) ||
                 ((!buffer_arg_names.count(x->as_tensor()->buffer->name) &&
                   !tensor_arg_names.count(x->as_tensor()->name)) ||
                  utils::Endswith(x->as_tensor()->buffer->name, "temp_buffer")));
@@ -284,15 +284,25 @@ ir::LoweredFunc LowerToAst(const std::string& name,
                            const std::vector<Tensor>& tensor_args,
                            ast_gen_ius::TensorGroup* tensor_group,
                            const Target& target) {
-  // Merge the ctrl_deps with the given temp_tensors ang get a new temp_tensors
+  std::vector<ir::LoweredFunc> result =
+      LowerToAstVec(name, tensor_args, tensor_group, target);
+  CHECK_EQ(result.size(), 1UL) << "LowerToAst contains not only 1 LoweredFunc, "
+                                  "use LowerToAstVec instead.";
+  return result[0];
+}
+
+std::vector<ir::LoweredFunc> LowerToAstVec(
+    const std::string& name,
+    const std::vector<Tensor>& tensor_args,
+    ast_gen_ius::TensorGroup* tensor_group,
+    const Target& target) {
   std::set<ir::Tensor> ctrl_deps =
       CollectTempTensorsFromCtrlDepends(tensor_group, tensor_args);
-  std::vector<ast_gen_ius::TensorGroup*> group_vec = {tensor_group};
   auto lower_instance = detail::LowerTensorGroup(
       name,
       tensor_args,
       {},
-      group_vec,
+      tensor_group,
       std::vector<Tensor>(ctrl_deps.begin(), ctrl_deps.end()),
       target);
   std::vector<ir::LoweredFunc> result = lower_instance();
@@ -301,19 +311,7 @@ ir::LoweredFunc LowerToAst(const std::string& name,
       res->device_api = ir::DeviceAPI::GPU;
     }
   }
-  return result[0];
-}
-
-std::vector<ir::LoweredFunc> LowerToAstVec(
-    const std::string& name,
-    const std::vector<Tensor>& tensor_args,
-    std::vector<ast_gen_ius::TensorGroup*> tensor_groups,
-    const Target& target) {
-  std::vector<ir::LoweredFunc> ret;
-  for (ast_gen_ius::TensorGroup* tg : tensor_groups) {
-    ret.push_back(LowerToAst(name, tensor_args, tg, target));
-  }
-  return ret;
+  return result;
 }
 
 ir::LoweredFunc Lower(const std::string& name,

@@ -11,9 +11,8 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
-
 #include "paddle/phi/api/lib/kernel_dispatch.h"
-
+#include <glog/logging.h>
 #ifdef _MSC_VER
 #include <intrin.h>
 #endif
@@ -68,6 +67,7 @@ BackendSet GetTensorBackendSet(const phi::TensorBase& t) {
 #endif
     phi::Backend backend_key = phi::TransToPhiBackend(t.place());
     BackendSet backend_set(backend_key);
+    VLOG(10) << "update BackendSet by tensor: add [" << backend_key << "]";
     if (backend_key == Backend::GPU && phi::DenseTensor::classof(&t) &&
         static_cast<const phi::DenseTensor&>(t).meta().use_gpudnn) {
       backend_set = backend_set | BackendSet(Backend::GPUDNN);

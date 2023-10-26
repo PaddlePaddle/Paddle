@@ -521,11 +521,8 @@ set(TEST_OPS_WITH_GC
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
-    test_pad2d_op
     test_scatter_op
-    test_slice_op
-    test_space_to_depth_op
-    test_squared_l2_distance_op)
+    test_slice_op)
 
 foreach(TEST_OP ${TEST_OPS_WITH_GC})
   list(REMOVE_ITEM TEST_OPS ${TEST_OP})
@@ -854,7 +851,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
-  test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
   test_parallel_executor_seresnext_with_reduce_gpu
   test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
@@ -1047,7 +1043,6 @@ set_tests_properties(test_sigmoid_cross_entropy_with_logits_op
 set_tests_properties(test_imperative_optimizer_v2 PROPERTIES TIMEOUT 150)
 set_tests_properties(test_partial_sum_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_cond PROPERTIES TIMEOUT 120)
-set_tests_properties(test_space_to_depth_op PROPERTIES TIMEOUT 200)
 set_tests_properties(test_sgd_op PROPERTIES TIMEOUT 250)
 set_tests_properties(test_parallel_executor_seresnext_base_gpu
                      PROPERTIES TIMEOUT 120)
@@ -1072,7 +1067,6 @@ set_tests_properties(test_pool2d_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_transpose_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_activation_op PROPERTIES TIMEOUT 270)
 set_tests_properties(test_normal PROPERTIES TIMEOUT 120)
-set_tests_properties(test_lstmp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_decoupled_py_reader PROPERTIES TIMEOUT 120)
 set_tests_properties(test_fuse_bn_act_pass PROPERTIES TIMEOUT 120)
@@ -1283,6 +1277,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_batch_norm_op
     test_bucketize_api
     test_bincount_op
     test_c_embedding_op
@@ -1290,6 +1285,7 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
+    test_fake_dequantize_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_ftrl_op
@@ -1396,6 +1392,17 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
   endif()
 endforeach()
 
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_no_check_list"
+     NEW_IR_OP_NO_CHECK_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_NO_CHECK_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                                  "FLAGS_NEW_IR_NO_CHECK=True")
+  else()
+    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
 file(STRINGS
      "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_precision_white_list"
      NEW_IR_OP_RELAXED_TESTS)
@@ -1410,42 +1417,8 @@ foreach(IR_OP_TEST ${NEW_IR_OP_RELAXED_TESTS})
   endif()
 endforeach()
 
-set(STRIED_TESTS
-    test_complex_getitem
-    test_complex_grad_accumulated
-    test_complex_simplenet
-    test_conv1d_layer
-    test_conv1d_transpose_layer
-    test_conv2d_layer
-    test_diagonal_op
-    test_imperative_ocr_attention_model
-    test_imperative_ptb_rnn
-    test_imperative_ptb_rnn_sorted_gradient
-    test_initializer
-    test_inplace
-    test_real_imag_op
-    test_reshape_op
-    test_set_value_op
-    test_signal
-    test_slice_op
-    test_solve_op
-    test_squeeze_op
-    test_squeeze2_op
-    test_unbind_op
-    test_unsqueeze_op
-    test_unsqueeze2_op
-    test_var_base)
-
-foreach(STRIED_TEST ${STRIED_TESTS})
-  py_test_modules(${STRIED_TEST}_with_stride MODULES ${STRIED_TEST} ENVS
-                  FLAGS_use_stride_kernel=true)
-  set_tests_properties(${STRIED_TEST}_with_stride PROPERTIES TIMEOUT 120)
-endforeach()
-
 py_test_modules(test_stride MODULES test_stride ENVS
                 FLAGS_use_stride_kernel=true)
-
-set_tests_properties(test_slice_op_with_stride PROPERTIES TIMEOUT 300)
 
 if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
   # These UTs are specially designed for FleetExecutor

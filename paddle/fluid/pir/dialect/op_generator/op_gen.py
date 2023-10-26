@@ -19,6 +19,7 @@ import pathlib
 import sys
 
 import yaml
+from decomp_interface_gen_op_list import decomp_interface_declare_gen_op_list
 from op_build_gen import gen_build_func_str, gen_build_func_str_by_invoke
 from op_interface_gen import (
     gen_exclusive_interface_str,
@@ -27,10 +28,7 @@ from op_interface_gen import (
 )
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
-from vjp_interface_gen_op_list import (
-    vjp_interface_declare_gen_op_list,
-    vjp_interface_implementation_gen_op_list,
-)
+from vjp_interface_black_list import vjp_interface_black_list
 
 # import from paddle/fluid/primitive/code_gen/gen.py
 sys.path.append(
@@ -61,6 +59,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
@@ -99,7 +98,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_mutable_attr_is_input}
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
-  void Verify();
+  void VerifySig();
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -477,7 +476,7 @@ class OpInfoParser:
                     if (self.op_compat_item['op'] == "isclose") or (
                         self.op_compat_item['op'] == "allclose"
                     ):
-                        data_type = "float"
+                        data_type = "double"
                     mutable_attribute_type_list.append(
                         [
                             "paddle::dialect::ScalarAttribute",
@@ -1036,7 +1035,7 @@ def OpGenerator(
 
         if (
             op_info.backward_name
-            and op_info.op_phi_name[0] in vjp_interface_declare_gen_op_list
+            and op_info.op_phi_name[0] not in vjp_interface_black_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
@@ -1055,6 +1054,9 @@ def OpGenerator(
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
+            if op_name in decomp_interface_declare_gen_op_list:
+                op_interfaces += ["paddle::dialect::DecompInterface"]
+                exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
             if op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:
@@ -1444,7 +1446,7 @@ def OpGenerator(
                     if (
                         op_info.backward_name
                         and op_info.op_phi_name[0]
-                        in vjp_interface_implementation_gen_op_list
+                        not in vjp_interface_black_list
                     ):
                         op_vjp_str = gen_op_vjp_str(
                             op_class_name,

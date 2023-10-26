@@ -10,6 +10,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_auto_parallel_relaunch)
   set_tests_properties(test_auto_parallel_relaunch
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_mp_allreduce_matmul_grad_overlapping MODULES
+                  test_mp_allreduce_matmul_grad_overlapping)
+  set_tests_properties(test_mp_allreduce_matmul_grad_overlapping
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_relaunch_with_planner MODULES test_relaunch_with_planner)
   set_tests_properties(test_relaunch_with_planner
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
@@ -118,6 +122,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_semi_auto_parallel_single_strategy MODULES
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
+  py_test_modules(test_semi_auto_parallel_hybrid_strategy MODULES
+                  test_semi_auto_parallel_hybrid_strategy)
+  set_tests_properties(test_semi_auto_parallel_hybrid_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_gpt_with_newir MODULES test_gpt_with_newir)
   set_tests_properties(test_gpt_with_newir

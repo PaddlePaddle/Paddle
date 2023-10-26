@@ -28,20 +28,19 @@ namespace distributed {
 
 bool SToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= in_dist_attr.is_shard();
-  flag &= out_dist_attr.is_shard();
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
@@ -53,7 +52,7 @@ void SToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   const auto& in_process_ids = in_process_mesh.process_ids();
   auto dtype = in.dtype();
   const auto& logical_ddim = in.dims();
-  int64_t nranks = in_process_ids.size();
+  int64_t nranks = static_cast<int64_t>(in_process_ids.size());
   int in_split_axis =
       GetSplitAxisWithDimsMapping(in.dist_attr().dims_mapping()).begin()->first;
   int out_split_axis =

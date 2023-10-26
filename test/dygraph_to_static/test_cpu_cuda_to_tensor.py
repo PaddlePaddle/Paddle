@@ -25,6 +25,7 @@ from dygraph_to_static_util import (
 import paddle
 
 
+@dy2static_unittest
 class TestCpuCuda(unittest.TestCase):
     def test_cpu_cuda(self):
         def func(x):
@@ -38,6 +39,7 @@ class TestCpuCuda(unittest.TestCase):
         # print(paddle.jit.to_static(func)(x))
 
 
+@dy2static_unittest
 class TestToTensor(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_to_tensor_with_variable_list(self):

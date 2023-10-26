@@ -42,6 +42,7 @@ set(PYBIND_DEPS
     pd_op_dialect
     program_translator
     pd_inplace_pass
+    fusion_passes
     pir
     new_profiler
     jit_layer
@@ -277,7 +278,9 @@ if(WITH_PYTHON)
                  eager_legacy_op_function_generator.cc)
   set(GENERATOR_DEPS ${PYBIND_DEPS})
   list(REMOVE_DUPLICATES GENERATOR_DEPS)
-  list(REMOVE_ITEM GENERATOR_DEPS python)
+  if(NOT WITH_ARM)
+    list(REMOVE_ITEM GENERATOR_DEPS python)
+  endif()
   target_link_libraries(eager_legacy_op_function_generator ${GENERATOR_DEPS})
   if(NOT WIN32)
     add_executable(kernel_signature_generator kernel_signature_generator.cc)

@@ -61,6 +61,7 @@ test_diag_v2
 test_digamma_op
 test_dist_op
 test_dot_op
+test_dpsgd_op
 test_edit_distance_op
 test_eigh_op
 test_eigh_op_static_build
@@ -78,6 +79,7 @@ test_elementwise_mul_op
 test_elementwise_pow_op
 test_erfinv_op
 test_expand_v2_op
+test_exponential_op
 test_eye_op
 test_fill_any_op
 test_fill_constant_batch_size_like
@@ -135,6 +137,7 @@ test_matrix_nms_op
 test_matrix_power_op
 test_maxout_op
 test_mean_op
+test_memcpy_op
 test_mode_op
 test_multi_dot_op
 test_multiplex_op
@@ -161,7 +164,6 @@ test_prior_box_op
 test_psroi_pool_op
 test_put_along_axis_op
 test_range
-test_real_imag_op_with_stride
 test_reduce_op
 test_reduce_op_static_build
 test_reshape_op
@@ -185,7 +187,6 @@ test_solve_op
 test_spectral_norm_op
 test_spectral_op
 test_squared_l2_norm_op
-test_squeeze_op_with_stride
 test_svd_op
 test_take_along_axis_op
 test_temporal_shift_op
@@ -197,13 +198,11 @@ test_tril_indices_op
 test_trilinear_interp_v2_op
 test_triu_indices_op
 test_trunc_op
-test_unbind_op_with_stride
 test_unfold_op
 test_unique_consecutive_op
 test_unpool3d_op
 test_unpool_op
 test_unsqueeze2_op
-test_unsqueeze_op_with_stride
 test_update_loss_scaling_op
 test_update_loss_scaling_op_static_build
 test_viterbi_decode_op

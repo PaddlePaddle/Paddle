@@ -14,7 +14,11 @@
 
 import unittest
 
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle.jit import to_static
@@ -32,6 +36,7 @@ def main_func():
         print(i)
 
 
+@dy2static_unittest
 class TestConvertGenerator(unittest.TestCase):
     # fallback will ok.
     @ast_only_test

@@ -22,6 +22,8 @@
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
+class Builder;
+class IrPrinter;
 
 class IR_API OpBase {
  public:
@@ -60,6 +62,10 @@ class IR_API OpBase {
   T attribute(const std::string &name) {
     return operation()->attribute<T>(name);
   }
+
+  void VerifySig() {}
+
+  void VerifyRegion() {}
 
  private:
   Operation *operation_;  // Not owned
@@ -135,6 +141,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -160,13 +167,20 @@ class Op : public OpBase {
     class EmptyOp : public Op<EmptyOp, TraitOrInterface...> {};
     return sizeof(ConcreteOp) == sizeof(EmptyOp);
   }
-  // Implementation of `VerifyInvariantsFn` OperationName hook.
-  static void VerifyInvariants(Operation *op) {
+
+  // Implementation of `VerifySigInvariantsFn` OperationName hook.
+  static void VerifySigInvariants(Operation *op) {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
-    op->dyn_cast<ConcreteOp>().Verify();
+    op->dyn_cast<ConcreteOp>().VerifySig();
     (void)std::initializer_list<int>{
         0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
+  }
+
+  static void VerifyRegionInvariants(Operation *op) {
+    static_assert(HasNoDataMembers(),
+                  "Op class shouldn't define new data members");
+    op->dyn_cast<ConcreteOp>().VerifyRegion();
   }
 };
 

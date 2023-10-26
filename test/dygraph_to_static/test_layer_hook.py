@@ -17,7 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -56,6 +59,7 @@ class SimpleNet(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestNestLayerHook(unittest.TestCase):
     def setUp(self):
         paddle.seed(2022)

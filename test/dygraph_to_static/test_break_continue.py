@@ -205,6 +205,7 @@ def test_optim_break_in_while(x):
     return x
 
 
+@dy2static_unittest
 class TestContinueInFor(unittest.TestCase):
     def setUp(self):
         self.input = np.zeros(1).astype('int64')

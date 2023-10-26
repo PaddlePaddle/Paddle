@@ -57,6 +57,7 @@ class Event {
   Device* device_;
   event_t event_;
   bool own_data_ = true;
+  mutable bool is_recorded_ = false;
 };
 }  // namespace event
 

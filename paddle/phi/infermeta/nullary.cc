@@ -41,13 +41,11 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  CreateInferMetaBase({static_cast<int64_t>(data.GetData().size())},
-                      dtype,
-                      DataLayout::NCHW,
-                      out);
+  CreateInferMetaBase(
+      {static_cast<int64_t>(shape.size())}, dtype, DataLayout::NCHW, out);
 }
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
@@ -74,7 +72,7 @@ void EyeInferMeta(const Scalar& num_rows,
                   DataType dtype,
                   MetaTensor* out,
                   MetaConfig config) {
-  int64_t rows, columns;
+  int64_t rows = 0, columns = 0;
   if (!config.is_runtime && num_rows.FromTensor()) {
     rows = -1;
   } else {

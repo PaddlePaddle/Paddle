@@ -12,18 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include <regex>
+#include <string>
+#include <unordered_set>
+
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
+
+PHI_DECLARE_string(ir_inplace_kernel_blacklist);
 
 namespace details {
 // NOTE(zhangbo): Which kind of value can be deleted?
@@ -52,7 +61,44 @@ static bool CanBeDeleted(pir::Value value) {
 static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
                          pir::Value input,
                          pir::Value output) {
-  if (input.type() != output.type()) {
+  if (!input.type() || !output.type()) {
+    return false;
+  }
+
+  if (input.type().isa<paddle::dialect::AllocatedDenseTensorType>() &&
+      output.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    auto input_alloc_tensor_type =
+        input.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+    auto output_alloc_tensor_type =
+        output.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
+
+    if (input_alloc_tensor_type.dtype() != output_alloc_tensor_type.dtype()) {
+      VLOG(9) << "     -- input's dtype != output's dtype, can't do inplace";
+      return false;
+    }
+
+    int64_t in_numel = 1;
+    int64_t out_numel = 1;
+    for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
+      if (input_alloc_tensor_type.dims()[i] == -1) {
+        VLOG(9) << "     -- input's shape has -1, can't do inplace";
+        return false;
+      }
+      in_numel *= input_alloc_tensor_type.dims()[i];
+    }
+
+    for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
+      if (output_alloc_tensor_type.dims()[i] == -1) {
+        VLOG(9) << "     -- output's shape has -1, can't do inplace";
+        return false;
+      }
+      out_numel *= output_alloc_tensor_type.dims()[i];
+    }
+    if (in_numel != out_numel) {
+      VLOG(9) << "     -- input's numel != output's numel, can't do inplace";
+      return false;
+    }
+  } else if (input.type() != output.type()) {
     VLOG(9) << "     -- input's type != output's type, can't do inplace";
     return false;
   }
@@ -110,7 +156,7 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
       continue;
     }
     if (upper_op_name == "pd_op.fetch" ||
-        upper_op_name == "pd_op.shadow_output") {
+        upper_op_name == "builtin.shadow_output") {
       skip_dels.insert(op->operand_source(0));
       continue;
     }
@@ -121,11 +167,10 @@ static std::unordered_set<pir::Value> GetSkipDeletionValues(pir::Block* block) {
 // NOTE(zhangbo): For inplace Pass, currently only the kernel_dialect operator
 // is supported. Therefore, this function only returns the values in the
 // kernel_dialect operator that can be eager deleted.
-static std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
-GetEagerDeletionValues(pir::Block* block) {
-  std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
-
-  std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
+static void GetEagerDelValueOfOp(
+    pir::Block* block,
+    const std::unordered_set<pir::Value>& skip_dels,
+    std::unordered_map<pir::Value, pir::Operation*>* del_value_2_op) {
   for (auto& op : *block) {
     std::string upper_op_name = op->name();
     if (op->dialect()->name().compare(paddle::dialect::KernelDialect::name()) ==
@@ -140,26 +185,40 @@ GetEagerDeletionValues(pir::Block* block) {
 
     for (size_t i = 0; i < op->num_operands(); ++i) {
       auto input = op->operand_source(i);
-      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input) ||
-          IsNoNeedBuffer(op, input)) {
+      if (skip_dels.count(input) > 0 || !input || !CanBeDeleted(input)) {
         VLOG(6) << "The " << i << "-th input value of the Operation("
                 << upper_op_name << ") can not be deleted.";
         VLOG(8) << " -- skip dels: " << skip_dels.count(input);
         VLOG(8) << " -- value is null: " << !input;
         VLOG(8) << " -- can be deleted: " << !CanBeDeleted(input);
-        VLOG(8) << " -- is no_need_buffer: " << IsNoNeedBuffer(op, input);
         continue;
       }
-      del_value_2_op[input] = op;
+      (*del_value_2_op)[input] = op;
     }
 
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      pir::Value output = op->result(i);
+    for (auto& result : op->results()) {
+      pir::Value output = result;
       if (output && CanBeDeleted(output)) {
-        del_value_2_op[output] = op;
+        (*del_value_2_op)[output] = op;
       }
     }
+
+    if (op->isa<paddle::dialect::IfOp>()) {
+      auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
+      GetEagerDelValueOfOp(if_op.true_block(), skip_dels, del_value_2_op);
+      VLOG(8) << "GetEagerDelValueOfOp for IfOp true block";
+      GetEagerDelValueOfOp(if_op.false_block(), skip_dels, del_value_2_op);
+      VLOG(8) << "GetEagerDelValueOfOp for IfOp false block";
+    }
   }
+}
+
+static std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
+GetEagerDeletionValues(pir::Block* block) {
+  std::unordered_set<pir::Value> skip_dels = GetSkipDeletionValues(block);
+
+  std::unordered_map<pir::Value, pir::Operation*> del_value_2_op;
+  GetEagerDelValueOfOp(block, skip_dels, &del_value_2_op);
 
   std::unordered_map<pir::Operation*, std::unordered_set<pir::Value>>
       eager_dels;
@@ -190,8 +249,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       VLOG(6) << op->name()
               << "is not a kernel_dialect op, inplace only support "
                  "kernel_dialect operators";
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -210,8 +269,8 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
              .dyn_cast<paddle::dialect::KernelAttribute>()
              .data()
              .backend() == phi::Backend::CPU)) {
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -222,9 +281,9 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
       for (size_t i = 0; i < op->num_operands(); ++i) {
         reused_input_values.insert(op->operand_source(i));
       }
-      for (size_t i = 0; i < op->num_results(); ++i) {
-        reused_output_values.insert(op->result(i));
-        visited_values.insert(op->result(i));
+      for (auto& result : op->results()) {
+        reused_output_values.insert(result);
+        visited_values.insert(result);
       }
       continue;
     }
@@ -232,12 +291,34 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     pir::OpInfo upper_inplace_op_info =
         pir::IrContext::Instance()->GetRegisteredOpInfo(upper_op_name + "_");
 
-    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info)) {
+    std::regex reg(",");
+    std::unordered_set<std::string> elems{
+        std::sregex_token_iterator(FLAGS_ir_inplace_kernel_blacklist.begin(),
+                                   FLAGS_ir_inplace_kernel_blacklist.end(),
+                                   reg,
+                                   -1),
+        std::sregex_token_iterator()};
+    elems.erase("");
+
+    if (elems.count(upper_op_name)) {
       VLOG(6) << upper_op_name
               << "'s value can't delete or doesn't have inplace op, so that "
                  "can't do inplace.";
       for (size_t i = 0; i < op->num_results(); ++i) {
         visited_values.insert(op->result(i));
+      }
+      continue;
+    }
+    if (eager_dels.count(op) == 0 || (!upper_inplace_op_info) ||
+        upper_op_name == "pd_op.transpose") {
+      // NOTE(wanghuancoder): pd_op.transpose is not an
+      // inplace op, only strided transpose support
+      // inplace in dygraph
+      VLOG(6) << upper_op_name
+              << "'s value can't delete or doesn't have inplace op, so that "
+                 "can't do inplace.";
+      for (auto& result : op->results()) {
+        visited_values.insert(result);
       }
       continue;
     }
@@ -294,8 +375,13 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
               << " will change to inplace version op: " << upper_op_name + "_";
     }
 
-    for (size_t i = 0; i < op->num_results(); ++i) {
-      visited_values.insert(op->result(i));
+    for (auto& result : op->results()) {
+      visited_values.insert(result);
+    }
+  }
+  if (!FLAGS_ir_inplace_kernel_blacklist.empty()) {
+    for (auto i : inplace_ops) {
+      std::cout << i.second << std::endl;
     }
   }
   return inplace_ops;
@@ -304,11 +390,11 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
 class InplacePass : public pir::Pass {
  public:
-  InplacePass() : pir::Pass("InplacePass", 3) {}
+  InplacePass() : pir::Pass("inplace_pass", 3) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "InplacePass should run on module op.");
+    IR_ENFORCE(module_op, "inplace_pass should run on module op.");
     auto* block = module_op.block();
 
     auto inplace_ops = details::GetInplaceOps(block);
@@ -333,7 +419,7 @@ class InplacePass : public pir::Pass {
           pir::BoolAttribute::get(pir::IrContext::Instance(), true));
     }
     LOG_FIRST_N(INFO, 1)
-        << "Apply inplace pass on lowering ::ir::Program to Kernel Dialect.";
+        << "Apply inplace pass on lowering ::pir::Program to Kernel Dialect.";
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
@@ -349,4 +435,4 @@ std::unique_ptr<pir::Pass> CreateInplacePass() {
 
 }  // namespace pir
 
-REGISTER_IR_PASS(inplace, InplacePass);
+REGISTER_IR_PASS(inplace_pass, InplacePass);

@@ -987,8 +987,8 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : exponential_
-  backward : exponential__grad
+- op : exponential_ (exponential)
+  backward : exponential__grad (exponential_grad)
   inputs :
     x : X
   outputs :
@@ -1255,6 +1255,35 @@
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
+- op : fused_embedding_eltwise_layernorm
+  inputs :
+    ids : Ids
+    embs : Embs
+    bias : Bias
+    scale : Scale
+  outputs :
+    out : Out
+  attrs :
+    epsilon : epsilon
+
+- op : fused_fc_elementwise_layernorm
+  inputs :
+    x : X
+    w : W
+    y : Y
+    bias0 : Bias0
+    scale : Scale
+    bias1 : Bias1
+  outputs :
+    out : Out
+    mean : Mean
+    variance : Variance
+  attrs :
+    x_num_col_dims : x_num_col_dims
+    activation_type : activation_type
+    epsilon : epsilon
+    begin_norm_axis : begin_norm_axis
+
 - op : fused_feedforward
   backward: fused_feedforward_grad
   inputs:
@@ -1287,9 +1316,31 @@
     dropout1_out: Dropout1Out
     dropout2_out: Dropout2Out
 
+- op : fused_gemm_epilogue
+  inputs:
+    {x : X, y : Y, bias : Bias}
+  outputs :
+    {out : Out, reserve_space: ReserveSpace}
+
+- op : fused_gemm_epilogue_grad
+  inputs:
+    {x : X, y : Y, reserve_space: ReserveSpace, out_grad : DOut}
+  outputs :
+    {x_grad : DX, y_grad : DY, bias_grad : DBias}
+
 - op : fused_transpose
   extra :
     attrs : [str data_format = "AnyLayout"]
+
+- op : fusion_transpose_flatten_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    trans_axis : trans_axis
+    flatten_axis : flatten_axis
+    concat_axis : concat_axis
 
 - op : gather
   backward : gather_grad
@@ -1489,11 +1540,6 @@
     out : Out
   attrs :
     axis : dim
-
-- op : inplace_abn
-  backward : inplace_abn_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
 - op : instance_norm
   inputs :
@@ -2138,6 +2184,17 @@
     x : X
   outputs :
     out : Out
+
+- op : pad
+  backward : pad_grad, pad_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    pad_value:
+      data_type : float
+      support_tensor : true
 
 - op : pad2d
   backward : pad2d_grad
@@ -3181,6 +3238,12 @@
   outputs:
     {out: Out}
 
+- op: dpsgd
+  inputs:
+    {param: Param,grad: Grad,learning_rate: LearningRate}
+  outputs:
+    param_out : ParamOut
+
 - op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
@@ -3211,6 +3274,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: memcpy
+  inputs:
+    x: X
+  outputs:
+    out: Out
 
 - op: memcpy_d2h
   inputs :

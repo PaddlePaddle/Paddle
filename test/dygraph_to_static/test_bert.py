@@ -20,7 +20,11 @@ import unittest
 import numpy as np
 from bert_dygraph_model import PretrainModelLayer
 from bert_utils import get_bert_config, get_feed_data_reader
-from dygraph_to_static_util import ast_only_test, test_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_with_new_ir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -74,6 +78,7 @@ class FakeBertDataset(paddle.io.Dataset):
         return len(self.src_ids)
 
 
+@dy2static_unittest
 class TestBert(unittest.TestCase):
     def setUp(self):
         self.bert_config = get_bert_config()

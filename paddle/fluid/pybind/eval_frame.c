@@ -184,8 +184,13 @@ int Internal_PyFrame_FastToLocalsWithError(_PyInterpreterFrame *frame) {
   if (lasti < 0 && _Py_OPCODE(_PyCode_CODE(co)[0]) == COPY_FREE_VARS) {
     /* Free vars have not been initialized -- Do that */
     PyCodeObject *co = frame->f_code;
+#if PY_VERSION_HEX >= 0x030c0000
+    PyObject *closure = ((PyFunctionObject *)frame->f_funcobj)->func_closure;
+    int offset = co->co_nlocals + co->co_ncellvars;
+#else
     PyObject *closure = frame->f_func->func_closure;
     int offset = co->co_nlocals + co->co_nplaincellvars;
+#endif
     for (int i = 0; i < co->co_nfreevars; ++i) {
       PyObject *o = PyTuple_GET_ITEM(closure, i);
       Py_INCREF(o);
@@ -268,6 +273,8 @@ PyFrameObject *Internal_PyFrame_New_NoTrack(PyCodeObject *code) {
   f->f_lineno = 0;
   return f;
 }
+
+#if PY_VERSION_HEX < 0x030c0000
 
 PyFrameObject *Internal_PyFrame_MakeAndSetFrameObject(
     _PyInterpreterFrame *frame) {
@@ -387,6 +394,8 @@ void Internal_PyFrame_Clear(_PyInterpreterFrame *frame) {
   Py_DECREF(frame->f_code);
 }
 
+#endif
+
 #else
 typedef PyFrameObject FrameObject;
 #endif
@@ -449,9 +458,11 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   // Create a new function object from code object. Refer to MAKE_FUNCTION.
   PyFunctionObject *func =
       (PyFunctionObject *)PyFunction_New((PyObject *)code, frame->f_globals);
+#if PY_VERSION_HEX < 0x030c0000
   Py_XINCREF(frame->f_func->func_closure);
   func->func_closure = frame->f_func->func_closure;
   _PyFrame_InitializeSpecials(shadow, func, NULL, code->co_nlocalsplus);
+#endif
 
   PyObject **fastlocals_old = frame->localsplus;
   PyObject **fastlocals_new = shadow->localsplus;
@@ -483,7 +494,9 @@ inline static PyObject *eval_custom_code_py311_plus(PyThreadState *tstate,
   }
 
   PyObject *result = eval_frame_default(tstate, shadow, throw_flag);
+#if PY_VERSION_HEX < 0x030c0000
   Internal_PyFrame_Clear(shadow);
+#endif
   free(shadow);
   Py_DECREF(func);
   Py_DECREF(namemap);
@@ -558,7 +571,11 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
   // original frame. So we pass a PyInterpreterFrame to
   // _PyFrame_FastToLocalsWithError directly. But this is an internal API, so we
   // copy many code from CPython project into our project.
+#if PY_VERSION_HEX >= 0x030c0000
+  if (true) {
+#else
   if (Internal_PyFrame_FastToLocalsWithError(frame) < 0) {
+#endif
 #else
   if (PyFrame_FastToLocalsWithError(frame) < 0) {
 #endif
@@ -605,7 +622,7 @@ static PyObject *_custom_eval_frame(PyThreadState *tstate,
     PyCodeObject *code = (PyCodeObject *)PyObject_GetAttrString(result, "code");
     PyObject *disable_eval_frame =
         PyObject_GetAttrString(result, "disable_eval_frame");
-    PyObject *out;
+    PyObject *out = NULL;
     // VLOG(7) << "Start eval new frame and code.";
     if (disable_eval_frame != Py_True) {
       // Re-enable custom behavior

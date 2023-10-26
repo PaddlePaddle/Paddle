@@ -97,41 +97,9 @@ class SetGradOutputDistAttrIter : public IterHelper<paddle::Tensor*> {
       : out_meta_(out_meta), out_indexes_{out_indexes} {}
 
  private:
-  void visit_element(paddle::Tensor* element, const GradSlotMeta& meta) {
-    if (element == nullptr) {
-      return;
-    }
-    if (meta.DistAttr().empty()) {
-      return;
-    }
-    if (element->defined()) {
-      if (element->is_dist_tensor()) {
-        PADDLE_THROW(phi::errors::Unimplemented(
-            "Unsupport set defined dist tensor now."));
-      } else {
-        // Only deal with dist tensor here
-        return;
-      }
-    } else {
-      element->set_impl(std::make_shared<phi::distributed::DistTensor>(
-          phi::DDim(), meta.DistAttr()));
-    }
-  }
-  void visit(paddle::Tensor* element) override {
-    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
-      visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
-    }
-    cur_pos_++;
-  }
-
-  void visit(const std::vector<paddle::Tensor*>& elements) override {
-    if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
-      for (size_t i = 0; i < elements.size(); ++i) {
-        visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
-      }
-    }
-    cur_pos_++;
-  }
+  void visit_element(paddle::Tensor* element, const GradSlotMeta& meta);
+  void visit(paddle::Tensor* element) override;
+  void visit(const std::vector<paddle::Tensor*>& elements) override;
 
   const paddle::small_vector<std::vector<GradSlotMeta>, kSlotSmallVectorSize>&
       out_meta_;

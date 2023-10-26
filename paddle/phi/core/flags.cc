@@ -1134,8 +1134,15 @@ PHI_DEFINE_EXPORTED_bool(gpugraph_debug_gpu_memory,
  * Example:
  * Note: nccl blocking wait.
  */
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DEFINE_EXPORTED_bool(nccl_blocking_wait, false, "nccl blocking wait");
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PHI_DEFINE_EXPORTED_bool(benchmark_nccl,
+                         false,
+                         "enable nccl debug mode to synchronize nccl comm");
 #endif
 
 /**
@@ -1312,6 +1319,11 @@ PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
 
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
+
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 
 PHI_DEFINE_EXPORTED_bool(
@@ -1333,18 +1345,35 @@ PHI_DEFINE_EXPORTED_int32(
     "Multiple of the CUPTI device buffer size. If the timestamps have "
     "been dropped when you are profiling, try increasing this value.");
 
+PHI_DEFINE_EXPORTED_bool(print_ir, false, "Whether print ir debug str.");
+
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 /**
  * Communication library related FLAG
  * Name: FLAGS_dynamic_static_unified_comm
  * Since Version: 2.5
- * Value Range: bool, default=false
+ * Value Range: bool, default=true
  * Example:
  * Note: Whether to use new communication library in auto parallel and static
  * mode. If true, it will use unified CommContextManager for communication.
  */
 PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
-                         false,
+                         true,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
+
+/**
+ * ProcessGroupNCCL related FLAG
+ * Name: enable_async_trace
+ * Since Version:
+ * Value Range: bool, default=false
+ * Example:
+ * Note: enable nccl async trace.
+ */
+
+PHI_DEFINE_EXPORTED_bool(enable_async_trace,
+                         false,
+                         "enable collective async trace");
+
+PHI_DEFINE_EXPORTED_int32(async_trace_count, 5, "collective async trace count");

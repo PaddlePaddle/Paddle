@@ -50,7 +50,7 @@ OpInfoTuple AddNOp::GetOpInfo() {
   return std::make_tuple(inputs, attributes, outputs, run_time_info, "add_n");
 }
 
-void AddNOp::Verify() {
+void AddNOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddNOp.";
   VLOG(4) << "Verifying inputs:";
   {
@@ -222,7 +222,7 @@ void AddN_Op::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void AddN_Op::Verify() {
+void AddN_Op::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: AddN_Op.";
   VLOG(4) << "Verifying inputs:";
   {
@@ -345,7 +345,7 @@ void AddNWithKernelOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void AddNWithKernelOp::Verify() {
+void AddNWithKernelOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
              "AddNWithKernelOp.";
   VLOG(4) << "Verifying inputs:";
@@ -429,9 +429,9 @@ OpInfoTuple FusedGemmEpilogueOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info(
       "FusedGemmEpilogueInferMeta",
       {"x", "y", "bias", "trans_x", "trans_y", "activation"},
-      "",
-      {""},
-      {""},
+      {"fused_gemm_epilogue"},
+      {"x", "y", "bias", "trans_x", "trans_y", "activation"},
+      {},
       {},
       {},
       {});
@@ -561,7 +561,7 @@ void FusedGemmEpilogueOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void FusedGemmEpilogueOp::Verify() {
+void FusedGemmEpilogueOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
              "FusedGemmEpilogueOp.";
   VLOG(4) << "Verifying inputs:";
@@ -674,9 +674,15 @@ OpInfoTuple FusedGemmEpilogueGradOp::GetOpInfo() {
                                                 "trans_x",
                                                 "trans_y",
                                                 "activation_grad"},
-                                               "",
-                                               {""},
-                                               {""},
+                                               {"fused_gemm_epilogue_grad"},
+                                               {"x",
+                                                "y",
+                                                "reserve_space",
+                                                "out_grad",
+                                                "trans_x",
+                                                "trans_y",
+                                                "activation_grad"},
+                                               {},
                                                {},
                                                {},
                                                {});
@@ -833,7 +839,7 @@ void FusedGemmEpilogueGradOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void FusedGemmEpilogueGradOp::Verify() {}
+void FusedGemmEpilogueGradOp::VerifySig() {}
 
 void FusedGemmEpilogueGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::FusedGemmEpilogueGradInferMeta);
@@ -983,7 +989,7 @@ void SplitGradOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void SplitGradOp::Verify() {
+void SplitGradOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: SplitGradOp.";
   VLOG(4) << "Verifying inputs:";
   {
@@ -1040,65 +1046,6 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-void IfOp::Build(pir::Builder &builder,             // NOLINT
-                 pir::OperationArgument &argument,  // NOLINT
-                 pir::Value cond,
-                 std::vector<pir::Type> &&output_types) {
-  VLOG(4) << "Start build IfOp";
-  argument.AddRegions(2u);
-  argument.AddInput(cond);
-  argument.output_types.swap(output_types);
-}
-pir::Block *IfOp::true_block() {
-  pir::Region &true_region = (*this)->region(0);
-  if (true_region.empty()) true_region.emplace_back();
-  return true_region.front();
-}
-pir::Block *IfOp::false_block() {
-  pir::Region &false_region = (*this)->region(1);
-  if (false_region.empty()) false_region.emplace_back();
-  return false_region.front();
-}
-void IfOp::Print(pir::IrPrinter &printer) {
-  auto &os = printer.os;
-  auto op = operation();
-  printer.PrintOpResult(op);
-  os << " = pd_op.if";
-  printer.PrintOpOperands(op);
-  os << " -> ";
-  printer.PrintOpReturnType(op);
-  os << "{";
-  for (auto item : *true_block()) {
-    os << "\n  ";
-    printer.PrintOperation(item);
-  }
-  os << "\n } else {";
-  for (auto item : *false_block()) {
-    os << "\n  ";
-    printer.PrintOperation(item);
-  }
-  os << "\n }";
-}
-void IfOp::Verify() {}
-
-void WhileOp::Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::Value> &inputs,
-                    const std::vector<pir::Type> &output_types) {
-  argument.AddInputs(inputs);
-  argument.AddOutputs(output_types);
-  argument.AddRegions(2u);
-}
-pir::Block *WhileOp::cond_block() {
-  pir::Region &cond_region = (*this)->region(0);
-  if (cond_region.empty()) cond_region.emplace_back();
-  return cond_region.front();
-}
-pir::Block *WhileOp::body_block() {
-  pir::Region &body_region = (*this)->region(1);
-  if (body_region.empty()) body_region.emplace_back();
-  return body_region.front();
-}
 }  // namespace dialect
 }  // namespace paddle
 
@@ -1108,5 +1055,3 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::WhileOp)

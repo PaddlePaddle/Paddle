@@ -67,6 +67,7 @@ TEST_META_WRONG_SHAPE_DATA = {
 }
 
 
+# @test_with_pir_api
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
     startup_program = Program()

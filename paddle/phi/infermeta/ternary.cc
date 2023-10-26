@@ -255,6 +255,32 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void DpsgdInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    float clip,
+                    float batch_size,
+                    float sigma,
+                    int size,
+                    MetaTensor* param_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning rate should have 1 dimension. But Received "
+                        "LearningRate's dims [%s].",
+                        phi::product(lr_dims)));
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Grad input of DpsgdOp should have same dimension. But "
+          "received Para's dim [%s] and Grad's dim [%s].",
+          param_dims,
+          grad.dims()));
+  param_out->set_dims(param_dims);
+}
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,

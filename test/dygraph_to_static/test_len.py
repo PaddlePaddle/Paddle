@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 from paddle import base
@@ -42,6 +43,7 @@ def len_with_lod_tensor_array(x):
     return arr_len
 
 
+@dy2static_unittest
 class TestLen(unittest.TestCase):
     def setUp(self):
         self.place = (
@@ -113,6 +115,7 @@ def len_with_selected_rows(place):
     return result
 
 
+@dy2static_unittest
 class TestLenWithSelectedRows(unittest.TestCase):
     def setUp(self):
         self.place = (

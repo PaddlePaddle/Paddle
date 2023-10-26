@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import struct
-import warnings
 
 import numpy as np
 
 from ..pir import OpResult
+from ..pir.core import ParameterMeta
 from . import core
 from .framework import (
     Variable,
@@ -148,7 +148,9 @@ def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
     if in_pir_mode():
-        check_type(input, input_name, OpResult, op_name, extra_message)
+        check_type(
+            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+        )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
@@ -196,22 +198,7 @@ def check_dtype(
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
-    if convert_dtype(input_dtype) in ['float16']:
-        warnings.warn(
-            "The data type of '{}' in {} only support float16 in GPU now. {}".format(
-                input_name, op_name, extra_message
-            )
-        )
-    if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-        'reshape',
-        'lookup_table',
-        'scale',
-    ]:
-        warnings.warn(
-            "The data type of '{}' in {} only support bfloat16 in OneDNN now. {}".format(
-                input_name, op_name, extra_message
-            )
-        )
+
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
             "The data type of '{}' in {} must be {}, but received {}. {}".format(

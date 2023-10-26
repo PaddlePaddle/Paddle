@@ -32,6 +32,7 @@
 #include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(print_ir);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -188,6 +189,12 @@ static auto GetNameFromValue(const ::pir::Block *block,
     } else if (!is_input && op->name() == "builtin.set_parameter") {
       name = op->attributes()
                  .at("parameter_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op->operand(0).source()] = name;
+    } else if (!is_input && op->name() == "builtin.shadow_output") {
+      name = op->attributes()
+                 .at("output_name")
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op->operand(0).source()] = name;
@@ -463,12 +470,13 @@ inline void NewIRRunProgramAPI(
   auto *backward_program =
       backward_global_block->GetParentOp()->GetParentProgram();
 
-  if (VLOG_IS_ON(4)) {
+  if (FLAGS_print_ir) {
     std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
-    print_stream << "\n";
+    print_stream << "BackwardProgram is:\n";
     backward_program->Print(print_stream);
-    VLOG(4) << print_stream.str();
+    std::cout << "Program (fwd | bwd): \n" << print_stream.str() << std::endl;
   }
 
   VLOG(10) << is_test << program_id;
@@ -494,7 +502,7 @@ inline void NewIRRunProgramAPI(
     // Step 2. create new interpretercore
     auto kernel_forward_program =
         paddle::dialect::PdOpLowerToKernelPass(forward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_forward_program),
         place,
         /*is_grad=*/false,
@@ -700,13 +708,12 @@ inline void RunProgramAPI(
                                                       input_names,
                                                       params,
                                                       place);
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(ir_program),
-              place,
-              /*is_grad=*/false,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(ir_program),
+          place,
+          /*is_grad=*/false,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -857,13 +864,12 @@ inline void RunProgramGradAPI(
                                                         global_inner_scope,
                                                         place);
 
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(res),
-              place,
-              /*is_grad=*/true,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(res),
+          place,
+          /*is_grad=*/true,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -1033,7 +1039,7 @@ inline void NewIRRunProgramGradAPI(
     // Step 1. share input_vars & parameters into scope
     auto kernel_backward_program =
         paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_backward_program),
         place,
         /*is_grad=*/true,

@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -36,6 +39,7 @@ class DropPath(paddle.nn.Layer):
         return drop_path(x, self.training)
 
 
+@dy2static_unittest
 class TestTrainEval(unittest.TestCase):
     def setUp(self):
         self.model = DropPath()

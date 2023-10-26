@@ -324,7 +324,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   return core;
 }
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
@@ -351,6 +351,10 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   cached_value.core_ = core;
   cached_value.ir_prog_ = std::move(ir_program);
   return core;
+}
+
+bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
+  return t1.name() < t2.name();
 }
 
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
@@ -398,7 +402,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> input_param_names;
-  for (auto &param : params) {
+  auto sorted_params = params;
+  std::sort(sorted_params.begin(), sorted_params.end(), TensorSortHelper);
+  for (auto &param : sorted_params) {
     auto &name = param.name();
     auto p = param.place().GetType();
 
@@ -515,6 +521,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &t : x_grad) {
     param_grad_names.push_back(t->name());
   }
+
+  std::sort(param_grad_names.begin(), param_grad_names.end());
   for (auto &name : param_grad_names) {
     if (name == "@EMPTY@") {
       continue;
@@ -535,6 +543,9 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   if (FLAGS_new_ir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
+    if (VLOG_IS_ON(6)) {
+      pm.EnableIRPrinting();
+    }
     pm.Run(res.get());
   }
 

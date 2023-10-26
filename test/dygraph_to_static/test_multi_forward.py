@@ -14,7 +14,10 @@
 
 import unittest
 
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -33,6 +36,7 @@ class MyLayer(paddle.nn.Layer):
         return self.linear(x)
 
 
+@dy2static_unittest
 class TestBackward(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_order_0(self):

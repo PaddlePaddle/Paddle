@@ -20,10 +20,12 @@ if(NOT (NOT WITH_PYTHON AND ON_INFER))
   paddle_test(test_egr_performance_benchmark_fluid_cpu SRCS
               benchmark_fluid_cpu.cc DEPS performance_benchmark_utils)
 
-  paddle_test(test_egr_performance_benchmark_eager_cuda SRCS
-              benchmark_eager_cuda.cc DEPS performance_benchmark_utils)
-  paddle_test(test_egr_performance_benchmark_fluid_cuda SRCS
-              benchmark_fluid_cuda.cc DEPS performance_benchmark_utils)
+  if(WITH_GPU)
+    paddle_test(test_egr_performance_benchmark_eager_cuda SRCS
+                benchmark_eager_cuda.cc DEPS performance_benchmark_utils)
+    paddle_test(test_egr_performance_benchmark_fluid_cuda SRCS
+                benchmark_fluid_cuda.cc DEPS performance_benchmark_utils)
+  endif()
 
   if(WITH_ONNXRUNTIME AND WIN32)
     # Copy onnxruntime for some c++ test in Windows, since the test will

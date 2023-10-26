@@ -527,6 +527,9 @@ def launch():
 
         # build AutoTuner to get new config
         auto_tuner = AutoTuner(tuner_cfg)
+        logger.info(
+            f"Launch {len(auto_tuner.algo.all_tasks)} tasks by auto tuner: "
+        )
         cur_cfg = auto_tuner.search_once()
         auto_tuner.add_cfg(cur_cfg)
         assert cur_cfg is not None, "No config can run."
@@ -557,7 +560,9 @@ def launch():
                 cur_cfg["acc_steps"],
             )
 
-            ctx.args.log_dir = log_dir
+            ctx.args.log_dir = os.path.join(
+                os.path.dirname(ctx.args.auto_tuner_json), log_dir
+            )
 
             # every task has own job id
             job_id += 1
@@ -693,6 +698,7 @@ def launch():
             # record history
             cur_cfg['job_id'] = job_id
             recorder.add_cfg(**cur_cfg)
+            recorder.store_history(history_file_path)
             cur_best_cfgs, err = recorder.get_best(
                 metric=tuner_cfg['metric_cfg']['name'],
                 direction=tuner_cfg['metric_cfg']['OptimizationDirection'],
@@ -700,7 +706,6 @@ def launch():
             if not err:
                 ctx.logger.info(f"Current best config: {cur_best_cfgs}")
                 logger.info(f"Current best config: {cur_best_cfgs}")
-                recorder.store_history(history_file_path)
             else:
                 ctx.logger.info(
                     "Get best config failed. Currently there are no appropriate configs."
@@ -795,7 +800,9 @@ def launch():
         ctx.args.job_id = "best_cfg"
         ctx.logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
         logger.info(f"Launch best cfg from auto tuner: {best_cfg}")
-        ctx.args.log_dir = "best_cfg"
+        ctx.args.log_dir = ctx.args.log_dir = os.path.join(
+            os.path.dirname(ctx.args.auto_tuner_json), "best_cfg"
+        )
         # run best cfg
         c = controllers.init(ctx)
         c.run()

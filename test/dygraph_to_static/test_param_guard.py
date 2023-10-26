@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle.jit import to_static
@@ -50,6 +53,7 @@ class NetWithParameterListIter(NetWithParameterList):
         return out
 
 
+@dy2static_unittest
 class TestParameterList(unittest.TestCase):
     def setUp(self):
         self.seed = 2021
@@ -102,6 +106,7 @@ class NetWithRawParamList(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestRawParameterList(unittest.TestCase):
     def setUp(self):
         self.seed = 2021

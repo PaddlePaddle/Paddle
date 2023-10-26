@@ -62,6 +62,8 @@ void Conv2dXPUInferMeta(const MetaTensor& x,
                         const MetaTensor& bias,
                         const MetaTensor& branch,
                         const MetaTensor& branch_max,
+                        const MetaTensor& scale_max,
+                        const MetaTensor& out_max_in,
                         const std::vector<int>& paddings,
                         const std::vector<int>& dilations,
                         const std::vector<int>& strides,
@@ -86,6 +88,8 @@ void FcXPUInferMeta(const MetaTensor& x,
                     const MetaTensor& w,
                     const MetaTensor& w_max,
                     const MetaTensor& bias,
+                    const MetaTensor& scale_max,
+                    const MetaTensor& out_max_in,
                     int in_num_col_dims,
                     bool transpose_x,
                     float alpha,
@@ -484,5 +488,35 @@ void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const std::vector<float>& act_param,
                                 const std::vector<int>& filter_dims,
                                 MetaTensor* out);
+
+void FusedEmbeddingEltWiseLayerNormInferMeta(
+    const std::vector<const MetaTensor*>& ids,
+    const std::vector<const MetaTensor*>& embs,
+    const MetaTensor& bias,
+    const MetaTensor& scale,
+    const float epsilon,
+    MetaTensor* out);
+
+void FusionTransposeFlattenConcatInferMeta(
+    const std::vector<const MetaTensor*>& x,
+    const std::vector<int>& trans_axis,
+    const int flatten_axis,
+    const int concat_axis,
+    MetaTensor* out);
+
+void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
+                                          const MetaTensor& w,
+                                          const MetaTensor& y,
+                                          const MetaTensor& bias0,
+                                          const MetaTensor& scale,
+                                          const MetaTensor& bias1,
+                                          const int x_num_col_dims,
+                                          const std::string& activation_type,
+                                          const float epsilon,
+                                          const int begin_norm_axis,
+                                          MetaTensor* out,
+                                          MetaTensor* mean,
+                                          MetaTensor* variance,
+                                          MetaConfig config = MetaConfig());
 
 }  // namespace phi

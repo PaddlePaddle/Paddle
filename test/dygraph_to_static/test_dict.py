@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import base
@@ -116,6 +119,7 @@ def update_cache(cache):
     return cache
 
 
+@dy2static_unittest
 class TestNetWithDict(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
@@ -169,6 +173,7 @@ def test_dic_pop_2(x):
     return out
 
 
+@dy2static_unittest
 class TestDictPop(unittest.TestCase):
     def setUp(self):
         self.input = np.random.random(3).astype('int32')
@@ -249,6 +254,7 @@ class TestDictPop3(TestNetWithDict):
         )
 
 
+@dy2static_unittest
 class TestDictCmpInFor(unittest.TestCase):
     def test_with_for(self):
         def func():

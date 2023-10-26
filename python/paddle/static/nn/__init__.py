@@ -60,7 +60,7 @@ from .sequence_lod import sequence_reverse  # noqa: F401
 from .control_flow import cond
 from .static_pylayer import static_pylayer
 
-__all__ = [  # noqa
+__all__ = [
     'fc',
     'batch_norm',
     'bilinear_tensor_product',

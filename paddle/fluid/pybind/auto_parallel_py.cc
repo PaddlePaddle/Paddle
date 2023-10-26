@@ -645,16 +645,20 @@ static void parse_attrs(PyObject *obj,
                         phi::distributed::InferSpmdContext *ctx,
                         const size_t arg_pos) {
   if (PyBool_Check(first_item)) {
-    auto attrs = CastPyArg2Booleans(obj, infer_spmd_string, arg_pos);
+    auto attrs = CastPyArg2Booleans(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyCheckInteger(first_item)) {
-    auto attrs = CastPyArg2Ints(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Ints(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyLong_Check(first_item)) {
-    auto attrs = CastPyArg2Longs(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Longs(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyFloat_Check(first_item)) {
-    auto attrs = CastPyArg2Floats(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Floats(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -671,16 +675,20 @@ static void parse_attr(PyObject *obj,
                        phi::distributed::InferSpmdContext *ctx,
                        const size_t arg_pos) {
   if (PyBool_Check(obj)) {
-    auto attr = CastPyArg2Boolean(obj, infer_spmd_string, arg_pos);
+    auto attr = CastPyArg2Boolean(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyCheckInteger(obj)) {
-    auto attr = CastPyArg2Int(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Int(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyLong_Check(obj)) {
-    auto attr = CastPyArg2Long(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Long(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyFloat_Check(obj)) {
-    auto attr = CastPyArg2Float(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
     PADDLE_THROW(platform::errors::InvalidArgument(
