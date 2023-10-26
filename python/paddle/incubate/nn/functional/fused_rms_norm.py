@@ -57,9 +57,9 @@ def fused_rms_norm(
             >>> # doctest: +REQUIRES(env:GPU)
             >>> import paddle
             >>> paddle.device.set_device('gpu')
-            >>> paddle_x = paddle.randn(shape=[32, 256], dtype=paddle.float16)
-            >>> paddle_weight = paddle.randn(shape=[256], dtype=paddle.float16)
-            >>> paddle_bias = paddle.randn(shape=[256], dtype=paddle.float16)
+            >>> paddle_x = paddle.cast(paddle.randn(shape=[32, 256]), dtype=paddle.float16)
+            >>> paddle_weight = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
+            >>> paddle_bias = paddle.cast(paddle.randn(shape=[256]), dtype=paddle.float16)
             >>> epsilon = 1e-6
             >>> paddle_rmsnorm = paddle.incubate.nn.functional.fused_rms_norm(paddle_x, paddle_weight, paddle_bias, epsilon, 1)
     """
