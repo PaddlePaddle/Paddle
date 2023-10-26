@@ -55,13 +55,13 @@ function(pass_library TARGET DEST)
       ${TARGET}
       SRCS ${pass_library_DIR}/${TARGET}.cc
       DEPS graph_pattern_detector pass fuse_pass_base op_version_registry
-           ${pass_library_DEPS})
+           quantize_helper ${pass_library_DEPS})
   else()
     cc_library(
       ${TARGET}
       SRCS ${TARGET}.cc
       DEPS graph_pattern_detector pass fuse_pass_base op_version_registry
-           ${pass_library_DEPS})
+           quantize_helper ${pass_library_DEPS})
   endif()
 
   # add more DEST here, such as train, dist and collect USE_PASS into a file automatically.
