@@ -379,10 +379,10 @@ class Pipeline1F1BPass(PipelinePassBase):
             )
 
         for i in range(len(types)):
-            logger.info(
+            logger.debug(
                 f"type = {types[i]}, sub_programs = {sub_programs[i]}\n"
             )
-        logger.info(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
+        logger.debug(f"jobs_in_stable_phase = {self.jobs_in_stable_phase}")
 
         return types, sub_programs
 
