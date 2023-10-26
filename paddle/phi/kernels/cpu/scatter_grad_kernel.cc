@@ -107,35 +107,28 @@ void ScatterGradKernel(const Context &ctx,
     }
 
     if (updates_grad) {
-      // get updates_grad by using index_select(out_grad, index, axis)
       *updates_grad = IndexSelect<T, Context>(ctx, out_grad, index, axis);
     }
   } else if (reducer == "mean") {
-    // Tensor N = include_self ? ones_like(out_grad) : zeros_like(out_grad);
     auto zeros = Full<T, Context>(ctx, vectorize(out_grad.dims()), 0);
     auto ones = Full<T, Context>(ctx, vectorize(out_grad.dims()), 1);
     auto counts = include_self ? ones : zeros;
 
-    // N = N.index_add(dim, index, ones_like(new_source));
     auto src_ones = Full<T, Context>(ctx, vectorize(new_source.dims()), 1);
     auto src_cnts =
         IndexAdd<T, Context>(ctx, counts, new_index, src_ones, axis);
 
-    // N.masked_fill_(N == 0, 1);
     auto mask = Equal<T, Context>(ctx, src_cnts, zeros);
 
     auto N = Where<T, Context>(ctx, mask, ones, src_cnts);
 
     if (x_grad) {
-      // grad_self = grad / N;
       *x_grad = Divide<T, Context>(ctx, out_grad, N);
     }
 
     if (updates_grad) {
-      // Tensor N_src = N.index_select(dim, index);
       auto N_src = IndexSelect<T, Context>(ctx, N, index, axis);
 
-      // grad_src = grad.index_select(dim, index) / N_src;
       auto grad_src = IndexSelect<T, Context>(ctx, out_grad, index, axis);
 
       *updates_grad = Divide<T, Context>(ctx, grad_src, N_src);
@@ -144,16 +137,12 @@ void ScatterGradKernel(const Context &ctx,
     auto zeros = Full<T, Context>(ctx, vectorize(out_grad.dims()), 0);
     auto ones = Full<T, Context>(ctx, vectorize(out_grad.dims()), 1);
     if (x_grad) {
-      // Tensor masked_self = x.masked_fill(x == 0, 1);
       auto mask = Equal<T, Context>(ctx, x, zeros);
       auto masked_self = Where<T, Context>(ctx, mask, ones, x);
 
-      // Tensor masked_self_result = masked_self.index_reduce(dim, index,
-      // new_source, reducer, include_self);
       auto masked_self_result = Scatter<T, Context>(
           ctx, x, index, new_source, false, axis, reducer, include_self);
 
-      // grad_self = grad * masked_self_result / masked_self;
       auto grad_mul_masked_self_result =
           Multiply<T, Context>(ctx, out_grad, masked_self_result);
       *x_grad =
@@ -161,43 +150,29 @@ void ScatterGradKernel(const Context &ctx,
     }
 
     if (updates_grad) {
-      // Tensor src_zero = new_source == 0;
       auto src_ones = Full<T, Context>(ctx, vectorize(new_source.dims()), 1);
       auto src_zeros = Full<T, Context>(ctx, vectorize(new_source.dims()), 1);
       auto src_zero = Equal<T, Context>(ctx, new_source, src_zeros);
       auto src_zero_t = Cast<bool, Context>(ctx, src_zero, x.dtype());
 
-      // Tensor src_num_zeros = zeros_like(self).index_add(dim, index,
-      // src_zero.to(self.dtype())).index_select(dim, index);
       auto src_num_zeros_inner =
           IndexAdd<T, Context>(ctx, zeros, new_index, src_zero_t, axis);
 
       auto src_num_zeros =
           IndexSelect<T, Context>(ctx, src_num_zeros_inner, index, axis);
 
-      // src_single_zero = bitwise_and(src_zero, src_num_zeros == 1);
       auto src_num_zeros_equal_one =
           Equal<T, Context>(ctx, src_num_zeros, src_ones);
 
       auto src_single_zero_bool =
           BitwiseAnd<bool, Context>(ctx, src_zero, src_num_zeros_equal_one);
 
-      // // For src positions with src_single_zero, (grad *
-      // result).index_select(dim,index) / new_source.masked_fill(src_zero, 1)
-      // // would incorrectly propagate zeros as the gradient
-      // Tensor masked_src = new_source.masked_fill(src_single_zero, 1);
       auto masked_src =
           Where<T, Context>(ctx, src_single_zero_bool, src_ones, new_source);
 
-      // Tensor masked_src_result = x.index_reduce(dim, index, masked_src,
-      // reducer, include_self);
       auto masked_src_result = Scatter<T, Context>(
           ctx, x, index, masked_src, false, axis, reducer, include_self);
 
-      // Tensor grad_src1 = where(src_single_zero,
-      //                          (grad * masked_src_result).index_select(dim,
-      //                          index), (grad * result).index_select(dim,
-      //                          index) / new_source.masked_fill(src_zero, 1));
       auto grad_mul_masked_src_result =
           Multiply<T, Context>(ctx, out_grad, masked_src_result);
       auto grad_mul_masked_src_result_index_select =
@@ -219,17 +194,6 @@ void ScatterGradKernel(const Context &ctx,
                             grad_mul_masked_src_result_index_select,
                             where_2);
 
-      // if ((src_num_zeros > 1).any().item<bool>()) {
-      //   auto node = std::make_shared<DelayedError>(
-      //     "index_reduce(): Double backward is unsupported for new_source when
-      //     >1 zeros in new_source are scattered to the same position in x",
-      //     /* num inputs */ 1);
-      //   auto result = node->apply({ grad_src1 });
-      //   grad_src = result[0];
-      // } else {
-      //   grad_src = grad_src1;
-      // }
-
       auto tmp_ones = Full<T, Context>(ctx, vectorize(src_num_zeros.dims()), 1);
       auto src_num_zeros_greater_one =
           GreaterThan<T, Context>(ctx, src_num_zeros, tmp_ones);
@@ -249,34 +213,25 @@ void ScatterGradKernel(const Context &ctx,
     }
 
   } else if (reducer == "amin" || reducer == "amax") {
-    // Tensor value = out.index_select(axis, index);
     auto value = IndexSelect<T, Context>(ctx, out, index, axis);
 
-    // Tensor self_is_result = (x == out).to(x.scalar_type());
     auto self_is_result = Equal<T, Context>(ctx, x, out);
     auto self_is_result_t = Cast<bool, Context>(ctx, self_is_result, x.dtype());
 
-    // Tensor source_is_result = (new_source == value).to(x.scalar_type());
     auto source_is_result = Equal<T, Context>(ctx, new_source, value);
     auto source_is_result_t =
         Cast<bool, Context>(ctx, source_is_result, x.dtype());
 
-    // Tensor N_to_distribute = self_is_result.index_add(axis, index,
-    // source_is_result);
     auto N_to_distribute = IndexAdd<T, Context>(
         ctx, self_is_result_t, new_index, source_is_result_t, axis);
 
-    // Tensor grad_distributed = grad / N_to_distribute;
     auto grad_distributed = Divide<T, Context>(ctx, out_grad, N_to_distribute);
 
     if (x_grad) {
-      //  grad_self = self_is_result * grad_distributed;
       *x_grad = Multiply<T, Context>(ctx, self_is_result_t, grad_distributed);
     }
 
     if (updates_grad) {
-      // grad_src = source_is_result * grad_distributed.index_select(axis,
-      // index);
       auto src_grad_dist =
           IndexSelect<T, Context>(ctx, grad_distributed, index, axis);
 
@@ -289,16 +244,13 @@ void ScatterGradKernel(const Context &ctx,
     }
 
     if (updates_grad) {
-      // get updates_grad by using index_select(out_grad, index, axis)
       *updates_grad = IndexSelect<T, Context>(ctx, out_grad, index, axis);
     }
   }
 
   if (!include_self && x_grad) {
-    // grad_self = grad_self.index_fill(axis, index, 0);
     auto self_dims = out_grad.dims();
     auto zeros = Full<T, Context>(ctx, vectorize(self_dims), 0);
-    // auto ones = Full<T, Context>(ctx, vectorize(self_dims), 1);
     auto src_ones = Full<T, Context>(ctx, vectorize(new_source.dims()), 1);
     auto src_cnts = IndexAdd<T, Context>(ctx, zeros, new_index, src_ones, axis);
     auto mask = Equal<T, Context>(ctx, src_cnts, zeros);

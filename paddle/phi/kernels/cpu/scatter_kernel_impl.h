@@ -1,4 +1,4 @@
-// Copyright (c) 2022 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -113,13 +113,8 @@ void IndexReduceInner(const Context& ctx,
             index_data[i]));
   }
 
-  VLOG(3) << "Index_Add_Debug; outer_nums: " << outer_nums
-          << "; slice_size: " << slice_size << "; index_size: " << index_size;
-
   output->Resize(phi::make_ddim({outer_nums, input_dim[axis], slice_size}));
   source->Resize(phi::make_ddim({outer_nums, index_size, slice_size}));
-  VLOG(3) << "output.dims: " << output->dims()
-          << ", source.dims: " << source->dims();
 
   auto source_tensor = EigenTensor<T, 3>::From(*source);
   auto output_tensor = EigenTensor<T, 3>::From(*output);
@@ -162,9 +157,21 @@ void IndexReduceBaseKernel(const Context& dev_ctx,
                            bool include_self,
                            DenseTensor* output) {
   const auto& index_type = index.dtype();
+
   if (axis < 0) {
     axis += x.dims().size();
   }
+
+  PADDLE_ENFORCE_LT(
+      axis,
+      x.dims().size(),
+      phi::errors::InvalidArgument(
+          "Axis value (axis) of OP(scatter) "
+          "expected >= 0 and < %ld, but got %ld. Please check axis "
+          "value.",
+          x.dims().size(),
+          axis));
+
   auto inputs = x;
   auto src = source;
   if (index_type == phi::DataType::INT32) {
