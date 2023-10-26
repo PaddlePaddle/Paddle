@@ -20,11 +20,11 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/visit_type.h"
 
 namespace phi {
@@ -35,16 +35,13 @@ class ProcessMesh;
 
 bool IsCurRankInMesh(const ProcessMesh& process_mesh);
 
-bool NeedComputationClipForPP(const paddle::Tensor& input);
+bool NeedComputationClipForPP(
+    const std::shared_ptr<phi::TensorBase>& tensor_impl);
 
 Place GetDefaultPlace();
 
 phi::DeviceContext* GetDistTensorDeviceContext(
     const std::shared_ptr<phi::distributed::DistTensor>& input);
-
-std::shared_ptr<phi::distributed::DistTensor> Reshard(
-    const paddle::Tensor& input,
-    const phi::distributed::TensorDistAttr& dist_attr);
 
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank = -1);

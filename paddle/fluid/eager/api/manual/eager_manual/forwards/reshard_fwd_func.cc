@@ -17,7 +17,6 @@
 #include "paddle/fluid/eager/api/manual/eager_manual/nodes/nodes.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& input,
@@ -55,7 +54,7 @@ paddle::Tensor reshard_ad_function(
 
   // Forward API Call
   // reshard_func(input, api_result, dist_attr);
-  auto dist_out_ptr = phi::distributed::Reshard(input, dist_attr);
+  auto dist_out_ptr = paddle::reshard(input, dist_attr);
   auto api_result = paddle::Tensor(dist_out_ptr);
 
   // Get Outputs

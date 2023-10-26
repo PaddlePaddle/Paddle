@@ -18,7 +18,6 @@
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/utils.h"
 #include "paddle/fluid/imperative/tracer.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 paddle::small_vector<std::vector<paddle::Tensor>,
                      egr::kSlotSmallVectorSize>  // NOLINT
@@ -69,7 +68,7 @@ ReshardGradNode::operator()(
   }
 
   // Backward call reshard_func function
-  auto dist_out_ptr = phi::distributed::Reshard(grad_out, dist_attr);
+  auto dist_out_ptr = paddle::reshard(grad_out, dist_attr);
   grad_input.set_impl(dist_out_ptr);
 
   VLOG(5) << "Finish C++ API: reshard_func";

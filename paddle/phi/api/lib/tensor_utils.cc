@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/api/include/tensor_utils.h"
+#include "glog/logging.h"
 
 #include "paddle/phi/api/lib/api_registry.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -28,6 +29,9 @@ limitations under the License. */
 namespace paddle {
 
 PD_REGISTER_API(from_blob)
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_REGISTER_API(reshard)
+#endif
 
 phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -105,4 +109,36 @@ PADDLE_API Tensor from_blob(void* data,
   return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
+    const paddle::Tensor& input,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input tensor of ReshardFunction should be "
+                        "``phi::distributed::DistTensor``. "
+                        "However it's %s",
+                        typeid(input.impl().get()).name()));
+  auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
+      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()));
+  auto input_tensor_impl = input.impl();
+  std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
+  if (input_tensor_impl) {
+    phi::distributed::DistTensor* dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
+    if (dist_tensor->dist_attr() != dist_attr) {
+      VLOG(6) << "reshard func, reshard tensor from "
+              << dist_tensor->dist_attr() << " to " << dist_attr;
+      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                 dist_attr);
+      dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    } else {
+      dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
+          input_tensor_impl);
+    }
+  }
+  return dist_out_ptr;
+}
+#endif
 }  // namespace paddle

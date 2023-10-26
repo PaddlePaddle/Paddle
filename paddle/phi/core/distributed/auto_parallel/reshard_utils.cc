@@ -147,13 +147,20 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
 
 // Only Input is DistTensor and current device id isn't in DistTensor's mesh
 // will return true.
-bool NeedComputationClipForPP(const paddle::Tensor& input) {
-  return input.is_dist_tensor() &&
-         !IsCurRankInMesh(
-             std::static_pointer_cast<phi::distributed::DistTensor>(
-                 input.impl())
-                 ->dist_attr()
-                 .process_mesh());
+bool NeedComputationClipForPP(
+    const std::shared_ptr<phi::TensorBase>& tensor_impl) {
+  PADDLE_ENFORCE_EQ(
+      phi::distributed::DistTensor::classof(tensor_impl.get()),
+      true,
+      phi::errors::InvalidArgument(
+          "The input tensor of NeedComputationClipForPP should be "
+          "``phi::distributed::DistTensor``. "
+          "However it's %s",
+          typeid(tensor_impl.get()).name()));
+  return !IsCurRankInMesh(
+      std::static_pointer_cast<phi::distributed::DistTensor>(tensor_impl)
+          ->dist_attr()
+          .process_mesh());
 }
 
 Place GetDefaultPlace() {
@@ -171,38 +178,6 @@ phi::DeviceContext* GetDistTensorDeviceContext(
   // tensor. In such case, we need to get default place.
   auto place = input && input->defined() ? input->place() : GetDefaultPlace();
   return phi::DeviceContextPool::Instance().Get(place);
-}
-
-// TODO(GhostScreaming): All APIs should call this unified function later.
-std::shared_ptr<phi::distributed::DistTensor> Reshard(
-    const paddle::Tensor& input,
-    const phi::distributed::TensorDistAttr& dist_attr) {
-  PADDLE_ENFORCE_EQ(input.is_dist_tensor(),
-                    true,
-                    phi::errors::InvalidArgument(
-                        "The input tensor of ReshardFunction should be "
-                        "``phi::distributed::DistTensor``. "
-                        "However it's %s",
-                        typeid(input.impl().get()).name()));
-  auto dev_ctx = GetDistTensorDeviceContext(
-      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()));
-  auto input_tensor_impl = input.impl();
-  std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
-  if (input_tensor_impl) {
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(input_tensor_impl.get());
-    if (dist_tensor->dist_attr() != dist_attr) {
-      VLOG(6) << "reshard func, reshard tensor from "
-              << dist_tensor->dist_attr() << " to " << dist_attr;
-      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                 dist_attr);
-      dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
-    } else {
-      dist_out_ptr = std::static_pointer_cast<phi::distributed::DistTensor>(
-          input_tensor_impl);
-    }
-  }
-  return dist_out_ptr;
 }
 
 }  // namespace distributed
