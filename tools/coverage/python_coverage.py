@@ -24,8 +24,7 @@ tree = ElementTree.parse('python-coverage.xml')
 root = tree.getroot()
 
 sources = root.findall('sources/source')
-print("----------:", sources)
-print(sources[-1].text)
+
 source = sources[-1].text
 
 for clazz in root.findall('packages/package/classes/class'):
@@ -62,20 +61,12 @@ for clazz in root.findall('packages/package/classes/class'):
             taken = int(taken)
 
             for _ in range(taken):
-                print(
-                    'BRDA:{},{},{},{}'.format(
-                        line_number, 0, branch_index, line_hits
-                    )
-                )
+                print(f'BRDA:{line_number},{0},{branch_index},{line_hits}')
                 branch_index += 1
 
             if line_missing_branches:
                 for missing_branch in line_missing_branches.split(','):
-                    print(
-                        'BRDA:{},{},{},{}'.format(
-                            line_number, 0, branch_index, 0
-                        )
-                    )
+                    print(f'BRDA:{line_number},{0},{branch_index},{0}')
                     branch_index += 1
 
         print(f'DA:{line_number},{line_hits}')
