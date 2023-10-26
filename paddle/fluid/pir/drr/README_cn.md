@@ -2,6 +2,7 @@
 ---
 ## 1. 相关背景
 目前Paddle正在进行IR升级工作，由于PASS为对IR进行优化的关键组件，因此对于现有的所有PASS也需要基于新IR重新进行设计和实现。在经过统计分析发现，需要重写的Pass中属于DAG->DAG PatternRewrite类型的Pass数量占比过半。一方面为了提升用户在新IR上开发Pass的使用体验，另一方面为了降低全量Pass的迁移成本，我们开发了基于声明式重写的DRR ( Declarative Rewrite Rule ) 工具来处理这种PatternRewrite类型的Pass。用户可以通过一套简洁易用的接口对原有子图和目标子图进行模式声明，DRR工具就能自动的在Program中对原图进行匹配，并替换成目标子图。
+
 ![img1](https://github.com/gongshaotian/Paddle/assets/141618702/942a9f69-7e21-47bf-a479-933c551b2d92)
 
 DRR(Declarative Rewrite Rule) Pass API并不是IR，而是对IR的统一封装，目的是让用户集中在对优化逻辑的处理上，而不需要关心对底层IR的处理。DRR主要由以下三大组件构成：
