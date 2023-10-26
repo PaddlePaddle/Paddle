@@ -1389,6 +1389,7 @@ def exponential_(x, lam=1.0, name=None):
         return x
 
 
+@dygraph_only
 def bernoulli_(x, p=0.5, name=None):
     r"""
     This inplace OP fill input Tensor ``x`` with random number from a Bernoulli Distribution with probability ``p``.
@@ -1405,6 +1406,15 @@ def bernoulli_(x, p=0.5, name=None):
     Examples:
         .. code-block:: python
     """
+    if 0 <= p and p <= 1:
+        raise ValueError(f"bernoulli_ expects p to be in [0, 1], but got p={p}")
+    
+    check_variable_and_dtype(
+            x, "x", ["float32", "float64"], "exponential"
+        )
+    
+    uniform_(x, 0, 1)
+    return (x < p).astype(x.dtype)
     pass
 
 
