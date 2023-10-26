@@ -60,6 +60,16 @@ class FusedMatmulAddGradAddPattern
           }
         });
 
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
     const auto &false_attr = res.Attr(
@@ -68,9 +78,9 @@ class FusedMatmulAddGradAddPattern
     const auto &matmul = res.Op(
         paddle::dialect::MatmulOp::name(),
         {{"transpose_x", false_attr}, {"transpose_y", dx_matmul_trans_y_attr}});
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", true_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});
 
     matmul({&res.Tensor("addout_grad"), &res.Tensor("weight")},
            {&res.Tensor("x_grad")});
@@ -117,6 +127,16 @@ class FusedMatmulGradAddPattern
           }
         });
 
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
     const auto &false_attr = res.Attr(
@@ -125,9 +145,9 @@ class FusedMatmulGradAddPattern
     const auto &matmul = res.Op(
         paddle::dialect::MatmulOp::name(),
         {{"transpose_x", false_attr}, {"transpose_y", dx_matmul_trans_y_attr}});
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", false_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", false_attr}}});
 
     matmul({&res.Tensor("out_grad"), &res.Tensor("weight")},
            {&res.Tensor("x_grad")});
@@ -162,14 +182,24 @@ class FusedMatmulAddaPattern
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
 
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", false_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", false_attr}}});
     fused_linear_param_grad_add(
         {&res.Tensor("x"),
          &res.Tensor("out_grad"),
@@ -201,14 +231,24 @@ class FusedMatmulAddbPattern
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
+
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
     const auto &false_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return false; });
 
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", false_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", false_attr}}});
     fused_linear_param_grad_add(
         {&res.Tensor("x"),
          &res.Tensor("out_grad"),
@@ -244,11 +284,20 @@ class FusedMatmulAddGradAddaPattern
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", true_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});
     fused_linear_param_grad_add(
         {&res.Tensor("x"),
          &res.Tensor("dadd_out"),
@@ -284,11 +333,20 @@ class FusedMatmulAddGradAddbPattern
     });
 
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &muti_precision_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
+          if (match_ctx.Tensor("dweight").Dtype() ==
+              match_ctx.Tensor("weight_grad").Dtype()) {
+            return false;
+          } else {
+            return true;
+          }
+        });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
-    const auto &fused_linear_param_grad_add =
-        res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", true_attr}}});
+    const auto &fused_linear_param_grad_add = res.Op(
+        paddle::dialect::FusedLinearParamGradAddOp::name(),
+        {{{"multi_precision", muti_precision_attr}, {"has_bias", true_attr}}});
     fused_linear_param_grad_add(
         {&res.Tensor("x"),
          &res.Tensor("dadd_out"),
