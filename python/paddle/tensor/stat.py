@@ -221,7 +221,7 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
             [1.       2.081666]
 
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
