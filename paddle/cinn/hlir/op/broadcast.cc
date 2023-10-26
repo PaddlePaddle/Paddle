@@ -137,23 +137,17 @@ void GenerateEquationsForBroadcast(cinn::adt::config::OpEquationContext *ctx) {
   std::uint64_t in_tensor1_ranks = ctx->GetInTensorsRanks().at(1);
   int offset0 = out_tensor_ranks - in_tensor0_ranks;
   for (std::size_t i = 0; i < in_tensor0_ranks; ++i) {
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i),
-                          ctx->GetOutIteratorTuple(0)->at(i + offset0))
-        ->Where(ctx->EQ(ctx->GetInDimTuple(0)->at(i),
-                        ctx->GetOutDimTuple(0)->at(i + offset0)));
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i), 0)
-        ->Where(ctx->NE(ctx->GetInDimTuple(0)->at(i),
-                        ctx->GetOutDimTuple(0)->at(i + offset0)));
+    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i + offset0),
+                   ctx->GetInDimTuple(0)->at(i)));
   }
   int offset1 = out_tensor_ranks - in_tensor1_ranks;
   for (std::size_t i = 0; i < in_tensor1_ranks; ++i) {
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(1)->at(i),
-                          ctx->GetOutIteratorTuple(0)->at(i + offset1))
-        ->Where(ctx->EQ(ctx->GetInDimTuple(1)->at(i),
-                        ctx->GetOutDimTuple(0)->at(i + offset1)));
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(1)->at(i), 0)
-        ->Where(ctx->NE(ctx->GetInDimTuple(1)->at(i),
-                        ctx->GetOutDimTuple(0)->at(i + offset1)));
+    ctx->Equal(ctx->GetInIteratorTuple(1)->at(i),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i + offset1),
+                   ctx->GetInDimTuple(1)->at(i)));
   }
 }
 
@@ -286,13 +280,10 @@ void GenerateEquationsForBroadcastTo(
   std::size_t out_tensor_rank = ctx->GetOutTensorsRanks().at(0);
   int start_axis = out_tensor_rank - ctx->GetInTensorsRanks().at(0);
   for (std::size_t i = start_axis; i < out_tensor_rank; ++i) {
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i - start_axis),
-                          ctx->GetOutIteratorTuple(0)->at(i))
-        ->Where(ctx->EQ(ctx->GetInDimTuple(0)->at(i - start_axis),
-                        ctx->GetOutDimTuple(0)->at(i)));
-    ctx->ConditionalEqual(ctx->GetInIteratorTuple(0)->at(i - start_axis), 0)
-        ->Where(ctx->NE(ctx->GetInDimTuple(0)->at(i - start_axis),
-                        ctx->GetOutDimTuple(0)->at(i)));
+    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i - start_axis),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i),
+                   ctx->GetInDimTuple(0)->at(i - start_axis)));
   }
 }
 

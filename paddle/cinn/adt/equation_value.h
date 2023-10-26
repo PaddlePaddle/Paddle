@@ -61,6 +61,13 @@ struct PtrGetItem final : public Tuple<tPointer<UniqueId>, T> {
   const T& GetArg1() const { return std::get<1>(this->tuple()); }
 };
 
+template <typename ValueT, typename ConstantT>
+struct BroadcastedIterator final : public Tuple<ValueT, ConstantT> {
+  using Tuple<ValueT, ConstantT>::Tuple;
+
+  const ValueT& GetArg0() const { return std::get<0>(this->tuple()); }
+};
+
 DEFINE_ADT_UNION(Value,
                  Undefined,
                  Ok,
@@ -70,6 +77,7 @@ DEFINE_ADT_UNION(Value,
                  IndexDotValue<Value, Constant>,
                  IndexUnDotValue<Value, Constant>,
                  ListGetItem<Value, Constant>,
+                 BroadcastedIterator<Value, Constant>,
                  PtrGetItem<Value>);
 
 OVERLOAD_OPERATOR_EQ_NE(Value, UnionEqual);
@@ -79,6 +87,8 @@ using IndexUnDot_Value_Constant = IndexUnDotValue<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(IndexUnDot_Value_Constant, TupleEqual);
 using ListGetItem_Value_Constant = ListGetItem<Value, Constant>;
 OVERLOAD_OPERATOR_EQ_NE(ListGetItem_Value_Constant, TupleEqual);
+using BroadcastedIterator_Value_Constant = BroadcastedIterator<Value, Constant>;
+OVERLOAD_OPERATOR_EQ_NE(BroadcastedIterator_Value_Constant, TupleEqual);
 OVERLOAD_OPERATOR_EQ_NE(PtrGetItem<Value>, TupleEqual);
 
 inline std::size_t GetHashValue(const Value& value);
@@ -109,6 +119,11 @@ inline std::size_t GetHashValueImpl(
   return hash_combine(GetHashValue(v), GetHashValue(c));
 }
 inline std::size_t GetHashValueImpl(const ListGetItem<Value, Constant>& value) {
+  const auto& [v, c] = value.tuple();
+  return hash_combine(GetHashValue(v), GetHashValue(c));
+}
+inline std::size_t GetHashValueImpl(
+    const BroadcastedIterator<Value, Constant>& value) {
   const auto& [v, c] = value.tuple();
   return hash_combine(GetHashValue(v), GetHashValue(c));
 }

@@ -75,6 +75,15 @@ std::unordered_map<Variable, Value> InferValuesImpl(
 }
 
 std::unordered_map<Variable, Value> InferValuesImpl(
+    const GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>& broadcast,
+    IndexExprInferContext* ctx) {
+  const auto& [dim, out_iterator, in_iterator] = broadcast.tuple();
+  BroadcastedIterator<Value, Constant> broadcast_iterator{
+      ctx->GetValue(in_iterator.value()), dim};
+  return {{out_iterator.value(), broadcast_iterator}};
+}
+
+std::unordered_map<Variable, Value> InferValuesImpl(
     const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot,
     IndexExprInferContext* ctx) {
   const auto& [dims, out_iters, in_index] = undot.tuple();

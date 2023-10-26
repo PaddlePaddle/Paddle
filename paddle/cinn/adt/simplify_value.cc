@@ -33,6 +33,36 @@ ExprT MatchAndRewrite(const ExprT& expr, const IndexExprInferContext& ctx) {
   }
 }
 
+struct SimplifyBroadcastedIteratorByReplacingToStaticDim {
+  using source_pattern_type = BroadcastedIterator<Value, Dim>;
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [iterator, dim] =
+        value.Get<BroadcastedIterator<Value, Constant>>().tuple();
+    const Constant& int64_dim = ctx.GetDimSize(dim.Get<Dim>());
+    if (int64_dim.Has<std::int64_t>()) {
+      return BroadcastedIterator<Value, Constant>{
+          iterator, int64_dim.Get<std::int64_t>()};
+    } else {
+      return value;
+    }
+  }
+};
+
+struct SimplifyBroadcastedIterator {
+  using source_pattern_type = BroadcastedIterator<Value, std::int64_t>;
+
+  Value MatchAndRewrite(const Value& value, const IndexExprInferContext& ctx) {
+    const auto& [iterator, dim] =
+        value.Get<BroadcastedIterator<Value, Constant>>().tuple();
+    if (dim.Get<std::int64_t>() == 1) {
+      return Constant{std::int64_t(0)};
+    } else {
+      return iterator;
+    }
+  }
+};
+
 struct SimplifyDot {
   using source_pattern_type = IndexDotValue<Value, List<Dim>>;
 
@@ -339,6 +369,9 @@ struct SimplifyDotDot {
 
 // Only simplify top-layer of value
 Value SimplifyValue(Value value, const IndexExprInferContext& ctx) {
+  value = MatchAndRewrite<SimplifyBroadcastedIteratorByReplacingToStaticDim>(
+      value, ctx);
+  value = MatchAndRewrite<SimplifyBroadcastedIterator>(value, ctx);
   value = MatchAndRewrite<SimplifyDot>(value, ctx);
   value = MatchAndRewrite<SimplifyUnDot>(value, ctx);
   value = MatchAndRewrite<SimplifyList>(value, ctx);

@@ -24,7 +24,7 @@
 
 namespace cinn::adt::config {
 
-void NaiveOpEquationContext::Print() {
+void NaiveOpEquationContext::Print() const {
   VLOG(1) << "Equations : \n" << ToTxtString(equations());
 }
 
@@ -248,14 +248,6 @@ bool ParseLogicalExpr(const EquationStaticLogical& expr) {
   return std::visit(
       [&](const auto& impl) { return ParseLogicalExprImpl(impl); },
       expr.variant());
-}
-
-void NaiveConditionalEqualHandler::Where(
-    const EquationStaticLogical& logical) const {
-  bool valid_logical = ParseLogicalExpr(logical);
-  if (valid_logical) {
-    ctx_->AddEquations(equations_);
-  }
 }
 
 std::optional<std::int64_t> GetArgDimSizeImpl(

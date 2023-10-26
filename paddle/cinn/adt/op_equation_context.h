@@ -24,18 +24,6 @@
 
 namespace cinn::adt::config {
 
-class ConditionalEqualHandler {
- public:
-  ConditionalEqualHandler(const ConditionalEqualHandler&) = delete;
-  ConditionalEqualHandler(ConditionalEqualHandler&&) = delete;
-  virtual ~ConditionalEqualHandler() = default;
-
-  virtual void Where(const EquationStaticLogical&) const = 0;
-
- protected:
-  ConditionalEqualHandler() = default;
-};
-
 class OpEquationContext {
  public:
   OpEquationContext(const OpEquationContext&) = delete;
@@ -52,22 +40,8 @@ class OpEquationContext {
 
   virtual void Equal(const IteratorTuple& lhs, const IteratorTuple& rhs) = 0;
 
-  virtual std::
-      unique_ptr<ConditionalEqualHandler> [[nodiscard]] ConditionalEqual(
-          const Iterator& lhs, const Iterator& rhs) = 0;
-
-  virtual std::
-      unique_ptr<ConditionalEqualHandler> [[nodiscard]] ConditionalEqual(
-          const Iterator& iterator, std::size_t constant) = 0;
-
-  virtual std::unique_ptr<
-      ConditionalEqualHandler> [[nodiscard]] ConditionalEqual(const Index& lhs,
-                                                              const Index&
-                                                                  rhs) = 0;
-
-  virtual EquationStaticLogical EQ(const Dim& lhs, const Dim& rhs) const = 0;
-
-  virtual EquationStaticLogical NE(const Dim& lhs, const Dim& rhs) const = 0;
+  virtual Iterator GetBroadcastedInputIterator(const Iterator& out_iterator,
+                                               const Dim& dim) = 0;
 
   virtual const IteratorTuple& GetInIteratorTuple(
       std::size_t input_idx) const = 0;

@@ -14,7 +14,9 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
+
 #include "paddle/cinn/adt/equation.h"
 #include "paddle/cinn/adt/m_expr.h"
 #include "paddle/cinn/adt/partition_op_stmts.h"
@@ -48,5 +50,13 @@ std::string ToTxtString(const std::vector<Index>& indexes);
 
 std::string ToTxtString(const List<OpStmt>& op_stmts,
                         const EquationCtx4OpStmtT& EquationCtx4OpStmt);
+
+std::string ToDotString(
+    const Equations& equations,
+    const std::optional<Variable>& start,
+    const std::unordered_set<Variable>& visited_variables,
+    const std::unordered_set<const void*>& visited_functions);
+
+std::string ToTxtString(const Variable& variable);
 
 }  // namespace cinn::adt

@@ -97,10 +97,20 @@ struct ConstantFunction<tOut<Iterator>, tIn<Index>> final
   using Tuple<tOut<Iterator>, tIn<Index>, Constant>::Tuple;
 };
 
+template <typename DimT, typename OutT, typename InT>
+struct GetBroadcastedIterator;
+
+template <>
+struct GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>
+    : public Tuple<Dim, tOut<Iterator>, tIn<Iterator>> {
+  using Tuple<Dim, tOut<Iterator>, tIn<Iterator>>::Tuple;
+};
+
 // clang-format off
 DEFINE_ADT_UNION(Equation,
                  Identity<tOut<Iterator>, tIn<Iterator>>,
                  Identity<tOut<Index>, tIn<Index>>,
+                 GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>,
                  IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>,
                  IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>,
                  InMsg2OutMsg<tOut<FakeOpPlaceHolder>,
@@ -114,5 +124,13 @@ using Function = Equation;
 
 using Equations = List<Equation>;
 using GraphView = EquationGraphTopoWalker<Variable, const Equation*>;
+
+std::pair<std::unordered_set<Variable> /*input*/,
+          std::unordered_set<Variable> /*output*/>
+CollectInputAndOutputVariables(const Function& function);
+
+std::string GetFunctionTypeName(const Function& function);
+
+const void* GetFunctionDataPtr(const Function& function);
 
 }  // namespace cinn::adt

@@ -171,7 +171,8 @@ using LoopDescriptor4LoopIteratorT =
     std::function<LoopDescriptor(const Iterator&)>;
 
 // AnchoredMapStmt = (MapStmt Stmt, ScheduleMesh, tAnchor Tensor,
-// TensorIndexExpr4TensorT, LoopDescriptor4LoopIteratorT)
+// TensorIndexExpr4TensorT, TensorIteratorExpr4TensorT,
+// LoopDescriptor4LoopIteratorT)
 class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
                                            ScheduleMesh,
                                            tAnchor<Tensor>,
@@ -185,6 +186,11 @@ class AnchoredMapStmt final : public Tuple<MapStmt<Stmt>,
               TensorIndexExpr4TensorT,
               TensorIteratorExpr4TensorT,
               LoopDescriptor4LoopIteratorT>::Tuple;
+
+  TensorIndexExpr GetTensorIndexExpr(const Tensor& tensor) const {
+    const auto& TensorIndexExpr4Tensor = std::get<3>(tuple());
+    return TensorIndexExpr4Tensor(tensor);
+  }
 };
 
 // Kernel = ([AnchoredMapStmt], In [Tensor], Out [Tensor])

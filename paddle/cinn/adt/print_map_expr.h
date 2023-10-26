@@ -19,6 +19,8 @@ namespace cinn::adt {
 class Kernel;
 using MapExpr = Kernel;
 
+std::string ToTxtString(const OpStmt& op_stmt);
+
 std::string ToTxtString(const MapExpr& map_expr, const std::string& group_id);
 
 }  // namespace cinn::adt

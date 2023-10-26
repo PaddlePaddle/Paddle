@@ -4,6 +4,7 @@ gather_srcs(
   cinnapi_src
   SRCS
   anchor_sd_equation_context.cc
+  equation_function.cc
   equation_solver.cc
   equation_value.cc
   generate_map_expr.cc

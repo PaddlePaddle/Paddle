@@ -142,71 +142,8 @@ class Graph final : public std::enable_shared_from_this<Graph> {
   }
 
   void CollectVariablesAndEdges(const Function& function) {
-    std::unordered_set<Variable> in_variables;
-    std::unordered_set<Variable> out_variables;
-
-    // clang-format off
-    function >> match {
-      [&](const Identity<tOut<Iterator>, tIn<Iterator>>& identity) {
-        const auto& [out_iter, in_iter] = identity.tuple();
-        out_variables.emplace(Variable{out_iter.value()});
-        in_variables.emplace(Variable{in_iter.value()});
-      },
-      [&](const Identity<tOut<Index>, tIn<Index>>& identity) {
-        const auto& [out_index, in_index] = identity.tuple();
-        out_variables.emplace(Variable{out_index.value()});
-        in_variables.emplace(Variable{in_index.value()});
-      },
-      [&](const IndexDot<List<Dim>, tOut<Index>, tIn<List<Iterator>>>& dot) {
-        const auto& [dims, out_index, in_iterators] = dot.tuple();
-        out_variables.emplace(Variable{out_index.value()});
-        for (const auto& iterator : *in_iterators.value()) {
-          in_variables.emplace(Variable{iterator});
-        }
-      },
-      [&](const IndexUnDot<List<Dim>,
-                           tOut<List<Iterator>>, tIn<Index>>& undot) {
-        const auto& [dims, out_iterators, in_index] = undot.tuple();
-        for (const auto& iterator : *out_iterators.value()) {
-          out_variables.emplace(Variable{iterator});
-        }
-        in_variables.emplace(Variable{in_index.value()});
-      },
-      [&](const InMsg2OutMsg<
-                  tOut<FakeOpPlaceHolder>,
-                  tOut<OpArgIndexes<std::optional<Index>>>,
-                  tIn<OpArgIndexes<Index>>>& in_msg2out_msg) {
-        const auto& [op_placeholder, out_msg_indexes, in_msg_indexes] =
-            in_msg2out_msg.tuple();
-        out_variables.emplace(Variable{op_placeholder.value()});
-        const auto& [out_msg_in_indexes, out_msg_out_indexes] =
-            out_msg_indexes.value().tuple();
-        const auto& [in_msg_in_indexes, in_msg_out_indexes] =
-            in_msg_indexes.value().tuple();
-        for (const auto& index : *out_msg_in_indexes.value()) {
-          out_variables.emplace(Variable{index});
-        }
-        for (const auto& index : *out_msg_out_indexes.value()) {
-          if (index.has_value()) {
-            out_variables.emplace(Variable{index.value()});
-          }
-        }
-        for (const auto& index : *in_msg_in_indexes.value()) {
-          in_variables.emplace(Variable{index});
-        }
-        for (const auto& index : *in_msg_out_indexes.value()) {
-          in_variables.emplace(Variable{index});
-        }
-      },
-      [&](const ConstantFunction<
-                  tOut<Iterator>, tIn<Index>>& constant_function) {
-        const auto& [out_iterator, in_index, constant] =
-            constant_function.tuple();
-        out_variables.emplace(Variable{out_iterator.value()});
-        in_variables.emplace(Variable{in_index.value()});
-      },
-    };
-    // clang-format on
+    const auto& [in_variables, out_variables] =
+        CollectInputAndOutputVariables(function);
 
     for (const Variable& variable : in_variables) {
       variables_.insert(variable);

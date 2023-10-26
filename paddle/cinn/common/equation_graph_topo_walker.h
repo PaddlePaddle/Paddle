@@ -20,6 +20,9 @@
 #include <queue>
 #include <tuple>
 #include <unordered_set>
+#include <vector>
+
+#include "paddle/cinn/common/bfs_walker.h"
 
 namespace cinn {
 
@@ -83,6 +86,32 @@ class EquationGraphTopoWalker final {
                     const FunctionVisitorT& FunctionVisitor) const {
     (*this)(
         begin, end, [&](VT) {}, FunctionVisitor);
+  }
+
+  void BfsWalkFunction(VT variable,
+                       const FunctionVisitorT& FunctionVisitor) const {
+    std::array<VT, 1> array{variable};
+    BfsWalkFunction(array.begin(), array.end(), FunctionVisitor);
+  }
+
+  template <typename VarIterT>
+  void BfsWalkFunction(VarIterT begin,
+                       VarIterT end,
+                       const FunctionVisitorT& FunctionVisitor) const {
+    using F4FVisitor = std::function<void(FT, const FunctionVisitorT&)>;
+    F4FVisitor BfsVisitNextFunction = [&](FT f,
+                                          const FunctionVisitorT& DoEach) {
+      VisitInputVariables(
+          f, [&](VT variable) { VisitNextFunctions(variable, DoEach); });
+      VisitOutputVariables(
+          f, [&](VT variable) { VisitNextFunctions(variable, DoEach); });
+    };
+    std::vector<FT> starts{};
+    for (VarIterT iter = begin; iter != end; ++iter) {
+      VisitNextFunctions(*iter, [&](FT f) { starts.emplace_back(f); });
+    }
+    common::BfsWalker<FT> bfs_walker{BfsVisitNextFunction};
+    bfs_walker(starts.begin(), starts.end(), FunctionVisitor);
   }
 
   template <typename VarIterT>

@@ -252,15 +252,26 @@ class MapExprToIrTranslator {
     CHECK(store_expr.has_value());
     ir::Expr store_rvalue = store_expr.value().As<ir::Store>()->value;
 
-    CHECK_EQ(store_rvalue->operands.size(), op_expr_children->size());
-    for (int i = 0; i < op_expr_children->size(); ++i) {
-      const auto& opt_operant = TranslateOpExpr(
-          op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
-      if (opt_operant.has_value()) {
-        store_rvalue->operands.at(i) = opt_operant.value();
+    if (store_rvalue.As<ir::Load>()) {
+      CHECK_EQ(store_rvalue->operands.size(), 0);
+      CHECK_EQ(op_expr_children->size(), 1);
+      store_rvalue.As<ir::Load>()->indices =
+          TranslateTensorIndex(op_expr_children->at(0), IterExprs4Tensor);
+    } else {
+      if (!op_expr_children->empty()) {
+        CHECK_EQ(store_rvalue->operands.size(), op_expr_children->size());
+        for (int i = 0; i < op_expr_children->size(); ++i) {
+          const auto& opt_operant = TranslateOpExpr(
+              op_expr_children->at(i), std::nullopt, IterExprs4Tensor);
+          if (opt_operant.has_value()) {
+            store_rvalue->operands.at(i) = opt_operant.value();
+          } else {
+            store_rvalue->operands.at(i).As<ir::Load>()->indices =
+                TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
+          }
+        }
       } else {
-        store_rvalue->operands.at(i).As<ir::Load>()->indices =
-            TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
+        // Do nothing
       }
     }
     return store_rvalue;
@@ -666,7 +677,7 @@ class MapExprToIrTranslator {
     } else if (Match<Iterator>(value)) {
       return TranslateIterator(value);
     } else {
-      LOG(FATAL) << "Not supported yet";
+      LOG(FATAL) << "Not supported yet! " << ToTxtString(value);
     }
   }
 

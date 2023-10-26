@@ -83,6 +83,15 @@ struct ToTxtStringStruct {
     return ret;
   }
 
+  std::string operator()(
+      const BroadcastedIterator<Value, Constant>& broadcast) {
+    std::string ret;
+    const auto& [value, constant] = broadcast.tuple();
+    ret += "BroadcastedIterator(" + ToTxtString(value) + ", " +
+           ToTxtString(constant) + ")";
+    return ret;
+  }
+
   std::string operator()(const PtrGetItem<Value>& ptr_get_item) {
     std::string ret;
     const auto& [ptr_tag, value] = ptr_get_item.tuple();

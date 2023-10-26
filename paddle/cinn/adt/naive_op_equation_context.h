@@ -31,24 +31,6 @@
 
 namespace cinn::adt::config {
 
-class NaiveOpEquationContext;
-
-class NaiveConditionalEqualHandler final : public ConditionalEqualHandler {
- public:
-  NaiveConditionalEqualHandler(const NaiveConditionalEqualHandler&) = delete;
-  NaiveConditionalEqualHandler(NaiveConditionalEqualHandler&&) = delete;
-
-  NaiveConditionalEqualHandler(NaiveOpEquationContext* ctx,
-                               const Equations& equations)
-      : ctx_(ctx), equations_(equations) {}
-
-  void Where(const EquationStaticLogical& logical) const override;
-
- private:
-  NaiveOpEquationContext* ctx_;
-  Equations equations_;
-};
-
 class NaiveOpEquationContext final : public OpEquationContext {
  public:
   NaiveOpEquationContext(const NaiveOpEquationContext&) = delete;
@@ -105,17 +87,13 @@ class NaiveOpEquationContext final : public OpEquationContext {
     }
   }
 
-  std::unique_ptr<ConditionalEqualHandler> ConditionalEqual(
-      const Iterator& lhs, const Iterator& rhs) override {
-    Equations equations{};
-    return ConditionalEqual(lhs, rhs, &equations);
-  }
-
-  std::unique_ptr<ConditionalEqualHandler> ConditionalEqual(
-      const Iterator& iterator, std::size_t constant) override {
-    Equations equations{};
-    Iterator const_iter = MakeConstantIterator(constant, &equations);
-    return ConditionalEqual(iterator, const_iter, &equations);
+  Iterator GetBroadcastedInputIterator(const Iterator& out_tensor_iterator,
+                                       const Dim& dim) override {
+    Iterator input_tensor_iterator{UniqueId::New()};
+    using Function = GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>;
+    equations_->emplace_back(
+        Function{dim, input_tensor_iterator, out_tensor_iterator});
+    return input_tensor_iterator;
   }
 
   Iterator MakeConstantIterator(std::size_t constant,
@@ -126,35 +104,6 @@ class NaiveOpEquationContext final : public OpEquationContext {
       (*equations)->emplace_back(ConstF{const_iter, in_msg_index, constant});
     });
     return const_iter;
-  }
-
-  std::unique_ptr<ConditionalEqualHandler> ConditionalEqual(
-      const Iterator& lhs, const Iterator& rhs, Equations* equations) {
-    (*equations)
-        ->emplace_back(Identity<tOut<Iterator>, tIn<Iterator>>(lhs, rhs));
-    (*equations)
-        ->emplace_back(Identity<tOut<Iterator>, tIn<Iterator>>(rhs, lhs));
-    return std::make_unique<NaiveConditionalEqualHandler>(this, *equations);
-  }
-
-  std::unique_ptr<ConditionalEqualHandler> ConditionalEqual(
-      const Index& lhs, const Index& rhs) override {
-    Equations equations{};
-    equations->emplace_back(Identity<tOut<Index>, tIn<Index>>(lhs, rhs));
-    equations->emplace_back(Identity<tOut<Index>, tIn<Index>>(rhs, lhs));
-    return std::make_unique<NaiveConditionalEqualHandler>(this, equations);
-  }
-
-  EquationStaticLogical EQ(const Dim& lhs, const Dim& rhs) const override {
-    return EquationStaticLogical{
-        cinn::adt::EQ<EquationStaticValue, EquationStaticValue>(
-            GetDimSize(lhs), GetDimSize(rhs))};
-  }
-
-  EquationStaticLogical NE(const Dim& lhs, const Dim& rhs) const override {
-    return EquationStaticLogical{
-        cinn::adt::NE<EquationStaticValue, EquationStaticValue>(
-            GetDimSize(lhs), GetDimSize(rhs))};
   }
 
   const IteratorTuple& GetInIteratorTuple(
@@ -286,7 +235,7 @@ class NaiveOpEquationContext final : public OpEquationContext {
     return Undefined{};
   }
 
-  void Print();
+  void Print() const;
 
  private:
   template <typename value_type, typename ContainerT>

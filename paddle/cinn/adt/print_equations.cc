@@ -13,8 +13,11 @@
 // limitations under the License.
 
 #include "paddle/cinn/adt/print_equations.h"
+
 #include <sstream>
 #include <string>
+
+#include "paddle/cinn/adt/equation_function.h"
 
 namespace cinn::adt {
 
@@ -188,6 +191,16 @@ struct ToTxtStringStruct {
   }
 
   std::string operator()(
+      const GetBroadcastedIterator<Dim, tOut<Iterator>, tIn<Iterator>>&
+          broadcast) const {
+    std::string ret;
+    const auto& [dim, out_iterator, in_iterator] = broadcast.tuple();
+    ret += ToTxtString(out_iterator.value()) + " = GetBroadcastedIterator(" +
+           ToTxtString(in_iterator.value()) + ", " + ToTxtString(dim) + ")";
+    return ret;
+  }
+
+  std::string operator()(
       const IndexUnDot<List<Dim>, tOut<List<Iterator>>, tIn<Index>>& undot)
       const {
     std::string ret;
@@ -245,6 +258,80 @@ std::string ToTxtString(const Equations& equations,
     ret << ToTxtString(equation);
   }
   return ret.str();
+}
+
+std::string ToTxtStringImpl(const Iterator& iterator) {
+  return ToTxtString(iterator);
+}
+
+std::string ToTxtStringImpl(const Index& index) { return ToTxtString(index); }
+
+std::string ToTxtStringImpl(const FakeOpPlaceHolder& op) {
+  return ToTxtString(op);
+}
+
+std::string ToTxtString(const Variable& variable) {
+  return std::visit([&](const auto& impl) { return ToTxtStringImpl(impl); },
+                    variable.variant());
+}
+
+std::string ToDotString(
+    const Equations& equations,
+    const std::optional<Variable>& start,
+    const std::unordered_set<Variable>& visited_variables,
+    const std::unordered_set<const void*>& visited_functions) {
+  std::stringstream ss;
+
+  const auto& GetFunctionUid = [&](const Equation& equation) {
+    std::stringstream ss;
+    ss << "f" << GetFunctionDataPtr(equation);
+    return ss.str();
+  };
+
+  ss << "digraph {\n";
+
+  const auto& FillFunctionColor = [&](const Equation& function) -> std::string {
+    if (visited_functions.count(GetFunctionDataPtr(function))) {
+      return ", style=filled, color=green";
+    } else {
+      return "";
+    }
+  };
+  std::unordered_set<Variable> variables{};
+  for (const auto& equation : *equations) {
+    const auto& [in_variables, out_variables] =
+        CollectInputAndOutputVariables(equation);
+    ss << GetFunctionUid(equation) << "["
+       << "label=\"" << GetFunctionTypeName(equation) << "<"
+       << GetFunctionDataPtr(equation) << ">"
+       << "\"" << FillFunctionColor(equation) << "]\n";
+    for (const auto& in_variable : in_variables) {
+      ss << ToTxtString(in_variable) << " -> " << GetFunctionUid(equation)
+         << ";\n";
+      variables.insert(in_variable);
+    }
+    for (const auto& out_variable : out_variables) {
+      ss << GetFunctionUid(equation) << " -> " << ToTxtString(out_variable)
+         << ";\n";
+      variables.insert(out_variable);
+    }
+  }
+  const auto& GetColor = [&](const Variable& variable) {
+    if (start.has_value() && start.value() == variable) {
+      return "red";
+    } else {
+      return "green";
+    }
+  };
+
+  for (const auto& variable : variables) {
+    if (visited_variables.count(variable)) {
+      ss << ToTxtString(variable)
+         << "[style=filled, color=" << GetColor(variable) << "];\n";
+    }
+  }
+  ss << "}\n";
+  return ss.str();
 }
 
 }  // namespace cinn::adt
