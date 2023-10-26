@@ -4461,7 +4461,7 @@ def as_complex(x, name=None):
             [[1j      , (2+3j)  , (4+5j)  ],
              [(6+7j)  , (8+9j)  , (10+11j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_complex(x)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
@@ -4512,7 +4512,7 @@ def as_real(x, name=None):
              [8. , 9. ],
              [10., 11.]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
