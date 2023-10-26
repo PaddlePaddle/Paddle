@@ -16,11 +16,13 @@ limitations under the License. */
 #pragma once
 
 #include <vector>
+#include "paddle/phi/common/scalar.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
 namespace phi {
 namespace distributed {
-SpmdInfo ConcatInferSpmd(const DistMetaTensor& x);
+SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
+                         const Scalar& axis);
 }
 }  // namespace phi

@@ -504,7 +504,6 @@
   infer_meta :
     func : ConcatInferMeta
     param : [x, axis]
-    spmd_rule : ConcatInferSpmd
   kernel :
     func : concat
     data_type : x

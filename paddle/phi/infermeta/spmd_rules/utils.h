@@ -69,6 +69,12 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
 // Repliacated state
 TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
 
+bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);
+
+bool IsTensorPartial(const TensorDistAttr& dist_str);
+
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+
 // Adaptor for variadic arguments
 template <typename Functor>
 struct ArgsIterator {

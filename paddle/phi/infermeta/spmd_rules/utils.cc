@@ -164,6 +164,22 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
   return dst_dist_attr;
 }
 
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  dims_mapping[dim] = kReplicateDim;
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+bool IsDimSharded(const TensorDistAttr& dist_attr, int dim) {
+  return dist_attr.is_shard(-1, dim);
+}
+
+bool IsTensorPartial(const TensorDistAttr& dist_attr) {
+  return dist_attr.is_partial();
+}
+
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
