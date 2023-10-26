@@ -32,9 +32,5 @@ void SplitFeedTensor(const std::vector<std::string>& feed_names,
                      Scope* scope,
                      std::vector<std::vector<phi::DenseTensor>>* out);
 
-void MergeFetchTensor(const FetchUnmergedList& unmerged_fetch_list,
-                      const int64_t micro_batch_num,
-                      FetchList* out);
-
 }  // namespace framework
 }  // namespace paddle
