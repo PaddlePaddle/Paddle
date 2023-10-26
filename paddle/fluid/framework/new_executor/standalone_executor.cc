@@ -70,8 +70,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    if (micro_batch_num > 1 && !FLAGS_enable_pir_api &&
-        !FLAGS_enable_new_ir_in_executor) {
+    if (!FLAGS_enable_pir_api && !FLAGS_enable_new_ir_in_executor) {
       SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
     }
 

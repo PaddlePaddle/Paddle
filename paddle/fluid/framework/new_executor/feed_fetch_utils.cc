@@ -12,13 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
-
 #include <map>
 #include <vector>
 
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
-#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
 namespace paddle {
 namespace framework {
@@ -26,6 +24,8 @@ namespace framework {
 void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
                                const int64_t micro_batch_id) {
+  if (micro_batch_num < 2) return;
+
   const std::set<std::string>& valid_feed_fetch_op_types = {
       "fetch", "fetch_v2", "feed"};
   for (const auto& op_desc : program_desc->MutableBlock(0)->AllOps()) {
@@ -51,10 +51,10 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
 void SplitFeedTensor(const std::vector<std::string>& feed_names,
                      const int64_t micro_batch_num,
                      Scope* scope,
-                     std::vector<phi::DenseTensor>* out) {
+                     std::vector<std::vector<phi::DenseTensor>>* out) {
   if (micro_batch_num < 2) return;
 
-  out->resize(feed_names.size() * micro_batch_num);
+  out->resize(micro_batch_num);
   for (size_t i = 0; i < feed_names.size(); ++i) {
     auto feed_name = feed_names[i];
     auto feed_var = scope->GetVar(feed_name);
@@ -74,7 +74,8 @@ void SplitFeedTensor(const std::vector<std::string>& feed_names,
       VLOG(4) << "Split feed data:" << feed_name << ", dims:("
               << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
       for (int64_t j = 0; j < micro_batch_num; ++j) {
-        (*out)[j * micro_batch_num + i].ShareDataWith(
+        (*out)[j].resize(i + 1);
+        (*out)[j][i].ShareDataWith(
             feed_tensor.Slice(j * split_size, j * split_size + split_size));
       }
     } else {
