@@ -626,7 +626,7 @@ class TestLogSigmoid(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out', max_relative_error=0.008, check_pir=True)
 
 
 class TestLogSigmoidComplex64(TestLogSigmoid):
@@ -655,6 +655,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -679,6 +680,7 @@ class TestLogSigmoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2791,7 +2793,7 @@ class TestRelu6(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestRelu6_ZeroDim(TestRelu6):
@@ -2811,6 +2813,7 @@ class TestRelu6API(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2834,6 +2837,7 @@ class TestRelu6API(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -2844,6 +2848,7 @@ class TestRelu6API(unittest.TestCase):
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2862,6 +2867,7 @@ class TestRelu6API(unittest.TestCase):
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
+    @test_with_pir_api
     def test_warnings(self):
         with static_guard():
             with warnings.catch_warnings(record=True) as context:
@@ -3213,7 +3219,7 @@ class TestCELU(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestCELU_ZeroDim(TestCELU):
@@ -3236,6 +3242,7 @@ class TestCELUAPI(unittest.TestCase):
     def executed_api(self):
         self.celu = F.celu
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3268,6 +3275,7 @@ class TestCELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
