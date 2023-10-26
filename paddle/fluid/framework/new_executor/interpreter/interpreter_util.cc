@@ -807,23 +807,6 @@ void BuildOpFuncList(const platform::Place& place,
         // step 3. data transform
         VariableValueMap& ins_map_temp = runtime_context.inputs;
         VariableValueMap& outs_map_temp = runtime_context.outputs;
-        VLOG(2) << "============================================="
-                   "ApplyDataTransform";
-        VLOG(2) << kernel_type << "|||" << place << "|||" << var_scope;
-        for (auto kv : ins_map_temp) {
-          VLOG(2) << kv.first << " : ";
-          for (auto v : kv.second) {
-            VLOG(2) << v;
-          }
-        }
-        VLOG(2)
-            << "=================================================outs_map_temp";
-        for (auto kv : outs_map_temp) {
-          VLOG(2) << kv.first << " : ";
-          for (auto v : kv.second) {
-            VLOG(2) << v;
-          }
-        }
         ApplyDataTransform(kernel_type,
                            place,
                            &ins_map_temp,

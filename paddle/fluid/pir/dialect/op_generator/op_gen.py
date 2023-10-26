@@ -65,6 +65,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 
@@ -100,6 +101,10 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
   void VerifySig();
+  phi::KernelKey GetKernelTypeForVar(
+    const std::string& var_name,
+    const phi::DenseTensor& tensor,
+    const phi::KernelKey& expected_kernel_type);
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -227,12 +232,6 @@ def to_phi_and_fluid_grad_op_name(op_item):
         backward_phi_name, backward_fluid_name = to_phi_and_fluid_op_name(name)
         rtn.append([backward_phi_name, backward_fluid_name])
     return rtn
-
-
-def get_param_list_alias(param_list, args_map):
-    return [
-        args_map[param] if param in args_map else param for param in param_list
-    ]
 
 
 # =====================================
@@ -1455,7 +1454,7 @@ def OpGenerator(
                             op_class_name,
                             op_data_transform_map,
                             op_kernel_map,
-                            op_info_items.op_compat_item,
+                            op_info.op_compat_item,
                         )
                     )
 
