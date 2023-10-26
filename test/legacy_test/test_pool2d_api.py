@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 from test_pool2d_op import (
     avg_pool2D_forward_naive,
+    lp_pool2D_forward_naive,
     max_pool2D_forward_naive,
     pool2D_forward_naive,
 )
@@ -24,7 +25,7 @@ from test_pool2d_op import (
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.nn.functional import avg_pool2d, max_pool2d
+from paddle.nn.functional import avg_pool2d, lp_pool2d, max_pool2d
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -125,6 +126,36 @@ class TestPool2D_API(unittest.TestCase):
                 kernel_size=2, stride=2, padding=0, ceil_mode=True
             )
             result = avg_pool2d_dg(input)
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+    def check_lp_dygraph_ceilmode_results(self, place):
+        with base.dygraph.guard(place):
+            input_np = np.random.random([2, 3, 32, 32]).astype("float32")
+            input = base.dygraph.to_variable(input_np)
+            norm_type = 2
+            result = lp_pool2d(
+                input,
+                norm_type,
+                kernel_size=2,
+                stride=2,
+                padding=0,
+                ceil_mode=True,
+            )
+
+            result_np = lp_pool2D_forward_naive(
+                input_np,
+                norm_type,
+                ksize=[2, 2],
+                strides=[2, 2],
+                paddings=[0, 0],
+                ceil_mode=True,
+            )
+            np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
+
+            lp_pool2d_dg = paddle.nn.layer.LPPool2D(
+                kernel_size=2, norm_type=2, stride=2, padding=0, ceil_mode=True
+            )
+            result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
     def check_max_static_results(self, place):

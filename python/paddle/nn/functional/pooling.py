@@ -432,6 +432,74 @@ def avg_pool2d(
             )
 
 
+def lp_pool2d(
+    x, norm_type, kernel_size, stride=None, ceil_mode=False, data_format="NCHW"
+):
+    # TODO:add English document
+    kernel_size = convert_to_list(kernel_size, 2, 'pool_size')
+    if stride is None:
+        stride = kernel_size
+    else:
+        stride = convert_to_list(stride, 2, 'pool_stride')
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
+
+    channel_last = _channel_last(data_format, 2)
+    padding, padding_algorithm = _update_padding_nd(
+        0, 2, channel_last, ceil_mode=ceil_mode
+    )
+
+    if in_dynamic_or_pir_mode():
+        output = _C_ops.lp_pool2d(
+            x,
+            norm_type,
+            kernel_size,
+            stride,
+            padding,
+            ceil_mode,
+            False,
+            data_format,
+            'lp',
+            False,
+            False,
+            padding_algorithm,
+        )
+
+        return output
+    else:
+        op_type = 'lp_pool2d'
+        helper = LayerHelper(op_type, **locals())
+        check_variable_and_dtype(
+            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'lp_pool2d'
+        )
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        # TODO:下面这个可能有问题
+        helper.append_op(
+            type=op_type,
+            inputs={"X": x},
+            outputs={"Out": pool_out},
+            attrs={
+                "pooling_type": "lp",
+                "norm_type": norm_type,
+                "ksize": kernel_size,
+                "global_pooling": False,
+                "strides": stride,
+                "paddings": padding,
+                "padding_algorithm": padding_algorithm,
+                "use_cudnn": True,
+                "ceil_mode": ceil_mode,
+                "use_mkldnn": False,
+                "exclusive": False,
+                "data_format": data_format,
+            },
+        )
+
+        return pool_out
+
+
 def avg_pool3d(
     x,
     kernel_size,

@@ -222,6 +222,40 @@ class AvgPool2D(Layer):
         )
 
 
+class LPPool2D(Layer):
+    def __init__(
+        self,
+        norm_type,
+        kernel_size,
+        stride=None,
+        ceil_mode=False,
+        data_format="NCHW",
+    ):
+        # TODO:add English document
+        super().__init__()
+        self.norm_type = norm_type
+        self.kernel_size = kernel_size
+        self.stride = stride
+        self.ceil_mode = ceil_mode
+        self.data_format = data_format
+
+    def forward(self, x):
+        return F.lp_pool2d(
+            x,
+            norm_type=self.norm_type,
+            kernel_size=self.kernel_size,
+            stride=self.stride,
+            ceil_mode=self.ceil_mode,
+            data_format=self.data_format,
+        )
+
+    def extra_repr(self):
+        # TODO:这里可能有问题
+        return 'norm_type={norm_type}, kernel_size={kernel_size}, stride={stride}'.format(
+            **self.__dict__
+        )
+
+
 class AvgPool3D(Layer):
     """
 

@@ -184,6 +184,76 @@ void PoolRawKernel(const Context& ctx,
   }
 }
 
+template <typename T, typename Context>
+void LPPoolRawKernel(const Context& ctx,
+                     const DenseTensor& x,
+                     float norm_type,
+                     const std::vector<int>& kernel_size,
+                     const std::vector<int>& strides,
+                     const std::vector<int>& paddings,
+                     bool exclusive,
+                     const std::string& data_format,
+                     const std::string& pooling_type,
+                     bool global_pooling,
+                     bool adaptive,
+                     const std::string& padding_algorithm,
+                     DenseTensor* out) {
+  const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
+  std::vector<int> paddings_ = paddings;
+  std::vector<int> kernel_size_ = kernel_size;
+
+  // update paddings
+  auto x_dims = x.dims();
+  DDim data_dims;
+  if (channel_last) {
+    data_dims = slice_ddim(x_dims, 1, x_dims.size() - 1);
+  } else {
+    data_dims = slice_ddim(x_dims, 2, x_dims.size());
+  }
+
+  funcs::UpdatePadding(&paddings_,
+                       global_pooling,
+                       adaptive,
+                       padding_algorithm,
+                       data_dims,
+                       strides,
+                       kernel_size_);
+
+  if (data_dims.size() * 2 == static_cast<int>(paddings_.size())) {
+    for (int i = 0; i < data_dims.size(); ++i) {
+      paddings_.erase(paddings_.begin() + i + 1);
+    }
+  }
+
+  if (global_pooling) {
+    funcs::UpdateKernelSize(&kernel_size_, data_dims);
+  }
+
+  switch (kernel_size_.size()) {
+    case 2: {
+      if (pooling_type == "lp") {
+        funcs::Pool2dFunctor<Context, funcs::LPPool<T>, T> pool2d_forward;
+        funcs::LPPool<T> pool_process;
+        pool_process.setNormType(norm_type);
+        pool2d_forward(ctx,
+                       x,
+                       kernel_size_,
+                       strides,
+                       paddings_,
+                       data_format,
+                       exclusive,
+                       adaptive,
+                       out,
+                       pool_process);
+      }
+    } break;
+    default: {
+      PADDLE_THROW(
+          errors::InvalidArgument("Pool op only supports 2D and 3D input."));
+    }
+  }
+}
+
 template <typename Context, typename T1, typename T2 = int>
 void MaxPoolWithIndexRawKernel(const Context& ctx,
                                const DenseTensor& x,
@@ -250,6 +320,38 @@ void Pool2dKernel(const Context& ctx,
                             adaptive,
                             padding_algorithm,
                             out);
+}
+
+template <typename T, typename Context>
+void LPPool2dKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    float norm_type,
+                    const IntArray& kernel_size,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& paddings,
+                    bool ceil_mode UNUSED,
+                    bool exclusive,
+                    const std::string& data_format,
+                    const std::string& pooling_type,
+                    bool global_pooling,
+                    bool adaptive,
+                    const std::string& padding_algorithm,
+                    DenseTensor* out) {
+  std::vector<int> kernel_size_val(kernel_size.GetData().begin(),
+                                   kernel_size.GetData().end());
+  LPPoolRawKernel<T, Context>(ctx,
+                              x,
+                              norm_type,
+                              kernel_size_val,
+                              strides,
+                              paddings,
+                              exclusive,
+                              data_format,
+                              pooling_type,
+                              global_pooling,
+                              adaptive,
+                              padding_algorithm,
+                              out);
 }
 
 template <typename T, typename Context>

@@ -38,6 +38,22 @@ void Pool2dKernel(const Context& ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
+void LPPool2dKernel(const Context& ctx,
+                    const DenseTensor& x,
+                    float norm_type,
+                    const IntArray& kernel_size,
+                    const std::vector<int>& strides,
+                    const std::vector<int>& paddings,
+                    bool ceil_mode,
+                    bool exclusive,
+                    const std::string& data_format,
+                    const std::string& pooling_type,
+                    bool global_pooling,
+                    bool adaptive,
+                    const std::string& padding_algorithm,
+                    DenseTensor* out);
+
+template <typename T, typename Context>
 void Pool2dGPUDNNKernel(const Context& ctx,
                         const DenseTensor& x,
                         const IntArray& kernel_size,

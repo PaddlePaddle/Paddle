@@ -112,6 +112,7 @@ from .norm import normalize  # noqa: F401
 from .pooling import avg_pool1d  # noqa: F401
 from .pooling import avg_pool2d  # noqa: F401
 from .pooling import avg_pool3d  # noqa: F401
+from .pooling import lp_pool2d  # noqa: F401
 from .pooling import max_pool1d  # noqa: F401
 from .pooling import max_pool2d  # noqa: F401
 from .pooling import max_pool3d  # noqa: F401
@@ -200,6 +201,7 @@ __all__ = [
     'avg_pool1d',
     'avg_pool2d',
     'avg_pool3d',
+    'lp_pool2d',
     'max_pool1d',
     'max_pool2d',
     'max_pool3d',

@@ -686,10 +686,12 @@ template class MaxPool2dGradFunctor<CPUContext, double>;
 
 template class Pool2dFunctor<CPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<CPUContext, AvgPool<float>, float>;
+template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<float>, float>;
 template class Pool2dFunctor<CPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<CPUContext, AvgPool<double>, double>;
+template class Pool2dFunctor<CPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
 

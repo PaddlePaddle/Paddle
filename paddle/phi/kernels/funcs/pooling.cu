@@ -997,10 +997,12 @@ template class MaxPool2dGradFunctor<phi::GPUContext, dtype::bfloat16>;
 
 template class Pool2dFunctor<phi::GPUContext, MaxPool<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<float>, float>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<float>, float>;
 template class Pool2dFunctor<phi::GPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<phi::GPUContext, AvgPool<double>, double>;
+template class Pool2dFunctor<phi::GPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<phi::GPUContext, AvgPoolGrad<double>, double>;
 
@@ -1009,6 +1011,9 @@ template class Pool2dFunctor<phi::GPUContext,
                              dtype::float16>;
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::float16>,
+                             dtype::float16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::float16>,
                              dtype::float16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::float16>,
@@ -1021,6 +1026,9 @@ template class Pool2dFunctor<phi::GPUContext,
                              dtype::bfloat16>;
 template class Pool2dFunctor<phi::GPUContext,
                              AvgPool<dtype::bfloat16>,
+                             dtype::bfloat16>;
+template class Pool2dFunctor<phi::GPUContext,
+                             LPPool<dtype::bfloat16>,
                              dtype::bfloat16>;
 template class Pool2dGradFunctor<phi::GPUContext,
                                  MaxPoolGrad<dtype::bfloat16>,

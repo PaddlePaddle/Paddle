@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <string>
 #include <vector>
 
@@ -65,6 +66,29 @@ class AvgPool {
 
   DEVICE inline void finalize(const T& pool_field, T* y) {
     *y = static_cast<T>(intermediate_res / (static_cast<MT>(pool_field)));
+  }
+};
+
+template <class T>
+class LPPool {
+  using MT = typename dtype::MPTypeTrait<T>::Type;
+  MT intermediate_res;
+  float norm_type;
+
+ public:
+  HOST inline void setNormType(float ntype) { norm_type = ntype; }
+
+  DEVICE inline T initial() {
+    intermediate_res = static_cast<MT>(0.0f);
+    return static_cast<T>(0);
+  }
+
+  DEVICE inline void compute(const T& x, T* y UNUSED) {
+    intermediate_res += static_cast<MT>(pow(x, norm_type));
+  }
+
+  DEVICE inline void finalize(const T& pool_field, T* y) {
+    *y = static_cast<T>(pow(intermediate_res, 1.0 / norm_type));
   }
 };
 
