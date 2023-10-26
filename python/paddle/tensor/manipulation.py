@@ -5180,18 +5180,21 @@ def unflatten(x, axis, shape, name=None):
         .. code-block:: python
 
             import paddle
+
             x = paddle.randn(shape=[4, 6, 8])
             shape = [2, 3]
             axis = 1
             res = paddle.unflatten(x, axis, shape)
             print(res.shape)
             # [4, 2, 3, 8]
+
             x = paddle.randn(shape=[4, 6, 8])
             shape = (-1, 2)
             axis = -1
             res = paddle.unflatten(x, axis, shape)
             print(res.shape)
             # [4, 6, 4, 2]
+
             x = paddle.randn(shape=[4, 6, 8])
             shape = paddle.to_tensor([2, 2])
             axis = 0
