@@ -215,7 +215,7 @@
   inplace : (x -> out)
 
 - op : c_sync_comm_stream
-  args : (Tensor x)
+  args : (Tensor x, int ring_id)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta

@@ -110,8 +110,9 @@ void ProgramInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-      (sync_op_num_ == 0)) {
+  if (execution_config_.used_for_inference ||
+      ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+       (sync_op_num_ == 0))) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
@@ -856,6 +857,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
+
+  if (op->Type() == "while") {
+    op->SetOutputHooks(hookfuncs_);
+  }
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
