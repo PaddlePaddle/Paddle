@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import enum
 from typing import Any, Callable, Dict, List, Optional
 
@@ -236,7 +237,11 @@ class BlockConfig:
 
 
 class ProgramConfig:
-    '''A config builder for generating a Program.'''
+    '''A config builder for generating a Program.
+    input_type : (np.dtype, default=None), the inputs will be casted to input_type before
+                fed into TRT engine. If set to None, no casting will be performed.
+    no_cast_list : (List[str], default=None), specify the tensors that will skip the casting
+    '''
 
     def __init__(
         self,
@@ -244,6 +249,8 @@ class ProgramConfig:
         weights: Dict[str, TensorConfig],
         inputs: Dict[str, TensorConfig],
         outputs: List[str],
+        input_type: Optional[np.dtype] = None,
+        no_cast_list: Optional[List[str]] = None,
     ):
         self.ops = ops
         # if no weight need to save, we create a place_holder to help seriazlie params.
@@ -259,6 +266,8 @@ class ProgramConfig:
             self.weights = weights
         self.inputs = inputs
         self.outputs = outputs
+        self.input_type = input_type
+        self.no_cast_list = [] if no_cast_list is None else no_cast_list
 
     def __repr__(self):
         log_str = ''
@@ -272,22 +281,56 @@ class ProgramConfig:
             log_str += '[' + t + ': ' + str(v) + ']'
         for t, v in self.weights.items():
             log_str += '[' + t + ': ' + str(v) + ']'
-
+        log_str += f"['input_type': {self.input_type}]"
         return log_str
 
-    def set_input_type(self, type: np.dtype):
-        for inp in self.inputs.values():
-            inp.convert_type_inplace(type)
-        for weight in self.weights.values():
-            weight.convert_type_inplace(type)
-        return self
+    def set_input_type(self, _type: np.dtype) -> None:
+        assert _type in [
+            np.float32,
+            np.float16,
+        ], "PaddleTRT only supports FP32 / FP16 IO"
+        self.input_type = _type
 
-    def get_input_type(self) -> np.dtype:
-        return next(iter(self.inputs.values())).dtype
+    def get_feed_data(self) -> Dict[str, Dict[str, Any]]:
+        feed_data = {}
+        for name, tensor_config in self.inputs.items():
+            do_casting = (
+                self.input_type is not None and name not in self.no_cast_list
+            )
+            # Cast to target input_type
+            data = (
+                tensor_config.data.astype(self.input_type)
+                if do_casting
+                else tensor_config.data
+            )
+            # Truncate FP32 tensors to FP16 precision for FP16 test stability
+            if data.dtype == np.float32 and name not in self.no_cast_list:
+                data = data.astype(np.float16).astype(np.float32)
+
+            feed_data[name] = {
+                'data': data,
+                'lod': tensor_config.lod,
+            }
+        return feed_data
+
+    def _cast(self) -> None:
+        if self.input_type is None:
+            return
+        for name, inp in self.inputs.items():
+            if name in self.no_cast_list:
+                continue
+            inp.convert_type_inplace(self.input_type)
+        for name, weight in self.weights.items():
+            if name in self.no_cast_list:
+                continue
+            weight.convert_type_inplace(self.input_type)
+        return self
 
 
 def create_fake_model(program_config):
     '''Create a Paddle model(in memory) according to the given config.'''
+    program_config = copy.deepcopy(program_config)
+    program_config._cast()
     paddle.enable_static()
     main_program_desc = core.ProgramDesc()
     util_program = base.Program()
