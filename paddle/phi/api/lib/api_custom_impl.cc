@@ -139,7 +139,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 
       if (rank_is_in_current_mesh) {
         auto dist_input_x =
-            ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info);
+            ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info.first);
 
         dist_input_x = PrepareDataForDistTensor(
             dist_input_x,
@@ -164,7 +164,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
                      const std::vector<const phi::TensorBase*>&,
                      phi::DenseTensor*);
         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
-        (*kernel_fn)(*dev_ctx, input_x, kernel_out);
+        (*kernel_fn)(*dev_ctx, input_x, dense_out);
       }
       auto current_process_mesh = spmd_info.first[0].process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
