@@ -134,10 +134,11 @@ class TestTopPAPI(unittest.TestCase):
             )
 
     def test_cases(self):
-        places = [core.CUDAPlace(0)]
-        for place in places:
-            self.run_dygraph(place)
-            self.run_static(place)
+        if core.is_compiled_with_cuda():
+            places = [core.CUDAPlace(0)]
+            for place in places:
+                self.run_dygraph(place)
+                self.run_static(place)
 
 
 if __name__ == "__main__":
