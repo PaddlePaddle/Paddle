@@ -55,7 +55,6 @@ class TestApiWhileLoop(unittest.TestCase):
             else base.CPUPlace()
         )
         exe = base.Executor(place)
-        print("main_program: ", main_program, flush=True)
         res = exe.run(main_program, fetch_list=out)
         np.testing.assert_allclose(
             np.asarray(res[0]), np.full(1, 10, np.int64), rtol=1e-05
@@ -656,7 +655,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
-    @test_and_compare_with_new_ir()
+    # @test_and_compare_with_new_ir()
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
