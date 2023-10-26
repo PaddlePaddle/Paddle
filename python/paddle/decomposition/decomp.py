@@ -409,7 +409,7 @@ def decompose_fwd_op(
             return tuple(orig_outs)
 
 
-def decompose_bwd_op(
+def decompose_bwd_subgraph(
     block: Block,
     bwd_op: pir.Operation,
     grad_var_to_var_map: dict,
@@ -471,6 +471,7 @@ def decompose_bwd_op(
     bwd_op_idx = block.ops.index(bwd_op)
     # decompose bwd_op into a list of primitive ops
     before_num_ops = len(block.ops)
+
     input_grads = ir_backward.grad(
         new_fwd_outputs, new_fwd_inputs, grad_outputs
     )
@@ -485,6 +486,68 @@ def decompose_bwd_op(
         if input_grad.initialized():
             new_input_grads.append(input_grads[input_grads_idx])
             input_grads_idx += 1
+        else:
+            new_input_grads.append(pir.fake_op_result())
+
+    # move the primitive ops to the insertion point
+    insert_idx = bwd_op_idx
+    for i in range(before_num_ops, after_num_ops):
+        block.move_op(block.ops[i], insert_idx)
+        insert_idx += 1
+
+    # update_grad_var_to_var_map
+    for idx, grad_var in enumerate(bwd_op.results()):
+        if grad_var in grad_var_to_var_map.keys():
+            grad_var_to_var_map[new_input_grads[idx]] = grad_var_to_var_map.pop(
+                grad_var
+            )
+
+    # replace the following use of original bwd_op's results with new primitive ops' results, and then remove original bwd_op
+    bwd_op.replace_all_uses_with(new_input_grads)
+    block.remove_op(bwd_op)
+
+    return tuple(new_input_grads)
+
+
+def decompose_bwd_op(
+    block: Block,
+    bwd_op: pir.Operation,
+    fwd_op: pir.Operation,
+    grad_var_to_var_map: dict,
+) -> tuple:
+    if not core._is_bwd_prim_enabled():
+        raise RuntimeError(
+            "To get composite backward op, please set `core._set_prim_backward_enabled(True)` firstly"
+        )
+
+    # intercept grad_outputs from the original bwd_op
+    # grad_outputs = bwd_op.operands() - fwd_inputs - fwd_outputs
+    fwd_inputs = [x.source() for x in fwd_op.operands()]
+    fwd_outputs = fwd_op.results()
+    bwd_inputs = [x.source() for x in bwd_op.operands()]
+    grad_outputs = []
+    for bwd_input in bwd_inputs:
+        if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs):
+            grad_outputs.append([bwd_input])
+
+    bwd_op_idx = block.ops.index(bwd_op)
+    before_num_ops = len(block.ops)
+
+    stop_gradients = []
+    for grad_input in bwd_op.results():
+        if grad_input.initialized():
+            stop_gradients.append([False])
+        else:
+            stop_gradients.append([True])
+
+    input_grads = core.call_vjp(fwd_op, grad_outputs, stop_gradients)
+    after_num_ops = len(block.ops)
+    assert len(input_grads) == bwd_op.num_results()
+
+    new_input_grads = []
+    for input_grad in input_grads:
+        if input_grad[0] is not None and input_grad[0].initialized():
+            new_input_grads.append(input_grad[0])
         else:
             new_input_grads.append(pir.fake_op_result())
 
