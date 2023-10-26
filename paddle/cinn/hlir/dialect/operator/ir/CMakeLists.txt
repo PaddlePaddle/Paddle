@@ -19,7 +19,8 @@ if(NOT CINN_ONLY)
 
   set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated)
 
-  set(cinn_op_parsed_yaml_file ${parsed_op_dir}/ops.parsed.yaml)
+  set(cinn_op_parsed_yaml_file ${parsed_op_dir}/ops.parsed.yaml
+                               ${parsed_op_dir}/update_ops.parsed.yaml)
 
   set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file})
 
