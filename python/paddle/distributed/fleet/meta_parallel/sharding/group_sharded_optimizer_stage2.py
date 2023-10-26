@@ -116,13 +116,23 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             self._local_params.extend(list(params))
 
-        strategy = fleet.fleet._user_defined_strategy
-        self._delay_scale_loss = strategy.hybrid_configs[
-            "sharding_configs"
-        ].delay_scale_loss
-        self._accumulate_steps = strategy.hybrid_configs[
-            "sharding_configs"
-        ].accumulate_steps
+        hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
+
+        strategy = (
+            fleet.fleet._user_defined_strategy
+            if hasattr(fleet.fleet, "_hcg")
+            else None
+        )
+
+        self._delay_scale_loss = False
+        if strategy is not None:
+            self._delay_scale_loss = strategy.hybrid_configs[
+                "sharding_configs"
+            ].delay_scale_loss
+
+            self._accumulate_steps = strategy.hybrid_configs[
+                "sharding_configs"
+            ].accumulate_steps
 
         self.use_main_grad = None
         for param in self._local_params:
