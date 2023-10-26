@@ -224,6 +224,7 @@ int need_skip(FrameObject* frame) {
     PyObject* f_globals = frame->f_globals;
     _filename = PyDict_GetItemString(f_globals, "__file__");
     if (_filename != NULL) {
+      Py_INCREF(_filename);
       co_filename = _filename;
     }
   }
