@@ -5005,8 +5005,7 @@ def atleast_1d(x, name=None):
             'atleast_1d',
             f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-        # if not isinstance(tensor, Variable):
-        #     raise TypeError(f"For 'atleast_1d', each element of 'inputs' must be a tensor, but got {type(tensor)}")
+
     return tuple([_expend1(tensor) for tensor in x])
 
 
