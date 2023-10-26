@@ -21,6 +21,7 @@
 paddle::Tensor reshard_ad_function(
     const paddle::Tensor& input,
     const phi::distributed::TensorDistAttr dist_attr) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";
   // Dygraph Record Event
@@ -78,4 +79,10 @@ paddle::Tensor reshard_ad_function(
   }
 
   return out;
+#else
+  PADDLE_THROW(phi::errors::Unavailable(
+      "Reshard is not supported in this version of Paddle. Try to recompile it "
+      "with WITH_DISTRIBTUE=ON and reinstall this package."));
+  return paddle::Tensor();
+#endif
 }

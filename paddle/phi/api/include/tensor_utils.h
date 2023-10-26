@@ -17,7 +17,7 @@ limitations under the License. */
 #include <functional>
 
 #include "paddle/phi/api/include/tensor.h"
-#ifndef PADDLE_NO_PYTHON
+#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #endif
@@ -54,7 +54,7 @@ PADDLE_API Tensor from_blob(void* data,
                             const phi::Place& place = phi::Place(),
                             const Deleter& deleter = nullptr);
 
-#ifndef PADDLE_NO_PYTHON
+#ifdef PADDLE_WITH_DISTRIBUTE
 /**
  * @brief Reshard a DistTensor by given DistAttr.
  *

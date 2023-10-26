@@ -26,6 +26,7 @@ ReshardGradNode::operator()(
                          egr::kSlotSmallVectorSize>& grads,
     bool create_graph,
     bool is_new_grad) {
+#ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API GRAD: "
           << "reshard_grad";
 
@@ -95,4 +96,11 @@ ReshardGradNode::operator()(
   }
 
   return returns;
+#else
+  PADDLE_THROW(phi::errors::Unavailable(
+      "ReshardGrad is not supported in this version of Paddle. Try to "
+      "recompile it with WITH_DISTRIBTUE=ON and reinstall this package."));
+  return paddle::small_vector<std::vector<paddle::Tensor>,
+                              egr::kSlotSmallVectorSize>(1);
+#endif
 }

@@ -106,7 +106,7 @@ PADDLE_API Tensor from_blob(void* data,
   return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
 }
 
-#ifndef PADDLE_NO_PYTHON
+#ifdef PADDLE_WITH_DISTRIBUTE
 PD_REGISTER_API(reshard)
 
 PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
