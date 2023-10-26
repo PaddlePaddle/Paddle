@@ -539,7 +539,6 @@ phi::distributed::DistMetaTensor MakeDistMetaTensor(
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
-    // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
                                                                    dist_attr);
@@ -617,6 +616,7 @@ void SetReplicatedDistAttrForOutput(
     phi::distributed::DistTensor* out,
     const phi::distributed::ProcessMesh& process_mesh) {
   if (out) {
+    // For inplace output, we also need to set replicated dist attr
     auto dist_attr =
         phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
     dist_attr.set_process_mesh(process_mesh);

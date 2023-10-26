@@ -56,7 +56,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_pir_api) {
+    if (FLAGS_enable_pir_api || FLAGS_enable_new_ir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
@@ -81,10 +81,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
       std::shared_ptr<::pir::Program> base_program = ir_program;
-      if (!FLAGS_enable_pir_api) {
-        VLOG(6) << "begin to translate" << std::endl;
-        base_program = paddle::TranslateLegacyProgramToProgram(*program);
-      }
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
         if ((*it)->isa<paddle::dialect::FetchOp>()) {

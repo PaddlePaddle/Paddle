@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 
 #include <unordered_set>
 
@@ -54,6 +54,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/pir/core/builtin_attribute.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
@@ -61,12 +68,11 @@ PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
 namespace paddle {
 namespace framework {
 
-NewIRInterpreter::NewIRInterpreter(
-    const platform::Place& place,
-    const std::vector<std::string>& fetch_var_names,
-    const ::pir::Block* ir_block,
-    framework::Scope* scope,
-    const ExecutionConfig& execution_config)
+PirInterpreter::PirInterpreter(const platform::Place& place,
+                               const std::vector<std::string>& fetch_var_names,
+                               const ::pir::Block* ir_block,
+                               framework::Scope* scope,
+                               const ExecutionConfig& execution_config)
     : place_(place),
       execution_config_(execution_config),
       var_scope_(scope),
@@ -74,7 +80,7 @@ NewIRInterpreter::NewIRInterpreter(
       ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
-  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+  VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -122,7 +128,7 @@ NewIRInterpreter::NewIRInterpreter(
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
-NewIRInterpreter::NewIRInterpreter(
+PirInterpreter::PirInterpreter(
     const platform::Place& place,
     const std::vector<std::string>& fetch_var_names,
     const ::pir::Block* ir_block,
@@ -136,7 +142,7 @@ NewIRInterpreter::NewIRInterpreter(
       ir_block_(ir_block),
       ir_stream_analyzer_(place),
       fetch_var_names_(fetch_var_names) {
-  VLOG(4) << "NewIRInterpreter(): " << this << " on " << place_;
+  VLOG(4) << "PirInterpreter(): " << this << " on " << place_;
 
   static_build_ = FLAGS_new_executor_static_build &&
                   !FLAGS_new_executor_use_cuda_graph &&
@@ -184,11 +190,11 @@ NewIRInterpreter::NewIRInterpreter(
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
-NewIRInterpreter::~NewIRInterpreter() {
+PirInterpreter::~PirInterpreter() {
   // cancle gc's thread
   gc_.reset(nullptr);
   async_work_queue_.reset();
-  VLOG(4) << "~NewIRInterpreter(): " << this << " on " << place_;
+  VLOG(4) << "~PirInterpreter(): " << this << " on " << place_;
 
 #ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
@@ -197,13 +203,12 @@ NewIRInterpreter::~NewIRInterpreter() {
 #endif
 }
 
-void NewIRInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
+void PirInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "SetCopyProgram is not implemented in NewIRInterpreter."));
+      "SetCopyProgram is not implemented in PirInterpreter."));
 }
 
-void NewIRInterpreter::SetSkipGcVars(
-    const std::set<std::string>& skip_gc_vars) {
+void PirInterpreter::SetSkipGcVars(const std::set<std::string>& skip_gc_vars) {
   PADDLE_ENFORCE_EQ(
       execution_config_.skip_gc_vars.empty(),
       true,
@@ -214,7 +219,7 @@ void NewIRInterpreter::SetSkipGcVars(
   execution_config_.skip_gc_vars = skip_gc_vars;
 }
 
-void NewIRInterpreter::SetJitInputVars(
+void PirInterpreter::SetJitInputVars(
     const std::set<std::string>& jit_input_vars) {
   PADDLE_ENFORCE_EQ(
       execution_config_.jit_input_vars.empty(),
@@ -226,15 +231,15 @@ void NewIRInterpreter::SetJitInputVars(
   execution_config_.jit_input_vars = jit_input_vars;
 }
 
-const std::set<std::string>& NewIRInterpreter::JitInputVars() const {
+const std::set<std::string>& PirInterpreter::JitInputVars() const {
   return execution_config_.jit_input_vars;
 }
 
-const VariableScope* NewIRInterpreter::GetVariableScope() const {
+const VariableScope* PirInterpreter::GetVariableScope() const {
   return &var_scope_;
 }
 
-void NewIRInterpreter::reset_scope(Scope* new_scope) {
+void PirInterpreter::reset_scope(Scope* new_scope) {
   var_scope_.SetScope(new_scope);
   scope_ = new_scope;
   for (size_t i = 0; i < value_exe_info_->GetVarList().size(); i++) {
@@ -244,7 +249,7 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
   // The index should be assured valid, cause the InterpreterCore may not be
   // fully built, but was still cached and used. For example, see unit test
-  // `test_assert.py`, it may exit before `NewIRInterpreter::Convert`,
+  // `test_assert.py`, it may exit before `PirInterpreter::Convert`,
   // but still was cached and used by later tests.
   for (size_t i = 0;
        i < std::min(refs_.size(), value_exe_info_->GetVarList().size());
@@ -253,16 +258,16 @@ void NewIRInterpreter::reset_scope(Scope* new_scope) {
   }
 }
 
-const Scope* NewIRInterpreter::local_scope() const { return local_scope_; }
+const Scope* PirInterpreter::local_scope() const { return local_scope_; }
 
-void NewIRInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
-  async_work_queue_ = reinterpret_cast<NewIRInterpreter*>(src)->GetWorkQueue();
+void PirInterpreter::ShareWorkQueueFrom(InterpreterBaseImpl* src) {
+  async_work_queue_ = reinterpret_cast<PirInterpreter*>(src)->GetWorkQueue();
   VLOG(8) << "Share AsyncWorkQueue from InterpreterCore(" << src
           << ") to InterpreterCore(" << this << ")";
 }
 
-void NewIRInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
-  const NewIRInterpreter& impl = dynamic_cast<const NewIRInterpreter&>(src);
+void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
+  const PirInterpreter& impl = dynamic_cast<const PirInterpreter&>(src);
   if (is_shared_results_build_ || !impl.IsSharedResultsBuild()) {
     return;
   }
@@ -282,25 +287,25 @@ std::tuple<double, double> NewIRInterpreter::InterpreterRunTime() {
 }
 
 const interpreter::NewIrDependencyBuilder&
-NewIRInterpreter::GetNewIrDependencyBuilder() const {
+PirInterpreter::GetNewIrDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
-std::shared_ptr<std::vector<size_t>> NewIRInterpreter::GetDependencyCount()
+std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
     const {
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer&
-NewIRInterpreter::GetNewIrStreamAnalyzer() const {
+const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+    const {
   return ir_stream_analyzer_;
 }
 
-bool NewIRInterpreter::IsSharedResultsBuild() const {
+bool PirInterpreter::IsSharedResultsBuild() const {
   return is_shared_results_build_;
 }
 
-std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
+std::shared_ptr<interpreter::AsyncWorkQueue> PirInterpreter::GetWorkQueue() {
   if (async_work_queue_ == nullptr) {
     async_work_queue_ = std::make_shared<interpreter::AsyncWorkQueue>(
         execution_config_.host_num_threads,
@@ -310,7 +315,7 @@ std::shared_ptr<interpreter::AsyncWorkQueue> NewIRInterpreter::GetWorkQueue() {
   return async_work_queue_;
 }
 
-void NewIRInterpreter::PrepareForCUDAGraphCapture() {
+void PirInterpreter::PrepareForCUDAGraphCapture() {
   if (!FLAGS_new_executor_use_cuda_graph) return;
 #ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_EQ(
@@ -335,7 +340,7 @@ void NewIRInterpreter::PrepareForCUDAGraphCapture() {
 #endif
 }
 
-void NewIRInterpreter::CheckCUDAGraphBeforeRun(
+void PirInterpreter::CheckCUDAGraphBeforeRun(
     const std::vector<std::string>& feed_names) {
 #ifdef PADDLE_WITH_CUDA
   if (platform::IsCUDAGraphCapturing()) {
@@ -359,7 +364,7 @@ void NewIRInterpreter::CheckCUDAGraphBeforeRun(
 #endif
 }
 
-void NewIRInterpreter::ClearLoDTensorArrayInLocalScope() {
+void PirInterpreter::ClearLoDTensorArrayInLocalScope() {
   auto vars = local_scope_->LocalVars();
   for (auto var : vars) {
     if (var->IsType<LoDTensorArray>()) {
@@ -369,7 +374,7 @@ void NewIRInterpreter::ClearLoDTensorArrayInLocalScope() {
   }
 }
 
-std::string NewIRInterpreter::GetDepsString() const {
+std::string PirInterpreter::GetDepsString() const {
   std::stringstream ss;
   auto downstream_map = ir_dependency_builder_.OpDownstreamMap();
   ss << "Note: when static_dep is 1, it is ok that the dynamic_dep will not "
@@ -388,17 +393,17 @@ std::string NewIRInterpreter::GetDepsString() const {
   return ss.str();
 }
 
-bool NewIRInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
+bool PirInterpreter::HasLocalScope() const { return local_scope_ != nullptr; }
 
-Scope* NewIRInterpreter::InnerScope() const {
+Scope* PirInterpreter::InnerScope() const {
   return local_scope_ != nullptr ? local_scope_ : scope_;
 }
 
-std::string NewIRInterpreter::GetNameByValue(::pir::Value value) const {
+std::string PirInterpreter::GetNameByValue(::pir::Value value) const {
   return value_exe_info_->GetVarName(value);
 }
 
-void NewIRInterpreter::UpdateSyncOpNum() {
+void PirInterpreter::UpdateSyncOpNum() {
   int64_t sync_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (ins->KernelType() == OpFuncType::kCpuSync ||
@@ -410,7 +415,7 @@ void NewIRInterpreter::UpdateSyncOpNum() {
   VLOG(4) << "Update sync op num, sync op num is: " << sync_op_num_;
 }
 
-void NewIRInterpreter::UpdateNcclOpNum() {
+void PirInterpreter::UpdateNcclOpNum() {
   static std::set<std::string> nccl_op_set = {
       "pd_op.c_softmax_with_cross_entropy",
       "pd_op.c_allgather",
@@ -501,7 +506,7 @@ void NewIRInterpreter::UpdateNcclOpNum() {
 // ->(sync_run)-> OP(B) OP(O) ->(direct_run)-> OP(C) ->(direct_run)-> OP(D) If B
 // is run before C, B may always block to wait for A to finish executing, but in
 // fact, C can be executed first during this time.
-void NewIRInterpreter::AnalyseExecuteOrderForTrace(
+void PirInterpreter::AnalyseExecuteOrderForTrace(
     std::map<size_t, std::set<size_t>> op_downstream_map,
     InstructionSchedulingPriorityLess compare) {
   VLOG(4) << "Analyze the execution order of Trace scheduling mode.";
@@ -561,7 +566,7 @@ void NewIRInterpreter::AnalyseExecuteOrderForTrace(
 ///        For new ir        ///
 /// ======================== ///
 
-void NewIRInterpreter::BuildInstruction() {
+void PirInterpreter::BuildInstruction() {
   VLOG(6) << "Build Instructions for new ir ... ";
   vec_instruction_base_.clear();
   size_t op_idx = 0;
@@ -618,7 +623,7 @@ void NewIRInterpreter::BuildInstruction() {
   }
 }
 
-std::string NewIRInterpreter::DebugValueInfo() {
+std::string PirInterpreter::DebugValueInfo() {
   std::stringstream os;
   os << "value info of interpretercore " << this << "\n"
      << "value -> var_name -> id -> variable*"
@@ -646,7 +651,7 @@ std::string NewIRInterpreter::DebugValueInfo() {
   return os.str();
 }
 
-void NewIRInterpreter::BuildInstructionDependences() {
+void PirInterpreter::BuildInstructionDependences() {
   // analysis the dependences between instructions, add next_instr_list to each
   // instr, and set the dependecy_count_
   size_t instr_num = vec_instruction_base_.size();
@@ -702,7 +707,7 @@ void NewIRInterpreter::BuildInstructionDependences() {
   }
 }
 
-void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
+void PirInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   // NOTE(zhiqiu): hot fix for jit input var
   if (instr_node->Name() == "pd_op.memcpy_d2h") {
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
@@ -717,7 +722,7 @@ void NewIRInterpreter::RecordMemcpyD2H(InstructionBase* instr_node) {
   }
 }
 
-void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
+void PirInterpreter::RecordStreamForGC(InstructionBase* instr) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
@@ -735,6 +740,29 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 
   gpuStream_t stream =
       reinterpret_cast<const phi::GPUContext&>(instr->DeviceContext()).stream();
+// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
+// To support all the operators for communicating in the future.
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  if (instr->Name() == "pd_op.send_v2") {
+    ::pir::Operation* op = instr->Operation();
+    if (op->HasAttribute("use_calc_stream") &&
+        op->attribute<::pir::BoolAttribute>("use_calc_stream").data() ==
+            false) {
+      int ring_id = op->attribute<::pir::Int32Attribute>("ring_id").data();
+      if (FLAGS_dynamic_static_unified_comm) {
+        const auto& comm_context_manager =
+            phi::distributed::CommContextManager::GetInstance();
+        stream = static_cast<phi::distributed::NCCLCommContext*>(
+                     comm_context_manager.Get(std::to_string(ring_id)))
+                     ->GetStream();
+      } else {
+        stream = platform::NCCLCommContext::Instance()
+                     .Get(ring_id, instr->DeviceContext().GetPlace())
+                     ->stream();
+      }
+    }
+  }
+#endif
   auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
@@ -832,7 +860,7 @@ void NewIRInterpreter::RecordStreamForGC(InstructionBase* instr) {
 #endif
 }
 
-void NewIRInterpreter::CheckGC(InstructionBase* instr) {
+void PirInterpreter::CheckGC(InstructionBase* instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 
@@ -860,8 +888,8 @@ void NewIRInterpreter::CheckGC(InstructionBase* instr) {
   }
 }
 
-void NewIRInterpreter::CalculateLastLiveOps() {
-  VLOG(4) << "NewIRInterpreter(): " << this << " start CalculateLastLiveOps";
+void PirInterpreter::CalculateLastLiveOps() {
+  VLOG(4) << "PirInterpreter(): " << this << " start CalculateLastLiveOps";
   // calculate last_live_ops_
   for (size_t op_idx = 0; op_idx < vec_instruction_base_.size(); ++op_idx) {
     InstructionBase* instr = vec_instruction_base_[op_idx].get();
@@ -972,7 +1000,7 @@ void NewIRInterpreter::CalculateLastLiveOps() {
   VLOG(4) << "done CalculateLastLiveOps";
 }
 
-void NewIRInterpreter::ConstructEventForJitInput() {
+void PirInterpreter::ConstructEventForJitInput() {
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
       InstructionBase* inst = vec_instruction_base_[i].get();
@@ -996,7 +1024,7 @@ void NewIRInterpreter::ConstructEventForJitInput() {
   }
 }
 
-paddle::framework::FetchList NewIRInterpreter::Run(
+paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
     const std::vector<phi::DenseTensor>& feed_tensors) {
   auto FeedInput = [&] {
@@ -1103,8 +1131,8 @@ paddle::framework::FetchList NewIRInterpreter::Run(
   }
 }
 
-FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
-                                bool need_fetch) {
+FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
+                              bool need_fetch) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -1193,7 +1221,7 @@ FetchList NewIRInterpreter::Run(const std::vector<std::string>& feed_names,
   }
 }
 
-void NewIRInterpreter::TraceRunImpl() {
+void PirInterpreter::TraceRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
@@ -1206,7 +1234,7 @@ void NewIRInterpreter::TraceRunImpl() {
   VLOG(4) << "Done TraceRunInstructionList";
 }
 
-void NewIRInterpreter::MultiThreadRunImpl() {
+void PirInterpreter::MultiThreadRunImpl() {
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_base_);
@@ -1220,7 +1248,7 @@ void NewIRInterpreter::MultiThreadRunImpl() {
   VLOG(4) << "Done MultiThreadRunInstructionList";
 }
 
-void NewIRInterpreter::TraceRunInstructionList(
+void PirInterpreter::TraceRunInstructionList(
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
@@ -1264,7 +1292,7 @@ void NewIRInterpreter::TraceRunInstructionList(
   VLOG(4) << "Done TraceRunInstructionList";
 }
 
-void NewIRInterpreter::MultiThreadRunInstructionList(
+void PirInterpreter::MultiThreadRunInstructionList(
     const std::vector<std::unique_ptr<InstructionBase>>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();
   if (unfinished_op_number_ == 0) {
@@ -1345,7 +1373,7 @@ void NewIRInterpreter::MultiThreadRunInstructionList(
   }
 }
 
-void NewIRInterpreter::RunInstructionBaseAsync(size_t instr_id) {
+void PirInterpreter::RunInstructionBaseAsync(size_t instr_id) {
   // NOTE(Ruibiao): Due to the uncertain order in multi-threading asynchronous
   // scheduling, the priority order involved cross-thread scheduling is not
   // guaranteed. Only Ops scheduled by the same AddTask call have the guarantee
@@ -1379,8 +1407,8 @@ void NewIRInterpreter::RunInstructionBaseAsync(size_t instr_id) {
   }
 }
 
-void NewIRInterpreter::RunNextInstructions(InstructionBase* instr,
-                                           SchedulingQueue* reserved_next_ops) {
+void PirInterpreter::RunNextInstructions(InstructionBase* instr,
+                                         SchedulingQueue* reserved_next_ops) {
   platform::RecordEvent record(
       "RunNextInstructions", platform::TracerEventType::UserDefined, 10);
 
@@ -1405,7 +1433,7 @@ void NewIRInterpreter::RunNextInstructions(InstructionBase* instr,
   }
 }
 
-void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
+void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
@@ -1472,7 +1500,7 @@ void NewIRInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   }
 }
 
-void NewIRInterpreter::PreAnalysis() {
+void PirInterpreter::PreAnalysis() {
   BuildInstructionDependences();
   VLOG(4) << "Done BuildInstructionDependences";
 
@@ -1498,14 +1526,14 @@ void NewIRInterpreter::PreAnalysis() {
   VLOG(4) << "Done UpdateNcclOpNum";
 }
 
-void NewIRInterpreter::Build(
+void PirInterpreter::Build(
     const std::vector<std::string>& feed_names,
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Build is not implemented in NewIRInterpreter."));
+      "Build is not implemented in PirInterpreter."));
 }
 
-::pir::Value NewIRInterpreter::GetValueByName(const std::string& var_name) {
+::pir::Value PirInterpreter::GetValueByName(const std::string& var_name) {
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     if (kv.second == var_name) {
       return kv.first;
@@ -1514,7 +1542,7 @@ void NewIRInterpreter::Build(
   return nullptr;
 }
 
-void NewIRInterpreter::SolvePersisableVarNames() {
+void PirInterpreter::SolvePersisableVarNames() {
   VLOG(6) << "SolvePersisableVarNames";
   for (auto kv : value_exe_info_->GetValue2VarName()) {
     ::pir::Value value = kv.first;

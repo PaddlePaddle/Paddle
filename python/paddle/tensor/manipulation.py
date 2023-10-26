@@ -1413,7 +1413,7 @@ def flip(x, axis, name=None):
     if isinstance(axis, int):
         axis = [axis]
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.flip(x, axis)
     else:
         helper = LayerHelper("flip", **locals())
@@ -3430,7 +3430,7 @@ def expand_as(x, y, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expand_as(x, None, y.shape)
     else:
         check_variable_and_dtype(
@@ -4461,7 +4461,7 @@ def as_complex(x, name=None):
             [[1j      , (2+3j)  , (4+5j)  ],
              [(6+7j)  , (8+9j)  , (10+11j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_complex(x)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
@@ -4512,7 +4512,7 @@ def as_real(x, name=None):
              [8. , 9. ],
              [10., 11.]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
@@ -4572,6 +4572,8 @@ def repeat_interleave(x, repeats, axis=None, name=None):
             [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6])
     """
 
+    if isinstance(repeats, Variable) and not repeats.shape:
+        repeats = paddle.reshape(repeats, [1])
     if axis is None:
         x = paddle.flatten(x)
         axis = 0

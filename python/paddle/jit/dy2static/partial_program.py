@@ -1157,4 +1157,9 @@ def add_build_strategy_for(
         builded_program = paddle.static.Program()
         for var in program.block(0).vars.values():
             builded_program.block(0)._clone_variable(var, False)
+
+    # set back the parent_idx of blocks
+    for origin, current in zip(program.blocks, builded_program.blocks):
+        current.desc.set_parent_idx(origin.desc.parent)
+
     return builded_program

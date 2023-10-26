@@ -16,8 +16,8 @@ import unittest
 
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    ast_only_test,
-    test_and_compare_with_new_ir,
+    test_ast_only,
+    test_legacy_and_pir,
 )
 
 import paddle
@@ -48,8 +48,8 @@ class TestArgsSpecName(Dy2StTestBase):
         self.m = paddle.randn([4, 2, 8])
         self.n = paddle.randn([4, 2, 8])
 
-    @test_and_compare_with_new_ir(False)
-    @ast_only_test
+    @test_legacy_and_pir
+    @test_ast_only
     def test_spec_name_hash(self):
         net = Net()
         net = paddle.jit.to_static(net)
