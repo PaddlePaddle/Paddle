@@ -20,6 +20,7 @@ import paddle
 import paddle.distributed as dist
 import paddle.nn.functional as F
 from paddle import nn
+from paddle.distributed.fleet.utils import recompute
 
 BATCH_SIZE = 16
 BATCH_NUM = 4
@@ -118,6 +119,40 @@ class MPDemoNet(nn.Layer):
         out = F.linear(out, self.w1)
 
         return out
+
+
+class MPDemoNetRecompute(nn.Layer):
+    def __init__(self, np_w0, np_w1, mesh, param_suffix=""):
+        super().__init__()
+        self.w0 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, IMAGE_SIZE],
+                attr=paddle.framework.ParamAttr(
+                    name="mp_demo_weight_1" + param_suffix,
+                    initializer=paddle.nn.initializer.Assign(np_w0),
+                ),
+            ),
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
+        )
+        self.w1 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, CLASS_NUM],
+                attr=paddle.framework.ParamAttr(
+                    name="mp_nemo_weight_2" + param_suffix,
+                    initializer=paddle.nn.initializer.Assign(np_w1),
+                ),
+            ),
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['x', None]),
+        )
+
+    def _inner_forward_fn(self, x):
+        y = paddle.matmul(x, self.w0)
+        z = paddle.matmul(y, self.w1)
+        return z
+
+    def forward(self, x):
+        z = recompute(self._inner_forward_fn, x)
+        return z
 
 
 class PPDemoNet(nn.Layer):

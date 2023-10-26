@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 
+#include <chrono>
 #include <unordered_set>
 
 #include "paddle/utils/flags.h"
@@ -124,7 +125,8 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
   value_exe_info_ = std::make_shared<ValueExecutionInfo>(InnerScope());
 
   std::stringstream ss;
-  ss << this;
+  ss << this
+     << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
