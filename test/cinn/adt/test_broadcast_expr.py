@@ -49,7 +49,7 @@ class TestMapExprBroadcast(unittest.TestCase):
 
         np.testing.assert_allclose(
             result[0].numpy(target),
-            self.inputs["x"] + self.inputs["y"],
+            np.maximum((self.inputs["x1"] + self.inputs["x2"]), 0),
             err_msg="TestMapExprBroadcast failed!",
         )
         print("Finish Test")
