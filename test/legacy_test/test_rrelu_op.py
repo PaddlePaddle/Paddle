@@ -21,6 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
+from paddle.pir_utils import test_with_pir_api
 
 paddle.seed(102)
 np.random.seed(102)
@@ -87,10 +88,12 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
             np.testing.assert_allclose(fetches[0], res_np2, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
 
+    @test_with_pir_api
     def test_static_graph_functional(self):
         '''test_static_graph_functional'''
 
@@ -134,6 +137,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 check_output(self.x_np, res_3[0], self.lower_1, self.upper_1)
             )
 
+    @test_with_pir_api
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
 
@@ -214,6 +218,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
             paddle.enable_static()
 
+    @test_with_pir_api
     def test_error_functional(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -351,10 +356,10 @@ class RReluTest(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Noise'])
+        self.check_output(no_check_set=['Noise'], check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class RReluTrainingTest(RReluTest):
@@ -394,11 +399,13 @@ class RReluTestBF16OP(RReluTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, no_check_set=['Noise'])
+        self.check_output_with_place(
+            place, no_check_set=['Noise'], check_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 class RReluTrainingTestFP16OP(RReluTrainingTest):
@@ -425,11 +432,13 @@ class RReluTrainingTestBF16OP(RReluTrainingTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, no_check_set=['Noise'])
+        self.check_output_with_place(
+            place, no_check_set=['Noise'], check_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir=True)
 
 
 if __name__ == "__main__":
