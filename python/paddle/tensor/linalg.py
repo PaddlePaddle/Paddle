@@ -3215,7 +3215,7 @@ def triangular_solve(
              [-2.],
              [-5.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
     else:
         inputs = {"X": [x], "Y": [y]}
