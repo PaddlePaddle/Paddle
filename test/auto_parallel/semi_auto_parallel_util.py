@@ -72,7 +72,9 @@ class SemiAutoParallelTestBase:
             unflattened = tuple(unflattened)
         return unflattened, offset
 
-    def test_body(self, inputs_shape, inputs_specs, op_func, **kwargs):
+    def runfunc_and_check(
+        self, inputs_shape, inputs_specs, op_func, with_backward, **kwargs
+    ):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
@@ -107,18 +109,23 @@ class SemiAutoParallelTestBase:
         out = op_func(**inputs, **kwargs)
         dist_out = op_func(**dist_inputs, **kwargs)
 
-        def terminal_cond2(x):
-            return not isinstance(x, (list, tuple))
+        if with_backward:
 
-        flat_out = self.flatten(out, terminal_cond2)
-        flat_dist_out = self.flatten(dist_out, terminal_cond2)
-        assert len(flat_out) == len(flat_dist_out)
-        for output, dist_output in zip(flat_out, flat_dist_out):
-            self.check_tensor_eq(out, dist_out)
-            output.backward()
-            dist_output.backward()
+            def terminal_cond2(x):
+                return not isinstance(x, (list, tuple))
 
-        for x, dist_x in zip(flat_inputs, flat_dist_inputs):
-            self.check_tensor_eq(x.grad, dist_x.grad)
+            flat_out = self.flatten(out, terminal_cond2)
+            flat_dist_out = self.flatten(dist_out, terminal_cond2)
+            assert len(flat_out) == len(flat_dist_out)
+            for output, dist_output in zip(flat_out, flat_dist_out):
+                self.check_tensor_eq(out, dist_out)
+                output.backward()
+                dist_output.backward()
+
+            for x, dist_x in zip(flat_inputs, flat_dist_inputs):
+                self.check_tensor_eq(x.grad, dist_x.grad)
+
+        if isinstance(dist_inputs, tuple) and len(dist_inputs) == 1:
+            (dist_inputs,) = dist_inputs
 
         return dist_inputs, dist_out

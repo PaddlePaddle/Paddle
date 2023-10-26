@@ -80,9 +80,9 @@ std::vector<int64_t> GetLocalShape(
 
 TensorDistAttr FromPlacements(
     const TensorDistAttr& dist_attr,
-    const std::vector<std::shared_ptr<PlacementStatus>>& placements)
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
 
-    TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
 
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b);
