@@ -251,7 +251,7 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
-        if self._strategy.pipline.auto_parallel_profiler:
+        if self._strategy.pipeline.auto_parallel_profiler:
             paddle.framework.set_flags({'FLAGS_auto_parallel_profiler': 1})
 
     def _prepare_data_spec(self, data, split, batch_size):
