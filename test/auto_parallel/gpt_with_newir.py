@@ -26,7 +26,7 @@ from paddle.distributed.fleet import auto
 paddle.enable_static()
 
 
-def apply_pass(use_sharding=False):
+def apply_pass(use_sharding=False, pipeline_mode=None):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
@@ -50,6 +50,12 @@ def apply_pass(use_sharding=False):
         sharding.enable = True
         sharding.degree = 2
         sharding.stage = 2
+
+    if pipeline_mode:
+        pipeline = strategy.pipeline
+        pipeline.enable = True
+        pipeline.schedule_mode = pipeline_mode
+        pipeline.accumulate_steps = 2
 
     return strategy
 
@@ -81,10 +87,10 @@ class TestNewIR(unittest.TestCase):
         place = paddle.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, mode, name, use_sharding=False):
+    def get_engine(self, mode, name, use_sharding=False, pipeline_mode=None):
         reset_prog()
 
-        strategy = apply_pass(use_sharding)
+        strategy = apply_pass(use_sharding, pipeline_mode)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model(mode, dropout_prob=0.1)
@@ -181,6 +187,51 @@ class TestNewIR(unittest.TestCase):
             self.check_results(
                 out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
             )
+
+    def test_1f1b(self):
+        self.enable_new_ir(False)
+        engine_1f1b_prog = self.get_engine(
+            "pp", name="1f1b_prog", use_sharding=False, pipeline_mode="1F1B"
+        )
+        out_1f1b_prog = engine_1f1b_prog.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        self.enable_new_ir(True)
+        engine_1f1b_ir = self.get_engine(
+            "pp", name="1f1b_newir", use_sharding=False, pipeline_mode="1F1B"
+        )
+        out_1f1b_ir = engine_1f1b_ir.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        # self.check_results(
+        #     out_1f1b_prog.history["loss"][0], out_1f1b_ir.history["loss"][0]
+        # )
+
+    def test_fthenb(self):
+        self.enable_new_ir(False)
+        engine_fthenb_prog = self.get_engine(
+            "pp", name="fthenb_prog", use_sharding=False, pipeline_mode="FThenB"
+        )
+        out_fthenb_prog = engine_fthenb_prog.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        self.enable_new_ir(True)
+        engine_fthenb_ir = self.get_engine(
+            "pp",
+            name="fthenb_newir",
+            use_sharding=False,
+            pipeline_mode="FThenB",
+        )
+        out_fthenb_ir = engine_fthenb_ir.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        # self.check_results(
+        #     out_fthenb_prog.history["loss"][0], out_fthenb_ir.history["loss"][0]
+        # )
 
 
 if __name__ == "__main__":

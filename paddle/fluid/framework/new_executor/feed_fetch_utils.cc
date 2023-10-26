@@ -48,5 +48,42 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
   }
 }
 
+void SplitFeedTensor(const std::vector<std::string>& feed_names,
+                     const int64_t micro_batch_num,
+                     Scope* scope,
+                     std::vector<phi::DenseTensor>* out) {
+  if (micro_batch_num < 2) return;
+
+  out->resize(feed_names.size() * micro_batch_num);
+  for (size_t i = 0; i < feed_names.size(); ++i) {
+    auto feed_name = feed_names[i];
+    auto feed_var = scope->GetVar(feed_name);
+
+    if (feed_var->IsType<phi::DenseTensor>()) {
+      phi::DenseTensor feed_tensor = feed_var->Get<phi::DenseTensor>();
+      int64_t numel_size = feed_tensor.dims()[0];
+      PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
+                        0,
+                        platform::errors::InvalidArgument(
+                            "Split expects feed data (%s)'s dim[0] (%d) is "
+                            "diviable by micro_batch_num (%d).",
+                            feed_name,
+                            numel_size,
+                            micro_batch_num));
+      int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
+      VLOG(4) << "Split feed data:" << feed_name << ", dims:("
+              << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
+      for (int64_t j = 0; j < micro_batch_num; ++j) {
+        (*out)[j * micro_batch_num + i].ShareDataWith(
+            feed_tensor.Slice(j * split_size, j * split_size + split_size));
+      }
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Type (%s) not support in SplitFeedTensor.",
+          ToTypeName(feed_var->Type())));
+    }
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

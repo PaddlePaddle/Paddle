@@ -26,5 +26,10 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
                                const int64_t micro_batch_id);
 
+void SplitFeedTensor(const std::vector<std::string>& feed_names,
+                     const int64_t micro_batch_num,
+                     Scope* scope,
+                     std::vector<std::vector<phi::DenseTensor>>* out);
+
 }  // namespace framework
 }  // namespace paddle
