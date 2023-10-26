@@ -33,6 +33,15 @@ void CastXPUKernelImpl(const Context& dev_ctx,
     return;
   }
 
+  if (x.dtype() == out->dtype()) {
+    int r = xpu::copy<XPUInT>(dev_ctx.x_context(),
+                              reinterpret_cast<const XPUInT*>(in_data),
+                              reinterpret_cast<XPUInT*>(out_data),
+                              numel);
+    PADDLE_ENFORCE_XDNN_SUCCESS(r, "copy");
+    return;
+  }
+
   int r = xpu::cast<XPUInT, XPUOutT>(dev_ctx.x_context(),
                                      reinterpret_cast<const XPUInT*>(in_data),
                                      reinterpret_cast<XPUOutT*>(out_data),
