@@ -127,10 +127,7 @@ class OpsAPIGen(CodeGen):
         )
 
     def _gen_one_function_impl(self, name):
-        if (
-            name in NEED_GEN_STATIC_ONLY_APIS
-            or name[:-1] in NEED_GEN_STATIC_ONLY_APIS
-        ):
+        if name in NEED_GEN_STATIC_ONLY_APIS:
             return STATIC_ONLY_FUNCTION_IMPL_TEMPLATE.format(name=name)
         else:
             return FUNCTION_IMPL_TEMPLATE.format(name=name)
