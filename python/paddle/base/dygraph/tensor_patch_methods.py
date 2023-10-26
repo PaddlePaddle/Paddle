@@ -869,7 +869,7 @@ def monkey_patch_tensor():
         if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(res_place, True)
+            res = self._copy_to(res_place, blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res

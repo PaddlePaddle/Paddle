@@ -73,6 +73,9 @@ DoubleAttribute Builder::double_attr(double value) {
 Int32Attribute Builder::int32_attr(int32_t value) {
   return Int32Attribute::get(context_, value);
 }
+IndexAttribute Builder::index_attr(int64_t value) {
+  return IndexAttribute::get(context_, value);
+}
 Int64Attribute Builder::int64_attr(int64_t value) {
   return Int64Attribute::get(context_, value);
 }

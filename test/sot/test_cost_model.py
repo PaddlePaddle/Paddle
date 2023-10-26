@@ -15,11 +15,11 @@
 import time
 import unittest
 
-from test_case_base import TestCaseBase, cost_model_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit.sot import psdb, symbolic_translate
-from paddle.jit.sot.utils import StepInfoManager, StepState
+from paddle.jit.sot.utils import StepInfoManager, StepState, cost_model_guard
 
 
 def dyn_fast(x, net, iter_):
@@ -58,7 +58,7 @@ class Net(paddle.nn.Layer):
 
 
 class TestCostModel(TestCaseBase):
-    @cost_model_guard("True")
+    @cost_model_guard(True)
     def test_dyn_fast(self):
         x = paddle.rand([10])
         net = paddle.nn.Linear(10, 10)
@@ -69,7 +69,7 @@ class TestCostModel(TestCaseBase):
         state = StepInfoManager().step_record[dyn_fast.__code__].state
         assert state == StepState.RUN_DYN
 
-    @cost_model_guard("True")
+    @cost_model_guard(True)
     def test_sot_fast_with_multi_graph(self):
         x = paddle.rand([10])
         net = paddle.nn.Linear(10, 10)
@@ -84,7 +84,7 @@ class TestCostModel(TestCaseBase):
         )
         assert state == StepState.RUN_SOT
 
-    @cost_model_guard("True")
+    @cost_model_guard(True)
     def test_sot_fast_with_single_graph(self):
         x = paddle.rand([10])
         net = paddle.nn.Linear(10, 10)
@@ -98,7 +98,7 @@ class TestCostModel(TestCaseBase):
         )
         assert state == StepState.RUN_SOT
 
-    @cost_model_guard("True")
+    @cost_model_guard(True)
     def test_net(self):
         x = paddle.rand([10])
         net = Net()

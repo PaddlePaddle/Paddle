@@ -137,7 +137,7 @@ class CompileSIRCache(Cache):
                 compile_sir(context, sir_name),
                 build_strategy=build_strategy,
                 backend=backend,
-                enable_fallback=False,
+                full_graph=True,
             ),
             context.get_sir(sir_name),
         )

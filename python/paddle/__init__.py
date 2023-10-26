@@ -71,7 +71,6 @@ Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet  # noqa: F401
-
 from paddle import (  # noqa: F401
     distributed,
     sysconfig,
@@ -113,6 +112,7 @@ from .tensor.creation import (
     create_parameter,
     to_tensor,
     diag,
+    diag_embed,
     diagflat,
     eye,
     linspace,
@@ -568,6 +568,7 @@ __all__ = [
     'subtract',
     'diag',
     'diagflat',
+    'diag_embed',
     'isnan',
     'scatter_nd_add',
     'unstack',

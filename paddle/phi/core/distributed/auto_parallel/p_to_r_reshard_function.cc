@@ -20,25 +20,25 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/kernels/all_reduce_kernel.h"
+#include "paddle/phi/kernels/elementwise_divide_kernel.h"
+#include "paddle/phi/kernels/full_kernel.h"
 
 namespace phi {
 namespace distributed {
 
 bool PToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
-
-  flag &= in.dist_attr().is_partial();
-  flag &= out_dist_attr.is_replicated();
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().is_partial());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in.dist_attr().process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
@@ -50,9 +50,18 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
   const auto& in_partial_status = in_dist_attr.partial_status();
+  auto in_reduce_type = in_partial_status.at(0);
+  bool reduce_mean = false;
   auto dtype = in.dtype();
 
-  int64_t reduce_type = static_cast<int64_t>(in_partial_status.at(0));
+  if (in_reduce_type == ReduceType::kRedAvg) {
+    in_reduce_type = ReduceType::kRedSum;
+    reduce_mean = true;
+  }
+  int64_t reduce_type = static_cast<int64_t>(in_reduce_type);
+  VLOG(3) << "Transfer from partial to replicated status with reduce type "
+          << reduce_type;
+
   RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                             AllReduce,
                             dtype,
@@ -60,6 +69,24 @@ void PToRReshardFunction::Eval(DeviceContext* dev_ctx,
                             in.value(),
                             reduce_type,
                             GetMutableTensor(out));
+
+  if (reduce_mean) {
+    VLOG(3) << "Do reduce mean after all reduce sum";
+    DenseTensor tensor_of_num_process;
+    IntArray shape({1});
+    RESHARD_FUNCTOR(dev_ctx,
+                    Full,
+                    in.dtype(),
+                    shape,
+                    static_cast<int64_t>(in_process_ids.size()),
+                    &tensor_of_num_process);
+    RESHARD_FUNCTOR(dev_ctx,
+                    Divide,
+                    dtype,
+                    out->value(),
+                    tensor_of_num_process,
+                    GetMutableTensor(out));
+  }
 
   SetDistProps(out, in.dims(), out_dist_attr);
 }

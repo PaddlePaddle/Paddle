@@ -16,12 +16,12 @@ from __future__ import annotations
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
 from paddle.jit.sot import symbolic_translate
-from paddle.jit.sot.utils import InnerError
+from paddle.jit.sot.utils import InnerError, strict_mode_guard
 
 
 def dict_setitem(x):
@@ -275,7 +275,7 @@ class TestListSideEffect(TestCaseBase):
 
     def test_slice_in_for_loop(self):
         x = 2
-        with strict_mode_guard(0):
+        with strict_mode_guard(False):
             self.assert_results_with_side_effects(slice_in_for_loop, x)
 
     def test_list_nested(self):

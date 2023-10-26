@@ -22,6 +22,7 @@ from semi_auto_parallel_simple_net import (
 
 import paddle
 import paddle.distributed as dist
+import paddle.nn.functional as F
 from paddle import nn
 
 
@@ -51,7 +52,7 @@ class DPAndMPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(
+        out = F.linear(
             dist.shard_tensor(
                 x,
                 dist_attr=dist.DistAttr(
@@ -60,8 +61,10 @@ class DPAndMPDemoNet(nn.Layer):
             ),
             self.w0,
         )
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.relu(out)
+        out = F.linear(out, self.w1)
+
+        return out
 
 
 class TestSimpleNetHybridStrategyForSemiAutoParallel(

@@ -463,7 +463,7 @@ def conv1d(
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,

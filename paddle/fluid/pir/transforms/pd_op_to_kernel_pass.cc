@@ -74,7 +74,6 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     "pd_op.if",
     "pd_op.while",
     "cf.yield",
-    "cf.cond_yield",
     "cinn_runtime.jit_kernel"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
@@ -679,10 +678,34 @@ phi::KernelKey GetKernelKey(
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
 
+  // kernel backend infered incorrectly from memcpy op operands,
+  // case that place from (not GPU) to GPU.
+  // We handle this special case by following code to fix up the problem.
+  // This could be further improved if we had another method.
+  if (!platform::is_gpu_place(place)) {
+    if (op->isa<paddle::dialect::MemcpyOp>()) {
+      VLOG(6) << "MemcpyOp need a special handle";
+      int dst_place_type = op->attribute("dst_place_type")
+                               .dyn_cast<pir::Int32Attribute>()
+                               .data();
+      if (dst_place_type == 1) {
+        res.set_backend(phi::Backend::GPU);
+      }
+    }
+  }
+
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
+
+  if (op->isa<paddle::dialect::CSyncCommStream_Op>() ||
+      op->isa<paddle::dialect::CSyncCommStreamOp>()) {
+    res.set_dtype(phi::DataType::FLOAT32);
+    VLOG(8) << "CSyncCommStream_Op/CSyncCommStreamOp's kernel data type must "
+               "be FLOAT32";
+  }
+
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
     VLOG(8) << "kernel backend must be on CPU when need fallback";
@@ -808,6 +831,15 @@ void HandleForWhileOp(
     (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
   }
 
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
+
   // process body block
   ProcessBlock(place,
                base_while_op.body_block(),
@@ -815,6 +847,15 @@ void HandleForWhileOp(
                ctx,
                map_op_pair,
                map_value_pair);
+
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
 }
 
 pir::Value GetNewInput(
