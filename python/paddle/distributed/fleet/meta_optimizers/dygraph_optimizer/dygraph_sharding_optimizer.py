@@ -540,6 +540,8 @@ class DygraphShardingOptimizerV2:
         # the buffer underlining is not initialized yet
         slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
+        if hasattr(param, "is_distributed"):
+            slice_param.is_distributed = param.is_distributed
         self._slice_params[param.name] = slice_param
         return slice_param
 
