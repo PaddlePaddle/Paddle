@@ -987,8 +987,8 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : exponential_
-  backward : exponential__grad
+- op : exponential_ (exponential)
+  backward : exponential__grad (exponential_grad)
   inputs :
     x : X
   outputs :
@@ -2646,12 +2646,6 @@
   outputs :
     out : Out
     xout : XOut
-
-- op : shuffle_batch
-  inputs :
-    {x : X, seed: Seed}
-  outputs :
-    {out : Out, shuffleidx : ShuffleIdx, seed_out : SeedOut}
 
 - op : shuffle_channel
   backward : shuffle_channel_grad

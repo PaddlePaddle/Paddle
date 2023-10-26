@@ -155,23 +155,10 @@ void WhileInstruction::GetValueFromBodyBlock() {
 
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
-  VLOG(0) << "[WhileInstruction] copy inouts to outputs";
-  if (cond_var_ == nullptr) {
-    VLOG(0) << "cond var is nullptr";
-  }
-  VLOG(0) << "111";
-  if (cond_var_->Get<phi::DenseTensor>().data<bool>() == nullptr) {
-    VLOG(0) << "cond var data is nullptr";
-  }
-  VLOG(0) << "222";
   while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
-    VLOG(0) << "[WhileInstruction] run body...";
     PassArgsToBodyBlock();
-    VLOG(0) << "[WhileInstruction] end pass args to body block";
     body_inter_->Run({}, false);
-    VLOG(0) << "[WhileInstruction] end executor run";
     GetValueFromBodyBlock();
-    VLOG(0) << "[WhileInstruction] end get value from body block";
   }
 }
 

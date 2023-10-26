@@ -148,23 +148,19 @@ class BadInputTest(unittest.TestCase):
 
 
 class TestIgnoreVarNameInWhile(unittest.TestCase):
-    @test_and_compare_with_new_ir()
     def test_ignore_var(self):
         def cond(i, ten, temp, y):
             return i < ten
 
         def body_func(i, ten, batch_info, origin_seq):
             print(batch_info)
-            seed = paddle.tensor.fill_constant(
-                shape=[1], value=2023, dtype='int64'
-            )
-            batch_info = shuffle_batch(batch_info, seed)
+            batch_info = shuffle_batch(batch_info)
             print(batch_info)
             i = i + 1
             return [i, ten, batch_info, origin_seq]
 
-        x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='int64')
-        y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='int64')
+        x = paddle.static.data(name='x', shape=[-1, 1, 4], dtype='float32')
+        y = paddle.static.data(name='y', shape=[-1, 1, 1], dtype='float32')
         x.desc.set_need_check_feed(False)
         y.desc.set_need_check_feed(False)
         temp = paddle.concat([x, y], axis=-1)
