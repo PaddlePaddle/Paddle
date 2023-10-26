@@ -106,7 +106,6 @@ ProgramInterpreter::~ProgramInterpreter() {
 void ProgramInterpreter::RunImpl() {
 #if defined(PADDLE_WITH_CUDA)
   if (FLAGS_auto_parallel_profiler) {
-    // Note(sonder): Record the start time of the each stream.
     for (size_t i = 0; i < stream_timers_.size(); ++i) {
       auto& stream_timer = stream_timers_[i];
       stream_timer.Start();
@@ -646,7 +645,6 @@ void ProgramInterpreter::AddGpuStreamEvents() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   stream_timers_.clear();
   std::vector<gpuStream_t> streams;
-  bool has_default_stream = false;
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
@@ -659,20 +657,13 @@ void ProgramInterpreter::AddGpuStreamEvents() {
     gpuStream_t stream =
         reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext())
             .stream();
-
-    if (stream != nullptr) {
-      has_default_stream = true;
-    }
+    streams.emplace_back(stream);
   }
-  size_t timers_size = has_default_stream ? streams.size() + 1 : streams.size();
-  stream_timers_.resize(timers_size);
+
+  stream_timers_.resize(streams.size());
   for (size_t i = 0; i < streams.size(); ++i) {
     stream_timers_[i].SetStream(streams[i]);
   }
-  if (has_default_stream) {
-    stream_timers_.back().SetStream(nullptr);
-  }
-
 #endif
 }
 

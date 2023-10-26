@@ -71,6 +71,11 @@ class GpuTimer {
   }
 
   void Start() {
+    // Note(sonder): Since it is not possible to directly obtain the start time
+    // of the event, "gettimeofday" is used here to retrieve it. Subsequently,
+    // the end time of the event is calculated by adding the start time on the
+    // CPU with ElapsedTime(). Using the CPU time ensures that the timing is
+    // synchronized across multiple GPUs.
     struct timeval time_now {};
     gettimeofday(&time_now, nullptr);
     start_time_ = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);

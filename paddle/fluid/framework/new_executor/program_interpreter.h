@@ -16,6 +16,10 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
 
+#if defined(PADDLE_WITH_CUDA)
+#include "paddle/phi/kernels/autotune/gpu_timer.h"
+#endif
+
 namespace paddle {
 namespace framework {
 
