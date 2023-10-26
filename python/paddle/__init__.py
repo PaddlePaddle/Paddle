@@ -909,4 +909,7 @@ __all__ = [
     'polygamma_',
     'hypot',
     'hypot_',
+    'bernoulli_',
+    'log_normal',
+    'log_normal_',
 ]
