@@ -29,9 +29,7 @@ limitations under the License. */
 namespace paddle {
 
 PD_REGISTER_API(from_blob)
-#ifdef PADDLE_WITH_DISTRIBUTE
 PD_REGISTER_API(reshard)
-#endif
 
 phi::Place GetPlaceFromPtr(void* data) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -109,7 +107,6 @@ PADDLE_API Tensor from_blob(void* data,
   return Tensor(std::make_shared<phi::DenseTensor>(alloc, meta));
 }
 
-#ifdef PADDLE_WITH_DISTRIBUTE
 PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
     const paddle::Tensor& input,
     const phi::distributed::TensorDistAttr& dist_attr) {
@@ -140,5 +137,4 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
   }
   return dist_out_ptr;
 }
-#endif
 }  // namespace paddle
