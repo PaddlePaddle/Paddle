@@ -1902,6 +1902,7 @@ struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     return op_info;
   }
+
   std::vector<pir::Value> GenerateOperationInput(
       pir::IrContext* ctx,
       TranslationContext* param_map,
@@ -1948,19 +1949,19 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
     auto x_names = op_desc.Input("X", true);
     auto input = param_map->at(x_names[0]).value;
     op_inputs.push_back(input);
-    auto out_grad_names = op_desc.Input("Out@GRAD", true);
-    input = param_map->at(out_grad_names[0]).value;
-    op_inputs.push_back(input);
     if (op_desc.HasInput("RepeatsTensor") &&
         !op_desc.Input("RepeatsTensor").empty()) {
       auto repeats_names = op_desc.Input("RepeatsTensor", true);
       input = param_map->at(repeats_names[0]).value;
       op_inputs.push_back(input);
     }
+    auto out_grad_names = op_desc.Input("Out@GRAD", true);
+    input = param_map->at(out_grad_names[0]).value;
+    op_inputs.push_back(input);
+
     return op_inputs;
   }
 };
-
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
