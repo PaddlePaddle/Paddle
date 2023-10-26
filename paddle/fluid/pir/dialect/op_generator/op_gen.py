@@ -1057,7 +1057,9 @@ def OpGenerator(
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
             if op_name in decomp_interface_declare_gen_op_list:
-                op_interfaces += ["paddle::dialect::DecompInterface"]
+                op_interfaces = op_interfaces + [
+                    "paddle::dialect::DecompInterface"
+                ]
                 exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
             else:
                 op_interfaces = op_interfaces_tmp
