@@ -257,7 +257,7 @@ void LaunchQuantKernelWithVecSize(const T* input,
     case 4:
       QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
           input,
-          (char4*)output,  // NOLINT
+          reinterpret_cast<char4*>(output),
           scale,
           m,
           n,
@@ -268,7 +268,7 @@ void LaunchQuantKernelWithVecSize(const T* input,
     case 3:
       QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
           input,
-          (char3*)output,  // NOLINT
+          reinterpret_cast<char3*>(output),
           scale,
           m,
           n,
@@ -279,7 +279,7 @@ void LaunchQuantKernelWithVecSize(const T* input,
     case 2:
       QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
           input,
-          (char2*)output,  // NOLINT
+          reinterpret_cast<char2*>(output),
           scale,
           m,
           n,
@@ -290,7 +290,7 @@ void LaunchQuantKernelWithVecSize(const T* input,
     case 1:
       QuantKernelWithVecSize<<<grid, block, 0, stream>>>(
           input,
-          (char*)output,  // NOLINT
+          reinterpret_cast<char*>(output),
           scale,
           m,
           n,

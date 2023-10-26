@@ -44,27 +44,7 @@ def round_array_with_ties_to_even(x):
     x[dLower > dUpper] = xUpper[dLower > dUpper]
 
 
-def quant_linear_refer(matrix, with_bias, with_relu=False):
-    in_n, in_c, in_h, in_w = matrix.input.shape
-    w_i, w_o = matrix.weights.shape
-
-    x_data = np.reshape(matrix.input, [in_n, in_c * in_h * in_w])
-    w_data = np.reshape(matrix.weights, [w_i, w_o])
-    b_data = np.reshape(matrix.bias, [1, w_o])
-    result = None
-
-    if with_bias:
-        result = np.dot(x_data, w_data) + b_data
-    else:
-        result = np.dot(x_data, w_data)
-
-    if with_relu:
-        return np.maximum(result, 0)
-    else:
-        return result
-
-
-def quant_linear_quant_refer(
+def quant_linear_refer(
     matrix,
     with_bias,
     scale_in,
@@ -140,11 +120,27 @@ def quant_weights(
     return quant_weights
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
 class TestQuantLinearOp(OpTest):
     def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(1, 10, 15, 3, 3, 2)
+        self.with_bias = False
+        self.with_relu = False
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 1, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
 
     def setUp(self):
         self.op_type = "quant_linear"
@@ -163,138 +159,223 @@ class TestQuantLinearOp(OpTest):
             activation_type = "relu"
         else:
             activation_type = ""
-        if hasattr(self, 'is_quant'):
-            self.attrs = {
-                'activation_type': activation_type,
-                'is_quant': self.is_quant,
-                'quant_round_type': self.quant_round_type,
-                'quant_max_bound': self.quant_max_bound,
-                'quant_min_bound': self.quant_min_bound,
-                'scale_in': self.scale_in,
-                'scale_weights': self.scale_weights,
-            }
-        else:
-            self.attrs = {'activation_type': activation_type}
+        self.attrs = {
+            'activation_type': activation_type,
+            'quant_round_type': self.quant_round_type,
+            'quant_max_bound': self.quant_max_bound,
+            'quant_min_bound': self.quant_min_bound,
+            'scale_in': self.scale_in,
+            'scale_weights': self.scale_weights,
+        }
 
-        if hasattr(self, 'is_quant') and self.attrs['is_quant']:
-            self.outputs = {
-                'out': quant_linear_quant_refer(
-                    self.matrix,
-                    self.with_bias,
-                    self.scale_in,
-                    self.scale_weights,
-                    self.quant_round_type,
-                    self.quant_max_bound,
-                    self.quant_min_bound,
-                    self.with_relu,
-                )
-            }
-        else:
-            self.outputs = {
-                'out': quant_linear_refer(
-                    self.matrix, self.with_bias, self.with_relu
-                )
-            }
+        self.outputs = {
+            'out': quant_linear_refer(
+                self.matrix,
+                self.with_bias,
+                self.scale_in,
+                self.scale_weights,
+                self.quant_round_type,
+                self.quant_max_bound,
+                self.quant_min_bound,
+                self.with_relu,
+            )
+        }
 
     def test_check_output(self):
-        if hasattr(self, 'is_quant') and self.attrs['is_quant']:
-            if core.is_compiled_with_cuda():
-                place = core.CUDAPlace(0)
-                self.check_output_with_place(place, check_dygraph=False)
-        else:
-            self.check_output(check_dygraph=False)
-
-
-class TestQuantLinearOpNoBias1(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
-
-
-class TestQuantLinearOpNoBias2(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
-
-
-class TestQuantLinearOpNoBias4(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.matrix = MatrixGenerate(1, 32, 64, 3, 3, 1)
-
-
-class TestQuantLinearOpWithBias1(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = False
-        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
-
-
-class TestQuantLinearOpWithBias2(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(4, 5, 6, 2, 2, 1)
-
-
-class TestQuantLinearOpWithBias3(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
-
-
-class TestQuantLinearOpWithPadding(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
-
-
-class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
-    def test_api(self):
-        def run_program(num_flatten_dims):
-            paddle.seed(SEED)
-            np.random.seed(SEED)
-            startup_program = Program()
-            main_program = Program()
-
-            with paddle_static_guard():
-                with program_guard(main_program, startup_program):
-                    input = np.random.random([2, 2, 25]).astype("float32")
-                    x = paddle.static.data(
-                        name="x",
-                        shape=[2, 2, 25],
-                        dtype="float32",
-                    )
-
-                    out = paddle.static.nn.quant_linear(
-                        x=x, size=1, num_flatten_dims=num_flatten_dims
-                    )
-
-                place = (
-                    base.CPUPlace()
-                    if not core.is_compiled_with_cuda()
-                    else base.CUDAPlace(0)
-                )
-                exe = base.Executor(place=place)
-                exe.run(startup_program)
-                out = exe.run(main_program, feed={"x": input}, fetch_list=[out])
-                return out
-
-        res_1 = run_program(-1)
-        res_2 = run_program(2)
-        np.testing.assert_array_equal(res_1, res_2)
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            self.check_output_with_place(place, check_dygraph=False)
 
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(),
-    "QuantLinear only supports cuda kernel when is_quant is True.",
+    "QuantLinear only supports cuda kernel.",
 )
-class TestQuantLinearOp_NumFlattenDims_NegOne_WithQuant(unittest.TestCase):
+class TestQuantLinearOpNoBias1(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(16, 10, 16, 4, 4, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpNoBias2(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpNoBias3(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 6, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpNoBias4(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = False
+        self.with_relu = False
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(2, 14, 10, 1, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpWithBias1(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpWithBias2(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpWithPadding1(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.quant_round_type = 1
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 4, 4, 128, 128, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOpWithPadding2(TestQuantLinearOp):
+    def config(self):
+        self.with_bias = True
+        self.with_relu = True
+        self.quant_round_type = 0
+        self.quant_max_bound = 127
+        self.quant_min_bound = -127
+        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
+        self.scale_in = get_scale_in(self.matrix.input)
+        self.scale_weights = get_scale_weights(self.matrix.weights)
+        self.matrix.weights = quant_weights(
+            self.matrix.weights,
+            self.scale_weights,
+            self.quant_round_type,
+            self.quant_max_bound,
+            self.quant_min_bound,
+        )
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "QuantLinear only supports cuda kernel.",
+)
+class TestQuantLinearOp_NumFlattenDims_NegOne(unittest.TestCase):
     def test_api(self):
         def run_program(num_flatten_dims):
             paddle.seed(SEED)
@@ -336,7 +417,6 @@ class TestQuantLinearOp_NumFlattenDims_NegOne_WithQuant(unittest.TestCase):
                         size=1,
                         num_flatten_dims=num_flatten_dims,
                         w=w,
-                        is_quant=True,
                         scale_in=scale_in,
                         scale_weight=scale_weight.tolist(),
                         quant_round_type=quant_round_type,
@@ -344,11 +424,7 @@ class TestQuantLinearOp_NumFlattenDims_NegOne_WithQuant(unittest.TestCase):
                         quant_min_bound=quant_min_bound,
                     )
 
-                place = (
-                    base.CPUPlace()
-                    if not core.is_compiled_with_cuda()
-                    else base.CUDAPlace(0)
-                )
+                place = base.CUDAPlace(0)
                 exe = base.Executor(place=place)
                 exe.run(startup_program)
                 out = exe.run(
@@ -361,216 +437,6 @@ class TestQuantLinearOp_NumFlattenDims_NegOne_WithQuant(unittest.TestCase):
         res_1 = run_program(-1)
         res_2 = run_program(2)
         np.testing.assert_array_equal(res_1, res_2)
-
-
-class TestQuantLinearOpError(unittest.TestCase):
-    def test_errors(self):
-        with program_guard(Program(), Program()):
-            input_data = np.random.random((2, 4)).astype("float32")
-
-            def test_Variable():
-                with paddle_static_guard():
-                    # the input type must be Variable
-                    paddle.static.nn.quant_linear(x=input_data, size=1)
-
-            self.assertRaises(TypeError, test_Variable)
-
-            def test_type():
-                with paddle_static_guard():
-                    # dtype must be float32 or float64
-                    x2 = paddle.static.data(
-                        name='x2', shape=[-1, 4], dtype='int32'
-                    )
-                    paddle.static.nn.quant_linear(x=x2, size=1)
-
-            self.assertRaises(TypeError, test_type)
-
-            with paddle_static_guard():
-                # The input dtype of quant_linear can be float16 in GPU, test for warning
-                x3 = paddle.static.data(
-                    name='x3', shape=[-1, 4], dtype='float16'
-                )
-                paddle.static.nn.quant_linear(x=x3, size=1)
-
-
-class TestQuantLinearOpQuantNoBias1(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(16, 10, 16, 4, 4, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantNoBias2(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 0
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(2, 8, 10, 1, 1, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantNoBias3(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(2, 6, 10, 1, 1, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantNoBias4(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(2, 14, 10, 1, 1, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantNoBias5(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = False
-        self.with_relu = False
-        self.is_quant = True
-        self.quant_round_type = 0
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(2, 1, 10, 1, 1, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantWithBias1(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(1, 64, 32, 3, 3, 1)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantWithBias2(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 0
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(3, 8, 10, 2, 1, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantWithPadding1(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 1
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(1, 4, 4, 128, 128, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
-
-
-class TestQuantLinearOpQuantWithPadding2(TestQuantLinearOp):
-    def config(self):
-        self.with_bias = True
-        self.with_relu = True
-        self.is_quant = True
-        self.quant_round_type = 0
-        self.quant_max_bound = 127
-        self.quant_min_bound = -127
-        self.matrix = MatrixGenerate(1, 4, 3, 128, 128, 2)
-        self.scale_in = get_scale_in(self.matrix.input)
-        self.scale_weights = get_scale_weights(self.matrix.weights)
-        self.matrix.weights = quant_weights(
-            self.matrix.weights,
-            self.scale_weights,
-            self.quant_round_type,
-            self.quant_max_bound,
-            self.quant_min_bound,
-        )
 
 
 if __name__ == "__main__":
