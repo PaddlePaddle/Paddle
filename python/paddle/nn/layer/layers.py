@@ -938,45 +938,31 @@ class Layer:
 
                 >>> import paddle
                 >>> import paddle.nn as nn
-                >>> paddle.seed(2023)
+                >>> weight_attr = paddle.ParamAttr(name="weight",initializer=paddle.nn.initializer.Constant(value=1.5))
+                >>> bias_attr = paddle.ParamAttr(name="bias",initializer=paddle.nn.initializer.Constant(value=2.5))
 
-                >>> net = nn.Sequential(nn.Linear(2, 2), nn.Linear(2, 2))
-                >>> print(net)
-                Sequential(
-                (0): Linear(in_features=2, out_features=2, dtype=float32)
-                (1): Linear(in_features=2, out_features=2, dtype=float32)
-                )
-                >>> print(net.parameters())
+                >>> linear = paddle.nn.Linear(2, 2, weight_attr=weight_attr, bias_attr=bias_attr).to(device="cpu",dtype="float32")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=float32)
+                >>> print(linear.parameters())
                 [Parameter containing:
-                Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[ 0.76424706,  1.21572542],
-                        [ 0.02650531, -0.16404852]]), Parameter containing:
-                Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [0., 0.]), Parameter containing:
-                Tensor(shape=[2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [[ 0.05151060, -1.02659082],
-                        [-1.20846939, -0.46195853]]), Parameter containing:
-                Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                    [0., 0.])]
+                Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [[1.50000000, 1.50000000],
+                        [1.50000000, 1.50000000]]), Parameter containing:
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=False,
+                    [2.50000000, 2.50000000])]
 
-                >>> net = net.astype("int8")
-                >>> print(net)
-                Sequential(
-                (0): Linear(in_features=2, out_features=2, dtype=paddle.int8)
-                (1): Linear(in_features=2, out_features=2, dtype=paddle.int8)
-                )
-                >>> print(net.parameters())
+                >>> linear=linear.astype("int8")
+                >>> print(linear)
+                Linear(in_features=2, out_features=2, dtype=paddle.int8)
+                >>> print(linear.parameters())
                 [Parameter containing:
-                Tensor(shape=[2, 2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [[0, 1],
-                        [0, 0]]), Parameter containing:
-                Tensor(shape=[2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [0, 0]), Parameter containing:
-                Tensor(shape=[2, 2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [[ 0, -1],
-                        [-1,  0]]), Parameter containing:
-                Tensor(shape=[2], dtype=int8, place=Place(gpu:0), stop_gradient=False,
-                    [0, 0])]
+                Tensor(shape=[2, 2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [[1, 1],
+                        [1, 1]]), Parameter containing:
+                Tensor(shape=[2], dtype=int8, place=Place(cpu), stop_gradient=False,
+                    [2, 2])]
+
         """
         valid_dtypes = [
             "bfloat16",
