@@ -140,7 +140,7 @@ std::vector<std::unique_ptr<Instruction>> PIRCompiler::BuildInstructions(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
-    auto& fn_name = groups[idx]->fn_name;
+    auto fn_name = groups[idx]->FuncName();
     auto instr =
         std::unique_ptr<Instruction>(new Instruction(target_,
                                                      scope_.get(),
