@@ -668,6 +668,9 @@ class DygraphShardingOptimizerV2:
         slice_param = EagerParamBase(shape=[1], dtype=param.dtype)
         slice_param.name = param.name
 
+        if hasattr(param, "is_distributed"):
+            slice_param.is_distributed = param.is_distributed
+
         def copy_attr(attr_name):
             if hasattr(param, attr_name):
                 setattr(slice_param, attr_name, getattr(param, attr_name))
