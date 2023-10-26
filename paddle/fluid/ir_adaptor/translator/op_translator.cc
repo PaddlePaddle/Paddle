@@ -33,6 +33,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -1471,6 +1472,27 @@ struct OneHotTranscriber : public OpTranscriber {
   };
 };
 
+pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
+                                       const OpDesc& op_desc,
+                                       const OpAttributeInfo& attr_info) {
+  auto start_proto_dtype =
+      op_desc.Block()->FindVarRecursive("Start")->GetDataType();
+  auto start_phi_dtype = phi::TransToPhiDataType(start_proto_dtype);
+  auto dtype_attr =
+      paddle::dialect::DataTypeAttribute::get(ctx, start_phi_dtype);
+  return dtype_attr;
+}
+
+struct ArangeOpTranscriber : public OpTranscriber {
+  AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& attr_name) override {
+    if (attr_name != "dtype") {
+      return nullptr;
+    }
+    return TranslateDtypeForArange;
+  }
+};
+
 pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
                                   const OpDesc& op_desc,
                                   const OpAttributeInfo& attr_info) {
@@ -1493,8 +1515,8 @@ pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
 
 struct ReduceOpTranscriber : public OpTranscriber {
   AttributeHandlerFn GetSpecialAttributeHandlers(
-      const std::string& input_name) override {
-    if (input_name != "axis") {
+      const std::string& attr_name) override {
+    if (attr_name != "axis") {
       return nullptr;
     }
     return TranslateReduceAll;
@@ -1896,6 +1918,7 @@ OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
+  special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
   special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();

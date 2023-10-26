@@ -1,7 +1,7 @@
 # Ops in this file is only used for pir currently and will replace ops of legacy_ops.yaml/ops.yaml of PHI in future.
 
 - op : arange
-  args : (Scalar start, Scalar end, Scalar step, DataType dtype, Place place={})
+  args : (Scalar start, Scalar end, Scalar step, DataType dtype=DataType::FLOAT64, Place place=CPUPlace())
   output : Tensor(out)
   infer_meta :
     func : ArangeInferMeta
