@@ -20,6 +20,7 @@ from .meta_parallel import (
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
+    PipelineParallelWithInterleaveFthenB,
     ShardingParallel,
     TensorParallel,
 )
@@ -164,9 +165,21 @@ def distributed_model(model):
             # 1f1b pipeline
             model = PipelineParallel(model, fleet_env._hcg, strategy=strategy)
         else:
-            # interleave pipeline
-            model = PipelineParallelWithInterleave(
-                model, fleet_env._hcg, strategy=strategy
-            )
+            accumulate_steps = strategy.pipeline_configs['accumulate_steps']
+            pp_degree = fleet_env._hcg.get_pipe_parallel_world_size()
+            if (
+                accumulate_steps >= pp_degree
+                and accumulate_steps < pp_degree * 2
+            ):
+                # NOTE(shenliang03): Hacky for unbalanced pipeline parallel with interleave
+                # Currently, we only support pp_degree <= accumulate_steps < 2 * pp_degree
+                model = PipelineParallelWithInterleaveFthenB(
+                    model, fleet_env._hcg, strategy=strategy
+                )
+            else:
+                # interleave pipeline
+                model = PipelineParallelWithInterleave(
+                    model, fleet_env._hcg, strategy=strategy
+                )
 
     return model
