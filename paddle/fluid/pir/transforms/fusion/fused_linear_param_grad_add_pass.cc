@@ -19,6 +19,7 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 namespace {
+
 // add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulAddGradAddPattern
     : public pir::drr::DrrPatternBase<FusedMatmulAddGradAddPattern> {
