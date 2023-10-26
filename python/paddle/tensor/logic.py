@@ -1234,7 +1234,7 @@ def bitwise_or_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.bitwise_or_(x, y)
 
 
@@ -1292,7 +1292,7 @@ def bitwise_xor_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.bitwise_xor_(x, y)
 
 
@@ -1342,7 +1342,7 @@ def bitwise_not_(x, name=None):
     Inplace version of ``bitwise_not`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_paddle_bitwise_not`.
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.bitwise_not_(x)
 
 
