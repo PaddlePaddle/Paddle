@@ -31,7 +31,7 @@ namespace cinn {
 namespace optim {
 
 namespace {
-
+std::vector<ir::Buffer> shm_buffer_;
 struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { Visit(expr); }
 
@@ -93,7 +93,6 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   void Visit(ir::Expr* expr) { ir::IRMutator<>::Visit(expr, expr); }
 
   void Visit(const ir::_LoweredFunc_* expr, ir::Expr* op) override {
-    std::vector<ir::Buffer>().swap(shm_buffer_);
     ir::IRMutator<>::Visit(expr, op);
     if (std::find_if(op->as_lowered_func()->temp_bufs.begin(),
                      op->as_lowered_func()->temp_bufs.end(),
@@ -107,6 +106,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
           op->as_lowered_func()->temp_bufs.end(),
           shm_buffer_.begin(),
           shm_buffer_.end());
+    std::vector<ir::Buffer>().swap(shm_buffer_);
   }
 
   void Visit(const ir::ScheduleBlockRealize* expr, ir::Expr* op) override {
@@ -145,7 +145,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
         "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",       \
         {ir::Expr(32)});                                                     \
     tmp_buffer->dtype = tmp_dtype;                                           \
-    shm_buffer_.emplace_back(std::move(tmp_buffer));                         \
+    tmp_buffer->memory_type = ir::MemoryType::GPUShared;                     \
+    shm_buffer_.push_back(tmp_buffer);                                       \
     original_update_stmt.As<ir::Store>()->value =                            \
         lang::CallExtern(reduce_func_name, {node->b(), shm_buffer_.back()}); \
   }
@@ -171,7 +172,6 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
 
  private:
   std::vector<ir::Expr> cur_loops_;
-  std::vector<ir::Buffer> shm_buffer_;
 };
 
 }  // namespace
