@@ -1823,8 +1823,10 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
 
 
 def is_recompute_op(op):
-    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
-        'op_namescope'
+    return (
+        op.has_attr('op_namescope')
+        and "/auto_parallel/rc" in op.attr('op_namescope')
+        and 'exclude_rc' not in op.attr('op_namescope')
     )
 
 

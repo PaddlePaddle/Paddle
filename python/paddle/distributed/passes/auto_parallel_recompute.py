@@ -83,6 +83,9 @@ class RecomputeState(ProgramStats):
                 continue
 
             seg_name = op.attr('op_namescope')
+            seg_name = (
+                seg_name if '_exclude_rc' not in seg_name else seg_name[:-11]
+            )
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:
@@ -317,6 +320,7 @@ class RecomputePass(PassBase):
             )
 
         # 3. get vars that should be hold in memory
+        # list of var_names
         vars_should_be_hold = []
         for segment in segments:
             vars_should_be_hold.extend(

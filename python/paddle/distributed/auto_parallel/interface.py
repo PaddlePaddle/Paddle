@@ -219,13 +219,45 @@ def recompute(op):
 
             for idx in range(op_size, new_op_size):
                 op = cur_block.ops[idx]
-                op._set_attr(
-                    'op_namescope', "/auto_parallel/rc_" + str(_g_recompute_idx)
-                )
+                if op.has_attr(
+                    "op_namescope"
+                ) and 'auto_parallel/exclude_rc' in op.attr("op_namescope"):
+                    op._set_attr(
+                        'op_namescope',
+                        "/auto_parallel/rc_"
+                        + str(_g_recompute_idx)
+                        + "_exclude_rc",
+                    )
+                else:
+                    op._set_attr(
+                        'op_namescope',
+                        '/auto_parallel/rc_' + str(_g_recompute_idx),
+                    )
 
             return output
 
     return RecomputeOperator(op)
+
+
+def exclude_ops_in_recompute(ops):
+    class ExcludeOperator:
+        def __init__(self, ops):
+            self._ops = ops
+
+        def __call__(self, *args, **kwargs):
+            default_prog = paddle.static.default_main_program()
+            cur_block = default_prog.current_block()
+            op_size = len(cur_block.ops)
+            output = self._ops(*args, **kwargs)
+            new_op_size = len(cur_block.ops)
+
+            for idx in range(op_size, new_op_size):
+                op = cur_block.ops[idx]
+                op._set_attr('op_namescope', "/auto_parallel/exclude_rc")
+
+            return output
+
+    return ExcludeOperator(ops)
 
 
 _g_collections = {}
