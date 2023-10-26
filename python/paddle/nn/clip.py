@@ -749,6 +749,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list_fp16 = []
         sum_square_list_bf16 = []
         sum_square_list_fp32 = []
+
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -794,7 +798,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+                    global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -806,7 +810,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_bf16) > 0:
-                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    global_norm_var_bf16 = async_add_n(sum_square_list_bf16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -818,7 +822,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+                    global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -827,11 +831,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
+                    global_norm_var_other_dtype = async_add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    paddle.add_n(global_norm_var)
+                    async_add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
@@ -919,9 +923,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self.context = context
 
     def _create_operators(self, param, grad):
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
-            group_norm_var = paddle.add_n(self.context[self.group_name])
+            group_norm_var = async_add_n(self.context[self.group_name])
             group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = paddle.divide(
