@@ -16,7 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-#include "phi/kernels/funcs/skip_layernorm_functor.h"
+#include "paddle/phi/kernels/funcs/skip_layernorm_functor.h"
 
 namespace phi {
 namespace fusion {
@@ -43,10 +43,9 @@ void SkipLayerNormKernel(const Context &dev_ctx,
     num *= x.dims()[i];
   }
   int hidden = x.dims()[2];
-  auto &device_ctx = context.template device_context<DeviceContext>();
   phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
-  if (std::is_same<T, paddle::platform::float16>::value) {
+  if (std::is_same<T, phi::dtype::float16>::value) {
     const half *X_new = reinterpret_cast<const half *>(X_d);
     const half *Y_new = reinterpret_cast<const half *>(Y_d);
     const half *scale_new = reinterpret_cast<const half *>(scale_d);
@@ -61,7 +60,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
                          bias_new,
                          output_new,
                          epsilon,
-                         device_ctx.stream());
+                         dev_ctx.stream());
   } else {
     phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
     skip_layer_norm_func(num,
@@ -72,7 +71,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
                          bias_d,
                          output_d,
                          epsilon,
-                         device_ctx.stream());
+                         dev_ctx.stream());
   }
 }
 
@@ -85,8 +84,11 @@ PD_REGISTER_KERNEL(skip_layernorm,
                    ALL_LAYOUT,
                    phi::fusion::SkipLayerNormKernel,
                    float,
-                   plat::float16) {}
+                   phi::dtype::float16) {}
 #else
-PD_REGISTER_KERNEL(
-    skip_layernorm, GPU, ALL_LAYOUT, phi::fusion::SkipLayerNormKernel, float) {}
+PD_REGISTER_KERNEL(skip_layernorm,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::fusion::SkipLayerNormKernel,
+                   float){} {}
 #endif

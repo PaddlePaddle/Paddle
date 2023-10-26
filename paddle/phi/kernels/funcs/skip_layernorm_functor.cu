@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "phi/kernels/funcs/skip_layernorm_functor.h"
-#include "phi/kernels/funcs/math_cuda_utils.h"
+#include "paddle/phi/kernels/funcs/skip_layernorm_functor.h"
+#include "paddle/phi/kernels/funcs/math_cuda_utils.h"
 namespace phi {
 namespace funcs {
 
