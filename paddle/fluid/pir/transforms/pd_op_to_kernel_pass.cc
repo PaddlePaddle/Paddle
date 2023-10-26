@@ -831,6 +831,15 @@ void HandleForWhileOp(
     (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
   }
 
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
+
   // process body block
   ProcessBlock(place,
                base_while_op.body_block(),
