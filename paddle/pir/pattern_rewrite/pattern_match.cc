@@ -145,6 +145,7 @@ void RewriterBase::ReplaceUseIf(Value from,
                                 std::function<bool(OpOperand&)> functor) {
   // Use post-increment operator for iterator since set_source() will change
   // `it`.
+  // TODO(zhangbopd): Add unit test for this.
   for (auto it = from.use_begin(); it != from.use_end();) {
     if (functor(*it))
       UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
@@ -157,6 +158,7 @@ void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
   IR_ENFORCE(op->num_results() == new_op->num_results(),
              "replacement op doesn't match results of original op");
+  // TODO(zhangbopd): Add unit test for this.
   if (op->num_results() == 1) {
     std::vector<Value> new_values;
     new_values.push_back(new_op->result(0));

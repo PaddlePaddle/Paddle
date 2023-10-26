@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/dialect/shape/ir/shape_reify_infer_shape_op.h"
+#include "paddle/phi/core/tensor_meta.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
@@ -46,6 +47,16 @@ Value MaybeCastTo(Builder &builder, Value value, Type type) {  // NOLINT
 
 void AbsOp::Build(Builder &builder, OperationArgument &argument, Value x) {
   argument.AddInput(x);
+
+  IrContext *ctx = IrContext::Instance();
+  Type dtype = x.type().dyn_cast<ShapedTypeInterface>().GetElementType();
+  phi::DDim dims = x.type().dyn_cast<DenseTensorType>().dims();
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  argument.output_types.emplace_back(
+      DenseTensorType::get(ctx, dtype, dims, data_layout, lod, offset));
 }
 
 bool AbsOp::ReifyReturnTypeShapes(Builder &builder,
@@ -67,12 +78,22 @@ void TransposeOp::Build(Builder &builder,
   for (size_t i = 0; i < static_cast<size_t>(perm.size()); i++) {
     pir::Attribute attr_perm =
         pir::Int32Attribute::get(pir::IrContext::Instance(), perm[i]);
-
     vec_perm.push_back(attr_perm);
   }
   pir::Attribute attr_perm =
       pir::ArrayAttribute::get(pir::IrContext::Instance(), vec_perm);
   argument.AddAttribute("perm", attr_perm);
+
+  IrContext *ctx = IrContext::Instance();
+  Type dtype = IndexType::get(ctx);
+  phi::DDim in_dims = x.type().dyn_cast<DenseTensorType>().dims();
+  phi::DDim out_dims = in_dims.transpose(perm);
+  phi::DataLayout data_layout = phi::DataLayout::NCHW;
+  phi::LoD lod = {{0, 1, 2}};
+  size_t offset = 0;
+
+  argument.output_types.emplace_back(
+      DenseTensorType::get(ctx, dtype, out_dims, data_layout, lod, offset));
 }
 
 std::vector<int64_t> TransposeOp::permutation() {

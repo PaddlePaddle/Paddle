@@ -21,7 +21,7 @@ bool InferShapedTypeOpInterface::ReifyReturnTypeShapes(
     std::vector<OpOperand> operands,
     std::vector<Value>& reified_return_shapes) {
   return impl_->reify_return_type_shapes(
-      builder, operands, reified_return_shapes);
+      operation(), builder, operands, reified_return_shapes);
 }
 }  // namespace pir
 
