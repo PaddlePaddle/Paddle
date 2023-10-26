@@ -24,8 +24,7 @@ tree = ElementTree.parse('python-coverage.xml')
 root = tree.getroot()
 
 sources = root.findall('sources/source')
-print("----------:", sources)
-print(sources[-1].text)
+
 source = sources[-1].text
 
 for clazz in root.findall('packages/package/classes/class'):

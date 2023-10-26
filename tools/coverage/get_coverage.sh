@@ -37,13 +37,13 @@ function generate_cpp_covinfo(){
     cd /paddle/build
     python ${PADDLE_ROOT}/tools/coverage/gcda_clean.py ${GIT_PR_ID} || exit 101
     lcov --capture -d ./ -o coverage.info --rc lcov_branch_coverage=0
-    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
+    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ] && [ -f "coverage.info" ]; then
        mv coverage.info cpp-coverage1.info
     fi
-    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
+    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ] && [ -f "coverage.info" ]; then
         mv coverage.info cpp-coverage2.info
     fi
-    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
+    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ] && [ -f "coverage.info" ]; then
         mv coverage.info cpp-coverage3.info
     fi
 }
@@ -56,13 +56,13 @@ function generate_python_covinfo(){
     $(coverage xml -i -o python-coverage.xml) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
     sed -i 's/mnt\/paddle/paddle/g' python-coverage.xml
     $(python ${PADDLE_ROOT}/tools/coverage/python_coverage.py > python-coverage.info) || [[ "${NO_PYTHON_COVERAGE_DATA}" == "1" ]]
-    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
+    if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ] && [ -f "python-coverage.info" ]; then
        mv python-coverage.info python-coverage1.info
     fi
-    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
+    if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ] && [ -f "python-coverage.info" ]; then
        mv python-coverage.info python-coverage2.info
     fi
-    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
+    if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ] && [ -f "python-coverage.info" ]; then
        mv python-coverage.info python-coverage3.info
     fi
 }
@@ -223,8 +223,10 @@ function gen_python_diff_html_report() {
 # assert coverage lines
 
 function covinfo_combine_full(){
-    lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
-    lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -o python-coverage.info
+    #lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
+    lcov -a $(ls cpp-coverage*.info) -o cpp-coverage.info
+    #lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -o python-coverage.info
+    lcov -a $(ls python-coverage*.info) -o python-coverage.info
     gen_full_html_report || true
     gen_python_full_html_report || true    
 }
