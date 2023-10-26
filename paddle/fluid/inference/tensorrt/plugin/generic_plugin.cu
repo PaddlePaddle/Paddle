@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
+#include <map>
+
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/phi_utils.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_registry.h"
+#include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/op_utils.h"
@@ -384,14 +386,8 @@ bool GenericPlugin::supportsFormatCombination(
     if (pos == 1)
       return (in_out[pos].type == nvinfer1::DataType::kINT32) &&
              (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // input Updates
-    if (pos == 2)
-      return (in_out[pos].type == nvinfer1::DataType::kFLOAT ||
-              (isFp16Supported() &&
-               in_out[pos].type == nvinfer1::DataType::kHALF)) &&
-             (in_out[pos].format == nvinfer1::TensorFormat::kLINEAR);
-    // output
-    if (pos == 3)
+    // input Updates and output
+    if (pos == 2 || pos == 3)
       return in_out[0].type == in_out[pos].type &&
              in_out[0].format == in_out[pos].format;
   } else if (op_desc_.Type() == "lookup_table_v2") {
@@ -529,26 +525,19 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                            cudaStream_t stream) TRT_NOEXCEPT {
   platform::CUDAPlace place(platform::GetCurrentDeviceId());
   // TODO(inference): generic plugin do not support INT8 precision now.
-  auto protoType2PhiType =
-      [&](GeneratePluginDataType proto_type,
-          nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
-    if (proto_type == GeneratePluginDataType::PLUGIN_FP16) {
-      return {phi::DataType::FLOAT16, sizeof(half)};
-    } else if (proto_type == GeneratePluginDataType::PLUGIN_FP32) {
-      if (isFp16Supported() && nv_dtype == nvinfer1::DataType::kHALF) {
-        return {phi::DataType::FLOAT16, sizeof(half)};
-      } else {
-        return {phi::DataType::FLOAT32, sizeof(float)};
-      }
-    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT64) {
-      return {phi::DataType::INT64, sizeof(int64_t)};
-    } else if (proto_type == GeneratePluginDataType::PLUGIN_INT32) {
-      return {phi::DataType::INT32, sizeof(int32_t)};
-    } else if (proto_type == GeneratePluginDataType::PLUGIN_BOOL) {
-      return {phi::DataType::BOOL, sizeof(bool)};
-    } else {
-      CHECK(false) << "precision is not supported";
-    }
+  auto nvType2PhiType =
+      [&](nvinfer1::DataType nv_dtype) -> std::pair<phi::DataType, int> {
+    const std::map<nvinfer1::DataType, std::pair<phi::DataType, int>> _map{
+        {nvinfer1::DataType::kFLOAT, {phi::DataType::FLOAT32, sizeof(float)}},
+        {nvinfer1::DataType::kHALF, {phi::DataType::FLOAT16, sizeof(half)}},
+        {nvinfer1::DataType::kINT8, {phi::DataType::INT8, sizeof(int8_t)}},
+        {nvinfer1::DataType::kINT32, {phi::DataType::INT32, sizeof(int32_t)}},
+        {nvinfer1::DataType::kBOOL, {phi::DataType::BOOL, sizeof(bool)}},
+        {nvinfer1::DataType::kUINT8, {phi::DataType::UINT8, sizeof(uint8_t)}},
+    };
+    CHECK(_map.count(nv_dtype))
+        << "dtype [" << static_cast<int>(nv_dtype) << "] is not supported.";
+    return _map.at(nv_dtype);
   };
 
   nvinfer1::DataType data_type;
@@ -577,8 +566,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     int input_numel = 1;
     for (int k = 0; k < input_shape.size(); k++) input_numel *= input_shape[k];
 
-    auto data_type_and_size =
-        protoType2PhiType(inputs_data_type_[i], data_type);
+    auto data_type_and_size = nvType2PhiType(input_desc[i].type);
 
     phi::DenseTensorMeta input_meta(data_type_and_size.first,
                                     phi::make_ddim(input_shape));
@@ -603,8 +591,7 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     for (int k = 0; k < output_shape.size(); k++)
       output_numel *= output_shape[k];
 
-    auto data_type_and_size =
-        protoType2PhiType(outputs_data_type_[i], data_type);
+    auto data_type_and_size = nvType2PhiType(output_desc[i].type);
     phi::DenseTensorMeta output_meta(data_type_and_size.first,
                                      phi::make_ddim(output_shape));
     std::shared_ptr<phi::Allocation> output_alloc(
