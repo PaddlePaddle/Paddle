@@ -1970,8 +1970,8 @@ OpTranslator::OpTranslator() {
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
-  special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
@@ -1983,17 +1983,17 @@ OpTranslator::OpTranslator() {
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
-  special_handlers["rnn"] = RnnOpTranscriber();
-  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
-  special_handlers["share_buffer"] = ShareBufferOpTranscriber();
-  special_handlers["set_value"] = LegacySetValueDispatcher();
-  special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
-  special_handlers["split"] = SplitOpTranscriber();
-  special_handlers["sum"] = AddNOpTranscriber();
-  special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();
   special_handlers["repeat_interleave_grad"] =
       RepeatInterLeaveGradOpTranscriber();
+  special_handlers["rnn"] = RnnOpTranscriber();
+  special_handlers["set_value"] = LegacySetValueDispatcher();
+  special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["share_buffer"] = ShareBufferOpTranscriber();
+  special_handlers["split"] = SplitOpTranscriber();
+  special_handlers["sum"] = AddNOpTranscriber();
+  special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable

@@ -21,6 +21,7 @@ repos:
         files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
+
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.5.1
     hooks:
@@ -50,6 +51,8 @@ repos:
                 paddle/utils/.*|
                 paddle/cinn/utils/registry.h
             )$
+
+
 # For Python files
 -   repo: https://github.com/psf/black.git
     rev: 23.3.0
@@ -145,6 +148,18 @@ repos:
         entry: bash ./tools/gen_ut_cmakelists.hook
         language: system
         files: testslist.csv$
+
+-   repo: local
+    hooks:
+    -   id: sort_txt
+        name: sort_txt
+        language: system
+        entry: sh
+        args:
+         - -c
+         - |
+           sort -o ./test/white_list/new_ir_op_test_white_list  ./test/white_list/new_ir_op_test_white_list
+
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
