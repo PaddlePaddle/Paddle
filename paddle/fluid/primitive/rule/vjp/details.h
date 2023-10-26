@@ -453,6 +453,14 @@ void layer_norm_grad(const Tensor& x,
   }
 
   // cast dtype to float32 if dtype =float16 or bfloat16
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+    out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
+    if (scale_ptr) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+  }
 
   auto x_sub_mean = x_cast - mean_;          // M,N
   auto tmp = (1.0 / (variance_ + epsilon));  // M,1
@@ -480,6 +488,10 @@ void layer_norm_grad(const Tensor& x,
     auto x_grad_tmp = dx_end - d_mean_d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
 
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+    }
     set_output<T>(x_grad_tmp, x_grad);
   }
 
