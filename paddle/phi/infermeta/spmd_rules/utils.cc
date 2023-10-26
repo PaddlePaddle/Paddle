@@ -187,6 +187,31 @@ bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
          (a->is_replicated() && b->is_replicated());
 }
 
+TensorDistAttr FromPlacements(
+    const TensorDistAttr& dist_attr,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
+  paddle::flat_hash_map<int64_t, ReduceType> partial_status;
+
+  for (size_t mesh_dim = 0; mesh_dim < placements.size(); mesh_dim++) {
+    auto& placement = placements[mesh_dim];
+    if (placement->is_shard()) {
+      auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(placement);
+      dims_mapping[shard_placement->get_axis()] = mesh_dim;
+    }
+    if (placement->is_partial()) {
+      auto partial_placement =
+          std::dynamic_pointer_cast<PartialStatus>(placement);
+      auto reduce_type = partial_placement->get_reduce_type();
+      partial_status[mesh_dim] = reduce_type;
+    }
+  }
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  dst_dist_attr.set_partial_status(partial_status);
+  return dst_dist_attr;
+}
+
 std::vector<int64_t> GetLocalShape(
     const std::vector<int64_t> shape,
     const ProcessMesh& mesh,
