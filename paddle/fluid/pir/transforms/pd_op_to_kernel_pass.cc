@@ -678,6 +678,22 @@ phi::KernelKey GetKernelKey(
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
 
+  // kernel backend infered incorrectly from memcpy op operands,
+  // case that place from (not GPU) to GPU.
+  // We handle this special case by following code to fix up the problem.
+  // This could be further improved if we had another method.
+  if (!platform::is_gpu_place(place)) {
+    if (op->isa<paddle::dialect::MemcpyOp>()) {
+      VLOG(6) << "MemcpyOp need a special handle";
+      int dst_place_type = op->attribute("dst_place_type")
+                               .dyn_cast<pir::Int32Attribute>()
+                               .data();
+      if (dst_place_type == 1) {
+        res.set_backend(phi::Backend::GPU);
+      }
+    }
+  }
+
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";

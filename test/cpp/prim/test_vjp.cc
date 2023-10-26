@@ -14,7 +14,7 @@
 
 #include <gtest/gtest.h>
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/pir/dialect/operator/ir/api_builder.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
@@ -77,7 +77,7 @@ TEST(VJP, TanhBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -135,7 +135,7 @@ TEST(VJP, Tanh_BackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -193,7 +193,7 @@ TEST(VJP, MeanBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars(
@@ -236,7 +236,8 @@ TEST(VJP, ConcatBackwardTest) {
   paddle::dialect::FullOp op4 = builder->Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
   std::vector<std::vector<bool>> stop_gradients{{false, false}};
-  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op1.out()},
+                                              {op3.axis()}};
   std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.concat");
@@ -252,7 +253,7 @@ TEST(VJP, ConcatBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_3",
@@ -303,7 +304,7 @@ TEST(VJP, AddBackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op2.out()}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
   std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
@@ -321,7 +322,7 @@ TEST(VJP, AddBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_2",
@@ -371,7 +372,7 @@ TEST(VJP, Add_BackwardTest) {
       std::vector<int64_t>{1}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}, {false}};
-  std::vector<std::vector<pir::Value>> inputs{{op1.out(), op2.out()}};
+  std::vector<std::vector<pir::Value>> inputs{{op1.out()}, {op2.out()}};
   std::vector<std::vector<pir::OpResult>> outputs{{op3.out()}};
   std::vector<std::vector<pir::Value>> out_grads{{op4.out()}};
 
@@ -389,7 +390,7 @@ TEST(VJP, Add_BackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_0",
@@ -439,7 +440,8 @@ TEST(VJP, SplitBackwardTest) {
       std::vector<int64_t>{1, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
   std::vector<std::vector<bool>> stop_gradients{{false}};
-  std::vector<std::vector<pir::Value>> inputs{{op1.out()}};
+  std::vector<std::vector<pir::Value>> inputs{
+      {op2.x()}, {op2.sections()}, {op2.axis()}};
   std::vector<std::vector<pir::OpResult>> outputs{{op3.outputs()}};
   std::vector<std::vector<pir::Value>> out_grads{{op3.result(0), op4.out()}};
   pir::OpInfo op2_info = ctx->GetRegisteredOpInfo("pd_op.split");
@@ -456,7 +458,7 @@ TEST(VJP, SplitBackwardTest) {
   ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
   std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
+  os << reinterpret_cast<PirInterpreter*>(
       const_cast<InterpreterBaseImpl*>(test_core.Impl()));
   std::string prefix_str = os.str();
   test_core.SetSkipGcVars({prefix_str + "_inner_var_4",
