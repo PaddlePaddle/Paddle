@@ -1367,6 +1367,8 @@ class OpTest(unittest.TestCase):
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                    elif ret_tuple is None:
+                        pass
                     else:
                         raise ValueError(
                             "output of python api should be OpResult or list of OpResult or tuple of OpResult"
