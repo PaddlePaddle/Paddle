@@ -857,7 +857,7 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.sum(abs_out, axis, None, False)
 
@@ -3143,7 +3143,7 @@ def solve(x, y, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
