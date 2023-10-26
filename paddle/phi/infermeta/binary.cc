@@ -2762,20 +2762,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
   }
 }
 
-void ShuffleBatchInferMeta(const MetaTensor& x,
-                           const MetaTensor& seed,
-                           int startup_seed,
-                           MetaTensor* out,
-                           MetaTensor* shuffleidx,
-                           MetaTensor* seed_out,
-                           MetaConfig config) {
-  out->set_dims(x.dims());
-  out->set_layout(x.layout());
-  seed_out->set_dims(seed.dims());
-  seed_out->set_layout(seed.layout());
-  shuffleidx->set_dims({-1});
-}
-
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,

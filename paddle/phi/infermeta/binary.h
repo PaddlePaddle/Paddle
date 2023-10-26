@@ -431,14 +431,6 @@ void SegmentPoolInferMeta(const MetaTensor& x,
                           MetaTensor* summed_ids,
                           MetaConfig config = MetaConfig());
 
-void ShuffleBatchInferMeta(const MetaTensor& x,
-                           const MetaTensor& seed,
-                           int startup_seed,
-                           MetaTensor* out,
-                           MetaTensor* shuffleidx,
-                           MetaTensor* seed_out,
-                           MetaConfig config = MetaConfig());
-
 void TakeAlongAxisInferMeta(const MetaTensor& x,
                             const MetaTensor& index,
                             int axis,
