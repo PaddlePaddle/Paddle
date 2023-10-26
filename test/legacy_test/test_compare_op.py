@@ -615,6 +615,21 @@ class TestCompareOpPlace(unittest.TestCase):
         self.assertEqual((result.numpy() == np.array([False])).all(), True)
 
 
+class TestLessThanInt16(unittest.TestCase):
+    def test_less_than_int16(self):
+        # Create a tensor of type int8
+        x = paddle.to_tensor([1, 2, 3], dtype='int16')
+        y = paddle.to_tensor([1, 3, 2], dtype='int16')
+
+        result = paddle.less_than(x, y)
+
+        # desired output
+        expected = np.array([False, True, False])
+
+        # Verify output
+        self.assertTrue((result.numpy() == expected).all())
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
