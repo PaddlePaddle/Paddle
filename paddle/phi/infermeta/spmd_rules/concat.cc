@@ -46,9 +46,9 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
   auto not_empty = [is_empty](const std::vector<int64_t>& shape) {
     return !is_empty(shape);
   };
-  auto& non_empty_example =
-      *std::find_if(tensor_shapes.begin(), tensor_shapes.end(), not_empty);
-  int64_t ndim = static_cast<int64_t>(non_empty_example.size());
+  auto non_empty_iter =
+      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), not_empty);
+  int64_t ndim = static_cast<int64_t>(non_empty_iter->size());
   // normlize dim
   int64_t dim = axis.to<int64_t>();
   dim = dim < 0 ? dim + ndim : dim;
@@ -65,10 +65,11 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
       input_attrs.emplace_back(dist_attr);
     }
   }
-
   // 2、align non-concat dimensions according to cost
-  std::vector<TensorDistAttr> best_dist_attr;
-  for (const auto& dist_attr : input_attrs) {
+  auto& non_empty_attr = input_attrs[non_empty_iter - tensor_shapes.begin()];
+  std::vector<std::shared_ptr<PlacementStatus>> best_placements;
+  const auto& process_mess = non_empty_attr.process_mesh();
+  for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
   }
 }
 }  // namespace distributed
