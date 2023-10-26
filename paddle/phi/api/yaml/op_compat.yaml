@@ -3275,6 +3275,12 @@
   attrs:
     pivot : pivots
 
+- op: memcpy
+  inputs:
+    x: X
+  outputs:
+    out: Out
+
 - op: memcpy_d2h
   inputs :
     x : X

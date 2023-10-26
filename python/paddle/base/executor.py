@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult
+from ..pir import OpResult, translate_to_new_ir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -1006,7 +1006,14 @@ class _ExecutorCache:
             )
         else:
             default_job = core.Job("default")
-            type_to_program = {"default": new_program.desc}
+            if get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                type_to_program = {
+                    "default": translate_to_new_ir(new_program.desc)
+                }
+            else:
+                type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
         new_exe = _StandaloneExecutor(place, plan, scope)

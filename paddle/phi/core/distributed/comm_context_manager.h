@@ -30,6 +30,13 @@
 namespace phi {
 namespace distributed {
 
+struct P2POption {
+  bool is_p2p_op;
+  int p2p_rank;
+  int num_ranks;
+  int rank;
+};
+
 class Store;
 
 class CommContextManager {
@@ -62,7 +69,8 @@ class CommContextManager {
                                     const std::string& unique_comm_key,
                                     int rank,
                                     int size,
-                                    const std::string& hash_key = "");
+                                    const std::string& hash_key = "",
+                                    const P2POption* opt = nullptr);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)

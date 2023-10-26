@@ -29,6 +29,7 @@ struct CUDAJITInfo {
   void* fn_ptr;
   std::vector<int> block_dims;
   std::vector<int> grid_dims;
+  void* compiler;
 };
 
 struct CompatibleInfo {
