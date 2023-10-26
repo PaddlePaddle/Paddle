@@ -166,58 +166,97 @@ def _append_gradient_merge_backward_op(
     grad_to_gradient_merge = {}
     # {param: gradient_merge_var} to insert scale op and fill_constant op
     new_params_to_grads = []
+
     # step2: create gradient_merge var and init with 0
+    main_program_clone = main_program.clone()
+    main_block_clone = main_program_clone.global_block()
+    grad_to_param_names = {}
     for param, grad in params_grads:
-        param_name = param.name
-        param_var = main_block.var(param_name)
-        assert param_var is not None
-        ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(param_var)
-        assert ref_dist_attr is not None
-        gradient_merge_var = main_block.create_var(
-            name=param_name + "@GRAD@GradientMerge",
-            shape=param_var.shape,
-            dtype=param_var.dtype,
-            persistable=True,
-        )
-        ref_process_mesh = ref_dist_attr.process_mesh
-        ref_dims_mapping = ref_dist_attr.dims_mapping
+        grad_to_param_names[grad.name] = param.name
 
-        set_var_dist_attr(
-            dist_context, gradient_merge_var, ref_dims_mapping, ref_process_mesh
-        )
+    for index, op in reversed(list(enumerate(main_block_clone.ops))):
+        output_var_names = op.desc.output_arg_names()
+        if len(grad_to_param_names) == 0:
+            break
+        for output_var_name in output_var_names:
+            if len(grad_to_param_names) == 0:
+                break
+            if output_var_name in grad_to_param_names:
+                param_var = main_block.var(grad_to_param_names[output_var_name])
+                assert param_var is not None
+                ref_dist_attr = dist_context.get_tensor_dist_attr_for_program(
+                    param_var
+                )
+                assert ref_dist_attr is not None
+                # Add persistable gradient variables in main_program
+                gradient_merge_var = main_block.create_var(
+                    name=param_var.name + "@GRAD@GradientMerge",
+                    shape=param_var.shape,
+                    dtype=param_var.dtype,
+                    persistable=True,
+                )
+                ref_process_mesh = ref_dist_attr.process_mesh
+                ref_dims_mapping = ref_dist_attr.dims_mapping
 
-        startup_gradient_merge_var = startup_block.create_var(
-            name=param_name + "@GRAD@GradientMerge",
-            shape=param_var.shape,
-            dtype=param_var.dtype,
-            persistable=True,
-        )
-        startup_block.append_op(
-            type="fill_constant",
-            outputs={"Out": startup_gradient_merge_var},
-            attrs={
-                "shape": param_var.shape,
-                "dtype": param_var.dtype,
-                "value": float(0),
-            },
-        )
+                set_var_dist_attr(
+                    dist_context,
+                    gradient_merge_var,
+                    ref_dims_mapping,
+                    ref_process_mesh,
+                )
 
-        # grad_merge += grad
-        new_grad_op = main_block.append_op(
-            type="elementwise_add",
-            inputs={'X': grad, 'Y': gradient_merge_var},
-            outputs={'Out': gradient_merge_var},
-            attrs={
-                'axis': -1,
-                'use_mkldnn': False,
-                OP_ROLE_KEY: OpRole.Backward,
-            },
-        )
-        new_params_to_grads.append([param, gradient_merge_var])
-        grad_to_gradient_merge[grad.name] = gradient_merge_var.name
-        naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
-            new_grad_op, ref_process_mesh, ref_dims_mapping, dist_context
-        )
+                # Add persistable gradient variables in startup_program
+                startup_gradient_merge_var = startup_block.create_var(
+                    name=param_var.name + "@GRAD@GradientMerge",
+                    shape=param_var.shape,
+                    dtype=param_var.dtype,
+                    persistable=True,
+                )
+                # Initial persistable gradient variables in startup_program
+                startup_block.append_op(
+                    type="fill_constant",
+                    outputs={"Out": startup_gradient_merge_var},
+                    attrs={
+                        "shape": param_var.shape,
+                        "dtype": param_var.dtype,
+                        "value": float(0),
+                    },
+                )
+
+                # Accumulate persistable gradient variables in main_program
+                grad_var = main_block.var(output_var_name)
+                assert grad_var is not None
+                new_grad_op = main_block._insert_op_without_sync(
+                    index + 1,
+                    type="elementwise_add",
+                    inputs={'X': grad_var, 'Y': gradient_merge_var},
+                    outputs={'Out': gradient_merge_var},
+                    attrs={
+                        'axis': -1,
+                        'use_mkldnn': False,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+
+                # Construct new_params_to_grads and grad_to_gradient_merge
+                new_params_to_grads.append([param_var, gradient_merge_var])
+                grad_to_gradient_merge[grad_var.name] = gradient_merge_var.name
+                naive_set_dist_op_attr_for_program_by_mesh_and_mapping(
+                    new_grad_op,
+                    ref_process_mesh,
+                    ref_dims_mapping,
+                    dist_context,
+                )
+
+                del grad_to_param_names[output_var_name]
+
+    assert (
+        len(grad_to_param_names) == 0
+    ), "grad_to_param_names must be empty right now, but it has {} items".format(
+        len(grad_to_param_names)
+    )
+    main_block._sync_with_cpp()
+
     return new_params_to_grads, grad_to_gradient_merge
 
 

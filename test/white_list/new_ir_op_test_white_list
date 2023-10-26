@@ -79,6 +79,7 @@ test_elementwise_mul_op
 test_elementwise_pow_op
 test_erfinv_op
 test_expand_v2_op
+test_exponential_op
 test_eye_op
 test_fill_any_op
 test_fill_constant_batch_size_like
@@ -136,6 +137,7 @@ test_matrix_nms_op
 test_matrix_power_op
 test_maxout_op
 test_mean_op
+test_memcpy_op
 test_mode_op
 test_multi_dot_op
 test_multiplex_op

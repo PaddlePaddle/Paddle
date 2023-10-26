@@ -87,7 +87,7 @@ def train_static():
         parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
     )
 
-    return to_static(train)(net, adam, x)
+    return to_static(train, full_graph=True)(net, adam, x)
 
 
 class TestSimnet(unittest.TestCase):
