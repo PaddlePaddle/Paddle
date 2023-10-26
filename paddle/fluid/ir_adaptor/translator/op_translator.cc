@@ -1910,35 +1910,16 @@ struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
       const OpInputInfoList& input_infos,
       pir::Block* block) override {
     std::vector<pir::Value> op_inputs;
+    auto x_names = op_desc.Input("X", true);
+    auto input = param_map->at(x_names[0]).value;
+    op_inputs.push_back(input);
     if (op_desc.HasInput("RepeatsTensor") &&
         !op_desc.Input("RepeatsTensor").empty()) {
-      auto x_names = op_desc.Input("X", true);
-      IR_ENFORCE(x_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 x_names.size());
-      auto input = param_map->at(x_names[0]).value;
-      op_inputs.push_back(input);
       auto repeats_names = op_desc.Input("RepeatsTensor", true);
-      IR_ENFORCE(repeats_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 repeats_names.size());
       input = param_map->at(repeats_names[0]).value;
       op_inputs.push_back(input);
-      std::cout << "return repeat_interleave_with_tensor_index inputs"
-                << std::endl;
-      return op_inputs;
-    } else {
-      auto x_names = op_desc.Input("X", true);
-      IR_ENFORCE(x_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 x_names.size());
-      auto input = param_map->at(x_names[0]).value;
-      op_inputs.push_back(input);
-      return op_inputs;
     }
+    return op_inputs;
   }
 };
 
@@ -1964,49 +1945,19 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
       const OpInputInfoList& input_infos,
       pir::Block* block) override {
     std::vector<pir::Value> op_inputs;
+    auto x_names = op_desc.Input("X", true);
+    auto input = param_map->at(x_names[0]).value;
+    op_inputs.push_back(input);
+    auto out_grad_names = op_desc.Input("Out@GRAD", true);
+    input = param_map->at(out_grad_names[0]).value;
+    op_inputs.push_back(input);
     if (op_desc.HasInput("RepeatsTensor") &&
         !op_desc.Input("RepeatsTensor").empty()) {
-      auto x_names = op_desc.Input("X", true);
-      IR_ENFORCE(x_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 x_names.size());
-      auto input = param_map->at(x_names[0]).value;
-      op_inputs.push_back(input);
       auto repeats_names = op_desc.Input("RepeatsTensor", true);
-      IR_ENFORCE(repeats_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 repeats_names.size());
       input = param_map->at(repeats_names[0]).value;
       op_inputs.push_back(input);
-
-      auto out_grad_names = op_desc.Input("Out@GRAD", true);
-      IR_ENFORCE(out_grad_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 out_grad_names.size());
-      input = param_map->at(out_grad_names[0]).value;
-      op_inputs.push_back(input);
-      return op_inputs;
-    } else {
-      auto x_names = op_desc.Input("X", true);
-      IR_ENFORCE(x_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 x_names.size());
-      auto input = param_map->at(x_names[0]).value;
-      op_inputs.push_back(input);
-
-      auto out_grad_names = op_desc.Input("Out@GRAD", true);
-      IR_ENFORCE(out_grad_names.size() == 1,
-                 "Expected op[%s]'s input X has only 1 variable, but got %d",
-                 op_desc.Type(),
-                 out_grad_names.size());
-      input = param_map->at(out_grad_names[0]).value;
-      op_inputs.push_back(input);
-      return op_inputs;
     }
+    return op_inputs;
   }
 };
 
