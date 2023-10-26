@@ -14,19 +14,19 @@
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
 phi::KernelKey {op_name}::GetKernelTypeForVar(
-    const std::string& {{var_name}},
+    const std::string& var_name,
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) {{
   VLOG(4) << "Get KernelType for Var of op: {op_name}";
   {data_transform_check}
   {complex_promote_check}
   return phi::KernelKey(tensor.place(), tensor.layout(), expected_kernel_type.dtype());
-  }}
+}}
 """
 
 OP_DATA_TRANSFORM_CHECK_TEMPLATE = """
-  {skip_trans}
-  {support_trans}
+{skip_trans}
+{support_trans}
 """
 
 OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
@@ -37,6 +37,7 @@ OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
 """
 
 OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
+  // deal support data transform
   return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
 """
 
@@ -59,9 +60,9 @@ def get_data_transform_check_str(op_data_transform_map):
             if args is not None:
                 if_cond_args = []
                 for skip_arg in args:
-                    if_cond_args.append("var_name == " + skip_arg)
+                    if_cond_args.append("var_name == \"" + skip_arg + "\"")
                 skip_trans_str = OP_SKIP_TRANSFORM_CHECK_TEMPLATE.format(
-                    ' || '.join(if_cond_args)
+                    skip_transform_check=' || '.join(if_cond_args)
                 )
         if "support_trans_dtype" in op_data_transform_map:
             args = op_data_transform_map["support_trans_dtype"]
@@ -88,6 +89,13 @@ def get_complex_promote_check_str(op_compat_item):
 def gen_kernel_type_for_var_str(
     op_class_name, op_data_transform_map, op_kernel_map, op_compat_item
 ):
+    if op_data_transform_map is None:
+        return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(
+            op_name=op_class_name,
+            complex_promote_check="",
+            data_transform_check="",
+        )
+
     data_transform_check_str = get_data_transform_check_str(
         op_data_transform_map
     )
@@ -95,6 +103,7 @@ def gen_kernel_type_for_var_str(
 
     return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(
         op_name=op_class_name,
+        complex_promote_check="",
         data_transform_check=data_transform_check_str,
-        complex_promote_check=complex_promote_check_str,
+        # complex_promote_check=complex_promote_check_str,
     )

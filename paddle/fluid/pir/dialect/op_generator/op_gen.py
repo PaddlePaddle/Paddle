@@ -1448,15 +1448,12 @@ def OpGenerator(
 
                 # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
-                if op_data_transform_map is not None:
-                    op_get_kernel_type_for_var_str = (
-                        gen_kernel_type_for_var_str(
-                            op_class_name,
-                            op_data_transform_map,
-                            op_kernel_map,
-                            op_info.op_compat_item,
-                        )
-                    )
+                op_get_kernel_type_for_var_str = gen_kernel_type_for_var_str(
+                    op_class_name,
+                    op_data_transform_map,
+                    op_kernel_map,
+                    op_info.op_compat_item,
+                )
 
                 op_infer_meta_str = gen_op_infer_meta_str(
                     op_info, op_class_name, op_info_items
