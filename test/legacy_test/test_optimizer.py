@@ -20,10 +20,10 @@ import numpy
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core, framework
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core, framework
+from paddle.base.backward import append_backward
+from paddle.base.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     program_guard,
@@ -830,8 +830,8 @@ class TestRecomputeOptimizer(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             with program_guard(main_program, startup_program):
                 input_x = paddle.static.data(
                     name="x", shape=[-1, 3], dtype='float32'
@@ -845,13 +845,13 @@ class TestRecomputeOptimizer(unittest.TestCase):
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)
 
-                place = fluid.CPUPlace()
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
+                place = base.CPUPlace()
+                exe = base.Executor(place)
+                exe.run(base.default_startup_program())
                 feed_data = gen_data()
                 drop_vec = exe.run(
                     feed=feed_data,
-                    program=fluid.default_main_program(),
+                    program=base.default_main_program(),
                     fetch_list=[
                         "dropout_with_seed_cpu.tmp_1",
                         "dropout_with_seed_cpu.tmp_1.subprog_0",
@@ -895,8 +895,8 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             with program_guard(main_program, startup_program):
                 input_x = paddle.static.data(
                     name="x", shape=[-1, 3], dtype='float32'
@@ -910,13 +910,13 @@ class TestRecomputeOptimizerCUDA(unittest.TestCase):
                 sgd._set_checkpoints([prediction])
                 sgd.minimize(cost)
 
-                place = fluid.CUDAPlace(0)
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
+                place = base.CUDAPlace(0)
+                exe = base.Executor(place)
+                exe.run(base.default_startup_program())
                 feed_data = gen_data()
                 drop_vec = exe.run(
                     feed=feed_data,
-                    program=fluid.default_main_program(),
+                    program=base.default_main_program(),
                     fetch_list=[
                         "dropout_with_seed_gpu.tmp_1",
                         "dropout_with_seed_gpu.tmp_1.subprog_0",
@@ -1028,7 +1028,7 @@ class TestOptimizerDtype(unittest.TestCase):
             def forward(self, x):
                 return x * self._w + self._b
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             model = MyLayer(dtype)
             x = paddle.rand([10, 2, 3], dtype=dtype)
             loss = model(x)
@@ -1138,7 +1138,7 @@ class TestMasterWeightSaveForFP16(unittest.TestCase):
 
     def test_with_state_dict(self):
         if core.is_compiled_with_cuda():
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 out_use_state_dict = self.check_with_opt_state_dict(
                     use_save_load=True
                 )

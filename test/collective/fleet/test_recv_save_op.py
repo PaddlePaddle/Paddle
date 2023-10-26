@@ -23,9 +23,9 @@ import numpy as np
 from dist_test_utils import remove_ps_flag
 from op import Operator
 
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import Program, program_guard
 from paddle.incubate.distributed.fleet.parameter_server.mode import (
     DistributedMode,
 )
@@ -33,12 +33,12 @@ from paddle.incubate.distributed.fleet.parameter_server.mode import (
 
 def run_pserver(pserver_id):
     remove_ps_flag(os.getpid())
-    scope = fluid.core.Scope()
+    scope = base.core.Scope()
     program = Program()
-    with fluid.scope_guard(scope):
+    with base.scope_guard(scope):
         with program_guard(program, startup_program=Program()):
             # create table parameter in scope
-            place = fluid.CPUPlace()
+            place = base.CPUPlace()
             # create and initialize Param Variable
             param = scope.var('table').get_tensor()
 
@@ -61,7 +61,7 @@ def run_pserver(pserver_id):
                 },
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             exe.run(program)
 
 
@@ -96,9 +96,9 @@ class TestListenAndServOp(unittest.TestCase):
         return port
 
     def _run_nce_op_two_pserver(self, place, port0, port1, model_file):
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         program = Program()
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             with program_guard(program, startup_program=Program()):
                 emaps = ['127.0.0.1:' + str(port0), '127.0.0.1:' + str(port1)]
 
@@ -118,12 +118,12 @@ class TestListenAndServOp(unittest.TestCase):
                 remote_recv_op.run(scope, place)
 
     def _load_slice_var(self, model_file):
-        load_prog = fluid.Program()
+        load_prog = base.Program()
         load_block = load_prog.global_block()
 
         origin = load_block.create_var(
             name="var.origin",
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[10, 8],
             dtype="float32",
             persistable=True,
@@ -131,7 +131,7 @@ class TestListenAndServOp(unittest.TestCase):
 
         slice0 = load_block.create_var(
             name="var.slice0",
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[3, 8],
             dtype="float32",
             persistable=True,
@@ -139,7 +139,7 @@ class TestListenAndServOp(unittest.TestCase):
 
         slice1 = load_block.create_var(
             name="var.slice1",
-            type=fluid.core.VarDesc.VarType.LOD_TENSOR,
+            type=base.core.VarDesc.VarType.LOD_TENSOR,
             shape=[5, 8],
             dtype="float32",
             persistable=True,
@@ -174,12 +174,12 @@ class TestListenAndServOp(unittest.TestCase):
             },
         )
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         exe.run(load_prog)
 
-        origin_var = fluid.global_scope().find_var("var.origin")
-        slice0_var = fluid.global_scope().find_var("var.slice0")
-        slice1_var = fluid.global_scope().find_var("var.slice1")
+        origin_var = base.global_scope().find_var("var.origin")
+        slice0_var = base.global_scope().find_var("var.slice0")
+        slice1_var = base.global_scope().find_var("var.slice1")
 
         origin = np.array(origin_var.get_tensor())
         slice0 = np.array(slice0_var.get_tensor())

@@ -15,9 +15,9 @@
 from paddle import _C_ops
 from paddle.utils import unique_name
 
-from ...fluid import framework
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.dygraph import no_grad
+from ...base import framework
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.dygraph import no_grad
 from .initializer import Initializer
 
 __all__ = []

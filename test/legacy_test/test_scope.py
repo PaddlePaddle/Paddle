@@ -14,24 +14,24 @@
 
 import unittest
 
-import paddle.fluid.core
+import paddle.base.core
 
 
 class TestScope(unittest.TestCase):
     def test_create_destroy(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         self.assertIsNotNone(scope)
         scope_with_parent = scope.new_scope()
         self.assertIsNotNone(scope_with_parent)
 
     def test_none_variable(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         self.assertIsNone(scope.find_var("test"))
 
     def test_create_var_get_var(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         var_a = scope.var("var_a")
         self.assertIsNotNone(var_a)
@@ -40,7 +40,7 @@ class TestScope(unittest.TestCase):
         self.assertIsNotNone(scope2.find_var('var_a'))
 
     def test_var_get_int(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         var = scope.var("test_int")
         var.set_int(10)
@@ -48,7 +48,7 @@ class TestScope(unittest.TestCase):
         self.assertEqual(10, var.get_int())
 
     def test_scope_pool(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         # Delete the scope.
         scope._remove_from_pool()
@@ -59,7 +59,7 @@ class TestScope(unittest.TestCase):
             scope._remove_from_pool()
 
     def test_size(self):
-        paddle_c = paddle.fluid.core
+        paddle_c = paddle.base.core
         scope = paddle_c.Scope()
         var_a = scope.var("var_a")
         self.assertEqual(scope.size(), 1)

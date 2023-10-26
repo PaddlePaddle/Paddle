@@ -16,7 +16,7 @@ import types
 import warnings
 
 import paddle
-from paddle.fluid import (
+from paddle.base import (
     core,
     default_main_program,
     default_startup_program,
@@ -415,7 +415,7 @@ class OptimizerWithMixedPrecision:
             ]
         params_master_grads = []
 
-        assert isinstance(target_block, paddle.fluid.framework.Block)
+        assert isinstance(target_block, paddle.base.framework.Block)
         # create
         for p, g in param_grads:
             if g.name not in self._optimizer._master_grads.keys():

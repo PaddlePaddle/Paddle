@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.jit import to_static
 from paddle.jit.dy2static.utils import Dygraph2StaticException
 
@@ -28,15 +28,15 @@ SEED = 2020
 np.random.seed(SEED)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_base(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_inside_func_base(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     def inner_func(x):
         return x
@@ -44,9 +44,9 @@ def test_inside_func_base(x):
     return inner_func(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if x < 0:
         x -= 1
         return -x
@@ -54,9 +54,9 @@ def test_return_if(x):
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if_else(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if x > 0:
         x += 10086
         return x
@@ -67,9 +67,9 @@ def test_return_if_else(x):
         x -= 8888  # useless statement to test our code can handle it.
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_while(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     i = paddle.tensor.fill_constant(shape=[1], dtype='int32', value=0)
     while i < 10:
         i += 1
@@ -80,9 +80,9 @@ def test_return_in_while(x):
     return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_for(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     for i in range(10):
         if i <= 4:
             x += 1
@@ -92,15 +92,15 @@ def test_return_in_for(x):
     return x - 1
 
 
-@to_static
+@to_static(full_graph=True)
 def test_recursive_return(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     return dyfunc_with_if_else(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_different_length_if_body(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = x + 1
     if x > 0:
         # x = to_variable(np.ones(1)) so it will return here
@@ -109,9 +109,9 @@ def test_return_different_length_if_body(x):
         return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_different_length_else(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = x + 1
     if x < 0:
         return x, y
@@ -120,15 +120,15 @@ def test_return_different_length_else(x):
         return x
 
 
-@to_static
+@to_static(full_graph=True)
 def test_no_return(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = x + 1
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_none(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = x + 1
     if x > 0:
         # x = to_variable(np.ones(1)) so it will return here
@@ -137,9 +137,9 @@ def test_return_none(x):
         return x, y
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_no_variable(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = x + 1
     if x < 0:
         return x, y
@@ -148,32 +148,32 @@ def test_return_no_variable(x):
         return
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_list_one_value(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x += 1
     return [x]
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_list_many_values(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x += 1
     y = x * 2
     z = x * x
     return [x, y, z]
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_tuple_one_value(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x += 1
     return (x,)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_tuple_many_values(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x += 1
     y = x * 2
     z = x * x
@@ -189,7 +189,7 @@ def inner_func(x):
     return y
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_without_paddle_cond(x):
     # y shape is [10]
     y = paddle.ones([10])
@@ -213,7 +213,7 @@ def diff_return_hepler(x):
         return two_value(x)
 
 
-@to_static
+@to_static(full_graph=True)
 def test_diff_return(x):
     x = paddle.to_tensor(x)
     y, z = diff_return_hepler(x)
@@ -222,7 +222,7 @@ def test_diff_return(x):
     return y, z
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_if_else_2(x):
     rr = 0
     if True:
@@ -232,7 +232,7 @@ def test_return_if_else_2(x):
         a = 0
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_while_2(x):
     while True:
         a = 12
@@ -240,7 +240,7 @@ def test_return_in_while_2(x):
     return 10
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_in_for_2(x):
     a = 12
     for i in range(10):
@@ -248,7 +248,7 @@ def test_return_in_for_2(x):
     return 10
 
 
-@to_static
+@to_static(full_graph=True)
 def test_return_nested(x):
     def func():
         rr = 0
@@ -264,13 +264,14 @@ def test_return_nested(x):
     return func()
 
 
+@dy2static_unittest
 class TestReturnBase(unittest.TestCase):
     def setUp(self):
         self.input = np.ones(1).astype('int32')
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.init_dygraph_func()
 
@@ -279,7 +280,7 @@ class TestReturnBase(unittest.TestCase):
 
     def _run(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             res = self.dygraph_func(self.input)
             if isinstance(res, (tuple, list)):
                 return tuple(r.numpy() for r in res)

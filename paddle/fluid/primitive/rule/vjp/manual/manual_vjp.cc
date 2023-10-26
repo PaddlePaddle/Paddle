@@ -15,56 +15,55 @@
 // Auto Generated, DO NOT EDIT!
 
 #include "paddle/fluid/primitive/rule/vjp/manual/manual_vjp.h"
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/prim/utils/static/static_global_utils.h"
 #include "paddle/fluid/primitive/backend/backend.h"
 #include "paddle/fluid/primitive/rule/vjp/details.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
-#include "paddle/ir/core/operation.h"
+#include "paddle/pir/core/operation.h"
 
 namespace paddle {
 namespace primitive {
 
-std::vector<std::vector<paddle::Tensor>> concat_vjp(
-    const std::vector<Tensor>& x,
+std::vector<std::vector<paddle::Tensor>> add_n_vjp(
+    const std::vector<paddle::Tensor>& x,
     const Tensor& out_grad,
-    const Tensor& axis,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<paddle::Tensor>> vjp_res(2, std::vector<Tensor>());
-  // get concat_grad res.
-  std::vector<Tensor> op_res =
-      backend::concat_grad<primitive::LazyTensor>(x, out_grad, axis);
-
-  // construct vjp result by op result and stop_gradients info
-  vjp_res[0].resize(op_res.size());
-  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
-    if (!stop_gradients[0][idx]) {
-      vjp_res[0][idx] = op_res[idx];
-    }
+  std::vector<std::vector<paddle::Tensor>> vjp_res;
+  for (auto arg : stop_gradients) {
+    vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
   }
-  // vjp_res[1] is axis's grad which is attribute (no grad).
-  vjp_res[1].resize(1);
+  auto op_res = backend::add_n_grad<LazyTensor>(x, out_grad);
+  vjp_res[0] = op_res;
+  vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
   return vjp_res;
 }
 
-std::vector<std::vector<paddle::Tensor>> split_vjp(
-    const std::vector<Tensor>& out_grads,
-    const Tensor& axis,
+std::vector<std::vector<paddle::Tensor>> reshape_vjp(
+    const Tensor& xshape,
+    const Tensor& out_grad,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  std::vector<std::vector<paddle::Tensor>> vjp_res(3, std::vector<Tensor>(1));
-  // get concat_grad res.
-  Tensor op_res = backend::split_grad<primitive::LazyTensor>(out_grads, axis);
-
-  // construct vjp result by op result and stop_gradients info
-  if (!stop_gradients[0][0]) {
-    vjp_res[0][0] = op_res;
+  std::vector<std::vector<paddle::Tensor>> vjp_res;
+  for (auto arg : stop_gradients) {
+    vjp_res.push_back(std::vector<paddle::Tensor>(arg.size()));
   }
+  std::string op_name = "reshape_grad";
+  auto need_skip =
+      paddle::prim::StaticCompositeContext::Instance().CheckSkipCompOps(
+          op_name);
+  if (paddle::prim::StaticCompositeContext::Instance().IsBwdPrimEnabled() &&
+      !need_skip) {
+    FLAGS_tensor_operants_mode = "static";
+    VLOG(4) << "Call PIR Decomposed backward op reshape_grad";
+    paddle::Tensor* x_grad = !stop_gradients[0][0] ? &vjp_res[0][0] : nullptr;
 
-  // vjp_res[1] is sections's grad which is attribute (no grad).
-  // vjp_res[2] is axis's grad which is attribute (no grad).
-  vjp_res[1].resize(stop_gradients[1].size());
-  vjp_res[2].resize(stop_gradients[2].size());
+    details::reshape_grad<LazyTensor>(xshape, out_grad, x_grad);
+  } else {
+    auto op_res = backend::reshape_grad<LazyTensor>(xshape, out_grad);
+    vjp_res[0][0] = op_res;
+    vjp_res = ConstructVjpResultByStopGradients(vjp_res, stop_gradients);
+  }
   return vjp_res;
 }
 

@@ -63,6 +63,15 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaTensor* output_box,
                        MetaConfig config = MetaConfig());
 
+void DpsgdInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    float clip,
+                    float batch_size,
+                    float sigma,
+                    int size,
+                    MetaTensor* param_out);
+
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,

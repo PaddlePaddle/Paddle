@@ -242,7 +242,7 @@ uint64_t Generator::GetCurrentSeed() {
 
 uint64_t Generator::Seed() {
   std::lock_guard<std::mutex> lock(this->mu_);
-  uint64_t seed;
+  uint64_t seed = 0;
   std::random_device de;
   seed = ((((uint64_t)de()) << 32) + de()) & 0x1FFFFFFFFFFFFF;
   this->state_.current_seed = seed;

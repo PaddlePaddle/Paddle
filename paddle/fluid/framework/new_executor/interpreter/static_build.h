@@ -23,11 +23,39 @@ namespace paddle {
 namespace framework {
 namespace interpreter {
 
+struct VarMetaInfo {
+  std::string name_;
+  phi::DataType dtype_;
+  phi::Place place_;
+
+  explicit VarMetaInfo(const std::string& name) : name_(name) {
+    dtype_ = phi::DataType::UNDEFINED;
+    place_ = phi::Place();
+  }
+
+  VarMetaInfo(const std::string& name,
+              const phi::DataType& dtype,
+              const platform::Place& place)
+      : name_(name), dtype_(dtype), place_(place) {}
+
+  bool operator==(const VarMetaInfo& other) const {
+    return name_ == other.name_ && dtype_ == other.dtype_ &&
+           place_ == other.place_;
+  }
+
+  bool operator!=(const VarMetaInfo& other) const {
+    return name_ != other.name_ || dtype_ != other.dtype_ ||
+           place_ != other.place_;
+  }
+};
+
 bool BlockCanBeStaticBuilt(const framework::BlockDesc& block);
 
-void FakeInitializeOutputsForOperatorBase(const OperatorBase& op,
-                                          const platform::Place& place,
-                                          Scope* scope);
+void FakeInitializeOutputsForOperatorBase(
+    const OperatorBase& op,
+    const phi::Place& place,
+    Scope* scope,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops);
 
 void FakeInitializeOutputsForFunctionKernel(
     const framework::OperatorBase& op,
@@ -39,6 +67,10 @@ void FakeInitializeOutputsForFunctionKernel(
 void FakeInitializeOutputsForStructureKernel(
     const framework::OpKernelType& op_kernel_type,
     ExecutionContext* execution_context);
+
+std::vector<VarMetaInfo> GetVarsInfo(const Scope* scope,
+                                     VariableNameMap var_map,
+                                     const OperatorBase& op);
 
 }  // namespace interpreter
 }  // namespace framework

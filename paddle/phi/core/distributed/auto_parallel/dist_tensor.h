@@ -30,12 +30,12 @@ class DistTensor final
   /// \brief Careful to create dist tensor using default constructor.
   /// this should only used in reshard for now, and the dist properties
   /// will be set by reshard later.
-  DistTensor() = default;
+  DistTensor();
 
   /// \brief Construct a dist tensor based dense tensor.
   /// \param global_value The global dense tensor of the current tensor.
   /// \param dist_attr The distributed attributes of the current tensor.
-  DistTensor(const phi::DenseTensor& global_value,
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
              const TensorDistAttr& dist_attr);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
@@ -56,15 +56,28 @@ class DistTensor final
 
   /// \brief Set the global dims of the dist tensor.
   /// \return void
-  void set_dims(const DDim& dims);
+  void unsafe_set_dims(const DDim& dims);
 
   /// \brief Returns the dist attr of current dist tensor.
   /// \return The TensorDistAttr's const reference
   const TensorDistAttr& dist_attr() const { return dist_attr_; }
 
+  /// \brief Set the dist attr of current dist tensor.
+  /// \return void
+  void unsafe_set_dist_attr(const TensorDistAttr& dist_attr);
+
   /// \brief Returns the dense tensor value's const reference in dist tensor.
   /// \return The DenseTensor value's const reference
-  const DenseTensor& value() const { return value_; }
+  const DenseTensor& value() const { return *value_; }
+
+  /// \brief Returns the mutable dense tensor value in dist tensor.
+  /// \note If DenseTensor value is modified externally, the corresponding
+  /// relationship between it and the current tensor's global dims and
+  /// dist attr may be destroyed, which may introduce some subtle bugs,
+  /// so you need to make sure to consider it thoroughly when using
+  /// this method.
+  /// \return The mutable pointer of DenseTensor value
+  DenseTensor* unsafe_mutable_value() { return value_.get(); }
 
   /// \brief Returns the global dims of the dist tensor.
   /// \return The global dims of the dist tensor.
@@ -113,7 +126,7 @@ class DistTensor final
   // The distributed attributes
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
-  DenseTensor value_;
+  std::shared_ptr<DenseTensor> value_;
 };
 
 }  // namespace distributed

@@ -19,10 +19,10 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.distributed.passes.pass_utils import get_skip_gc_vars, split_program
-from paddle.fluid import core
-from paddle.fluid.core import Job, Plan
-from paddle.fluid.executor import _add_feed_fetch_ops, _StandaloneExecutor
+from paddle.base import core
+from paddle.base.core import Job, Plan
+from paddle.base.executor import _add_feed_fetch_ops, _StandaloneExecutor
+from paddle.distributed.passes.pass_utils import set_skip_gc_vars, split_program
 from paddle.nn import TransformerEncoderLayer
 
 paddle.enable_static()
@@ -94,7 +94,7 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
                 dtype="float32",
             )
 
-            loader = paddle.fluid.io.DataLoader.from_generator(
+            loader = paddle.base.io.DataLoader.from_generator(
                 feed_list=[enc_input, attn_mask],
                 use_double_buffer=False,
                 capacity=16,
@@ -180,13 +180,11 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         job_list = []
         program_num = len(programs)
-        skip_gc_vars = get_skip_gc_vars(programs)
 
         for micro_batch_id in range(micro_batch_num):
             for program_id in range(program_num):
                 job = Job(f"P{program_id}")
                 job.set_micro_batch_id(micro_batch_id)
-                job.set_skip_gc_vars(skip_gc_vars[program_id])
                 # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
                 if program_id == program_num - 1:
                     fetch_op_id_to_col_attr = {}
@@ -199,8 +197,11 @@ class TestEncorderMulitMicroBatchRun(unittest.TestCase):
 
         type_to_program = {}
         for program_id in range(program_num):
-            type_to_program[f"P{program_id}"] = programs[program_id].desc
+            type_to_program[f"P{program_id}"] = programs[program_id]
+        set_skip_gc_vars(micro_batch_num, type_to_program, job_list)
 
+        for type in type_to_program.keys():
+            type_to_program[type] = type_to_program[type].desc
         plan = Plan(job_list, type_to_program)
 
         main_exe = _StandaloneExecutor(self.place, plan, scope)

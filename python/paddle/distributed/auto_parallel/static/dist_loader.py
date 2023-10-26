@@ -199,7 +199,7 @@ class DistributedDataLoaderFromGenerator(DistributedDataLoaderBase):
 
                 yield partial_data
 
-        dataloader = paddle.fluid.io.DataLoader.from_generator(
+        dataloader = paddle.base.io.DataLoader.from_generator(
             feed_list=self.feed_list,
             capacity=self.capacity,
             use_double_buffer=self.use_double_buffer,

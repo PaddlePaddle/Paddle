@@ -18,11 +18,15 @@ import unittest
 
 import gym
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.jit.api import to_static
 from paddle.nn import Layer
 
@@ -63,9 +67,9 @@ def train(args, place, to_static):
     paddle.jit.enable_to_static(to_static)
 
     env = gym.make('CartPole-v0')
-    env.seed(SEED)
+    env.reset(seed=SEED)
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
@@ -168,12 +172,13 @@ def train(args, place, to_static):
         loss_data = []
         running_reward = 10
         for i_episode in itertools.count(1):
-            state, ep_reward = env.reset(), 0
+            state, _ = env.reset()
+            ep_reward = 0
             # The default loop number is 10000 is models, we changed it to 1000 for smaller test
             for t in range(1, 1000):
                 state = np.array(state).astype("float32")
                 action, loss = select_action(state)
-                state, reward, done, _ = env.step(action)
+                state, reward, done, _, _ = env.step(action)
 
                 # log loss_probs
                 loss_data.append(float(loss))
@@ -201,15 +206,17 @@ def train(args, place, to_static):
         return np.array(loss_data)
 
 
+@dy2static_unittest
 class TestDeclarative(unittest.TestCase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.args = Args()
 
+    @test_and_compare_with_new_ir(False)
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)

@@ -14,7 +14,6 @@
 
 #pragma once
 #include <absl/types/any.h>
-#include <gflags/gflags.h>
 #include <isl/cpp.h>
 
 #include <mutex>
@@ -25,10 +24,11 @@
 #include "paddle/cinn/common/debug_manager.h"
 #include "paddle/cinn/common/info_registry.h"
 #include "paddle/cinn/common/target.h"
+#include "paddle/utils/flags.h"
 
 namespace cinn {
 
-DECLARE_bool(cinn_runtime_display_debug_info);
+PD_DECLARE_bool(cinn_runtime_display_debug_info);
 
 namespace ir {
 class Expr;

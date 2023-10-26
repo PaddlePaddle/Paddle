@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from paddle.fluid.data_feeder import check_type, convert_dtype
+from paddle.base.data_feeder import check_type, convert_dtype
 
 from ..framework import core
 
@@ -126,15 +126,11 @@ def _format_item(np_var, max_width=0, signed=False):
         or np_var.dtype == np.float16
     ):
         if DEFAULT_PRINT_OPTIONS.sci_mode:
-            item_str = '{{:.{}e}}'.format(
-                DEFAULT_PRINT_OPTIONS.precision
-            ).format(np_var)
+            item_str = f'{np_var:.{DEFAULT_PRINT_OPTIONS.precision}e}'
         elif np.ceil(np_var) == np_var:
             item_str = f'{np_var:.0f}.'
         else:
-            item_str = '{{:.{}f}}'.format(
-                DEFAULT_PRINT_OPTIONS.precision
-            ).format(np_var)
+            item_str = f'{np_var:.{DEFAULT_PRINT_OPTIONS.precision}f}'
     else:
         item_str = f'{np_var}'
 

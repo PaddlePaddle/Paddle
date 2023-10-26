@@ -49,7 +49,7 @@ void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,
                         bool flatten,
-                        int dtype,
+                        DataType dtype,
                         MetaTensor* out,
                         MetaConfig config = MetaConfig());
 
@@ -73,13 +73,6 @@ void CastInferMeta(const MetaTensor& x, DataType out_dtype, MetaTensor* out);
 
 void CConcatInferMeta(const MetaTensor& x, int nranks, MetaTensor* out);
 
-void SendV2InferMeta(const int peer, const int ring_id);
-
-void RecvV2InferMeta(int peer,
-                     DataType dtype,
-                     const std::vector<int>& out_shape,
-                     MetaTensor* out);
-
 void ChannelShuffleInferMeta(const MetaTensor& x,
                              int groups,
                              const std::string& data_format,
@@ -95,6 +88,11 @@ void CheckNumericsInferMeta(const MetaTensor& tensor,
                             MetaTensor* values);
 
 void CholeskyInferMeta(const MetaTensor& x, bool upper, MetaTensor* out);
+
+void CINNBroadcastInferMeta(const MetaTensor& x,
+                            const std::vector<int64_t>& axes,
+                            const std::vector<int64_t>& out_shape,
+                            MetaTensor* output);
 
 void ClassCenterSampleInferMeta(const MetaTensor& label,
                                 int num_classes,
@@ -146,6 +144,11 @@ void CumWithIndicesInferMeta(const MetaTensor& x,
 void DecodeJpegInferMeta(const MetaTensor& x,
                          const std::string& mode,
                          MetaTensor* out);
+
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y);
 
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out);
@@ -448,10 +451,17 @@ void PSendInferMeta(const MetaTensor& x, int peer);
 
 void PSendArrayInferMeta(const MetaTensor& x, int peer);
 
+void SendV2InferMeta(const int peer, const int ring_id);
+
 void QrInferMeta(const MetaTensor& x,
                  const std::string& mode,
                  MetaTensor* q,
                  MetaTensor* r);
+
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y);
 
 void WeightQuantizeInferMeta(const MetaTensor& x,
                              const std::string& algo,

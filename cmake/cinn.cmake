@@ -114,10 +114,6 @@ include(cmake/cinn/core.cmake)
 include(cmake/cinn/nvrtc.cmake)
 include(cmake/cinn/nvtx.cmake)
 
-if(CINN_ONLY)
-  link_libraries(gflags)
-endif()
-
 set(LINK_FLAGS
     "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cinn/export.map"
     CACHE INTERNAL "")
@@ -168,8 +164,8 @@ cinn_cc_library(
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 if(NOT CINN_ONLY)
-  target_link_libraries(cinnapi phi)
-  add_dependencies(cinnapi phi)
+  target_link_libraries(cinnapi pd_op_dialect phi)
+  add_dependencies(cinnapi pd_op_dialect phi)
 endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
@@ -183,9 +179,9 @@ if(WITH_MKL)
   endif()
 endif()
 
-if(NOT WITH_GFLAGS)
-  target_link_libraries(cinnapi gflags)
-  add_dependencies(cinnapi gflags)
+if(CINN_ONLY)
+  target_link_libraries(cinnapi ${flags_dep})
+  add_dependencies(cinnapi ${flags_dep})
 endif()
 
 if(WITH_GPU)
@@ -226,8 +222,8 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
-    target_link_libraries(${CINNCORE_TARGET} phi)
-    add_dependencies(${CINNCORE_TARGET} phi)
+    target_link_libraries(${CINNCORE_TARGET} pd_op_dialect phi)
+    add_dependencies(${CINNCORE_TARGET} pd_op_dialect phi)
   endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
@@ -242,9 +238,9 @@ function(gen_cinncore LINKTYPE)
     endif()
   endif()
 
-  if(NOT WITH_GFLAGS)
-    target_link_libraries(${CINNCORE_TARGET} gflags)
-    add_dependencies(${CINNCORE_TARGET} gflags)
+  if(CINN_ONLY)
+    target_link_libraries(${CINNCORE_TARGET} ${flags_dep})
+    add_dependencies(${CINNCORE_TARGET} ${flags_dep})
   endif()
 
   if(WITH_GPU)
@@ -272,6 +268,9 @@ set(PUBLISH_LIBS ON)
 if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
+  set(core_includes
+      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h;paddle/utils/test_macros.h"
+  )
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

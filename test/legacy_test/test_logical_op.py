@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import convert_float_to_uint16
+from op_test import convert_float_to_uint16
 
 import paddle
 from paddle.framework import in_dynamic_mode
@@ -67,6 +67,7 @@ TEST_META_WRONG_SHAPE_DATA = {
 }
 
 
+# @test_with_pir_api
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
     startup_program = Program()

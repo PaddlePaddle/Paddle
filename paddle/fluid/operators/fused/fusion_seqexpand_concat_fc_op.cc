@@ -49,10 +49,10 @@ void FusionSeqExpandConcatFCOp::InferShape(
       platform::errors::InvalidArgument(
           "Input(FCWeight)'s rank must be 2, but received value is: %d.",
           w_dims.size()));
-  const int D = w_dims[1];
-  int sum = ins_dims[0][1];
+  const int D = static_cast<int>(w_dims[1]);
+  int sum = static_cast<int>(ins_dims[0][1]);
   for (size_t i = 1; i < ins_dims.size(); ++i) {
-    sum += ins_dims[i][1];
+    sum += static_cast<int>(ins_dims[i][1]);
   }
   PADDLE_ENFORCE_EQ(
       sum,
@@ -163,11 +163,11 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     auto ref_dims = ref_in->dims();  // T x M0
     auto in1_dims = ins[1]->dims();  // N x M1
     auto w_dims = w->dims();
-    const int N = ref_lod[0].size() - 1;
-    const int total_T = ref_dims[0];
-    const int M0 = ref_dims[1];
-    const int M1 = in1_dims[1];
-    const int D = w_dims[1];
+    const int N = static_cast<int>(ref_lod[0].size() - 1);
+    const int total_T = static_cast<int>(ref_dims[0]);
+    const int M0 = static_cast<int>(ref_dims[1]);
+    const int M1 = static_cast<int>(in1_dims[1]);
+    const int D = static_cast<int>(w_dims[1]);
 
     // some check and fcout should be reshape here
     // since infershape can not get lod info
@@ -257,7 +257,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     for (size_t i = 2; i < ins.size(); ++i) {
       // add on
       const T* in_data = ins[i]->data<T>();
-      const int K = ins[i]->dims()[1];
+      const int K = static_cast<int>(ins[i]->dims()[1]);
       blas.GEMM(CblasNoTrans,
                 CblasNoTrans,
                 N,
@@ -275,7 +275,7 @@ class FusionSeqExpandConcatFCOpKernel : public framework::OpKernel<T> {
     }
     T* cur_out_data = out_data;
     for (int i = 0; i < N; ++i) {
-      int seq_len = ref_lod[0][i + 1] - ref_lod[0][i];
+      int seq_len = static_cast<int>(ref_lod[0][i + 1] - ref_lod[0][i]);
       T* src = fc_out_data + i * D;
       for (int step = 0; step < seq_len; ++step) {
         blas.VADD(D, cur_out_data, src, cur_out_data);

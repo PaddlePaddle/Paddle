@@ -17,13 +17,13 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.tensor import random
 
 
 class TestManualSeed(unittest.TestCase):
     def test_seed(self):
-        fluid.enable_dygraph()
+        base.enable_dygraph()
 
         gen = paddle.seed(12312321111)
         x = random.gaussian([10], dtype="float32")
@@ -38,7 +38,7 @@ class TestManualSeed(unittest.TestCase):
         x2_np = x2.numpy()
         x3_np = x3.numpy()
 
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             np.testing.assert_allclose(x1_np, x2_np, rtol=1e-05)
             np.testing.assert_allclose(x_np, x3_np, rtol=1e-05)
 

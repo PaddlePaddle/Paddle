@@ -93,8 +93,9 @@ class SequencePadOp : public framework::OperatorWithKernel {
                             x_dims[0],
                             static_cast<int64_t>(x_lod_0.back())));
 
-      int seq_num = x_lod_0.size() - 1;
-      int max_seq_len = phi::funcs::MaximumSequenceLength(x_lod_0);
+      int seq_num = static_cast<int>(x_lod_0.size() - 1);
+      int max_seq_len =
+          static_cast<int>(phi::funcs::MaximumSequenceLength(x_lod_0));
       if (padded_length == -1) {
         padded_length = max_seq_len;
       }

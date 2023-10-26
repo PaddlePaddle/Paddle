@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 from paddle.static import InputSpec
@@ -108,6 +108,7 @@ class LayerWithSetValue(paddle.nn.Layer):
         return x
 
 
+@dy2static_unittest
 class TestSliceWithoutControlFlow(unittest.TestCase):
     def setUp(self):
         self.init_input()
@@ -169,6 +170,7 @@ class TestSetValue(TestSliceWithoutControlFlow):
         self.dygraph_func = test_set_value
 
 
+@dy2static_unittest
 class TestSetValueWithLayerAndSave(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -189,6 +191,7 @@ class TestSetValueWithLayerAndSave(unittest.TestCase):
         )
 
 
+@dy2static_unittest
 class TestSliceSupplementSpecialCase(unittest.TestCase):
     # unittest for slice index which abs(step)>0. eg: x[::2]
     def test_static_slice_step(self):
@@ -232,6 +235,7 @@ class TestSliceSupplementSpecialCase(unittest.TestCase):
         )
 
 
+@dy2static_unittest
 class TestPaddleStridedSlice(unittest.TestCase):
     def test_compare_paddle_strided_slice_with_numpy(self):
         paddle.disable_static()
@@ -293,6 +297,7 @@ def slice_zero_shape_tensor(x):
     return y
 
 
+@dy2static_unittest
 class TestSliceZeroShapeTensor(unittest.TestCase):
     def test_slice(self):
         paddle.disable_static()

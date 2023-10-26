@@ -21,7 +21,7 @@ import numpy as np
 from imperative_test_utils import ImperativeLenet, fix_model_dict
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.framework import core, set_flags
 from paddle.nn import Conv2D, Conv2DTranspose
 from paddle.nn.quant.quant_layers import (
@@ -72,7 +72,7 @@ class TestImperativeQat(unittest.TestCase):
             onnx_format=self.onnx_format,
         )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             # For CI coverage
             conv1 = Conv2D(
                 in_channels=3,

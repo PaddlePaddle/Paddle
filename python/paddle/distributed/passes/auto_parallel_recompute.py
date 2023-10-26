@@ -15,14 +15,14 @@
 import logging
 
 import paddle
-from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
-from paddle.fluid.backward import (
+from paddle.base.backward import (
     ProgramStats,
     _append_grad_suffix_,
     _find_op_path_,
     _get_no_grad_set_name,
     _rename_arg_,
 )
+from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
 from paddle.framework import core
 from paddle.utils import unique_name
 
@@ -185,8 +185,8 @@ class RecomputeState(ProgramStats):
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
             cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
-            cur_op._remove_attr("fix_seed")
-            cur_op._remove_attr("seed")
+            cur_op.desc._set_attr("fix_seed", False)
+            cur_op.desc._set_attr("seed", 0)
             cur_op_dist_attr.set_input_dist_attr(
                 seed_var.name, seed_var_dist_attr
             )
@@ -416,10 +416,6 @@ class RecomputePass(PassBase):
         # segments ops should be inserted.
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]
-            # remove some attrs of dropout_grad op's desc
-            if grad_op.type == "dropout_grad":
-                grad_op._remove_attr("fix_seed")
-                grad_op._remove_attr("seed")
 
             input_and_output_names = []
             input_and_output_names.extend(grad_op.input_arg_names)

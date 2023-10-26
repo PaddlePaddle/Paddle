@@ -386,8 +386,7 @@ void *Alloc<platform::CUDAPinnedPlace>(const platform::CUDAPinnedPlace &place,
   if (ptr == nullptr) {
     LOG(WARNING) << "cudaHostAlloc Cannot allocate " << size
                  << " bytes in CUDAPinnedPlace";
-  }
-  if (FLAGS_init_allocated_mem) {
+  } else if (FLAGS_init_allocated_mem) {
     memset(ptr, 0xEF, size);
   }
   return ptr;

@@ -693,7 +693,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
 
   // broadcast parameters from the 0th device to others:
   auto need_broadcast = [&]() -> bool {
-    if (member_->build_strategy_.num_trainers_ > 1) {
+    if (member_->build_strategy_.num_trainers_ > 1) {  // NOLINT
       // 1. num_tariners would be grater than 1 for nccl distributed training.
       return true;
     } else if (member_->local_scopes_.size() != 1 && local_scopes.empty()) {
@@ -936,11 +936,9 @@ void ParallelExecutor::BCastParamsToDevices(
         auto share_memory = [&] { t->ShareDataWith(main_tensor); };
 
         // FIXME(zcd): LR_DECAY_COUNTER should not be shared. This is a hot fix.
-        if (member_->build_strategy_.async_mode_) {
-          share_memory();
-        } else if (member_->use_all_reduce_ ||
-                   member_->IsUseCUDA(member_->use_device_) ||
-                   var == "@LR_DECAY_COUNTER@") {
+        if (member_->use_all_reduce_ ||
+            member_->IsUseCUDA(member_->use_device_) ||
+            var == "@LR_DECAY_COUNTER@") {
           copy_memory();
         } else {
           share_memory();
@@ -1512,7 +1510,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
                           device_count,
                           graphs.size()));
     VLOG(3) << "use local async mode";
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            {member_->places_[0]},
                                            loss_var_name,
                                            {member_->local_scopes_[0]},
@@ -1530,7 +1528,7 @@ std::vector<ir::Graph *> ParallelExecutor::CompileGraphWithBuildStrategy(
       async_graphs[i] = graphs[i];
     }
   } else {
-    graph = member_->build_strategy_.Apply(graph,
+    graph = member_->build_strategy_.Apply(graph,  // NOLINT
                                            member_->places_,
                                            loss_var_name,
                                            member_->local_scopes_,

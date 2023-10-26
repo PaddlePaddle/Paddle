@@ -20,7 +20,7 @@ from parallel_executor_test_base import DeviceType, TestParallelExecutorBase
 from simple_nets import init_data
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 batch_size = 12
 img_shape = [1, 28, 28]

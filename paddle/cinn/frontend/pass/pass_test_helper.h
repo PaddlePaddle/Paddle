@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -42,8 +41,9 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cinn_use_op_fusion);
+PD_DECLARE_bool(cinn_use_op_fusion);
 
 namespace cinn {
 namespace frontend {

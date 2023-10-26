@@ -24,8 +24,9 @@ from rnn_numpy import GRUCell, LSTMCell, SimpleRNNCell
 
 
 class TestSimpleRNNCell(unittest.TestCase):
-    def __init__(self, bias=True, place="cpu"):
+    def __init__(self, weight=True, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
+        self.weight = weight
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -33,9 +34,14 @@ class TestSimpleRNNCell(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static(self.place)
-        rnn1 = SimpleRNNCell(16, 32, bias=self.bias)
+        rnn1 = SimpleRNNCell(16, 32, weight=self.weight, bias=self.bias)
         rnn2 = paddle.nn.SimpleRNNCell(
-            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            16,
+            32,
+            weight_ih_attr=self.weight,
+            weight_hh_attr=self.weight,
+            bias_ih_attr=self.bias,
+            bias_hh_attr=self.bias,
         )
         convert_params_for_cell(rnn1, rnn2)
 
@@ -76,8 +82,9 @@ class TestSimpleRNNCell(unittest.TestCase):
 
 
 class TestGRUCell(unittest.TestCase):
-    def __init__(self, bias=True, place="cpu"):
+    def __init__(self, weight=True, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
+        self.weight = weight
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
@@ -85,9 +92,14 @@ class TestGRUCell(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static(self.place)
-        rnn1 = GRUCell(16, 32, bias=self.bias)
+        rnn1 = GRUCell(16, 32, weight=self.weight, bias=self.bias)
         rnn2 = paddle.nn.GRUCell(
-            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            16,
+            32,
+            weight_ih_attr=self.weight,
+            weight_hh_attr=self.weight,
+            bias_ih_attr=self.bias,
+            bias_hh_attr=self.bias,
         )
         convert_params_for_cell(rnn1, rnn2)
 
@@ -128,17 +140,23 @@ class TestGRUCell(unittest.TestCase):
 
 
 class TestLSTMCell(unittest.TestCase):
-    def __init__(self, bias=True, place="cpu"):
+    def __init__(self, weight=True, bias=True, place="cpu"):
         super().__init__(methodName="runTest")
+        self.weight = weight
         self.bias = bias
         self.place = (
             paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(0)
         )
 
     def setUp(self):
-        rnn1 = LSTMCell(16, 32, bias=self.bias)
+        rnn1 = LSTMCell(16, 32, weight=self.weight, bias=self.bias)
         rnn2 = paddle.nn.LSTMCell(
-            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias
+            16,
+            32,
+            weight_ih_attr=self.weight,
+            weight_hh_attr=self.weight,
+            bias_ih_attr=self.bias,
+            bias_hh_attr=self.bias,
         )
         convert_params_for_cell(rnn1, rnn2)
 
@@ -186,11 +204,14 @@ class TestLSTMCell(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = (
-        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
-    )
-    for bias in [True, False]:
-        for device in devices:
-            for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
-                suite.addTest(test_class(bias, device))
+    devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
+    for weight in [True, False]:
+        for bias in [True, False]:
+            for device in devices:
+                for test_class in [
+                    TestSimpleRNNCell,
+                    TestGRUCell,
+                    TestLSTMCell,
+                ]:
+                    suite.addTest(test_class(weight, bias, device))
     return suite

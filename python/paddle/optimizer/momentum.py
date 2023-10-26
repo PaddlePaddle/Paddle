@@ -19,7 +19,7 @@ from paddle import _C_ops
 from paddle.framework import in_dynamic_mode
 from paddle.regularizer import L2Decay
 
-from ..fluid import core, framework
+from ..base import core, framework
 from .optimizer import Optimizer
 
 __all__ = []
@@ -59,15 +59,15 @@ class Momentum(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
-            :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
+            If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
             Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient clipping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three clipping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default None, meaning there is no gradient clipping.
         multi_precision (bool, optional): Whether to use multi-precision during weight updating. Default is false.
         rescale_grad (float, optional): Multiply the gradient with `rescale_grad` before updating. \
             Often choose to be ``1.0/batch_size``.
@@ -537,7 +537,6 @@ class Momentum(Optimizer):
                         attrs=attrs,
                         stop_gradient=True,
                     )
-        return None
 
     def _update_param_group(self, parameters):
         self._momentum = parameters.get(

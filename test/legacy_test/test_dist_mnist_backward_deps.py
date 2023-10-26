@@ -30,9 +30,9 @@ class TestDistMnistNCCL2BackWardDeps(TestDistBase):
         self._enable_backward_deps = True
 
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place("dist_mnist.py", delta=1e-5)
 
 

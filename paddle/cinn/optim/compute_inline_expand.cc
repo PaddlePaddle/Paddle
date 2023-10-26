@@ -18,8 +18,8 @@
 #include <string>
 
 #include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
@@ -150,7 +150,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
         }
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -159,7 +159,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
       } else {
         ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
         for (int i = 0; i < node->indices.size(); i++) {
-          auto temp = optim::IRCopy(node->indices[i]);
+          auto temp = ir::ir_utils::IRCopy(node->indices[i]);
           ir::IRMutator<>::Visit(&temp, &temp);
           node->indices[i] = temp;
         }
@@ -167,7 +167,7 @@ struct TensorInlineExpandMutator : public ir::IRMutator<> {
     } else {
       ir::IRMutator<>::Visit(&node->tensor, &node->tensor);
       for (int i = 0; i < node->indices.size(); i++) {
-        auto temp = optim::IRCopy(node->indices[i]);
+        auto temp = ir::ir_utils::IRCopy(node->indices[i]);
         ir::IRMutator<>::Visit(&temp, &temp);
         node->indices[i] = temp;
       }
@@ -225,7 +225,7 @@ void ComputeInlineExpand(Expr *expr,
                          poly::StageMap stages,
                          std::map<std::string, ir::Tensor> *all_tensor_map) {
   // the inline tensors contained in the expression.
-  auto inline_tensors = ir::CollectIRNodes(*expr, [&](const Expr *x) {
+  auto inline_tensors = ir::ir_utils::CollectIRNodes(*expr, [&](const Expr *x) {
     return x->as_tensor() && stages[x->as_tensor()]->inlined();
   });
 
@@ -240,9 +240,10 @@ void ComputeInlineExpand(Expr *expr,
       TensorInlineExpandMutator(tensor->name, all_tensor_map, stages)(expr);
     }
 
-    inline_tensors = ir::CollectLoadTensors(*expr, [&](const Expr *x) {
-      return x->as_tensor() && stages[x->as_tensor()]->inlined();
-    });
+    inline_tensors =
+        ir::ir_utils::CollectLoadTensors(*expr, [&](const Expr *x) {
+          return x->as_tensor() && stages[x->as_tensor()]->inlined();
+        });
   }
 }
 

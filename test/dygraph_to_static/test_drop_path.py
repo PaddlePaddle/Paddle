@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
@@ -35,6 +39,7 @@ class DropPath(paddle.nn.Layer):
         return drop_path(x, self.training)
 
 
+@dy2static_unittest
 class TestTrainEval(unittest.TestCase):
     def setUp(self):
         self.model = DropPath()
@@ -42,6 +47,7 @@ class TestTrainEval(unittest.TestCase):
     def tearDown(self):
         pass
 
+    @test_and_compare_with_new_ir(False)
     def test_train_and_eval(self):
         x = paddle.to_tensor([1, 2, 3]).astype("int64")
         eval_out = x.numpy()

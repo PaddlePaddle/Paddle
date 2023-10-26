@@ -255,6 +255,32 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
   output_box->set_dtype(target_box.dtype());
 }
 
+void DpsgdInferMeta(const MetaTensor& param,
+                    const MetaTensor& grad,
+                    const MetaTensor& learning_rate,
+                    float clip,
+                    float batch_size,
+                    float sigma,
+                    int size,
+                    MetaTensor* param_out) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(phi::product(lr_dims),
+                    1,
+                    phi::errors::InvalidArgument(
+                        "Learning rate should have 1 dimension. But Received "
+                        "LearningRate's dims [%s].",
+                        phi::product(lr_dims)));
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      grad.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Grad input of DpsgdOp should have same dimension. But "
+          "received Para's dim [%s] and Grad's dim [%s].",
+          param_dims,
+          grad.dims()));
+  param_out->set_dims(param_dims);
+}
 void FlashAttnInferMeta(const MetaTensor& q,
                         const MetaTensor& k,
                         const MetaTensor& v,
@@ -1099,7 +1125,7 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
   const auto& ref_dims = x.dims();
   auto ref_dims_size = ref_dims.size();
   const auto& index_dims = index.dims();
-  auto index_dims_size = index_dims.size();
+  int index_dims_size = static_cast<int>(index_dims.size());
   const auto& updates_dims = updates.dims();
   auto updates_dims_size = updates_dims.size();
 
@@ -1135,10 +1161,12 @@ void ScatterNdAddInferMeta(const MetaTensor& x,
 
     // update.shape = index.shape[:-1] + output.shape[index.shape[-1]:]
     std::vector<int64_t> r_updates_dims;
-    for (int64_t i = 0; i < index_dims_size - 1; ++i) {
+    for (int i = 0; i < index_dims_size - 1; ++i) {
       r_updates_dims.emplace_back(index_dims[i]);
     }
-    for (int64_t i = index_dims[index_dims_size - 1]; i < ref_dims_size; ++i) {
+    for (int i = static_cast<int>(index_dims[index_dims_size - 1]);
+         i < ref_dims_size;
+         ++i) {
       r_updates_dims.emplace_back(ref_dims[i]);
     }
     // check for non-0d updates
@@ -1265,11 +1293,11 @@ void SpectralNormInferMeta(const MetaTensor& weight,
           "Attr(power_iters) should be greater equal then 0, but received %d",
           power_iters));
 
-  int h = dim_weight[dim];
+  int h = static_cast<int>(dim_weight[dim]);
   int w = 1;
   for (int i = 0; i < rank_weight; i++) {
     if (i != dim) {
-      w *= dim_weight[i];
+      w *= static_cast<int>(dim_weight[i]);
     }
   }
   auto dim_u = u.dims();

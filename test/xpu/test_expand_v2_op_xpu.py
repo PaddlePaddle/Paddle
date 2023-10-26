@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 np.random.seed(10)
@@ -195,7 +195,7 @@ class TestExpandV2OpInteger(XPUOpTest):
 # Test python API
 class TestExpandV2API(unittest.TestCase):
     def test_static(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = np.random.random([12, 14]).astype("float32")
             x = paddle.static.data(
                 name='x',
@@ -214,11 +214,11 @@ class TestExpandV2API(unittest.TestCase):
             out_2 = paddle.expand(x, shape=[positive_2, 14])
             out_3 = paddle.expand(x, shape=expand_shape)
 
-            g0 = fluid.backward.calc_gradient(out_2, x)
+            g0 = base.backward.calc_gradient(out_2, x)
 
-            exe = fluid.Executor(place=paddle.XPUPlace(0))
+            exe = base.Executor(place=paddle.XPUPlace(0))
             res_1, res_2, res_3 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={
                     "x": input,
                     "expand_shape": np.array([12, 14]).astype("int32"),

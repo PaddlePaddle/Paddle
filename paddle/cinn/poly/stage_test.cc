@@ -24,8 +24,8 @@
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/common/test_helper.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace poly {

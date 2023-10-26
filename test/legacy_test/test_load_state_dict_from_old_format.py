@@ -21,8 +21,8 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def convolutional_neural_network(img):
@@ -78,8 +78,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
 
     def train_and_save_model(self):
         with new_program_scope():
-            startup_program = fluid.default_startup_program()
-            main_program = fluid.default_main_program()
+            startup_program = base.default_startup_program()
+            main_program = base.default_main_program()
 
             img = paddle.static.data(
                 name='img', shape=[None, 1, 28, 28], dtype='float32'
@@ -91,14 +91,14 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
             prediction, avg_loss = static_train_net(img, label)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
 
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
-            feeder = fluid.DataFeeder(feed_list=[img, label], place=place)
+            feeder = base.DataFeeder(feed_list=[img, label], place=place)
             exe.run(startup_program)
 
             train_reader = paddle.batch(
@@ -120,8 +120,8 @@ class TestLoadStateDictFromSaveInferenceModel(unittest.TestCase):
                         break
 
             static_param_dict = {}
-            for param in fluid.default_main_program().all_parameters():
-                static_param_dict[param.name] = fluid.executor._fetch_var(
+            for param in base.default_main_program().all_parameters():
+                static_param_dict[param.name] = base.executor._fetch_var(
                     param.name
                 )
 

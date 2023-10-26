@@ -30,9 +30,9 @@ class TestDistSeResnetNCCL2DGC(TestDistBase):
 
     @unittest.skip(reason="Skip unstable ci")
     def test_dist_train(self):
-        from paddle import fluid
+        from paddle import base
 
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 os.path.abspath("../../dist_se_resnext.py"),
                 delta=30,

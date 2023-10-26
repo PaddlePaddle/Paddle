@@ -103,9 +103,7 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             static_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, static_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{static_out}',
         )
         # switch back into train mode.
         net.train()
@@ -114,9 +112,7 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             train_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, train_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{train_out}',
         )
 
     def test_save_without_training(self):
@@ -176,9 +172,7 @@ class TestSaveInEvalMode(unittest.TestCase):
             eval_out.numpy(),
             infer_out.numpy(),
             rtol=1e-05,
-            err_msg='eval_out is {}\n infer_out is \n{}'.format(
-                eval_out, infer_out
-            ),
+            err_msg=f'eval_out is {eval_out}\n infer_out is \n{infer_out}',
         )
 
 

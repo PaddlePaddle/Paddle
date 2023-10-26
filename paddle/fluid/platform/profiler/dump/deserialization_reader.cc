@@ -287,7 +287,7 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
       auto shape_vector_proto = shape_vectors_proto.shapes(j);
       std::vector<int64_t> shape;
       for (int k = 0; k < shape_vector_proto.size_size(); k++) {
-        shape.push_back(shape_vector_proto.size(k));
+        shape.push_back(shape_vector_proto.size(k));  // NOLINT
       }
       input_shape_vec.push_back(shape);
     }

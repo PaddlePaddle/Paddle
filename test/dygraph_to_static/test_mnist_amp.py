@@ -22,8 +22,8 @@ from test_mnist import MNIST, SEED, TestMNIST
 import paddle
 from paddle.optimizer import Adam
 
-if paddle.fluid.is_compiled_with_cuda():
-    paddle.fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if paddle.base.is_compiled_with_cuda():
+    paddle.base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 class TestAMP(TestMNIST):
@@ -45,9 +45,7 @@ class TestAMP(TestMNIST):
             static_loss,
             rtol=1e-05,
             atol=0.001,
-            err_msg='dygraph is {}\n static_res is \n{}'.format(
-                dygraph_loss, static_loss
-            ),
+            err_msg=f'dygraph is {dygraph_loss}\n static_res is \n{static_loss}',
         )
 
     def train(self, to_static=False):

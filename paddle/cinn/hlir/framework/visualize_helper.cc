@@ -30,8 +30,8 @@
 #include "paddle/cinn/utils/dot_lang.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_pass_visualize_dir);
-DECLARE_string(cinn_check_fusion_accuracy_pass);
+PD_DECLARE_string(cinn_pass_visualize_dir);
+PD_DECLARE_string(cinn_check_fusion_accuracy_pass);
 namespace cinn {
 namespace hlir {
 namespace framework {

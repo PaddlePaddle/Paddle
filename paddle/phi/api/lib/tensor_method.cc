@@ -27,7 +27,11 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 // clang-format off
-
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
+#endif
 namespace paddle {
 namespace experimental {
 // declare cast api
@@ -87,9 +91,7 @@ void Tensor::copy_(const Tensor &src,
     VLOG(8) << "Src is empty, skip copy";
     return;
   }
-  // Prepare copy kernel key and outputs
-  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
-  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
+
   VLOG(3) << "Deep copy Tensor from " << src.name() << " to " << name();
   if (initialized()) {
     PADDLE_ENFORCE_EQ(dtype(),
@@ -114,6 +116,12 @@ void Tensor::copy_(const Tensor &src,
                           "Copy cannot be performed!",
                           target_place,
                           place()));
+  }
+
+  // Prepare copy kernel key and outputs
+  auto kernel_key_set = ParseKernelKeyByInputArgs(src);
+  KernelType kernel_type = ParseKernelTypeByInputArgs(src);
+  if (initialized()) {
     kernel_key_set.backend_set = kernel_key_set.backend_set |
                                  BackendSet(phi::TransToPhiBackend(place()));
   } else {
@@ -128,25 +136,57 @@ void Tensor::copy_(const Tensor &src,
   auto *dev_ctx = pool.GetMutable(
       place.GetType() == target_place.GetType() ? target_place : place);
 
-  Backend kernel_backend = Backend::UNDEFINED;
-  DataLayout kernel_layout = DataLayout::UNDEFINED;
-  DataType kernel_data_type = DataType::UNDEFINED;
-
-  if (kernel_backend == Backend::UNDEFINED ||
-      kernel_layout == DataLayout::UNDEFINED ||
-      kernel_data_type == DataType::UNDEFINED) {
-    if (kernel_backend == Backend::UNDEFINED) {
-      kernel_backend = kernel_key.backend();
-    }
-    if (kernel_layout == DataLayout::UNDEFINED) {
-      kernel_layout = kernel_key.layout();
-    }
-    if (kernel_data_type == DataType::UNDEFINED) {
-      kernel_data_type = kernel_key.dtype();
-    }
-  }
-
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
+#ifdef PADDLE_WITH_DISTRIBUTE
+  bool run_auto_parallel = AllInputsAreDistTensor(src);
+  bool rank_is_in_current_mesh = false;
+  if (run_auto_parallel) {
+    auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>(
+                    src.impl())->dist_attr().process_mesh();
+    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+
+    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs)
+    auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
+
+    // 2. Create API Output & Prepare Dist and Dense Output
+    auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
+    auto dense_out = dist_out->unsafe_mutable_value();
+    if (!rank_is_in_current_mesh) {
+      *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr,
+            0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+    }
+
+    // 3. Infer DistTensor's Global Shape
+    phi::MetaTensor meta_dist_out(dist_out);
+    phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl_)), &meta_dist_out);
+
+    if (rank_is_in_current_mesh) {
+      // 4. Select Kernel
+
+      // 5. Reshard Input
+      auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
+                          src.impl().get());;
+
+      // 6. PrepareData (DataTransform & Prepare Dense Input)
+      auto input_x = &dist_input_x->value();
+
+      // 7. Infer Local DenseTensor Meta
+      phi::MetaTensor meta_dense_out(dense_out);
+      phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
+
+      // 8. DenseTensor Kernel Call
+      phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
+
+      // 9. Reshard Partial Output to Replicated (Temporary)
+    }
+
+    // 10. Set Output Dist Attr For Default Impl
+    // API `copy_` does not need to set DistAttr for output.
+    return;
+  }
+#endif
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(

@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/data_util.h"
 
-DEFINE_string(model_dir, "", "");
+PD_DEFINE_string(model_dir, "", "");
 
 namespace cinn {
 namespace frontend {

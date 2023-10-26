@@ -20,15 +20,20 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
@@ -38,15 +43,13 @@ EPOCH_NUM = 1
 PRINT_STEP = 2
 STEP_NUM = 10
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 train_parameters = {
     "learning_strategy": {
@@ -130,7 +133,7 @@ class SqueezeExcitation(paddle.nn.Layer):
         self._fc = Linear(
             num_channels,
             num_channels // reduction_ratio,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -138,7 +141,7 @@ class SqueezeExcitation(paddle.nn.Layer):
         self._excitation = Linear(
             num_channels // reduction_ratio,
             num_channels,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -226,9 +229,7 @@ class SeResNeXt(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             cardinality = 32
@@ -315,12 +316,12 @@ class SeResNeXt(paddle.nn.Layer):
         self.out = Linear(
             self.pool2d_avg_output,
             class_dim,
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -350,6 +351,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
+@dy2static_unittest
 class TestSeResnet(unittest.TestCase):
     def setUp(self):
         self.train_reader = paddle.batch(
@@ -372,12 +374,13 @@ class TestSeResnet(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @test_and_compare_with_new_ir(True)
     def train(self, train_reader, to_static):
         paddle.jit.enable_to_static(to_static)
 
         np.random.seed(SEED)
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             se_resnext = SeResNeXt()
@@ -454,9 +457,15 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img, label],
                                 output_spec=[pred],
-                                input_names_after_prune=[img.name],
+                                input_names_after_prune=['x'],
+                                input_spec=[
+                                    InputSpec(
+                                        shape=[None, 3, 224, 224], name='x'
+                                    ),
+                                    InputSpec(shape=[None, 1], name='y'),
+                                ],
+                                clip_extra=False,
                             )
                         else:
                             paddle.save(
@@ -473,7 +482,7 @@ class TestSeResnet(unittest.TestCase):
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             se_resnext = SeResNeXt()
 
             model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
@@ -481,15 +490,16 @@ class TestSeResnet(unittest.TestCase):
             se_resnext.eval()
 
             label = np.random.random([1, 1]).astype("int64")
-            img = fluid.dygraph.to_variable(data)
-            label = fluid.dygraph.to_variable(label)
+            img = base.dygraph.to_variable(data)
+            label = base.dygraph.to_variable(label)
             pred_res, _, _, _ = se_resnext(img, label)
 
             return pred_res.numpy()
 
+    @test_and_compare_with_new_ir(True)
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         [
             inference_program,
             feed_target_names,
@@ -510,7 +520,7 @@ class TestSeResnet(unittest.TestCase):
         return pred_res[0]
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             se_resnext = paddle.jit.load(self.model_save_prefix)
             se_resnext.eval()
 
@@ -544,9 +554,7 @@ class TestSeResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
 
         flat_st_pre = st_pre.flatten()

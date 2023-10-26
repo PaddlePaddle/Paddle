@@ -48,9 +48,9 @@
 #include "paddle/fluid/operators/cinn/cinn_launch_context.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/string/string_helper.h"
-#include "paddle/ir/core/program.h"
-#include "paddle/ir/core/value.h"
 #include "paddle/phi/core/flags.h"
+#include "paddle/pir/core/program.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(enable_pe_launch_cinn);
@@ -343,7 +343,7 @@ std::unique_ptr<CinnCompiledObject> CinnCompiler::CompileGraph(
   auto compiled_obj = std::make_unique<CinnCompiledObject>();
   *compiled_obj = {std::move(graph_compiler),
                    std::move(auto_tuner),
-                   std::move(compiled_res.runtime_program),
+                   std::move(compiled_res.RuntimeProgram()),
                    scope,
                    symbol.var_model_to_program_map()};
   compiled_obj->cached_index = compiled_num;

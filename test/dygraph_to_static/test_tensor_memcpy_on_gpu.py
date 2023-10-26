@@ -16,6 +16,7 @@ import os
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -48,14 +49,15 @@ class TestTensorCopyToCpuOnDefaultGPU(unittest.TestCase):
         x2 = tensor_copy_to_cpu(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_cpu_on_default_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -74,14 +76,15 @@ class TestTensorCopyToCUDAOnDefaultGPU(unittest.TestCase):
         x2 = tensor_copy_to_cuda(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_cuda_on_default_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
             to_static=False
         )
@@ -101,13 +104,13 @@ class TestTensorCopyToCUDAWithWarningOnGPU(unittest.TestCase):
         return x1.place, x2.place, x2.numpy()
 
     def test_with_warning_on_gpu(self):
-        if paddle.fluid.is_compiled_with_cuda():
+        if paddle.base.is_compiled_with_cuda():
             place = paddle.CUDAPlace(
                 int(os.environ.get('FLAGS_selected_gpus', 0))
             )
         else:
             return
-        paddle.fluid.framework._set_expected_place(place)
+        paddle.base.framework._set_expected_place(place)
 
         x1 = paddle.ones([1, 2, 3])
         with self.assertWarns(UserWarning, msg="ignored") as cm:

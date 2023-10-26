@@ -79,7 +79,7 @@ def op_position_inputs(op):
         .. code-block:: python
 
             >>> from paddle.incubate.autograd.primops import _simple_binop
-            >>> from paddle.fluid.layer_helper import LayerHelper
+            >>> from paddle.base.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
 
             >>> # doctest: +SKIP('Depends on external code.')
@@ -126,7 +126,7 @@ def op_position_output(op):
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
-            >>> from paddle.fluid.layer_helper import LayerHelper
+            >>> from paddle.base.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
 
             >>> @REGISTER_FN('div_p', 'X', 'Y', 'Z')
@@ -169,7 +169,7 @@ def REGISTER_FN(op_type, *position_argnames):
 
             >>> # doctest: +SKIP('Depends on external code.')
             >>> from paddle.incubate.autograd.primops import _simple_binop
-            >>> from paddle.fluid.layer_helper import LayerHelper
+            >>> from paddle.base.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.primreg import REGISTER_FN
 
             >>> @REGISTER_FN('tanh_p', 'X', 'Y')
@@ -204,7 +204,7 @@ def REGISTER_ORIG2PRIM(op_type):
         .. code-block:: python
 
             >>> # doctest: +SKIP('Depends on external code.')
-            >>> from paddle.fluid.layer_helper import LayerHelper
+            >>> from paddle.base.layer_helper import LayerHelper
             >>> from paddle.incubate.autograd.utils import get_input_var_list
             >>> from paddle.incubate.autograd import primops
             >>> from paddle.incubate.autograd.primreg import REGISTER_ORIG2PRIM

@@ -15,11 +15,11 @@
 from paddle import _C_ops, in_dynamic_mode
 from paddle.utils import unique_name
 
-from ... import fluid
-from ...fluid import framework
-from ...fluid.core import VarDesc
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...fluid.framework import _current_expected_place
+from ... import base
+from ...base import framework
+from ...base.core import VarDesc
+from ...base.data_feeder import check_variable_and_dtype
+from ...base.framework import _current_expected_place
 from .initializer import Initializer
 
 __all__ = []
@@ -133,7 +133,7 @@ class Dirac(Initializer):
             out_var = var
         op = None
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 place = _current_expected_place()
                 _C_ops.full_(
                     out_var, out_var.shape, str(float(0)), out_var.dtype, place
@@ -176,7 +176,7 @@ class Dirac(Initializer):
                         offset += origin_shape[k] // 2 * stride
                 idx_list.append(offset)
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_out = _C_ops.reshape(out_var, [-1])
                 tmp_out._share_underline_tensor_to(out_var)
         else:
@@ -203,7 +203,7 @@ class Dirac(Initializer):
         )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
@@ -232,7 +232,7 @@ class Dirac(Initializer):
         )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_tensor = framework._create_tensor()
                 _C_ops.assign_value_(
                     tmp_tensor,
@@ -256,7 +256,7 @@ class Dirac(Initializer):
             )
 
         if framework.in_dygraph_mode():
-            with fluid.dygraph.no_grad():
+            with base.dygraph.no_grad():
                 tmp_out = _C_ops.scatter(
                     out_var, index_tensor, value_tensor, True
                 )

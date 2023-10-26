@@ -164,7 +164,7 @@ class CompOpCostNode(CostNode):
         self.is_optim = is_optim
 
     def init_comp_cost(self, cost_data):
-        # TODO: improve fluid.CostModel for more specific cost_data
+        # TODO: improve base.CostModel for more specific cost_data
         op_id = self.node.desc.id()
         if op_id in cost_data.keys():
             self.cost = cost_data[op_id]
@@ -435,9 +435,7 @@ class CostModel:
                 node_cost = max(node_cost, node.cost)
             else:
                 raise NotImplementedError(
-                    'This type of merging is not supported:{}'.format(
-                        merge_type
-                    )
+                    f'This type of merging is not supported:{merge_type}'
                 )
         merged_node_id = 'merged_' + str(len(nodes))
         is_bwd = to_merge_node_list[0].is_bwd
@@ -796,9 +794,7 @@ class CostModel:
                 global_time[stid] = e.e_time
             else:
                 raise NotImplementedError(
-                    'This type of pipe event is not supported yet.{}'.format(
-                        e.name
-                    )
+                    f'This type of pipe event is not supported yet.{e.name}'
                 )
 
         for t in global_time:

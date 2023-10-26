@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestPyReaderCombination(unittest.TestCase):
@@ -55,7 +55,7 @@ class TestPyReaderCombination(unittest.TestCase):
             py_reader._loader._reset()
 
     def main_impl(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             image = paddle.static.data(
                 name='image', dtype='float32', shape=[-1, 784]
             )
@@ -63,10 +63,10 @@ class TestPyReaderCombination(unittest.TestCase):
                 name='label', dtype='int64', shape=[-1, 1]
             )
 
-            py_reader1 = fluid.io.PyReader(
+            py_reader1 = base.io.PyReader(
                 feed_list=[image, label], capacity=16, iterable=True
             )
-            py_reader2 = fluid.io.PyReader(
+            py_reader2 = base.io.PyReader(
                 feed_list=[image, label], capacity=16, iterable=True
             )
 
@@ -94,10 +94,10 @@ class TestPyReaderCombination(unittest.TestCase):
             self._reset_iterable_reader(py_reader2)
 
     def get_places(self):
-        if fluid.is_compiled_with_cuda():
-            return [fluid.CUDAPlace(0), fluid.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            return [base.CUDAPlace(0), base.CPUPlace()]
         else:
-            return [fluid.CPUPlace()]
+            return [base.CPUPlace()]
 
     def test_main(self):
         for p in self.get_places():

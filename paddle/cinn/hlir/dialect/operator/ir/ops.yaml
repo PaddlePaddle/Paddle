@@ -1,0 +1,25 @@
+- op : broadcast
+  args : (Tensor x, int64_t[] broadcast_axes,  int64_t[] out_shape)
+  output : Tensor(out)
+  infer_meta :
+    func : CINNBroadcastInferMeta
+    param : [x, broadcast_axes, out_shape]
+  kernel :
+    func : expand
+    param : [x, broadcast_axes]
+
+- op : reduce_max
+  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm
+
+- op : reduce_sum
+  args : (Tensor x, int64_t[] axis,  bool keep_dim)
+  output : Tensor(out)
+  infer_meta :
+    func : ReduceInferMeta
+  kernel :
+    func : frobenius_norm

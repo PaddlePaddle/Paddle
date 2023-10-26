@@ -15,16 +15,20 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
+)
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 
 @paddle.jit.to_static
 def dyfunc_assert_variable(x):
-    x_v = fluid.dygraph.to_variable(x)
+    x_v = base.dygraph.to_variable(x)
     assert x_v
 
 
@@ -33,22 +37,23 @@ def dyfunc_assert_non_variable(x=True):
     assert x
 
 
-class TestAssertVariable(unittest.TestCase):
+class TestAssertVariable(Dy2StTestBase):
     def _run(self, func, x, with_exception, to_static):
         paddle.jit.enable_to_static(to_static)
         if with_exception:
-            with self.assertRaises(BaseException):
-                with fluid.dygraph.guard():
+            with self.assertRaises(BaseException):  # noqa: B017
+                with base.dygraph.guard():
                     func(x)
         else:
-            with fluid.dygraph.guard():
+            with base.dygraph.guard():
                 func(x)
 
     def _run_dy_static(self, func, x, with_exception):
         self._run(func, x, with_exception, True)
         self._run(func, x, with_exception, False)
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
+    @test_ast_only
     def test_non_variable(self):
         self._run_dy_static(
             dyfunc_assert_non_variable, x=False, with_exception=True
@@ -57,7 +62,8 @@ class TestAssertVariable(unittest.TestCase):
             dyfunc_assert_non_variable, x=True, with_exception=False
         )
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
+    @test_ast_only
     def test_bool_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([False]), with_exception=True
@@ -66,6 +72,8 @@ class TestAssertVariable(unittest.TestCase):
             dyfunc_assert_variable, x=numpy.array([True]), with_exception=False
         )
 
+    @test_legacy_and_pir
+    @test_ast_only
     def test_int_variable(self):
         self._run_dy_static(
             dyfunc_assert_variable, x=numpy.array([0]), with_exception=True

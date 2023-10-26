@@ -21,6 +21,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
+from paddle.base.framework import Program
 from paddle.distributed.auto_parallel.static.converter import Converter
 from paddle.distributed.auto_parallel.static.dist_context import (
     get_default_distributed_context,
@@ -30,8 +32,6 @@ from paddle.distributed.auto_parallel.static.utils import (
     is_forward_op,
     is_loss_op,
 )
-from paddle.fluid import core
-from paddle.fluid.framework import Program
 from paddle.static.io import deserialize_program
 
 _valid_types = [

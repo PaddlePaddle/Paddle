@@ -28,7 +28,7 @@ from op_test_xpu import XPUOpTest
 from rnn_numpy import LSTM
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 random.seed(2)
 np.set_printoptions(threshold=np.inf)

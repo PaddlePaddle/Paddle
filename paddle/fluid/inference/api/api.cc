@@ -40,7 +40,7 @@ int PaddleDtypeSize(PaddleDType dtype) {
   }
 }
 
-PaddleBuf::PaddleBuf(PaddleBuf &&other)
+PaddleBuf::PaddleBuf(PaddleBuf &&other) noexcept
     : data_(other.data_),
       length_(other.length_),
       memory_owned_(other.memory_owned_) {
@@ -74,7 +74,7 @@ PaddleBuf &PaddleBuf::operator=(const PaddleBuf &other) {
   return *this;
 }
 
-PaddleBuf &PaddleBuf::operator=(PaddleBuf &&other) {
+PaddleBuf &PaddleBuf::operator=(PaddleBuf &&other) noexcept {
   // only the buffer with external memory can be copied
   data_ = other.data_;
   length_ = other.length_;

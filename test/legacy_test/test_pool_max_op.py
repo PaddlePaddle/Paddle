@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
@@ -24,7 +24,7 @@ from eager_op_test import (
 from testsuite import create_op
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):

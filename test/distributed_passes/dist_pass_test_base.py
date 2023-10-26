@@ -64,6 +64,7 @@ class DistPassTestBase(unittest.TestCase):
         if paddle.is_compiled_with_cuda():
             paddle.set_flags({'FLAGS_cudnn_deterministic': 1})
 
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
         seed = int(os.environ.get('SEED', -1))
         if seed <= 0:
             seed = np.random.randint(low=1, high=1000000, size=[1])[0]
@@ -137,7 +138,7 @@ class DistPassTestBase(unittest.TestCase):
             paddle.static.Program(), paddle.static.Program()
         ):
             with paddle.static.scope_guard(scope):
-                with paddle.fluid.unique_name.guard():
+                with paddle.base.unique_name.guard():
                     main_prog, startup_prog, inputs, outputs, reader = model(
                         place, **kwargs
                     )
@@ -287,9 +288,7 @@ class PassConflictChecker(DistPassTestBase):
         self.assertEqual(
             len(passes),
             len(new_passes),
-            "After solving conflicts, the left passes are: {}".format(
-                auto_pass_manager.names
-            ),
+            f"After solving conflicts, the left passes are: {auto_pass_manager.names}",
         )
 
         for i, (p1, p2) in enumerate(zip(passes, new_passes)):

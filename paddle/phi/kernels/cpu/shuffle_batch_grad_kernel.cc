@@ -29,11 +29,11 @@ void ShuffleBatchGradKernel(const Context& dev_ctx,
   auto embed_size = out_grad.dims()[out_grad.dims().size() - 1];
   auto elem_size = 1;
   for (auto i = 0; i < out_grad.dims().size() - 1; i++)
-    elem_size *= out_grad.dims()[i];
+    elem_size *= static_cast<int>(out_grad.dims()[i]);
 
   std::vector<int> idx_vec_grad(elem_size);
   auto* shuffleidx_data = shuffleidx.data<int64_t>();
-  for (size_t i = 0; i < idx_vec_grad.size(); i++) {
+  for (int i = 0; i < static_cast<int>(idx_vec_grad.size()); i++) {
     idx_vec_grad[shuffleidx_data[i]] = i;
   }
 

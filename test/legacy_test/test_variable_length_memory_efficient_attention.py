@@ -19,7 +19,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.framework import core
 from paddle.incubate.nn.functional import (
     variable_length_memory_efficient_attention,
@@ -277,7 +277,7 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             out = variable_length_memory_efficient_attention(
                 q, k, v, seq_lens, seq_lens, mask, self.scale
             )
-            exe = fluid.Executor()
+            exe = base.Executor()
             res = exe.run(
                 feed={
                     "query": self.q,

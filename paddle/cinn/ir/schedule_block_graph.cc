@@ -14,8 +14,8 @@
 
 #include "paddle/cinn/ir/schedule_block_graph.h"
 #include "paddle/cinn/common/dfs_topo_walker.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace ir {

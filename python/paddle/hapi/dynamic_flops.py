@@ -85,7 +85,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             ...                      [1, 1, 28, 28],
             ...                      custom_ops= {nn.LeakyReLU: count_leaky_relu},
             ...                      print_detail=True)
-            >>> # doctest: +SKIP
             >>> print(FLOPs)
             <class 'paddle.nn.layer.conv.Conv2D'>'s flops has been counted
             <class 'paddle.nn.layer.activation.ReLU'>'s flops has been counted
@@ -106,7 +105,6 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
             +--------------+-----------------+-----------------+--------+--------+
             Total Flops: 347560     Total Params: 61610
             347560
-            >>> # doctest: -SKIP
     """
     if isinstance(net, nn.Layer):
         # If net is a dy2stat model, net.forward is StaticFunction instance,
@@ -128,7 +126,7 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
 
 def count_convNd(m, x, y):
     x = x[0]
-    kernel_ops = np.product(m.weight.shape[2:])
+    kernel_ops = np.prod(m.weight.shape[2:])
     bias_ops = 1 if m.bias is not None else 0
     total_ops = int(y.numel()) * (
         x.shape[1] / m._groups * kernel_ops + bias_ops
@@ -167,7 +165,7 @@ def count_avgpool(m, x, y):
 
 def count_adap_avgpool(m, x, y):
     kernel = np.array(x[0].shape[2:]) // np.array(y.shape[2:])
-    total_add = np.product(kernel)
+    total_add = np.prod(kernel)
     total_div = 1
     kernel_ops = total_add + total_div
     num_elements = y.numel()
@@ -176,7 +174,7 @@ def count_adap_avgpool(m, x, y):
 
 
 def count_zero_ops(m, x, y):
-    m.total_ops += int(0)
+    m.total_ops += 0
 
 
 def count_parameters(m, x, y):
@@ -312,8 +310,6 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
     if print_detail:
         table.print_table()
     print(
-        'Total Flops: {}     Total Params: {}'.format(
-            int(total_ops), int(total_params)
-        )
+        f'Total Flops: {int(total_ops)}     Total Params: {int(total_params)}'
     )
     return int(total_ops)

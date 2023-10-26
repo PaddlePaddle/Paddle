@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_util import ast_only_test, dy2static_unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-2, "atol": 1e-2},
@@ -52,6 +52,7 @@ class PrimeNet(paddle.nn.Layer):
         return out[0]
 
 
+@dy2static_unittest
 class TestPrimForward(unittest.TestCase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
@@ -124,6 +125,7 @@ class TestPrimForward(unittest.TestCase):
             )
 
 
+@dy2static_unittest
 class TestPrimForwardAndBackward(unittest.TestCase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph

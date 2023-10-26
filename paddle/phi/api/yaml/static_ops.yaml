@@ -90,7 +90,7 @@
   backward : assign_grad
 
 - op : assign_value
-  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
+  args : (int[] shape, DataType dtype, int[] bool_values = {}, float[] fp32_values = {}, double[] fp64_values = {}, int[] int32_values = {}, int64_t[] int64_values = {})
   output : Tensor(out)
   infer_meta :
     func : AssignValueInferMeta
@@ -256,7 +256,7 @@
   args : (Tensor x, IntArray axis={0}, bool keepdim=false, bool reduce_all=false, int in_dtype=-1, int out_dtype=-1)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : frobenius_norm
     param : [x, axis, keepdim, reduce_all]

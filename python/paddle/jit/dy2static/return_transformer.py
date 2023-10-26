@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.utils import gast
 
 from .base_transformer import BaseTransformer

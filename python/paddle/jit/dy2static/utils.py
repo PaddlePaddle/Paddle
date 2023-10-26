@@ -31,25 +31,27 @@ import astor
 import numpy as np
 
 import paddle
-from paddle import fluid  # noqa: F401
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle import base  # noqa: F401
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.utils import gast
 
 from .ast_utils import ast_to_source_code
 from .static_analysis import StaticAnalysisVisitor
-from .utils_helper import DYGRAPH_MODULE_PREFIX  # noqa: F401
-from .utils_helper import DYGRAPH_TO_STATIC_MODULE_PREFIX  # noqa: F401
-from .utils_helper import PADDLE_MODULE_PREFIX  # noqa: F401
-from .utils_helper import NodeVarType  # noqa: F401
-from .utils_helper import _is_api_in_module_helper  # noqa: F401
-from .utils_helper import index_in_list  # noqa: F401
-from .utils_helper import is_api_in_module  # noqa: F401
-from .utils_helper import is_dygraph_api  # noqa: F401
-from .utils_helper import is_numpy_api  # noqa: F401;
-from .utils_helper import is_paddle_api  # noqa: F401
+from .utils_helper import (  # noqa: F401
+    DYGRAPH_MODULE_PREFIX,
+    DYGRAPH_TO_STATIC_MODULE_PREFIX,
+    PADDLE_MODULE_PREFIX,
+    NodeVarType,
+    _is_api_in_module_helper,
+    index_in_list,
+    is_api_in_module,
+    is_dygraph_api,
+    is_numpy_api,
+    is_paddle_api,
+)
 
 __all__ = []
 
@@ -137,7 +139,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     data can be various-length. This API is used in translating dygraph into
     static graph.
 
-     Note:
+    Note:
         The default :code:`stop_gradient` attribute of the Tensor created by
         this API is true, which means the gradient won't be passed backward
         through the data Tensor. Set :code:`var.stop_gradient = False` If
@@ -153,8 +155,7 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
            dtype: bool, float16, float32, float64, int8, int16, int32, int64,
            uint8. Default: float32
        lod_level (int, optional): The LoD level of the LoDTensor. Usually users
-           don't have to set this value. For more details about when and how to
-           use LoD level, see :ref:`user_guide_lod_tensor` . Default: 0
+           don't have to set this value. Default: 0
 
     Returns:
         Tensor: The global Tensor that gives access to the data.
@@ -326,7 +327,6 @@ def _delete_keywords_from(node):
     full_args_name = full_args[0]
 
     node.keywords = [k for k in node.keywords if k.arg in full_args_name]
-    return
 
 
 def to_static_api(dygraph_class):
@@ -334,8 +334,8 @@ def to_static_api(dygraph_class):
         return dygraph_class_to_static_api[dygraph_class]
     else:
         raise NotImplementedError(
-            "Paddle dygraph API {} cannot be converted "
-            "to static graph at present.".format(dygraph_class)
+            f"Paddle dygraph API {dygraph_class} cannot be converted "
+            "to static graph at present."
         )
 
 
@@ -361,7 +361,6 @@ def _add_keywords_to(node, dygraph_api_name):
         for ast_keyword in node.keywords:
             if ast_keyword.arg == "input":
                 ast_keyword.arg = "x"
-    return
 
 
 def to_static_ast(node, class_node):
@@ -376,7 +375,7 @@ def to_static_ast(node, class_node):
             attr='layers',
             ctx=gast.Load(),
             value=gast.Name(
-                ctx=gast.Load(), id='fluid', annotation=None, type_comment=None
+                ctx=gast.Load(), id='base', annotation=None, type_comment=None
             ),
         ),
     )
@@ -609,7 +608,7 @@ def _inject_import_statements():
     import_statements = [
         "import paddle",
         "from paddle import Tensor",
-        "import paddle.fluid as fluid",
+        "import paddle.base as base",
         "import paddle.jit.dy2static as _jst",
         "from typing import *",
         "import numpy as np",
@@ -760,7 +759,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
     def _visit_If(self, node):
         assert isinstance(node, gast.If)
         self.visit(node.test)
-        return
 
     def _visit_For(self, node):
         assert isinstance(node, gast.For)
@@ -801,7 +799,6 @@ class IsControlFlowVisitor(gast.NodeVisitor):
         for child_node in gast.walk(node):
             if isinstance(child_node, (gast.Continue, gast.Break)):
                 self._visit_break_continue(child_node)
-        return
 
     def _visit_break_continue(self, node):
         assert isinstance(node, (gast.Break, gast.Continue))
@@ -1307,12 +1304,10 @@ def create_get_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}():
+        func_def = f"""
+        def {unique_name.generate(GET_ARGS_FUNC_PREFIX)}():
             return
-        """.format(
-            func_name=unique_name.generate(GET_ARGS_FUNC_PREFIX)
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1346,12 +1341,10 @@ def create_set_args_node(names):
     """
 
     def empty_node():
-        func_def = """
-        def {func_name}({args}):
+        func_def = f"""
+        def {unique_name.generate(SET_ARGS_FUNC_PREFIX)}({ARGS_NAME}):
             pass
-        """.format(
-            func_name=unique_name.generate(SET_ARGS_FUNC_PREFIX), args=ARGS_NAME
-        )
+        """
         return gast.parse(textwrap.dedent(func_def)).body[0]
 
     assert isinstance(names, (list, tuple))
@@ -1420,9 +1413,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         return tuple(vars[self.name2id[n]] for n in names)
 
     def set(self, names, values):
@@ -1436,9 +1427,7 @@ class GetterSetterHelper:
         for n in names:
             assert (
                 n in self.name2id
-            ), "the name `{}` not in name union set`{}`.".format(
-                n, self.name2id.keys()
-            )
+            ), f"the name `{n}` not in name union set`{self.name2id.keys()}`."
         vars = list(vars)
         indices = [self.name2id[n] for n in names]
         for i, v in zip(indices, values):

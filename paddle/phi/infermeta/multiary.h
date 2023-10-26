@@ -459,6 +459,22 @@ void LambInferMeta(const MetaTensor& param,
                    MetaTensor* beta2_pow_out,
                    MetaTensor* master_param_outs);
 
+void LarsMomentumInferMeta(
+    const std::vector<const MetaTensor*>& param,
+    const std::vector<const MetaTensor*>& velocity,
+    const std::vector<const MetaTensor*>& learning_rate,
+    const std::vector<const MetaTensor*>& grad,
+    const paddle::optional<std::vector<const MetaTensor*>>& master_param,
+    const std::vector<float>& lars_weight_decay,
+    float mu,
+    float lars_coeff,
+    float epsilon,
+    bool multi_precision,
+    float rescale_grad,
+    std::vector<MetaTensor*> param_out,
+    std::vector<MetaTensor*> velocity_out,
+    std::vector<MetaTensor*> master_param_out);
+
 void LLMInt8LinearInferMeta(const MetaTensor& x,
                             const MetaTensor& weight,
                             const MetaTensor& bias,
@@ -807,9 +823,22 @@ void FusedRopeInferMeta(const MetaTensor& q,
                         const MetaTensor& v,
                         const MetaTensor& sin,
                         const MetaTensor& cos,
+                        const MetaTensor& position_ids,
+                        bool use_neox_rotary_style,
                         MetaTensor* out_q,
                         MetaTensor* out_k,
                         MetaTensor* out_v);
+
+void MultiheadMatmulInferMeta(const MetaTensor& input,
+                              const MetaTensor& w,
+                              const MetaTensor& bias,
+                              const MetaTensor& bias_qk,
+                              const bool transpose_q,
+                              const bool transpose_k,
+                              const bool transpose_v,
+                              const float alpha,
+                              const int head_number,
+                              MetaTensor* out);
 
 void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        const MetaTensor& cache_kv,

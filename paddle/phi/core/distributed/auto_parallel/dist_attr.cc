@@ -102,6 +102,10 @@ void TensorDistAttr::set_partial_status(const std::vector<int64_t>& dims,
           "Trying to Set dim %d as Partial which is already a Partial dim.",
           dim));
     }
+    if (std::count(dims_mapping_.begin(), dims_mapping_.end(), dim)) {
+      PADDLE_THROW(phi::errors::InvalidArgument(
+          "Trying to Set dim %d as Partial which is a Sharding dim.", dim));
+    }
     partial_status_.emplace(dim, type);
   }
 }
@@ -227,7 +231,7 @@ bool TensorDistAttr::verify_partial_status() const {
     if (itr.first < 0 || itr.first >= process_mesh_.ndim()) {
       return false;
     }
-    if (itr.second < ReduceType::kRedSum || itr.second <= ReduceType::kRedAll) {
+    if (itr.second < ReduceType::kRedSum || itr.second > ReduceType::kRedAll) {
       return false;
     }
   }
@@ -345,7 +349,72 @@ std::string TensorDistAttr::partial_status_string() const {
 }
 
 bool TensorDistAttr::empty() const {
-  return process_mesh_.empty() || dims_mapping_.empty();
+  // dims_mapping is empty when the tensor is 0-dim, but it is also be valid.
+  return process_mesh_.empty();
+}
+
+std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()
+    const {
+  auto ndim = process_mesh_.ndim();
+  std::vector<std::shared_ptr<PlacementStatus>> placement(
+      ndim, std::make_shared<ReplicatedStatus>());
+  for (size_t i = 0; i < dims_mapping_.size(); ++i) {
+    if (dims_mapping_[i] != -1) {
+      PADDLE_ENFORCE_LT(
+          dims_mapping_[i],
+          ndim,
+          errors::InvalidArgument(
+              "Split axis %ld can not exceed the ndim of process_mesh %ld",
+              dims_mapping_[i],
+              ndim));
+      placement[dims_mapping_[i]] = std::make_shared<ShardStatus>(i);
+    }
+  }
+  for (auto& itr : partial_status_) {
+    PADDLE_ENFORCE_LT(
+        itr.first,
+        ndim,
+        errors::InvalidArgument(
+            "Partial axis %ld can not exceed the ndim of process_mesh %ld",
+            itr.first,
+            ndim));
+    placement[itr.first] = std::make_shared<PartialStatus>(itr.second);
+  }
+  return placement;
+}
+
+bool TensorDistAttr::is_replicated(int64_t mesh_axis) const {
+  auto placement = to_placement();
+  if (mesh_axis == -1) {
+    return std::all_of(placement.begin(),
+                       placement.end(),
+                       [](std::shared_ptr<PlacementStatus> status) {
+                         return status->is_replicated();
+                       });
+  } else {
+    return placement[mesh_axis]->is_replicated();
+  }
+}
+
+bool TensorDistAttr::is_shard(int64_t mesh_axis, int64_t tensor_axis) const {
+  auto placement = to_placement();
+  if (mesh_axis == -1) {
+    return std::all_of(placement.begin(),
+                       placement.end(),
+                       [tensor_axis](std::shared_ptr<PlacementStatus> status) {
+                         return status->is_shard(tensor_axis);
+                       });
+  } else {
+    return placement[mesh_axis]->is_shard(tensor_axis);
+  }
+}
+
+bool TensorDistAttr::is_partial(int64_t mesh_axis) const {
+  if (mesh_axis == -1) {
+    return !partial_status_.empty();
+  } else {
+    return partial_status_.count(mesh_axis) > 0;
+  }
 }
 
 }  // namespace distributed

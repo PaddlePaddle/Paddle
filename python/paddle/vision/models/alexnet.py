@@ -17,7 +17,7 @@ import math
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid.param_attr import ParamAttr
+from paddle.base.param_attr import ParamAttr
 from paddle.nn import Conv2D, Dropout, Linear, MaxPool2D, ReLU
 from paddle.nn.initializer import Uniform
 from paddle.utils.download import get_weights_path_from_url

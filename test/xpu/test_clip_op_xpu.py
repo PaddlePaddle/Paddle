@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class XPUTestClipOp(XPUOpTestWrapper):
@@ -159,11 +159,11 @@ class TestClipAPI(unittest.TestCase):
         max = paddle.static.data(name='max', shape=[1], dtype='float32')
 
         place = (
-            fluid.XPUPlace(0)
-            if fluid.core.is_compiled_with_xpu()
-            else fluid.CPUPlace()
+            base.XPUPlace(0)
+            if base.core.is_compiled_with_xpu()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         out_1 = self._executed_api(images, min=min, max=max)
         out_2 = self._executed_api(images, min=0.2, max=0.9)
@@ -175,7 +175,7 @@ class TestClipAPI(unittest.TestCase):
         out_8 = self._executed_api(images)
 
         res1, res2, res3, res4, res5, res6, res7, res8 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
@@ -197,9 +197,9 @@ class TestClipAPI(unittest.TestCase):
     def test_clip_dygraph(self):
         paddle.disable_static()
         place = (
-            fluid.XPUPlace(0)
-            if fluid.core.is_compiled_with_xpu()
-            else fluid.CPUPlace()
+            base.XPUPlace(0)
+            if base.core.is_compiled_with_xpu()
+            else base.CPUPlace()
         )
         paddle.disable_static(place)
         data_shape = [1, 9, 9, 4]

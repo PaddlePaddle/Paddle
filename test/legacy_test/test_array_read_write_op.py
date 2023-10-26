@@ -17,11 +17,11 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import default_main_program
+from paddle import base
+from paddle.base import Program, core, program_guard
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
+from paddle.base.framework import default_main_program
 
 
 def _test_read_write(x):
@@ -104,10 +104,10 @@ class TestArrayReadWrite(unittest.TestCase):
         # the input gradient should also be 1
         self.assertAlmostEqual(1.0, g_out_sum, delta=0.1)
 
-        with fluid.dygraph.guard(place):
-            tensor1 = fluid.dygraph.to_variable(tensor)
-            tensor2 = fluid.dygraph.to_variable(tensor)
-            tensor3 = fluid.dygraph.to_variable(tensor)
+        with base.dygraph.guard(place):
+            tensor1 = base.dygraph.to_variable(tensor)
+            tensor2 = base.dygraph.to_variable(tensor)
+            tensor3 = base.dygraph.to_variable(tensor)
             x_dygraph = [tensor1, tensor2, tensor3]
             for each_x in x_dygraph:
                 each_x.stop_gradient = False

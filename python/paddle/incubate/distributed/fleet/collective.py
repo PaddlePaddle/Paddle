@@ -16,15 +16,15 @@ import os
 
 import paddle
 import paddle.distributed.transpiler.distribute_transpiler as dist_transpiler
-from paddle import fluid
-from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
-from paddle.fluid.compiler import CompiledProgram
-from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import (
+from paddle import base
+from paddle.base.compiler import CompiledProgram
+from paddle.base.executor import Executor
+from paddle.base.framework import Program
+from paddle.base.incubate.checkpoint.checkpoint_saver import (
     CheckpointSaver,
     PaddleModel,
 )
+from paddle.distributed.fleet.meta_optimizers import RawProgramOptimizer
 from paddle.incubate.distributed.fleet.base import (
     DistributedOptimizer,
     Fleet,
@@ -203,7 +203,7 @@ class Collective(Fleet):
 fleet = Collective()
 
 
-class DistributedStrategy(fluid.BuildStrategy):
+class DistributedStrategy(base.BuildStrategy):
     """
     Init function of DistributedStrategy
     """
@@ -222,7 +222,7 @@ class DistributedStrategy(fluid.BuildStrategy):
         self.use_amp = False  # use mixed precision optimizer
         self.amp_loss_scaling = 2**15
 
-        self.exec_strategy = fluid.ExecutionStrategy()
+        self.exec_strategy = base.ExecutionStrategy()
 
         # configurations below are used for unit test
         self._ut4grad_allreduce = False
@@ -258,8 +258,8 @@ class CollectiveOpBasedOptimizer(DistributedOptimizer):
 
 class CollectiveOptimizer(DistributedOptimizer):
     """
-    DistributedOptimizer is a wrapper for paddle.fluid.optimizer
-    A user should pass a paddle.fluid.optimizer to DistributedOptimizer
+    DistributedOptimizer is a wrapper for paddle.base.optimizer
+    A user should pass a paddle.base.optimizer to DistributedOptimizer
     minimize() function is implemented.
     DistributedOptimizer is the starting point for a user who wants to
     run distributed training. The optimized information will be stored in
@@ -550,7 +550,7 @@ class CollectiveOptimizer(DistributedOptimizer):
 
         main_program = loss.block.program
         if startup_program is None:
-            startup_program = fluid.default_startup_program()
+            startup_program = base.default_startup_program()
         fleet.startup_program = startup_program
 
         self._loss = loss

@@ -14,7 +14,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, paddle_static_guard
+from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle.nn.functional import kl_div
@@ -89,7 +89,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
         target = np.random.uniform(-10, 10, shape).astype('float64')
         gt_loss = kldiv_loss(x, target, reduction)
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             kldiv_criterion = paddle.nn.KLDivLoss(reduction)
             pred_loss = kldiv_criterion(
                 paddle.to_tensor(x), paddle.to_tensor(target)
@@ -123,7 +123,7 @@ class TestKLDivLossDygraph(unittest.TestCase):
 
 class TestKLDivLossTypePromotion(unittest.TestCase):
     def test_kl_div_promotion(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x1 = paddle.rand([5, 20], dtype='float32')
             target1 = paddle.rand([5, 20], dtype='float64')
 

@@ -28,7 +28,7 @@
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/type_defs.h"
 
-DECLARE_bool(auto_schedule_use_cost_model);
+PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
 namespace auto_schedule {
@@ -45,11 +45,10 @@ std::vector<TuneTask> CreateTasks(hlir::framework::Graph* graph,
   const auto& shape_dict = graph->GetAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
 
-  std::unique_ptr<hlir::framework::OpLowerer> op_lowerer =
-      std::make_unique<hlir::framework::OpLowerer>(
-          dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
   for (TuneTask& task : tasks) {
-    task.Initialize(shape_dict, dtype_dict, op_lowerer.get());
+    task.Initialize(shape_dict, dtype_dict, &op_lowerer);
     VLOG(3) << "Add a task with serialized_key:\n" << task.serialized_key;
   }
 

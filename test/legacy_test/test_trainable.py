@@ -18,7 +18,7 @@ from collections import Counter
 from simple_nets import init_data
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -27,7 +27,7 @@ def test_trainable():
     x = paddle.static.data(name='image', shape=[-1, 784], dtype='float32')
     label = paddle.static.data(name='label', shape=[-1, 1], dtype='int64')
     feature = paddle.static.nn.fc(
-        x, size=10, weight_attr=fluid.ParamAttr(trainable=False)
+        x, size=10, weight_attr=base.ParamAttr(trainable=False)
     )
     loss = paddle.nn.functional.cross_entropy(
         input=feature, label=label, reduction='none', use_softmax=False
@@ -40,13 +40,13 @@ class TestTrainable(unittest.TestCase):
     def check_trainable(
         self, model, feed_dict, op_count, optimizer=paddle.optimizer.Adam()
     ):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
 
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             loss = model()
             optimizer.minimize(loss)
 
@@ -58,7 +58,7 @@ class TestTrainable(unittest.TestCase):
                 else:
                     assert ops[op] == op_count[op]
 
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
             exe.run(feed=feed_dict)
 
     def test_trainable(self):

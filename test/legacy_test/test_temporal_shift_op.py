@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def temporal_shift(x, seg_num, shift_ratio, data_format):
@@ -140,14 +140,14 @@ class TestTemporalShiftAPI(unittest.TestCase):
         )
 
         # dygraph
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             input = paddle.randn([6, 4, 2, 2])
             out = paddle.nn.functional.temporal_shift(
                 x=input, seg_num=2, shift_ratio=0.2
             )
 
     def test_static_fp16_gpu(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()

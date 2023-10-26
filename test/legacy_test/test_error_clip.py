@@ -15,16 +15,16 @@
 import sys
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 BATCH_SIZE = 128
 CLIP_MAX = 2e-6
 CLIP_MIN = -1e-6
 
 paddle.enable_static()
-prog = fluid.framework.Program()
+prog = base.framework.Program()
 
-with fluid.program_guard(main_program=prog):
+with base.program_guard(main_program=prog):
     image = paddle.static.data(name='x', shape=[-1, 784], dtype='float32')
 
     hidden1 = paddle.static.nn.fc(x=image, size=128, activation='relu')
@@ -44,8 +44,8 @@ prog_clip.block(0).var(hidden1.name)._set_error_clip(
 )
 
 avg_cost_clip = prog_clip.block(0).var(avg_cost.name)
-fluid.backward.append_backward(loss=avg_cost)
-fluid.backward.append_backward(
+base.backward.append_backward(loss=avg_cost)
+base.backward.append_backward(
     loss=avg_cost_clip, callbacks=[paddle.nn.clip.error_clip_callback]
 )
 
@@ -60,10 +60,10 @@ train_reader = paddle.batch(
     batch_size=BATCH_SIZE,
 )
 
-place = fluid.CPUPlace()
-exe = fluid.Executor(place)
-feeder = fluid.DataFeeder(feed_list=[image, label], place=place)
-exe.run(fluid.default_startup_program())
+place = base.CPUPlace()
+exe = base.Executor(place)
+feeder = base.DataFeeder(feed_list=[image, label], place=place)
+exe.run(base.default_startup_program())
 
 count = 0
 for data in train_reader():

@@ -982,7 +982,10 @@ class DistributedContext:
                     ):
                         dims_mapping[i] = -1
                 dist_attr.set_output_dims_mapping(arg_name, dims_mapping)
-            if len(process_mesh_processes) == 1:
+            if (
+                len(process_mesh_processes) == 1
+                and dist_op.serial_op.type != "dropout"
+            ):
                 dist_op.dist_attr.impl_type = "default"
                 dist_op.dist_attr.impl_idx = 0
 
@@ -1206,9 +1209,9 @@ class BlockState:
         assert self.nblock >= 1
 
     def parse_backward_blocks(self, program):
-        assert 0 in self.forward_indices, "forward block idx are{}".format(
-            self.forward_indices
-        )
+        assert (
+            0 in self.forward_indices
+        ), f"forward block idx are{self.forward_indices}"
         self.backward_to_forward_index_map[0] = 0
 
         for idx, block in enumerate(program.blocks):

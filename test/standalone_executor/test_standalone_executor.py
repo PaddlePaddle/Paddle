@@ -20,9 +20,10 @@ import shutil
 import unittest
 
 import numpy as np
+from utils import static_guard
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.profiler import profiler
 
 paddle.enable_static()
@@ -89,7 +90,7 @@ class ExecutorStatisticsTestCase(unittest.TestCase):
 
         enable = True
         if executor == 'ParallelExecutor':
-            main_program = paddle.fluid.compiler.CompiledProgram(main_program)
+            main_program = paddle.base.compiler.CompiledProgram(main_program)
             enable = False
         elif executor == 'Executor':
             enable = False
@@ -236,9 +237,9 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         data = np.ones([2, 2], dtype="float32")
         feed = {"a": data, 'fake_input': data}
 
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             res = self.run_new_executor(feed)
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             gt = self.run_dygraph(feed)
         for x, y in zip(gt, res):
             np.testing.assert_array_equal(x, y)
@@ -311,7 +312,7 @@ class TestException(unittest.TestCase):
 
     def test_nan(self):
         flags = {'FLAGS_check_nan_inf': True, 'FLAGS_benchmark': True}
-        paddle.fluid.set_flags(flags)
+        paddle.base.set_flags(flags)
         feed = [
             {
                 'id': np.array([1, 2, 3, 4, 5]).astype(np.int64),
@@ -345,7 +346,7 @@ class TestException(unittest.TestCase):
 class TestFetchEmptyTensor(unittest.TestCase):
     def test_fetch(self):
         places = [paddle.CPUPlace()]
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         for place in places:
             with paddle.static.program_guard(paddle.static.Program()):
@@ -357,10 +358,10 @@ class TestFetchEmptyTensor(unittest.TestCase):
 
 class TestInplaceApiWithDataTransform(unittest.TestCase):
     def test_increment(self):
-        if paddle.fluid.core.is_compiled_with_cuda():
-            with paddle.fluid.device_guard("gpu:0"):
+        if paddle.base.core.is_compiled_with_cuda():
+            with paddle.base.device_guard("gpu:0"):
                 x = paddle.tensor.fill_constant([1], "float32", 0)
-            with paddle.fluid.device_guard("cpu"):
+            with paddle.base.device_guard("cpu"):
                 x = paddle.increment(x)
             exe = paddle.static.Executor(paddle.CUDAPlace(0))
             for i in range(10):

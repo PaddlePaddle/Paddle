@@ -192,8 +192,8 @@ class FusionSeqConvEltAddReluKernel : public framework::OpKernel<T> {
     int col_mat_w = static_cast<int>(w_dims[0]);
     int col_mat_w_sz = col_mat_w * sizeof(T);
     for (int i = 0; i < static_cast<int>(x_lod[0].size()) - 1; ++i) {
-      int st = x_lod[0][i];
-      int ed = x_lod[0][i + 1];
+      int st = static_cast<int>(x_lod[0][i]);
+      int ed = static_cast<int>(x_lod[0][i + 1]);
       const T* src_data = x_data + st * src_mat_w;
       T* dst_data = col_data + st * col_mat_w;
       int seq_len = ed - st;

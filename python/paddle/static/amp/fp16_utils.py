@@ -17,9 +17,9 @@ import logging
 import numpy as np
 
 import paddle
-from paddle.fluid import core, framework, global_scope
-from paddle.fluid.log_helper import get_logger
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base import core, framework, global_scope
+from paddle.base.log_helper import get_logger
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 from .fp16_lists import (
     AutoMixedPrecisionLists,
@@ -492,9 +492,7 @@ def get_promote_dtype(op, amp_dtype, block):
         # for ipu, all inputs must be converted to fp16
         if not core.is_compiled_with_ipu() and _keep_fp32_input(op, in_name):
             _logger.debug(
-                "---- Input {} {} should be kept fp32 ----".format(
-                    in_name, op.input(in_name)
-                )
+                f"---- Input {in_name} {op.input(in_name)} should be kept fp32 ----"
             )
             continue
         # if this op has inputs
@@ -642,6 +640,10 @@ def cast_model_to_fp16(
 
     def need_process(op):
         need_process = True
+        if op.type in ["set_value"]:
+            # NOTE(zoooo0820): OP set_value has attribute "dtype", but its output type is
+            # determined by the input.dtype instead of attribute. So, here we still process it.
+            return need_process
         if op.type in ["create_py_reader", "read"]:
             need_process = False
         else:
@@ -795,9 +797,9 @@ def cast_parameters_to_fp16(
     Traverse all parameters in the whole model and set them to the FP16 data type.
     Whereas, this function will keep parameters of batchnorms in FP32.
     Args:
-        place(fluid.CPUPlace|fluid.CUDAPlace): `place` is used to restore the FP16 weight tensors.
+        place(base.CPUPlace|base.CUDAPlace): `place` is used to restore the FP16 weight tensors.
         program (Program): The used program.
-        scope(fluid.Scope, optional): `scope` is used to get the FP32 weight tensor values.
+        scope(base.Scope, optional): `scope` is used to get the FP32 weight tensor values.
                                       Default is None.
         to_fp16_var_names(set|list, optional): The data types of vars in `to_fp16_var_names`
                                                will be set to FP16. Usually, it is the returned

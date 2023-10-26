@@ -158,7 +158,7 @@ void recompute_bias_and_weights(const Scope* scope,
 
   // ConvTranspose weights are in IOHW format
   if (conv_type == "conv2d_transpose") {
-    int kernel_size = weights_shape[2] * weights_shape[3];
+    int kernel_size = static_cast<int>(weights_shape[2] * weights_shape[3]);
     for (int i = 0; i < weights->numel();) {
       for (int j = 0; j < weights_shape[1]; ++j) {
         for (int k = 0; k < kernel_size; ++k, ++i) {
@@ -371,8 +371,8 @@ void ConvBNFusePass::ApplyImpl(ir::Graph* graph) const {
     bool mkldnn_with_bias = is_mkldnn && has_bias;
 
     // Create eltwise_y (conv bias) variable
-    phi::DenseTensor* eltwise_y_in_tensor;
-    Node* eltwise_y_in_node;
+    phi::DenseTensor* eltwise_y_in_tensor = nullptr;
+    Node* eltwise_y_in_node = nullptr;
     if (!mkldnn_with_bias) {
       VarDesc eltwise_y_in_desc(
           patterns::PDNodeName("fuse_conv_bn", conv_type() + "_eltwise_y_in"));

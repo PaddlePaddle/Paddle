@@ -28,38 +28,35 @@ namespace distributed {
 
 bool SToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
-
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
-  const auto& out_dims_mapping = out_dist_attr.dims_mapping();
 
-  flag &= IsDimsMappingShard(in_dims_mapping);
-  flag &= IsDimsMappingReplicated(out_dims_mapping);
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
   // Ensure the tensor is balanced split, or we need send/recv rather than
   // all_gather
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis =
-      GetSplitAxisWithDimsMapping(in_dims_mapping);
-  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
   int64_t num_of_process = in_process_mesh.size();
-  flag &=
-      (in.local_dims()[split_axis] * num_of_process == in.dims()[split_axis]);
+  RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
+                                num_of_process ==
+                            in.dims()[static_cast<int>(split_axis)]);
 
-  return flag;
+  return true;
 }
 
 void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call SToRReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_dims_mapping = in_dist_attr.dims_mapping();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
@@ -76,10 +73,7 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
                             in.value(),
                             in_process_ids.size(),
                             GetMutableTensor(out));
-
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis =
-      GetSplitAxisWithDimsMapping(in_dims_mapping);
-  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
 
   if (split_axis == 0) {
     // If the input dist tensor is shard(0), the subsequent split
@@ -90,10 +84,11 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
     // first we need to split the result on axis 0,
     // then we need to concat the split result on input split axis.
     int64_t default_split_axis = 0;
-    int64_t num_of_process = in_process_ids.size();
+    int64_t num_of_process = static_cast<int64_t>(in_process_ids.size());
 
     IntArray sections(std::vector<int64_t>(
-        num_of_process, in.value().dims()[default_split_axis]));
+        num_of_process,
+        in.value().dims()[static_cast<int>(default_split_axis)]));
     std::vector<DenseTensor> split_out_vec;
     RESHARD_FUNCTOR(dev_ctx,
                     Split,

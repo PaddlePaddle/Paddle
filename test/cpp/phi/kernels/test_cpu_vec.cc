@@ -27,7 +27,7 @@ namespace tests {
 inline double GetCurrentUS() {
   struct timeval time;
   gettimeofday(&time, nullptr);
-  return 1e+6 * time.tv_sec + time.tv_usec;
+  return 1e+6 * time.tv_sec + time.tv_usec;  // NOLINT
 }
 constexpr int repeat = 1000;
 

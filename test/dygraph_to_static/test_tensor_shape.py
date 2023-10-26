@@ -15,14 +15,18 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
+)
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def dyfunc_tensor_shape_1(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.reshape(x, shape=x.shape)
     return res
 
@@ -37,33 +41,33 @@ def dyfunc_tensor_shape_2(x):
 
 def dyfunc_tensor_shape_3(x):
     # Transform y.shape but run y.shape actually because y is not Tensor
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     y = paddle.ones([1, 5])
     res = paddle.reshape(x, shape=y.shape)
     return res
 
 
 def dyfunc_tensor_shape_4(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.reshape(x, shape=(-1, x.shape[0], len(x.shape)))
     return res
 
 
 def dyfunc_tensor_shape_5(x):
-    # `res = fluid.layers.reshape(x, shape=(-1, s))` to
-    # `res = fluid.layers.reshape(x, shape=(-1,
+    # `res = base.layers.reshape(x, shape=(-1, s))` to
+    # `res = base.layers.reshape(x, shape=(-1,
     #           paddle.jit.dy2static.convert_var_shape(x)[0]))`
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     s = x.shape[0]
     res = paddle.reshape(x, shape=(-1, s))
     return res
 
 
 def dyfunc_tensor_shape_6(x):
-    # `res = fluid.layers.reshape(x, shape=(-1, s))` to
-    # `res = fluid.layers.reshape(x, shape=(-1,
+    # `res = base.layers.reshape(x, shape=(-1, s))` to
+    # `res = base.layers.reshape(x, shape=(-1,
     #           paddle.jit.dy2static.convert_var_shape(x)[0:]))`
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     s = x.shape[0:]
     res = paddle.reshape(x, shape=s)
     return res
@@ -96,14 +100,14 @@ def dyfunc_paddle_shape_api(x):
     # paddle.shape will not be converted.
     a = paddle.shape(x)[0]
     # alias api will also not be converted.
-    alias_old_api = paddle.fluid.layers
+    alias_old_api = paddle.base.layers
     b = paddle.shape(x)[1]
     res = paddle.reshape(x, shape=(b, a))
     return res
 
 
 def dyfunc_with_if_1(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.reshape(x, [-1, 1])
     x_shape_0 = x.shape[0]
     if x_shape_0 < 1:
@@ -121,7 +125,7 @@ def dyfunc_with_if_1(x):
 
 
 def dyfunc_with_if_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     # `len(x.shape)` will not be transformed because x.shape is not used by Paddle api.
     if len(x.shape) < 1:
         res = x
@@ -132,7 +136,7 @@ def dyfunc_with_if_2(x):
 
 
 def dyfunc_with_for_1(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     for i in range(x.shape[0]):
@@ -141,7 +145,7 @@ def dyfunc_with_for_1(x):
 
 
 def dyfunc_with_for_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x_shape_0 = x.shape[0]
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
 
@@ -152,7 +156,7 @@ def dyfunc_with_for_2(x):
 
 
 def dyfunc_with_for_3(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `len(x.shape)` is not transformed.
     for i in range(len(x.shape)):
@@ -162,7 +166,7 @@ def dyfunc_with_for_3(x):
 
 
 def dyfunc_with_while_1(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     # `x.shape[0]` is transformed into `paddle.jit.dy2static.convert_var_shape(x)[0]`
     i = 1
@@ -173,7 +177,7 @@ def dyfunc_with_while_1(x):
 
 
 def dyfunc_with_while_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x_shape_0 = x.shape[0]
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
@@ -185,7 +189,7 @@ def dyfunc_with_while_2(x):
 
 
 def dyfunc_with_while_3(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x_shape = x.shape
     res = paddle.tensor.fill_constant(value=0, shape=[1], dtype="int32")
     i = 1
@@ -231,14 +235,13 @@ def dyfunc_dict_assign_shape():
 
 
 # 1. Basic tests without control flow
-@dy2static_unittest
-class TestTensorShapeBasic(unittest.TestCase):
+class TestTensorShapeBasic(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self._set_input_spec()
         self._set_expected_op_num()
@@ -251,7 +254,7 @@ class TestTensorShapeBasic(unittest.TestCase):
         self.input_spec = [paddle.static.InputSpec(shape=[5], dtype="int32")]
 
     def _run(self, to_static):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             if to_static:
                 res = paddle.jit.to_static(self.dygraph_func)(
                     self.input
@@ -263,6 +266,7 @@ class TestTensorShapeBasic(unittest.TestCase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
+    @compare_legacy_with_pir
     def get_static_output(self):
         return self._run(to_static=True)
 
@@ -289,7 +293,7 @@ class TestTensorShapeBasic(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -490,7 +494,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
 
 
 # 5. Test op num for negative dim
-class TestOpNumBasicWithTensorShape(unittest.TestCase):
+class TestOpNumBasicWithTensorShape(Dy2StTestBase):
     def setUp(self):
         self._set_input_spec()
         self._set_test_func()
@@ -522,7 +526,7 @@ class TestOpNumBasicWithTensorShape(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -612,8 +616,8 @@ def dyfunc_with_static_convert_var_shape(x):
     return res
 
 
-class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
-    @ast_only_test
+class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
+    @test_ast_only
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])

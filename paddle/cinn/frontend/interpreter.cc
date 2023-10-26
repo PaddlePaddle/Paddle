@@ -25,7 +25,7 @@
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(enable_auto_tuner);
+PD_DECLARE_bool(enable_auto_tuner);
 
 namespace cinn::frontend {
 

@@ -20,7 +20,7 @@ from PIL import Image
 
 import paddle
 
-from ...fluid.framework import Variable
+from ...base.framework import Variable
 from . import functional_cv2 as F_cv2
 from . import functional_pil as F_pil
 from . import functional_tensor as F_t
@@ -70,16 +70,14 @@ def to_tensor(pic, data_format='CHW'):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            tensor = F.to_tensor(fake_img)
-            print(tensor.shape)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> tensor = F.to_tensor(fake_img)
+            >>> print(tensor.shape)
+            [3, 256, 300]
 
     """
     if not (
@@ -127,21 +125,18 @@ def resize(img, size, interpolation='bilinear'):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> converted_img = F.resize(fake_img, 224)
+            >>> print(converted_img.size)
+            (262, 224)
 
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.resize(fake_img, 224)
-            print(converted_img.size)
-            # (262, 224)
-
-            converted_img = F.resize(fake_img, (200, 150))
-            print(converted_img.size)
-            # (150, 200)
+            >>> converted_img = F.resize(fake_img, (200, 150))
+            >>> print(converted_img.size)
+            (150, 200)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -196,19 +191,18 @@ def pad(img, padding, fill=0, padding_mode='constant'):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> padded_img = F.pad(fake_img, padding=1)
+            >>> print(padded_img.size)
+            (302, 258)
 
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            padded_img = F.pad(fake_img, padding=1)
-            print(padded_img.size)
-
-            padded_img = F.pad(fake_img, padding=(2, 1))
-            print(padded_img.size)
+            >>> padded_img = F.pad(fake_img, padding=(2, 1))
+            >>> print(padded_img.size)
+            (304, 258)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -244,16 +238,14 @@ def crop(img, top, left, height, width):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            cropped_img = F.crop(fake_img, 56, 150, 200, 100)
-            print(cropped_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> cropped_img = F.crop(fake_img, 56, 150, 200, 100)
+            >>> print(cropped_img.size)
+            (100, 200)
 
     """
     if not (
@@ -287,16 +279,14 @@ def center_crop(img, output_size):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            cropped_img = F.center_crop(fake_img, (150, 100))
-            print(cropped_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> cropped_img = F.center_crop(fake_img, (150, 100))
+            >>> print(cropped_img.size)
+            (100, 150)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -327,16 +317,14 @@ def hflip(img):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            flpped_img = F.hflip(fake_img)
-            print(flpped_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> flipped_img = F.hflip(fake_img)
+            >>> print(flipped_img.size)
+            (300, 256)
 
     """
     if not (
@@ -368,16 +356,14 @@ def vflip(img):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            flpped_img = F.vflip(fake_img)
-            print(flpped_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> flipped_img = F.vflip(fake_img)
+            >>> print(flipped_img.size)
+            (300, 256)
 
     """
     if not (
@@ -411,20 +397,26 @@ def adjust_brightness(img, brightness_factor):
 
     Examples:
         .. code-block:: python
-           :name: code-example1
+            :name: code-example1
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> np.random.seed(2023)
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> print(fake_img.size)
+            (300, 256)
+            >>> print(fake_img.load()[1,1])
+            (61, 155, 171)
+            >>> converted_img = F.adjust_brightness(fake_img, 0.5)
+            >>> print(converted_img.size)
+            (300, 256)
+            >>> print(converted_img.load()[1,1])
+            (30, 77, 85)
 
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
 
-            fake_img = Image.fromarray(fake_img)
-            print(fake_img.size) # (300, 256)
-            print(fake_img.load()[1,1]) # (95, 127, 202)
-            converted_img = F.adjust_brightness(fake_img, 0.5)
-            print(converted_img.size) # (300, 256)
-            print(converted_img.load()[1,1]) # (47, 63, 101)
+
 
 
     """
@@ -460,16 +452,14 @@ def adjust_contrast(img, contrast_factor):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_contrast(fake_img, 0.4)
-            print(converted_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> converted_img = F.adjust_contrast(fake_img, 0.4)
+            >>> print(converted_img.size)
+            (300, 256)
     """
     if not (
         _is_pil_image(img) or _is_numpy_image(img) or _is_tensor_image(img)
@@ -503,16 +493,14 @@ def adjust_saturation(img, saturation_factor):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_saturation(fake_img, 0.4)
-            print(converted_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> converted_img = F.adjust_saturation(fake_img, 0.4)
+            >>> print(converted_img.size)
+            (300, 256)
 
     """
     if not (
@@ -556,16 +544,14 @@ def adjust_hue(img, hue_factor):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            converted_img = F.adjust_hue(fake_img, 0.4)
-            print(converted_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> converted_img = F.adjust_hue(fake_img, 0.4)
+            >>> print(converted_img.size)
+            (300, 256)
 
     """
     if not (
@@ -657,13 +643,12 @@ def affine(
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import functional as F
-
-            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
-            affined_img = F.affine(fake_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
-            print(affined_img.shape)
+            >>> import paddle
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
+            >>> affined_img = F.affine(fake_img, 45, translate=[0.2, 0.2], scale=0.5, shear=[-10, 10])
+            >>> print(affined_img.shape)
+            [3, 256, 300]
     """
 
     if not (
@@ -789,16 +774,14 @@ def rotate(
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            rotated_img = F.rotate(fake_img, 90)
-            print(rotated_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> rotated_img = F.rotate(fake_img, 90)
+            >>> print(rotated_img.size)
+            (300, 256)
 
     """
     if not (
@@ -897,16 +880,14 @@ def perspective(img, startpoints, endpoints, interpolation='nearest', fill=0):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.vision.transforms import functional as F
-
-            fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
-
-            startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
-            endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
-
-            perspectived_img = F.perspective(fake_img, startpoints, endpoints)
-            print(perspectived_img.shape)
+            >>> import paddle
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = paddle.randn((3, 256, 300)).astype(paddle.float32)
+            >>> startpoints = [[0, 0], [33, 0], [33, 25], [0, 25]]
+            >>> endpoints = [[3, 2], [32, 3], [30, 24], [2, 25]]
+            >>> perspectived_img = F.perspective(fake_img, startpoints, endpoints)
+            >>> print(perspectived_img.shape)
+            [3, 256, 300]
 
     """
     if not (
@@ -946,16 +927,14 @@ def to_grayscale(img, num_output_channels=1):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            gray_img = F.to_grayscale(fake_img)
-            print(gray_img.size)
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> gray_img = F.to_grayscale(fake_img)
+            >>> print(gray_img.size)
+            (300, 256)
 
     """
     if not (
@@ -993,19 +972,16 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            from PIL import Image
-            from paddle.vision.transforms import functional as F
-
-            fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
-
-            fake_img = Image.fromarray(fake_img)
-
-            mean = [127.5, 127.5, 127.5]
-            std = [127.5, 127.5, 127.5]
-
-            normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
-            print(normalized_img.max(), normalized_img.min())
+            >>> import numpy as np
+            >>> from PIL import Image
+            >>> from paddle.vision.transforms import functional as F
+            >>> fake_img = (np.random.rand(256, 300, 3) * 255.).astype('uint8')
+            >>> fake_img = Image.fromarray(fake_img)
+            >>> mean = [127.5, 127.5, 127.5]
+            >>> std = [127.5, 127.5, 127.5]
+            >>> normalized_img = F.normalize(fake_img, mean, std, data_format='HWC')
+            >>> print(normalized_img.max(), normalized_img.min())
+            0.99215686 -1.0
 
     """
 
@@ -1039,35 +1015,28 @@ def erase(img, i, j, h, w, v, inplace=False):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> fake_img = paddle.randn((3, 2, 4)).astype(paddle.float32)
+            >>> print(fake_img)
+            Tensor(shape=[3, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.06132207,  1.11349595,  0.41906244, -0.24858207],
+              [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
+            [[ 1.66359663, -0.55764782, -0.59911072, -0.57773495],
+             [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
+            [[ 0.67233968, -1.07747352,  0.80170447, -0.06695852],
+             [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
 
-            fake_img = paddle.randn((3, 2, 4)).astype(paddle.float32)
-            print(fake_img)
-
-            #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #       [[[ 0.02169025, -0.97859967, -1.39175487, -1.07478464],
-            #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
-            #
-            #        [[-0.14993843,  1.10793507, -0.40056887, -1.94395220],
-            #         [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
-            #
-            #        [[-0.24998808, -1.47699273, -0.88838995,  0.42629015],
-            #         [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
-
-            values = paddle.zeros((1,1,1), dtype=paddle.float32)
-            result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
-
-            print(result)
-
-            #Tensor(shape=[3, 2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #       [[[ 0.02169025,  0.        ,  0.        , -1.07478464],
-            #         [ 0.20654772,  1.74624777,  0.32268861, -0.13857445]],
-            #
-            #         [[-0.14993843,  0.        ,  0.        , -1.94395220],
-            #           [ 0.41686651,  0.44551995, -0.09356714, -0.60898107]],
-            #
-            #         [[-0.24998808,  0.        ,  0.        ,  0.42629015],
-            #          [ 0.56948012, -0.96200180,  0.53355658,  3.20450878]]])
+            >>> values = paddle.zeros((1,1,1), dtype=paddle.float32)
+            >>> result = paddle.vision.transforms.erase(fake_img, 0, 1, 1, 2, values)
+            >>> print(result)
+            Tensor(shape=[3, 2, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[ 0.06132207,  0.        ,  0.        , -0.24858207],
+              [-1.85169315, -1.50370061,  1.73954511,  0.13331604]],
+            [[ 1.66359663,  0.        ,  0.        , -0.57773495],
+             [-1.03176904, -0.33741450, -0.29695082, -1.50258386]],
+            [[ 0.67233968,  0.        ,  0.        , -0.06695852],
+             [-1.85003340, -0.23008066,  0.65083790,  0.75387722]]])
 
     """
     if _is_tensor_image(img):

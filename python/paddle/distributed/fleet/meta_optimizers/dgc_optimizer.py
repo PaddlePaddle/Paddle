@@ -19,9 +19,9 @@ from .meta_optimizer_base import MetaOptimizerBase
 __all__ = []
 
 import paddle
+from paddle.base import framework
+from paddle.base.dygraph import base as imperative_base
 from paddle.common_ops_import import LayerHelper
-from paddle.fluid import framework
-from paddle.fluid.dygraph import base as imperative_base
 from paddle.framework import core, in_dynamic_mode
 from paddle.nn.clip import ClipGradByNorm, append_gradient_clip_ops
 from paddle.optimizer import Momentum, Optimizer
@@ -313,7 +313,7 @@ class DGCMomentumOptimizer(Optimizer):
         helper = LayerHelper("dgc_clip_by_norm_op", **args)
 
         if name is None:
-            name = paddle.fluid.unique_name.generate_with_ignorable_key(
+            name = paddle.base.unique_name.generate_with_ignorable_key(
                 ".".join([helper.name, 'tmp'])
             )
 

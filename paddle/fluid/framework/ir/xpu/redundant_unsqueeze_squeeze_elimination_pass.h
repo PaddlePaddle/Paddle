@@ -74,6 +74,44 @@ class RedundantUnsqueeze2EliminationPass : public FusePassBase {
                       |
   */
   void FoldGatherSqueeze2Ops(ir::Graph* graph) const;
+  /*
+   Origin subgraph:
+           x                    filter
+           |                      |
+      unsqueeze2(axes={-2})   unsqueeze2(axes={-2})
+            \                   /
+              \               /
+                conv2d(conv1d)
+                      |
+                elementwise_add
+                      |
+                squeeze2(axes={-2})
+                      |
+                 batch_norm
+                      |
+                     act
+                      |
+                  unsqueeze2
+                      |
+                  conv2d(conv1d)
+   Fused subgraph:
+           x                    filter
+           |                      |
+      unsqueeze2(axes={-2})   unsqueeze2(axes={-2})
+            \                   /
+              \               /
+                conv2d(conv1d)
+                      |
+                elementwise_add
+                      |
+                  batch_norm
+                      |
+                     act
+                      |
+                  conv2d(conv1d)
+  */
+  void FoldConv1dSqueeze2Ops(ir::Graph* graph,
+                             const std::string& act_type) const;
 
   const std::string name_scope_{"redundant_unsqueeze_squeeze_elimination_pass"};
 };

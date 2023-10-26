@@ -160,7 +160,7 @@ class GenerateProposalsKernel : public framework::OpKernel<T> {
       AppendProposals(rpn_roi_probs, num_proposals, scores);
       num_proposals += proposals.dims()[0];
       lod0.push_back(num_proposals);
-      tmp_num.push_back(proposals.dims()[0]);
+      tmp_num.push_back(proposals.dims()[0]);  // NOLINT
     }
     if (context.HasOutput("RpnRoisNum")) {
       auto *rpn_rois_num = context.Output<phi::DenseTensor>("RpnRoisNum");

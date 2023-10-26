@@ -15,14 +15,15 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 def call_lambda_as_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     add_func = lambda x, y: x + y
     mean_func = lambda x: paddle.mean(x)
@@ -35,7 +36,7 @@ def call_lambda_as_func(x):
 
 
 def call_lambda_directly(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     y = (lambda x, y: x + y)(x, x)
     out = (lambda x: paddle.mean(x))(y)
@@ -44,7 +45,7 @@ def call_lambda_directly(x):
 
 
 def call_lambda_in_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     add_func = lambda x: x + 1
 
@@ -55,7 +56,7 @@ def call_lambda_in_func(x):
 
 
 def call_lambda_with_ifExpr(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     add_func = lambda x: x + 1
 
@@ -66,7 +67,7 @@ def call_lambda_with_ifExpr(x):
 
 
 def call_lambda_with_ifExpr2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
 
     add_func = lambda x: x + 1
 
@@ -79,14 +80,15 @@ def call_lambda_with_ifExpr2(x):
     return out
 
 
+@dy2static_unittest
 class TestLambda(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.x = np.array([1, 3]).astype('float32')
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.init_func()
 
@@ -103,8 +105,8 @@ class TestLambda(unittest.TestCase):
         return self.run_dygraph(func, to_static=True)
 
     def run_dygraph(self, func, to_static=False):
-        with fluid.dygraph.guard(self.place):
-            x_v = fluid.dygraph.to_variable(self.x)
+        with base.dygraph.guard(self.place):
+            x_v = base.dygraph.to_variable(self.x)
             if to_static:
                 ret = paddle.jit.to_static(func)(x_v)
             else:

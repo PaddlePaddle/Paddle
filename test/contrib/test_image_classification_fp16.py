@@ -27,7 +27,7 @@ sys.path.append("../legacy_test")
 import nets
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.static.amp import decorate
 
 paddle.enable_static()
@@ -110,11 +110,11 @@ def train(net_type, use_cuda, save_dirname, is_local):
     classdim = 10
     data_shape = [3, 32, 32]
 
-    train_program = fluid.Program()
-    startup_prog = fluid.Program()
+    train_program = base.Program()
+    startup_prog = base.Program()
     train_program.random_seed = 123
     startup_prog.random_seed = 456
-    with fluid.program_guard(train_program, startup_prog):
+    with base.program_guard(train_program, startup_prog):
         images = paddle.static.data(
             name='pixel', shape=[-1] + data_shape, dtype='float32'
         )
@@ -167,9 +167,9 @@ def train(net_type, use_cuda, save_dirname, is_local):
         paddle.dataset.cifar.test10(), batch_size=BATCH_SIZE
     )
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(place=place, feed_list=[images, label])
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(place=place, feed_list=[images, label])
 
     def train_loop(main_program):
         exe.run(startup_prog)
@@ -257,11 +257,11 @@ def infer(use_cuda, save_dirname=None):
     if save_dirname is None:
         return
 
-    place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-    exe = fluid.Executor(place)
+    place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+    exe = base.Executor(place)
 
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
         # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
@@ -305,7 +305,7 @@ class TestImageClassification(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def main(self, net_type, use_cuda, is_local=True):
-        if use_cuda and not fluid.core.is_compiled_with_cuda():
+        if use_cuda and not base.core.is_compiled_with_cuda():
             return
 
         # Directory for saving the trained model
@@ -477,11 +477,11 @@ class TestImageClassification(unittest.TestCase):
 
     @contextlib.contextmanager
     def scope_prog_guard(self):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 yield
 
 
@@ -490,7 +490,7 @@ class TestAmpWithNonIterableDataLoader(unittest.TestCase):
         main_prog = paddle.static.Program()
         start_prog = paddle.static.Program()
         with paddle.static.program_guard(main_prog, start_prog):
-            with paddle.fluid.unique_name.guard():
+            with paddle.base.unique_name.guard():
                 image = paddle.static.data(
                     name='image', shape=[-1, 3, 224, 224], dtype='float32'
                 )

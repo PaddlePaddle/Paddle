@@ -22,8 +22,8 @@ from test_conv3d_transpose_op import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestWithSymmetricPad_NHWC(TestConv3DTransposeOp):
@@ -175,10 +175,10 @@ class TestConv3DTransposeAPI(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         results = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"data1": data1_np, "data2": data2_np},
             fetch_list=[out1, out2, out3, out4, out5, out6, out7],
             return_numpy=True,

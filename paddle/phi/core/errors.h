@@ -21,6 +21,7 @@ limitations under the License. */
 #include <type_traits>
 
 #include "paddle/utils/string/printf.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 enum ErrorCode {
@@ -111,7 +112,7 @@ class ErrorSummary {
 
   const std::string& error_message() const { return msg_; }
 
-  std::string to_string() const;
+  TEST_API std::string to_string() const;
 
  private:
   ErrorCode code_;

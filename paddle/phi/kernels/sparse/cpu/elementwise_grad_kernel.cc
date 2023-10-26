@@ -40,7 +40,7 @@ void AllocCsrPtr(const Context& dev_ctx,
   DenseTensor dx_crows = phi::EmptyLike<IntT>(dev_ctx, x.crows());
   DenseTensor dx_cols = phi::EmptyLike<IntT>(dev_ctx, x.cols());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
-  dx->set_meta(x.meta());
+  dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_crows, dx_cols, dx_values, x.dims());
 }
 
@@ -50,7 +50,7 @@ void AllocCooPtr(const Context& dev_ctx,
                  SparseCooTensor* dx) {
   DenseTensor dx_indices = phi::EmptyLike<IntT>(dev_ctx, x.indices());
   DenseTensor dx_values = phi::EmptyLike<T>(dev_ctx, x.values());
-  dx->set_meta(x.meta());
+  dx->set_meta(x.meta());  // NOLINT
   dx->SetMember(dx_indices, dx_values, x.dims(), x.coalesced());
 }
 
@@ -122,8 +122,8 @@ void CopyCsrValues(const Context& dev_ctx,
   Copy(dev_ctx, x.cols(), dev_ctx.GetPlace(), false, dx->mutable_cols());
 
   const auto& x_dims = x.dims();
-  int batch = x_dims.size() == 2 ? 1 : x_dims[0];
-  int rows = x_dims.size() == 2 ? x_dims[0] : x_dims[1];
+  int batch = static_cast<int>(x_dims.size() == 2 ? 1 : x_dims[0]);
+  int rows = static_cast<int>(x_dims.size() == 2 ? x_dims[0] : x_dims[1]);
 
   const IntT* x_crows_ptr = x.crows().data<IntT>();
   const IntT* x_cols_ptr = x.cols().data<IntT>();

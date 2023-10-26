@@ -115,7 +115,7 @@ void SaveOptimizedModelPass::SaveOptimizedModel(Argument* argument) {
     std::string save_model_path = path + "/" + "_optimized.pdmodel";
     auto str = optimized_program_desc.Proto()->SerializeAsString();
     std::ofstream file(save_model_path.c_str(), std::ios::binary);
-    file.write(str.c_str(), str.size());
+    file.write(str.c_str(), str.size());  // NOLINT
     file.close();
   };
 

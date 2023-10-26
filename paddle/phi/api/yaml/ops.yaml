@@ -134,7 +134,7 @@
   backward : angle_grad
 
 - op : argmax
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -143,7 +143,7 @@
     data_type : x
 
 - op : argmin
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -1012,10 +1012,10 @@
   backward : frame_grad
 
 - op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
-    func : CreateIntArrayInferMeta
+    func : CreateVecShapeInferMeta
     param : [value, dtype]
   kernel :
     func : full_int_array
@@ -1051,6 +1051,19 @@
   kernel :
     func : gather_tree
     data_type : ids
+
+- op : gaussian_inplace
+  args: (Tensor x, float mean=0, float std=1.0, int seed=0)
+  output: Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func: gaussian_inplace
+    data_type: x
+    backend : x
+  inplace: (x -> out)
+  backward: gaussian_inplace_grad
 
 - op : gelu
   args : (Tensor x,  bool approximate = false)
@@ -1238,6 +1251,8 @@
     func : index_sample
     data_type : x
   backward : index_sample_grad
+  data_transform :
+    skip_transform : index
 
 - op : index_select
   args : (Tensor x, Tensor index, int axis = 0)
@@ -1248,6 +1263,8 @@
     func : index_select
     data_type : x
   backward : index_select_grad
+  data_transform :
+    skip_transform : index
 
 - op : index_select_strided
   args : (Tensor x, int64_t index, int axis = 0)
@@ -1930,6 +1947,15 @@
     func : pixel_shuffle
   backward : pixel_shuffle_grad
 
+- op : pixel_unshuffle
+  args : (Tensor x, int downscale_factor=1, str data_format="NCHW")
+  output : Tensor
+  infer_meta :
+    func : PixelUnshuffleInferMeta
+  kernel :
+    func : pixel_unshuffle
+  backward : pixel_unshuffle_grad
+
 - op : poisson
   args : (Tensor x)
   output : Tensor
@@ -2047,6 +2073,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : relu
   inplace : (x -> out)
@@ -2432,6 +2459,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : square {dense -> dense},
            square_sr {selected_rows -> selected_rows}
@@ -2760,6 +2788,15 @@
   intermediate: warprnntgrad
   backward : warprnnt_grad
 
+- op : weight_dequantize
+  args : (Tensor x, Tensor scale, str algo="weight_only_int8", DataType out_dtype=DataType::FLOAT16)
+  output : Tensor(out)
+  infer_meta :
+    func : WeightDequantizeInferMeta
+  kernel :
+    func : weight_dequantize
+    data_type : out_dtype
+
 - op : weight_only_linear
   args : (Tensor x, Tensor weight, Tensor bias, Tensor weight_scale, str weight_dtype)
   output : Tensor(out)
@@ -2769,9 +2806,10 @@
     func : weight_only_linear
     data_type : x
   optional: bias
+  backward: weight_only_linear_grad
 
 - op : weight_quantize
-  args : (Tensor x, str algo = "weight_only_int8")
+  args : (Tensor x, str algo="weight_only_int8")
   output : Tensor(out), Tensor(scale)
   infer_meta :
     func : WeightQuantizeInferMeta

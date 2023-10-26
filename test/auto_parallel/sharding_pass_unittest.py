@@ -48,8 +48,8 @@ def apply_pass(use_sharding=False, stage=None):
 
 
 def reset_prog():
-    paddle.fluid.framework.switch_main_program(paddle.static.Program())
-    paddle.fluid.framework.switch_startup_program(paddle.static.Program())
+    paddle.base.framework.switch_main_program(paddle.static.Program())
+    paddle.base.framework.switch_startup_program(paddle.static.Program())
     paddle.utils.unique_name.switch()
 
 

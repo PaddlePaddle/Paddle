@@ -21,7 +21,7 @@ from legacy_test.test_collective_api_base import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils import moe_utils
 
 
@@ -30,7 +30,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         self.global_ring_id = 0
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
-        with fluid.program_guard(main_prog, startup_program):
+        with base.program_guard(main_prog, startup_program):
             seed = os.getpid()
             np.random.seed(seed)
             in_feat = 2

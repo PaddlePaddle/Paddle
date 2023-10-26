@@ -17,8 +17,8 @@ import tempfile
 import unittest
 
 import paddle
-from paddle import fluid, static
-from paddle.fluid import core
+from paddle import base, static
+from paddle.base import core
 
 
 class TestSaveLoadAPIError(unittest.TestCase):
@@ -32,7 +32,7 @@ class TestSaveLoadAPIError(unittest.TestCase):
     def test_get_valid_program_error(self):
         # case 1: CompiledProgram no program
         graph = core.Graph(core.ProgramDesc())
-        compiled_program = fluid.CompiledProgram(graph)
+        compiled_program = base.CompiledProgram(graph)
         with self.assertRaises(TypeError):
             paddle.static.io._get_valid_program(compiled_program)
 
@@ -41,8 +41,8 @@ class TestSaveLoadAPIError(unittest.TestCase):
             paddle.static.io._get_valid_program("program")
 
     def test_load_vars_error(self):
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         # case 1: main_program type error when vars None
         with self.assertRaises(TypeError):
             static.io.load_vars(
@@ -67,14 +67,14 @@ class TestSaveInferenceModelAPIError(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_useless_feeded_var_names(self):
-        start_prog = fluid.Program()
-        main_prog = fluid.Program()
-        with fluid.program_guard(main_prog, start_prog):
+        start_prog = base.Program()
+        main_prog = base.Program()
+        with base.program_guard(main_prog, start_prog):
             x = paddle.static.data(name='x', shape=[10, 16], dtype='float32')
             y = paddle.static.data(name='y', shape=[10, 16], dtype='float32')
             z = paddle.static.nn.fc(x, 4)
 
-        exe = fluid.Executor(fluid.CPUPlace())
+        exe = base.Executor(base.CPUPlace())
         exe.run(start_prog)
         with self.assertRaisesRegex(
             ValueError, "not involved in the target_vars calculation"

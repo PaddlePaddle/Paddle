@@ -15,6 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 from paddle import nn
@@ -61,12 +65,14 @@ class Layer1(nn.Layer):
         return val
 
 
+@dy2static_unittest
 class TestDuplicateOutput(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
+    @test_and_compare_with_new_ir(False)
     def test_case(self):
         # create network
         layer = Layer0(0)

@@ -18,9 +18,9 @@ import numpy as np
 from test_imperative_base import new_program_scope
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base import core
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 
@@ -58,11 +58,11 @@ class TestDygraphGAN(unittest.TestCase):
         seed = 90
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        startup = fluid.Program()
-        discriminate_p = fluid.Program()
-        generate_p = fluid.Program()
+        startup = base.Program()
+        discriminate_p = base.Program()
+        generate_p = base.Program()
 
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         with new_program_scope(
             main=discriminate_p, startup=startup, scope=scope
         ):
@@ -116,13 +116,13 @@ class TestDygraphGAN(unittest.TestCase):
             sgd = paddle.optimizer.SGD(learning_rate=1e-3)
             sgd.minimize(g_loss)
 
-        exe = fluid.Executor(
-            fluid.CPUPlace()
+        exe = base.Executor(
+            base.CPUPlace()
             if not core.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            else base.CUDAPlace(0)
         )
         static_params = {}
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             img = np.ones([2, 1], np.float32)
             noise = np.ones([2, 2], np.float32)
             exe.run(startup)
@@ -142,7 +142,7 @@ class TestDygraphGAN(unittest.TestCase):
                 )
 
         dy_params = {}
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
 
@@ -197,8 +197,8 @@ class TestDygraphGAN(unittest.TestCase):
             dy_d_loss = d_loss.numpy()
 
         dy_params2 = {}
-        with fluid.dygraph.guard():
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+        with base.dygraph.guard():
+            base.set_flags({'FLAGS_sort_sum_gradient': True})
             paddle.seed(1)
             paddle.framework.random._manual_program_seed(1)
             discriminator2 = Discriminator()

@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, program_guard
+from paddle import base
+from paddle.base import Program, program_guard
 
 
 class TestChunkOpError(unittest.TestCase):
@@ -52,7 +52,7 @@ class TestChunkOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_axis_type_tensor)
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
 
             def test_0_chunks_tensor():
                 x = paddle.uniform([1, 1, 1], dtype='float32')
@@ -63,7 +63,7 @@ class TestChunkOpError(unittest.TestCase):
 
 class API_TestChunk(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
                 'data1', shape=[4, 6, 6], dtype='float64'
             )
@@ -88,7 +88,7 @@ class API_TestChunk(unittest.TestCase):
 
 class API_TestChunk1(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data(
                 'data1', shape=[4, 6, 6], dtype='float64'
             )
@@ -109,10 +109,10 @@ class API_TestChunk1(unittest.TestCase):
 
 class API_TestDygraphChunk(unittest.TestCase):
     def test_out1(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
+            input = base.dygraph.to_variable(input_1)
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
@@ -123,10 +123,10 @@ class API_TestDygraphChunk(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_out2(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("bool")
             # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
+            input = base.dygraph.to_variable(input_1)
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=1)
             x0_out = x0.numpy()
             x1_out = x1.numpy()
@@ -137,10 +137,10 @@ class API_TestDygraphChunk(unittest.TestCase):
         np.testing.assert_allclose(ex_x2, x2_out, rtol=1e-05)
 
     def test_axis_tensor_input(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             input_1 = np.random.random([4, 6, 6]).astype("int32")
             # input is a variable which shape is [4, 6, 6]
-            input = fluid.dygraph.to_variable(input_1)
+            input = base.dygraph.to_variable(input_1)
             num1 = paddle.full(shape=[1], fill_value=1, dtype='int32')
             x0, x1, x2 = paddle.chunk(input, chunks=3, axis=num1)
             x0_out = x0.numpy()

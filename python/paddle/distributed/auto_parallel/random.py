@@ -25,6 +25,7 @@ _rng_name_to_seed = {}
 _inited_rng_name_to_seed = {}
 _enable_random_control = False
 _basic_seed = 42
+_basic_name = ""
 
 # use Prime number as offset to avoid confict
 _mesh_offset = 173
@@ -41,7 +42,7 @@ def enable_auto_rand_ctrl():
     _enable_random_control = True
 
 
-def parallel_manual_seed(seed):
+def parallel_manual_seed(seed, name=""):
     """Enable auto parallel random control.
     Random control maintain the randomness when tensor is distributed across devices on a Mesh(any order).
         * Independency: If tensor is **Sharded** on a Mesh dimension, Devices along that Mesh dimension should have Different randomness.
@@ -66,6 +67,8 @@ def parallel_manual_seed(seed):
     enable_auto_rand_ctrl()
     global _basic_seed
     _basic_seed = seed
+    global _basic_name
+    _basic_name = name
 
 
 def determinate_rng(rank, dims_mapping, process_mesh):
@@ -80,13 +83,18 @@ def determinate_rng(rank, dims_mapping, process_mesh):
         )
     global _basic_seed
     seed_ = _basic_seed
+    global _basic_name
+    name_ = _basic_name
+
+    if name_:
+        name_ += "_"
 
     # FIXME
     # unique_id = process_mesh.unique_id
     unique_id = retrive_unique_id_for_process_mesh(
         process_mesh.shape, process_mesh.process_ids
     )
-    sharding_expr = f'mesh:{unique_id}'
+    sharding_expr = name_ + f'mesh:{unique_id}'
     seed_ += _mesh_offset * (unique_id + 1)
 
     for i in range(len(process_mesh.shape)):

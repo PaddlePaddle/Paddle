@@ -35,7 +35,7 @@ void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out);
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out);
 
@@ -75,6 +75,15 @@ void PRecvArrayInferMeta(int peer,
                          DataType dtype,
                          const std::vector<int>& out_shape,
                          MetaTensor* out);
+
+void RecvV2InferMeta(const int ring_id,
+                     const bool dynamic_shape,
+                     const int peer,
+                     const std::vector<int>& out_shape,
+                     DataType dtype,
+                     MetaTensor* out);
+
+void SeedInferMeta(int seed, MetaTensor* out);
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,
                                       float mean,

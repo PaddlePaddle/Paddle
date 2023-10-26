@@ -12,8 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import inspect
 import sys
 import unittest
+
+from dygraph_to_static_util import dy2static_unittest
 
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import DygraphToStaticAst
@@ -23,11 +26,10 @@ from paddle.jit.dy2static.origin_info import (
     OriginInfo,
     attach_origin_info,
     create_and_update_origin_info_map,
-    gast,
-    inspect,
     unwrap,
 )
 from paddle.jit.dy2static.utils import ast_to_func
+from paddle.utils import gast
 
 
 def simple_func(x):
@@ -54,6 +56,7 @@ def decorated_func2(x):
     return x
 
 
+@dy2static_unittest
 class TestOriginInfo(unittest.TestCase):
     def setUp(self):
         self.set_test_func()

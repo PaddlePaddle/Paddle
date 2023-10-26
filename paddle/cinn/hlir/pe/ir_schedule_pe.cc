@@ -46,15 +46,15 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
   if (target == common::DefaultNVGPUTarget()) {
     auto blocks = ir_sch.GetAllBlocks();
-    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), true);
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-    auto loops = ir_sch.GetLoops(blocks[0]);
     auto size = std::accumulate(
         output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
     if (size <= target.max_num_threads()) {
-      ir_sch.Bind(loops[0], "threadIdx.x");
+      ir_sch.Bind(loop, "threadIdx.x");
     } else {
-      auto splited = ir_sch.Split(loops[0], {-1, target.max_num_threads()});
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
@@ -74,15 +74,15 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
   if (target == common::DefaultNVGPUTarget()) {
     auto blocks = ir_sch.GetAllBlocks();
-    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), false);
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-    auto loops = ir_sch.GetLoops(blocks[0]);
     auto size = std::accumulate(
         output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
     if (size <= target.max_num_threads()) {
-      ir_sch.Bind(loops[0], "threadIdx.x");
+      ir_sch.Bind(loop, "threadIdx.x");
     } else {
-      auto splited = ir_sch.Split(loops[0], {-1, target.max_num_threads()});
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
@@ -633,7 +633,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
     // simplify reshape index
     auto hand_write_simplify = [](std::vector<ir::Expr> loops, ir::Expr block) {
       // check exist select.
-      auto find_select = ir::CollectIRNodesInOrder(
+      auto find_select = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Select>(); });
       if (find_select.size() > 0) {
         return;
@@ -667,7 +667,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
         index = index + ir::Expr(schedule_block->iter_vars[idx]) * stride;
       }
 
-      auto exprs = ir::CollectIRNodesInOrder(
+      auto exprs = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Load>(); });
       CHECK_EQ(exprs.size(), 1);
       auto load = exprs.front().As<ir::Load>();
@@ -709,7 +709,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       break;
     }
 
-    auto exprs = ir::CollectIRNodesInOrder(
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         block, [&](const Expr *x) { return x->As<ir::Load>(); });
     for (auto expr : exprs) {
       auto load = expr.As<ir::Load>();

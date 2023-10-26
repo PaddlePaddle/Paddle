@@ -15,15 +15,19 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 
 import paddle
 
 np.random.seed(1)
 
-if paddle.fluid.is_compiled_with_cuda():
-    place = paddle.fluid.CUDAPlace(0)
+if paddle.base.is_compiled_with_cuda():
+    place = paddle.base.CUDAPlace(0)
 else:
-    place = paddle.fluid.CPUPlace()
+    place = paddle.base.CPUPlace()
 
 
 class SimpleNet(paddle.nn.Layer):
@@ -37,20 +41,25 @@ class SimpleNet(paddle.nn.Layer):
         return x, x
 
 
+@dy2static_unittest
 class TestDuplicateOutput(unittest.TestCase):
     """
     TestCase for the transformation from control flow `if/else`
-    dependent on tensor in Dygraph into Static `fluid.layers.cond`.
+    dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
     def setUp(self):
         self.net = paddle.jit.to_static(SimpleNet())
         self.x = paddle.to_tensor([1.0])
 
+    @test_and_compare_with_new_ir(False)
     def _run_static(self):
+        param = self.net.parameters()
+        param[0].clear_grad()
+
         loss0, loss1 = self.net(self.x)
         loss0.backward()
-        param = self.net.parameters()
+
         self.assertEqual(param[0].grad.numpy(), 1.0)
 
     def test_ast_to_func(self):

@@ -336,7 +336,7 @@ struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
                   phi::DenseTensor *out_scale) {
     T *scale_arr = scales_arr->mutable_data<T>(ctx.GetPlace());
     int64_t it = iter.data<int64_t>()[0];
-    int idx = it % window_size;
+    int idx = static_cast<int>(it % window_size);
     T removed = scale_arr[idx];
     T cur = cur_scale.data<T>()[0];
     scale_arr[idx] = cur;
@@ -345,7 +345,7 @@ struct FindRangeAbsMaxFunctor<phi::CPUContext, T> {
     if (max < cur) {
       max = cur;
     } else if (fabs(removed - max) < 1e-6) {
-      int size = (it > window_size) ? window_size : it;
+      int size = static_cast<int>((it > window_size) ? window_size : it);
       FindAbsMaxFunctor<phi::CPUContext, T>()(ctx, scale_arr, size, &max);
     }
     out_scale->mutable_data<T>(ctx.GetPlace())[0] = max;

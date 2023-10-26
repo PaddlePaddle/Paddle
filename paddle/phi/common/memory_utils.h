@@ -23,6 +23,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/phi/core/stream.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
@@ -424,7 +425,7 @@ int64_t DeviceMemoryStatCurrentValue(const std::string& stat_type, int dev_id);
 void GpuMemoryUsage(size_t* available, size_t* total);
 #endif
 
-void InitDevices();
+TEST_API void InitDevices();
 
 void EmplaceDeviceContexts(
     std::map<Place, std::shared_future<std::unique_ptr<DeviceContext>>>*

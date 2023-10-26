@@ -16,18 +16,18 @@
 
 import paddle
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from .layer_function_generator import templatedoc
 
-Tensor = paddle.fluid.framework.core.eager.Tensor
+Tensor = paddle.base.framework.core.eager.Tensor
 
 from paddle import _C_ops
 from paddle.tensor.creation import full
 from paddle.tensor.math import broadcast_shape
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -129,14 +129,17 @@ def logical_and(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([True])
-            y = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_and(x, y)
-            print(res) # [True False True False]
+            >>> x = paddle.to_tensor([True])
+            >>> y = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_and(x, y)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, True , False])
+
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_and(x, y)
 
     return _logical_op(
@@ -188,15 +191,15 @@ def logical_or(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
-            y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
-            res = paddle.logical_or(x, y)
-            print(res)
-            # Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
-            #        [[True , True ],
-            #         [True , False]])
+            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
+            >>> res = paddle.logical_or(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[True , True ],
+             [True , False]])
     """
     if in_dynamic_mode():
         return _C_ops.logical_or(x, y)
@@ -249,15 +252,15 @@ def logical_xor(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
-            y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
-            res = paddle.logical_xor(x, y)
-            print(res)
-            # Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
-            #        [[False, True ],
-            #         [True , False]])
+            >>> x = paddle.to_tensor([True, False], dtype="bool").reshape([2, 1])
+            >>> y = paddle.to_tensor([True, False, True, False], dtype="bool").reshape([2, 2])
+            >>> res = paddle.logical_xor(x, y)
+            >>> print(res)
+            Tensor(shape=[2, 2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [[False, True ],
+             [True , False]])
     """
     if in_dynamic_mode():
         return _C_ops.logical_xor(x, y)
@@ -271,7 +274,7 @@ def logical_xor(x, y, out=None, name=None):
 def logical_xor_(x, y, name=None):
     r"""
     Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
-    Please refer to :ref:`api_logical_xor`.
+    Please refer to :ref:`api_paddle_logical_xor`.
     """
     out_shape = broadcast_shape(x.shape, y.shape)
     if out_shape != x.shape:
@@ -300,6 +303,7 @@ def logical_not(x, out=None, name=None):
         .. _Introduction to Tensor: ../../guides/beginner/tensor_en.html#chapter5-broadcasting-of-tensor
 
     Args:
+
         x(Tensor):  Operand of logical_not operator. Must be a Tensor of type bool, int8, int16, in32, in64, float16, float32, or float64, complex64, complex128.
         out(Tensor): The ``Tensor`` that specifies the output of the operator, which can be any ``Tensor`` that has been created in the program. The default value is None, and a new ``Tensor` will be created to save the output.
         name(str|None): The default value is None. Normally there is no need for users to set this property. For more information, please refer to :ref:`api_guide_Name`.
@@ -310,11 +314,13 @@ def logical_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([True, False, True, False])
-            res = paddle.logical_not(x)
-            print(res) # [False  True False  True]
+            >>> x = paddle.to_tensor([True, False, True, False])
+            >>> res = paddle.logical_not(x)
+            >>> print(res)
+            Tensor(shape=[4], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , False, True ])
     """
     if in_dynamic_mode():
         return _C_ops.logical_not(x)
@@ -340,9 +346,7 @@ def is_empty(x, name=None):
 
     Args:
         x (Tensor): The Tensor to be tested.
-        name (str, optional): The default value is ``None`` . Normally users
-                            don't have to set this parameter. For more information,
-                            please refer to :ref:`api_guide_Name` .
+        name (str, optional): The default value is ``None`` . Normally users don't have to set this parameter. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
         Tensor: A bool scalar Tensor. True if 'x' is an empty Tensor.
@@ -350,12 +354,13 @@ def is_empty(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            input = paddle.rand(shape=[4, 32, 32], dtype='float32')
-            res = paddle.is_empty(x=input)
-            # res: Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
-            #        False)
+            >>> input = paddle.rand(shape=[4, 32, 32], dtype='float32')
+            >>> res = paddle.is_empty(x=input)
+            >>> print(res)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
 
     """
     if in_dynamic_mode():
@@ -394,17 +399,21 @@ def equal_all(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          x = paddle.to_tensor([1, 2, 3])
-          y = paddle.to_tensor([1, 2, 3])
-          z = paddle.to_tensor([1, 4, 3])
-          result1 = paddle.equal_all(x, y)
-          print(result1) # result1 = True
-          result2 = paddle.equal_all(x, z)
-          print(result2) # result2 = False
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 2, 3])
+            >>> z = paddle.to_tensor([1, 4, 3])
+            >>> result1 = paddle.equal_all(x, y)
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
+            >>> result2 = paddle.equal_all(x, z)
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_all(x, y)
     else:
         helper = LayerHelper("equal_all", **locals())
@@ -429,11 +438,11 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float16, float32, float64..
-        y(Tensor): The input tensor, it's data type should be float16, float32, float64..
-        rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
-        atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
-        equal_nan(equalnantype, optional): ${equal_nan_comment}.
+        x (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        y (Tensor): The input tensor, it's data type should be float16, float32, float64.
+        rtol (rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
+        atol (atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
+        equal_nan (equalnantype, optional): ${equal_nan_comment}. Default: False.
         name (str, optional): Name for the operation. For more information, please
             refer to :ref:`api_guide_Name`. Default: None.
 
@@ -443,30 +452,31 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          x = paddle.to_tensor([10000., 1e-07])
-          y = paddle.to_tensor([10000.1, 1e-08])
-          result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
-                                  equal_nan=False, name="ignore_nan")
-          # False
-
-          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
-                                      equal_nan=True, name="equal_nan")
-          # False
-
-          x = paddle.to_tensor([1.0, float('nan')])
-          y = paddle.to_tensor([1.0, float('nan')])
-          result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
-                                  equal_nan=False, name="ignore_nan")
-          # False
-
-          result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08,
-                                      equal_nan=True, name="equal_nan")
-          # True
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            False)
+            >>> result2 = paddle.allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[], dtype=bool, place=Place(cpu), stop_gradient=True,
+            True)
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.allclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
@@ -502,9 +512,9 @@ def equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        y (Tensor): Tensor, data type is bool, float16, float32, float64, int32, int64.
+        name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -514,23 +524,25 @@ def equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          x = paddle.to_tensor([1, 2, 3])
-          y = paddle.to_tensor([1, 3, 2])
-          result1 = paddle.equal(x, y)
-          print(result1)  # result1 = [True False False]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.equal(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, False])
     """
-    if not isinstance(y, (int, bool, float, Variable)):
+    if not isinstance(y, (int, bool, float, Variable, paddle.pir.OpResult)):
         raise TypeError(
             "Type of input args must be float, bool, int or Tensor, but received type {}".format(
                 type(y)
             )
         )
-    if not isinstance(y, Variable):
+    if not isinstance(y, (Variable, paddle.pir.OpResult)):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal(x, y)
     else:
         check_variable_and_dtype(
@@ -586,7 +598,7 @@ def equal_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.equal_(x, y)
 
 
@@ -599,9 +611,9 @@ def greater_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -609,14 +621,16 @@ def greater_equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.to_tensor([1, 3, 2])
-            result1 = paddle.greater_equal(x, y)
-            print(result1)  # result1 = [True False True]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.greater_equal(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -685,9 +699,9 @@ def greater_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: The output shape is same as input :attr:`x`. The output data type is bool.
@@ -695,14 +709,16 @@ def greater_than(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.to_tensor([1, 3, 2])
-            result1 = paddle.greater_than(x, y)
-            print(result1)  # result1 = [False False True]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.greater_than(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, False, True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.greater_than(x, y)
     else:
         check_variable_and_dtype(
@@ -771,9 +787,9 @@ def less_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -782,14 +798,16 @@ def less_equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.to_tensor([1, 3, 2])
-            result1 = paddle.less_equal(x, y)
-            print(result1)  # result1 = [True True False]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.less_equal(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -858,9 +876,9 @@ def less_than(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float16, float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -869,14 +887,16 @@ def less_than(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.to_tensor([1, 3, 2])
-            result1 = paddle.less_than(x, y)
-            print(result1)  # result1 = [False True False]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.less_than(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , False])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.less_than(x, y)
     else:
         check_variable_and_dtype(
@@ -945,9 +965,9 @@ def not_equal(x, y, name=None):
         The output has no gradient.
 
     Args:
-        x(Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        y(Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
-        name(str, optional): The default value is None.  Normally there is no need for
+        x (Tensor): First input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        y (Tensor): Second input to compare which is N-D tensor. The input data type should be bool, float32, float64, int32, int64.
+        name (str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -956,14 +976,16 @@ def not_equal(x, y, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([1, 2, 3])
-            y = paddle.to_tensor([1, 3, 2])
-            result1 = paddle.not_equal(x, y)
-            print(result1)  # result1 = [False True True]
+            >>> x = paddle.to_tensor([1, 2, 3])
+            >>> y = paddle.to_tensor([1, 3, 2])
+            >>> result1 = paddle.not_equal(x, y)
+            >>> print(result1)
+            Tensor(shape=[3], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [False, True , True ])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.not_equal(x, y)
     else:
         check_variable_and_dtype(
@@ -1037,19 +1059,21 @@ def is_tensor(x):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            input1 = paddle.rand(shape=[2, 3, 5], dtype='float32')
-            check = paddle.is_tensor(input1)
-            print(check)  #True
+            >>> input1 = paddle.rand(shape=[2, 3, 5], dtype='float32')
+            >>> check = paddle.is_tensor(input1)
+            >>> print(check)
+            True
 
-            input3 = [1, 4]
-            check = paddle.is_tensor(input3)
-            print(check)  #False
+            >>> input3 = [1, 4]
+            >>> check = paddle.is_tensor(input3)
+            >>> print(check)
+            False
 
     """
     if in_dynamic_mode():
-        return isinstance(x, (Tensor, paddle.fluid.core.eager.Tensor))
+        return isinstance(x, (Tensor, paddle.base.core.eager.Tensor))
     else:
         return isinstance(x, Variable)
 
@@ -1113,7 +1137,9 @@ def bitwise_and(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_and`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out(Tensor): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
+        out (Tensor, optional): Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Result of ``bitwise_and`` . It is a N-D Tensor with the same data type of input Tensor.
@@ -1121,13 +1147,15 @@ def bitwise_and(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([-5, -1, 1])
-            y = paddle.to_tensor([4,  2, -3])
-            res = paddle.bitwise_and(x, y)
-            print(res)  # [0, 2, 1]
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_and(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [0, 2, 1])
     """
-    if in_dynamic_mode() and out is None:
+    if in_dynamic_or_pir_mode() and out is None:
         return _C_ops.bitwise_and(x, y)
     return _bitwise_op(
         op_name="bitwise_and", x=x, y=y, name=name, out=out, binary_op=True
@@ -1147,7 +1175,7 @@ def bitwise_and_(x, y, name=None):
                 out_shape, x.shape
             )
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bitwise_and_(x, y)
 
 
@@ -1167,7 +1195,9 @@ def bitwise_or(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_or`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out(Tensor): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
+        out (Tensor, optional): Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Result of ``bitwise_or`` . It is a N-D Tensor with the same data type of input Tensor.
@@ -1175,11 +1205,13 @@ def bitwise_or(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([-5, -1, 1])
-            y = paddle.to_tensor([4,  2, -3])
-            res = paddle.bitwise_or(x, y)
-            print(res)  # [-1, -1, -3]
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_or(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1, -1, -3])
     """
     if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
@@ -1222,7 +1254,9 @@ def bitwise_xor(x, y, out=None, name=None):
     Args:
         x (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
         y (Tensor): Input Tensor of ``bitwise_xor`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out(Tensor): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
+        out (Tensor, optional): Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Result of ``bitwise_xor`` . It is a N-D Tensor with the same data type of input Tensor.
@@ -1230,11 +1264,13 @@ def bitwise_xor(x, y, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([-5, -1, 1])
-            y = paddle.to_tensor([4,  2, -3])
-            res = paddle.bitwise_xor(x, y)
-            print(res) # [-1, -3, -4]
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> y = paddle.to_tensor([4,  2, -3])
+            >>> res = paddle.bitwise_xor(x, y)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [-1, -3, -4])
     """
     if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
@@ -1275,7 +1311,9 @@ def bitwise_not(x, out=None, name=None):
 
     Args:
         x (Tensor): Input Tensor of ``bitwise_not`` . It is a N-D Tensor of bool, uint8, int8, int16, int32, int64.
-        out(Tensor): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
+        out (Tensor, optional): Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor. Default: None.
+        name (str, optional): The default value is None.  Normally there is no need for
+            user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Result of ``bitwise_not`` . It is a N-D Tensor with the same data type of input Tensor.
@@ -1283,10 +1321,12 @@ def bitwise_not(x, out=None, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([-5, -1, 1])
-            res = paddle.bitwise_not(x)
-            print(res) # [4, 0, -2]
+            >>> import paddle
+            >>> x = paddle.to_tensor([-5, -1, 1])
+            >>> res = paddle.bitwise_not(x)
+            >>> print(res)
+            Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [ 4,  0, -2])
     """
     if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_not(x)
@@ -1320,8 +1360,8 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     two tensors are elementwise equal within a tolerance.
 
     Args:
-        x(Tensor): The input tensor, it's data type should be float16, float32, float64.
-        y(Tensor): The input tensor, it's data type should be float16, float32, float64.
+        x(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
+        y(Tensor): The input tensor, it's data type should be float16, float32, float64, complex64, complex128.
         rtol(rtoltype, optional): The relative tolerance. Default: :math:`1e-5` .
         atol(atoltype, optional): The absolute tolerance. Default: :math:`1e-8` .
         equal_nan(equalnantype, optional): If :math:`True` , then two :math:`NaNs` will be compared as equal. Default: :math:`False` .
@@ -1334,35 +1374,48 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
 
-          x = paddle.to_tensor([10000., 1e-07])
-          y = paddle.to_tensor([10000.1, 1e-08])
-          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-                                  equal_nan=False, name="ignore_nan")
-          # [True, False]
-          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-                                      equal_nan=True, name="equal_nan")
-          # [True, False]
-
-          x = paddle.to_tensor([1.0, float('nan')])
-          y = paddle.to_tensor([1.0, float('nan')])
-          result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-                                  equal_nan=False, name="ignore_nan")
-          # [True, False]
-          result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
-                                      equal_nan=True, name="equal_nan")
-          # [True, True]
+            >>> x = paddle.to_tensor([10000., 1e-07])
+            >>> y = paddle.to_tensor([10000.1, 1e-08])
+            >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+            ...                          equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+            ...                          equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> x = paddle.to_tensor([1.0, float('nan')])
+            >>> y = paddle.to_tensor([1.0, float('nan')])
+            >>> result1 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+            ...                          equal_nan=False, name="ignore_nan")
+            >>> print(result1)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True , False])
+            >>> result2 = paddle.isclose(x, y, rtol=1e-05, atol=1e-08,
+            ...                          equal_nan=True, name="equal_nan")
+            >>> print(result2)
+            Tensor(shape=[2], dtype=bool, place=Place(cpu), stop_gradient=True,
+            [True, True])
     """
 
     if in_dynamic_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
-            x, "input", ['float16', 'float32', 'float64'], 'isclose'
+            x,
+            "input",
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'isclose',
         )
         check_variable_and_dtype(
-            y, "input", ['float16', 'float32', 'float64'], 'isclose'
+            y,
+            "input",
+            ['float16', 'float32', 'float64', 'complex64', 'complex128'],
+            'isclose',
         )
         check_type(rtol, 'rtol', float, 'isclose')
         check_type(atol, 'atol', float, 'isclose')

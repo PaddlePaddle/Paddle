@@ -306,7 +306,8 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     }
 
     int begin_norm_axis = mean_dim.front();
-    if (begin_norm_axis < 0) begin_norm_axis += x_shape.size();
+    if (begin_norm_axis < 0)
+      begin_norm_axis += static_cast<int>(x_shape.size());
     const auto& gamma_shape = gamma->Var()->GetShape();
     const auto& beta_shape = beta->Var()->GetShape();
 
