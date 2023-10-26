@@ -194,7 +194,6 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
-
 class TestTakeAlongAxisAPICase1(TestTakeAlongAxisAPI):
     def setUp(self):
         np.random.seed(0)
