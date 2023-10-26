@@ -17,7 +17,9 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-SpmdInfo FullLikeInferSpmd(const DistMetaTensor& x, const Scalar& y) {
+SpmdInfo FullLikeInferSpmd(const DistMetaTensor& x,
+                           const Scalar& y,
+                           DataType data_type) {
   return ElementwiseUnaryInferSpmd(x);
 }
 }  // namespace distributed
