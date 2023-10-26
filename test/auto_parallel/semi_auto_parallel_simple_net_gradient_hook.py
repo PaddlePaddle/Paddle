@@ -27,11 +27,11 @@ hook_triggered = False
 
 
 def backward_hook():
-    def trigger_hook():
+    def trigger_hook(grad):
         global hook_triggered
         hook_triggered = True
 
-    return trigger_hook()
+    return trigger_hook
 
 
 class TestSimpleNetWithGradientHookForSemiAutoParallel(
@@ -45,7 +45,6 @@ class TestSimpleNetWithGradientHookForSemiAutoParallel(
 
         paddle.set_device(self._backend)
         self.init_input_data()
-        self.init_single_card_net_result()
 
     def run_dynamic(self, layer):
         loss_fn = nn.MSELoss()
@@ -56,15 +55,29 @@ class TestSimpleNetWithGradientHookForSemiAutoParallel(
         loss = loss_fn(out, label)
         loss.backward()
 
-    def test_gradient_hook(self):
-        model = MPDemoNet(self.w0, self.w1, self._mesh)
+    def test_register_grad_hook(self):
+        model = MPDemoNet(
+            self.w0, self.w1, self._mesh, param_suffix="register_grad_hook"
+        )
         model.w0._register_grad_hook(backward_hook())
         self.run_dynamic(model)
         global hook_triggered
         assert hook_triggered
+        hook_triggered = False
+
+    def test_register_hook(self):
+        model = MPDemoNet(
+            self.w0, self.w1, self._mesh, param_suffix="register_hook"
+        )
+        model.w0.register_hook(backward_hook())
+        self.run_dynamic(model)
+        global hook_triggered
+        assert hook_triggered
+        hook_triggered = False
 
     def run_test_case(self):
-        self.test_gradient_hook()
+        self.test_register_grad_hook()
+        self.test_register_hook()
 
 
 if __name__ == '__main__':
