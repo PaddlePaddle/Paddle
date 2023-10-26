@@ -16,6 +16,7 @@
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
+#include "phi/kernels/funcs/skip_layernorm_functor.h"
 
 namespace phi {
 namespace fusion {
@@ -43,7 +44,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
   }
   int hidden = x.dims()[2];
   auto &device_ctx = context.template device_context<DeviceContext>();
-  operators::math::SkipLayerNormFunctor<T> skip_layer_norm_func;
+  phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
 
   if (std::is_same<T, paddle::platform::float16>::value) {
     const half *X_new = reinterpret_cast<const half *>(X_d);
@@ -51,7 +52,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
     const half *scale_new = reinterpret_cast<const half *>(scale_d);
     const half *bias_new = reinterpret_cast<const half *>(bias_d);
     half *output_new = reinterpret_cast<half *>(output_d);
-    operators::math::SkipLayerNormFunctor<half> skip_layer_norm_func;
+    phi::funcs::SkipLayerNormFunctor<half> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_new,
@@ -62,7 +63,7 @@ void SkipLayerNormKernel(const Context &dev_ctx,
                          epsilon,
                          device_ctx.stream());
   } else {
-    operators::math::SkipLayerNormFunctor<T> skip_layer_norm_func;
+    phi::funcs::SkipLayerNormFunctor<T> skip_layer_norm_func;
     skip_layer_norm_func(num,
                          hidden,
                          X_d,

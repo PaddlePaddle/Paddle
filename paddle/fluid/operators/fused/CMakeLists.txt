@@ -9,7 +9,6 @@ register_operators(
   conv_fusion_op
   fusion_conv_inception_op
   self_dp_attention_op
-  skip_layernorm_op
   yolo_box_head_op
   yolo_box_post_op
   fusion_group_op
@@ -64,7 +63,6 @@ if(WITH_GPU OR WITH_ROCM)
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7100))
     op_library(fusion_conv_inception_op)
   endif()
-  op_library(skip_layernorm_op)
   op_library(yolo_box_head_op)
   op_library(yolo_box_post_op)
   op_library(fused_gate_attention_op)
