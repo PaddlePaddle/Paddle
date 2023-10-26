@@ -713,7 +713,7 @@ def binary_cross_entropy_with_logits(
     logit, label, weight=None, reduction='mean', pos_weight=None, name=None
 ):
     r"""
-    Combine the sigmoid layer and the :ref:`api_nn_loss_BCELoss` layer.
+    Combine the sigmoid layer and the :ref:`api_paddle_nn_BCELoss` layer.
 
     This measures the element-wise probability error in classification tasks
     in which each class is independent.
@@ -1337,13 +1337,13 @@ def l1_loss(input, label, reduction='mean', name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
         check_variable_and_dtype(
             label,
             'label',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
 

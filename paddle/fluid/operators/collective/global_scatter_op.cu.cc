@@ -15,10 +15,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/collective/global_scatter_op.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/fluid/framework/convert_utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/distributed/collective/process_group_nccl.h"
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -286,7 +286,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
     out->mutable_data<T>(out_dims, place);
 
     for (auto i = 0; i < n_expert; ++i) {
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupStart());
+      distributed::ProcessGroupNCCL::GroupStart();
       for (auto j = 0; j < nranks; ++j) {
         int idx = i + j * n_expert;
         if (cpu_local_count_data[idx]) {
@@ -306,7 +306,7 @@ struct GlobalScatterProcessGroupFunctor<phi::GPUContext, T> {
           recv_ptr += cpu_global_count_data[idx];
         }
       }
-      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclGroupEnd());
+      distributed::ProcessGroupNCCL::GroupEnd();
     }
 
 #ifdef PADDLE_WITH_CUDA

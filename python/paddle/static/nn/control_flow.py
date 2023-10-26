@@ -1224,9 +1224,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         with true_cond_block.block():
             origin_true_output = true_fn()
             if origin_true_output is not None:
-                origin_true_output = map_structure(
-                    create_undefined_var_in_subblock, origin_true_output
-                )
                 true_output = map_structure(
                     copy_to_parent_func, origin_true_output
                 )
@@ -1243,9 +1240,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
         with false_cond_block.block():
             origin_false_output = false_fn()
             if origin_false_output is not None:
-                origin_false_output = map_structure(
-                    create_undefined_var_in_subblock, origin_false_output
-                )
                 false_output = map_structure(
                     copy_to_parent_func, origin_false_output
                 )
@@ -1361,18 +1355,6 @@ def cond(pred, true_fn=None, false_fn=None, name=None, return_names=None):
     merged_output = map_structure(lambda fn: fn(), merged_output_fns)
     merged_output = pack_sequence_as(false_output, flatten(merged_output))
     return merged_output
-
-
-def create_undefined_var_in_subblock(var):
-    # to make sure the undefined var created in subblock.
-    from paddle.jit.dy2static.utils import (
-        UndefinedVar,
-        create_undefined_variable_local,
-    )
-
-    if isinstance(var, UndefinedVar):
-        var = create_undefined_variable_local()
-    return var
 
 
 def copy_var_to_parent_block(var, layer_helper):

@@ -14,13 +14,13 @@
 
 import unittest
 
-from dygraph_to_static_utils_new import Dy2StTestBase, ast_only_test
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 
 
 class TestSetDynamicShape(Dy2StTestBase):
-    @ast_only_test
+    @test_ast_only
     def test_start(self):
         def dygraph_func(loop_number):
             mask = paddle.randn([2, 2])

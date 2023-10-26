@@ -74,7 +74,8 @@ PD_REGISTER_KERNEL(split,
                    float,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(split_with_num,
                    XPU,
                    ALL_LAYOUT,
@@ -82,4 +83,5 @@ PD_REGISTER_KERNEL(split_with_num,
                    float,
                    int64_t,
                    int,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}

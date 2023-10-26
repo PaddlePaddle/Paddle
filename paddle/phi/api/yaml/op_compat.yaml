@@ -987,8 +987,8 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : exponential_
-  backward : exponential__grad
+- op : exponential_ (exponential)
+  backward : exponential__grad (exponential_grad)
   inputs :
     x : X
   outputs :
@@ -3274,6 +3274,12 @@
     {out: Out, pivots : Pivots, infos : Infos}
   attrs:
     pivot : pivots
+
+- op: memcpy
+  inputs:
+    x: X
+  outputs:
+    out: Out
 
 - op: memcpy_d2h
   inputs :
