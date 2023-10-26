@@ -192,6 +192,12 @@ ReshardApiInputToReplicatedKernelInput(
     const paddle::optional<Tensor>& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
 
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const std::vector<phi::distributed::TensorDistAttr>& dist_attrs);
+
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);
 
