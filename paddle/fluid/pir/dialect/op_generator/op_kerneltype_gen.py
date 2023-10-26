@@ -25,8 +25,7 @@ phi::KernelKey {op_name}::GetKernelTypeForVar(
 """
 
 OP_DATA_TRANSFORM_CHECK_TEMPLATE = """
-{skip_trans}
-{support_trans}
+{skip_trans}{support_trans}
 """
 
 OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
@@ -38,6 +37,7 @@ OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
 
 OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
   // deal support data transform
+  VLOG(8) << "SUPPORT_TRANSFORM: " << \"{support_dtype_name};";
   return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
 """
 
@@ -68,7 +68,9 @@ def get_data_transform_check_str(op_data_transform_map):
             args = op_data_transform_map["support_trans_dtype"]
             # TODO:(chenxi) comlete SUPPORT logic
             if args is not None:
-                support_trans_str = OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE
+                support_trans_str = OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE.format(
+                    support_dtype_name=args
+                )
 
     return OP_DATA_TRANSFORM_CHECK_TEMPLATE.format(
         skip_trans=skip_trans_str,
@@ -103,7 +105,6 @@ def gen_kernel_type_for_var_str(
 
     return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(
         op_name=op_class_name,
-        complex_promote_check="",
         data_transform_check=data_transform_check_str,
-        # complex_promote_check=complex_promote_check_str,
+        complex_promote_check=complex_promote_check_str,
     )
