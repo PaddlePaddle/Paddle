@@ -21,6 +21,7 @@ import paddle
 from paddle import base
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def gather_numpy(x, index, axis):
@@ -418,23 +419,23 @@ class TestGatherOp4FP16(TestGatherOp4):
 
 
 class API_TestGather(unittest.TestCase):
+    @test_with_pir_api
     def test_out1(self):
         with base.program_guard(base.Program(), base.Program()):
             data1 = paddle.static.data('data1', shape=[-1, 2], dtype='float64')
-            data1.desc.set_need_check_feed(False)
-            index = paddle.static.data('index', shape=[-1, 1], dtype='int32')
-            index.desc.set_need_check_feed(False)
+            index = paddle.static.data('index', shape=[-1, 1], dtype='int64')
             out = paddle.gather(data1, index)
             place = base.CPUPlace()
             exe = base.Executor(place)
-            input = np.array([[1, 2], [3, 4], [5, 6]])
-            index_1 = np.array([1, 2])
+            input = np.array([[1, 2], [3, 4], [5, 6]]).astype('float64')
+            index_1 = np.array([1, 2]).astype('int64')
             (result,) = exe.run(
                 feed={"data1": input, "index": index_1}, fetch_list=[out]
             )
             expected_output = np.array([[3, 4], [5, 6]])
         np.testing.assert_allclose(result, expected_output, rtol=1e-05)
 
+    @test_with_pir_api
     def test_out2(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
@@ -607,6 +608,13 @@ class TestCheckOutType(unittest.TestCase):
         index = paddle.static.data(shape=[4], dtype='int64', name='index')
         out = paddle.gather(data, index)
         self.assertTrue(out.dtype == core.VarDesc.VarType.INT64)
+
+    def test_pir_out_type(self):
+        with paddle.pir_utils.IrGuard():
+            data = paddle.static.data(shape=[16, 10], dtype='int64', name='x')
+            index = paddle.static.data(shape=[4], dtype='int64', name='index')
+            out = paddle.gather(data, index)
+            self.assertTrue(out.dtype == core.DataType.INT64)
 
 
 if __name__ == "__main__":
