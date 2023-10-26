@@ -912,6 +912,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         assert layers.get_num_virtual_stages() > 1
 
         # setup for interleave scheduler
+        self._check_sanity()
         self.num_model_chunks = layers.get_num_virtual_stages()
         self.model_chunks = layers.get_model_chunks()
         assert self.model_chunks is not None
@@ -920,7 +921,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self._virtual_pp_rank = 0
         self._reset_counter()
 
-        self._check_sanity()
+        self._assign_vpp_info(self.model_chunks)
 
     def _check_sanity(self):
         assert (
