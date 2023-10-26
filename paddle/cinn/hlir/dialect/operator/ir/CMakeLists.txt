@@ -17,12 +17,16 @@ if(NOT CINN_ONLY)
   set(cinn_op_yaml_file
       ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/ops.yaml)
 
+  set(cinn_update_op_yaml_file
+      ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/operator/ir/update_ops.yaml)
+
   set(parsed_op_dir ${PADDLE_SOURCE_DIR}/paddle/cinn/hlir/dialect/generated)
 
-  set(cinn_op_parsed_yaml_file ${parsed_op_dir}/ops.parsed.yaml
-                               ${parsed_op_dir}/update_ops.parsed.yaml)
+  set(cinn_op_parsed_yaml_file ${parsed_op_dir}/ops.parsed.yaml)
+  set(cinn_update_op_parsed_yaml_file ${parsed_op_dir}/update_ops.parsed.yaml)
 
-  set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file})
+  set(cinn_op_parsed_yaml_files ${cinn_op_parsed_yaml_file}
+                                ${cinn_update_op_parsed_yaml_file})
 
   set(cinn_op_namespace cinn,dialect)
   set(cinn_op_dialect_name cinn_op)
@@ -32,11 +36,16 @@ if(NOT CINN_ONLY)
   set(cinn_op_source_file_tmp ${cinn_op_source_file}.tmp)
 
   add_custom_command(
-    OUTPUT ${cinn_op_parsed_yaml_file}
+    OUTPUT ${cinn_op_parsed_yaml_file} ${cinn_update_op_parsed_yaml_file}
     COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
     COMMAND ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
             ${cinn_op_yaml_file} --output_path ${cinn_op_parsed_yaml_file}
+    COMMAND
+      ${PYTHON_EXECUTABLE} ${cinn_op_gen_parsed_yaml_file} --op_yaml_path
+      ${cinn_update_op_yaml_file} --output_path
+      ${cinn_update_op_parsed_yaml_file}
     DEPENDS ${cinn_op_gen_parsed_yaml_file} ${cinn_op_yaml_file}
+            ${cinn_update_op_yaml_file}
     VERBATIM)
 
   add_custom_command(
@@ -52,7 +61,7 @@ if(NOT CINN_ONLY)
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${cinn_op_source_file_tmp}
             ${cinn_op_source_file}
     DEPENDS ${cinn_op_gen_file} ${cinn_op_parsed_yaml_file}
-            ${cinn_op_compat_yaml_file}
+            ${cinn_update_op_parsed_yaml_file} ${cinn_op_compat_yaml_file}
     VERBATIM)
 
   cinn_cc_library(
