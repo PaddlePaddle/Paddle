@@ -73,7 +73,19 @@ bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);
 
 bool IsTensorPartial(const TensorDistAttr& dist_str);
 
-TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+std::vector<int64_t> GetLocalShape(
+    const std::vector<int64_t> shape,
+    const ProcessMesh& mesh,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
+
+TensorDistAttr FromPlacements(
+    const TensorDistAttr& dist_attr,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements)
+
+    TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+
+bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
+                    const std::shared_ptr<PlacementStatus>& b);
 
 // Adaptor for variadic arguments
 template <typename Functor>

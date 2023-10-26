@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
+
+#include <limits>
+
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
@@ -29,12 +32,15 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
 # tensor.shape is torch.Size([0]). When tensor.ndim > 1, it will be treated
 # as a non-empty tensor and the shape must match on non-cat dimensions.
  */
+
+  // 1、check tensors shapes
   std::vector<std::vector<int64_t>> tensor_shapes;
-  auto get_shape = [](const DistMetaTensor& meta) {
-    return phi::vectorize<int64_t>(meta.dims());
-  };
-  std::transform(
-      x.begin(), x.end(), std::back_inserter(tensor_shapes), get_shape);
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(tensor_shapes),
+                 [](const DistMetaTensor& meta) {
+                   return phi::vectorize<int64_t>(meta.dims());
+                 });
   auto is_empty = [](const std::vector<int64_t>& shape) {
     return shape.empty() || shape.at(0) == 0;
   };
@@ -48,13 +54,14 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
   };
   auto non_empty_iter =
       std::find_if(tensor_shapes.begin(), tensor_shapes.end(), not_empty);
-  int64_t ndim = static_cast<int64_t>(non_empty_iter->size());
+  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
+  int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   // normlize dim
   int64_t dim = axis.to<int64_t>();
   dim = dim < 0 ? dim + ndim : dim;
 
   std::vector<TensorDistAttr> input_attrs;
-  // 1、make sure all tensors replicated on concat dim
+  // 2、make sure all tensors replicated on concat dim
   auto n_inputs = x.size();
   for (size_t i = 0; i < n_inputs; ++i) {
     const auto& dist_attr = x[i].dist_attr();
@@ -65,12 +72,84 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
       input_attrs.emplace_back(dist_attr);
     }
   }
-  // 2、align non-concat dimensions according to cost
-  auto& non_empty_attr = input_attrs[non_empty_iter - tensor_shapes.begin()];
+  // 3、align non-concat dimensions according to cost
+  std::vector<std::vector<std::shared_ptr<PlacementStatus>>> inputs_placements;
+  std::transform(
+      input_attrs.begin(),
+      input_attrs.end(),
+      std::back_inserter(inputs_placements),
+      [](const TensorDistAttr& attr) { return attr.to_placement(); });
+  const auto& process_mess = input_attrs[non_empty_index].process_mesh();
+  auto has_mismatch = [&](int32_t mesh_dim) {
+    bool mismatch = false;
+    for (size_t i = 0; i < n_inputs; i++) {
+      if ((!is_empty(tensor_shapes[i])) &&
+          !PlacementEqual(inputs_placements[non_empty_index][mesh_dim],
+                          inputs_placements[i][mesh_dim])) {
+        mismatch = true;
+        break;
+      }
+    }
+    return mismatch;
+  };
+  bool need_reshard = false;
   std::vector<std::shared_ptr<PlacementStatus>> best_placements;
-  const auto& process_mess = non_empty_attr.process_mesh();
   for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
+    if (!has_mismatch(mesh_dim)) {
+      // use the old placement
+      best_placements.push_back(inputs_placements[non_empty_index][mesh_dim]);
+      continue;
+    }
+    need_reshard = true;
+    double cost = 0.0;
+    std::vector<double> costs;
+    for (int32_t shard_dim = 0; shard_dim < ndim; shard_dim++) {
+      for (size_t i = 0; i < n_inputs; i++) {
+        auto& tensor_shape = tensor_shapes[i];
+        auto& tensor_dist_attr = input_attrs[i];
+        if (is_empty(tensor_shape)) {
+          continue;
+        }
+
+        if (tensor_shape[shard_dim] < process_mess.dim_size(mesh_dim)) {
+          // should not be selected
+          cost += std::numeric_limits<double>::infinity();
+          continue;
+        }
+        if (IsDimSharded(tensor_dist_attr, shard_dim)) {
+          continue;
+        }
+        int64_t num = std::accumulate(tensor_shape.begin(),
+                                      tensor_shape.end(),
+                                      1,
+                                      std::multiplies<int64_t>());
+        if (num == static_cast<int64_t>(0)) {
+          continue;
+        }
+        std::vector<int64_t> local_shape =
+            GetLocalShape(tensor_shape, process_mess, inputs_placements[i]);
+        cost += std::accumulate(local_shape.begin(),
+                                local_shape.end(),
+                                1,
+                                std::multiplies<int64_t>()) *
+                process_mess.dim_size(mesh_dim);
+      }
+      costs.push_back(cost);
+    }
+    auto min_itr = std::min_element(costs.begin(), costs.end());
+    auto min_dim = min_itr - costs.begin();
+    best_placements.push_back(std::make_shared<ShardStatus>(min_dim));
   }
+  // set placement to the best placements
+  if (need_reshard) {
+    std::vector<TensorDistAttr> new_input_attrs;
+    for (auto& e : input_attrs) {
+      new_input_attrs.emplace_back(FromPlacements(e, best_placements));
+    }
+    std::swap(input_attrs, new_input_attrs);
+  }
+  return {input_attrs,
+          {CopyTensorDistAttrForOutput(input_attrs[non_empty_index])}};
 }
 }  // namespace distributed
 }  // namespace phi

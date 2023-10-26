@@ -180,6 +180,33 @@ bool IsTensorPartial(const TensorDistAttr& dist_attr) {
   return dist_attr.is_partial();
 }
 
+bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
+                    const std::shared_ptr<PlacementStatus>& b) {
+  return (a->is_shard() && b->is_shard()) ||
+         (a->is_partial() && b->is_partial()) ||
+         (a->is_replicated() && b->is_replicated());
+}
+
+std::vector<int64_t> GetLocalShape(
+    const std::vector<int64_t> shape,
+    const ProcessMesh& mesh,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements) {
+  auto local_shape = shape;
+  auto n_placement = placements.size();
+  for (size_t i = 0; i < n_placement; i++) {
+    auto& placement = placements.at(i);
+    if (placement->is_shard()) {
+      auto mesh_dim_size = mesh.dim_size(i);
+      auto shard_dim =
+          std::dynamic_pointer_cast<ShardStatus>(placement)->get_axis();
+      auto split_size =
+          (shape.at(shard_dim) + mesh_dim_size - 1) / mesh_dim_size;
+      local_shape[shard_dim] = split_size;
+    }
+  }
+  return local_shape;
+}
+
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
     const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
