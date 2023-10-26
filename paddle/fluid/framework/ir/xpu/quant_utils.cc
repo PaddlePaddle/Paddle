@@ -64,9 +64,12 @@ void Transpose2D(phi::DenseTensor* in, phi::DenseTensor* out) {
     case phi::DataType::FLOAT32:
       phi::TransposeKernel<float>(*cpu_ctx, *in, axis, out_ptr);
       break;
+    case phi::DataType::INT8:
+      phi::TransposeKernel<int8_t>(*cpu_ctx, *in, axis, out_ptr);
+      break;
     default:
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Only support fp16 and fp32, but received dtype is %s.",
+          "Only support fp16/fp32/int8, but received dtype is %s.",
           phi::DataTypeToString(in->dtype())));
       break;
   }
@@ -258,15 +261,30 @@ void QuantFP32ToIntX<int8_t>(const float* src_ptr,
   }
 }
 
-template <typename T>
-void PrepareWeight(phi::DenseTensor* weight,
-                   phi::DenseTensor* weight_max,
-                   bool transpose) {
+template <
+    typename Tcpu,
+    typename Txpu,
+    typename std::enable_if<!std::is_same<Tcpu, float>::value, Tcpu>::type* ptr>
+void ConvertWithQuant(phi::DenseTensor* weight,
+                      phi::DenseTensor* weight_max,
+                      bool transpose,
+                      const std::vector<float>& weight_scales) {
+  LOG(FATAL) << "Not support for Tcpu is "
+             << phi::CppTypeToDataType<Tcpu>::Type();
+}
+
+template <
+    typename Tcpu,
+    typename Txpu,
+    typename std::enable_if<std::is_same<Tcpu, float>::value, Tcpu>::type* ptr>
+void ConvertWithQuant(phi::DenseTensor* weight,
+                      phi::DenseTensor* weight_max,
+                      bool transpose,
+                      const std::vector<float>& weight_scales) {
   // Convert fp16 to fp32
   phi::DenseTensor weight_fp32;
   CastToFp32(weight, &weight_fp32);
 
-  // Transpose
   if (transpose) {
     Transpose2D(&weight_fp32);
   }
@@ -286,17 +304,74 @@ void PrepareWeight(phi::DenseTensor* weight,
          max_ptr_size * sizeof(float));
 
   // Quant
-  weight->set_type(phi::CppTypeToDataType<T>::Type());
+  weight->set_type(phi::CppTypeToDataType<Txpu>::Type());
   weight->Resize(weight_fp32.dims());
-  QuantFP32ToIntX(weight_data, cpu_ctx->Alloc<T>(weight), max_val, size);
+  QuantFP32ToIntX<Txpu>(
+      weight_data, cpu_ctx->Alloc<Txpu>(weight), max_val, size);
 }
 
-template void PrepareWeight<int16_t>(phi::DenseTensor* weight,
-                                     phi::DenseTensor* weight_max,
-                                     bool transpose);
-template void PrepareWeight<int8_t>(phi::DenseTensor* weight,
-                                    phi::DenseTensor* weight_max,
-                                    bool transpose);
+template <typename T>
+void ConvertWithoutQuant(phi::DenseTensor* weight,
+                         phi::DenseTensor* weight_max,
+                         bool transpose,
+                         const std::vector<float>& weight_scales) {
+  if (transpose) {
+    Transpose2D(weight);
+  }
+  if (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value) {
+    auto* cpu_ctx = static_cast<phi::CPUContext*>(
+        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
+    int max_ptr_size = weight_scales.empty()
+                           ? phi::backends::xpu::get_xpu_max_ptr_size(-1)
+                           : weight_scales.size();
+    weight_max->set_type(phi::DataType::FLOAT32);
+    weight_max->Resize({max_ptr_size});
+    if (!weight_scales.empty()) {
+      memcpy(cpu_ctx->Alloc<float>(weight_max),
+             weight_scales.data(),
+             max_ptr_size * sizeof(float));
+    } else {
+      LOG(FATAL) << "weight scales cannot be empty!";
+    }
+  } else {
+    LOG(FATAL) << "Only support int8<->int8 and int16<->int16 convert.";
+  }
+}
+
+template void ConvertWithQuant<float, int16_t>(
+    phi::DenseTensor* weight,
+    phi::DenseTensor* weight_max,
+    bool transpose,
+    const std::vector<float>& weight_scales);
+
+template void ConvertWithQuant<float, int8_t>(
+    phi::DenseTensor* weight,
+    phi::DenseTensor* weight_max,
+    bool transpose,
+    const std::vector<float>& weight_scales);
+
+template void ConvertWithoutQuant<int8_t>(
+    phi::DenseTensor* weight,
+    phi::DenseTensor* weight_max,
+    bool transpose,
+    const std::vector<float>& weight_scales);
+
+bool IsPerTensorQuant(const std::vector<float>& weight_max) {
+  bool per_tensor = true;
+  PADDLE_ENFORCE_GT(
+      weight_max.size(),
+      0,
+      platform::errors::InvalidArgument(
+          "Op's channel size: [%d] should great than zero", weight_max.size()));
+  auto first = weight_max[0];
+  for (size_t i = 1; i < weight_max.size(); ++i) {
+    if (std::abs(first - weight_max[i]) > 1e-6) {
+      per_tensor = false;
+      break;
+    }
+  }
+  return per_tensor;
+}
 
 }  // namespace ir
 }  // namespace framework
