@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    show_all_test_cases,
     test_ast_only,
     test_legacy_and_pir,
 )
@@ -188,5 +187,4 @@ class TestBackend(Dy2StTestBase):
 
 
 if __name__ == '__main__':
-    show_all_test_cases(TestPrimForward)
     unittest.main()
