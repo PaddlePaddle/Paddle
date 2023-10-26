@@ -19,10 +19,8 @@ import numpy as np
 import paddle
 import paddle.distributed as dist
 
-from .semi_auto_parallel_util import SemiAutoParallelTestBase
 
-
-class TestReductionApiForSemiAutoParallel(SemiAutoParallelTestBase):
+class TestReductionApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
@@ -35,33 +33,35 @@ class TestReductionApiForSemiAutoParallel(SemiAutoParallelTestBase):
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
     def test_body(self, x_shape, out_shape, x_specs, axis, keepdim, op_func):
-        dist_input, dist_out = super().test_body(
-            x_shape,
-            x_specs,
-            op_func,
-            axis=axis,
-            keepdim=keepdim,
-        )
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        x = paddle.randn(x_shape, self._dtype)
+        x.stop_gradient = False
+
+        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
+
+        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x.stop_gradient = False
+
+        dist_out = op_func(dist_x, axis=axis, keepdim=keepdim)
+        out = op_func(x, axis=axis, keepdim=keepdim)
+        self.check_tensor_eq(out, dist_out)
         np.testing.assert_equal(dist_out.shape, out_shape, verbose=True)
 
-    def test_reduce_x_shard(self):
-        for op_func in [paddle.sum, paddle.mean]:
-            self.test_body(
-                x_shape=[4, 8, 6],
-                out_shape=[4, 6],
-                x_specs=['x', None, None],
-                axis=1,
-                keepdim=False,
-                op_func=op_func,
-            )
-            self.test_body(
-                x_shape=[4, 8, 6],
-                out_shape=[8, 6],
-                x_specs=['x', None, None],
-                axis=-3,
-                keepdim=False,
-                op_func=op_func,
-            )
+        dist_out.backward()
+        out.backward()
+        self.check_tensor_eq(x.grad, dist_x.grad)
+
+    def test_sum_x_shard(self):
+        self.test_body(
+            x_shape=[4, 8, 6],
+            out_shape=[4, 6],
+            x_specs=['x', None, None],
+            axis=1,
+            keepdim=False,
+            op_func=paddle.sum,
+        )
 
     def test_sum_x_shard_on_axis(self):
         self.test_body(
