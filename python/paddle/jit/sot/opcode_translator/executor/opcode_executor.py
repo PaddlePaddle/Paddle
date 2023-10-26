@@ -1460,7 +1460,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
     def cleanup(self):
         self._graph.pycode_gen = None
         Dispatcher.graph = None
-        self.call_stack = []
+        self.call_stack[:] = []
 
     @event_register("OpcodeExecutor: _prepare_virtual_env", event_level=2)
     def _prepare_virtual_env(self):
