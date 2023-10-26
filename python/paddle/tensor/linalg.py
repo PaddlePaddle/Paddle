@@ -1539,7 +1539,7 @@ def cholesky(x, upper=False, name=None):
              [1.06467664, 0.17859250, 0.        ],
              [1.30602181, 0.08326444, 0.22790681]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -3283,7 +3283,7 @@ def cholesky_solve(x, y, upper=False, name=None):
              [-7.        ],
              [ 9.50000000]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())
