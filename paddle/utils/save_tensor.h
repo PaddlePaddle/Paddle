@@ -142,22 +142,26 @@ namespace paddle {
 //   DeserializeFromStream(os, tensor, *dev_ctx);
 // }
 
-void SaveTensor(const platform::DeviceContext& dev_ctx,
+void SaveTensor(
                 const phi::DenseTensor& x,
                 const std::string& file_path,
                 bool overwrite,
                 bool save_as_fp16) {
     std::string new_path(file_path);
     std::cout<<"new path : "<<new_path<<std::endl;
-    while (FileExists(new_path)){
-    auto pos = new_path.find_last_of('_');
-    if (pos == new_path.npos){
-        return ;
+    if (FileExists(new_path)){
+     std::cout<<"FileExists : "<<new_path<<"pass"<<std::endl;
+     return ;
     }
-    auto pre = new_path.substr(0, pos+1);
-    auto num = std::atoi(new_path.substr(pos + 1).c_str());
-    new_path = pre + std::to_string(num+1);
-    }
+    // while (FileExists(new_path)){
+    // auto pos = new_path.find_last_of('_');
+    // if (pos == new_path.npos){
+    //     return ;
+    // }
+    // auto pre = new_path.substr(0, pos+1);
+    // auto num = std::atoi(new_path.substr(pos + 1).c_str());
+    // new_path = pre + std::to_string(num+1);
+    // }
 //   PADDLE_ENFORCE_EQ(
 //       FileExists(file_path) && !overwrite,
 //       false,
@@ -175,7 +179,7 @@ void SaveTensor(const platform::DeviceContext& dev_ctx,
       true,
       phi::errors::Unavailable("Cannot open %s to save variables.", new_path));
   VLOG(6)<<"START SerializeToStream";
-  framework::SerializeToStream(fout, x, dev_ctx);
+  framework::SerializeToStream(fout, x);
   VLOG(6)<<"end SerializeToStream";
 
   fout.close();

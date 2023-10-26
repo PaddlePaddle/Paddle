@@ -854,28 +854,6 @@ void BuildOpFuncList(const platform::Place& place,
             op_with_kernel->BuildPhiKernelContext(
                 runtime_context, dev_ctx, &phi_kernel_context);
             (*op_func_node.phi_kernel_)(&phi_kernel_context);
-            if (FLAGS_save_tensor){
-            auto len = phi_kernel_context.OutputsSize();
-            auto root_path = FLAGS_save_load_path;
-            for (size_t i = 0; i < len; i++) {
-              auto out_tensor =
-                  phi_kernel_context.MutableOutputAt<phi::DenseTensor>(i);
-              VLOG(6) << "save " << op_type << i << " st"
-                      << " output";
-              if (out_tensor && out_tensor->initialized() && op_type != "share_buffer" ) {
-                paddle::SaveTensor(
-                    *dev_ctx,
-                    *out_tensor,
-                    root_path + op_type + "-out-" + std::to_string(i) + "_1",
-                    true,
-                    false);
-                VLOG(6) << "save " << op_type << i << " st"
-                        << " output success";
-              }
-              VLOG(6) << op_type << i << "st"
-                      << " output is not initialized";
-            }
-            }
           }
         } else if (run_phi_kernel &&
                    op_func_node.phi_kernel_->GetKernelRegisteredType() ==
@@ -974,6 +952,46 @@ void BuildOpFuncList(const platform::Place& place,
       std::rethrow_exception(std::current_exception());
     }
 
+    if (FLAGS_save_tensor){
+      VLOG(6)<< "start to save paddle variable";
+      auto root_path = FLAGS_save_load_path;
+      for (auto& vname : op->InputVars()) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << " var_name is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::SaveTensor(
+                *tensor,
+                root_path + op_type + "-input-" +vname + "_1",
+                true,
+                true);
+      }
+      for (auto& vname : op->OutputVars(true)) {
+        auto* var = local_scope->FindVar(vname);
+        if (var == nullptr) continue;
+        const phi::DenseTensor* tensor{nullptr};
+        if (var->IsType<phi::DenseTensor>()) {
+        tensor = &var->Get<phi::DenseTensor>();
+        } else {
+          VLOG(6) << vname << " var_name is not DenseTensor";
+          continue;
+        }
+        if (!tensor->IsInitialized()) continue;
+        paddle::SaveTensor(
+                *tensor,
+                root_path + op_type + "-output-" +vname + "_1",
+                true,
+                true);
+      }
+      VLOG(6)<< "end  save paddle variable";
+    }
+      
     if (FLAGS_check_nan_inf) {
       VLOG(4) << "Check nan/inf";
       try {

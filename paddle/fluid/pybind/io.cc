@@ -119,9 +119,6 @@ void BindIO(pybind11::module *m) {
          });
   m->def("load_tensor_c", [](const std::string path) {
     auto tensor = paddle::pybind::LoadTensor(path);
-    std::cout << "tensor.data " << tensor.data() << std::endl;
-    std::cout << "tensor.name" << tensor.name() << std::endl;
-    std::cout << "tensor type " << typeid(tensor).name() << std::endl;
     return tensor;
   });
 }
