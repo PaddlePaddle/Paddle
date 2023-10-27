@@ -18,17 +18,15 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/context_pool.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/tensor_utils.h"
-#include "paddle/phi/infermeta/unary.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/api/lib/data_transform.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#endif
+#include "paddle/phi/infermeta/unary.h"
 namespace paddle {
 namespace experimental {
 
@@ -45,7 +43,6 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
   auto* dev_ctx = pool.GetMutable(
       target_place.GetType() == place.GetType() ? place : target_place);
 
-#ifdef PADDLE_WITH_DISTRIBUTE
   bool run_auto_parallel = AllInputsAreDistTensor(src);
   bool rank_is_in_current_mesh = false;
   if (run_auto_parallel) {
@@ -83,7 +80,6 @@ void copy(const Tensor& src, const Place& place, bool blocking, Tensor* dst) {
     VLOG(6) << "copy finished. ";
     return;
   }
-#endif
 
   auto dense_x = TensorToDenseTensor(src);
 
