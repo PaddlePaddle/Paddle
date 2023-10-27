@@ -21,17 +21,15 @@ limitations under the License. */
 #include "paddle/phi/api/lib/tensor_copy.h"
 #include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
-#include "paddle/phi/infermeta/unary.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
-#endif
+#include "paddle/phi/infermeta/unary.h"
 namespace paddle {
 namespace experimental {
 
@@ -102,7 +100,6 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
   } else {
-#ifdef PADDLE_WITH_DISTRIBUTE
     bool run_auto_parallel = AllInputsAreDistTensor(x);
     bool rank_is_in_current_mesh = true;
     if (run_auto_parallel) {
@@ -169,7 +166,6 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
       return api_output;
     }
-#endif
 
     std::vector<const phi::TensorBase*> input_x(x.size());
     std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
