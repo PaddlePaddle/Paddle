@@ -893,10 +893,17 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         selected_rows->mutable_rows()->clear();
         selected_rows->mutable_value()->clear();
       }
-    } else if (grad->is_dense_tensor()) {
+    } else if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
       if (grad->initialized()) {
+        phi::DenseTensor* grad_t = nullptr;
+        if (grad->is_dense_tensor()) {
+          grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
+        } else {
+          grad_t =
+              static_cast<phi::distributed::DistTensor*>(grad->impl().get())
+                  ->unsafe_mutable_value();
+        }
         if (set_to_zero) {
-          auto* grad_t = static_cast<phi::DenseTensor*>(grad->impl().get());
           auto* dev_ctx =
               platform::DeviceContextPool::Instance().Get(grad_t->place());
           phi::funcs::set_constant(*dev_ctx, grad_t, 0.0);
@@ -908,9 +915,7 @@ static PyObject* tensor_clear_gradient(TensorObject* self,
         } else {
           VLOG(4) << "Gradient of " << self->tensor.name()
                   << " is initialized, will be released.";
-          auto dense_tensor =
-              std::dynamic_pointer_cast<phi::DenseTensor>(grad->impl());
-          dense_tensor->MoveMemoryHolder();
+          grad_t->MoveMemoryHolder();
         }
       }
     }
