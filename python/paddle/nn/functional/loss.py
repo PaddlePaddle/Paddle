@@ -32,6 +32,146 @@ __all__ = []
 kIgnoreIndex = -100
 
 
+def index_fill(x, index, axis, value, inplace=False):
+    if not isinstance(index, Variable):
+        raise ValueError("index must be Tensor")
+
+    if not isinstance(value, Variable):
+        value = paddle.to_tensor(value, dtype=x.dtype)
+    else:
+        if len(value.shape) > 0:
+            raise ValueError("value must be scalar or 0-D tensor")
+
+    x_dim = len(x.shape)
+    if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
+        raise ValueError(
+            "The axis should be int, and in range [-rank(x), rank(x))"
+        )
+
+    if axis < 0:
+        axis = axis + x_dim
+
+    perm = list(range(len(x.shape)))
+    perm[0] = axis
+    perm[axis] = 0
+
+    if inplace:
+        paddle.transpose(x, perm)
+        paddle.index_put_(x, (index,), value)
+        return x
+    else:
+        out = paddle.transpose(x, perm)
+        out = paddle.index_put(out, (index,), value)
+        out = paddle.transpose(out, perm)
+        return out
+
+
+def adaptive_log_softmax_with_loss(
+    input, target, head_weight, head_bias, tail_weights, cutoffs, shortlist_size
+):
+    targ_dim = target.dim()
+    if targ_dim == 1:
+        if input.shape[0] != target.shape[0]:
+            raise RuntimeError(
+                'Input and target should have the same size '
+                'in the batch dimension.'
+            )
+        if input.dim() != 2:
+            raise RuntimeError(
+                '1D target tensor expects 2D input tensors, '
+                'but found inputs with size',
+                input.size(),
+            )
+    elif targ_dim == 0:
+        if input.dim() != 1:
+            raise RuntimeError(
+                '0D target tensor expects 1D input tensors, '
+                'but found inputs with size',
+                input.size(),
+            )
+    else:
+        raise RuntimeError(
+            '0D or 1D target tensor expected, ' 'multi-target not supported'
+        )
+
+    is_batched = targ_dim > 0
+    input = input if is_batched else input.unsqueeze(0)
+    target = target if is_batched else target.unsqueeze(0)
+
+    used_rows = 0
+    batch_size = target.shape[0]
+
+    output = paddle.zeros([batch_size], dtype=input.dtype)
+    gather_inds = paddle.empty([batch_size], dtype=target.dtype)
+
+    cutoff_values = [0] + cutoffs
+    for i in range(len(cutoff_values) - 1):
+        low_idx = cutoff_values[i]
+        high_idx = cutoff_values[i + 1]
+
+        target_mask = (target >= low_idx) & (target < high_idx)
+        row_indices = target_mask.nonzero().squeeze()
+
+        if row_indices.numel() == 0:
+            continue
+
+        if i == 0:
+            scatter_output = paddle.scatter_nd(
+                row_indices.unsqueeze(1),
+                target.masked_select(target_mask),
+                gather_inds.shape,
+            )
+            gather_inds = scatter_output
+
+        else:
+            relative_target = target[target_mask] - low_idx
+            input_subset = input.index_select(row_indices, axis=0)
+
+            cluster_output = paddle.nn.functional.linear(
+                x=input_subset, weight=tail_weights[i - 1][0]
+            )
+            cluster_output = paddle.nn.functional.linear(
+                x=cluster_output, weight=tail_weights[i - 1][1]
+            )
+            cluster_index = shortlist_size + i - 1
+
+            gather_inds = index_fill(gather_inds, row_indices, 0, cluster_index)
+
+            cluster_logprob = paddle.nn.functional.log_softmax(
+                cluster_output, axis=1
+            )
+
+            local_logprob = paddle.take_along_axis(
+                cluster_logprob, relative_target.unsqueeze(1), axis=1
+            )
+            scatter_output = paddle.scatter_nd(
+                row_indices.unsqueeze(1), local_logprob.squeeze(1), output.shape
+            )
+            output = output * (scatter_output == 0) + scatter_output
+
+        used_rows += row_indices.numel()
+    if used_rows != batch_size:
+        raise RuntimeError(
+            f"Target values should be in [0, n_classes - 1], "
+            f"but values in range [{target.min().item()}, {target.max().item()}] "
+            "were found. "
+        )
+
+    head_output = paddle.nn.functional.linear(
+        x=input, weight=head_weight, bias=head_bias
+    )
+    head_logprob = paddle.nn.functional.log_softmax(head_output, axis=1)
+    output += paddle.take_along_axis(
+        head_logprob, gather_inds.unsqueeze(1), axis=1
+    ).squeeze()
+    loss = (-output).mean()
+
+    if not is_batched:
+        output = output.squeeze(0)
+
+    return output, loss
+
+
 def dice_loss(input, label, epsilon=0.00001, name=None):
     r"""
 

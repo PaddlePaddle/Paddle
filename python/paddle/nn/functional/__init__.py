@@ -75,6 +75,7 @@ from .conv import conv3d_transpose  # noqa: F401
 from .distance import pairwise_distance  # noqa: F401
 from .extension import diag_embed  # noqa: F401
 from .extension import sequence_mask
+from .loss import adaptive_log_softmax_with_loss  # noqa: F401
 from .loss import binary_cross_entropy  # noqa: F401
 from .loss import binary_cross_entropy_with_logits  # noqa: F401
 from .loss import cross_entropy  # noqa: F401
@@ -212,6 +213,7 @@ __all__ = [
     'adaptive_max_pool1d',
     'adaptive_max_pool2d',
     'adaptive_max_pool3d',
+    'adaptive_log_softmax_with_loss',
     'binary_cross_entropy',
     'binary_cross_entropy_with_logits',
     'cross_entropy',

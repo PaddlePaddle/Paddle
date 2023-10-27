@@ -94,6 +94,7 @@ from .layer.conv import Conv1DTranspose  # noqa: F401
 from .layer.conv import Conv2DTranspose  # noqa: F401
 from .layer.conv import Conv3DTranspose  # noqa: F401
 
+from .layer.loss import AdaptiveLogSoftmaxWithLoss  # noqa: F401
 from .layer.loss import BCEWithLogitsLoss  # noqa: F401
 from .layer.loss import CrossEntropyLoss  # noqa: F401
 from .layer.loss import HSigmoidLoss  # noqa: F401
@@ -215,6 +216,7 @@ __all__ = [
     'ClipGradByNorm',
     'ReLU',
     'PairwiseDistance',
+    'AdaptiveLogSoftmaxWithLoss',
     'BCEWithLogitsLoss',
     'SmoothL1Loss',
     'MaxPool3D',
