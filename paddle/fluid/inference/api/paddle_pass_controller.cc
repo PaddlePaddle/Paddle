@@ -237,7 +237,7 @@ void PaddlePassContorller::LoadDefaultConfig() {
   }
 }
 
-void safeStoll(const std::string& str, const int64_t& result) {
+void safeStoll(const std::string& str, int64_t& result) {  // NOLINT
   if (str.empty() ||
       str.find_first_not_of("0123456789-") != std::string::npos) {
     return;
