@@ -27,11 +27,9 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/infermeta/unary.h"
 // clang-format off
-#ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/api/lib/data_transform.h"
-#endif
 namespace paddle {
 namespace experimental {
 // declare cast api
@@ -137,42 +135,41 @@ void Tensor::copy_(const Tensor &src,
       place.GetType() == target_place.GetType() ? target_place : place);
 
   if (kernel_type == KernelType::DENSE_TENSOR_KENREL) {
-#ifdef PADDLE_WITH_DISTRIBUTE
-  bool run_auto_parallel = AllInputsAreDistTensor(src);
-  bool rank_is_in_current_mesh = false;
-  if (run_auto_parallel) {
-    auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>(
-                    src.impl())->dist_attr().process_mesh();
-    rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+    bool run_auto_parallel = AllInputsAreDistTensor(src);
+    bool rank_is_in_current_mesh = false;
+    if (run_auto_parallel) {
+      auto mesh = std::static_pointer_cast<phi::distributed::DistTensor>(
+                      src.impl())->dist_attr().process_mesh();
+      rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
-    auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
+      auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
-    auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
-    auto dense_out = dist_out->unsafe_mutable_value();
-    if (!rank_is_in_current_mesh) {
-      *dense_out = phi::DenseTensor(
-            std::make_shared<phi::Allocation>(nullptr,
-            0, phi::distributed::GetDefaultPlace()),
-            phi::DenseTensorMeta());
+      auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
+      auto dense_out = dist_out->unsafe_mutable_value();
+      if (!rank_is_in_current_mesh) {
+        *dense_out = phi::DenseTensor(
+              std::make_shared<phi::Allocation>(nullptr,
+              0, phi::distributed::GetDefaultPlace()),
+              phi::DenseTensorMeta());
+      }
+
+      phi::MetaTensor meta_dist_out(dist_out);
+      phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl_)), &meta_dist_out);
+
+      if (rank_is_in_current_mesh) {
+        auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
+                            src.impl().get());;
+
+        auto input_x = &dist_input_x->value();
+
+        phi::MetaTensor meta_dense_out(dense_out);
+        phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
+
+        phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
+      }
+      return;
     }
 
-    phi::MetaTensor meta_dist_out(dist_out);
-    phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl_)), &meta_dist_out);
-
-    if (rank_is_in_current_mesh) {
-      auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
-                          src.impl().get());;
-
-      auto input_x = &dist_input_x->value();
-
-      phi::MetaTensor meta_dense_out(dense_out);
-      phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
-
-      phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
-    }
-    return;
-  }
-#endif
     SetKernelOutput(this);
     phi::MetaTensor meta_out(impl_.get());
     phi::UnchangedInferMeta(
