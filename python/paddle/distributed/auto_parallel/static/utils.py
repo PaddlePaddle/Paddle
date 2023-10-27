@@ -1830,6 +1830,12 @@ def is_recompute_op(op):
     )
 
 
+def is_recompute_exclude_op(op):
+    return op.has_attr('op_namescope') and 'exclude_rc' in op.attr(
+        'op_namescope'
+    )
+
+
 def set_recompute_segments(model, losses, strategy, program):
     from ...passes.auto_parallel_recompute import RecomputeState
 

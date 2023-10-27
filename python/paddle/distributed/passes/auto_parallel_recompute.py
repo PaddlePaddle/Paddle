@@ -31,6 +31,7 @@ from ..auto_parallel.static.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
     is_backward_op,
+    is_recompute_exclude_op,
     is_recompute_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_dist_op_desc_original_id,
@@ -80,7 +81,8 @@ class RecomputeState(ProgramStats):
 
             if not is_recompute_op(op):
                 self._checkpoints.extend(op.output_arg_names)
-                continue
+                if not is_recompute_exclude_op(op):
+                    continue
 
             seg_name = op.attr('op_namescope')
             seg_name = (
