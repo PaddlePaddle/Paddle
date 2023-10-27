@@ -60,7 +60,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 
   bool is_sr_kernel = true;
   for (auto& input : x) {
-    if (phi::DenseTensor::classof(input.impl().get())) {
+    if (phi::DenseTensor::classof(input.impl().get()) ||
+        phi::distributed::DistTensor::classof(input.impl().get())) {
       is_sr_kernel = false;
       break;
     }
@@ -136,11 +137,9 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         x_metas[i] = &x_meta_vec[i];
       }
       phi::AddNInferMeta(x_metas, &meta_dist_out);
-
       if (rank_is_in_current_mesh) {
         auto dist_input_x =
             ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info.first);
-
         dist_input_x = PrepareDataForDistTensor(
             dist_input_x,
             GetKernelInputArgDef(kernel.InputAt(0), kernel_backend),
@@ -157,7 +156,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
           x_metas[i] = &x_meta_vec[i];
         }
         phi::MetaTensor meta_dense_out(dense_out);
-        phi::AddNInferMeta(x_metas, &meta_dist_out);
+        phi::AddNInferMeta(x_metas, &meta_dense_out);
 
         using kernel_signature =
             void (*)(const phi::DeviceContext&,
