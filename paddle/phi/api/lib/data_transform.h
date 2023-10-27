@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/phi/api/include/tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -25,7 +26,6 @@ class DeviceContext;
 namespace distributed {
 class DistTensor;
 class TensorDistAttr;
-class ItemDistAttr;
 }  // namespace distributed
 }  // namespace phi
 
