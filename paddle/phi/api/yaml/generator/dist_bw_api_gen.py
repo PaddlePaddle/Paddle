@@ -35,8 +35,8 @@ MAIN_DIST_BRANCH_TEMPLATE = """
       // 7. PrepareData (DataTransform & Prepare Dense Input){}
       // 8. Infer Local DenseTensor Meta{}
       // 9. DenseTensor Kernel Call{}
-      // 10. Reshard Partial Output to Replicated (Temporary){}\n
     }}
+    // 10. Reshard Partial Output to Replicated (Temporary){}\n
     // 11. Return
     {}
   }}
@@ -145,6 +145,7 @@ class DistBackwardAPI(DistForwardAPI, BackwardAPI):
         # backward api only need to generate kernel outputs
         output_num = len(self.outputs['types'])
         output_creation_code = ""
+        output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
         if output_num == 1:
             self.dist_output_args.append('dist_out')
             self.dense_output_args.append('dense_out')
