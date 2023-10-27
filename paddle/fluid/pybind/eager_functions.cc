@@ -660,7 +660,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add vector<tensor> size = "
                   << empty_tensors.size();
-          ctx.EmplaceBackOutputs(std::move(empty_tensors));
+          ctx.EmplaceBackOutputs(empty_tensors);
           continue;
         }
       }

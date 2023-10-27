@@ -14,15 +14,10 @@
 
 #pragma once
 
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace cinn {
-
-namespace hlir {
-namespace framework {
-class Instruction;
-}  // namespace framework
-}  // namespace hlir
 
 namespace dialect {
 
@@ -46,12 +41,12 @@ class JitKernelOp : public ::pir::Op<JitKernelOp> {
   static const char* name() { return "cinn_runtime.jit_kernel"; }
   // TODO(Aurelius84): Think deeply what should contains
   static constexpr uint32_t attributes_num = 1;
-  static constexpr char* kAttrName = "instruction";
+  static constexpr char* kAttrName = "jit_info";
   static const char* attributes_name[attributes_num];
 
-  hlir::framework::Instruction* instruction();
+  const hlir::framework::pir::CUDAJITInfo& cuda_jit_info();
 
-  void Verify();
+  void VerifySig();
 };
 
 }  // namespace dialect

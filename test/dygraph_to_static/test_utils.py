@@ -15,9 +15,12 @@
 import types
 import unittest
 
+from dygraph_to_static_util import dy2static_unittest
+
 from paddle.jit.dy2static.utils import index_in_list, is_paddle_func
 
 
+@dy2static_unittest
 class TestIndexInList(unittest.TestCase):
     def test_index_in_list(self):
         list_to_test = [1, 2, 3, 4, 5]
@@ -49,6 +52,7 @@ class StaticCode:
         y = n
 
 
+@dy2static_unittest
 class TestIsPaddle(unittest.TestCase):
     def fake_module(self):
         return types.ModuleType('paddlenlp')

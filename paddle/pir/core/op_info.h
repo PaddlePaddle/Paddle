@@ -54,6 +54,10 @@ class IR_API OpInfo {
 
   void Verify(Operation *) const;
 
+  void VerifySig(Operation *) const;
+
+  void VerifyRegion(Operation *) const;
+
   template <typename Trait>
   bool HasTrait() const {
     return HasTrait(TypeId::get<Trait>());

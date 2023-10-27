@@ -1808,7 +1808,7 @@ int PaddleBoxDataFeed::Next() {
       output_pv_channel_->Get(pv_instance);
       pv_vec.push_back(pv_instance);
       ++index;
-      consume_pv_channel_->Put(std::move(pv_instance));
+      consume_pv_channel_->Put(pv_instance);
     }
     this->batch_size_ = index;
     VLOG(3) << "pv_batch_size_=" << this->batch_size_

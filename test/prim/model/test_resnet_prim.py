@@ -186,7 +186,9 @@ def train(to_static, enable_prim, enable_cinn):
         build_strategy = paddle.static.BuildStrategy()
         if enable_cinn:
             build_strategy.build_cinn_pass = True
-        resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
+        resnet = paddle.jit.to_static(
+            resnet, build_strategy=build_strategy, full_graph=True
+        )
     optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
     train_losses = run(resnet, data_loader, optimizer, 'train')

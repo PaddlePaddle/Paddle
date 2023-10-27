@@ -17,6 +17,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 
 import paddle
 
@@ -322,6 +323,7 @@ def train_static(place):
     return train(place)
 
 
+@dy2static_unittest
 class TestPtb(unittest.TestCase):
     def setUp(self):
         self.place = (

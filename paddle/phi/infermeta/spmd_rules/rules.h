@@ -19,11 +19,13 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
+#include "paddle/phi/infermeta/spmd_rules/flatten.h"
 #include "paddle/phi/infermeta/spmd_rules/layer_norm.h"
 #include "paddle/phi/infermeta/spmd_rules/matmul.h"
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
@@ -492,6 +494,11 @@ PD_REGISTER_SPMD_RULE(reshape2,
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmd),
                       PD_INFER_SPMD(phi::distributed::ReshapeInferSpmdReverse));
 
+// flatten rule
+PD_REGISTER_SPMD_RULE(flatten,
+                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::FlattenInferSpmdReverse));
+
 // embedding rule
 PD_REGISTER_SPMD_RULE(
     embedding,
@@ -510,6 +517,11 @@ PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// slice rule
+PD_REGISTER_SPMD_RULE(slice,
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
 
 // transpose rule
 PD_REGISTER_SPMD_RULE(

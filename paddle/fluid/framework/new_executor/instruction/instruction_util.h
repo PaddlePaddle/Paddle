@@ -43,5 +43,16 @@ platform::DeviceContext* ParseDeviceContext(
 OpFuncType AnalyseOpFuncType(::pir::Operation* op,
                              const platform::Place& place);
 
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block);
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
+std::vector<pir::Value> GetOutsideOpInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids);
+
 }  // namespace framework
 }  // namespace paddle

@@ -61,7 +61,7 @@ class TestSumOp(OpTest):
         self.check_output(
             check_prim=True,
             check_cinn=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -71,7 +71,7 @@ class TestSumOp(OpTest):
             'Out',
             check_prim=True,
             check_cinn=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -310,7 +310,7 @@ class TestAFP16SumOp(TestSumOp):
                 check_cinn=True,
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
     # FIXME: Because of the precision fp16, max_relative_error
@@ -324,7 +324,7 @@ class TestAFP16SumOp(TestSumOp):
                 check_cinn=True,
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
 
@@ -377,7 +377,7 @@ class TestSumBF16Op(OpTest):
             check_dygraph=False,
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -388,7 +388,7 @@ class TestSumBF16Op(OpTest):
             check_dygraph=False,
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 

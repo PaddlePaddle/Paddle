@@ -17,7 +17,11 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_fetch_feed import Linear
 
 import paddle
@@ -55,6 +59,7 @@ def forward_post_hook_for_prim_net(layer, input, output):
     return output * 2
 
 
+@dy2static_unittest
 class TestDyToStaticSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

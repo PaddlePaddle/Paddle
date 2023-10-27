@@ -49,7 +49,8 @@ def to_sot(func):
     """
     convert run fall_back to ast
     """
-    enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
+    # TODO(SigureMo): ENABLE_SOT should always be True, remove this
+    enable_sot = os.environ.get("ENABLE_SOT", "True") == "True"
 
     def impl(*args, **kwargs):
         if enable_sot:

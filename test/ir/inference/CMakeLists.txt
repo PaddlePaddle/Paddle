@@ -181,6 +181,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
   set_tests_properties(test_trt_inference_predictor PROPERTIES TIMEOUT 60)
   set_tests_properties(test_trt_inference_fp16_io PROPERTIES TIMEOUT 300)
   set_tests_properties(test_trt_optimization_level PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_trt_ops_fp32_mix_precision PROPERTIES TIMEOUT 300)
   if(NOT WIN32)
     set_tests_properties(test_trt_explicit_quantization_resnet
                          PROPERTIES TIMEOUT 300)

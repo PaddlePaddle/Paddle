@@ -112,6 +112,7 @@ class TestIndexSelectAPI(unittest.TestCase):
                 [9.0, 10.0, 11.0, 12.0],
             ]
         )
+        self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
     def test_repeat_interleave_api(self):
@@ -265,6 +266,17 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_zero_dim_x, index, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 4 zero_dim_index
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_zero_dim_x)
+            index = base.dygraph.to_variable(self.data_zero_dim_index)
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(
+            self.data_zero_dim_x, self.data_zero_dim_index, axis=None
+        )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 

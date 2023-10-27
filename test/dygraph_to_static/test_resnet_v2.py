@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
 from predictor_utils import PredictorTools
 
 import paddle
@@ -242,6 +242,7 @@ class TransedFlowerDataSet(paddle.io.Dataset):
         return len(self.img)
 
 
+@dy2static_unittest
 class TestResnet(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

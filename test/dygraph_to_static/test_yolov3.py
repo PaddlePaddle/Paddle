@@ -17,7 +17,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from yolov3 import YOLOv3, cfg
 
 import paddle
@@ -165,6 +168,7 @@ def train(to_static):
         return np.array(ret)
 
 
+@dy2static_unittest
 class TestYolov3(unittest.TestCase):
     @test_and_compare_with_new_ir(False)
     def test_dygraph_static_same_loss(self):

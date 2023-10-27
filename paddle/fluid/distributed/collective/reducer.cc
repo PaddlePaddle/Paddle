@@ -571,7 +571,7 @@ void EagerReducer::InitializeGroups(
       tensor_locator.inside_group_index = inside_group_index++;
       variable_locators_[var_index] = tensor_locator;
     }
-    group.tensor_indices_ = std::move(tensor_indices_);
+    group.tensor_indices_ = tensor_indices_;
     groups_.emplace_back(std::move(group));
 
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();

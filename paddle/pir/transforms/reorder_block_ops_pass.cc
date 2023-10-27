@@ -24,11 +24,11 @@ namespace {
 
 class ReorderBlockOpsPass : public pir::Pass {
  public:
-  ReorderBlockOpsPass() : pir::Pass("ReorderBlockOpsPass", 0) {}
+  ReorderBlockOpsPass() : pir::Pass("reorder_block_ops_pass", 0) {}
 
   void Run(pir::Operation *op) override {
     IR_ENFORCE(op->num_regions() > 0,
-               "ReorderBlockOpsPass should run on Operation which regions "
+               "reorder_block_ops_pass should run on Operation which regions "
                "number greater than 0.");
     for (size_t i = 0; i < op->num_regions(); ++i) {
       for (auto *block : op->region(i)) {

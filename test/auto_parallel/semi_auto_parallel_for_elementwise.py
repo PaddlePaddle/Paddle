@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+import paddle.nn.functional as F
 
 
 class TestElementwiseApiForSemiAutoParallel:
@@ -27,17 +28,34 @@ class TestElementwiseApiForSemiAutoParallel:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
+    def test_unary_body(self, x_shape, out_shape, x_specs, unary_func):
+        x = paddle.randn(x_shape, self._dtype)
+        x.stop_gradient = False
+
+        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
+
+        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x.stop_gradient = False
+
+        dist_out = unary_func(dist_x)
+        out = unary_func(x)
+        self.check_tensor_eq(out, dist_out)
+
+        dist_out.backward()
+        out.backward()
+        self.check_tensor_eq(x.grad, dist_x.grad)
+
     def test_binary_body(
         self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
     ):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
         x = paddle.randn(x_shape, self._dtype)
         y = paddle.randn(y_shape, self._dtype)
         x.stop_gradient = False
@@ -129,6 +147,22 @@ class TestElementwiseApiForSemiAutoParallel:
             binary_func=paddle.subtract,
         )
 
+    def test_square_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.square,
+        )
+
+    def test_relu_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=F.relu,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -141,6 +175,10 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_add_x_shard_broadcast()
         self.test_add_x_y_shard()
         self.test_add_x_y_shard_broadcast()
+        self.test_sub_x_shard()
+        self.test_sub_x_y_shard_broadcast()
+        self.test_square_x_shard()
+        self.test_relu_x_shard()
 
 
 if __name__ == '__main__':

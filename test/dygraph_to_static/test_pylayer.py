@@ -26,6 +26,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import dy2static_unittest
 from test_jit_save_load import train
 
 import paddle
@@ -177,7 +178,7 @@ class SimpleNet_1(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, data):
         hidden = self.linear(data)
         z = cus_tanh_1.apply(hidden)
@@ -212,7 +213,7 @@ class SimpleNetInplace(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, data):
         data = data**2
         z = paddle.tanh(data)
@@ -225,7 +226,7 @@ class SimplePyLayerNet(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, x):
         y = self.linear(x)
         out = cus_tanh_2.apply(y, func1=paddle.tanh)
@@ -239,7 +240,7 @@ class SimplePyLayerNetMultiIn(paddle.nn.Layer):
         self.linear1 = paddle.nn.Linear(in_size, out_size)
         self.linear2 = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, x1, x2):
         y1 = self.linear1(x1)
         y2 = self.linear1(x2)
@@ -254,7 +255,7 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(in_size, out_size)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, x):
         y = self.linear(x)
         y.stop_gradient = True
@@ -262,6 +263,7 @@ class SimplePyLayerNetStopGrad(paddle.nn.Layer):
         return out
 
 
+@dy2static_unittest
 class TestPyLayerBase(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
@@ -359,7 +361,7 @@ class TestPyLayerBase(unittest.TestCase):
 
 class TestPyLayerWithoutContext(TestPyLayerBase):
     def test_single_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x):
             y = scaled_layer_1.apply(x)
             return y
@@ -372,7 +374,7 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
         self._run_and_compare(input1)
 
     def test_multi_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x1, x2):
             y = scaled_layer_2.apply(x1, x2)
             return y
@@ -389,7 +391,7 @@ class TestPyLayerWithoutContext(TestPyLayerBase):
 
 class TestPyLayerWithContext(TestPyLayerBase):
     def test_single_in_single_out(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x):
             y = cus_tanh_1.apply(x)
             return y
@@ -402,7 +404,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1)
 
     def test_nested_pylayer(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x1, x2):
             y = nested_layer.apply(x1, x2)
             return y
@@ -417,7 +419,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
     def test_apply_kwargs_pylayer(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x1, x2):
             y = scaled_layer_2.apply(x1=x2, x2=x1)
             return y
@@ -432,7 +434,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(x):
             y = cus_tanh_2.apply(x, func1=paddle.tanh)
             return y
@@ -445,7 +447,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1)
 
     def test_simple_pylayer_return_none_with_no_grad(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(input1, input2):
             z = cus_tanh_3.apply(input1, input2, paddle.tanh, paddle.square)
             z = z[2] + z[3]
@@ -461,7 +463,7 @@ class TestPyLayerWithContext(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
     def test_non_variable_inputs_and_userdefined_call(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def test_func(input1):
             y = cus_tanh_4.apply(
                 input1, func=user_defined_square, name="cus_tanh_test"
@@ -512,6 +514,7 @@ class TestPyLayerInsideNet(TestPyLayerBase):
         self._run_and_compare(input1, input2)
 
 
+@dy2static_unittest
 class PyLayerTrainHelper(unittest.TestCase):
     def setUp(self):
         self.place = "gpu" if paddle.is_compiled_with_cuda() else "cpu"
@@ -530,7 +533,9 @@ class PyLayerTrainHelper(unittest.TestCase):
         # net = self.build_layer()
         net = layer_builder()
         if to_static:
-            net = paddle.jit.to_static(net, build_strategy=build_strategy)
+            net = paddle.jit.to_static(
+                net, build_strategy=build_strategy, full_graph=True
+            )
 
         _, _, avg_loss = train(net)
         return avg_loss.numpy()
@@ -583,6 +588,7 @@ class TestTrainingPyLayer(PyLayerTrainHelper):
         )
 
 
+@dy2static_unittest
 class TestPyLayerJitSaveLoad(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()

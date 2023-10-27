@@ -15,7 +15,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_util import (
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from test_lac import DynamicGRU
 
 import paddle
@@ -369,6 +372,7 @@ def train(args, to_static):
     return loss_data
 
 
+@dy2static_unittest
 class TestSentiment(unittest.TestCase):
     def setUp(self):
         self.args = Args()

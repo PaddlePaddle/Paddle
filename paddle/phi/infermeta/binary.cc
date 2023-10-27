@@ -1170,7 +1170,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void ElementwiseRawInferMeta(const MetaTensor& x,
