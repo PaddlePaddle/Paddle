@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/phi/backends/dynload/port.h"
 #include "paddle/phi/backends/gpu/gpu_decls.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/errors.h"
@@ -23,45 +24,6 @@
 #endif
 #ifdef PADDLE_WITH_HIP
 #include <hip/hip_runtime.h>
-#endif
-
-#ifdef WIN32
-#include <time.h>
-#include <windows.h>
-#else
-#include <sys/time.h>
-#endif
-
-#ifdef WIN32
-
-#if defined(_MSC_VER) || defined(_MSC_EXTENSIONS)
-#define DELTA_EPOCH_IN_MICROSECS 11644473600000000Ui64
-#else
-#define DELTA_EPOCH_IN_MICROSECS 11644473600000000ULL
-#endif
-
-int gettimeofday(struct timeval *tv, void *tz) {
-  FILETIME ft;
-  unsigned __int64 tmpres = 0;
-  static int tzflag = 0;
-
-  if (NULL != tv) {
-    GetSystemTimeAsFileTime(&ft);
-
-    tmpres |= ft.dwHighDateTime;
-    tmpres <<= 32;
-    tmpres |= ft.dwLowDateTime;
-
-    tmpres /= 10; /*convert into microseconds*/
-    /*converting file time to unix epoch*/
-    tmpres -= DELTA_EPOCH_IN_MICROSECS;
-    tv->tv_sec = static_cast<int64_t>(tmpres / 1000000UL);
-    tv->tv_usec = static_cast<int64_t>(tmpres % 1000000UL);
-  }
-
-  return 0;
-}
-
 #endif
 
 namespace phi {
