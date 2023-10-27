@@ -265,7 +265,7 @@ def _append_gradient_merge_backward_op(
 def _create_cond_block_and_update_optimizer(
     main_program,
     cond_var,
-    new_params_to_grads: List[Tuple[Any, Any]],
+    new_params_grads: List[Tuple[Any, Any]],
     grad_to_gradient_merge: Dict[str, str],
     optimize_ops_block,
     k_steps,
@@ -279,7 +279,7 @@ def _create_cond_block_and_update_optimizer(
         # cur_block's forward_block & backward_block is itself
         cur_block._set_forward_block_idx(cur_block_idx)
         if avg:
-            for _, new_grad in new_params_to_grads:
+            for _, new_grad in new_params_grads:
                 # grad /= k_steps
                 scale_op = cur_block.append_op(
                     type='scale',
@@ -335,7 +335,7 @@ def _create_cond_block_and_update_optimizer(
 
         # clear gradient_merge_vars
         # NOTE(zhaoyingli): Must use 'set_value' op in pir to assign 0-value for persistable var.
-        for _, new_grad in new_params_to_grads:
+        for _, new_grad in new_params_grads:
             cur_block.append_op(
                 type="set_value",
                 inputs={"Input": [new_grad]},
@@ -370,7 +370,7 @@ def parse_program(
 
     # 2 append gradient merge backward op to main_program
     (
-        new_params_to_grads,
+        new_params_grads,
         grad_to_gradient_merge,
     ) = _append_gradient_merge_backward_op(
         main_program, startup_program, params_grads, dist_context
@@ -383,7 +383,7 @@ def parse_program(
     _create_cond_block_and_update_optimizer(
         main_program,
         cond_var,
-        new_params_to_grads,
+        new_params_grads,
         grad_to_gradient_merge,
         optimize_ops_block,
         k_steps,
