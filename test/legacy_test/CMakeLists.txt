@@ -1392,6 +1392,17 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
   endif()
 endforeach()
 
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_no_check_list"
+     NEW_IR_OP_NO_CHECK_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_NO_CHECK_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                                  "FLAGS_NEW_IR_NO_CHECK=True")
+  else()
+    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
 file(STRINGS
      "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_precision_white_list"
      NEW_IR_OP_RELAXED_TESTS)
