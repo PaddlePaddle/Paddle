@@ -2035,13 +2035,16 @@ class TestAcos(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
-class TestAcos_Comple64(TestAcos):
+class TestAcos_Complex64(TestAcos):
     def init_dtype(self):
         self.dtype = np.complex64
 
@@ -4709,7 +4712,7 @@ create_test_act_fp16_class(
 create_test_act_fp16_class(TestCos, check_pir=True)
 create_test_act_fp16_class(TestTan)
 create_test_act_fp16_class(TestCosh)
-create_test_act_fp16_class(TestAcos)
+create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
@@ -4863,7 +4866,7 @@ create_test_act_bf16_class(
 create_test_act_bf16_class(TestCos, check_pir=True)
 create_test_act_bf16_class(TestTan)
 create_test_act_bf16_class(TestCosh)
-create_test_act_bf16_class(TestAcos)
+create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
