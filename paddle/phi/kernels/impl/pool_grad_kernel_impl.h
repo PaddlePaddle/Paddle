@@ -150,6 +150,7 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
                                    const std::vector<int>& paddings,
                                    bool global_pooling,
                                    bool adaptive,
+                                   bool fractional,
                                    DenseTensor* dx) {
   std::vector<int> paddings_ = paddings;
   std::vector<int> kernel_size_ = kernel_size;
@@ -168,13 +169,27 @@ void MaxPoolWithIndexGradRawKernel(const Context& ctx,
     switch (kernel_size_.size()) {
       case 2: {
         funcs::MaxPool2dWithIndexGradFunctor<Context, T1, T2> pool2d_backward;
-        pool2d_backward(
-            ctx, dout, mask, kernel_size_, strides, paddings_, adaptive, dx);
+        pool2d_backward(ctx,
+                        dout,
+                        mask,
+                        kernel_size_,
+                        strides,
+                        paddings_,
+                        adaptive,
+                        fractional,
+                        dx);
       } break;
       case 3: {
         funcs::MaxPool3dWithIndexGradFunctor<Context, T1, T2> pool3d_backward;
-        pool3d_backward(
-            ctx, dout, mask, kernel_size_, strides, paddings_, adaptive, dx);
+        pool3d_backward(ctx,
+                        dout,
+                        mask,
+                        kernel_size_,
+                        strides,
+                        paddings_,
+                        adaptive,
+                        fractional,
+                        dx);
       } break;
       default: {
         PADDLE_THROW(
@@ -262,6 +277,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool fractional,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -272,6 +288,7 @@ void MaxPool2dWithIndexGradKernel(const Context& ctx,
                                             paddings,
                                             global_pooling,
                                             adaptive,
+                                            fractional,
                                             dx);
 }
 
@@ -317,6 +334,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                   const std::vector<int>& paddings,
                                   bool global_pooling,
                                   bool adaptive,
+                                  bool fractional,
                                   DenseTensor* dx) {
   MaxPoolWithIndexGradRawKernel<Context, T>(ctx,
                                             x,
@@ -327,6 +345,7 @@ void MaxPool3dWithIndexGradKernel(const Context& ctx,
                                             paddings,
                                             global_pooling,
                                             adaptive,
+                                            fractional,
                                             dx);
 }
 

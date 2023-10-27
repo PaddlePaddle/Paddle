@@ -100,6 +100,23 @@ HOSTDEVICE inline int AdaptEndIndex(int ph, int input_size, int output_size) {
       ceil(static_cast<float>((ph + 1) * input_size) / output_size));
 }
 
+/* used for fractional pool to calculate start and end index of each divided
+ * grid
+ */
+HOSTDEVICE inline int FractionalStartIndex(int ph,
+                                           int input_size,
+                                           int output_size) {
+  return static_cast<int>(
+      floor(static_cast<float>(ph * input_size) / output_size));
+}
+
+HOSTDEVICE inline int FractionalEndIndex(int ph,
+                                         int input_size,
+                                         int output_size) {
+  return static_cast<int>(
+      ceil(static_cast<float>((ph + 1) * input_size) / output_size));
+}
+
 /*
  * \brief Getting pooling results, and calculating gradient.
  *
@@ -322,6 +339,7 @@ class MaxPool2dWithIndexFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -336,6 +354,7 @@ class MaxPool2dWithIndexGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* input_grad);
 };
 
@@ -348,6 +367,7 @@ class MaxPool3dWithIndexFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask);
 };
@@ -362,6 +382,7 @@ class MaxPool3dWithIndexGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* input_grad);
 };
 

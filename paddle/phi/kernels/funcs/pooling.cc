@@ -1571,6 +1571,7 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -1600,6 +1601,8 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
           if (adaptive) {
             hstart = AdaptStartIndex(ph, input_height, output_height);
             hend = AdaptEndIndex(ph, input_height, output_height);
+          } else if (fractional) {
+            // TODO(megemini)
           } else {
             hstart = ph * stride_height - padding_height;
             hend = std::min(hstart + ksize_height, input_height);
@@ -1609,6 +1612,8 @@ class MaxPool2dWithIndexFunctor<CPUContext, T1, T2> {
             if (adaptive) {
               wstart = AdaptStartIndex(pw, input_width, output_width);
               wend = AdaptEndIndex(pw, input_width, output_width);
+            } else if (fractional) {
+              // TODO(megemini)
             } else {
               wstart = pw * stride_width - padding_width;
               wend = std::min(wstart + ksize_width, input_width);
@@ -1653,6 +1658,7 @@ class MaxPool2dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& strides UNUSED,
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
+                  bool fractional UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);
     const int input_height = static_cast<int>(input_grad->dims()[2]);
@@ -1704,6 +1710,7 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = static_cast<int>(input.dims()[0]);
@@ -1739,6 +1746,8 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
           if (adaptive) {
             dstart = AdaptStartIndex(pd, input_depth, output_depth);
             dend = AdaptEndIndex(pd, input_depth, output_depth);
+          } else if (fractional) {
+            /* TODO(megemini) */
           } else {
             dstart = pd * stride_depth - padding_depth;
             dend = std::min(dstart + ksize_depth, input_depth);
@@ -1748,6 +1757,8 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
             if (adaptive) {
               hstart = AdaptStartIndex(ph, input_height, output_height);
               hend = AdaptEndIndex(ph, input_height, output_height);
+            } else if (fractional) {
+              /* TODO(megemini) */
             } else {
               hstart = ph * stride_height - padding_height;
               hend = std::min(hstart + ksize_height, input_height);
@@ -1757,6 +1768,8 @@ class MaxPool3dWithIndexFunctor<CPUContext, T1, T2> {
               if (adaptive) {
                 wstart = AdaptStartIndex(pw, input_width, output_width);
                 wend = AdaptEndIndex(pw, input_width, output_width);
+              } else if (fractional) {
+                // TODO(megemini)
               } else {
                 wstart = pw * stride_width - padding_width;
                 wend = std::min(wstart + ksize_width, input_width);
@@ -1806,6 +1819,7 @@ class MaxPool3dWithIndexGradFunctor<CPUContext, T1, T2> {
                   const std::vector<int>& strides UNUSED,
                   const std::vector<int>& paddings UNUSED,
                   bool adaptive UNUSED,
+                  bool fractional UNUSED,
                   DenseTensor* input_grad) {
     const int batch_size = static_cast<int>(input_grad->dims()[0]);
     const int input_depth = static_cast<int>(input_grad->dims()[2]);

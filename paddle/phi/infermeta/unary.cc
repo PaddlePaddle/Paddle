@@ -2224,6 +2224,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
                                const std::vector<int>& paddings,
                                bool global_pooling,
                                bool adaptive,
+                               bool fractional,
                                MetaTensor* out,
                                MetaTensor* mask,
                                MetaConfig config) {
@@ -2270,7 +2271,7 @@ void MaxPoolWithIndexInferMeta(const MetaTensor& x,
           kernel_size_.size()));
 
   std::vector<int64_t> output_shape({x_dims[0], x_dims[1]});
-  if (adaptive) {
+  if (adaptive || fractional) {
     output_shape.insert(
         output_shape.end(), kernel_size_.begin(), kernel_size_.end());
   } else {

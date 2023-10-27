@@ -2115,6 +2115,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = input.dims()[0];
@@ -2209,6 +2210,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
@@ -2415,6 +2417,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* output,
                   DenseTensor* mask) {
     const int batch_size = input.dims()[0];
@@ -2498,6 +2501,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   bool adaptive,
+                  bool fractional,
                   DenseTensor* input_grad) {
     const int batch_size = input_grad->dims()[0];
     const int input_channels = input_grad->dims()[1];
