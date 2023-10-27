@@ -18,6 +18,8 @@
 #include <string>
 #include <vector>
 
+#include "paddle/utils/variant.h"
+
 namespace phi {
 namespace distributed {
 class TensorDistAttr;

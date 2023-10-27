@@ -82,6 +82,9 @@ TensorDistAttr FromPlacements(
     const TensorDistAttr& dist_attr,
     const std::vector<std::shared_ptr<PlacementStatus>>& placements);
 
+std::vector<ItemDistAttr> ToItemDistAttr(
+    const std::vector<TensorDistAttr>& dist_attrs);
+
 TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
 
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,

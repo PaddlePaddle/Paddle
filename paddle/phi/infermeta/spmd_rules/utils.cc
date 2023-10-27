@@ -212,6 +212,17 @@ TensorDistAttr FromPlacements(
   return dst_dist_attr;
 }
 
+std::vector<ItemDistAttr> ToItemDistAttr(
+    const std::vector<TensorDistAttr>& dist_attrs) {
+  std::vector<ItemDistAttr> items_dist_attrs;
+  std::transform(
+      dist_attrs.begin(),
+      dist_attrs.end(),
+      std::back_inserter(items_dist_attrs),
+      [](const TensorDistAttr& attr) -> ItemDistAttr { return {attr}; });
+  return items_dist_attrs;
+}
+
 std::vector<int64_t> GetLocalShape(
     const std::vector<int64_t> shape,
     const ProcessMesh& mesh,
