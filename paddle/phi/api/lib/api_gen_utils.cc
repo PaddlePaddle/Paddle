@@ -549,6 +549,13 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ItemDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check dist_attr
+  return SetKernelDistOutput(
+      out, paddle::get<phi::distributed::TensorDistAttr>(dist_attr));
+}
+
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
