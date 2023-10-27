@@ -19,6 +19,7 @@
 #include <string>
 #include <vector>
 #include "paddle/phi/common/data_type.h"
+#include "paddle/pir/core/program.h"
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
 #include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
 #endif
@@ -564,6 +565,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
+  std::shared_ptr<pir::Program> pir_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.

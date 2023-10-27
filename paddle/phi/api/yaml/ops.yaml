@@ -952,6 +952,7 @@
   inplace : (x -> out)
   view : (x -> out)
   intermediate : xshape
+  optional : xshape
   backward : flatten_grad
 
 - op : flip
@@ -2485,6 +2486,7 @@
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
+  optional : xshape
   backward : squeeze_grad
 
 - op : stack
@@ -2699,6 +2701,7 @@
   inplace : (x -> out)
   view: (x -> out)
   intermediate : xshape
+  optional : xshape
   backward : unsqueeze_grad
 
 - op : unstack

@@ -102,6 +102,11 @@
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 #endif
 
+#include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+
+PHI_DECLARE_bool(enable_new_ir_in_executor);
+
 namespace paddle {
 namespace {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -714,8 +719,21 @@ bool AnalysisPredictor::PrepareExecutor() {
     auto output_names = GetOutputNames();
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
-    executor_->PrepareInterpreterCore(
-        sub_scope_, *inference_program_, execution_config);
+
+    if (FLAGS_enable_new_ir_in_executor) {
+      pir_program_ = std::move(
+          paddle::TranslateLegacyProgramToProgram(*inference_program_));
+      pir_program_->Print(std::cout
+                          << "after TranslateLegacyProgramToProgram: \n");
+      pir_program_ =
+          std::move(paddle::dialect::PdOpLowerToKernelPass(pir_program_.get()));
+      pir_program_->Print(std::cout << "after PdOpLowerToKernelPass: \n");
+      executor_->PrepareInterpreterCore(
+          sub_scope_, *pir_program_, execution_config);
+    } else {
+      executor_->PrepareInterpreterCore(
+          sub_scope_, *inference_program_, execution_config);
+    }
   }
 
   if (config_.enable_memory_optim_) {
