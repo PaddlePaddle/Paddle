@@ -572,8 +572,9 @@ void GroupScheduler::DoVerticalLoopFusion() {
       // Update block and control stmts order after schedule.
       this->UpdateBlockOrder();
     } else {
-      LOG(INFO) << "Cannot find a loop of masters to ComputeAt, do not merge.\n"
-                << "The schedule block: " << node->Block();
+      LOG(WARNING)
+          << "Cannot find a loop of masters to ComputeAt, do not merge.\n"
+          << "The schedule block: " << node->Block();
     }
   };
 
