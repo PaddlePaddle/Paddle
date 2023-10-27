@@ -199,7 +199,7 @@ class TestMNISTWithToStatic(TestMNIST):
             base.default_startup_program().random_seed = SEED
             mnist = MNIST()
             if to_static:
-                mnist = paddle.jit.to_static(mnist)
+                mnist = paddle.jit.to_static(mnist, full_graph=True)
             adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
             for epoch in range(self.epoch_num):

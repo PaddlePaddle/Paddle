@@ -202,5 +202,18 @@ class TestStatic(unittest.TestCase):
             res = exe.run(fetch_list=[x, out])
 
 
+class TestInt16(unittest.TestCase):
+    def test_static(self):
+        import numpy as np
+
+        paddle.enable_static()
+        data = np.array([1, 2], dtype="int16")
+        x = paddle.to_tensor(data)
+        self.assertTrue(x.dtype == paddle.framework.core.VarDesc.VarType.INT16)
+
+        y = paddle.to_tensor([1, 2], dtype="int16")
+        self.assertTrue(y.dtype == paddle.framework.core.VarDesc.VarType.INT16)
+
+
 if __name__ == '__main__':
     unittest.main()

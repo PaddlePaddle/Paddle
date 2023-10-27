@@ -324,7 +324,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   return core;
 }
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
@@ -544,6 +544,9 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   if (FLAGS_new_ir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
+    if (VLOG_IS_ON(6)) {
+      pm.EnableIRPrinting();
+    }
     pm.Run(res.get());
   }
 

@@ -46,7 +46,7 @@ class TestTensorClone(unittest.TestCase):
         np.testing.assert_allclose(dygraph_res, static_res, rtol=1e-05)
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def tensor_numpy(x):
     x = paddle.to_tensor(x)
     x.clear_gradient()
@@ -70,7 +70,7 @@ class TestTensorDygraphOnlyMethodError(unittest.TestCase):
             static_res = self._run(to_static=True)
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def tensor_item(x):
     x = paddle.to_tensor(x)
     y = x.clone()

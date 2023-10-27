@@ -382,7 +382,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -1375,7 +1375,7 @@ def t(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
@@ -1539,7 +1539,7 @@ def cholesky(x, upper=False, name=None):
              [1.06467664, 0.17859250, 0.        ],
              [1.30602181, 0.08326444, 0.22790681]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -1958,14 +1958,12 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3,3,3])
+            >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
-            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
-            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():
@@ -2621,7 +2619,7 @@ def eig(x, name=None):
               (-0.21026138961315155+0j)])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2692,7 +2690,7 @@ def eigvals(x, name=None):
             )
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(
@@ -2801,10 +2799,12 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
-            The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
-            complex64 and complex128. The eigenvectors of eigh op.
+        2-element tuple containing
+
+        - out_value(Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
+          The eigenvalues of eigh op.
+        - out_vector(Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32, float64,
+          complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
@@ -3283,7 +3283,7 @@ def cholesky_solve(x, y, upper=False, name=None):
              [-7.        ],
              [ 9.50000000]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())

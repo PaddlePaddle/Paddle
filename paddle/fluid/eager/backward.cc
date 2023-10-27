@@ -15,6 +15,7 @@
 #include "paddle/fluid/eager/backward.h"
 
 #include "paddle/fluid/eager/general_grad.h"
+#include "paddle/fluid/memory/stats.h"
 #include "paddle/phi/kernels/autotune/switch_autotune.h"
 
 namespace egr {
@@ -110,6 +111,8 @@ std::vector<paddle::Tensor> RunBackward(
     bool allow_unused = false,
     const std::vector<paddle::Tensor>& no_grad_vars = {}) {
   VLOG(3) << "Start Backward";
+
+  auto place = egr::Controller::Instance().GetExpectedPlace();
 
   std::queue<GradNodeBase*> force_sequential_nodes_forward_queue =
       egr::Controller::Instance().GetForceSequentialNodes();
@@ -405,6 +408,7 @@ std::vector<paddle::Tensor> RunBackward(
         }
       }
     }
+    paddle::memory::LogDeviceMemoryStats(place, std::string((*node).name()));
   }
 
   VLOG(7) << "Run Backward Final hook size: "

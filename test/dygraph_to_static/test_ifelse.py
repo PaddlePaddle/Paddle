@@ -15,7 +15,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_util import (
+    ast_only_test,
+    dy2static_unittest,
+    test_and_compare_with_new_ir,
+)
 from ifelse_simple_func import (
     NetWithControlFlowIf,
     add_fn,
@@ -63,6 +67,7 @@ class TestDy2staticException(unittest.TestCase):
         self.error = "Your if/else have different number of return value."
 
     @ast_only_test
+    @test_and_compare_with_new_ir()
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
@@ -95,6 +100,7 @@ class TestDygraphIfElse(unittest.TestCase):
                 ret = self.dyfunc(x_v)
             return ret.numpy()
 
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -123,10 +129,27 @@ class TestDygraphIfElseWithListGenerator(TestDygraphIfElse):
         self.dyfunc = dyfunc_with_if_else_with_list_generator
 
 
-class TestDygraphNestedIfElse(TestDygraphIfElse):
+@dy2static_unittest
+class TestDygraphNestedIfElse(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = nested_if_else
+
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
+
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = paddle.to_tensor(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    @test_and_compare_with_new_ir()
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class TestDygraphNestedIfElse2(TestDygraphIfElse):
@@ -233,10 +256,27 @@ class TestDygraphIfElseWithClassVar(TestDygraphIfElse):
         self.dyfunc = if_with_class_var
 
 
-class TestDygraphIfTensor(TestDygraphIfElse):
+@dy2static_unittest
+class TestDygraphIfTensor(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = if_tensor_case
+
+    def _run_static(self):
+        return self._run_dygraph(to_static=True)
+
+    def _run_dygraph(self, to_static=False):
+        with base.dygraph.guard(place):
+            x_v = paddle.to_tensor(self.x)
+            if to_static:
+                ret = paddle.jit.to_static(self.dyfunc)(x_v)
+            else:
+                ret = self.dyfunc(x_v)
+            return ret.numpy()
+
+    @test_and_compare_with_new_ir()
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 @dy2static_unittest
@@ -265,6 +305,7 @@ class TestDygraphIfElseNet(unittest.TestCase):
             ret = net(x_v)
             return ret.numpy()
 
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
@@ -317,6 +358,10 @@ class TestNetWithExternalFunc(TestDygraphIfElseNet):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.Net = NetWithExternalFunc
+
+    @test_and_compare_with_new_ir()
+    def test_ast_to_func(self):
+        self.assertTrue((self._run_dygraph() == self._run_static()).all())
 
 
 class DiffModeNet1(paddle.nn.Layer):
@@ -373,6 +418,7 @@ class TestDiffModeNet(unittest.TestCase):
         ret = net(self.x, self.y)
         return ret.numpy()
 
+    @test_and_compare_with_new_ir()
     def test_train_mode(self):
         self.assertTrue(
             (
@@ -381,6 +427,7 @@ class TestDiffModeNet(unittest.TestCase):
             ).all()
         )
 
+    @test_and_compare_with_new_ir()
     def test_infer_mode(self):
         self.assertTrue(
             (
@@ -397,6 +444,7 @@ class TestDiffModeNet2(TestDiffModeNet):
 
 @dy2static_unittest
 class TestNewVarCreateInOneBranch(unittest.TestCase):
+    @test_and_compare_with_new_ir()
     def test_var_used_in_another_for(self):
         def case_func(training):
             # targets and targets_list is dynamically defined by training
@@ -434,6 +482,7 @@ class TestDy2StIfElseRetInt1(unittest.TestCase):
         return out
 
     @ast_only_test
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.setUp()
         self.assertIsInstance(self.out[0], (paddle.Tensor, core.eager.Tensor))
@@ -455,6 +504,7 @@ class TestDy2StIfElseRetInt3(TestDy2StIfElseRetInt1):
         self.out = self.get_dy2stat_out()
 
     @ast_only_test
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         self.setUp()
         self.assertIsInstance(self.out, (paddle.Tensor, core.eager.Tensor))
@@ -467,6 +517,7 @@ class TestDy2StIfElseRetInt4(TestDy2StIfElseRetInt1):
         self.dyfunc = paddle.jit.to_static(dyfunc_ifelse_ret_int4)
 
     @ast_only_test
+    @test_and_compare_with_new_ir()
     def test_ast_to_func(self):
         paddle.jit.enable_to_static(True)
         with self.assertRaises(Dygraph2StaticException):
@@ -503,6 +554,7 @@ class IfElseNet(paddle.nn.Layer):
 
 @dy2static_unittest
 class TestDy2StIfElseBackward(unittest.TestCase):
+    # TODO(zhangbo): open pir test (IfOp grad execution not yet supported)
     def test_run_backward(self):
         a = paddle.randn((4, 3), dtype='float32')
         a.stop_gradient = False

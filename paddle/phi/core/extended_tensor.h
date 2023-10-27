@@ -18,12 +18,14 @@ limitations under the License. */
 #include "paddle/phi/core/allocator.h"
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
+#include "paddle/utils/test_macros.h"
+
 namespace phi {
 
 /// \brief The ExtendedTensor is a interface for custom designed class.
 /// If you want to pass some self-designed data as input/output to kernels,
 /// you can inherit from this class to store your self-designed data.
-class ExtendedTensor : public TensorBase {
+class TEST_API ExtendedTensor : public TensorBase {
  public:
   ExtendedTensor() = default;
   virtual ~ExtendedTensor() = default;

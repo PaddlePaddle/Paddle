@@ -2399,7 +2399,6 @@ class Model:
                 >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
-                >>> # doctest: +SKIP
                 >>> print(params_info)
                 ---------------------------------------------------------------------------
                 Layer (type)       Input Shape          Output Shape         Param #
@@ -2424,7 +2423,6 @@ class Model:
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
                 {'total_params': 61610, 'trainable_params': 61610}
-                >>> # doctest: -SKIP
 
         """
         assert (

@@ -49,7 +49,7 @@ void GetInputIds(pir::Operation* op,
                  const ValueExecutionInfo& value_exec_info,
                  std::unordered_map<pir::Value, std::vector<int>>* input_ids);
 
-void GetOutsideOpInputs(
+std::vector<pir::Value> GetOutsideOpInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids);
