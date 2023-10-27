@@ -227,7 +227,7 @@ __global__ void int8_weight_only_gemv(const T* input,
                                       const int k,
                                       const int n) {
   constexpr int kWarpSize = 32;
-  constexpr int kVecSize = 8;
+  constexpr int kVecSize = 16;
   T vec_input[kVecSize];
   int8_t vec_weight[kVecSize];
   T vec_weight_f16[kVecSize];
