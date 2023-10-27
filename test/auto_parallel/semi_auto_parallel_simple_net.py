@@ -156,7 +156,7 @@ class MPDemoNetRecompute(nn.Layer):
 
 
 class PPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh0, mesh1):
+    def __init__(self, np_w0, np_w1, mesh0, mesh1, param_suffix=""):
         super().__init__()
         self.replicate_dist_attr0 = dist.DistAttr(
             mesh=mesh0, sharding_specs=[None, None]
@@ -168,7 +168,7 @@ class PPDemoNet(nn.Layer):
             self.create_parameter(
                 shape=[IMAGE_SIZE, IMAGE_SIZE],
                 attr=paddle.framework.ParamAttr(
-                    name="pp_demo_weight_0",
+                    name="pp_demo_weight_0" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w0),
                 ),
             ),
@@ -178,7 +178,7 @@ class PPDemoNet(nn.Layer):
             self.create_parameter(
                 shape=[IMAGE_SIZE, CLASS_NUM],
                 attr=paddle.framework.ParamAttr(
-                    name="pp_nemo_weight_1",
+                    name="pp_nemo_weight_1" + param_suffix,
                     initializer=paddle.nn.initializer.Assign(np_w1),
                 ),
             ),
@@ -219,7 +219,6 @@ class TestSimpleNetForSemiAutoParallel:
         self.w0 = np.random.random([IMAGE_SIZE, IMAGE_SIZE]).astype('float32')
         self.w1 = np.random.random([IMAGE_SIZE, CLASS_NUM]).astype('float32')
 
-    # TODO(chenweihang): optimizer cannot run auto-parallel now
     # TODO(GhostScreaming): support pp backward later.
     def run_dynamic(self, layer, is_pp=False):
         # create loss
@@ -235,10 +234,14 @@ class TestSimpleNetForSemiAutoParallel:
             return loss, None, None
         else:
             loss.backward()
-            return loss, layer.w0.grad, layer.w1.grad
+            opt = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=[layer.w0, layer.w1]
+            )
+            opt.step()
+            return loss, layer.w0, layer.w1
 
     def init_single_card_net_result(self):
-        self.base_loss, self.base_w0_grad, self.base_w1_grad = self.run_dynamic(
+        self.base_loss, self.base_w0, self.base_w1 = self.run_dynamic(
             DemoNet(self.w0, self.w1)
         )
 
@@ -248,20 +251,24 @@ class TestSimpleNetForSemiAutoParallel:
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
     def test_dp_demo_net(self):
-        self.dp_loss, self.dp_w0_grad, self.dp_w1_grad = self.run_dynamic(
+        self.dp_loss, self.dp_w0, self.dp_w1 = self.run_dynamic(
             DPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.dp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.dp_w1_grad, self.base_w1_grad)
+        self.check_tensor_eq(self.dp_w0.grad, self.base_w0.grad)
+        self.check_tensor_eq(self.dp_w1.grad, self.base_w1.grad)
+        self.check_tensor_eq(self.dp_w0, self.base_w0)
+        self.check_tensor_eq(self.dp_w1, self.base_w1)
 
     def test_mp_demo_net(self):
-        self.mp_loss, self.mp_w0_grad, self.mp_w1_grad = self.run_dynamic(
+        self.mp_loss, self.mp_w0, self.mp_w1 = self.run_dynamic(
             MPDemoNet(self.w0, self.w1, self._mesh)
         )
         self.check_tensor_eq(self.mp_loss, self.base_loss)
-        self.check_tensor_eq(self.mp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.mp_w1_grad, self.base_w1_grad)
+        self.check_tensor_eq(self.mp_w0.grad, self.base_w0.grad)
+        self.check_tensor_eq(self.mp_w1.grad, self.base_w1.grad)
+        self.check_tensor_eq(self.mp_w0, self.base_w0)
+        self.check_tensor_eq(self.mp_w1, self.base_w1)
 
     # TODO(GhostScreaming): support pp backward later.
     def test_pp_demo_net(self):
