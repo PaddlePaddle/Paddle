@@ -947,7 +947,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
         if (grad->is_dense_tensor()) {
           t = static_cast<phi::DenseTensor*>(grad->impl().get());
         } else {
-          t = static_cast<phi::distribute::DistTensor*>(grad->impl().get())
+          t = static_cast<phi::distributed::DistTensor*>(grad->impl().get())
                   ->unsafe_mutable_value();
         }
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
@@ -966,7 +966,7 @@ static PyObject* tensor__zero_grads(TensorObject* self,
         if (meta->MutableGrad()->is_dense_tensor()) {
           t = static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
         } else {
-          t = static_cast<phi::distribute::DistTensor*>(
+          t = static_cast<phi::distributed::DistTensor*>(
                   meta->MutableGrad()->impl().get())
                   ->unsafe_mutable_value();
         }
@@ -998,13 +998,13 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                         self->tensor.name()));
   if (self->tensor.is_dist_tensor()) {
     auto* src_tensor =
-        static_cast<phi::distribute::DistTensor*>(self->tensor.impl().get())
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
             ->unsafe_mutable_value();
     if (!dst_ptr->defined()) {
-      dst_ptr->set_impl(std::make_shared<phi::distribute::DistTensor>());
+      dst_ptr->set_impl(std::make_shared<phi::distributed::DistTensor>());
     }
     auto dst_tensor =
-        static_cast<phi::distribute::DistTensor*>(dst_ptr->impl().get())
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
             ->unsafe_mutable_value();
     dst_tensor->ShareBufferWith(*src_tensor);
     dst_tensor->ShareDataTypeWith(*src_tensor);
@@ -1041,10 +1041,10 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
   }
   if (self->tensor.is_dist_tensor()) {
     auto* self_ptr =
-        static_cast<phi::distribute::DistTensor*>(self->tensor.impl().get())
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
             ->unsafe_mutable_value();
     auto dst_tensor =
-        static_cast<phi::distribute::DistTensor*>(dst_ptr->impl().get())
+        static_cast<phi::distributed::DistTensor*>(dst_ptr->impl().get())
             ->unsafe_mutable_value();
     res = dst_tensor->IsSharedBufferWith(*self_ptr);
     return ToPyObject(res);
