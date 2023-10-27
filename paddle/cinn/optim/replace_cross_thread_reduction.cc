@@ -31,7 +31,15 @@ namespace cinn {
 namespace optim {
 
 namespace {
-std::vector<ir::Buffer> shm_buffer_;
+
+struct BufferCmp {
+  bool operator()(const ir::Buffer& a, const ir::Buffer& b) const {
+    if (a->name == b->name) return false;
+    return true;
+  }
+};
+
+thread_local std::set<ir::Buffer, BufferCmp> shm_buffer_;
 struct CrossThreadReductionReplacer : public ir::IRMutator<> {
   void operator()(ir::Expr* expr) { Visit(expr); }
 
@@ -97,8 +105,8 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
     if (std::find_if(op->as_lowered_func()->temp_bufs.begin(),
                      op->as_lowered_func()->temp_bufs.end(),
                      [&](const ir::Buffer& buf) -> bool {
-                       for (int i = 0; i < shm_buffer_.size(); ++i) {
-                         if (buf->name == shm_buffer_[i]->name) return true;
+                       for (auto& tmp_buf : shm_buffer_) {
+                         if (buf->name == tmp_buf->name) return true;
                        }
                        return false;
                      }) == op->as_lowered_func()->temp_bufs.end())
@@ -106,7 +114,7 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
           op->as_lowered_func()->temp_bufs.end(),
           shm_buffer_.begin(),
           shm_buffer_.end());
-    std::vector<ir::Buffer>().swap(shm_buffer_);
+    shm_buffer_.clear();
   }
 
   void Visit(const ir::ScheduleBlockRealize* expr, ir::Expr* op) override {
@@ -131,24 +139,24 @@ struct CrossThreadReductionReplacer : public ir::IRMutator<> {
       original_update_stmt = original_update_body;
     }
 
-#define REPLACE_TO_EXTERNAL_CALL(Op)                                         \
-  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {                \
-    auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();       \
-    CHECK(node);                                                             \
-    auto& operand = node->b();                                               \
-    std::string reduce_func_name =                                           \
-        hlir::pe::CrossThreadReduceExternalFuncName(                         \
-            original_update_stmt.As<ir::Store>()->value,                     \
-            operand.As<ir::Load>()->tensor);                                 \
-    auto tmp_dtype = operand.As<ir::Load>()->tensor.as_tensor()->type();     \
-    auto tmp_buffer = ir::_Buffer_::Make(                                    \
-        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",       \
-        {ir::Expr(32)});                                                     \
-    tmp_buffer->dtype = tmp_dtype;                                           \
-    tmp_buffer->memory_type = ir::MemoryType::GPUShared;                     \
-    shm_buffer_.push_back(tmp_buffer);                                       \
-    original_update_stmt.As<ir::Store>()->value =                            \
-        lang::CallExtern(reduce_func_name, {node->b(), shm_buffer_.back()}); \
+#define REPLACE_TO_EXTERNAL_CALL(Op)                                     \
+  if (original_update_stmt.As<ir::Store>()->value.As<Op>()) {            \
+    auto* node = original_update_stmt.As<ir::Store>()->value.As<Op>();   \
+    CHECK(node);                                                         \
+    auto& operand = node->b();                                           \
+    std::string reduce_func_name =                                       \
+        hlir::pe::CrossThreadReduceExternalFuncName(                     \
+            original_update_stmt.As<ir::Store>()->value,                 \
+            operand.As<ir::Load>()->tensor);                             \
+    auto tmp_dtype = operand.As<ir::Load>()->tensor.as_tensor()->type(); \
+    auto tmp_buffer = ir::_Buffer_::Make(                                \
+        "shm32_" + hlir::pe::Type2StrForReduce(tmp_dtype) + "_reduce",   \
+        {ir::Expr(32)});                                                 \
+    tmp_buffer->dtype = tmp_dtype;                                       \
+    tmp_buffer->memory_type = ir::MemoryType::GPUShared;                 \
+    shm_buffer_.insert(tmp_buffer);                                      \
+    original_update_stmt.As<ir::Store>()->value =                        \
+        lang::CallExtern(reduce_func_name, {node->b(), tmp_buffer});     \
   }
 
     REPLACE_TO_EXTERNAL_CALL(ir::Add)
