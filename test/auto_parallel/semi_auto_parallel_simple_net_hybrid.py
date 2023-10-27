@@ -84,12 +84,14 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
     def test_dp_mp_demo_net(self):
         (
             self.dp_mp_loss,
-            self.dp_mp_w0_grad,
-            self.dp_mp_w1_grad,
+            self.dp_mp_w0,
+            self.dp_mp_w1,
         ) = self.run_dynamic(DPAndMPDemoNet(self.w0, self.w1, self._mesh))
         self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_mp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.dp_mp_w1_grad, self.base_w1_grad)
+        self.check_tensor_eq(self.dp_mp_w0, self.base_w0)
+        self.check_tensor_eq(self.dp_mp_w1, self.base_w1)
+        self.check_tensor_eq(self.dp_mp_w0.grad, self.base_w0.grad)
+        self.check_tensor_eq(self.dp_mp_w1.grad, self.base_w1.grad)
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()
