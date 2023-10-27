@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -672,6 +673,55 @@ ReshardApiInputToReplicatedKernelInput(
         ReshardApiInputToReplicatedKernelInput(dev_ctx, *tensor, dist_attr));
   }
   return paddle::none;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const phi::distributed::TensorDistAttr& dist_attr) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
+  for (const auto& tensor : tensors) {
+    outputs.push_back(
+        ReshardApiInputToReplicatedKernelInput(dev_ctx, tensor, dist_attr));
+  }
+  return outputs;
+}
+
+std::shared_ptr<phi::distributed::DistTensor>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx,
+      tensor,
+      paddle::get<phi::distributed::TensorDistAttr>(dist_attr));
+}
+
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const paddle::optional<Tensor>& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx,
+      tensor,
+      paddle::get<phi::distributed::TensorDistAttr>(dist_attr));
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx,
+      tensor,
+      paddle::get<std::vector<phi::distributed::TensorDistAttr>>(dist_attr));
 }
 
 void ReshardOutputPartialAxisToReplicated(

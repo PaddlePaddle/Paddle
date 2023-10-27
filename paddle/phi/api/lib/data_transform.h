@@ -25,6 +25,7 @@ class DeviceContext;
 namespace distributed {
 class DistTensor;
 class TensorDistAttr;
+class ItemDistAttr;
 }  // namespace distributed
 }  // namespace phi
 
@@ -186,11 +187,41 @@ ReshardApiInputToReplicatedKernelInput(
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
 
+std::shared_ptr<phi::distributed::DistTensor>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+std::shared_ptr<phi::distributed::DistTensor>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr);
+
 paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<Tensor>& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
+
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const paddle::optional<Tensor>& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr);
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensor,
+    const phi::distributed::TensorDistAttr& dist_attr);
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr);
 
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor);
