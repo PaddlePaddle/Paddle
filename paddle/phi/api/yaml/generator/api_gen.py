@@ -409,6 +409,9 @@ def declare_extension_api():
     return """
 namespace paddle {
 PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
 }  // namespace paddle
 """
 
