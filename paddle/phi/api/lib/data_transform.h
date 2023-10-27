@@ -181,6 +181,11 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     const Tensor& tensor,
     const phi::distributed::TensorDistAttr& dist_attr);
 
+std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::ItemDistAttr& dist_attr);
+
 std::shared_ptr<phi::distributed::DistTensor>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
