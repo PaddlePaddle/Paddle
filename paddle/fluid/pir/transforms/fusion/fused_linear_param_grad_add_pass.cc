@@ -59,8 +59,8 @@ class FusedMatmulAddGradAddPattern
 
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -118,8 +118,8 @@ class FusedMatmulGradAddPattern
 
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -169,8 +169,8 @@ class FusedMatmulAddaPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -214,8 +214,8 @@ class FusedMatmulAddbPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -263,8 +263,8 @@ class FusedMatmulAddGradAddaPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
@@ -308,8 +308,8 @@ class FusedMatmulAddGradAddbPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          return match_ctx.Tensor("dweight").Dtype() !=
-                 match_ctx.Tensor("weight_grad").Dtype();
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
