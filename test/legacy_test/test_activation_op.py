@@ -2184,14 +2184,19 @@ class TestAcosh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64:
             # Complex64[CPU]: AssertionError: 0.012431525 not less than or equal to 0.005
-            self.check_grad(['X'], 'Out', max_relative_error=0.02)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.02, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAcosh_Complex64(TestAcosh):
@@ -4714,7 +4719,7 @@ create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
 create_test_act_fp16_class(TestAtan)
-create_test_act_fp16_class(TestAcosh)
+create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
@@ -4868,7 +4873,7 @@ create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
 create_test_act_bf16_class(TestAtan)
-create_test_act_bf16_class(TestAcosh)
+create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
