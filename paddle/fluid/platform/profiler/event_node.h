@@ -102,6 +102,9 @@ class CommunicationSupplementEventNode {
   std::map<std::string, std::vector<std::vector<int64_t>>>& CommGroups() {
     return comm_supplement_event_.comm_groups;
   }
+  std::map<std::string, std::vector<std::string>> Dtypes() {
+    return comm_supplement_event_.dtype;
+  }
   uint64_t CommId() const { return comm_supplement_event_.comm_id; }
   uint64_t ProcessId() const { return comm_supplement_event_.process_id; }
   uint64_t ThreadId() const { return comm_supplement_event_.thread_id; }

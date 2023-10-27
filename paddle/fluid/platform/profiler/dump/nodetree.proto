@@ -217,6 +217,13 @@ message CommunicationSupplementEventProto {
   }
   required comm_group_proto comm_groups = 5;
   required uint64 comm_id = 6;
+  // comm dtypes
+  message comm_dtype_proto {
+    repeated string key = 1;
+    message dtype_vector { repeated string dtype = 1; }
+    repeated dtype_vector dtype_vecs = 2;
+  }
+  required comm_dtype_proto dtypes_map = 7;
 }
 
 message CudaRuntimeTraceEventProto {

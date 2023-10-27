@@ -140,8 +140,12 @@ struct CommunicationSupplementOriginEvent {
       const std::string &type_name,
       const std::map<std::string, std::vector<std::vector<int64_t>>>
           &comm_groups,
+      const std::map<std::string, std::vector<std::string>> &dtypes,
       uint64_t comm_id)
-      : timestamp_ns(timestamp_ns), comm_groups(comm_groups), comm_id(comm_id) {
+      : timestamp_ns(timestamp_ns),
+        comm_groups(comm_groups),
+        dtypes_(dtypes),
+        comm_id(comm_id) {
     auto buf = static_cast<char *>(arena_allocator(type_name.length() + 1));
     strncpy(buf, type_name.c_str(), type_name.length() + 1);
     comm_type = buf;
@@ -149,6 +153,8 @@ struct CommunicationSupplementOriginEvent {
 
   uint64_t timestamp_ns;
   const char *comm_type = nullptr;  // not owned, designed for performance
+  // comm dtypes
+  std::map<std::string, std::vector<std::string>> dtypes_;
   // comm groups
   std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
   // comm id

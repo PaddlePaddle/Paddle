@@ -144,6 +144,7 @@ void ProcessCommunicationSupplementEvents(
       event.timestamp_ns = evt.timestamp_ns;
       event.comm_type = evt.comm_type;
       std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+      std::map<std::string, std::string> dtypes;
       std::string callstack;
       for (const auto& comm_group : evt.comm_groups) {
         for (unsigned int idx = 0lu; idx < comm_group.second.size(); idx++) {
@@ -161,6 +162,7 @@ void ProcessCommunicationSupplementEvents(
       event.comm_id = evt.comm_id;
       event.process_id = comm_supplement_events.process_id;
       event.thread_id = tid;
+      event.dtype = evt.dtypes_;
       collector->AddCommunicationSupplementEvent(std::move(event));
     }
   }

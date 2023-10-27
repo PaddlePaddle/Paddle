@@ -46,7 +46,8 @@ class RecordCommInfoSupplement {
       const std::string& type,
       const std::vector<
           std::pair<const char*, std::vector<std::vector<int64_t>>>>&
-          comm_groups);
+          comm_groups,
+      const std::pair<const char*, std::vector<std::string>>& dtypes);
 };
 
 }  // namespace phi

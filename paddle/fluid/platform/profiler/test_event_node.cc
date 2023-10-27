@@ -98,11 +98,12 @@ TEST(NodeTreesTest, LogMe_case0) {
   std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups{
       {"size", {size_vec}},
       {"dtype", {dtype_vec}},
-      {"param", {comm_type_}},
       {"group", {comm_group_}},
   };
+  std::map<std::string, std::vector<std::string>> dtype{
+      {std::string("dtype"), {std::string("float32")}}};
   comm_supplement_events.emplace_back(
-      31600, "op3", comm_groups, comm_id, 10, 11);
+      31600, "op3", comm_groups, dtype, comm_id, 10, 11);
 
   runtime_events.emplace_back(
       std::string("cudalaunch1"), 15000, 17000, 10, 10, 1, 0);

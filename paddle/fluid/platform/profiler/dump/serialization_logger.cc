@@ -255,6 +255,19 @@ void SerializationLogger::LogHostTraceEventNode(
         }
       }
     }
+
+    CommunicationSupplementEventProto::comm_dtype_proto* comm_dtype_proto =
+        comm_supplement_event_proto->mutable_dtypes_map();
+    for (auto& item : comm_supplement_event_node->Dtypes()) {
+      comm_dtype_proto->add_key(item.first);
+      CommunicationSupplementEventProto::comm_dtype_proto::dtype_vector*
+          dtype_vec_proto = comm_dtype_proto->add_dtype_vecs();
+      auto dtype_vector = item.second;
+      for (auto& dtype : dtype_vector) {
+        dtype_vec_proto->add_dtype(dtype);
+      }
+    }
+
     current_comm_supplement_event_node_proto_
         ->set_allocated_comm_supplement_event(comm_supplement_event_proto);
   }
