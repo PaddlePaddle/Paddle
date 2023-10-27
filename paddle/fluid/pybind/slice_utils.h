@@ -20,9 +20,13 @@
 #undef copysign
 #endif
 
+#include <algorithm>
+#include "paddle/fluid/eager/api/all.h"
+#include "paddle/fluid/eager/api/generated/eager_generated/forwards/dygraph_functions.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/utils.h"
+#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -309,19 +313,7 @@ static void ParseIndexingSlice(phi::DenseTensor* tensor,
                         rank));
 }
 
-static bool isIntegerOrScalarTensor(PyObject* obj) {
-  if (PyCheckInteger(obj) || IsNumpyType(obj)) {
-    return true;
-  } else if (PyCheckTensor(obj)) {
-    if (obj.shape().size() == 0 &&
-        obj.dtype() != framework::proto::VarType::BOOL) {
-      return true;
-    }
-  }
-  return false;
-}
-
-static void ParseIndex(phi::DenseTensor* tensor,
+static void ParseIndex(paddle::Tensor tensor,
                        PyObject* _index,
                        std::vector<int64_t>* slice_axes,
                        std::vector<int>* slice_starts,
@@ -331,7 +323,7 @@ static void ParseIndex(phi::DenseTensor* tensor,
                        std::vector<int>* none_axes,
                        std::vector<int64_t>* infer_flags,
                        std::vector<int>* advanced_index_dim,
-                       std::vector<phi::DenseTensor>* advanced_index,
+                       std::vector<paddle::Tensor>* advanced_index,
                        bool* has_advanced_index,
                        bool* use_strided_slice) {
   // NOTE(zhiqiu): PyTuple_Pack increases refcount.
@@ -343,10 +335,10 @@ static void ParseIndex(phi::DenseTensor* tensor,
     }
   });
   PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(),
+      tensor.initialized(),
       true,
       platform::errors::InvalidArgument("tensor has not been initialized"));
-  const auto& shape = tensor->dims();
+  const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
 
@@ -367,94 +359,96 @@ static void ParseIndex(phi::DenseTensor* tensor,
                     1,
                     platform::errors::InvalidArgument(
                         "An index can only have a single ellipsis ('...')"));
-}
 
-// deal with indexing_item
-int none_count = 0;
-for (int i = 0, dim = 0; i < size; ++i) {
-  PyObject* slice_item = PyTuple_GetItem(index, i);
+  // deal with indexing_item
+  int none_count = 0;
+  for (int i = 0, dim = 0; i < size; ++i) {
+    PyObject* slice_item = PyTuple_GetItem(index, i);
 
-  infer_flags->push_back(1);
-  int64_t dim_len = shape[dim];
-  if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
-    // integer, PyLong_AsLong supports both int and long
-    int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
-    auto s_t = start;
-    start = start < 0 ? start + dim_len : start;
+    infer_flags->push_back(1);
+    int64_t dim_len = shape[dim];
+    if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
+      // integer, PyLong_AsLong supports both int and long
+      int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
+      auto s_t = start;
+      start = start < 0 ? start + dim_len : start;
 
-    PADDLE_ENFORCE(
-        0 <= start && start < dim_len,
-        platform::errors::OutOfRange("The starting index %d of slice is out "
-                                     "of bounds in tensor %d-th axis, it "
-                                     "shound be in the range of [%d, %d).",
-                                     s_t,
-                                     dim,
-                                     -dim_len,
-                                     dim_len));
+      PADDLE_ENFORCE(
+          0 <= start && start < dim_len,
+          platform::errors::OutOfRange("The starting index %d of slice is out "
+                                       "of bounds in tensor %d-th axis, it "
+                                       "shound be in the range of [%d, %d).",
+                                       s_t,
+                                       dim,
+                                       -dim_len,
+                                       dim_len));
 
-    slice_axes->push_back(dim);
-    slice_starts->push_back(start);
-    slice_ends->push_back(start + 1);
-    slice_strides->push_back(1);
-    decrease_axis->push_back(dim);
-    dim++;
-  } else if (PySlice_Check(slice_item)) {
-    // slice item
-    Py_ssize_t start, end, step;
-    PySliceObject* p = reinterpret_cast<PySliceObject*>(slice_item);
-    _PySlice_GetIndices(p, dim_len, &start, &end, &step);
-
-    // :: or : or 0:dim_len:1
-    if (start == 0 && end == dim_len && step == 1) {
-      dim++;
-      continue;
-    }
-    slice_axes->push_back(dim);
-    slice_starts->push_back(start);
-    slice_ends->push_back(end);
-    slice_strides->push_back(step);
-    dim++;
-
-    if (step != 1) {
-      *use_strided_slice = true;
-    }
-  } else if (slice_item == Py_Ellipsis) {
-    dim += rank - specified_dims;
-  } else if (slice_item == Py_None) {
-    none_axes->push_back(dim + none_count);
-    none_count++;
-  } else if (PyList_Check(slice_item) || PyTuple_Check(slice_item)) {
-    *has_advanced_index = true;
-    auto index_tensor = CastPyArg2Tensor(slice_item, 0);
-    advanced_index->push_back(index_tensor);
-    advanced_index_dim[dim] = dim;
-    dim++;
-  } else if (PyCheckTensor(slice_item)) {
-    if (slice_item.dims().size() == 0 &&
-        slice_item.dtype() != framework::proto::VarType::BOOL) {
-      // 0-D tensor is same with scalar
-      Py_ssize_t start = GetSliceIndexFromTensor(slice_item);
       slice_axes->push_back(dim);
       slice_starts->push_back(start);
       slice_ends->push_back(start + 1);
       slice_strides->push_back(1);
       decrease_axis->push_back(dim);
-    } else {
-      *has_advanced_index = true;
+      dim++;
+    } else if (PySlice_Check(slice_item)) {
+      // slice item
+      Py_ssize_t start, end, step;
+      PySliceObject* p = reinterpret_cast<PySliceObject*>(slice_item);
+      _PySlice_GetIndices(p, dim_len, &start, &end, &step);
 
-      advanced_index->push_back(
-          reinterpret_cast<TensorObject*>(slice_item)->tensor);
-      advanced_index_dim[dim] = dim;
+      // :: or : or 0:dim_len:1
+      if (start == 0 && end == dim_len && step == 1) {
+        dim++;
+        continue;
+      }
+      slice_axes->push_back(dim);
+      slice_starts->push_back(start);
+      slice_ends->push_back(end);
+      slice_strides->push_back(step);
+      dim++;
+
+      if (step != 1) {
+        *use_strided_slice = true;
+      }
+    } else if (slice_item == Py_Ellipsis) {
+      dim += rank - specified_dims;
+    } else if (slice_item == Py_None) {
+      none_axes->push_back(dim + none_count);
+      none_count++;
+    } else if (PyList_Check(slice_item) || PyTuple_Check(slice_item)) {
+      *has_advanced_index = true;
+      auto index_tensor = CastPyArg2Tensor(slice_item, 0);
+      advanced_index->push_back(index_tensor);
+      (*advanced_index_dim)[dim] = dim;
+      dim++;
+    } else if (PyCheckTensor(slice_item)) {
+      auto slice_tensor = CastPyArg2Tensor(slice_item, 0);
+      if (slice_tensor.shape().size() == 0 &&
+          slice_tensor.dtype() != phi::DataType::BOOL) {
+        // 0-D tensor is same with scalar
+        Py_ssize_t start = GetSliceIndexFromTensor(
+            (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get())));
+        slice_axes->push_back(dim);
+        slice_starts->push_back(start);
+        slice_ends->push_back(start + 1);
+        slice_strides->push_back(1);
+        decrease_axis->push_back(dim);
+      } else {
+        *has_advanced_index = true;
+
+        advanced_index->push_back(
+            reinterpret_cast<TensorObject*>(slice_item)->tensor);
+        (*advanced_index_dim)[dim] = dim;
+      }
+      dim++;
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, Tensor.__indices__() only allows indexing "
+          "by Integers, Slices, Ellipsis, None, tuples of these types "
+          "and list of Bool and Integers, but received "
+          "%s in %dth slice item",
+          std::string(Py_TYPE(slice_item)->tp_name),
+          i + 1));
     }
-    dim++;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Currently, Tensor.__indices__() only allows indexing "
-        "by Integers, Slices, Ellipsis, None, tuples of these types "
-        "and list of Bool and Integers, but received "
-        "%s in %dth slice item",
-        std::string(Py_TYPE(slice_item)->tp_name),
-        i + 1));
   }
 
   // valid_index is the number of dimensions exclude None index
@@ -467,8 +461,8 @@ for (int i = 0, dim = 0; i < size; ++i) {
                         rank));
 }
 
-static phi::DenseTensor getTensorWithBasicIndexing(
-    phi::DenseTensor* tensor,
+static paddle::Tensor getTensorWithBasicIndexing(
+    paddle::Tensor tensor,
     std::vector<int64_t>* slice_axes,
     std::vector<int>* slice_starts,
     std::vector<int>* slice_ends,
@@ -477,67 +471,70 @@ static phi::DenseTensor getTensorWithBasicIndexing(
     std::vector<int>* none_axes,
     std::vector<int64_t>* infer_flags,
     bool* use_strided_slice) {
-  phi::DenseTensor out;
-  if (slice_axes.empty()) {
-    out = *tensor;
+  paddle::Tensor out;
+  if (slice_axes->empty()) {
+    out = tensor;
   } else {
-    out = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
+    // out = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
     if (!use_strided_slice) {
       eager_gil_scoped_release guard;
       out = slice_ad_func(tensor,
-                          slice_axes,
-                          slice_starts,
-                          slice_ends,
-                          infer_flags,
-                          decrease_axis);
+                          *slice_axes,
+                          *slice_starts,
+                          *slice_ends,
+                          *infer_flags,
+                          *decrease_axis);
+      // out = slice(tensor, slice_axes, slice_starts, slice_ends,
+      // infer_flags,decrease_axis);
     } else {
       eager_gil_scoped_release guard;
-      std::vector<int> slice_axes_int32(slice_axes.begin(), slice_axes.end());
+      std::vector<int> slice_axes_int32(slice_axes->begin(), slice_axes->end());
 
       out = strided_slice_ad_func(
-          tensor, slice_axes_int32, slice_starts, slice_ends, slice_strides);
-      if (!decrease_axis.empty()) {
-        out = squeeze_ad_func(out, decrease_axis);
+          tensor, slice_axes_int32, *slice_starts, *slice_ends, *slice_strides);
+      if (!decrease_axis->empty()) {
+        out = squeeze_ad_func(out, *decrease_axis);
       }
     }
   }
-  if (!none_axes.empty()) {
+  if (!none_axes->empty()) {
     eager_gil_scoped_release guard;
     // Deal with cases that decrease_axes is not empty
     // For example:
     // # x.shape: (2,3,4)
     // out = x[0, 0:2, None] # out.shape : (2, 1, 4)
-    for (auto& axis : none_axes) {
+    for (auto& axis : *(none_axes)) {
       int len = 0;
-      for (int da : decrease_axis) {
+      for (int64_t da : *decrease_axis) {
         if (da < axis) {
           len++;
         }
       }
       axis -= len;
     }
-    out = unsqueeze_ad_func(out, none_axes);
+    out = unsqueeze_ad_func(out, *none_axes);
   }
   return out;
 }
 
-static phi::DenseTensor dealWithAdvancedIndex(
-    phi::DenseTensor* tensor,
+static paddle::Tensor dealWithAdvancedIndex(
+    paddle::Tensor tensor,
     std::vector<int>* advanced_index_dim,
-    std::vector<phi::DenseTensor>* advanced_index,
+    std::vector<paddle::Tensor>* advanced_index,
     bool is_for_setitem,
-    std::vector<phi::DenseTensor>* transed_index,
+    std::vector<paddle::Tensor>* transed_index,
     std::vector<int>* trans_back_dim,
     int* pos_of_new_dim,
     int* rank_of_new_dim) {
   std::vector<int> trans_dim;
 
-  for (int i = 0, int p = 0; i < advanced_index_dim->size(); ++i) {
-    auto index_dim = *advanced_index_dim[i];
+  int p = 0;
+  for (size_t i = 0; i < advanced_index_dim->size(); ++i) {
+    auto index_dim = (*advanced_index_dim)[i];
     if (index_dim != -1) {
       // size of advanced_index is same to number of non -1 element in
       // advanced_index_dim
-      auto index = *advanced_index[p++];
+      auto index = (*advanced_index)[p++];
 
       if (!is_for_setitem) {
         if (index_dim == 0) {
@@ -549,9 +546,10 @@ static phi::DenseTensor dealWithAdvancedIndex(
           // be at first.
           *pos_of_new_dim = 0;
         } else {
-          *pos_of_new_dim = min(index_dim, *pos_of_new_dim);
+          *pos_of_new_dim = std::min(index_dim, *pos_of_new_dim);
         }
-        *rank_of_new_dim = max(*rank_of_new_dim, index.shape().size());
+        *rank_of_new_dim =
+            std::max(*rank_of_new_dim, static_cast<int>(index.shape().size()));
       }
 
       trans_dim.push_back(index_dim);
@@ -559,12 +557,12 @@ static phi::DenseTensor dealWithAdvancedIndex(
     }
   }
 
-  for (int i = 0; i < tensor->shape().size(); ++i) {
-    if (*advanced_index_dim[i] == -1) {
+  for (size_t i = 0; i < tensor.shape().size(); ++i) {
+    if ((*advanced_index_dim)[i] == -1) {
       trans_dim.push_back(i);
     }
   }
-  phi::DenseTensor transed_tensor = transpose_ad_func(*tensor, trans_dim);
+  paddle::Tensor transed_tensor = transpose_ad_func(tensor, trans_dim);
 
   if (is_for_setitem) {
     std::sort(trans_back_dim->begin(),
