@@ -179,13 +179,11 @@ bool SwishPluginDynamic::supportsFormatCombination(
     if (with_fp16_) {
       bool res = (in.type == nvinfer1::DataType::kFLOAT ||
                   in.type == nvinfer1::DataType::kHALF);
-// encounter trt crash bug
-#if IS_TRT_VERSION_LT(8000)
       res = res && (in.format == nvinfer1::TensorFormat::kLINEAR);
-#endif
       return res;
     } else {
-      return in.type == nvinfer1::DataType::kFLOAT;
+      return (in.type == nvinfer1::DataType::kFLOAT) &&
+             (in.format == nvinfer1::TensorFormat::kLINEAR);
     }
   }
   const nvinfer1::PluginTensorDesc &prev = in_out[pos - 1];
