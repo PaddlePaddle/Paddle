@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSvdOp(OpTest):
@@ -51,7 +52,7 @@ class TestSvdOp(OpTest):
         self._output_data = np.linalg.svd(self._input_data)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['U', 'VH'])
+        self.check_output(no_check_set=['U', 'VH'], check_pir=True)
 
     def test_svd_forward(self):
         """u matmul diag(s) matmul vt must become X"""
@@ -71,13 +72,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_U_grad(self):
-        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001, check_pir=True)
 
     def check_V_grad(self):
-        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001, check_pir=True)
 
     def test_check_grad(self):
         """
@@ -293,6 +294,7 @@ class TestSvdAPI(unittest.TestCase):
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
         np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]

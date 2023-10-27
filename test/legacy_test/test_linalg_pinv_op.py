@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class LinalgPinvTestCase(unittest.TestCase):
@@ -61,6 +62,7 @@ class LinalgPinvTestCase(unittest.TestCase):
                 print("GOT     : \n", out)
                 raise RuntimeError("Check PINV dygraph Failed")
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -89,6 +91,7 @@ class LinalgPinvTestCase(unittest.TestCase):
                     print("GOT     : \n", fetches[0])
                     raise RuntimeError("Check PINV static Failed")
 
+    @test_with_pir_api
     def test_grad(self):
         for place in self.places:
             x = paddle.to_tensor(
@@ -306,6 +309,7 @@ class TestDivByZero(unittest.TestCase):
         x = paddle.to_tensor(np.reshape(array, [0, 0]), dtype='float32')
         paddle.linalg.pinv(x)
 
+    @test_with_pir_api
     def test_div_by_zero(self):
         with self.assertRaises(ValueError):
             self.pinv_zero_input_dynamic()

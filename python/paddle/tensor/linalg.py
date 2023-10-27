@@ -2052,7 +2052,7 @@ def svd(x, full_matrices=False, name=None):
             >>> #                  V * VH == I
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.svd(x, full_matrices)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
@@ -2925,7 +2925,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             # one can verify : x * out * x = x ;
             # or              out * x * out = x ;
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if not hermitian:
             # combine svd and matmul op
             u, s, vt = _C_ops.svd(x, False)
