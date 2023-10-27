@@ -937,8 +937,14 @@ static PyObject* tensor__zero_grads(TensorObject* self,
                        "Please check if you have manually cleared"
                        "the grad inside autograd_meta"));
     if (grad->initialized()) {
-      if (grad->is_dense_tensor()) {
-        auto* t = static_cast<phi::DenseTensor*>(grad->impl().get());
+      if (grad->is_dense_tensor() || grad->is_dist_tensor()) {
+        phi::DenseTensor* t = nullptr;
+        if (grad->is_dense_tensor()) {
+          t = static_cast<phi::DenseTensor*>(grad->impl().get());
+        } else {
+          t = static_cast<phi::distribute::DistTensor*>(grad->impl().get())
+                  ->unsafe_mutable_value();
+        }
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
@@ -949,9 +955,16 @@ static PyObject* tensor__zero_grads(TensorObject* self,
     eager_gil_scoped_release guard;
     auto meta = egr::EagerUtils::unsafe_autograd_meta(self->tensor);
     if (meta->MutableGrad()->initialized()) {
-      if (meta->MutableGrad()->is_dense_tensor()) {
-        auto* t =
-            static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
+      if (meta->MutableGrad()->is_dense_tensor() ||
+          meta->MutableGrad()->is_dist_tensor()) {
+        phi::DenseTensor* t = nullptr;
+        if (meta->MutableGrad()->is_dense_tensor()) {
+          t = static_cast<phi::DenseTensor*>(meta->MutableGrad()->impl().get());
+        } else {
+          t = static_cast<phi::distribute::DistTensor*>(
+                  meta->MutableGrad()->impl().get())
+                  ->unsafe_mutable_value();
+        }
         auto* dev_ctx = platform::DeviceContextPool::Instance().Get(t->place());
         phi::funcs::set_constant(*dev_ctx, t, 0.0);
       } else {
@@ -978,13 +991,28 @@ static PyObject* tensor__share_buffer_to(TensorObject* self,
                         "Tensor %s has not been initialized! please initialize "
                         "src tensor before share_buffer_with to other.",
                         self->tensor.name()));
-  auto* src_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (!dst_ptr->defined()) {
-    dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+  if (self->tensor.is_dist_tensor()) {
+    auto* src_tensor =
+        static_cast<phi::distribute::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::distribute::DistTensor>());
+    }
+    auto dst_tensor =
+        static_cast<phi::distribute::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
+  } else {
+    auto* src_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (!dst_ptr->defined()) {
+      dst_ptr->set_impl(std::make_shared<phi::DenseTensor>());
+    }
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    dst_tensor->ShareBufferWith(*src_tensor);
+    dst_tensor->ShareDataTypeWith(*src_tensor);
   }
-  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
-  dst_tensor->ShareBufferWith(*src_tensor);
-  dst_tensor->ShareDataTypeWith(*src_tensor);
   RETURN_PY_NONE
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -1006,10 +1034,21 @@ static PyObject* tensor__is_shared_buffer_with(TensorObject* self,
   if (!self->tensor.defined() || !dst_ptr->defined()) {
     return ToPyObject(res);
   }
-  auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
-  res = dst_tensor->IsSharedBufferWith(*self_ptr);
-  return ToPyObject(res);
+  if (self->tensor.is_dist_tensor()) {
+    auto* self_ptr =
+        static_cast<phi::distribute::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    auto dst_tensor =
+        static_cast<phi::distribute::DistTensor*>(dst_ptr->impl().get())
+            ->unsafe_mutable_value();
+    res = dst_tensor->IsSharedBufferWith(*self_ptr);
+    return ToPyObject(res);
+  } else {
+    auto* self_ptr = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    auto dst_tensor = static_cast<phi::DenseTensor*>(dst_ptr->impl().get());
+    res = dst_tensor->IsSharedBufferWith(*self_ptr);
+    return ToPyObject(res);
+  }
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
