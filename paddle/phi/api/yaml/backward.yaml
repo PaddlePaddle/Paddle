@@ -708,6 +708,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : exp_grad
   inplace : (out_grad -> x_grad)
@@ -1907,6 +1908,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [out]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : rsqrt_grad
   backward : rsqrt_double_grad
@@ -2062,6 +2064,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : silu_grad
   backward : silu_double_grad
