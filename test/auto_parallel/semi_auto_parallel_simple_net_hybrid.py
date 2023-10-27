@@ -67,6 +67,52 @@ class DPAndMPDemoNet(nn.Layer):
         return out
 
 
+class DPAndMPAndPPDemoNet(nn.Layer):
+    def __init__(self, np_w0, np_w1, mesh0, mesh1):
+        super().__init__()
+        self.mesh0 = mesh0
+        self.mesh1 = mesh1
+        self.w0 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, IMAGE_SIZE],
+                attr=paddle.framework.ParamAttr(
+                    name="dmpp_demo_weight_1",
+                    initializer=paddle.nn.initializer.Assign(np_w0),
+                ),
+            ),
+            dist_attr=dist.DistAttr(mesh=mesh0, sharding_specs=[None, 'y']),
+        )
+        self.w1 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, CLASS_NUM],
+                attr=paddle.framework.ParamAttr(
+                    name="dmpp_nemo_weight_2",
+                    initializer=paddle.nn.initializer.Assign(np_w1),
+                ),
+            ),
+            dist_attr=dist.DistAttr(mesh=mesh1, sharding_specs=['y', None]),
+        )
+
+    def forward(self, x):
+        out = F.linear(
+            dist.shard_tensor(
+                x,
+                dist_attr=dist.DistAttr(
+                    mesh=self.mesh0, sharding_specs=['x', None]
+                ),
+            ),
+            self.w0,
+        )
+        out = F.relu(out)
+        out = dist.reshard(
+            out,
+            dist_attr=dist.DistAttr(mesh=self.mesh1, sharding_specs=['x', 'y']),
+        )
+        out = F.linear(out, self.w1)
+
+        return out
+
+
 class TestSimpleNetHybridStrategyForSemiAutoParallel(
     TestSimpleNetForSemiAutoParallel
 ):
@@ -75,6 +121,8 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        self._mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        self._mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"])
 
         paddle.set_device(self._backend)
 
@@ -93,8 +141,32 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self.check_tensor_eq(self.dp_mp_w0.grad, self.base_w0.grad)
         self.check_tensor_eq(self.dp_mp_w1.grad, self.base_w1.grad)
 
+    def dp_mp_pp_demo_net(self):
+        (
+            self.dp_mp_pp_loss,
+            self.dp_mp_pp_w0,
+            self.dp_mp_pp_w1,
+        ) = self.run_dynamic(
+            DPAndMPAndPPDemoNet(self.w0, self.w1, self._mesh0, self._mesh1)
+        )
+        rank = dist.get_rank()
+
+        if rank in [4, 5, 6, 7]:
+            self.check_tensor_eq(self.dp_mp_pp_loss, self.base_loss)
+            self.check_tensor_eq(self.dp_mp_pp_w1, self.base_w1)
+            self.check_tensor_eq(self.dp_mp_pp_w1.grad, self.base_w1.grad)
+        else:
+            self.check_tensor_eq(self.dp_mp_pp_w0, self.base_w0)
+            self.check_tensor_eq(self.dp_mp_pp_w0.grad, self.base_w0.grad)
+
     def run_test_case(self):
         self.test_dp_mp_demo_net()
+        # TODO(GhostScreaming): Paddle-CI-Coverage doesn't support 8-cards
+        # testcase now. Enable it later. It can be tested with
+        # modify test_semi_auto_parallel_hybrid_strategy.py `setUp` function,
+        # just set num_of_devices=8, nnode =1 and _changeable_envs = {"backend": ["gpu"]}
+        # to test it.
+        # self.dp_mp_pp_demo_net()
 
 
 if __name__ == '__main__':
