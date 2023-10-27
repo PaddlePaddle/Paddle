@@ -32,7 +32,8 @@ the CINN IR helps to represent some computation semantic and finally lower to a 
 Both levels of IR have the similar SSA graph, analysis and optimization facilities.
 The schedule transform is applied on the CINN IR to do optimizations.
 
-The overall architecture is as follows
+For more details, you can refer to:
+https://github.com/PaddlePaddle/docs/tree/develop/docs/guides/cinn
 
 ##  Getting Started
 
