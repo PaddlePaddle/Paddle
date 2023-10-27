@@ -20,6 +20,8 @@ namespace paddle {
 namespace dialect {
 std::vector<std::vector<pir::OpResult>> VjpInterface::Vjp(
     pir::Operation* op,
+    const std::vector<std::vector<pir::Value>>& inputs,
+    const std::vector<std::vector<pir::OpResult>>& outputs,
     const std::vector<std::vector<pir::OpResult>>& out_grads,
     const std::vector<std::vector<bool>>& stop_gradients) {
   std::vector<std::vector<pir::Value>> out_grads_value;
@@ -30,7 +32,7 @@ std::vector<std::vector<pir::OpResult>> VjpInterface::Vjp(
     }
     out_grads_value.emplace_back(std::move(grad_value));
   }
-  return impl_->vjp_(op, out_grads_value, stop_gradients);
+  return impl_->vjp_(op, inputs, outputs, out_grads_value, stop_gradients);
 }
 }  // namespace dialect
 }  // namespace paddle

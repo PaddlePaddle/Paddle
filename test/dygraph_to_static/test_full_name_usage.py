@@ -21,7 +21,7 @@ import paddle
 from paddle import base
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def dygraph_decorated_func(x):
     x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
@@ -31,7 +31,7 @@ def dygraph_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def jit_decorated_func(x):
     x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
@@ -41,19 +41,19 @@ def jit_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
 class DoubleDecorated:
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func1(self, x):
         return dygraph_decorated_func(x)
 
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func2(self, x):
         return jit_decorated_func(x)
 

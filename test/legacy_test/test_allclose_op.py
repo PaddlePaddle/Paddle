@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAllcloseOp(OpTest):
@@ -174,6 +175,7 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         x_data = np.random.rand(10, 10).astype('float16')
         y_data = np.random.rand(10, 10).astype('float16')
