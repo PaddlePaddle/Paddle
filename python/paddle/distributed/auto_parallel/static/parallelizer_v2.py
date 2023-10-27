@@ -355,14 +355,18 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
-        mp_async_allreduce_in_backward = os.getenv(
-            "FLAGS_mp_async_allreduce_in_backward"
-        ) in [1, "1", True, "True"]
-        if mp_async_allreduce_in_backward:
-            column_parallel_linear_backward_overlapping_pass = new_pass(
-                "column_parallel_linear_backward_overlapping", {}
+        if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
+            if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+                self._logger.warning(
+                    "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
+            allreduce_matmul_grad_overlapping_pass = new_pass(
+                "allreduce_matmul_grad_overlapping", {}
             )
-            column_parallel_linear_backward_overlapping_pass.apply(
+            allreduce_matmul_grad_overlapping_pass.apply(
                 [main_program], [startup_program], self._pass_context
             )
 
@@ -432,8 +436,22 @@ class Parallelizer:
             and self._strategy.pipeline.enable
             and use_new_executor()
         ):
+            enable_send_recv_overlap = (
+                self._strategy.pipeline.enable_send_recv_overlap
+            )
+            if (
+                enable_send_recv_overlap
+                and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
+            ):
+                self._logger.warning(
+                    "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
+                "enable_send_recv_overlap": enable_send_recv_overlap,
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),

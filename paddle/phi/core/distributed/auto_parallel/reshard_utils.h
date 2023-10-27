@@ -154,5 +154,12 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   } while (0)
 #endif
 
+#define RESHARD_SHORTCUT_IF_FALSE(expr) \
+  do {                                  \
+    if (!(expr)) {                      \
+      return false;                     \
+    }                                   \
+  } while (0)
+
 }  // namespace distributed
 }  // namespace phi

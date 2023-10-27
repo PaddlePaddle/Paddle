@@ -133,7 +133,7 @@ class TestShardTensorStatic(unittest.TestCase):
 
 class TestShardTensorStaticDy2Static(unittest.TestCase):
     def test_dy2static(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def func():
             mesh = dist.ProcessMesh(
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]

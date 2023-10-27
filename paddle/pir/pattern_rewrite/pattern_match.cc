@@ -116,46 +116,60 @@ void RewriterBase::ReplaceOpWithIf(
 
 void RewriterBase::ReplaceOp(Operation* op,
                              const std::vector<Value>& new_values) {
+  // Notify that the rewriter subclass we're about to replace this root.
   NotifyRootReplaced(op, new_values);
+
   IR_ENFORCE(op->num_results() == new_values.size(),
              "incorrect # of replacement values");
   op->ReplaceAllUsesWith(new_values);
+
   NotifyOperationRemoved(op);
-  op->GetParent()->erase(*op);
+  op->Erase();
 }
 
 void RewriterBase::EraseOp(Operation* op) {
-  // TODO(wilber): Operation support use_empty.
-  // IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
+  IR_ENFORCE(op->use_empty(), "expected 'op' to have no uses");
   NotifyOperationRemoved(op);
-  op->GetParent()->erase(*op);
+  op->Erase();
 }
 
-/// Find uses of `from` and replace it with `to`
+// Find uses of `from` and replace it with `to`.
 void RewriterBase::ReplaceAllUsesWith(Value from, Value to) {
-  // TODO(wilber): Substitue a low level impl.
-  from.ReplaceAllUsesWith(to);
+  for (auto it = from.use_begin(); it != from.use_end();)
+    UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
 }
 
-// TODO(wilber): iterator maybe should support modify inplace.
+// Find uses of `from` and replace them with `to` if the `functor` returns true.
 void RewriterBase::ReplaceUseIf(Value from,
                                 Value to,
                                 std::function<bool(OpOperand&)> functor) {
-  // for (auto it = from.begin(); it != from.end(); ++it) {
-  // //   // TODO: need a lvalue.
-  //   if (functor(*it)) {
-  //     UpdateRootInplace(it.owner(), [&](){it.get().set(to)});
-  //   }
+  // Use post-increment operator for iterator since set_source() will change
+  // `it`.
+  // TODO(zhangbopd): Uncomment
+  // for (auto it = from.use_begin(); it != from.use_end();) {
+  //   if (functor(*it))
+  //     UpdateRootInplace(it.owner(), [&]() { (it++)->set_source(to); });
   // }
 }
 
+// Replace theuses of op with uses of new_op.
+// 'op' and 'new_op' are known to have the same number of results
 void RewriterBase::ReplaceOpWithResultsOfAnotherOp(Operation* op,
                                                    Operation* new_op) {
   IR_ENFORCE(op->num_results() == new_op->num_results(),
              "replacement op doesn't match results of original op");
-  // TODO(wilber): Op support results method.
-  // if (op->num_results() == 1) return ReplaceOp(op,
-  // new_op->result(0)); return ReplaceOp(op, new_op->GetResults());
+  // TODO(zhangbopd): Uncomment
+  // if (op->num_results() == 1) {
+  //   std::vector<Value> new_values;
+  //   new_values.push_back(new_op->result(0));
+  //   return ReplaceOp(op, new_values);
+  // }
+
+  // std::vector<Value> new_values;
+  // for (auto res : new_op->results()) {
+  //   new_values.push_back(res);
+  // }
+  // return ReplaceOp(op, new_values);
 }
 
 }  // namespace pir

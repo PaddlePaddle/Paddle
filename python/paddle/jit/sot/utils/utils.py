@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import builtins
 import inspect
-import os
 import time
 import types
 import weakref
@@ -32,6 +31,12 @@ import paddle
 from paddle.framework import Program
 from paddle.utils import flatten, map_structure
 
+from .envs import (
+    ENV_CLEAN_CODE,
+    ENV_COST_MODEL,
+    ENV_SOT_LOG_LEVEL,
+    ENV_STRICT_MODE,
+)
 from .paddle_api_config import (
     break_graph_set,
     paddle_api_list,
@@ -39,14 +44,6 @@ from .paddle_api_config import (
 )
 
 T = TypeVar("T")
-
-
-def cost_model():
-    return os.environ.get("COST_MODEL", "False") == "True"
-
-
-def min_graph_size():
-    return int(os.environ.get("MIN_GRAPH_SIZE", 10))
 
 
 class Singleton(Generic[T]):
@@ -119,13 +116,13 @@ class ResumeFnNameFactory:
 
 
 def log(level, *args):
-    cur_level = int(os.environ.get("SOT_LOG_LEVEL", "0"))
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         print(*args, end="")
 
 
 def log_do(level, fn):
-    cur_level = int(os.environ.get("SOT_LOG_LEVEL", "0"))
+    cur_level = ENV_SOT_LOG_LEVEL.get()
     if level <= cur_level:
         fn()
 
@@ -287,15 +284,11 @@ def meta_str(shape, dtype, stop_gradient):
 
 
 def is_strict_mode():
-    return os.environ.get("STRICT_MODE", "0") == "1"
-
-
-def show_trackers() -> str | None:
-    return os.environ.get("SHOW_TRACKERS", None)
+    return ENV_STRICT_MODE.get()
 
 
 def is_clean_code() -> bool:
-    return os.environ.get('CLEAN_CODE', "False") == "True"
+    return ENV_CLEAN_CODE.get()
 
 
 def list_find_index_by_id(li: list[Any], item: Any) -> int:
@@ -623,7 +616,9 @@ class StepInfo:
     def __init__(self):
         self.step_count = -1
         self.state = (
-            StepState.COLLECT_INFO if cost_model() else StepState.RUN_SOT
+            StepState.COLLECT_INFO
+            if ENV_COST_MODEL.get()
+            else StepState.RUN_SOT
         )
         self.dyn_time_costs = []
         self.avg_dyn_time = 0

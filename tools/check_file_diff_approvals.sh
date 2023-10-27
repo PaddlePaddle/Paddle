@@ -443,6 +443,19 @@ if [ "${ALL_OPTEST_BAN_DYGRAPH_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; th
     check_approval 1 phlrain fuyinno4 QingshuChen lanxianghit
 fi
 
+ALL_CHANGE_YAML_FILES=`git diff --numstat upstream/$BRANCH | awk '{print $3}' | grep ".yaml"`
+BAN_COMP_MESSAGE=""
+for CHANGE_FILE in ${ALL_CHANGE_YAML_FILES}; do
+    ALL_ITEM_BAN_COMP=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/${CHANGE_FILE} | grep "composite" || true`
+    if [ "${ALL_ITEM_BAN_COMP}" != "" ]; then
+        BAN_COMP_MESSAGE="${BAN_COMP_MESSAGE} ${CHANGE_FILE} : \n${ALL_ITEM_BAN_COMP} \n"
+    fi
+done
+if [ "${BAN_COMP_MESSAGE}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
+  echo_line="If you need to change the key composite, you must have one RD (Charles-hit(wanghao), cyber-pioneer(chenzhuo), cxxly(chenxiaoxu)) review and approve. \nThe code that do not meet the specification are as follows:\n${BAN_COMP_MESSAGE}\n"
+    check_approval 1 Charles-hit cyber-pioneer cxxly
+fi
+
 NEW_OP_ADDED=`git diff --name-only --diff-filter=A upstream/$BRANCH |grep -oE ".+_op..*" || true`
 if [ "${NEW_OP_ADDED}" != "" ] && [ "${GIT_PR_ID}" != "" ]; then
     GET_KERNEL_TYPE_FUNC_CNT=`git diff -U0 --diff-filter=A upstream/$BRANCH |grep "+" |grep -czoE "GetExpectedKernelType[(][^(){}]+[)][^{]+[{][^}]+[}]" || true`
