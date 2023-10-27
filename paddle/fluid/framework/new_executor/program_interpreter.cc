@@ -644,7 +644,7 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 void ProgramInterpreter::AddGpuStreamEvents() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   stream_timers_.clear();
-  std::vector<gpuStream_t> streams;
+  std::unordered_set<gpuStream_t> streams;
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     auto& instr = vec_instruction_[i];
@@ -657,12 +657,13 @@ void ProgramInterpreter::AddGpuStreamEvents() {
     gpuStream_t stream =
         reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext())
             .stream();
-    streams.emplace_back(stream);
+    streams.insert(stream);
   }
 
   stream_timers_.resize(streams.size());
-  for (size_t i = 0; i < streams.size(); ++i) {
-    stream_timers_[i].SetStream(streams[i]);
+  int i = 0;
+  for (auto& stream : streams) {
+    stream_timers_[i++].SetStream(stream);
   }
 #endif
 }
