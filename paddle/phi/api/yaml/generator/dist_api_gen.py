@@ -119,7 +119,7 @@ SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
 """
 MULTI_SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD = """
     auto dist_out_{idx} = SetKernelDistOutput({out});
-    auto dense_out_{idx} = dist_out_{idx}->unsafe_mutable_value();
+    auto dense_out_{idx} = dist_out_{idx} ? dist_out_{idx}->unsafe_mutable_value() : nullptr;
     if (!rank_is_in_current_mesh) {{
       *dense_out_{idx} = phi::DenseTensor(
             std::make_shared<phi::Allocation>(nullptr, 0, phi::distributed::GetDefaultPlace()),
