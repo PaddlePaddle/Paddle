@@ -24,15 +24,16 @@
 #include "paddle/fluid/inference/tensorrt/helper.h"
 #endif
 
-#include <glog/logging.h>
 #include <algorithm>
 #include <sstream>
 #include "paddle/fluid/platform/flags.h"
 
+PADDLE_DEFINE_EXPORTED_bool(pass_controller_radical_mode,
+                            false,
+                            "Enable switch to radical mode");
 PADDLE_DEFINE_EXPORTED_bool(pass_controller_run,
                             false,
                             "Enable pass controller for manage passes");
-
 namespace paddle {
 
 void PaddlePassBuilder::AppendPass(const std::string &pass_type) {
@@ -92,18 +93,59 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
+std::string GetCtrlRuntimeStatus(int64_t mixed_precision_mode,
+                                 int64_t tensorrt_precision_mode,
+                                 bool use_gpu,
+                                 bool use_trt) {
+  auto pass_runtime_status = "gpu";
+  if (use_trt) {
+    // fp32
+    if (tensorrt_precision_mode == 0) {
+      pass_runtime_status = "trt";
+    } else if (tensorrt_precision_mode == 2) {
+      // fp16
+      pass_runtime_status = "trt_low";
+    } else if (tensorrt_precision_mode == 1) {
+      pass_runtime_status = "int8";
+    }
+  } else if (use_gpu) {
+    if (mixed_precision_mode == 0) {
+      pass_runtime_status = "gpu";
+    } else if (mixed_precision_mode == 2) {
+      pass_runtime_status = "gpu_low";
+    }
+  }
+  return pass_runtime_status;
+}
 void GpuPassStrategy::InitPassCtrl(int64_t mixed_precision_mode,
                                    int64_t tensorrt_precision_mode,
                                    bool use_gpu,
                                    bool use_trt) {
-  if (FLAGS_pass_controller_run && !(pass_ctrl_.get())) {
-    pass_ctrl_ = std::make_unique<PaddlePassContorl>(
-        mixed_precision_mode, tensorrt_precision_mode, use_gpu, use_trt);
+  if (!FLAGS_pass_controller_run) {
+    return;
+  }
+
+  auto pass_runtime_status = GetCtrlRuntimeStatus(
+      mixed_precision_mode, tensorrt_precision_mode, use_gpu, use_trt);
+
+  if (pass_ctrl_ == nullptr) {
+    if (FLAGS_pass_controller_radical_mode) {
+      pass_ctrl_ = std::make_unique<PaddlePassContorller>(
+          pass_runtime_status, PassCtrlMode::RadicalMode);
+    } else {
+      pass_ctrl_ = std::make_unique<PaddlePassContorller>(pass_runtime_status);
+    }
+    return;
+  }
+
+  if (pass_ctrl_->GetPassRuntimeStatus() != pass_runtime_status) {
+    pass_ctrl_->SetPassRuntimeStatus(pass_runtime_status);
+    return;
   }
 }
 
 const std::vector<std::string> GpuPassStrategy::AllPasses() const {
-  if (FLAGS_pass_controller_run) {
+  if (FLAGS_pass_controller_run && pass_ctrl_ != nullptr) {
     auto passes = passes_;
     auto ctrl_passes = pass_ctrl_->GetCtrlPassList(passes);
     return ctrl_passes;

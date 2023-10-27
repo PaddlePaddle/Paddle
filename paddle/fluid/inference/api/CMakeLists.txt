@@ -21,13 +21,13 @@ cc_library(
   SRCS paddle_infer_contrib.cc
   DEPS zero_copy_tensor)
 cc_library(
-  paddle_pass_builder
-  SRCS paddle_pass_builder.cc
-  DEPS framework_proto)
-cc_library(
   paddle_pass_controller
   SRCS paddle_pass_controller.cc
   DEPS framework_proto)
+cc_library(
+  paddle_pass_builder
+  SRCS paddle_pass_builder.cc
+  DEPS framework_proto paddle_pass_controller)
 
 set(paddle_inference_api_deps
     reset_tensor_array

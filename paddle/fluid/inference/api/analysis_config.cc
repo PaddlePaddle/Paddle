@@ -24,7 +24,6 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
-#include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/utils/string/split.h"
@@ -60,6 +59,7 @@ PassStrategy *AnalysisConfig::pass_builder() const {
           static_cast<int64_t>(tensorrt_precision_mode_),
           use_gpu_,
           use_tensorrt_);
+
     } else if (use_xpu_) {
       pass_builder_ = std::make_unique<XpuPassStrategy>();
     } else if (use_ipu_) {
@@ -591,6 +591,11 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                           "Only one choice can be made between CPU and XPU."));
     pass_builder_ = std::make_unique<GpuPassStrategy>(
         *static_cast<GpuPassStrategy *>(other.pass_builder()));
+    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
+                                static_cast<int64_t>(tensorrt_precision_mode_),
+                                use_gpu_,
+                                use_tensorrt_);
+
   } else if (use_ipu_) {
     pass_builder_ = std::make_unique<IpuPassStrategy>(
         *static_cast<IpuPassStrategy *>(other.pass_builder()));
@@ -893,6 +898,11 @@ void AnalysisConfig::Update() {
       ((use_custom_device() ^ pass_builder_->use_custom_device()))) {
     if (use_gpu()) {
       pass_builder_ = std::make_unique<GpuPassStrategy>();
+      pass_builder_->InitPassCtrl(
+          static_cast<int64_t>(mixed_precision_mode_),
+          static_cast<int64_t>(tensorrt_precision_mode_),
+          use_gpu_,
+          use_tensorrt_);
     } else if (use_ipu()) {
       pass_builder_ = std::make_unique<IpuPassStrategy>();
     } else if (use_xpu()) {
@@ -979,6 +989,10 @@ void AnalysisConfig::Update() {
       }
       pass_builder()->AppendPass(pass);
     }
+    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
+                                static_cast<int64_t>(tensorrt_precision_mode_),
+                                use_gpu_,
+                                use_tensorrt_);
   }
 
   // TODO(wilber): An ugly method to update pass, need to be fixed.
@@ -1097,12 +1111,6 @@ void AnalysisConfig::Update() {
         "You tried to enable the custom device "
         "but did not have the option -DWITH_CUSTOM_DEVICE compiled."));
 #endif
-  }
-  if (!pass_builder_.get()) {
-    pass_builder_->InitPassCtrl(static_cast<int64_t>(mixed_precision_mode_),
-                                static_cast<int64_t>(tensorrt_precision_mode_),
-                                use_gpu_,
-                                use_tensorrt_);
   }
 }
 

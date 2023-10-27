@@ -35,83 +35,108 @@ enum PassType {
   Default,    ///
 };
 
-struct PD_INFER_DECL PassVersionContorl {
-  virtual ~PassVersionContorl() = default;
-  std::string version_ctrl_name_;  // cudnn版本控制
+enum PassCtrlMode {
+  DefaultMode = 0,
+  RadicalMode,
 };
 
-struct PD_INFER_DECL TrtPassVersionContorl : public PassVersionContorl {
-  TrtPassVersionContorl(std::string version_ctrl_name,
-                        int64_t gt_trt_version,
-                        int64_t lt_trt_version,
-                        PassType trt_pass_ctrl_state) {
+struct PD_INFER_DECL PassState {
+  virtual ~PassState() = default;
+  virtual void SetGtTrtVersion(int64_t gt_trt_version) {}
+  virtual void SetLtTrtVersion(int64_t lt_trt_version) {}
+  virtual void SetTrtPassCtrlState(PassType trt_pass_ctrl_state) {}
+  virtual void SetGtCudnnVersion(int64_t gt_cudnn_version) {}
+  virtual void SetLtCudnnVersion(int64_t lt_cudnn_version) {}
+  virtual void SetCudnnPassCtrlState(PassType cudnn_pass_ctrl_state) {}
+  virtual void SetPassDefaultState(PassType pass_default_state) {}
+};
+
+struct PD_INFER_DECL TrtPassState : public PassState {
+  explicit TrtPassState(std::string version_ctrl_name) {
     version_ctrl_name_ = version_ctrl_name;
+  }
+  void SetGtTrtVersion(int64_t gt_trt_version) override {
     gt_trt_version_ = gt_trt_version;
+  }
+  void SetLtTrtVersion(int64_t lt_trt_version) override {
     lt_trt_version_ = lt_trt_version;
+  }
+  void SetTrtPassCtrlState(PassType trt_pass_ctrl_state) override {
     trt_pass_ctrl_state_ = trt_pass_ctrl_state;
   }
-  int64_t gt_trt_version_;
-  int64_t lt_trt_version_;
-  PassType trt_pass_ctrl_state_{PassType::Default};
-};
-struct PD_INFER_DECL CudnnPassVersionContorl : public PassVersionContorl {
-  CudnnPassVersionContorl(std::string version_ctrl_name,
-                          int64_t gt_cudnn_version,
-                          int64_t lt_cudnn_version,
-                          PassType cudnn_pass_ctrl_state) {
-    version_ctrl_name_ = version_ctrl_name;
-    gt_cudnn_version_ = gt_cudnn_version;
-    lt_cudnn_version_ = lt_cudnn_version;
-    cudnn_pass_ctrl_state_ = cudnn_pass_ctrl_state;
-  }
-  int64_t gt_cudnn_version_;
-  int64_t lt_cudnn_version_;
-  PassType cudnn_pass_ctrl_state_{PassType::Default};
-};
-struct PD_INFER_DECL PassStatus {
-  PassStatus(std::string categorie, PassType pass_default_state) {
-    categorie_ = categorie;
+  void SetPassDefaultState(PassType pass_default_state) override {
     pass_default_state_ = pass_default_state;
   }
-  std::string categorie_;
+  std::string version_ctrl_name_;
+  int64_t gt_trt_version_{0};
+  int64_t lt_trt_version_{0};
+  PassType trt_pass_ctrl_state_{PassType::Default};
+  PassType pass_default_state_{PassType::Default};
+};
+struct PD_INFER_DECL GpuPassState : public PassState {
+  explicit GpuPassState(std::string version_ctrl_name) {
+    version_ctrl_name_ = version_ctrl_name;
+  }
+  void SetGtCudnnVersion(int64_t gt_cudnn_version) override {
+    gt_cudnn_version_ = gt_cudnn_version;
+  }
+  void SetLtCudnnVersion(int64_t lt_cudnn_version) override {
+    lt_cudnn_version_ = lt_cudnn_version;
+  }
+  void SetCudnnPassCtrlState(PassType cudnn_pass_ctrl_state) override {
+    cudnn_pass_ctrl_state_ = cudnn_pass_ctrl_state;
+  }
+  void SetPassDefaultState(PassType pass_default_state) override {
+    pass_default_state_ = pass_default_state;
+  }
+  std::string version_ctrl_name_;
+  int64_t gt_cudnn_version_{0};
+  int64_t lt_cudnn_version_{0};
+  PassType cudnn_pass_ctrl_state_{PassType::Default};
   PassType pass_default_state_{PassType::Default};
 };
 
-struct PD_INFER_DECL PassContorl {
-  PassType GetPassStatus(std::string pass_runtime_status);
-  PassContorl(
-      std::string pass_name,
-      std::vector<std::string> support_categories,
-      std::map<std::string, int64_t> pass_default_status_map,
-      std::vector<std::map<std::string, std::string>> version_contorl_vector);
-
+struct PD_INFER_DECL PassContorller {
+  PassType GetPassStatus(std::string pass_runtime_status,
+                         PassCtrlMode pass_ctrl_mode);
+  explicit PassContorller(std::string pass_name) { pass_name_ = pass_name; }
+  void SetUserPassStatus(PassType user_pass_status) {
+    user_pass_status_ = user_pass_status;
+  }
   std::string pass_name_;
   std::vector<std::string> support_categories_;
-  std::map<std::string, std::unique_ptr<PassStatus>> pass_default_status_map_;
-  std::map<std::string, std::unique_ptr<PassVersionContorl>>
-      version_contorl_map_;
+  std::map<std::string, std::unique_ptr<PassState>> pass_state_map_;
   PassType user_pass_status_{PassType::Default};
 };
 
-struct PD_INFER_DECL PaddlePassContorl {
+struct PD_INFER_DECL PaddlePassContorller {
   enum class Precision {
     kFloat32 = 0,  ///< fp32
     kInt8,         ///< int8
     kHalf,         ///< fp16
     kBf16,         ///< bf16
   };
-  PaddlePassContorl(int64_t mixed_precision_mode,
-                    int64_t tensorrt_precision_mode,
-                    bool use_gpu,
-                    bool use_trt);
-  PaddlePassContorl& SetPassStatus(const std::string& pass_name,
-                                   const int64_t& pass_status);
+  PaddlePassContorller();
+  PaddlePassContorller(std::string pass_runtime_status,
+                       PassCtrlMode pass_ctrl_mode = PassCtrlMode::DefaultMode);
+  void LoadDefaultPassCtrl();
+  void LoadDefaultConfig();
+  void SetPassStatus(const std::string& pass_name, const int64_t& pass_status);
+  void SetPassCtrlMode(PassCtrlMode pass_ctrl_mode) {
+    pass_ctrl_mode_ = pass_ctrl_mode;
+  }
+  std::string GetPassRuntimeStatus() { return pass_runtime_status_; }
+  PassCtrlMode GetPassCtrlMode() { return pass_ctrl_mode_; }
+  void SetPassRuntimeStatus(std::string pass_runtime_status) {
+    pass_runtime_status_ = pass_runtime_status;
+  }
   std::vector<std::string> GetCtrlPassList(
       const std::vector<std::string> passes);
 
  protected:
-  std::map<std::string, std::unique_ptr<PassContorl>> pass_contorl_map_;
+  std::map<std::string, std::unique_ptr<PassContorller>> pass_ctrl_map_;
   std::vector<std::string> ctrl_passes_;
   std::string pass_runtime_status_{"gpu"};
+  PassCtrlMode pass_ctrl_mode_{PassCtrlMode::DefaultMode};
 };
 };  // namespace paddle

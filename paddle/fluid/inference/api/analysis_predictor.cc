@@ -1751,7 +1751,6 @@ void AnalysisPredictor::PrepareArgument() {
       config_.xpu_config_.quant_post_dynamic_op_types);
   argument_->SetXpuLiteL3Locked(config_.xpu_lite_l3_locked_);
   argument_->SetXpuLiteEnableMultiStream(config_.xpu_lite_enable_multi_stream_);
-
   auto *pass_builder = config_.pass_builder();
   // TODO(inference): Need to reconstruct the pass_builder, pass should be
   // processed in a single
@@ -1815,6 +1814,8 @@ void AnalysisPredictor::PrepareArgument() {
     LOG(INFO) << "This model run in Custom Device mixed precision mode.";
   }
 
+  std::cout << "go here !";
+  std::cout << "pass_builder:" << &pass_builder;
   argument_->SetDisableLogs(config_.glog_info_disabled());
   argument_->SetIrAnalysisPasses(pass_builder->AllPasses());
   argument_->SetAnalysisPasses(pass_builder->AnalysisPasses());
