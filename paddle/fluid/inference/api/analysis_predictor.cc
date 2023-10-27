@@ -725,8 +725,8 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
       pir_program_->Print(std::cout
                           << "after TranslateLegacyProgramToProgram: \n");
-      pir_program_ =
-          std::move(paddle::dialect::PdOpLowerToKernelPass(pir_program_.get()));
+      pir_program_ = std::move(
+          paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
       pir_program_->Print(std::cout << "after PdOpLowerToKernelPass: \n");
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
