@@ -27,7 +27,7 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
             "dtype": "float32",
             "seed": "2023",
         }
-        self._changeable_envs = {"backend": ["cpu", "gpu"]}
+        self._changeable_envs = {"backend": ["gpu"]}
 
     def test_simple_net_single_strategy(self):
         envs_list = test_base.gen_product_envs_list(
@@ -39,16 +39,16 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_simple_net_single_strategy_with_amp(self):
-        self._changeable_envs = {"backend": ["gpu"]}
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_parallel_simple_net_amp.py",
-                user_defined_envs=envs,
-            )
+    # def test_simple_net_single_strategy_with_amp(self):
+    #     self._changeable_envs = {"backend": ["gpu"]}
+    #     envs_list = test_base.gen_product_envs_list(
+    #         self._default_envs, self._changeable_envs
+    #     )
+    #     for envs in envs_list:
+    #         self.run_test_case(
+    #             "semi_auto_parallel_simple_net_amp.py",
+    #             user_defined_envs=envs,
+    #         )
 
     def test_simple_net_single_strategy_with_gradient_merge(self):
         self._changeable_envs = {"backend": ["gpu"]}

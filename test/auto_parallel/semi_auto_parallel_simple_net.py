@@ -219,7 +219,6 @@ class TestSimpleNetForSemiAutoParallel:
         self.w0 = np.random.random([IMAGE_SIZE, IMAGE_SIZE]).astype('float32')
         self.w1 = np.random.random([IMAGE_SIZE, CLASS_NUM]).astype('float32')
 
-    # TODO(GhostScreaming): support pp backward later.
     def run_dynamic(self, layer, is_pp=False):
         # create loss
         loss_fn = nn.MSELoss()
@@ -228,17 +227,15 @@ class TestSimpleNetForSemiAutoParallel:
         out = layer(image)
 
         label = paddle.to_tensor(self.label)
+
         loss = loss_fn(out, label)
 
-        if is_pp:
-            return loss, None, None
-        else:
-            loss.backward()
-            opt = paddle.optimizer.SGD(
-                learning_rate=0.1, parameters=[layer.w0, layer.w1]
-            )
-            opt.step()
-            return loss, layer.w0, layer.w1
+        loss.backward()
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=[layer.w0, layer.w1]
+        )
+        opt.step()
+        return loss, layer.w0, layer.w1
 
     def init_single_card_net_result(self):
         self.base_loss, self.base_w0, self.base_w1 = self.run_dynamic(
@@ -270,20 +267,21 @@ class TestSimpleNetForSemiAutoParallel:
         self.check_tensor_eq(self.mp_w0, self.base_w0)
         self.check_tensor_eq(self.mp_w1, self.base_w1)
 
-    # TODO(GhostScreaming): support pp backward later.
     def test_pp_demo_net(self):
         # Send/Recv operators doens't support CPU now.
         if self._backend != "gpu":
             return
-        self.mp_loss, _, _ = self.run_dynamic(
-            PPDemoNet(self.w0, self.w1, self._pp_mesh0, self._pp_mesh1),
-            is_pp=True,
+        self.mp_loss, self.mp_w0, self.mp_w1 = self.run_dynamic(
+            PPDemoNet(self.w0, self.w1, self._pp_mesh0, self._pp_mesh1)
         )
         rank = dist.get_rank()
         if rank == 1:
             self.check_tensor_eq(self.mp_loss, self.base_loss)
+            self.check_tensor_eq(self.mp_w1, self.base_w1)
+            self.check_tensor_eq(self.mp_w1.grad, self.base_w1.grad)
         else:
-            pass
+            self.check_tensor_eq(self.mp_w0, self.base_w0)
+            self.check_tensor_eq(self.mp_w0.grad, self.base_w0.grad)
 
     def run_test_case(self):
         self.test_dp_demo_net()

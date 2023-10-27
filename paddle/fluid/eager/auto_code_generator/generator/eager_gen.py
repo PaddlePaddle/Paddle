@@ -2224,12 +2224,12 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             ) in backward_grad_inputs_map.items():
                 if name in self.optional_inputs:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += f"{indent}if (!IsRunAutoParallel()) {{\n{indent}{indent}egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n{indent}}}"
                 else:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += f"{indent}if (!IsRunAutoParallel()) {{\n{indent}{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n{indent}}}"
                     else:
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
+                        fill_zero_str += f"{indent}if (!IsRunAutoParallel()) {{\n{indent}{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n{indent}}}"
 
         inplace_grad_input_str = ""
         inplace_check_str = ""

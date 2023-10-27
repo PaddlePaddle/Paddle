@@ -282,8 +282,7 @@ static bool DistAttrsAreBasicallyEqual(
     const phi::distributed::TensorDistAttr& in_dist_attr,
     const phi::distributed::TensorDistAttr& out_dist_attr) {
   return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
-          in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping() &&
-          in_dist_attr.partial_status() == out_dist_attr.partial_status());
+          in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping());
 }
 
 SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
