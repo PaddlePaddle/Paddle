@@ -256,7 +256,6 @@ Expr ScheduleImpl::Fuse(const std::vector<Expr>& loops) {
 
   Expr fused_body = ir::ir_utils::IRCopy(for_nodes.back()->body);
   ReplaceExpr(&fused_body, loop_vars, substitute_value);
-  optim::Simplify(&fused_body);
   Expr fused_extent(1);
   for (int i = 0; i < loops_number; ++i) {
     fused_extent = fused_extent * for_nodes[i]->extent;
@@ -762,6 +761,7 @@ Expr ScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
 
   // Create new blocks and loops.
   Tensor rf_tensor = CreateRFTensor(original_tensor, rf_loop, rf_axis);
+  LOG(INFO) << "111111111111original_update_stmt: " << original_update_stmt;
   RFBlockCreater rf_block_creater(original_block,
                                   original_loops,
                                   rf_loop,
