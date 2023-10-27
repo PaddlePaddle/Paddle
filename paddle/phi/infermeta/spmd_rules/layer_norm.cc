@@ -275,7 +275,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   }
   VLOG(4) << std::endl;
 
-  return {input_dist_attrs, output_dist_attrs};
+  return {ToItemDistAttr(input_dist_attrs), ToItemDistAttr(output_dist_attrs)};
 }
 
 }  // namespace distributed
