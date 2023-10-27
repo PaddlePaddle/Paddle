@@ -136,6 +136,7 @@ test_matrix_nms_op
 test_matrix_power_op
 test_maxout_op
 test_mean_op
+test_memcpy_op
 test_mode_op
 test_multi_dot_op
 test_multiplex_op
