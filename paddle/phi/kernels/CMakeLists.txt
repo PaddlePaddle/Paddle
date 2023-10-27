@@ -108,7 +108,7 @@ endif()
 
 if(NOT WITH_CUDNN_FRONTEND)
   list(REMOVE_ITEM kernel_cu
-       "fusion/gpu/fused_scale_bias_relu_conv_bnstats_kernel.cu")
+       "fusion/gpu/fused_scale_bias_relu_conv_bn_kernel.cu")
 endif()
 
 set(cc_search_pattern

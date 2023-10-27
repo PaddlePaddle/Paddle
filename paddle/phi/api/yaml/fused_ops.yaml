@@ -206,14 +206,14 @@
   backward: fused_rotary_position_embedding_grad
   support_dygraph_mode : true
 
-- op : fused_scale_bias_relu_conv_bnstats
+- op : fused_scale_bias_relu_conv_bn
   args : (Tensor x, Tensor w, Tensor scale, Tensor bias, Tensor bn_scale, Tensor bn_bias, Tensor input_running_mean, Tensor input_running_var, int[] paddings, int[] dilations, int[] strides, str padding_algorithm, int groups, str data_format, float momentum, float epsilon, bool fuse_prologue, bool exhaustive_search, int64_t accumulation_count = 0)
   optional : scale, bias
   output : Tensor(out), Tensor(out_running_mean), Tensor(out_running_var), Tensor(saved_mean), Tensor(saved_var), Tensor(eq_scale), Tensor(eq_bias)
   infer_meta :
-    func : FusedScaleBiasReluConvBnstatsInferMeta
+    func : FusedScaleBiasReluConvBnInferMeta
   kernel :
-    func : fused_scale_bias_relu_conv_bnstats
+    func : fused_scale_bias_relu_conv_bn
     data_type : x
 
 - op : fusion_gru
