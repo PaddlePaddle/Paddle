@@ -130,11 +130,6 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_gpt_with_newir MODULES test_gpt_with_newir)
   set_tests_properties(test_gpt_with_newir
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
-  py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
-                  test_semi_auto_parallel_functional_in_single_card)
-  set_tests_properties(test_semi_auto_parallel_functional_in_single_card
-                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
-
   # End of unittests WITH multi cards and timeout
 
   # NOTE(zyl): unittests WITH multi cards and WITHOUT timeout
@@ -165,6 +160,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   set_tests_properties(test_fuse_adamw_pass PROPERTIES TIMEOUT 20)
   py_test_modules(test_rule_based_tuner_o2 MODULES test_rule_based_tuner_o2)
   set_tests_properties(test_rule_based_tuner_o2 PROPERTIES TIMEOUT 50)
+  py_test_modules(test_semi_auto_parallel_functional_in_single_card MODULES
+                  test_semi_auto_parallel_functional_in_single_card)
   # End of unittests WITH single card and timeout
 
   # NOTE(zyl): unittests WITH single card and WITHOUT timeout

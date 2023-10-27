@@ -24,7 +24,7 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         dense_tensor = paddle.randn([10, 20])
         dist_tensor = dist.shard_tensor(
             dense_tensor,
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'x']),
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
         )
         dist_tensor._copy_to(paddle.CPUPlace(), True)
 
