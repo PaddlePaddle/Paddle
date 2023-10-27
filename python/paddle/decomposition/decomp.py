@@ -197,7 +197,6 @@ def decompose(
                 f"Each var in dst_vars should map corresponding var in src_vars, but got type {type(item)} in {src_vars}."
             )
         dst_vars_dct[item] = idx
-    print("------------------------------")
     with pir.core.program_guard(program):
         _decompose_subgraph(
             block,
@@ -239,9 +238,6 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
             op_name = op.name()
             decom_rule = register.get_decomp_rule(op_name)
             has_sink_decomp_rule = has_decomp(op)
-            print("------------------------------")
-            print("sink_decomp_rule: " + str(has_sink_decomp_rule))
-            print("------------------------------")
             lower = (decom_rule or has_sink_decomp_rule) and op_filter(op)
 
             if op.name() == "builtin.combine":
