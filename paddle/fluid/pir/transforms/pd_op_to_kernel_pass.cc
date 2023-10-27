@@ -838,6 +838,15 @@ void HandleForWhileOp(
                ctx,
                map_op_pair,
                map_value_pair);
+
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
 }
 
 pir::Value GetNewInput(
