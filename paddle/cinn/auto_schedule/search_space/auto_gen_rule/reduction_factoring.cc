@@ -189,10 +189,12 @@ void ReductionFactoring::Apply(const std::string& block_name,
       ir_schedule->GetBlock(block_name + "_rf__reduce_init");
   ir_schedule->SimpleComputeAt(rf_init_block, rb_loops.back());
 
-  rb_loops = ir_schedule->GetLoops(block_name);
-  rf_block = ir_schedule->GetBlock(block_name + "_rf");
-  ir_schedule->Bind(rb_loops.back(), "threadIdx.x");
-  ir_schedule->SetBuffer(rf_block, "shared");
+  if (*target_ == common::DefaultNVGPUTarget()) {
+    rb_loops = ir_schedule->GetLoops(block_name);
+    rf_block = ir_schedule->GetBlock(block_name + "_rf");
+    ir_schedule->Bind(rb_loops.back(), "threadIdx.x");
+    ir_schedule->SetBuffer(rf_block, "shared");
+  }
   VLOG(6) << "Loop fusion and cross thread reduction: "
           << ir_schedule->GetModule().GetExprs()[0];
 }
