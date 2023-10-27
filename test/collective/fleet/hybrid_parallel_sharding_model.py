@@ -354,10 +354,10 @@ class TestDistMPTraining(unittest.TestCase):
 
     def test_sharding_momentum_amp(self):
         sharded_accumulators = {
-            'linear_12.w_0_velocity_0',
-            'linear_13.b_0_velocity_0',
             'linear_14.b_0_velocity_0',
             'embedding_4.w_0_velocity_0',
+            'linear_12.b_0_velocity_0',
+            'linear_13.b_0_velocity_0',
         }
         self.sharding_model(
             Optimizer="Momentum",
