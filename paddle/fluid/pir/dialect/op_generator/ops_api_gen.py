@@ -82,6 +82,9 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'multihead_matmul',
     'squeeze_excitation_block',
     'yolo_box_xpu',
+    'fusion_gru',
+    'fusion_seqconv_eltadd_relu',
+    'fusion_seqexpand_concat_fc',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

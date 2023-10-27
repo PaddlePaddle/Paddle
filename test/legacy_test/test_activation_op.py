@@ -205,9 +205,10 @@ class TestExp_Complex128(TestExp_Complex64):
 
 
 class Test_Exp_Op_Fp16(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         with static_guard():
-            with static.program_guard(
+            with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
             ):
                 np_x = np.array([[2, 3, 4], [7, 8, 9]])
@@ -559,6 +560,7 @@ class TestSiluAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -781,6 +783,7 @@ class TestTanhAPI(unittest.TestCase):
     def executed_api(self):
         self.tanh = F.tanh
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
