@@ -789,12 +789,15 @@ class ClipGradByGlobalNorm(ClipGradBase):
             ):
                 return params_grads
 
+            def async_add_n(var_list):
+                return paddle.stack(var_list).sum()
+
             with p.block.program._optimized_guard([p, g]):
                 sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+                    global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -806,7 +809,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_bf16) > 0:
-                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    global_norm_var_bf16 = async_add_n(sum_square_list_bf16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -818,7 +821,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+                    global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -827,11 +830,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
+                    global_norm_var_other_dtype = async_add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    paddle.add_n(global_norm_var)
+                    async_add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )

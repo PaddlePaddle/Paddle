@@ -1749,16 +1749,15 @@ class Completer:
                             ref_process_mesh = ref_dist_attr.process_mesh
 
                         # complete out_var's tensor_dist_attr
-                        out_var = vars[op.output("Out")[0]]
+                        if op.type == "stack":
+                            out_var = vars[op.output("Y")[0]]
+                        else:
+                            out_var = vars[op.output("Out")[0]]
                         out_dist_attr = TensorDistAttr()
                         out_dist_attr.process_mesh = ref_process_mesh
                         if out_var.shape == in_var.shape:
                             out_dist_attr.dims_mapping = ref_dims_mapping
                         else:
-                            assert (
-                                len(out_var.shape) == 1
-                                and out_var.shape[0] == 1
-                            )
                             out_dist_attr.dims_mapping = [
                                 -1 for _ in out_var.shape
                             ]
