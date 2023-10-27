@@ -18,12 +18,17 @@
 #include <string>
 #include <vector>
 
+#include "paddle/utils/variant.h"
+
 namespace phi {
 namespace distributed {
 class TensorDistAttr;
 
+using ItemDistAttr =
+    paddle::variant<TensorDistAttr, std::vector<TensorDistAttr>>;
+
 using SpmdInfo =
-    std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>;
+    std::pair<std::vector<ItemDistAttr>, std::vector<ItemDistAttr>>;
 
 }  // namespace distributed
 }  // namespace phi

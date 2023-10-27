@@ -93,7 +93,7 @@ SpmdInfo SplitWithNumInferSpmd(const DistMetaTensor& x, int num, int axis) {
   }
   VLOG(4) << std::endl;
 
-  return {{x_dist_attr_dst}, out_dist_attrs};
+  return {{x_dist_attr_dst}, {out_dist_attrs}};
 }
 
 SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
@@ -200,7 +200,7 @@ SpmdInfo SplitWithNumInferSpmdReverse(
   VLOG(4) << "Input shape: [" << str_join(x_shape) << "] "
           << "dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
-  return {{x_dist_attr}, out_dist_attrs};
+  return {{x_dist_attr}, {out_dist_attrs}};
 }
 
 SpmdInfo SplitInferSpmd(const DistMetaTensor& x,

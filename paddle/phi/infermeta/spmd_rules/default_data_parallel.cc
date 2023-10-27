@@ -95,7 +95,8 @@ SpmdInfo DefaultDataParallelInferSpmd(
             << str_join(output_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {dst_input_dist_attrs, output_dist_attrs};
+  return {ToItemDistAttr(dst_input_dist_attrs),
+          ToItemDistAttr(output_dist_attrs)};
 }
 SpmdInfo DefaultDataParallelInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
@@ -157,7 +158,8 @@ SpmdInfo DefaultDataParallelInferSpmdReverse(
             << str_join(dst_input_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {dst_input_dist_attrs, output_dist_attrs};
+  return {ToItemDistAttr(dst_input_dist_attrs),
+          ToItemDistAttr(output_dist_attrs)};
 }
 
 }  // namespace distributed

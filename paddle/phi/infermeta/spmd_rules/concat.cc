@@ -148,7 +148,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
     }
     std::swap(input_attrs, new_input_attrs);
   }
-  return {input_attrs,
+  return {{input_attrs},
           {CopyTensorDistAttrForOutput(input_attrs[non_empty_index])}};
 }
 }  // namespace distributed
