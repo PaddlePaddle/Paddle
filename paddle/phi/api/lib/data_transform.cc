@@ -679,11 +679,11 @@ std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const std::vector<Tensor>& tensors,
-    const phi::distributed::TensorDistAttr& dist_attr) {
+    const std::vector<phi::distributed::TensorDistAttr>& dist_attrs) {
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
-  for (const auto& tensor : tensors) {
-    outputs.push_back(
-        ReshardApiInputToReplicatedKernelInput(dev_ctx, tensor, dist_attr));
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    outputs.push_back(ReshardApiInputToReplicatedKernelInput(
+        dev_ctx, tensors[i], dist_attrs[i]));
   }
   return outputs;
 }
@@ -715,12 +715,12 @@ ReshardApiInputToReplicatedKernelInput(
 std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
-    const std::vector<Tensor>& tensor,
+    const std::vector<Tensor>& tensors,
     const phi::distributed::ItemDistAttr& dist_attr) {
   // TODO(liuzhenhai): add check
   return ReshardApiInputToReplicatedKernelInput(
       dev_ctx,
-      tensor,
+      tensors,
       paddle::get<std::vector<phi::distributed::TensorDistAttr>>(dist_attr));
 }
 
