@@ -365,7 +365,7 @@ UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
 # 10. Set Output DistAttr for Default impl
 # Dist Branch will not generated in the API that doesn't have input tensor.
 CURRENT_PROCESS_MESH_TEMPLATE = """
-    auto current_process_mesh = spmd_info.first[0].process_mesh();"""
+    auto current_process_mesh = paddle::get<phi::distributed::TensorDistAttr>(spmd_info.first[0]).process_mesh();"""
 SET_SINGLE_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
     SetReplicatedDistAttrForOutput({}, current_process_mesh);"""
 SET_VECTOR_OUT_REPLICATED_DIST_ATTR_TEMPLATE = """
