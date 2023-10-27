@@ -169,7 +169,7 @@ NodePriority GroupScheduler::CalculateNodePriority(
     }
   }
   if (reduce_score > 1) {
-    score *= std::log2(reduce_score);
+    score *= (reduce_score * std::log2(reduce_score));
   }
 
   VLOG(6) << "The priority score of node " << node->id() << " is " << score;
