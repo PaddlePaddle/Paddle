@@ -31,7 +31,7 @@ def backward_hook():
         global hook_triggered
         hook_triggered = True
         assert grad.is_dist()
-        return paddle.scale(grad, paddle.to_tensor(1.0, dtype='float32'))
+        return paddle.scale(grad, 1.0)
 
     return trigger_hook
 
