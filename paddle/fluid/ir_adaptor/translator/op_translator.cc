@@ -284,7 +284,7 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
     if (need_inputs_sig.size() != sig.inputs.size()) {
       continue;
     }
-    size_t i;
+    size_t i = 0;
     for (i = 0; i < need_inputs_sig.size(); ++i) {
       if (need_inputs_sig[i] == "") {
         continue;
@@ -822,7 +822,7 @@ struct AssignValueOpTranscriber : public OpTranscriber {
     std::tie(input_infos, attr_infos, output_infos, std::ignore, std::ignore) =
         op_info_concept->get_op_info_();
     std::unordered_map<std::string, OpAttributeInfo> attr_info_maps;
-    for (auto info : attr_infos) {
+    for (auto const& info : attr_infos) {
       attr_info_maps.insert({info.name, info});
     }
 
@@ -1177,7 +1177,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
                              TranslationContext* param_map,
                              const OpDesc& op_desc,
                              pir::Block* block) override {
-    auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+    auto op_info = ctx->GetRegisteredOpInfo(pir::ShadowOutputOp::name());
 
     std::vector<pir::Value> op_inputs;
     auto legacy_input_vars = op_desc.Input("x", true);
@@ -1192,7 +1192,7 @@ struct ShadowOutputOpTranscriber : public OpTranscriber {
     op_inputs.push_back(defining_info.value);
 
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
+        {"output_name",
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
     };
