@@ -19,7 +19,9 @@ import paddle
 
 class LayerAstypeTest(unittest.TestCase):
     def test_layer_astype(self):
-        linear1 = paddle.nn.Linear(10, 3)
+        net = paddle.nn.Sequential(
+            paddle.nn.Linear(2, 2), paddle.nn.Linear(2, 2)
+        )
         valid_dtypes = [
             "bfloat16",
             "float16",
@@ -35,8 +37,8 @@ class LayerAstypeTest(unittest.TestCase):
             "bool",
         ]
         for dtype in valid_dtypes:
-            linear1 = linear1.astype(dtype)
-            typex_str = str(linear1._dtype)
+            net = net.astype(dtype)
+            typex_str = str(net._dtype)
             self.assertEqual((typex_str == "paddle." + dtype), True)
 
     def test_error(self):

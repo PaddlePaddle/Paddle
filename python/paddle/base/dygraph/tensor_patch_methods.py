@@ -573,7 +573,7 @@ def monkey_patch_tensor():
             raise TypeError(
                 "to() received too mant arguments - expected one of:\n* (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] device, Union[str, paddle.dtype] dtype, bool blocking)\n* (Union[str, paddle.dtype] dtype, bool blocking)\n* (paddle.Tensor other, bool blocking) "
             )
-        valid_keys = set(["device", "dtype", "non_blocking", "other"])
+        valid_keys = set(["device", "dtype", "blocking", "other"])
         valid_dtypes = [
             "bfloat16",
             "float16",

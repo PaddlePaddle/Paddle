@@ -97,6 +97,15 @@ class TensorToTest(unittest.TestCase):
         self.assertEqual((placex_str == "Place(cpu)"), True)
         typex_str = str(tensorx.dtype)
         self.assertEqual((typex_str == "paddle.int32"), True)
+        tensor2 = paddle.to_tensor([4, 5, 6])
+        tensor2 = tensor2.to(tensorx, False)
+        place2_str = str(tensor2.place)
+        self.assertEqual((place2_str == "Place(cpu)"), True)
+        type2_str = str(tensor2.dtype)
+        self.assertEqual((type2_str == "paddle.int32"), True)
+        tensor2 = tensor2.to("float16", False)
+        type2_str = str(tensor2.dtype)
+        self.assertEqual((type2_str == "paddle.float16"), True)
 
     def test_Tensor_to_other(self):
         tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
@@ -104,6 +113,20 @@ class TensorToTest(unittest.TestCase):
         tensor2 = tensor2.to(tensor1)
         self.assertEqual((tensor2.dtype == tensor1.dtype), True)
         self.assertEqual((type(tensor2.place) == type(tensor1.place)), True)
+
+    def test_kwargs(self):
+        tensorx = paddle.to_tensor([1, 2, 3])
+        tensorx = tensorx.to(device="cpu", dtype="int8", blocking=True)
+        placex_str = str(tensorx.place)
+        self.assertEqual((placex_str == "Place(cpu)"), True)
+        typex_str = str(tensorx.dtype)
+        self.assertEqual((typex_str == "paddle.int8"), True)
+        tensor2 = paddle.to_tensor([4, 5, 6])
+        tensor2 = tensor2.to(other=tensorx)
+        place2_str = str(tensor2.place)
+        self.assertEqual((place2_str == "Place(cpu)"), True)
+        type2_str = str(tensor2.dtype)
+        self.assertEqual((type2_str == "paddle.int8"), True)
 
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])
