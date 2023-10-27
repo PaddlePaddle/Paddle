@@ -83,7 +83,7 @@ SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = MakeDistMetaTensor(*{name}.impl());"""
 
 LIST_DIST_META_IN_TEMPLATE = """
-    std::vector<DistMetaTenso> meta_dist_input_{name};
+    std::vector<phi::distributed::DistMetaTensor> meta_dist_input_{name};
     for(auto& e: {name}){{
         meta_dist_input_{name}.push_back(MakeDistMetaTensor(*e.impl()));
     }}
@@ -1017,6 +1017,19 @@ class DistForwardAPI(ForwardAPI):
                         or self.inputs['input_info'][param]
                         == "const paddle::optional<Tensor>&"
                     ):
+                        if self.generate_general_infer_spmd is True:
+                            input_reshard_code += (
+                                SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE.format(
+                                    arg=param, idx=i
+                                )
+                            )
+                        else:
+                            input_reshard_code += (
+                                SINGLE_INPUT_RESHARD_TEMPLATE.format(
+                                    arg=param, idx=i
+                                )
+                            )
+                    elif (self.inputs['input_info'][param] == "const std::vector<Tensor>&"):
                         if self.generate_general_infer_spmd is True:
                             input_reshard_code += (
                                 SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE.format(
