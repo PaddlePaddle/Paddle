@@ -81,6 +81,14 @@ AUTO_PARALLEL_COND_TEMPLATE = """
 # 1. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = MakeDistMetaTensor(*{name}.impl());"""
+
+LIST_DIST_META_IN_TEMPLATE = """
+    std::vector<DistMetaTenso> meta_dist_input_{name};
+    for(auto& e: {name}){{
+        meta_dist_input_{name}.push_back(MakeDistMetaTensor(*e.impl()));
+    }}
+"""
+
 OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*(*{name}).impl()) : phi::distributed::DistMetaTensor();"""
 INFER_SPMD_TEMPLATE = """
@@ -695,6 +703,12 @@ class DistForwardAPI(ForwardAPI):
                         name=param
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
+                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                    input_decl_code += LIST_DIST_META_IN_TEMPLATE.format(
+                        name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
