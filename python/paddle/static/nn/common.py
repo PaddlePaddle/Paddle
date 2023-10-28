@@ -354,12 +354,14 @@ def quant_linear(
         if num_flatten_dims == -1:
             num_flatten_dims = len(input_shape) - 1
 
-        if not isinstance(weight, Variable):
-            raise TypeError("The type of w in quant_linear must be Tensor.")
-        if not isinstance(scale_weight, list):
-            raise TypeError(
-                "The type of scale_weight in quant_lienar must be list."
-            )
+        check_type(weight, "weight", Variable, 'quant_linear')
+        check_dtype(
+            weight.dtype,
+            'weight',
+            ['int8'],
+            'quant_linear',
+        )
+        check_type(scale_weight, "scale_weight", list, 'quant_linear')
         if len(scale_weight) != size:
             raise AttributeError(
                 "The length of scale_weight must be the same with the param size."
