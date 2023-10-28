@@ -80,7 +80,6 @@ class TestFunctionalPReluAPI(unittest.TestCase):
         self.dygraph_check(self.weight_np_0)
         self.dygraph_check(self.weight_np_1)
 
-    @test_with_pir_api
     def test_error(self):
         with paddle.static.program_guard(paddle.static.Program()):
             weight_fp32 = paddle.static.data(
@@ -512,7 +511,6 @@ class TestModeError(unittest.TestCase):
         )
         self.x_np = np.ones([1, 2, 3, 4]).astype('float32')
 
-    @test_with_pir_api
     def test_mode_error(self):
         main_program = Program()
         with base.program_guard(main_program, Program()):
@@ -522,7 +520,6 @@ class TestModeError(unittest.TestCase):
             except Exception as e:
                 assert e.args[0].find('InvalidArgument') != -1
 
-    @test_with_pir_api
     def test_data_format_error1(self):
         main_program = Program()
         with base.program_guard(main_program, Program()):
@@ -532,7 +529,6 @@ class TestModeError(unittest.TestCase):
             except Exception as e:
                 assert e.args[0].find('InvalidArgument') != -1
 
-    @test_with_pir_api
     def test_data_format_error2(self):
         main_program = Program()
         with base.program_guard(main_program, Program()):

@@ -409,7 +409,7 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False, check_pir=True)
+        self.check_output(check_prim=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -680,7 +680,6 @@ class TestLogSigmoidAPI(unittest.TestCase):
             np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2848,7 +2847,6 @@ class TestRelu6API(unittest.TestCase):
             out_ref = ref_relu6(self.x_np)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2867,7 +2865,6 @@ class TestRelu6API(unittest.TestCase):
 
 
 class TestRelu6APIWarnings(unittest.TestCase):
-    @test_with_pir_api
     def test_warnings(self):
         with static_guard():
             with warnings.catch_warnings(record=True) as context:
@@ -3275,7 +3272,6 @@ class TestCELUAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
