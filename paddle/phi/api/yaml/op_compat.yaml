@@ -1233,6 +1233,21 @@
     saved_variance: SavedVariance
     reserve_space: ReserveSpace
 
+- op : fused_bias_dropout_residual_layer_norm
+  backward : fused_bias_dropout_residual_layer_norm_grad
+  inputs :
+    x : X,
+    residual : Residual
+    bias : Bias
+    ln_scale : LnScale
+    ln_bias : LnBias
+  outputs :
+    bias_dropout_residual_out : BiasDropoutResidualOut
+    dropout_mask_out : DropoutMaskOut
+    ln_mean : LnMean
+    ln_variance : LnVariance
+    y : Y
+
 - op : fused_bn_add_activation_ (fused_bn_add_activation)
   backward : fused_bn_add_activation_grad
   inputs:

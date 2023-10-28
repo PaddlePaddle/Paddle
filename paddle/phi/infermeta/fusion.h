@@ -565,4 +565,46 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
                             const int begin_norm_axis,
                             MetaTensor* out);
 
+void FusedBiasDropoutResidualLnInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* bias_dropout_residual_out,
+    MetaTensor* dropout_mask_out,
+    MetaTensor* ln_mean,
+    MetaTensor* ln_variance,
+    MetaTensor* y);
+
+void FusedBiasDropoutResidualLnGradInferMeta(
+    const MetaTensor& y_grad,
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& ln_mean,
+    const MetaTensor& ln_variance,
+    const MetaTensor& bias_dropout_residual_out,
+    const MetaTensor& dropout_mask_out,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* bias_grad,
+    MetaTensor* ln_scale_grad,
+    MetaTensor* ln_bias_grad,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
+    MetaTensor* bias_dropout_residual_out_grad);
+
 }  // namespace phi

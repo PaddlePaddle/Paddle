@@ -2475,4 +2475,104 @@ void SkipLayerNormInferMeta(const MetaTensor& x,
   out->set_dims(dim_input);
   out->share_lod(x);
 }
+
+void FusedBiasDropoutResidualLnInferMeta(
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* bias_dropout_residual_out,
+    MetaTensor* dropout_mask_out,
+    MetaTensor* ln_mean,
+    MetaTensor* ln_variance,
+    MetaTensor* y) {
+  PADDLE_ENFORCE_EQ(dropout_rate >= 0.0f && dropout_rate <= 1.0f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'dropout_rate' must be between 0.0 and 1.0."));
+  PADDLE_ENFORCE_EQ(
+      dropout_implementation == "downgrade_in_infer" ||
+          dropout_implementation == "upscale_in_train",
+      true,
+      phi::errors::InvalidArgument(
+          "dropout_implementation can only be downgrade_in_infer or "
+          "upscale_in_train"));
+  PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "'epsilon' of the LayerNorm should be between "
+                        "0.0 and 0.001, But received [%s].",
+                        ln_epsilon));
+  auto x_dim = x.dims();
+  int left = 1;
+  for (int i = 0; i < x_dim.size() - 1; i++) {
+    left *= x_dim[i];
+  }
+  bias_dropout_residual_out->set_dims(x.dims());
+  if (is_test == false) {
+    dropout_mask_out->set_dims(x.dims());
+  }
+  ln_mean->set_dims({left});
+  ln_variance->set_dims({left});
+  y->set_dims(x.dims());
+}
+
+void FusedBiasDropoutResidualLnGradInferMeta(
+    const MetaTensor& y_grad,
+    const MetaTensor& x,
+    const MetaTensor& residual,
+    const MetaTensor& bias,
+    const MetaTensor& ln_scale,
+    const MetaTensor& ln_bias,
+    const MetaTensor& ln_mean,
+    const MetaTensor& ln_variance,
+    const MetaTensor& bias_dropout_residual_out,
+    const MetaTensor& dropout_mask_out,
+    const float dropout_rate,
+    const bool is_test,
+    const bool dropout_fix_seed,
+    const int dropout_seed,
+    const std::string& dropout_implementation,
+    const float ln_epsilon,
+    MetaTensor* bias_grad,
+    MetaTensor* ln_scale_grad,
+    MetaTensor* ln_bias_grad,
+    MetaTensor* x_grad,
+    MetaTensor* residual_grad,
+    MetaTensor* bias_dropout_residual_out_grad) {
+  PADDLE_ENFORCE_EQ(is_test,
+                    false,
+                    phi::errors::InvalidArgument(
+                        "GradOp is only callable when is_test is false"));
+  if (ln_scale_grad) {
+    ln_scale_grad->set_dims(ln_scale.dims());
+    ln_scale_grad->set_dtype(y_grad.dtype());
+  }
+  if (ln_bias_grad) {
+    ln_bias_grad->set_dims(ln_bias.dims());
+    ln_bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (residual_grad) {
+    residual_grad->set_dims(residual_grad->dims());
+    residual_grad->set_dtype(y_grad.dtype());
+  }
+  if (bias_grad) {
+    bias_grad->set_dims(bias.dims());
+    bias_grad->set_dtype(y_grad.dtype());
+  }
+  if (x_grad) {
+    x_grad->set_dims(x.dims());
+    x_grad->set_dtype(y_grad.dtype());
+  }
+  bias_dropout_residual_out_grad->set_dims(bias_dropout_residual_out.dims());
+  bias_dropout_residual_out_grad->set_dtype(y_grad.dtype());
+}
+
 }  // namespace phi
