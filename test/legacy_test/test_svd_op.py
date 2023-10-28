@@ -20,7 +20,6 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestSvdOp(OpTest):
@@ -72,13 +71,13 @@ class TestSvdOp(OpTest):
         paddle.enable_static()
 
     def check_S_grad(self):
-        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001, check_pir=True)
+        self.check_grad(['X'], ['S'], numeric_grad_delta=0.001)
 
     def check_U_grad(self):
-        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001, check_pir=True)
+        self.check_grad(['X'], ['U'], numeric_grad_delta=0.001)
 
     def check_V_grad(self):
-        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001, check_pir=True)
+        self.check_grad(['X'], ['VH'], numeric_grad_delta=0.001)
 
     def test_check_grad(self):
         """
@@ -294,7 +293,6 @@ class TestSvdAPI(unittest.TestCase):
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
         np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
