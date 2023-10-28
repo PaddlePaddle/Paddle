@@ -63,8 +63,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     }
 
     int64_t micro_batch_id = job->MicroBatchId();
-    auto local_scope =
-        micro_batch_num == 1 ? scope : micro_batch_scopes_[micro_batch_id];
     PADDLE_ENFORCE(
         micro_batch_id >= 0 && micro_batch_id < micro_batch_num,
         phi::errors::Unavailable("The micro batch id (%lld) out of bound, "
@@ -82,6 +80,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
     // TODO(phlrain) we only support cpu for now
     if (FLAGS_enable_new_ir_in_executor) {
+      auto inner_scope =
+          micro_batch_num == 1 ? scope : micro_batch_scopes_[micro_batch_id];
       std::shared_ptr<::pir::Program> base_program = ir_program;
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
@@ -119,11 +119,14 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
           std::make_shared<InterpreterCore>(place_,
                                             fetch_var_names_,
                                             shared_program->block(),
-                                            local_scope,
+                                            inner_scope,
                                             execution_config));
     } else {
-      interpretercores_.emplace_back(std::make_shared<InterpreterCore>(
-          place_, program->Block(0), local_scope, execution_config));
+      interpretercores_.emplace_back(
+          std::make_shared<InterpreterCore>(place_,
+                                            program->Block(0),
+                                            micro_batch_scopes_[micro_batch_id],
+                                            execution_config));
       interpretercores_.back()->SetCopyProgram(program);
 
       // Note(lizhiyu): Add mannual event info
