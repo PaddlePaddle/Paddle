@@ -1927,6 +1927,7 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
                                        const int padding_height,
                                        const int padding_width,
                                        bool adaptive,
+                                       bool fractional,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling divmods) {
@@ -1953,6 +1954,8 @@ __global__ void KernelMaxPool2dWithIdx(const int nthreads,
 
       wstart = AdaptStartIndex(w_offset, input_width, output_width);
       wend = AdaptEndIndex(w_offset, input_width, output_width);
+    } else if (fractional) {
+      // TODO(megemini)
     } else {
       hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
@@ -2048,6 +2051,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
                                            const int padding_height,
                                            const int padding_width,
                                            bool adaptive,
+                                           bool fractional,
                                            T1* input_grad,
                                            FastDivModForPooling divmods) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
@@ -2075,6 +2079,8 @@ __global__ void KernelMaxPool2DWithIdxGrad(const int nthreads,
       pwstart = w_offset * output_width / input_width;
       pwend =
           min((w_offset + 1) * output_width / input_width + 1, output_width);
+    } else if (fractional) {
+      // TODO(megemini)
     } else {
       phstart =
           (h_offset + padding_height < ksize_height)
@@ -2188,6 +2194,7 @@ class MaxPool2dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                    padding_height,
                                                    padding_width,
                                                    adaptive,
+                                                   fractional,
                                                    output_data,
                                                    mask_data,
                                                    pool_divmods);
@@ -2252,6 +2259,7 @@ class MaxPool2dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  padding_height,
                                                  padding_width,
                                                  adaptive,
+                                                 fractional,
                                                  input_grad_data,
                                                  pool_divmods);
   }
@@ -2290,6 +2298,7 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
                                        const int padding_height,
                                        const int padding_width,
                                        bool adaptive,
+                                       bool fractional,
                                        T1* output_data,
                                        T2* mask_data,
                                        FastDivModForPooling3D divmods_output) {
@@ -2322,6 +2331,8 @@ __global__ void KernelMaxPool3DWithIdx(const int ncd,
 
         wstart = AdaptStartIndex(w_offset, input_width, output_width);
         wend = AdaptEndIndex(w_offset, input_width, output_width);
+      } else if (fractional) {
+        // TODO(megemini)
       } else {
         dstart = d_offset * stride_depth - padding_depth;
         hstart = h_offset * stride_height - padding_height;
@@ -2375,6 +2386,7 @@ __global__ void KernelMaxPool3DWithIdxGrad(
     const int padding_height,
     const int padding_width,
     bool adaptive,
+    bool fractional,
     T1* input_grad,
     FastDivModForPooling3D divmods_output) {
   int w_offset, h_offset, d_offset, nc_offset;
@@ -2480,6 +2492,7 @@ class MaxPool3dWithIndexFunctor<phi::GPUContext, T1, T2> {
                                                  padding_height,
                                                  padding_width,
                                                  adaptive,
+                                                 fractional,
                                                  output_data,
                                                  mask_data,
                                                  pool_divmods_output);
@@ -2563,6 +2576,7 @@ class MaxPool3dWithIndexGradFunctor<phi::GPUContext, T1, T2> {
                                                  padding_height,
                                                  padding_width,
                                                  adaptive,
+                                                 fractional,
                                                  input_grad_data,
                                                  pool_divmods_output);
   }

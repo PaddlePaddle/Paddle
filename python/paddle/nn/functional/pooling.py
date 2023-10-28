@@ -2095,3 +2095,106 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         )
 
         return (pool_out, mask) if return_mask else pool_out
+
+
+def fractional_max_pool2d(x, output_size, return_mask=False, name=None):
+    """
+    TODO(megemini)
+    """
+    _check_input(x, 4)
+
+    in_h, in_w = x.shape[2:4]
+    if isinstance(output_size, int):
+        output_size = convert_to_list(output_size, 2, 'output_size')
+    else:
+        output_size = list(output_size)
+        if output_size[0] is None:
+            output_size[0] = in_h
+        if output_size[1] is None:
+            output_size[1] = in_w
+
+    if in_dygraph_mode():
+        pool_out = _C_ops.max_pool2d_with_index(
+            x, output_size, [1, 1], [0, 0], False, False, True
+        )
+        return pool_out if return_mask else pool_out[0]
+    else:
+        l_type = 'max_pool2d_with_index'
+
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'fractional_max_pool2d'
+        )
+        check_type(return_mask, 'return_mask', bool, 'fractional_max_pool2d')
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": output_size,
+                "fractional": True,
+            },
+        )
+
+        return (pool_out, mask) if return_mask else pool_out
+
+
+def fractional_max_pool3d(x, output_size, return_mask=False, name=None):
+    """
+    TODO(megemini)
+    """
+    _check_input(x, 5)
+
+    in_l, in_h, in_w = x.shape[2:5]
+    if isinstance(output_size, int):
+        output_size = convert_to_list(output_size, 3, 'output_size')
+    else:
+        output_size = list(output_size)
+        if output_size[0] is None:
+            output_size[0] = in_l
+        if output_size[1] is None:
+            output_size[1] = in_h
+        if output_size[2] is None:
+            output_size[2] = in_w
+
+    if in_dygraph_mode():
+        # By default, strides is [1,1,1] and paddings is [0, 0, 0]
+        pool_out = _C_ops.max_pool3d_with_index(
+            x, output_size, [1, 1, 1], [0, 0, 0], False, False, True
+        )
+        return pool_out if return_mask else pool_out[0]
+    else:
+        l_type = 'max_pool3d_with_index'
+
+        check_variable_and_dtype(
+            x, 'x', ['float32', 'float64'], 'fractional_max_pool3d'
+        )
+        check_type(return_mask, 'return_mask', bool, 'fractional_max_pool3d')
+
+        helper = LayerHelper(l_type, **locals())
+        dtype = helper.input_dtype(input_param_name='x')
+        pool_out = helper.create_variable_for_type_inference(dtype)
+
+        mask = helper.create_variable_for_type_inference('int32')
+        outputs = {"Out": pool_out, "Mask": mask}
+
+        helper.append_op(
+            type=l_type,
+            inputs={"X": x},
+            outputs=outputs,
+            attrs={
+                "pooling_type": 'max',
+                "ksize": output_size,
+                "fractional": True,
+            },
+        )
+
+        return (pool_out, mask) if return_mask else pool_out
