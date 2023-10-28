@@ -19,6 +19,7 @@ if(WITH_DISTRIBUTE)
                   test_default_data_parallel_rule)
   py_test_modules(test_layer_norm_rule MODULES test_layer_norm_rule)
   py_test_modules(test_squeeze_rule MODULES test_squeeze_rule)
+  py_test_modules(test_slice_rule MODULES test_slice_rule)
   py_test_modules(test_flatten_rule MODULES test_flatten_rule)
   # End of unittests WITH single card WITHOUT timeout
 

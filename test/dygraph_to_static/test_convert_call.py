@@ -16,7 +16,7 @@ import logging
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 import paddle.jit.dy2static as _jst
@@ -77,8 +77,7 @@ def dyfunc_with_staticmethod(x_v):
     return a.add(x_v, x_v)
 
 
-@dy2static_unittest
-class TestRecursiveCall1(unittest.TestCase):
+class TestRecursiveCall1(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random([10, 16]).astype('float32')
         self.place = (
@@ -169,8 +168,7 @@ class MyLayer(paddle.nn.Layer):
         return self.act(out)
 
 
-@dy2static_unittest
-class TestRecursiveCall2(unittest.TestCase):
+class TestRecursiveCall2(Dy2StTestBase):
     def setUp(self):
         self.input = np.random.random((1, 3, 3, 5)).astype('float32')
         self.place = (
@@ -253,7 +251,6 @@ class TestNotToConvert(TestRecursiveCall2):
         )
 
 
-@dy2static_unittest
 class TestNotToConvert2(TestRecursiveCall2):
     def set_func(self):
         self.net = NotToStaticHelper()
@@ -266,7 +263,7 @@ class TestNotToConvert2(TestRecursiveCall2):
         self.assertIsNotNone(options)
         self.assertTrue(options.not_convert)
 
-    @ast_only_test
+    @test_ast_only
     def test_code(self):
         self.dygraph_func = paddle.jit.to_static(self.net.sum)
         # check 'if statement' is not converted
@@ -281,23 +278,22 @@ def forward(self, x):
     return x
 
 
-@dy2static_unittest
-class TestConvertPaddleAPI(unittest.TestCase):
-    @ast_only_test
+class TestConvertPaddleAPI(Dy2StTestBase):
+    @test_ast_only
     def test_functional_api(self):
         func = paddle.nn.functional.relu
         func = paddle.jit.to_static(func)
         self.assertNotIn("_jst.IfElse", func.code)
         self.assertIn("if in_dynamic_or_pir_mode()", func.code)
 
-    @ast_only_test
+    @test_ast_only
     def test_class_api(self):
         bn = paddle.nn.SyncBatchNorm(2)
         paddle.jit.to_static(bn)
         self.assertNotIn("_jst.IfElse", bn.forward.code)
         self.assertIn("if in_dynamic_mode()", bn.forward.code)
 
-    @ast_only_test
+    @test_ast_only
     def test_class_patch_api(self):
         paddle.nn.SyncBatchNorm.forward = forward
         bn = paddle.nn.SyncBatchNorm(2)

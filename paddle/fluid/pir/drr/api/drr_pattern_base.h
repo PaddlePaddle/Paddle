@@ -28,12 +28,13 @@ class DrrPatternBase {
   // Define the Drr Pattern.
   virtual void operator()(pir::drr::DrrPatternContext* ctx) const = 0;
 
-  std::unique_ptr<DrrRewritePattern<DrrPattern>> Build(
+  std::unique_ptr<DrrRewritePattern> Build(
       pir::IrContext* ir_context, pir::PatternBenefit benefit = 1) const {
     DrrPatternContext drr_context;
     this->operator()(&drr_context);
-    return std::make_unique<DrrRewritePattern<DrrPattern>>(
-        drr_context, ir_context, benefit);
+    std::string pattern_name = pir::get_type_name<DrrPattern>();
+    return std::make_unique<DrrRewritePattern>(
+        pattern_name, drr_context, ir_context, benefit);
   }
 };
 

@@ -14,11 +14,12 @@
 
 import unittest
 
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
 from paddle.jit import sot
 from paddle.jit.sot.opcode_translator.skip_files import skip_function
+from paddle.jit.sot.utils import strict_mode_guard
 from paddle.jit.sot.utils.code_status import CodeState, CodeStatus
 
 
@@ -85,7 +86,7 @@ class TestCodeInfo(TestCaseBase):
         )
 
     def test_case_2(self):
-        with strict_mode_guard(0):
+        with strict_mode_guard(False):
             CodeStatus().clear()
             net = SimpleNet2()
             inp = paddle.rand((10, 10))

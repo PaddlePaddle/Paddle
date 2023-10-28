@@ -57,7 +57,7 @@ class TestCollectiveAllToAllAPI(TestDistBase):
                 "alltoall",
                 "nccl",
                 dtype=dtype,
-                need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+                need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
             )
 
     def test_alltoall_nccl_dygraph(self):
