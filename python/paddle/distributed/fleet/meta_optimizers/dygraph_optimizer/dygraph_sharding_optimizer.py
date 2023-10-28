@@ -457,6 +457,9 @@ class DygraphShardingOptimizerV2:
         self.pp_overlap = strategy.hybrid_configs[
             'pp_configs'
         ].sharding_comm_overlap
+        self.pp_release_grads = strategy.hybrid_configs[
+            'pp_configs'
+        ].release_gradients
 
         self._build_comm_buffers()
         self._set_inner_opt_attr('_parameter_list', self._local_parameter_list)
@@ -481,7 +484,8 @@ class DygraphShardingOptimizerV2:
         """
         should clear grad for all parameters in model
         """
-        assert set_to_zero, "should not erase grad buffer"
+        if not self.pp_release_grads:
+            assert set_to_zero, "should not erase grad buffer"
 
         def clear_grad_func(p):
             if hasattr(p, "main_grad") and p.main_grad is not None:
@@ -565,6 +569,9 @@ class DygraphShardingOptimizerV2:
             for param in comm_buffer.params:
                 assert param.name in self._slice_params
                 slice_param = self._slice_params[param.name]
+                if self.pp_release_grads and hasattr(slice_param, "main_grad"):
+                    assert not slice_param.main_grad._is_initialized()
+                    del slice_param.main_grad
                 comm_buffer.assign_slice_grad(param, slice_param)
         assert param_num == len(self._parameter_list)
 
