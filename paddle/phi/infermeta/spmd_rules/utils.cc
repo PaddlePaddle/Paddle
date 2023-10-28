@@ -182,9 +182,27 @@ bool IsTensorPartial(const TensorDistAttr& dist_attr) {
 
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b) {
-  return (a->is_shard() && b->is_shard()) ||
-         (a->is_partial() && b->is_partial()) ||
-         (a->is_replicated() && b->is_replicated());
+  if (a->is_partial()) {
+    if (!b->is_partial()) {
+      return false;
+    }
+    auto a_partial = std::dynamic_pointer_cast<PartialStatus>(a);
+    auto b_partial = std::dynamic_pointer_cast<PartialStatus>(b);
+    return a_partial->get_reduce_type() == b_partial->get_reduce_type();
+  }
+  if (a->is_replicated()) {
+    if (b->is_replicated()) {
+      return true;
+    }
+    return false;
+  }
+  if (!b->is_shard()) {
+    return false;
+  }
+
+  auto a_shard = std::dynamic_pointer_cast<ShardStatus>(a);
+  auto b_shard = std::dynamic_pointer_cast<ShardStatus>(b);
+  return a_shard->get_axis() == b_shard->get_axis();
 }
 
 TensorDistAttr FromPlacements(

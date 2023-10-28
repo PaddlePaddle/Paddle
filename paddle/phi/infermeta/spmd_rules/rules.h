@@ -535,6 +535,10 @@ PD_REGISTER_SPMD_RULE(split,
                       PD_INFER_SPMD(phi::distributed::SplitInferSpmd),
                       PD_INFER_SPMD(phi::distributed::SplitInferSpmdReverse));
 
+PD_REGISTER_SPMD_RULE(concat,
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
+
 PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),

@@ -19,6 +19,7 @@ if(WITH_DISTRIBUTE)
                   test_default_data_parallel_rule)
   py_test_modules(test_layer_norm_rule MODULES test_layer_norm_rule)
   py_test_modules(test_flatten_rule MODULES test_flatten_rule)
+  py_test_modules(test_concat_rule MODULES test_concat_rule)
   # End of unittests WITH single card WITHOUT timeout
 
 endif()

@@ -24,8 +24,7 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
-                         const Scalar& axis) {
+SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   /*
 # paddle.concat requires all tensors must either have the same shape (except
 # in the concatenating dimension) or be "empty". "Empty" here strictly means
@@ -57,7 +56,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   // normlize dim
-  int64_t dim = axis.to<int64_t>();
+  int64_t dim = axis;
   dim = dim < 0 ? dim + ndim : dim;
 
   std::vector<TensorDistAttr> input_attrs;
@@ -93,52 +92,73 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
     return mismatch;
   };
   bool need_reshard = false;
-  std::vector<std::shared_ptr<PlacementStatus>> best_placements;
+  int32_t n_mesh_dim = process_mess.ndim();
+  std::vector<std::shared_ptr<PlacementStatus>> best_placements(
+      n_mesh_dim, std::make_shared<ReplicatedStatus>());
+  // a dim can not be sharded twice along diffrent mesh_dim
+  std::set<int64_t> sharded_dims = {dim};
+
   for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
     if (!has_mismatch(mesh_dim)) {
       // use the old placement
-      best_placements.push_back(inputs_placements[non_empty_index][mesh_dim]);
+      auto& best = inputs_placements[non_empty_index][mesh_dim];
+      if (best->is_shard()) {
+        auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(best);
+        sharded_dims.insert(shard_placement->get_axis());
+      }
+      best_placements[mesh_dim] = best;
+    }
+  }
+
+  for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
+    if (!has_mismatch(mesh_dim)) {
       continue;
     }
     need_reshard = true;
-    double cost = 0.0;
     std::vector<double> costs;
     for (int32_t shard_dim = 0; shard_dim < ndim; shard_dim++) {
-      for (size_t i = 0; i < n_inputs; i++) {
-        auto& tensor_shape = tensor_shapes[i];
-        auto& tensor_dist_attr = input_attrs[i];
-        if (is_empty(tensor_shape)) {
-          continue;
-        }
+      double cost = std::numeric_limits<double>::infinity();
+      if (!sharded_dims.count(shard_dim)) {
+        cost = 0.0;
+        for (size_t i = 0; i < n_inputs; i++) {
+          auto& tensor_shape = tensor_shapes[i];
+          auto& tensor_dist_attr = input_attrs[i];
+          if (is_empty(tensor_shape)) {
+            continue;
+          }
 
-        if (tensor_shape[shard_dim] < process_mess.dim_size(mesh_dim)) {
-          // should not be selected
-          cost += std::numeric_limits<double>::infinity();
-          continue;
+          if (tensor_shape[shard_dim] < process_mess.dim_size(mesh_dim)) {
+            // should not be selected
+            cost += std::numeric_limits<double>::infinity();
+            continue;
+          }
+          if (IsDimSharded(tensor_dist_attr, shard_dim)) {
+            continue;
+          }
+          int64_t num = std::accumulate(tensor_shape.begin(),
+                                        tensor_shape.end(),
+                                        1,
+                                        std::multiplies<int64_t>());
+          if (num == static_cast<int64_t>(0)) {
+            continue;
+          }
+          std::vector<int64_t> local_shape =
+              GetLocalShape(tensor_shape, process_mess, inputs_placements[i]);
+          cost += std::accumulate(local_shape.begin(),
+                                  local_shape.end(),
+                                  1,
+                                  std::multiplies<int64_t>()) *
+                  process_mess.dim_size(mesh_dim);
         }
-        if (IsDimSharded(tensor_dist_attr, shard_dim)) {
-          continue;
-        }
-        int64_t num = std::accumulate(tensor_shape.begin(),
-                                      tensor_shape.end(),
-                                      1,
-                                      std::multiplies<int64_t>());
-        if (num == static_cast<int64_t>(0)) {
-          continue;
-        }
-        std::vector<int64_t> local_shape =
-            GetLocalShape(tensor_shape, process_mess, inputs_placements[i]);
-        cost += std::accumulate(local_shape.begin(),
-                                local_shape.end(),
-                                1,
-                                std::multiplies<int64_t>()) *
-                process_mess.dim_size(mesh_dim);
       }
       costs.push_back(cost);
     }
     auto min_itr = std::min_element(costs.begin(), costs.end());
     auto min_dim = min_itr - costs.begin();
-    best_placements.push_back(std::make_shared<ShardStatus>(min_dim));
+    if (!sharded_dims.count(min_dim)) {
+      best_placements[mesh_dim] = std::make_shared<ShardStatus>(min_dim);
+      sharded_dims.insert(min_dim);
+    }
   }
   // set placement to the best placements
   if (need_reshard) {
@@ -148,8 +168,18 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x,
     }
     std::swap(input_attrs, new_input_attrs);
   }
-  return {{input_attrs},
-          {CopyTensorDistAttrForOutput(input_attrs[non_empty_index])}};
+  return {{input_attrs}, {input_attrs[non_empty_index]}};
+}
+
+SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
+                                const DistMetaTensor& output,
+                                int axis) {
+  // TODO(liuzhenhai): add latter
+  return SpmdInfo();
+}
+SpmdInfo ConcatInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
+                                const Scalar& axis) {
+  return ConcatInferSpmd(x, axis.to<int32_t>());
 }
 }  // namespace distributed
 }  // namespace phi

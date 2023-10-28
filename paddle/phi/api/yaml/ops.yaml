@@ -503,7 +503,7 @@
   output : Tensor
   infer_meta :
     func : ConcatInferMeta
-    spmd_rule : ConcatInferSpmd
+    spmd_rule : ConcatInferSpmdDynamic
     param : [x, axis]
   kernel :
     func : concat

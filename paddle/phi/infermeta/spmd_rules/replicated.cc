@@ -86,7 +86,8 @@ SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
             << str_join(output_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {{dst_input_dist_attrs}, {output_dist_attrs}};
+  return {ToItemDistAttr(dst_input_dist_attrs),
+          ToItemDistAttr(output_dist_attrs)};
 }
 
 SpmdInfo ReplicatedInferSpmdReverse(
@@ -135,7 +136,8 @@ SpmdInfo ReplicatedInferSpmdReverse(
             << str_join(dst_input_dist_attrs[i].dims_mapping()) << "]";
   }
 
-  return {{dst_input_dist_attrs}, {output_dist_attrs}};
+  return {ToItemDistAttr(dst_input_dist_attrs),
+          ToItemDistAttr(output_dist_attrs)};
 }
 
 }  // namespace distributed

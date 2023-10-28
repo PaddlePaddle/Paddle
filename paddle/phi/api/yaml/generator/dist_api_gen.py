@@ -266,6 +266,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
         dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
       }}
 """
+
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
       dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>((*dist_input_{name})->value()) : paddle::none;
@@ -703,7 +704,10 @@ class DistForwardAPI(ForwardAPI):
                         name=param
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
-                elif self.inputs['input_info'][param] == "const std::vector<Tensor>&":
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const std::vector<Tensor>&"
+                ):
                     input_decl_code += LIST_DIST_META_IN_TEMPLATE.format(
                         name=param
                     )
@@ -1029,7 +1033,10 @@ class DistForwardAPI(ForwardAPI):
                                     arg=param, idx=i
                                 )
                             )
-                    elif (self.inputs['input_info'][param] == "const std::vector<Tensor>&"):
+                    elif (
+                        self.inputs['input_info'][param]
+                        == "const std::vector<Tensor>&"
+                    ):
                         if self.generate_general_infer_spmd is True:
                             input_reshard_code += (
                                 SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE.format(
