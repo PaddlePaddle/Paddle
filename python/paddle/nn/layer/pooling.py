@@ -1141,6 +1141,56 @@ class AdaptiveMaxPool3D(Layer):
         )
 
 
+class FractionalMaxPool2D(Layer):
+    """
+    TODO(megemini)
+    """
+
+    def __init__(self, output_size, return_mask=False, name=None):
+        super().__init__()
+        self._output_size = output_size
+        self._return_mask = return_mask
+        self._name = name
+
+    def forward(self, x):
+        return F.fractional_max_pool2d(
+            x,
+            output_size=self._output_size,
+            return_mask=self._return_mask,
+            name=self._name,
+        )
+
+    def extra_repr(self):
+        return (
+            f'output_size={self._output_size}, return_mask={self._return_mask}'
+        )
+
+
+class FractionalMaxPool3D(Layer):
+    """
+    TODO(megemini)
+    """
+
+    def __init__(self, output_size, return_mask=False, name=None):
+        super().__init__()
+        self._output_size = output_size
+        self._return_mask = return_mask
+        self._name = name
+
+    def forward(self, x):
+        return F.fractional_max_pool3d(
+            x,
+            output_size=self._output_size,
+            return_mask=self._return_mask,
+            name=self._name,
+        )
+
+    def extra_repr(self):
+        return (
+            f'output_size={self._output_size}, return_mask={self._return_mask}'
+        )
+
+
 class MaxUnPool1D(Layer):
     r"""
     This API implements max unpooling 1d opereation.
