@@ -100,28 +100,5 @@ void FCFunctor<DeviceContext, T>::operator()(const DeviceContext& context,
 template class FCFunctor<CPUContext, float>;
 template class FCFunctor<CPUContext, double>;
 
-template <typename DeviceContext, typename T>
-void FCInt8Functor<DeviceContext, T>::operator()(
-    const DeviceContext& context,
-    const int M,
-    const int N,
-    const int K,
-    const T* X,
-    const DenseTensor* w_tensor,
-    T* Y,
-    float scale_in,
-    std::vector<float> scale_weights,
-    int quant_round_type,
-    float quant_max_bound,
-    float quant_min_bound,
-    const T* B,
-    bool relu,
-    bool padding_weights) {
-  PADDLE_THROW(
-      phi::errors::Unimplemented("Quant Fc operator is not supported on CPU"));
-}
-
-template class FCInt8Functor<CPUContext, float>;
-template class FCInt8Functor<CPUContext, double>;
 }  // namespace funcs
 }  // namespace phi
