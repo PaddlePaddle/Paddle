@@ -37,22 +37,22 @@ class TestSqueezeSPMDRule(unittest.TestCase):
         self.attrs = OrderedDict()
 
     def test_squeeze_infer_forward(self):
-        # # shape: [1, 8, 1, 16] --> [8, 16]
-        # # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] [0, 1]
-        # self.x_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
-        # self.attrs['axis'] = []
-        # result_dist_attrs = self.rule.infer_forward(
-        #     self.x_dist_tensor_spec, self.attrs['axis']
-        # )
-        # infered_input_dist_attrs = result_dist_attrs[0]
-        # infered_output_dist_attrs = result_dist_attrs[1]
+        # shape: [1, 8, 1, 16] --> [8, 16]
+        # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] [0, 1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0, -1, 1])
+        self.attrs['axis'] = []
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, self.attrs['axis']
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(len(infered_input_dist_attrs), 1)
-        # self.assertEqual(len(infered_output_dist_attrs), 1)
-        # self.assertEqual(
-        #     infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
-        # )
-        # self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
 
         # shape: [1, 8, 1, 16] --> [8, 16]
         # dims_mapping: [-1, 0, -1, 1] --> [-1, 0, -1, 1] [0, 1]
@@ -99,20 +99,20 @@ class TestSqueezeSPMDRule(unittest.TestCase):
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
-        # # shape: [1, 8, 1, 16] --> [8, 16]
-        # # dims_mapping: [-1, 1, -1, 0] --> [-1, 1, -1, 0] [1, 0]
-        # self.x_dist_tensor_spec.set_dims_mapping([-1, 1, -1, 0])
-        # self.attrs['axis'] = []
-        # result_dist_attrs = self.rule.infer_forward(
-        #     self.x_dist_tensor_spec, self.attrs['axis']
-        # )
-        # infered_input_dist_attrs = result_dist_attrs[0]
-        # infered_output_dist_attrs = result_dist_attrs[1]
+        # shape: [1, 8, 1, 16] --> [8, 16]
+        # dims_mapping: [-1, 1, -1, 0] --> [-1, 1, -1, 0] [1, 0]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 1, -1, 0])
+        self.attrs['axis'] = []
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, self.attrs['axis']
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(
-        #     infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, 0]
-        # )
-        # self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, 0])
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, 0]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, 0])
 
         # shape: [1, 8, 1, 16] --> [8, 16]
         # dims_mapping: [-1, 1, -1, 0] --> [-1, 1, -1, 0] [1, 0]
@@ -159,6 +159,21 @@ class TestSqueezeSPMDRule(unittest.TestCase):
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, -1, 0])
 
+        # shape: [1, 8, 1, 16] --> [8, 1, 16]
+        # dims_mapping: [-1, 0, 1, -1] --> [-1, 0, -1, -1] [0, -1, -1]
+        self.x_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
+        self.attrs['axis'] = [0, 1]
+        result_dist_attrs = self.rule.infer_forward(
+            self.x_dist_tensor_spec, self.attrs['axis']
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, -1])
+
     def test_squeeze_infer_backward(self):
         process_mesh = auto.ProcessMesh(mesh=[[0, 1, 2, 3], [4, 5, 6, 7]])
 
@@ -169,25 +184,25 @@ class TestSqueezeSPMDRule(unittest.TestCase):
             [8, 16], output_tensor_dist_attr
         )
 
-        # # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
-        # # dims_mapping: [0, 1] --> [-1, 0, -1, 1], [0, 1] (output --> input, output)
-        # self.output_dist_tensor_spec.shape = [8, 16]
-        # self.output_dist_tensor_spec.set_dims_mapping([0, 1])
-        # self.attrs['axis'] = []
-        # result_dist_attrs = self.rule.infer_backward(
-        #     self.x_dist_tensor_spec,
-        #     self.output_dist_tensor_spec,
-        #     self.attrs['axis'],
-        # )
-        # infered_input_dist_attrs = result_dist_attrs[0]
-        # infered_output_dist_attrs = result_dist_attrs[1]
+        # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
+        # dims_mapping: [0, 1] --> [-1, 0, -1, 1], [0, 1] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.set_dims_mapping([0, 1])
+        self.attrs['axis'] = []
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(len(infered_input_dist_attrs), 1)
-        # self.assertEqual(len(infered_output_dist_attrs), 1)
-        # self.assertEqual(
-        #     infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
-        # )
-        # self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
+        self.assertEqual(len(infered_input_dist_attrs), 1)
+        self.assertEqual(len(infered_output_dist_attrs), 1)
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 0, -1, 1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, 1])
 
         # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
         # dims_mapping: [0, 1] --> [-1, 0, -1, 1], [0, 1] (output --> input, output)
@@ -243,23 +258,23 @@ class TestSqueezeSPMDRule(unittest.TestCase):
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [0, -1, 1])
 
-        # # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
-        # # dims_mapping: [1, 0] --> [-1, 1, -1, 0], [1, 0] (output --> input, output)
-        # self.output_dist_tensor_spec.shape = [8, 16]
-        # self.output_dist_tensor_spec.set_dims_mapping([1, 0])
-        # self.attrs['axis'] = []
-        # result_dist_attrs = self.rule.infer_backward(
-        #     self.x_dist_tensor_spec,
-        #     self.output_dist_tensor_spec,
-        #     self.attrs['axis'],
-        # )
-        # infered_input_dist_attrs = result_dist_attrs[0]
-        # infered_output_dist_attrs = result_dist_attrs[1]
+        # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
+        # dims_mapping: [1, 0] --> [-1, 1, -1, 0], [1, 0] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 16]
+        self.output_dist_tensor_spec.set_dims_mapping([1, 0])
+        self.attrs['axis'] = []
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
 
-        # self.assertEqual(
-        #     infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, 0]
-        # )
-        # self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, 0])
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, 0]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, 0])
 
         # shape: [1, 8, 1, 16] --> [8, 16] (input --> output)
         # dims_mapping: [1, 0] --> [-1, 1, -1, 0], [1, 0] (output --> input, output)
@@ -314,6 +329,24 @@ class TestSqueezeSPMDRule(unittest.TestCase):
             infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, 0]
         )
         self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, -1, 0])
+
+        # shape: [1, 8, 1, 16] --> [8, 1, 16] (input --> output)
+        # dims_mapping: [1, 0, -1] --> [-1, 1, -1, -1], [1, -1, -1] (output --> input, output)
+        self.output_dist_tensor_spec.shape = [8, 1, 16]
+        self.output_dist_tensor_spec.set_dims_mapping([1, 0, -1])
+        self.attrs['axis'] = [-4]
+        result_dist_attrs = self.rule.infer_backward(
+            self.x_dist_tensor_spec,
+            self.output_dist_tensor_spec,
+            self.attrs['axis'],
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(
+            infered_input_dist_attrs[0].dims_mapping, [-1, 1, -1, -1]
+        )
+        self.assertEqual(infered_output_dist_attrs[0].dims_mapping, [1, -1, -1])
 
 
 if __name__ == "__main__":

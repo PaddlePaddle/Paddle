@@ -45,14 +45,15 @@ void MakeSqueezeDimTransWithAxis(const std::vector<int64_t>& x_shape,
                                  const std::vector<int64_t>& axis,
                                  std::vector<DimTrans*>* trans) {
   for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
-    trans->emplace_back(new InputDim(i));
-    out_shape->emplace_back(x_shape[i]);
-  }
-
-  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
-    if (x_shape[axis[i]] == 1) {
-      trans->erase(trans->begin() + axis[i]);
-      out_shape->erase(out_shape->begin() + axis[i]);
+    if (x_shape[i] == 1) {
+      auto it = find(axis.begin(), axis.end(), i);
+      if (it == axis.end()) {
+        trans->emplace_back(new Singleton());
+        out_shape->emplace_back(1);
+      }
+    } else {
+      trans->emplace_back(new InputDim(i));
+      out_shape->emplace_back(x_shape[i]);
     }
   }
 }
@@ -73,20 +74,20 @@ void MakeSqueezeDimTransReverseWithAxis(const std::vector<int64_t>& x_shape,
                                         const std::vector<int64_t>& out_shape,
                                         const std::vector<int64_t>& axis,
                                         std::vector<DimTrans*>* trans) {
-  for (int64_t i = 0, n = static_cast<int64_t>(out_shape.size()); i < n; i++) {
-    trans->emplace_back(new InputDim(i));
-  }
+  for (int64_t i = 0, j = 0, n = static_cast<int64_t>(x_shape.size()); i < n;
+       i++) {
+    if (x_shape[i] == 1) {
+      trans->emplace_back(new Singleton());
 
-  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
-    if (x_shape[axis[i]] == 1) {
-      trans->emplace(trans->begin() + axis[i], new Singleton());
+      auto it = find(axis.begin(), axis.end(), i);
+      if (it == axis.end()) {
+        j++;
+      }
+    } else {
+      trans->emplace_back(new InputDim(j++));
     }
   }
 }
-
-bool SqueezeCompare(const int64_t& a, const int64_t& b) { return a > b; }
-
-bool SqueezeReverseCompare(const int64_t& a, const int64_t& b) { return a < b; }
 
 SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
                           const std::vector<int64_t>& axis) {
@@ -120,7 +121,6 @@ SpmdInfo SqueezeInferSpmd(const DistMetaTensor& x,
         axis_copy[i] += x_ndim;
       }
     }
-    std::sort(axis_copy.begin(), axis_copy.end(), SqueezeCompare);
     MakeSqueezeDimTransWithAxis(x_shape, &out_shape, axis_copy, &trans);
   }
 
@@ -189,7 +189,6 @@ SpmdInfo SqueezeInferSpmdReverse(const DistMetaTensor& x,
         axis_copy[i] += x_ndim;
       }
     }
-    std::sort(axis_copy.begin(), axis_copy.end(), SqueezeReverseCompare);
     MakeSqueezeDimTransReverseWithAxis(x_shape, out_shape, axis_copy, &trans);
   }
 
