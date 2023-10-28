@@ -164,7 +164,7 @@ class Dy2StTestMeta(type):
             # Disable inherited test cases
             for base in bases:
                 for attr in dir(base):
-                    if attr.startswith(fn_name):
+                    if attr.startswith(f"{fn_name}__"):
                         new_attrs[attr] = None
             fn_to_static_modes = getattr(
                 fn, "to_static_mode", DEFAULT_TO_STATIC_MODE

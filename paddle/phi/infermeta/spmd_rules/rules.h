@@ -30,6 +30,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
 #include "paddle/phi/infermeta/spmd_rules/scale.h"
+#include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
@@ -543,6 +544,11 @@ PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// slice rule
+PD_REGISTER_SPMD_RULE(slice,
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
 
 // transpose rule
 PD_REGISTER_SPMD_RULE(
