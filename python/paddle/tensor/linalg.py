@@ -1964,7 +1964,7 @@ def slogdet(x, name=None):
              [ 0.25681755, -0.25061053, -0.10809582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
     else:
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
