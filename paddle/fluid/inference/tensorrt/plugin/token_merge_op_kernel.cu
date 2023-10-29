@@ -22,11 +22,11 @@ class tome_TypeTrait {
   using Type = T;
 };
 
-template <>
-class tome_TypeTrait<half> {
- public:
-  using Type = typename phi::dtype::float16;
-};
+// template <>
+// class tome_TypeTrait<half> {
+//  public:
+//   using Type = typename phi::dtype::float16;
+// };
 
 
 /**
@@ -84,8 +84,8 @@ __global__ void token_merge_split_kernel(
             int *rand_select_arr,
             int token_number,
             int hid_dim,
-            int src_token_num,
             int dst_token_num, 
+            int src_token_num,
             int width,
             T* dst_tensor,
             T* src_tensor,
@@ -278,7 +278,7 @@ template <typename T>
 __global__ void token_merge_reduce_kernel(T* dst_token, T* src_token, 
                                           int token_number, const int hid_dim, 
                                           int src_token_num, const int dst_token_num, 
-                                          int* src_need_tobe_merged_idx, const int src_token_need_merged_num,
+                                          int64_t* src_need_tobe_merged_idx, const int src_token_need_merged_num,
                                           int* merged_to_dst_index,  int* divied_rank, int* whether_tobe_merge){
   int bid = blockIdx.x;
   int tid =  blockDim.x * threadIdx.y + threadIdx.x;
@@ -290,7 +290,7 @@ __global__ void token_merge_reduce_kernel(T* dst_token, T* src_token,
   int merged_to_dst_index_batch_begin = blockIdx.y * src_token_num;
   int whether_tobe_merge_batch_begin = blockIdx.y * src_token_num;
   if (gloable_warp_id < src_token_need_merged_num){
-    int src_token_need_merged = src_need_tobe_merged_idx[src_need_tobe_merged_idx_batch_begin + gloable_warp_id];
+    int src_token_need_merged = static_cast<int>(src_need_tobe_merged_idx[src_need_tobe_merged_idx_batch_begin + gloable_warp_id]);
     int dst_token_id_merged_to_in_batch = merged_to_dst_index[merged_to_dst_index_batch_begin + src_token_need_merged];
     int token_idx = src_tensor_batch_begin + src_token_need_merged * hid_dim ;
     for(int data_idx = token_idx + threadIdx.x, cnt = 0; data_idx < token_idx + hid_dim; data_idx += WARP_SIZE, cnt++ ){
@@ -320,7 +320,7 @@ __global__ void token_merge_reduce_kernel(T* dst_token, T* src_token,
  */
 template <typename T> 
 __global__ void token_merge_concat_kernel(T* dst_token, T* src_token, int token_num, int hid_dim, int src_token_num, int dst_token_num, int* divied_rank, 
-                                          int* src_token_need_tobe_merged_idx, int final_token_num, int src_token_need_merged_num, 
+                                          int64_t* src_token_need_tobe_merged_idx, int final_token_num, int src_token_need_merged_num, 
                                           int* whether_tobe_merge,
                                           T* out_put){
   int bid = blockIdx.x;
@@ -342,7 +342,7 @@ __global__ void token_merge_concat_kernel(T* dst_token, T* src_token, int token_
         }
       }
   }else{
-      int remained_token_id_in_batch = src_token_need_tobe_merged_idx[src_token_need_tobe_merged_idx_batch_begin + src_token_need_merged_num + (gloable_warp_id - dst_token_num)];
+      int remained_token_id_in_batch = static_cast<int>(src_token_need_tobe_merged_idx[src_token_need_tobe_merged_idx_batch_begin + src_token_need_merged_num + (gloable_warp_id - dst_token_num)]);
       int remained_src_token_begin_idx = src_tensor_batch_begin + remained_token_id_in_batch * hid_dim;
       for(int data_idx = remained_src_token_begin_idx + threadIdx.x, cnt = 0; data_idx < remained_src_token_begin_idx +  hid_dim; data_idx += WARP_SIZE, cnt++)
           out_put[out_put_batch_begin + gloable_warp_id * hid_dim + threadIdx.x + cnt * WARP_SIZE] = src_token[data_idx];
@@ -398,7 +398,7 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
   dim3 grid_dim_for_rand_select(token_number / (4 * WARP_SIZE), bsz);
   dim3 block_dim_for_rand_select(WARP_SIZE);
   token_merge_rand_select_kernel<<<grid_dim_for_rand_select, block_dim_for_rand_select, 0, dev_ctx.stream()>>>(rand_select, token_number, use_rand);
-    
+  VLOG(3) << "finish step0" ;
   //1.split origined_tensor
   dim3 grid_dim_for_split(height / 16, width / 2, bsz);
   dim3 block_dim_for_split(WARP_SIZE, 8);
@@ -414,6 +414,12 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     src_token,
     dst_L2,
     src_L2);
+  VLOG(3) << "finish step1";
+  if (std::is_same<T, float>::value){
+    PrintMatrix<float>(src_token, 2 * 32 * 24 * 320, 32 * 24 * 320, 320, "src_tensor");
+  }
+
+
 
   //step2: calculate the similarity between each src_token and each dst_token
   phi::MatmulKernel<typename tome_TypeTrait<T>::Type, phi::GPUContext>(dev_ctx,
@@ -423,6 +429,10 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
                                         true,
                                         &similarity_tensor);
   
+  VLOG(3) << "finish step2";
+  if (std::is_same<T, float>::value){
+    PrintMatrix<float>(similarity, 2 * 256 * 768, 256 * 768, 256, "similarity_tensor");
+  }
 
   //step3: get dst_token that is most similar to src_token
   dim3 grid_for_max_similarity(src_token_number / 8, bsz);
@@ -432,18 +442,25 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
                                                                                             dst_token_number,
                                                                                             max_similarity,
                                                                                             max_similarity_idx);
+  PrintMatrix<float>(max_similarity, 2 * src_token_number, src_token_number, 1, "max_similarity");
+  PrintMatrix<int>(max_similarity_idx, 2 * src_token_number, src_token_number, 1, "max_similarity_idx");
   
 
+  VLOG(3) << "finish step3";
   //step4: argsort by echo src_token's max similarity
   phi::ArgsortKernel<typename tome_TypeTrait<T>::Type, phi::GPUContext>(dev_ctx,
                                         max_similarity_tensor,
-                                        -1,
-                                        false,
+                                        1,
+                                        true,
                                         &argsort_res0_tensor,
                                         &argsort_res1_tensor);
 
+  VLOG(3) << "finish step4";
+  auto src_token_need_tobe_merged_id = argsort_res1_tensor.data<int64_t>();
+  
+  PrintMatrix<int64_t>(src_token_need_tobe_merged_id, 2 * src_token_number, src_token_number, 1, "src_token_need_tobe_merged_id");
+  
   //step5: do reduce
-  auto src_token_need_tobe_merged_id = argsort_res1_tensor.data<int>();
   dim3 grid_dim_for_reduce(src_token_number / 8, bsz);
   dim3 block_dim_for_reduce(32, 8);
   token_merge_reduce_kernel<<<grid_dim_for_reduce, block_dim_for_reduce>>>(
@@ -458,7 +475,13 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     max_similarity_idx,
     divied_rank,
     whether_to_be_merged);
-
+  VLOG(3) << "finish step5";
+  if (std::is_same<T, float>::value){
+    PrintMatrix<int>(divied_rank, 2 * dst_token_number, dst_token_number, 1, "divied_rank");
+  }
+  //step6: do concat
+  PrintMatrix<float>(dst_token, 2 * dst_token_number * hid_dim, dst_token_number * hid_dim, hid_dim, "dst_token_step6");
+  VLOG(3) << "final_token_number = " << final_token_number;
   dim3 grid_dim_for_concat(final_token_number / 8, bsz);
   dim3 block_dim_for_concat(32, 8);
   token_merge_concat_kernel<<<grid_dim_for_concat, block_dim_for_concat>>>(
@@ -474,10 +497,14 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     src_token_need_merged_num,
     whether_to_be_merged,
     merged_tensor);
+  VLOG(3) << "finish step6";
+  if (std::is_same<T, float>::value){
+    PrintMatrix<float>(merged_tensor, 2 * final_token_number* hid_dim, final_token_number * hid_dim, hid_dim, "merged_tensor");
+  }
   return cudaGetLastError() != cudaSuccess;
 }
 template struct tokenMerge<float>;
-template struct tokenMerge<half>;
+// template struct tokenMerge<half>;
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference

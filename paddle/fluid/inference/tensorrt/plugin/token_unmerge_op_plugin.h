@@ -47,10 +47,11 @@ class TokenUnmergePluginDynamic : public DynamicPluginTensorRT {
     width_ = static_cast<int>(sqrt(token_number));
     src_token_number_ = (token_number * 3) / 4;
     dst_token_number_ = token_number - src_token_number_;
-    VLOG(3) << "createTokenUnmergePluginDynamic" <<"height_ = " << height_ << "width_ = " << width_ << ", src_token_number_ = " << src_token_number_ << ", final_token_number_ = " << final_token_number_;
+    VLOG(3) << "createTokenUnmergePluginDynamic" <<"height_ = " << height_ << "width_ = " << width_ << ", src_token_number_ = " << src_token_number_ << ", final_token_number_ = " << final_token_number_ << "hid_dim = " << hid_dim_;
   }
   
   TokenUnmergePluginDynamic(void const* serial_data, size_t serial_length) {
+    VLOG(3) << "start deserializePlugin token_unmerge in TokenUnmergePluginDynamic" << " serial_data = " << serial_data;
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &bsz_);
     DeserializeValue(&serial_data, &serial_length, &token_number_);
@@ -60,6 +61,8 @@ class TokenUnmergePluginDynamic : public DynamicPluginTensorRT {
     DeserializeValue(&serial_data, &serial_length, &dst_token_number_);
     DeserializeValue(&serial_data, &serial_length, &final_token_number_);
     DeserializeValue(&serial_data, &serial_length, &hid_dim_);
+    VLOG(3) << "finish deserializePlugin token_unmerge in TokenUnmergePluginDynamic" << " serial_data = " << serial_data;
+
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new TokenUnmergePluginDynamic(with_fp16_,
@@ -150,10 +153,10 @@ class TokenUnmergePluginDynamic : public DynamicPluginTensorRT {
   int hid_dim_;
 };
 
-class TokenUnmergePluginCreator : public TensorRTPluginCreator {
+class TokenUnmergePluginDynamicCreator : public TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "token_unmerge_dynamic";
+    return "token_unmerge_plugin_dynamic";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -162,11 +165,12 @@ class TokenUnmergePluginCreator : public TensorRTPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
+    VLOG(3) << "start deserializePlugin token_unmerge" << "serial_data = " << serial_data;
     return new TokenUnmergePluginDynamic(serial_data, serial_length);
   }
 };
 
-REGISTER_TRT_PLUGIN_V2(TokenUnmergePluginCreator);
+REGISTER_TRT_PLUGIN_V2(TokenUnmergePluginDynamicCreator);
 
 
 }  // namespace plugin

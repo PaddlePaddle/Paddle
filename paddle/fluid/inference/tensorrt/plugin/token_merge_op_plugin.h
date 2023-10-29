@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <cstdlib>
 #include <cmath>
 
 #include <glog/logging.h>
@@ -32,6 +36,35 @@ namespace plugin {
 #define WARP_SIZE 32
 #define WARP_NUM_PRE_BLOCK 
 #define SELECT_STRIDE 4
+
+template <typename T>
+static void PrintMatrix(const T* mat_d, int num, int batch_size, int hiddim, std::string name) {
+    std::vector<T> tmp(num);
+    cudaMemcpy(tmp.data(), mat_d, sizeof(T) * num, cudaMemcpyDeviceToHost);
+
+    std::ofstream outfile;
+    outfile.open(name+".txt", std::ios::out);
+    std::stringstream ss;
+    int token_id = 0;
+    for (int i = 0; i < num; ++i) {
+      if(i % batch_size == 0){
+        ss << "batch_id = " << i / batch_size <<std::endl;
+        token_id = 0;
+      }
+      if(i % hiddim == 0) {
+          ss << "token_id = " << token_id++ <<std::endl;
+      }
+      if(std::is_same<T, int8_t>::value) {
+        ss << static_cast<int>(tmp[i]) << std::endl;
+      } else {
+        ss << std::setprecision(8) << tmp[i] << std::endl;
+      }
+    }
+    outfile << ss.str();
+    outfile.close();
+}
+
+
 
 
 template<typename T>
@@ -85,17 +118,20 @@ class TokenMergePluginDynamic : public DynamicPluginTensorRT {
   }
   
   TokenMergePluginDynamic(void const* serial_data, size_t serial_length) {
+    VLOG(3) << "start deserializePlugin token_merge in TokenMergePluginDynamic" << " serial_data = " << serial_data;
     DeserializeValue(&serial_data, &serial_length, &with_fp16_);
     DeserializeValue(&serial_data, &serial_length, &ratio_);
     DeserializeValue(&serial_data, &serial_length, &use_rand_);
     DeserializeValue(&serial_data, &serial_length, &bsz_);
     DeserializeValue(&serial_data, &serial_length, &token_number_);
+    DeserializeValue(&serial_data, &serial_length, &hid_dim_);
     DeserializeValue(&serial_data, &serial_length, &height_);
     DeserializeValue(&serial_data, &serial_length, &width_);
     DeserializeValue(&serial_data, &serial_length, &src_token_number_);
     DeserializeValue(&serial_data, &serial_length, &dst_token_number_);
     DeserializeValue(&serial_data, &serial_length, &src_need_merged_number_);
     DeserializeValue(&serial_data, &serial_length, &final_token_number_);
+    VLOG(3) << "finish deserializePlugin token_merge in TokenMergePluginDynamic" << " serial_data = " << serial_data;
   }
   nvinfer1::IPluginV2DynamicExt* clone() const TRT_NOEXCEPT override {
     return new TokenMergePluginDynamic(with_fp16_,
@@ -200,10 +236,10 @@ class TokenMergePluginDynamic : public DynamicPluginTensorRT {
   // void *whether_to_be_merged_arr{nullptr};
 };
 
-class TokenMergePluginCreator : public TensorRTPluginCreator {
+class TokenMergePluginDynamicCreator : public TensorRTPluginCreator {
  public:
   const char* getPluginName() const TRT_NOEXCEPT override {
-    return "token_merge_dynamic";
+    return "token_merge_plugin_dynamic";
   }
 
   const char* getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
@@ -212,11 +248,12 @@ class TokenMergePluginCreator : public TensorRTPluginCreator {
                                          const void* serial_data,
                                          size_t serial_length)
       TRT_NOEXCEPT override {
+    VLOG(3) << "start deserializePlugin token_merge" << " serial_data = " << serial_data;
     return new TokenMergePluginDynamic(serial_data, serial_length);
   }
 };
 
-REGISTER_TRT_PLUGIN_V2(TokenMergePluginCreator);
+REGISTER_TRT_PLUGIN_V2(TokenMergePluginDynamicCreator);
 
 }  // namespace plugin
 }  // namespace tensorrt

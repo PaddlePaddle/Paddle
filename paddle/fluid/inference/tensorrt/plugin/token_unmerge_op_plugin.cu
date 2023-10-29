@@ -133,9 +133,11 @@ nvinfer1::DimsExprs TokenUnmergePluginDynamic::getOutputDimensions(
                       "greater the num(%d) of the outpus.",
                       output_index,1));
   nvinfer1::DimsExprs outputDims;
+  outputDims.nbDims = 3;
   outputDims.d[0] = inputs[0].d[0];
   outputDims.d[1] = expr_builder.constant(token_number_);
   outputDims.d[2] = expr_builder.constant(hid_dim_);
+  VLOG(3) << "TokenUnmergePluginDynamic::getOutputDimensions  hid_dim = " << hid_dim_;
   return outputDims;
 }
 
@@ -214,7 +216,7 @@ int TokenUnmergePluginDynamic::enqueue(
   const phi::GPUContext &dev_ctx = *device_ctx;
   auto input_type = input_desc[0].type;
   if (input_type == nvinfer1::DataType::kFLOAT) {
-    VLOG(3) << "TRT Plugin DataType selected. TokenMerge-->fp32";
+    VLOG(3) << "TRT Plugin DataType selected. TokenUnmerge-->fp32";
     const float *merged_token = reinterpret_cast<const float *>(inputs[0]);
     const int *rand_select_tensor = reinterpret_cast<const int *>(inputs[1]);
     const int *whether_tobe_merge_tensor = reinterpret_cast<const int *>(inputs[2]);

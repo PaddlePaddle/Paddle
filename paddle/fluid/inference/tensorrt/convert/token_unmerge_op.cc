@@ -33,7 +33,7 @@ class TokenUnmergeOpConverter : public OpConverter {
     nvinfer1::Dims dims_x = merged_tensor->getDimensions();
 
     int bsz = dims_x.d[0];
-    int final_token_number = dims_x.d[0];
+    int final_token_number = dims_x.d[1];
     int hid_dim = dims_x.d[2];
 
     nvinfer1::ILayer* token_unmerge_layer = nullptr;
@@ -41,7 +41,7 @@ class TokenUnmergeOpConverter : public OpConverter {
       bool with_fp16 =
           engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
       VLOG(4) << "create a"
-               "token_unmerge plugin";
+               "token_unmerge plugin, hid_dim = " << hid_dim;
       plugin::TokenUnmergePluginDynamic* plugin =
           new plugin::TokenUnmergePluginDynamic(with_fp16,
           bsz,
