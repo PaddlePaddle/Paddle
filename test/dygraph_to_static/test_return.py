@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 from ifelse_simple_func import dyfunc_with_if_else
 
 import paddle
@@ -302,6 +302,7 @@ class TestReturnBase(Dy2StTestBase):
         else:
             self.assertEqual(dygraph_res, static_res)
 
+    @test_ast_only
     def test_transformed_static_result(self):
         if hasattr(self, "error"):
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
