@@ -1,4 +1,4 @@
-/* Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2023 PaddlePaddle Authors. All Rights resized.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,15 +33,24 @@ std::vector<DimTrans*> MakeUnsqueezeDimTrans(
     const std::vector<int64_t>& x_shape,
     std::vector<int64_t>* out_shape,
     const std::vector<int64_t>& axis) {
+  int64_t n = static_cast<int64_t>(x_shape.size() + axis.size());
   std::vector<DimTrans*> ret;
+  ret.resize(n);
+  out_shape->resize(n);
+  fill(ret.begin(), ret.end(), new Singleton());
+  fill(out_shape->begin(), out_shape->end(), 1);
 
-  for (int64_t i = 0, n = static_cast<int64_t>(x_shape.size()); i < n; i++) {
-    ret.emplace_back(new InputDim(i));
-  }
+  for (int64_t i = 0, j = 0; i < n; i++) {
+    auto it = find(axis.begin(), axis.end(), i);
 
-  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
-    ret.emplace(ret.begin() + axis[i], new Singleton());
-    out_shape->emplace(out_shape->begin() + axis[i], 1);
+    if (it == axis.end()) {
+      if (x_shape[j] != 1) {
+        ret[i] = new InputDim(j);
+        (*out_shape)[i] = x_shape[j];
+      }
+
+      j++;
+    }
   }
 
   return ret;
@@ -49,23 +58,25 @@ std::vector<DimTrans*> MakeUnsqueezeDimTrans(
 
 std::vector<DimTrans*> MakeUnsqueezeDimTransReverse(
     const std::vector<int64_t>& out_shape, const std::vector<int64_t>& axis) {
+  int64_t n = static_cast<int64_t>(out_shape.size() - axis.size());
   std::vector<DimTrans*> ret;
+  ret.resize(n);
+  fill(ret.begin(), ret.end(), new Singleton());
 
-  for (int64_t i = 0, n = static_cast<int64_t>(out_shape.size()); i < n; i++) {
-    ret.emplace_back(new InputDim(i));
-  }
+  for (int64_t i = 0, j = 0, m = static_cast<int64_t>(out_shape.size()); i < m;
+       i++) {
+    auto it = find(axis.begin(), axis.end(), i);
 
-  for (int64_t i = 0, n = static_cast<int64_t>(axis.size()); i < n; i++) {
-    ret.erase(ret.begin() + axis[i]);
+    if (it == axis.end()) {
+      if (out_shape[i] != 1) {
+        ret[j] = new InputDim(i);
+      }
+
+      j++;
+    }
   }
 
   return ret;
-}
-
-bool UnsqueezeCompare(const int64_t& a, const int64_t& b) { return a < b; }
-
-bool UnsqueezeReverseCompare(const int64_t& a, const int64_t& b) {
-  return a > b;
 }
 
 SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
@@ -94,8 +105,6 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
       axis_copy[i] += x_ndim + 1;
     }
   }
-
-  std::sort(axis_copy.begin(), axis_copy.end(), UnsqueezeCompare);
 
   std::vector<DimTrans*> trans =
       MakeUnsqueezeDimTrans(x_shape, &out_shape, axis_copy);
@@ -160,8 +169,6 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
       axis_copy[i] += x_ndim + 1;
     }
   }
-
-  std::sort(axis_copy.begin(), axis_copy.end(), UnsqueezeReverseCompare);
 
   std::vector<DimTrans*> trans =
       MakeUnsqueezeDimTransReverse(out_shape, axis_copy);
