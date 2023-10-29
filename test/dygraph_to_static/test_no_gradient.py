@@ -20,7 +20,6 @@ from dygraph_to_static_util import dy2static_unittest
 import paddle
 
 
-@paddle.jit.to_static
 def static_func(x, no_grad_x):
     tx = 2 * no_grad_x
     tx.stop_gradient = True
@@ -29,7 +28,7 @@ def static_func(x, no_grad_x):
 
 def main_func(x, index):
     tmp = paddle.gather(x, index)
-    out = static_func(x, tmp)
+    out = paddle.jit.to_static(static_func)(x, tmp)
     return out
 
 
