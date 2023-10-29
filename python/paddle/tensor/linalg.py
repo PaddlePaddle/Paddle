@@ -1415,7 +1415,7 @@ def t_(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
