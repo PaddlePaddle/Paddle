@@ -5093,7 +5093,7 @@ def index_add(x, index, axis, value, name=None):
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
@@ -5229,7 +5229,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
              [0., 0., 1.],
              [0., 1., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
     helper = LayerHelper("index_put", **locals())
