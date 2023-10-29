@@ -21,7 +21,6 @@ repos:
         files: (ops|backward|op_[a-z_]+)\.yaml$
     -   id: trailing-whitespace
         files: (.*\.(py|bzl|md|rst|c|cc|cxx|cpp|cu|h|hpp|hxx|xpu|kps|cmake|yaml|yml|hook)|BUILD|.*\.BUILD|WORKSPACE|CMakeLists\.txt)$
-
 -   repo: https://github.com/Lucas-C/pre-commit-hooks.git
     rev: v1.5.1
     hooks:
@@ -51,8 +50,6 @@ repos:
                 paddle/utils/.*|
                 paddle/cinn/utils/registry.h
             )$
-
-
 # For Python files
 -   repo: https://github.com/psf/black.git
     rev: 23.3.0
