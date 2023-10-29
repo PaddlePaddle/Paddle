@@ -514,7 +514,7 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
   for (size_t i = 0; i < output_grads->size(); i++) {
     paddle::Tensor& grad = (*output_grads)[i];
     if (!grad.initialized() && grad_output_metas[i].HasTensorMeta()) {
-      if (grad.is_selected_rows()) {
+      if (grad.defined() && grad.is_selected_rows()) {
         continue;
       }
       auto tensor_with_zero =
