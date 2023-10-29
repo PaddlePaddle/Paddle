@@ -1820,6 +1820,32 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
   eq_bias->set_dims(c_dims);
 }
 
+void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
+                                    const MetaTensor& scale1,
+                                    const MetaTensor& bias1,
+                                    const MetaTensor& x2,
+                                    const MetaTensor& scale2,
+                                    const MetaTensor& bias2,
+                                    bool fuse_dual,
+                                    bool exhaustive_search,
+                                    MetaTensor* y) {
+  // check optional inputs
+  if (fuse_dual) {
+    bool has_scale2 = !!scale2;
+    bool has_bias2 = !!bias2;
+    PADDLE_ENFORCE(has_scale2 && has_bias2,
+                   phi::errors::InvalidArgument(
+                       "Argument scale2 and bias2 should be provided when "
+                       "fuse_dual is set, but got has_scale2=%d, has_bias2=%d, "
+                       "fuse_dual=%d.",
+                       has_scale2,
+                       has_bias2,
+                       fuse_dual));
+  }
+  // set output dims
+  y->set_dims(x1.dims());
+}
+
 void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& filter_max,

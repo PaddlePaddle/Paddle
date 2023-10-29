@@ -478,6 +478,16 @@ void FusedScaleBiasReluConvBnInferMeta(const MetaTensor& x,
                                        MetaTensor* eq_scale,
                                        MetaTensor* eq_bias);
 
+void FusedScaleBiasAddReluInferMeta(const MetaTensor& x1,
+                                    const MetaTensor& scale1,
+                                    const MetaTensor& bias1,
+                                    const MetaTensor& x2,
+                                    const MetaTensor& scale2,
+                                    const MetaTensor& bias2,
+                                    bool fuse_prologue,
+                                    bool exhaustive_search,
+                                    MetaTensor* y);
+
 void SqueezeExcitationInferMeta(const MetaTensor& x,
                                 const MetaTensor& filter,
                                 const MetaTensor& filter_max,
