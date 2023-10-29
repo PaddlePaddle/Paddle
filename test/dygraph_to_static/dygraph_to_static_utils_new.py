@@ -31,7 +31,7 @@ class MyTest(Dy2StTestBase):
     @set_to_static_mode(
         ToStaticMode.LEGACY_AST | ToStaticMode.SOT | ToStaticMode.PIR_AST
     )
-    @set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)
+    @set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR)
     def test_case1(self):
         raise ValueError("MyTest 1")
 
@@ -58,7 +58,7 @@ class ToStaticMode(Flag):
 
 
 class IrMode(Flag):
-    LEGACY_PROGRAM = auto()
+    LEGACY_IR = auto()
     PIR = auto()
 
     def lower_case_name(self):
@@ -66,7 +66,7 @@ class IrMode(Flag):
 
 
 DEFAULT_TO_STATIC_MODE = ToStaticMode.LEGACY_AST | ToStaticMode.SOT
-DEFAULT_IR_MODE = IrMode.LEGACY_PROGRAM
+DEFAULT_IR_MODE = IrMode.LEGACY_IR
 
 
 def to_legacy_ast_test(fn):
@@ -101,9 +101,10 @@ def to_pir_ast_test(fn):
     raise TypeError("Don't enable PIR AST mode now!")
 
 
-def to_legacy_program_test(fn):
+def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
-        logger.info("[Program] running legacy program")
+        logger.info("[Program] running legacy ir")
+        # breakpoint()
         return fn(*args, **kwargs)
 
     return impl
@@ -140,7 +141,7 @@ class Dy2StTestMeta(type):
     }
 
     IR_HANDLER_MAP = {
-        IrMode.LEGACY_PROGRAM: to_legacy_program_test,
+        IrMode.LEGACY_IR: to_legacy_ir_test,
         IrMode.PIR: to_pir_test,
     }
 
@@ -192,9 +193,9 @@ class Dy2StTestMeta(type):
             for to_static_mode, ir_mode in to_static_with_ir_modes:
                 if (
                     to_static_mode == ToStaticMode.PIR_AST
-                    and ir_mode == IrMode.LEGACY_PROGRAM
+                    and ir_mode == IrMode.LEGACY_IR
                 ):
-                    # PIR with LEGACY_PROGRAM is not a valid combination
+                    # PIR with LEGACY_IR is not a valid combination
                     continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
@@ -264,7 +265,7 @@ def test_pir_only(fn):
 
 
 def test_legacy_and_pir(fn):
-    fn = set_ir_mode(IrMode.LEGACY_PROGRAM | IrMode.PIR)(fn)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR)(fn)
     return fn
 
 
