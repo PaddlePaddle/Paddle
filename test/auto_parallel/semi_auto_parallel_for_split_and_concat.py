@@ -13,30 +13,26 @@
 # limitations under the License.
 
 
+from semi_auto_parallel_util import SemiAutoParallelTestBase
+
 import paddle
 import paddle.distributed as dist
-
-from .semi_auto_parallel_util import SemiAutoParallelTestBase
 
 
 class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
         super().__init__()
 
-    def check_specs_unchanged(self, input, output):
-        pass
-
-    def test_concat_noshard(self):
-        pass
-
-    def test_concat_shard(self):
-        pass
-
-    def test_split_noshard(self):
-        pass
-
-    def test_split_shard(self):
-        pass
+    def test_concat_forward(self):
+        shapes = [[16, 4, 4], [64, 4, 4]]
+        specs = [[None, None, 'x'], ['y', 'x', None]]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=False,
+            axis=0,
+        )
 
     def run_test_case(self):
         if self._backend == "cpu":
@@ -46,10 +42,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_concat_noshard()
-        self.test_concat_shard()
-        self.test_split_noshard()
-        self.test_split_shard()
+        self.test_concat_forward()
 
 
 if __name__ == '__main__':

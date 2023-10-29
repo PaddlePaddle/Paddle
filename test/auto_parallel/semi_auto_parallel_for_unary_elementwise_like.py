@@ -13,10 +13,10 @@
 # limitations under the License.
 
 
+from semi_auto_parallel_util import SemiAutoParallelTestBase
+
 import paddle
 import paddle.distributed as dist
-
-from .semi_auto_parallel_util import SemiAutoParallelTestBase
 
 
 class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
@@ -32,7 +32,6 @@ class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             x_shape, x_specs, op_func=paddle.pow, with_backward=True, y=2
         )
-        (inputs,) = inputs
         self.check_specs_unchanged(inputs, outputs)
 
     def test_cast_shard(self):
@@ -45,7 +44,6 @@ class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             dtype="float64",
         )
-        (inputs,) = inputs
         self.check_specs_unchanged(inputs, outputs)
 
     def test_full_like_shard(self):
@@ -54,11 +52,10 @@ class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             x_shape,
             x_specs,
-            op_func=paddle.pow,
+            op_func=paddle.full_like,
             with_backward=False,
             fill_value=1.0,
         )
-        (inputs,) = inputs
         self.check_specs_unchanged(inputs, outputs)
 
     def test_scale_shard(self):
@@ -71,7 +68,6 @@ class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=True,
             scale=2.0,
         )
-        (inputs,) = inputs
         self.check_specs_unchanged(inputs, outputs)
 
     def run_test_case(self):
@@ -83,7 +79,7 @@ class TestElementwiseLikeApiForSemiAutoParallel(SemiAutoParallelTestBase):
             raise ValueError("Only support cpu or gpu backend.")
 
         self.test_pow_shard()
-        self.test_full_like()
+        self.test_full_like_shard()
         self.test_cast_shard()
         self.test_scale_shard()
 
