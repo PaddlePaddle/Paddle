@@ -16,7 +16,6 @@
 
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/distributed/collective/custom_ccl_tools.h"
-#include "paddle/fluid/distributed/collective/utils.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
 #include "paddle/phi/core/enforce.h"
@@ -32,6 +31,8 @@ PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 namespace paddle {
 namespace distributed {
 
+using phi::distributed::CheckSizeOnEachRank;
+using phi::distributed::GetPointerByOffset;
 static std::mutex g_unfinished_xccl_task_events_mutex;
 static std::list<std::unique_ptr<phi::event::Event>>
     g_unfinished_xccl_task_events;

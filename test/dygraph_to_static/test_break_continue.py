@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 from paddle import base
@@ -26,14 +26,13 @@ SEED = 2020
 np.random.seed(SEED)
 
 
-@dy2static_unittest
-class TestDy2staticException(unittest.TestCase):
+class TestDy2staticException(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.random([10, 16]).astype('float32')
         self.dyfunc = None
         self.error = "Your if/else have different number of return value."
 
-    @ast_only_test
+    @test_ast_only
     def test_error(self):
         if self.dyfunc:
             with self.assertRaisesRegex(Dygraph2StaticException, self.error):
@@ -205,8 +204,7 @@ def test_optim_break_in_while(x):
     return x
 
 
-@dy2static_unittest
-class TestContinueInFor(unittest.TestCase):
+class TestContinueInFor(Dy2StTestBase):
     def setUp(self):
         self.input = np.zeros(1).astype('int64')
         self.place = (

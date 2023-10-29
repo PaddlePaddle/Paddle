@@ -133,5 +133,7 @@ bool IsLegacyOp(const std::string& name);
 
 bool IsEmptyValue(const pir::Value& value);
 
+std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr);
+
 }  // namespace dialect
 }  // namespace paddle

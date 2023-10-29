@@ -38,8 +38,8 @@ using ConstEigenVectorArrayMap =
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& ctx,
                           const DenseTensor& x,
-                          const DenseTensor& scale,
-                          const DenseTensor& bias,
+                          const paddle::optional<DenseTensor>& scale,
+                          const paddle::optional<DenseTensor>& bias,
                           const paddle::optional<DenseTensor>& mean,
                           const paddle::optional<DenseTensor>& variance,
                           const DenseTensor& saved_mean,
@@ -139,8 +139,6 @@ void BatchNormGradFunctor(const Context& ctx,
     inv_var_data = saved_variance.data<T>();
   }
 
-  ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
-  ConstEigenVectorArrayMap<T> bias_arr(bias.data<T>(), C);
   ConstEigenVectorArrayMap<T> mean_arr(mean_data, C);
   ConstEigenVectorArrayMap<T> inv_var_arr(inv_var_data, C);
 
@@ -166,6 +164,20 @@ void BatchNormGradFunctor(const Context& ctx,
   if (d_x && (N * sample_size) == 1 && !use_global_stats) {
     phi::Copy(ctx, *d_y, ctx.GetPlace(), false, d_x);
     return;
+  }
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
+  Eigen::Array<T, Eigen::Dynamic, 1> scale_arr(C);
+  Eigen::Array<T, Eigen::Dynamic, 1> bias_arr(C);
+  if (Scale) {
+    scale_arr = ConstEigenVectorArrayMap<T>(Scale->data<T>(), C);
+  } else {
+    scale_arr.setOnes();
+  }
+  if (Bias) {
+    bias_arr = ConstEigenVectorArrayMap<T>(Bias->data<T>(), C);
+  } else {
+    bias_arr.setZero();
   }
 
   int scale_coefff = use_global_stats ? 1 : N * sample_size;
@@ -295,8 +307,8 @@ void BatchNormGradFunctor(const Context& ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& scale,
-                         const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& scale,
+                         const paddle::optional<DenseTensor>& bias,
                          const paddle::optional<DenseTensor>& mean,
                          const paddle::optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,
@@ -338,7 +350,7 @@ template <typename T, typename Context>
 void BatchNormDoubleGradKernel(
     const Context& ctx,
     const DenseTensor& x,
-    const DenseTensor& scale,
+    const paddle::optional<DenseTensor>& scale,
     const paddle::optional<DenseTensor>& mean,
     const paddle::optional<DenseTensor>& variance,
     const DenseTensor& saved_mean,
@@ -357,7 +369,7 @@ void BatchNormDoubleGradKernel(
     DenseTensor* scale_grad,
     DenseTensor* y_grad_grad) {
   const auto* X = &x;
-  const auto* Scale = &scale;
+  const auto* Scale = scale.get_ptr();
   const auto* dY = &y_grad;
   const auto* Saved_mean = &saved_mean;
   const auto* Saved_variance = &saved_variance;
