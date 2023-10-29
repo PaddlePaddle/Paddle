@@ -188,7 +188,7 @@ class TestNewIR(unittest.TestCase):
                 out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
             )
 
-    def test_1f1b(self):
+    def test_pp_1f1b(self):
         self.enable_new_ir(False)
         engine_1f1b_prog = self.get_engine(
             "pp", name="1f1b_prog", use_sharding=False, pipeline_mode="1F1B"
@@ -205,11 +205,13 @@ class TestNewIR(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        # self.check_results(
-        #     out_1f1b_prog.history["loss"][0], out_1f1b_ir.history["loss"][0]
-        # )
+        if paddle.distributed.get_rank() == 1:
+            self.check_results(
+                out_1f1b_prog.history["loss"][0][1],
+                out_1f1b_ir.history["loss"][0],
+            )
 
-    def test_fthenb(self):
+    def test_pp_fthenb(self):
         self.enable_new_ir(False)
         engine_fthenb_prog = self.get_engine(
             "pp", name="fthenb_prog", use_sharding=False, pipeline_mode="FThenB"
@@ -228,10 +230,11 @@ class TestNewIR(unittest.TestCase):
         out_fthenb_ir = engine_fthenb_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
-
-        # self.check_results(
-        #     out_fthenb_prog.history["loss"][0], out_fthenb_ir.history["loss"][0]
-        # )
+        if paddle.distributed.get_rank() == 1:
+            self.check_results(
+                out_fthenb_prog.history["loss"][0][1],
+                out_fthenb_ir.history["loss"][0],
+            )
 
 
 if __name__ == "__main__":
