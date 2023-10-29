@@ -696,9 +696,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".format(
-                lower
-            )
+            f"The lower value must be no less than zero or greater than one. Received: {lower}."
         )
 
     if upper < lower:

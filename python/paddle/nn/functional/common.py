@@ -1155,9 +1155,7 @@ def dropout(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
                     raise TypeError(
-                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                            p.shape
-                        )
+                        f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
                 attrs = {
                     'dropout_prob': dropout_prob,

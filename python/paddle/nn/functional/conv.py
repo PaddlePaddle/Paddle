@@ -102,9 +102,7 @@ def _update_padding_nd(padding, channel_last, num_dims):
         padding = convert_to_list(padding, num_dims, 'padding')
     if not all(p >= 0 for p in padding):
         raise ValueError(
-            "Invalid padding, all value should be larger than or equal to 0, but received: {}".format(
-                padding
-            )
+            f"Invalid padding, all value should be larger than or equal to 0, but received: {padding}"
         )
     return padding, padding_algorithm
 
@@ -437,9 +435,7 @@ def conv1d(
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimension should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimension should be 1 or 2. But got padding={padding}"
         )
     stride = [1] + convert_to_list(stride, 1, 'stride')
     dilation = [1] + convert_to_list(dilation, 1, 'dilation')
@@ -918,9 +914,7 @@ def conv1d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv1d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1202,9 +1196,7 @@ def conv2d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv2d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
@@ -1699,9 +1691,7 @@ def conv3d_transpose(
         )
     if groups <= 0:
         raise ValueError(
-            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"The groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_channels % groups != 0:
         raise ValueError(
