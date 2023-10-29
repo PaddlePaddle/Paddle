@@ -106,7 +106,6 @@ test_i0e_op
 test_i0_op
 test_i1e_op
 test_i1_op
-test_imperative_lod_tensor_to_selected_rows
 test_index_add_op
 test_index_sample_op
 test_instance_norm_op_v2
@@ -167,7 +166,6 @@ test_put_along_axis_op
 test_range
 test_reduce_op
 test_reduce_op_static_build
-test_repeat_interleave_op
 test_reshape_op
 test_reverse_op
 test_roi_align_op
@@ -213,3 +211,5 @@ test_warprnnt_op
 test_where_op
 test_yolo_box_op
 test_yolov3_loss_op
+test_imperative_lod_tensor_to_selected_rows
+test_repeat_interleave_op
