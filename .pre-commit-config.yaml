@@ -155,7 +155,7 @@ repos:
         args:
          - -c
          - |
-           sort -u ./test/white_list/new_ir_op_test_white_list  ./test/white_list/new_ir_op_test_white_list
+           sort -o ./test/white_list/new_ir_op_test_white_list  ./test/white_list/new_ir_op_test_white_list
 
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
