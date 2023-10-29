@@ -151,8 +151,8 @@ repos:
 
 -   repo: local
     hooks:
-    -   id: sort_txt
-        name: sort_txt
+    -   id: sort-txt
+        name: sort-txt
         language: system
         entry: sh
         args:
