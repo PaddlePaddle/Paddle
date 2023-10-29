@@ -44,11 +44,11 @@ class SemiAutoParallelTestBase:
         flattened = []
         structure = []
         for i in range(len(inputs)):
-            tmp, tmp_structure = self.flatten(inputs[i])
+            tmp, tmp_structure = self.flatten(inputs[i], terminal_cond)
             flattened.extend(tmp)
             structure.append(tmp_structure)
 
-        if isinstance(inputs, list):
+        if isinstance(inputs, tuple):
             structure = tuple(structure)
         return flattened, structure
 
@@ -59,16 +59,15 @@ class SemiAutoParallelTestBase:
         assert isinstance(inputs, list)
         assert offset < len(inputs)
         if structure == "i":
-            assert len(inputs) == 1
             offset = offset + 1
             # return a list
-            return inputs, offset
+            return inputs[offset - 1], offset
         assert isinstance(structure, (tuple, list))
         unflattened = []
         for i in range(len(structure)):
             tmp, offset = self.unflatten(inputs, structure[i], offset)
             unflattened.append(tmp)
-        if isinstance(inputs, tuple):
+        if isinstance(structure, tuple):
             unflattened = tuple(unflattened)
         return unflattened, offset
 
@@ -103,19 +102,25 @@ class SemiAutoParallelTestBase:
             dist_input.stop_gradient = False
             flat_inputs.append(input)
             flat_dist_inputs.append(dist_input)
+        inputs, _ = self.unflatten(flat_inputs, inputs_structure)
+        dist_inputs, _ = self.unflatten(flat_dist_inputs, inputs_structure)
 
-        inputs = self.unflatten(flat_inputs, inputs_structure)
-        dist_inputs = self.unflatten(flat_dist_inputs, inputs_structure)
-        out = op_func(**inputs, **kwargs)
-        dist_out = op_func(**dist_inputs, **kwargs)
+        def wrap_tuple(e):
+            return e if isinstance(e, tuple) else (e,)
+
+        op_inputs = wrap_tuple(inputs)
+        op_dist_input = wrap_tuple(dist_inputs)
+
+        out = op_func(*op_inputs, **kwargs)
+        dist_out = op_func(*op_dist_input, **kwargs)
 
         if with_backward:
 
             def terminal_cond2(x):
                 return not isinstance(x, (list, tuple))
 
-            flat_out = self.flatten(out, terminal_cond2)
-            flat_dist_out = self.flatten(dist_out, terminal_cond2)
+            flat_out, _ = self.flatten(out, terminal_cond2)
+            flat_dist_out, _ = self.flatten(dist_out, terminal_cond2)
             assert len(flat_out) == len(flat_dist_out)
             for output, dist_output in zip(flat_out, flat_dist_out):
                 self.check_tensor_eq(out, dist_out)
@@ -124,8 +129,5 @@ class SemiAutoParallelTestBase:
 
             for x, dist_x in zip(flat_inputs, flat_dist_inputs):
                 self.check_tensor_eq(x.grad, dist_x.grad)
-
-        if isinstance(dist_inputs, tuple) and len(dist_inputs) == 1:
-            (dist_inputs,) = dist_inputs
 
         return dist_inputs, dist_out
