@@ -126,7 +126,6 @@ def save(content: str, path: pathlib.Path):
     ):
         with open(path, 'w') as f:
             f.write(content)
-            print(f"Generate or cover source file {path}")
 
 
 def filter_compat_info(items):
