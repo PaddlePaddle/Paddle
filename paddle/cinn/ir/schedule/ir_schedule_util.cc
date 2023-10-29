@@ -1301,17 +1301,5 @@ std::vector<int> SampleTile(utils::LinearRandomEngine::StateType* rand_seed,
   tile.push_back(extent);
   return tile;
 }
-
-void SimplifyIterValues(ir::Expr* expr) {
-  std::set<ir::Expr> blocks = ir::ir_utils::CollectIRNodesWithoutTensor(
-      *expr,
-      [](const ir::Expr* x) { return x->As<ir::ScheduleBlockRealize>(); });
-  for (ir::Expr block : blocks) {
-    for (ir::Expr& iter_value :
-         block.As<ir::ScheduleBlockRealize>()->iter_values) {
-      optim::Simplify(&iter_value);
-    }
-  }
-}
 }  // namespace ir
 }  // namespace cinn

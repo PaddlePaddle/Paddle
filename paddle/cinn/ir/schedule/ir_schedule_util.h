@@ -484,12 +484,5 @@ std::unordered_map<int, int> PrimeFactorize(int n);
 std::vector<int> SampleTile(utils::LinearRandomEngine::StateType* rand_seed,
                             int n,
                             int dividend);
-
-/*!
- * \brief Simplify all iter_values of an expr.
- * \param expr The expr to be simplified.
- */
-void SimplifyIterValues(ir::Expr* expr);
-
 }  // namespace ir
 }  // namespace cinn
