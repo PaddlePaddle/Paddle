@@ -37,7 +37,7 @@ def function(x: A) -> A:
 
 
 @dy2static_unittest
-class TestTransformWhileLoop(unittest.TestCase):
+class TestTypeHint(unittest.TestCase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -75,11 +75,6 @@ class TestTransformWhileLoop(unittest.TestCase):
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
-
-
-class TestTypeHint(TestTransformWhileLoop):
-    def _init_dyfunc(self):
-        self.dyfunc = function
 
 
 if __name__ == '__main__':

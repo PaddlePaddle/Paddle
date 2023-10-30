@@ -33,3 +33,21 @@ if(${_result})
       "Automatic code generation for paddle/fluid/primitive failed, exiting.")
 endif()
 message("Automatic code generation for paddle/fluid/primitive succeed.")
+
+execute_process(
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/primitive/codegen
+  COMMAND
+    ${PYTHON_EXECUTABLE}
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/primitive/codegen/decomp_gen.py --fwd_path
+    ${fwd_path} --fwd_legacy_path ${fwd_legacy_path} --fwd_pd_op_path
+    ${fwd_pd_op_path} --templates_dir ${templates_dir} --compat_path
+    ${compat_path} --destination_dir
+    ${PADDLE_BINARY_DIR}/paddle/fluid/pir/dialect/operator/ir/op_decomp.cc
+  RESULT_VARIABLE _result)
+if(${_result})
+  message(
+    FATAL_ERROR
+      "Automatic code generation for build/paddle/fluid/pir/dialect/operator/ir/op_decomp.cc failed."
+  )
+endif()
+message("Automatic code generation for decomp interface succeed.")

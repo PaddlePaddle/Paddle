@@ -33,6 +33,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
@@ -78,12 +79,14 @@ void CommContextManager::CreateNCCLCommContext(
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
 
-  if (p2p_opt && p2p_opt->rank > 0) {
+  if (p2p_opt) {
     rank = p2p_opt->rank;
-  }
-  if (p2p_opt && p2p_opt->num_ranks > 0) {
     size = p2p_opt->num_ranks;
   }
+  VLOG(3) << "init NCCLCommContext rank: " << rank << ", size: " << size
+          << ", unique_comm_key: " << unique_comm_key
+          << ", unique_key: " << unique_key
+          << ", nccl_id: " << SerializeNCCLUniqueId(nccl_id);
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
   if (CommContextManager::device_id != -1) {
