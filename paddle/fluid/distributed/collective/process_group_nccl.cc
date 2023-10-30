@@ -97,7 +97,7 @@ bool ProcessGroupNCCL::NCCLTask::Wait(std::chrono::milliseconds timeout) {
     // If we use the work to do barrier, we should block cpu
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
-#else
+#else  // PADDLE_WITH_HIP
     PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
 #endif
   }
@@ -130,7 +130,11 @@ void ProcessGroupNCCL::GroupEnd() {
   // NOTE: This is to sync the calc stream and comm stream for debug using
   // batch_isend_irecv
   if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
   }
 }
 
@@ -783,7 +787,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   }
 
   if (FLAGS_benchmark || FLAGS_benchmark_nccl) {
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
   }
 
   return task;
@@ -880,7 +888,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   }
 
   if (!is_batch_p2p && (FLAGS_benchmark || FLAGS_benchmark_nccl)) {
+#ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
+#else  // PADDLE_WITH_HIP
+    PADDLE_ENFORCE_GPU_SUCCESS(hipDeviceSynchronize());
+#endif
   }
 
   return task;
