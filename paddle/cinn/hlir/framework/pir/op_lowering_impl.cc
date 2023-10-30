@@ -255,6 +255,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   // group->output_names.clear();
   // FIXME(Aurelius84): Do we need to use output_ops?
   // Currently we regards all ops as output_ops.
+  std::cerr << "output value size " << group->output_values.size() << std::endl;
   for (auto& val : group->output_values) {
     // for (auto& op : group->ops) {
     //  collect all output tensor.

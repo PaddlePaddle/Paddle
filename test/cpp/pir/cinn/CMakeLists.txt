@@ -33,8 +33,15 @@ if(WITH_TESTING AND WITH_CINN)
     glog)
   set_tests_properties(ir_op_fusion_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  paddle_test(test_group_op SRCS group_op_test.cc DEPS op_with_group_merge_pass
-              cinn_op_dialect)
+  paddle_test(
+    test_group_op
+    SRCS
+    group_op_test.cc
+    DEPS
+    op_with_group_merge_pass
+    cinn_op_dialect
+    pd_to_cinn_pass
+    add_broadcast_to_elementwise_pass)
   set_tests_properties(test_group_op PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(test_pir_build_cinn_pass SRCS build_cinn_pass_test.cc DEPS
