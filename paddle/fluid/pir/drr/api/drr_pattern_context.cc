@@ -15,7 +15,7 @@
 #include "paddle/fluid/pir/drr/api/drr_pattern_context.h"
 
 #include "paddle/fluid/pir/drr/pattern_graph.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace pir {
 namespace drr {
@@ -143,7 +143,10 @@ void Tensor::Assign(const Tensor& other) {
 
 void Tensor::operator=(const Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
-  IR_ENFORCE(this->pattern_graph_ == other.pattern_graph_);
+  PADDLE_ENFORCE_EQ(this->pattern_graph_,
+                    other.pattern_graph_,
+                    pir::errors::InvalidArgument(
+                        "The two tensor must be in the same pattern graph."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
