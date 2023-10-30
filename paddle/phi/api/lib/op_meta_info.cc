@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -63,10 +64,12 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
                "happens when handling inplace optional inputs & outputs.";
     return;
   }
-  PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
-                    true,
-                    phi::errors::Unavailable(
-                        "Now only supported DenseTensor in Custom Operator."));
+  PADDLE_ENFORCE_EQ(
+      ((src.is_dense_tensor() && dst->is_dense_tensor()) ||
+       (src.is_dist_tensor() && dst->is_dist_tensor())),
+      true,
+      phi::errors::Unavailable(
+          "Now only supported DenseTensor and DistTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
@@ -76,9 +79,19 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
                     true,
                     phi::errors::Unavailable(
                         "The Custom OpKernel origin output is not defined."));
-  auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
-  auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
-  *dense_dst = dense_src;
+  if (src.is_dense_tensor()) {
+    auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
+    auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
+    *dense_dst = dense_src;
+  } else {
+    auto* dense_src =
+        static_cast<phi::distributed::DistTensor*>(src.impl().get())
+            ->unsafe_mutable_value();
+    auto* dense_dst =
+        static_cast<phi::distributed::DistTensor*>(dst->impl().get())
+            ->unsafe_mutable_value();
+    *dense_dst = *dense_src;
+  }
 }
 
 ////////////////////// Kernel Context //////////////////////
