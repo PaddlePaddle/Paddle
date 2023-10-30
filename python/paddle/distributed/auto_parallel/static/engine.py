@@ -255,6 +255,16 @@ class Engine:
         self.newir_program = None
         self.param_mapping = None
 
+        # pid = os.getpid()
+        # path = "/paddle2/PaddleNLP/model_zoo/gpt-3/"
+        # self.f_grad_var_to_var = open(path+"grad_var_to_var_"+str(pid)+".txt", "w")
+        # self.f_pir_grad_var_to_var = open(path+"pir_grad_var_to_var_"+str(pid)+".txt", "w")
+        # self.f_program = open(path+"program_"+str(pid)+".txt", "w")
+        # self.f_pir_program = open(path+"pir_program_"+str(pid)+".txt", "w")
+        # self.f_param_mapping = open(path+"param_mapping_"+str(pid)+".txt", "w")
+        # self.f_forward_ops = open(path+"forward_ops_"+str(pid)+".txt", "w")
+        # self.f_backward_ops = open(path+"backward_ops_"+str(pid)+".txt", "w")
+
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
@@ -844,7 +854,10 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
 
-                if os.environ.get("FLAGS_lxd_debug") is not None:
+                if (
+                    os.environ.get("FLAGS_enable_prim_in_distribute")
+                    is not None
+                ):
                     self.newir_prune_startup_prog = (
                         paddle.pir.translate_to_new_ir(prune_startup_prog.desc)
                     )
@@ -1583,13 +1596,16 @@ class Engine:
             self._mode
         ]._dist_op_context.grad_var_to_var
         assert len(grad_var_to_var.keys()) == 1
+        # f_grad_var_to_var.write(grad_var_to_var)
+        # print(grad_var_to_var, file=self.f_grad_var_to_var)
         grad_var_to_var_map = grad_var_to_var[1]
         newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
             param_mapping, grad_var_to_var_map
         )
+        # f_pir_grad_var_to_var.write(newir_grad_var_to_var_map)
+        # print(newir_grad_var_to_var_map, file=self.f_pir_grad_var_to_var)
 
-        # fwd_ops, bwd_ops = self._get_all_ops(newir_program)
-        """
+        """ forward and backward ops of pir program when running single card gpt-3
         fwd_ops:
         ['pd_op.data', 'builtin.get_parameter', 'pd_op.embedding', 'pd_op.add', 'pd_op.dropout',
         'pd_op.layer_norm', 'pd_op.matmul', 'pd_op.full_int_array', 'pd_op.reshape', 'pd_op.full',
@@ -1604,13 +1620,35 @@ class Engine:
         'pd_op.fused_softmax_mask_upper_triangle_grad']
         """
 
+        """ forward and backward ops or pir program when running distributed gpt-3 (2 process have same ops)
+        fwd_ops:
+        ['pd_op.data', 'builtin.get_parameter', 'pd_op.embedding', 'pd_op.add', 'pd_op.layer_norm', 'pd_op.matmul',
+        'pd_op.full_int_array', 'pd_op.reshape', 'pd_op.full', 'pd_op.split_with_num', 'builtin.slice', 'pd_op.transpose',
+        'pd_op.scale', 'pd_op.fused_softmax_mask_upper_triangle', 'pd_op.gelu', 'pd_op.unsqueeze', 'pd_op.cross_entropy_with_softmax',
+        'pd_op.multiply', 'pd_op.sum', 'pd_op.divide', 'pd_op.c_allreduce_sum_', 'pd_op.scale_', 'builtin.combine', 'pd_op.add_n_with_kernel',
+        'pd_op.concat', 'pd_op.embedding_grad_dense', 'pd_op.squared_l2_norm', 'pd_op.sqrt', 'pd_op.maximum', 'pd_op.multiply_', 'pd_op.adamw_']
+        bwd_ops:
+        ['pd_op.divide_grad', 'pd_op.sum_grad', 'pd_op.multiply_grad', 'pd_op.reshape_grad', 'pd_op.cross_entropy_with_softmax_grad',
+        'pd_op.matmul_grad', 'pd_op.layer_norm_grad', 'pd_op.add_grad', 'pd_op.gelu_grad', 'pd_op.transpose_grad', 'pd_op.fused_softmax_mask_upper_triangle_grad']
+        """
+
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
         ):
             core._set_prim_backward_enabled(True)
             core._set_prim_forward_enabled(True)
             ops = newir_program.global_block().ops
-            bwd_ops_name = ["pd_op.reshape_grad"]
+            bwd_ops_name = [
+                "pd_op.layer_norm_grad",
+                "pd_op.dropout_grad",
+                "pd_op.reshape_grad",
+                "pd_op.divide_grad",
+                "pd_op.add_grad",
+                "pd_op.gelu_grad",
+                "pd_op.multiply_grad",
+                "pd_op.sum_grad",
+                "pd_op.transpose_grad",
+            ]
             for op in ops:
                 if op.name() in bwd_ops_name:
                     fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
@@ -1624,13 +1662,14 @@ class Engine:
                             grad_var_to_var_map=newir_grad_var_to_var_map,
                             has_vjp=True,
                         )
-                        if core.has_custom_vjp(fwd_op):
-                            new_fwd_outputs = decomp.decompose_fwd_op(
-                                newir_program.global_block(),
-                                fwd_op,
-                                newir_grad_var_to_var_map,
-                            )
+                        # if core.has_custom_vjp(fwd_op):
+                        #     new_fwd_outputs = decomp.decompose_fwd_op(
+                        #         newir_program.global_block(),
+                        #         fwd_op,
+                        #         newir_grad_var_to_var_map,
+                        #     )
                     else:
+                        breakpoint()
                         new_fwd_outputs = decomp.decompose_fwd_op(
                             newir_program.global_block(),
                             fwd_op,
@@ -1646,9 +1685,11 @@ class Engine:
                             fwd_outputs_after_decompose=new_fwd_outputs,
                         )
 
-            # ops_name = [op.name() for op in newir_program.global_block().ops]
-            # for op_name in bwd_ops_name:
-            #     assert op_name not in ops_name, "op %s is still in newir_program" % (op_name)
+            ops_name = [op.name() for op in newir_program.global_block().ops]
+            for op_name in bwd_ops_name:
+                assert (
+                    op_name not in ops_name
+                ), "op %s is still in newir_program" % (op_name)
 
         return newir_program
 
@@ -1665,6 +1706,8 @@ class Engine:
 
         if os.environ.get("FLAGS_enable_prim_in_distribute") is not None:
             if not self.newir_program_initialized:
+                # f_program.write(self.main_program)
+                # print(self.main_program, file=self.f_program)
                 tmp_program = self._add_data_ops(self.main_program, feed_dict)
                 (
                     newir_program,
@@ -1681,6 +1724,14 @@ class Engine:
                 insert_point = 0
                 for data_op in data_ops:
                     global_block.move_op(data_op, insert_point)
+                # f_pir_program.write(newir_program)
+                # f_param_mapping.write(param_mapping)
+                # print(newir_program, file=self.f_pir_program)
+                # print(param_mapping, file=self.f_param_mapping)
+
+                # fwd_ops, bwd_ops = self._get_all_ops(newir_program)
+                # print(fwd_ops, file=self.f_forward_ops)
+                # print(bwd_ops, file=self.f_backward_ops)
 
                 # decomposing
                 print(
