@@ -183,6 +183,6 @@ PD_REGISTER_COMPARE_KERNEL(not_equal, NotEqual)
     kernel->OutputAt(0).SetDataType(phi::DataType::BOOL); \
   }
 
-PD_REGISTER_COMPARE_KERNEL(less_than, LessThan)
+PD_REGISTER_LESS_THAN_KERNEL(less_than, LessThan)
 
 #endif
