@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING
 
 import paddle
 from paddle.amp.auto_cast import amp_state
+from paddle.base.data_feeder import convert_dtype
 from paddle.framework import _dygraph_tracer
 
 from ..profiler import EventGuard
@@ -74,12 +75,12 @@ class FallbackWrapper:
             or tracer._expected_place.is_custom_place()
         ):
             return args, kwargs
-        amp_dtype = current_amp_state["dtype"]
+        amp_dtype = convert_dtype(current_amp_state["dtype"])
         log(3, f"[AMP] Cast {amp_dtype} into float32\n")
         return map_if(
             (args, kwargs),
             pred=lambda x: isinstance(x, paddle.Tensor)
-            and x.dtype == amp_dtype,
+            and convert_dtype(x.dtype) == amp_dtype,
             true_fn=lambda x: x.cast(paddle.float32),
             false_fn=lambda x: x,
         )
