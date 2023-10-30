@@ -33,6 +33,17 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             axis=0,
         )
 
+    def test_concat_forward_reshard(self):
+        shapes = [[16, 4, 4], [64, 4, 4]]
+        specs = [['x', None, None], [None, None, 'x']]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=False,
+            axis=0,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -42,6 +53,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             raise ValueError("Only support cpu or gpu backend.")
 
         self.test_concat_forward()
+        # all to all is not supported yet for cpu
+        if self._backend == "gpu":
+            self.test_concat_forward_reshard()
 
 
 if __name__ == '__main__':
