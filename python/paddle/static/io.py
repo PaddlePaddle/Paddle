@@ -29,7 +29,6 @@ from paddle.base import (
     Variable,
     core,
     default_main_program,
-    program_guard,
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
