@@ -76,7 +76,7 @@ class LPPool {
   float norm_type;
 
  public:
-  HOST inline void setNormType(float ntype) { norm_type = ntype; }
+  DEVICE inline void setNormType(float ntype) { norm_type = ntype; }
 
   DEVICE inline T initial() {
     intermediate_res = static_cast<MT>(0.0f);
