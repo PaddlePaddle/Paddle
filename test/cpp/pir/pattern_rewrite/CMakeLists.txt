@@ -26,6 +26,11 @@ cc_test(
   DEPS fusion_passes drr gtest pd_op_dialect pir)
 
 cc_test(
+  drr_fuse_linear_param_grad_add_test
+  SRCS drr_fuse_linear_param_grad_add_test.cc
+  DEPS fusion_passes drr gtest pd_op_dialect pir)
+
+cc_test(
   drr_attention_fuse_test
   SRCS drr_attention_fuse_test.cc
   DEPS fusion_passes drr gtest pd_op_dialect pir)

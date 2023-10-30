@@ -29,37 +29,5 @@ namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
 
-std::vector<std::vector<pir::OpResult>> MeanOp::Decomp(pir::Operation* op) {
-  MeanOp op_obj = op->dyn_cast<MeanOp>();
-  (void)op_obj;
-
-  VLOG(4) << "Decomp Prepare inputs of mean";
-
-  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
-
-  VLOG(4) << "Decomp prepare attributes of mean";
-
-  IntArray axis = op->attribute("axis")
-                      .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                      .data();
-
-  bool keepdim = op->attribute("keepdim").dyn_cast<pir::BoolAttribute>().data();
-  VLOG(4) << "Decomp mean keep_dim " << keepdim;
-
-  VLOG(4) << "Decomp prepare call mean's decomp interface";
-
-  Tensor op_res =
-      paddle::primitive::details::mean_decomp<primitive::LazyTensor>(
-          x, axis, keepdim);
-
-  auto org_res = op->results();
-  std::vector<std::vector<pir::OpResult>> res(org_res.size());
-  res[0].push_back(
-      std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
-          ->value()
-          .dyn_cast<pir::OpResult>());
-  return res;
-}
-
 }  // namespace dialect
 }  // namespace paddle
