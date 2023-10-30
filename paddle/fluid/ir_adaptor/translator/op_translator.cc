@@ -1298,7 +1298,7 @@ struct MulOpTranscriber : public OpTranscriber {
           ctx, param_map, block, x_defining_info, x_name);
       x_defining_info = param_map->at(x_name);
     }
-    pir::OpResult x_value = x_defining_info.value;
+    pir::OpResult x_value = x_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(x_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1335,7 +1335,7 @@ struct MulOpTranscriber : public OpTranscriber {
           ctx, param_map, block, y_defining_info, y_name);
       y_defining_info = param_map->at(y_name);
     }
-    pir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1357,7 +1357,6 @@ struct MulOpTranscriber : public OpTranscriber {
                y_num_col_dims);
 
     pir::Builder builder(ctx, block);
-    pir::OpResult x_new, y_new;
 
     std::vector<int64_t> x_new_shape({
         std::max(std::accumulate(x_shape.begin(),
@@ -1373,7 +1372,7 @@ struct MulOpTranscriber : public OpTranscriber {
     });
     dialect::ReshapeOp reshape_op_x =
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
-    x_new = reshape_op_x.out();
+    pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
             << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
 
@@ -1391,7 +1390,7 @@ struct MulOpTranscriber : public OpTranscriber {
 
     dialect::ReshapeOp reshape_op_y =
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
-    y_new = reshape_op_y.out();
+    pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
             << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
 
@@ -1420,7 +1419,8 @@ struct MulOpTranscriber : public OpTranscriber {
       //   out_defining_info = param_map->at(y_name);
       // }
 
-      pir::OpResult out_value = out_defining_info.value;
+      pir::OpResult out_value =
+          out_defining_info.value.dyn_cast<pir::OpResult>();
       IR_ENFORCE(out_value,
                  "Expected op[%s]'s input %s is not null",
                  op_desc.Type(),
@@ -1433,8 +1433,6 @@ struct MulOpTranscriber : public OpTranscriber {
                  out_type);
       dialect::DenseTensorType out_tensor_type =
           out_type.dyn_cast<dialect::DenseTensorType>();
-      // std::vector<int64_t> out_shape =
-      // phi::vectorize(out_tensor_type.dims());
 
       int x_num_col_dims = paddle::get<int>(op_desc.GetAttr("x_num_col_dims"));
       int y_num_col_dims = paddle::get<int>(op_desc.GetAttr("y_num_col_dims"));
@@ -1450,7 +1448,7 @@ struct MulOpTranscriber : public OpTranscriber {
                  op_desc.Type(),
                  x_name);
       auto x_defining_info = param_map->at(x_name);
-      pir::OpResult x_value = x_defining_info.value;
+      pir::OpResult x_value = x_defining_info.value.dyn_cast<pir::OpResult>();
       IR_ENFORCE(x_value,
                  "Expected op[%s]'s input %s is not null",
                  op_desc.Type(),
@@ -1481,7 +1479,7 @@ struct MulOpTranscriber : public OpTranscriber {
       //       ctx, param_map, block, y_defining_info, y_name);
       //   y_defining_info = param_map->at(y_name);
       // }
-      pir::OpResult y_value = y_defining_info.value;
+      pir::OpResult y_value = y_defining_info.value.dyn_cast<pir::OpResult>();
       IR_ENFORCE(y_value,
                  "Expected op[%s]'s input %s is not null",
                  op_desc.Type(),
@@ -1504,12 +1502,13 @@ struct MulOpTranscriber : public OpTranscriber {
       pir::Builder builder(ctx, operation->GetParent());
       dialect::ReshapeOp reshape_op_out =
           builder.Build<dialect::ReshapeOp>(out_value, out_new_shape);
-      pir::OpResult out_new = reshape_op_out.out();
+      pir::OpResult out_new = reshape_op_out.out().dyn_cast<pir::OpResult>();
       VLOG(6) << "[" << op_desc.Type() << "] out_shape change from "
               << out_tensor_type.dims() << " to "
               << phi::make_ddim(out_new_shape);
 
-      (*param_map)[output_name] = VariableDefiningInfo{out_new};
+      param_map->PushValue(output_name,
+                           VariableDefiningInfo(out_new, false, -1));
     }
   }
 };
@@ -1569,7 +1568,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
           ctx, param_map, block, x_defining_info, x_name);
       x_defining_info = param_map->at(x_name);
     }
-    pir::OpResult x_value = x_defining_info.value;
+    pir::OpResult x_value = x_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(x_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1607,7 +1606,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
           ctx, param_map, block, y_defining_info, y_name);
       y_defining_info = param_map->at(y_name);
     }
-    pir::OpResult y_value = y_defining_info.value;
+    pir::OpResult y_value = y_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(y_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1645,7 +1644,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
           ctx, param_map, block, out_grad_defining_info, out_grad_name);
       out_grad_defining_info = param_map->at(out_grad_name);
     }
-    pir::OpResult out_grad_value = out_grad_defining_info.value;
+    pir::OpResult out_grad_value =
+        out_grad_defining_info.value.dyn_cast<pir::OpResult>();
     IR_ENFORCE(out_grad_value,
                "Expected op[%s]'s input %s is not null",
                op_desc.Type(),
@@ -1662,7 +1662,6 @@ struct MulGradOpTranscriber : public OpTranscriber {
         phi::vectorize(out_grad_tensor_type.dims());
 
     pir::Builder builder(ctx, block);
-    pir::OpResult x_new, y_new, out_grad_new;
 
     // --------------------- x
     std::vector<int64_t> x_new_shape({
@@ -1679,7 +1678,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
     });
     dialect::ReshapeOp reshape_op_x =
         builder.Build<dialect::ReshapeOp>(x_value, x_new_shape);
-    x_new = reshape_op_x.out();
+    pir::OpResult x_new = reshape_op_x.out();
     VLOG(6) << "[" << op_desc.Type() << "] x_shape change from "
             << x_tensor_type.dims() << " to " << phi::make_ddim(x_new_shape);
 
@@ -1698,7 +1697,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     dialect::ReshapeOp reshape_op_y =
         builder.Build<dialect::ReshapeOp>(y_value, y_new_shape);
-    y_new = reshape_op_y.out();
+    pir::OpResult y_new = reshape_op_y.out();
     VLOG(6) << "[" << op_desc.Type() << "] y_shape change from "
             << y_tensor_type.dims() << " to " << phi::make_ddim(y_new_shape);
 
@@ -1708,7 +1707,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     dialect::ReshapeOp reshape_op_out_grad =
         builder.Build<dialect::ReshapeOp>(out_grad_value, out_grad_new_shape);
-    out_grad_new = reshape_op_out_grad.out();
+    pir::OpResult out_grad_new = reshape_op_out_grad.out();
     VLOG(6) << "[" << op_desc.Type() << "] out_grad_shape change from "
             << out_grad_tensor_type.dims() << " to "
             << phi::make_ddim(out_grad_new_shape);
@@ -1773,8 +1772,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
     VLOG(10) << "[" << op_desc.Type() << "] x_grad_shape change from "
              << x_grad_tensor_type.dims() << " to " << dim_x;
 
-    (*param_map)[x_grad_var_name] =
-        VariableDefiningInfo(reshape_op_x.out(), false, -1);
+    param_map->PushValue(x_grad_var_name,
+                         VariableDefiningInfo(reshape_op_x.out(), false, -1));
 
     const auto& y_grad_output = op_desc.Output("Y@GRAD");
     if (y_grad_output.size() < 1) {
@@ -1805,10 +1804,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
     VLOG(10) << "[HZH] dim_y " << dim_y;
 
     pir::OpResult y_value_res = operation->result(idx_in_op_y);
-    pir::Builder builder_y(ctx, operation->GetParent());
     VLOG(10) << "[HZHZHZHZH_!!!] " << phi::make_ddim(y_shape);
-    auto reshape_op_y =
-        builder_y.Build<dialect::ReshapeOp>(y_value_res, y_shape);
+    auto reshape_op_y = builder.Build<dialect::ReshapeOp>(y_value_res, y_shape);
 
     IR_ENFORCE(y_value_res,
                "Expected op[%s]'s input %s is not null",
@@ -1832,7 +1829,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
         << "??????why shape: "
         << debug_yyyy.value.type().dyn_cast<dialect::DenseTensorType>().dims();
 
-    (*param_map)[y_grad_var_name] = debug_yyyy;
+    param_map->PushValue(y_grad_var_name,
+                         VariableDefiningInfo(reshape_op_y.out(), false, -1));
   }
 };
 
