@@ -140,5 +140,50 @@ SpmdInfo ReplicatedInferSpmdReverse(
           ToItemDistAttr(output_dist_attrs)};
 }
 
+SpmdInfo ReplicatedInferSpmdDynamic(
+    const std::vector<paddle::variant<const DistMetaTensor*,
+                                      const std::vector<DistMetaTensor>*>>&
+        inputs) {
+  std::vector<const DistMetaTensor*> nonnull_inputs;
+  int64_t ninputs = inputs.size();
+  SpmdInfo spmd_info;
+
+  auto build_tensor_dist_attr =
+      [&nonnull_inputs](const DistMetaTensor& dist_meta_tensor) {
+        int ndim = dist_meta_tensor.dims().size();
+        TensorDistAttr dist_attr_dst =
+            CopyTensorDistAttrForOutput(dist_meta_tensor.dist_attr());
+        // `ndim == -1` means input is nullptr
+        if (ndim >= 0) {
+          std::vector<int64_t> dst_dims_maping = GetReplicatedDimsmapping(ndim);
+          dist_attr_dst.set_dims_mapping(dst_dims_maping);
+          nonnull_inputs.push_back(&dist_meta_tensor);
+        }
+        return dist_attr_dst;
+      };
+
+  for (int64_t i = 0; i < ninputs; i++) {
+    if (paddle::holds_alternative<const DistMetaTensor*>(inputs[i])) {
+      auto dist_meta_tensor_ptr = paddle::get<0>(inputs[i]);
+      auto& dist_meta_tensor = *dist_meta_tensor_ptr;
+      auto dist_attr_dst = build_tensor_dist_attr(dist_meta_tensor);
+      VLOG(4) << "input " << i << ": dist attr: " << dist_attr_dst.to_string();
+      spmd_info.first.emplace_back(dist_attr_dst);
+    } else {
+      std::vector<phi::distributed::TensorDistAttr> list_dist_attr;
+      auto dist_meta_tensors_ptr = paddle::get<1>(inputs[i]);
+      auto& dist_meta_tensors = *dist_meta_tensors_ptr;
+      for (const auto& dist_meta_tensor : dist_meta_tensors) {
+        auto dist_attr_dst = build_tensor_dist_attr(dist_meta_tensor);
+        VLOG(4) << "input " << i
+                << ": dist attr: " << dist_attr_dst.to_string();
+        list_dist_attr.emplace_back(std::move(dist_attr_dst));
+      }
+      spmd_info.first.emplace_back(std::move(list_dist_attr));
+    }
+  }
+  return spmd_info;
+}
+
 }  // namespace distributed
 }  // namespace phi

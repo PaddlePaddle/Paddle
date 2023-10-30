@@ -146,6 +146,28 @@ struct VariadicSpmdRuleArgumentParser
 
   SpmdInfo InferBackward() { return Fn(inputs, outputs); }
 };
+
+using DynamicSpmdFn = SpmdInfo (*)(
+    const std::vector<paddle::variant<const DistMetaTensor*,
+                                      const std::vector<DistMetaTensor>*>>&);
+
+template <DynamicSpmdFn Fn>
+struct ReplicateInferSpmdDynamicHelper
+    : public ArgsIterator<ReplicateInferSpmdDynamicHelper<Fn>> {
+  SpmdInfo Infer() { return Fn(inputs); }
+
+  void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
+  void operator()(const std::vector<DistMetaTensor>& x) {
+    inputs.emplace_back(&x);
+  }
+
+  void operator()(std::vector<DistMetaTensor>&& x) = delete;
+  void operator()(DistMetaTensor&& x) = delete;
+
+  std::vector<paddle::variant<const DistMetaTensor*,
+                              const std::vector<DistMetaTensor>*>>
+      inputs;
+};
 }  // namespace detail
 
 // Get dims mapping for the given axes according to sharding information of
