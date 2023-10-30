@@ -138,6 +138,8 @@ def shard_tensor(
     """
     # 1. create dense tensor
     # `paddle.to_tensor` supports both dynamic and static mode
+    if place is None:
+        place = paddle.framework._current_expected_place()
     tensor = paddle.to_tensor(
         data, dtype=dtype, place=place, stop_gradient=stop_gradient
     )
@@ -154,7 +156,7 @@ def shard_tensor(
                 tensor, dist_attr=dist_attr, **tensor.__dict__
             )
         else:
-            return paddle.Tensor(tensor, dist_attr=dist_attr)
+            return paddle.Tensor(tensor, dist_attr=dist_attr, place=place)
     else:
         # TODO(zhiqiu): we need to refine the static shard_tensor
         return shard_tensor_static(
