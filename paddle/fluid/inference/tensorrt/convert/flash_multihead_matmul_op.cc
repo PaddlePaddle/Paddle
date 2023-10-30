@@ -291,14 +291,17 @@ class FlashMultiheadMatMulOpConverter : public OpConverter {
                 .get()
                 .values));
         const auto& weight_dims = weight_tensor->dims();
-        for (int k = 0; k < weight_dims[0]; ++k) {
-          for (int j = k; j < weight_dims[1]; ++j) {
-            float temp = weight_data[k * weight_dims[1] + j];
-            weight_data[k * weight_dims[1] + j] =
+        std::vector<float> temp_weight_data(weight_dims[0] * weight_dims[1],
+                                            0.0f);
+        for (int k = 0; k < weight_dims[1]; ++k) {
+          for (int j = 0; j < weight_dims[0]; ++j) {
+            temp_weight_data[k * weight_dims[0] + j] =
                 weight_data[j * weight_dims[1] + k];
-            weight_data[j * weight_dims[1] + k] = temp;
           }
         }
+        memcpy(weight_data,
+               temp_weight_data.data(),
+               weight_dims[0] * weight_dims[1] * sizeof(float));
         nvinfer1::Weights weight{nvinfer1::DataType::kFLOAT,
                                  static_cast<void*>(weight_data),
                                  static_cast<int32_t>(weight_tensor->numel())};
