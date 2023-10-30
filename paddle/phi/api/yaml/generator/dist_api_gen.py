@@ -279,7 +279,7 @@ OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
 
 # dist_input_ prefix
 OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
-      auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      auto dist_input_{name}_vec = PrepareDataForDistTensor({prefix}{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
       if ({name}) {{
         for (auto tmp : *dist_input_{name}_vec) {{
@@ -1105,9 +1105,9 @@ class DistForwardAPI(ForwardAPI):
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
-        pre_fix = "dist_input_" if self.generate_infer_spmd else ""
+        prefix = "dist_input_" if self.generate_infer_spmd else ""
         input_tensor_code += VECTOR_PREPARE_DATA_TEMPLATE.format(
-            pre_fix=pre_fix,
+            prefix=prefix,
             name=input_name,
             index=kernel_param.index(input_name),
             trans_flag=trans_flag,
@@ -1155,9 +1155,9 @@ class DistForwardAPI(ForwardAPI):
         kernel_param = self.kernel['param']
         if kernel_param is None:
             kernel_param = input_names + attr_names
-        pre_fix = "dist_input_" if self.generate_infer_spmd else ""
+        prefix = "dist_input_" if self.generate_infer_spmd else ""
         input_tensor_code += OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE.format(
-            pre_fix=pre_fix,
+            prefix=prefix,
             name=input_name,
             index=kernel_param.index(input_name),
             trans_flag=trans_flag,
