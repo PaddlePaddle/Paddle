@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.base import Program
+from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_put_ref(x_np, indices_np, value_np, accumulate=False):
@@ -115,8 +115,8 @@ class TestIndexPutAPIBase(unittest.TestCase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
     def setPlace(self):
@@ -144,10 +144,11 @@ class TestIndexPutAPIBase(unittest.TestCase):
             )
             np.testing.assert_allclose(ref_res, pd_res.numpy(), atol=1e-7)
 
+    @test_with_pir_api
     def test_static_forward(self):
         paddle.enable_static()
         for place in self.place:
-            with paddle.static.program_guard(Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data(
                     name="x", shape=self.x_shape, dtype=self.dtype_pd
                 )
@@ -211,8 +212,8 @@ class TestIndexPutAPI0(TestIndexPutAPIBase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -223,8 +224,8 @@ class TestIndexPutAPI1(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16), (1, 16))
         self.value_shape = (16, 16)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
 
@@ -235,8 +236,8 @@ class TestIndexPutAPI2(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16), (1, 16))
         self.value_shape = (16, 16)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -247,7 +248,7 @@ class TestIndexPutAPI3(TestIndexPutAPIBase):
         self.x_shape = (110, 94)
         self.indices_shapes = [(110, 94)]
         self.value_shape = (5170,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
@@ -259,7 +260,7 @@ class TestIndexPutAPI4(TestIndexPutAPIBase):
         self.x_shape = (110, 94)
         self.indices_shapes = [(110, 94)]
         self.value_shape = (5170,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = True
 
@@ -271,8 +272,8 @@ class TestIndexPutAPI5(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
 
@@ -283,8 +284,8 @@ class TestIndexPutAPI6(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -295,7 +296,7 @@ class TestIndexPutAPI7(TestIndexPutAPIBase):
         self.x_shape = (110, 94)
         self.indices_shapes = [(110,)]
         self.value_shape = (55, 94)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
@@ -307,7 +308,7 @@ class TestIndexPutAPI8(TestIndexPutAPIBase):
         self.x_shape = (110, 94)
         self.indices_shapes = [(110,)]
         self.value_shape = (55, 94)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = True
 
@@ -319,8 +320,8 @@ class TestIndexPutAPI9(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (56,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
 
@@ -331,8 +332,8 @@ class TestIndexPutAPI10(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (56,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -343,8 +344,8 @@ class TestIndexPutAPI11(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (1,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
 
@@ -355,8 +356,8 @@ class TestIndexPutAPI12(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (1,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -367,7 +368,7 @@ class TestIndexPutAPI13(TestIndexPutAPIBase):
         self.x_shape = (44, 94)
         self.indices_shapes = [(44,)]
         self.value_shape = (94,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
@@ -379,7 +380,7 @@ class TestIndexPutAPI14(TestIndexPutAPIBase):
         self.x_shape = (44, 94)
         self.indices_shapes = [(44,)]
         self.value_shape = (94,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = True
 
@@ -391,7 +392,7 @@ class TestIndexPutAPI15(TestIndexPutAPIBase):
         self.x_shape = (44, 94)
         self.indices_shapes = [(44,)]
         self.value_shape = (1,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = False
 
@@ -403,7 +404,7 @@ class TestIndexPutAPI16(TestIndexPutAPIBase):
         self.x_shape = (44, 94)
         self.indices_shapes = [(44,)]
         self.value_shape = (1,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.bool
         self.accumulate = True
 
@@ -415,7 +416,7 @@ class TestIndexPutAPI17(TestIndexPutAPIBase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = False
 
@@ -427,7 +428,7 @@ class TestIndexPutAPI18(TestIndexPutAPIBase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = True
 
@@ -511,7 +512,7 @@ class TestIndexPutAPI25(TestIndexPutAPIBase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.int64
+        self.dtype_pd = "int64"
         self.index_type_pd = paddle.int32
         self.accumulate = False
 
@@ -523,7 +524,7 @@ class TestIndexPutAPI26(TestIndexPutAPIBase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.int64
+        self.dtype_pd = "int64"
         self.index_type_pd = paddle.int32
         self.accumulate = True
 
@@ -559,7 +560,7 @@ class TestIndexPutAPI29(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = False
 
@@ -571,7 +572,7 @@ class TestIndexPutAPI30(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 56, 56)
         self.indices_shapes = ((16, 16), (16, 16), (1, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = True
 
@@ -618,8 +619,8 @@ class TestIndexPutInplaceAPI(unittest.TestCase):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = False
 
     def setPlace(self):
@@ -656,8 +657,8 @@ class TestIndexPutInplaceAPI1(TestIndexPutInplaceAPI):
         self.x_shape = (100, 110)
         self.indices_shapes = [(21,), (21,)]
         self.value_shape = (21,)
-        self.dtype_pd = paddle.float64
-        self.index_type_pd = paddle.int64
+        self.dtype_pd = "float64"
+        self.index_type_pd = "int64"
         self.accumulate = True
 
 
@@ -674,10 +675,10 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[4], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
-            ix1 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
-            ix2 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
+            value = paddle.ones(shape=[4], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix1 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
+            ix2 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
             value.stop_gradient = False
             x.stop_gradient = False
             out = paddle.index_put(x, (ix1, ix2), value, False)
@@ -719,10 +720,10 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[1], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
-            ix1 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
-            ix2 = paddle.to_tensor([0, 1, 2, 3], dtype=paddle.int64)
+            value = paddle.ones(shape=[1], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix1 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
+            ix2 = paddle.to_tensor([0, 1, 2, 3], dtype="int64")
             value.stop_gradient = False
             x.stop_gradient = False
             out = paddle.index_put(x, (ix1, ix2), value, False)
@@ -760,10 +761,10 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[2], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
-            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
-            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            value = paddle.ones(shape=[2], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
+            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
             value.stop_gradient = False
             x.stop_gradient = False
             out = paddle.index_put(x, (ix1, ix2), value, False)
@@ -805,10 +806,10 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[1, 2], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
-            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
-            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            value = paddle.ones(shape=[1, 2], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
+            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
             value.stop_gradient = False
             x.stop_gradient = False
             out = paddle.index_put(x, (ix1, ix2), value, False)
@@ -850,10 +851,10 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[2, 1], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
-            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
-            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype=paddle.int64)
+            value = paddle.ones(shape=[2, 1], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
+            ix1 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
+            ix2 = paddle.to_tensor([[0, 1], [2, 3]], dtype="int64")
             value.stop_gradient = False
             x.stop_gradient = False
             out = paddle.index_put(x, (ix1, ix2), value, False)
@@ -895,8 +896,8 @@ class TestIndexPutAPIBackward(unittest.TestCase):
         paddle.disable_static()
         for place in self.place:
             paddle.device.set_device(place)
-            value = paddle.ones(shape=[2, 1], dtype=paddle.float64)
-            x = paddle.ones(shape=[16, 21], dtype=paddle.float64)
+            value = paddle.ones(shape=[2, 1], dtype="float64")
+            x = paddle.ones(shape=[16, 21], dtype="float64")
             ix = paddle.zeros(shape=[16, 21], dtype=paddle.bool)
 
             value.stop_gradient = False
@@ -935,6 +936,7 @@ class TestIndexPutAPIBackward(unittest.TestCase):
                 atol=1e-7,
             )
 
+    @test_with_pir_api
     def test_backward_in_static(self):
         paddle.enable_static()
         exe = paddle.static.Executor()
@@ -976,7 +978,7 @@ class TestIndexPutAPIMixedIndices(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 32, 56)
         self.indices_shapes = ((16, 16), (16, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = False
 
@@ -993,7 +995,7 @@ class TestIndexPutAPIMixedIndices1(TestIndexPutAPIBase):
         self.x_shape = (110, 42, 32, 56)
         self.indices_shapes = ((16, 16), (16, 16))
         self.value_shape = (16, 16, 56)
-        self.dtype_pd = paddle.float64
+        self.dtype_pd = "float64"
         self.index_type_pd = paddle.int32
         self.accumulate = True
 
