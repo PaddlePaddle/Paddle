@@ -348,10 +348,10 @@ SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
 # 9. Reshard Partial Output to Replicated
 RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
-    dev_ctx = phi::distributed::GetDistTensorDeviceContext(std::shared_ptr<phi::distributed::DistTensor>(dist_out));
+    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out);
     ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-    dev_ctx = phi::distributed::GetDistTensorDeviceContext(std::shared_ptr<phi::distributed::DistTensor>(dist_out_{idx}));
+    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out_{idx});
     ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{idx});"""
 UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
       // API `{}` does not need to support ReshardOutput now."""
