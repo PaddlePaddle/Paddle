@@ -18,8 +18,13 @@ import numpy as np
 
 import paddle
 from paddle.autograd.ir_backward import grad
+from paddle.base import core
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda(),
+    "core is not complied with CUDA",
+)
 class TestFusedDropoutAdd(unittest.TestCase):
     def _test_fused_dropout_add(self):
         with paddle.pir_utils.IrGuard():
