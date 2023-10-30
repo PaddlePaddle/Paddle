@@ -31,7 +31,7 @@
 #endif
 
 namespace phi {
-
+namespace funcs {
 template <typename T, typename Tt>
 void arraycpy(T* dst, const Tt* src, int n) {
 #ifdef PADDLE_WITH_MKLML
@@ -457,5 +457,5 @@ void scaled_dp_attention(const float* query,
 
   return;
 }
-
+}  // namespace funcs
 }  // namespace phi

@@ -41,24 +41,24 @@ void SelfDPAttenKernel(const Context& dev_ctx,
   temp2.Resize(input_dims);
   float* trans_output = dev_ctx.template Alloc<float>(&temp2);
 
-  transpose_before_bmm1<T, float>(
+  phi::funcs::transpose_before_bmm1<T, float>(
       input_d, trans_input, batch_size, seq_len, head_number, head_size);
   float* query = trans_input;
   float* key = trans_input + batch_size * head_number * seq_len * head_size;
   float* value =
       trans_input + batch_size * head_number * seq_len * head_size * 2;
 
-  scaled_dp_attention(query,
-                      key,
-                      value,
-                      scale,
-                      batch_size,
-                      seq_len,
-                      seq_len,
-                      head_number,
-                      head_size,
-                      trans_output);
-  transpose_after_bmm2<float, T>(
+  phi::funcs::scaled_dp_attention(query,
+                                  key,
+                                  value,
+                                  scale,
+                                  batch_size,
+                                  seq_len,
+                                  seq_len,
+                                  head_number,
+                                  head_size,
+                                  trans_output);
+  phi::funcs::transpose_after_bmm2<float, T>(
       trans_output, output_d, batch_size, seq_len, head_number, head_size);
 }
 
