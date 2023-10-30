@@ -16,7 +16,6 @@
 
 #include <any>
 
-#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/drr/attr_type_uilts.h"
@@ -57,30 +56,6 @@ void OperationFactory::RegisterManualOpCreator() {
                               const pir::AttributeMap& attrs,
                               pir::PatternRewriter& rewriter) {
                              return rewriter.Build<pir::CombineOp>(inputs);
-                           });
-
-  RegisterOperationCreator("cinn_op.broadcast",
-                           [](const std::vector<Value>& inputs,
-                              const pir::AttributeMap& attrs,
-                              pir::PatternRewriter& rewriter) {
-                             return rewriter.Build<cinn::dialect::BroadcastOp>(
-                                 inputs[0].dyn_cast<pir::OpResult>(), attrs);
-                           });
-
-  RegisterOperationCreator("cinn_op.reduce_max",
-                           [](const std::vector<Value>& inputs,
-                              const pir::AttributeMap& attrs,
-                              pir::PatternRewriter& rewriter) {
-                             return rewriter.Build<cinn::dialect::ReduceMaxOp>(
-                                 inputs[0].dyn_cast<pir::OpResult>(), attrs);
-                           });
-
-  RegisterOperationCreator("cinn_op.reduce_sum",
-                           [](const std::vector<Value>& inputs,
-                              const pir::AttributeMap& attrs,
-                              pir::PatternRewriter& rewriter) {
-                             return rewriter.Build<cinn::dialect::ReduceSumOp>(
-                                 inputs[0].dyn_cast<pir::OpResult>(), attrs);
                            });
 }
 
