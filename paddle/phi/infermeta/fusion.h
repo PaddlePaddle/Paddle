@@ -515,4 +515,21 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
+void Conv2dFusionInferMeta(const MetaTensor& input,
+                           const MetaTensor& filter,
+                           const MetaTensor& bias,
+                           const MetaTensor& residual_data,
+                           int workspace_size_MB,
+                           const std::vector<int>& strides,
+                           const std::vector<int>& paddings,
+                           const std::vector<int>& dilations,
+                           const std::vector<int>& split_channels,
+                           const std::string& padding_algorithm,
+                           int groups,
+                           const std::string& data_format,
+                           const std::string& activation,
+                           bool exhaustive_search,
+                           MetaTensor* output,
+                           std::vector<MetaTensor*> outputs);
+
 }  // namespace phi

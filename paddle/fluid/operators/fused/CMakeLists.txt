@@ -6,7 +6,6 @@ endif()
 register_operators(
   EXCLUDES
   fused_bn_activation_op
-  conv_fusion_op
   fusion_conv_inception_op
   self_dp_attention_op
   skip_layernorm_op
@@ -53,10 +52,6 @@ if(WITH_GPU OR WITH_ROCM)
   # HIP not support bn act fuse in MIOPEN
   if((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 7401))
     op_library(fused_bn_activation_op)
-  endif()
-  # conv_fusion_op needs cudnn 7 above
-  if(NOT ${CUDNN_VERSION} VERSION_LESS 7100)
-    op_library(conv_fusion_op)
   endif()
   # HIP not support cudnnTransformTensor
   # fusion_conv_inception_op needs cudnn 7 above
