@@ -274,7 +274,10 @@ class ForwardAPI(BaseAPI):
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    TransDataBackend(kernel_out_{i}, actual_kernel_backend, kernel_out_{i});
+{code_indent}  }}"""
                     )
 
                 else:
@@ -406,6 +409,9 @@ def declare_extension_api():
     return """
 namespace paddle {
 PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
 }  // namespace paddle
 """
 

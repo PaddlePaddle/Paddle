@@ -698,6 +698,14 @@ phi::KernelKey GetKernelKey(
     res.set_dtype(phi::DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
+
+  if (op->isa<paddle::dialect::CSyncCommStream_Op>() ||
+      op->isa<paddle::dialect::CSyncCommStreamOp>()) {
+    res.set_dtype(phi::DataType::FLOAT32);
+    VLOG(8) << "CSyncCommStream_Op/CSyncCommStreamOp's kernel data type must "
+               "be FLOAT32";
+  }
+
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
     VLOG(8) << "kernel backend must be on CPU when need fallback";
@@ -830,6 +838,15 @@ void HandleForWhileOp(
                ctx,
                map_op_pair,
                map_value_pair);
+
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
 }
 
 pir::Value GetNewInput(

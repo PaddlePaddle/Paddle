@@ -54,13 +54,18 @@ class OperationFactory {
 
  private:
   OperationFactory() {
-    RegisterGeneratedOpCreator();
+    RegisterPdOpGeneratedOpCreator();
+#ifdef PADDLE_WITH_CINN
+    RegisterCinnOpGeneratedOpCreator();
+#endif
     RegisterManualOpCreator();
   }
 
   void RegisterManualOpCreator();
-  void RegisterGeneratedOpCreator();
-
+  void RegisterPdOpGeneratedOpCreator();
+#ifdef PADDLE_WITH_CINN
+  void RegisterCinnOpGeneratedOpCreator();
+#endif
   std::unordered_map<std::string, operation_create_fn> op_creator_map;
 };
 
