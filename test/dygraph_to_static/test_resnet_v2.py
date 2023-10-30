@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -242,8 +242,7 @@ class TransedFlowerDataSet(paddle.io.Dataset):
         return len(self.img)
 
 
-@dy2static_unittest
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -427,7 +426,7 @@ class TestResnet(unittest.TestCase):
             err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
+    @test_pir_only
     def test_resnet_new_ir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
