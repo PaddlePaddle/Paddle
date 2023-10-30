@@ -417,7 +417,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
-    spmd_rule: ElementwiseUnaryInferSpmd
+    spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
   inplace: (x -> out)
