@@ -20,7 +20,7 @@ if(WITH_TESTING AND WITH_CINN)
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     add_broadcast_to_elementwise_test
     SRCS
     add_broadcast_to_elementwise_test.cc
