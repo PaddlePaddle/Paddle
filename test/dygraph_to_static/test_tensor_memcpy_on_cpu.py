@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_util import test_and_compare_with_new_ir
 
 import paddle
 
@@ -47,6 +48,7 @@ class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
         x2 = tensor_copy_to_cpu(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_cpu_on_default_cpu(self):
         paddle.base.framework._set_expected_place(paddle.CPUPlace())
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
@@ -67,6 +69,7 @@ class TestTensorCopyToCUDAOnDefaultCPU(unittest.TestCase):
         x2 = tensor_copy_to_cuda(x1)
         return x1.place, x2.place, x2.numpy()
 
+    @test_and_compare_with_new_ir(False)
     def test_tensor_cuda_on_default_cpu(self):
         if not paddle.base.is_compiled_with_cuda():
             return

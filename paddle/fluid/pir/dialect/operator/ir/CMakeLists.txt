@@ -50,6 +50,7 @@ set(op_header_file_tmp ${op_header_file}.tmp)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
 set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
+set(op_decomp_source_file ${PD_DIALECT_BINARY_DIR}/op_decomp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
 execute_process(
@@ -98,7 +99,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${api_gen_yaml_files}
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
     ${api_source_file_tmp}
@@ -129,10 +130,9 @@ set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 add_custom_command(
   OUTPUT ${python_c_header_file} ${python_c_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --python_c_def_h_file
-    ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
     ${python_c_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
           ${python_c_header_file}
@@ -160,9 +160,9 @@ set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${ops_api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --ops_api_file ${ops_api_source_file_tmp}
+    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --ops_api_file ${ops_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
           ${ops_api_source_file}
   COMMENT "copy_if_different ${ops_api_source_file}"
@@ -203,6 +203,7 @@ target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_op_dialect
-  SRCS op_dialect.cc manual_op_decomp.cc manual_op_vjp.cc ${op_vjp_source_file}
+  SRCS op_dialect.cc manual_op_decomp.cc ${op_decomp_source_file}
+       manual_op_vjp.cc ${op_vjp_source_file}
   DEPS pd_op_dialect_api param_to_variable primitive_vjp_experimental
        pd_op_dialect_utils op_yaml_info_parser)

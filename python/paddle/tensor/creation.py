@@ -1674,6 +1674,125 @@ def meshgrid(*args, **kwargs):
         return out
 
 
+def diag_embed(input, offset=0, dim1=-2, dim2=-1):
+    """
+    Creates a tensor whose diagonals of certain 2D planes (specified by dim1 and dim2)
+    are filled by ``input``. By default, a 2D plane formed by the last two dimensions
+    of the returned tensor will be selected.
+
+    The argument ``offset`` determines which diagonal is generated:
+
+    - If offset = 0, it is the main diagonal.
+    - If offset > 0, it is above the main diagonal.
+    - If offset < 0, it is below the main diagonal.
+
+    Args:
+        input(Tensor|numpy.ndarray): The input tensor. Must be at least 1-dimensional. The input data type should be float32, float64, int32, int64.
+        offset(int, optional): Which diagonal to consider. Default: 0 (main diagonal).
+        dim1(int, optional): The first dimension with respect to which to take diagonal. Default: -2.
+        dim2(int, optional): The second dimension with respect to which to take diagonal. Default: -1.
+
+    Returns:
+        Tensor, the output data type is the same as input data type.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+
+            >>> diag_embed_input = paddle.arange(6)
+
+            >>> diag_embed_output1 = paddle.diag_embed(diag_embed_input)
+            >>> print(diag_embed_output1)
+            Tensor(shape=[6, 6], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0],
+             [0, 0, 0, 0, 4, 0],
+             [0, 0, 0, 0, 0, 5]])
+
+            >>> diag_embed_output2 = paddle.diag_embed(diag_embed_input, offset=-1, dim1=0,dim2=1 )
+            >>> print(diag_embed_output2)
+            Tensor(shape=[7, 7], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 0, 0, 0, 0, 0, 0],
+             [0, 0, 0, 0, 0, 0, 0],
+             [0, 1, 0, 0, 0, 0, 0],
+             [0, 0, 2, 0, 0, 0, 0],
+             [0, 0, 0, 3, 0, 0, 0],
+             [0, 0, 0, 0, 4, 0, 0],
+             [0, 0, 0, 0, 0, 5, 0]])
+
+            >>> diag_embed_input_2dim = paddle.reshape(diag_embed_input,[2,3])
+            >>> print(diag_embed_input_2dim)
+            Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0, 1, 2],
+            [3, 4, 5]])
+            >>> diag_embed_output3 = paddle.diag_embed(diag_embed_input_2dim,offset= 0, dim1=0, dim2=2 )
+            >>> print(diag_embed_output3)
+            Tensor(shape=[3, 2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[[0, 0, 0],
+              [3, 0, 0]],
+             [[0, 1, 0],
+              [0, 4, 0]],
+             [[0, 0, 2],
+              [0, 0, 5]]])
+    """
+    if not isinstance(input, Variable):
+        input = assign(input)
+
+    if in_dynamic_mode():
+        return _C_ops.diag_embed(input, offset, dim1, dim2)
+
+    inputs = {'Input': [input]}
+    attrs = {'offset': offset, 'dim1': dim1, 'dim2': dim2}
+
+    def __check_input(input, offset, dim1, dim2):
+        check_dtype(
+            input.dtype,
+            'Input',
+            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            'diag_embed',
+        )
+
+        input_shape = list(input.shape)
+        assert len(input_shape) >= 1, (
+            "Input must be at least 1-dimensional, "
+            "But received Input's dimensional: %s.\n" % len(input_shape)
+        )
+
+        assert np.abs(dim1) <= len(input_shape), (
+            "Dim1 is out of range (expected to be in range of [%d, %d], but got %d).\n"
+            % (-(len(input_shape) + 1), len(input_shape), dim1)
+        )
+
+        assert np.abs(dim2) <= len(input_shape), (
+            "Dim2 is out of range (expected to be in range of [%d, %d], but got %d).\n"
+            % (-(len(input_shape) + 1), len(input_shape), dim2)
+        )
+
+        dim1_ = dim1 if dim1 >= 0 else len(input_shape) + dim1 + 1
+        dim2_ = dim2 if dim2 >= 0 else len(input_shape) + dim2 + 1
+        assert dim1_ != dim2_, (
+            "dim1 and dim2 cannot be the same dimension."
+            "But received dim1 = %d, dim2 = %d\n" % (dim1, dim2)
+        )
+
+    __check_input(input, offset, dim1, dim2)
+    helper = LayerHelper("diag_embed", **locals())
+
+    out = helper.create_variable_for_type_inference(dtype=input.dtype)
+
+    helper.append_op(
+        type='diag_embed',
+        inputs={'Input': [input]},
+        attrs={'offset': offset, 'dim1': dim1, 'dim2': dim2},
+        outputs={'Out': [out]},
+    )
+    out.stop_gradient = True
+    return out
+
+
 def diagflat(x, offset=0, name=None):
     """
     If ``x`` is a vector (1-D tensor), a 2-D square tensor with the elements of ``x`` as the diagonal is returned.
@@ -2559,7 +2678,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2638,7 +2757,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(
