@@ -622,8 +622,13 @@ void TopPSamplingKernel(const Context& dev_ctx,
       reinterpret_cast<curandState_t*>(curand_states_buf->ptr());
   unsigned int seed = 0;
   if (random_seed == -1) {
+#ifndef _WIN32
     rand_r(&seed);
     setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, seed, bs);
+#else
+    srand(seed);
+    setup_kernel<<<1, 256, 0, cu_stream>>>(dev_curand_states, rand(), bs);
+#endif
   } else {
     seed = random_seed;
   }
