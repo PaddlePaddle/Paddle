@@ -39,6 +39,7 @@ def run_dynamic(layer, image, label):
 
     loss.backward()
 
+    grads = paddle.base.core.eager.get_grads_types([layer.w0, layer.w1])
     layer.w0._reset_grad_inplace_version()
     tmp = layer.w1._grad_value()
 
