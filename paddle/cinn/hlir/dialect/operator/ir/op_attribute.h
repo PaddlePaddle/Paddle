@@ -38,13 +38,13 @@ class CUDAJITInfoAttribute : public pir::Attribute {
   using Attribute::Attribute;
 
   DECLARE_ATTRIBUTE_UTILITY_FUNCTOR(CUDAJITInfoAttribute,
-                                    CUDAJITInfoAttributeStorage);
+                                    JITInfoAttributeStorage);
 
   bool operator<(const CUDAJITInfoAttribute& right) const {
     return storage() < right.storage();
   }
 
-  const cinn::hlir::framework::newir::CUDAJITInfo& data() const;
+  const cinn::hlir::framework::pir::CUDAJITInfo& data() const;
 };
 
 }  // namespace dialect

@@ -22,14 +22,13 @@
 #include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
 #include "paddle/utils/optional.h"
-
-#include "paddle/fluid/distributed/collective/utils.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
@@ -2404,9 +2403,9 @@ void DistributedFusedLambKernel(
     if (num_devices > 1) {
       // ncclAllGather
       if (local_comm_ctx) {
-        auto send_buf = paddle::distributed::GetPartialTensor(
+        auto send_buf = distributed::GetPartialTensor(
             *fp32_param_out, fp32_offset, fp32_numel_each_device);
-        auto recv_buf = paddle::distributed::GetPartialTensor(
+        auto recv_buf = distributed::GetPartialTensor(
             *fp32_param_out, 0, fp32_numel_each_device);
         local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
       } else {
@@ -2442,9 +2441,9 @@ void DistributedFusedLambKernel(
     if (num_devices > 1) {
       // ncclAllGather
       if (local_comm_ctx) {
-        auto send_buf = paddle::distributed::GetPartialTensor(
+        auto send_buf = distributed::GetPartialTensor(
             *fp16_param_out, fp16_offset, fp16_numel_each_device);
-        auto recv_buf = paddle::distributed::GetPartialTensor(
+        auto recv_buf = distributed::GetPartialTensor(
             *fp16_param_out, 0, fp16_numel_each_device);
         local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
       } else {

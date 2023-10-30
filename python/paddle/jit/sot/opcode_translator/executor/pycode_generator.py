@@ -21,6 +21,7 @@ from __future__ import annotations
 import random
 import sys
 import types
+from functools import cached_property
 from typing import TYPE_CHECKING
 
 import opcode
@@ -551,6 +552,12 @@ class PyCodeGen:
 
         return fn, inputs
 
+    @cached_property
+    def global_null_variable(self):
+        from .variables.basic import NullVariable
+
+        return NullVariable()
+
     def gen_disable_eval_frame(self):
         """
         Generates instructions to disable the evaluation frame.
@@ -743,6 +750,13 @@ class PyCodeGen:
         if obj_name not in self._f_globals:
             self._f_globals[obj_name] = obj
         self.gen_load_global(obj_name, push_null=push_null)
+
+    def gen_load_null_variable(self):
+        """
+        Generate the bytecode for loading a null variable.
+        """
+        null_var = self.global_null_variable
+        self.gen_load_object(null_var, "___null_var", push_null=False)
 
     def gen_load_fast(self, name):
         """

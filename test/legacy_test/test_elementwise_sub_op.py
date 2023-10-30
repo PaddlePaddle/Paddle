@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseOp(OpTest):
@@ -903,8 +904,9 @@ class TestSubtractApi(unittest.TestCase):
             y_1 = self._executed_api(x, y, name='subtract_res')
             self.assertEqual(('subtract_res' in y_1.name), True)
 
+    @test_with_pir_api
     def test_declarative(self):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def gen_data():
                 return {
@@ -917,7 +919,10 @@ class TestSubtractApi(unittest.TestCase):
             z = self._executed_api(x, y)
             place = base.CPUPlace()
             exe = base.Executor(place)
-            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            if paddle.framework.in_pir_mode():
+                z_value = exe.run(feed=gen_data(), fetch_list=[z])
+            else:
+                z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((z_value == z_expected).all(), True)
 

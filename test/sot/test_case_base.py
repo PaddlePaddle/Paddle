@@ -136,23 +136,3 @@ class TestCaseBase(unittest.TestCase):
                 sym_copied_fn.__globals__[key], paddle_fn.__globals__[key]
             )
         self.assert_nest_match(sym_output, paddle_output)
-
-
-@contextlib.contextmanager
-def strict_mode_guard(value):
-    if "STRICT_MODE" not in os.environ:
-        os.environ["STRICT_MODE"] = "0"
-    old_value = os.environ["STRICT_MODE"]
-    os.environ["STRICT_MODE"] = str(value)
-    yield
-    os.environ["STRICT_MODE"] = old_value
-
-
-@contextlib.contextmanager
-def cost_model_guard(value):
-    if "COST_MODEL" not in os.environ:
-        os.environ["COST_MODEL"] = "True"
-    old_value = os.environ["COST_MODEL"]
-    os.environ["COST_MODEL"] = str(value)
-    yield
-    os.environ["COST_MODEL"] = old_value

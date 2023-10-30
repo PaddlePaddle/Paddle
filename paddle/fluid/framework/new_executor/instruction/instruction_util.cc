@@ -31,6 +31,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/core/block_argument.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
@@ -221,7 +223,7 @@ void GetInputIds(pir::Operation* op,
   }
 }
 
-void GetOutsideOpInputs(
+std::vector<pir::Value> GetOutsideOpInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
     std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
@@ -231,7 +233,11 @@ void GetOutsideOpInputs(
       inner_outputs.insert(op->result(i));
     }
   }
+  for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
+    inner_outputs.insert(block->argument(arg_id));
+  }
 
+  std::vector<pir::Value> outside_op_inputs;
   for (auto op : (*block)) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
       pir::Value value = op->operand_source(i);
@@ -244,9 +250,30 @@ void GetOutsideOpInputs(
                 i,
                 op->name()));
         input_ids->emplace(value, GetValueIds(value, value_exec_info));
+        outside_op_inputs.push_back(value);
       }
     }
   }
+  return outside_op_inputs;
+}
+
+bool GetCondData(const phi::DenseTensor& cond) {
+  if (paddle::platform::is_cpu_place(cond.place())) {
+    return cond.data<bool>()[0];
+  }
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_xpu_place(cond.place()) is true
+  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+#else
+  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU/XPU but got "
+      "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_XPU option."));
+#endif
+  return cpu_cond->data<bool>()[0];
 }
 
 }  // namespace framework

@@ -33,8 +33,12 @@ namespace phi {
 namespace backends {
 namespace gpu {
 
+#define CUDNN_VERSION_COMPUTE(major, minor, patch)     \
+  ((major) <= 8 ? (major)*1000 + (minor)*100 + (patch) \
+                : (major)*10000 + (minor)*100 + (patch))
+
 #define CUDNN_VERSION_MIN(major, minor, patch) \
-  (CUDNN_VERSION >= ((major)*1000 + (minor)*100 + (patch)))
+  (CUDNN_VERSION >= CUDNN_VERSION_COMPUTE(major, minor, patch))
 
 enum class DataLayout {  // Not use
   kNHWC,

@@ -103,22 +103,3 @@ ignore = [
 "test/dygraph_to_static/test_loop.py" = ["C416", "F821"]
 # Ignore unnecessary lambda in dy2st unittest test_lambda
 "test/dygraph_to_static/test_lambda.py" = ["PLC3002"]
-
-# Temporarily ignored
-"python/paddle/base/**" = [
-    "UP030",
-    "B019", # Confirmation required
-    "C416",
-    "F821",
-]
-
-# B017
-"test/auto_parallel/spmd_rules/test_reshape_rule.py" = ["B017"]
-"test/dygraph_to_static/test_assert.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_max_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_allocated.py" = ["B017"]
-"test/legacy_test/test_cuda_memory_reserved.py" = ["B017"]
-"test/legacy_test/test_eigvals_op.py" = ["B017"]
-"test/legacy_test/test_tensordot.py" = ["B017"]
-"test/legacy_test/test_top_k_v2_op.py" = ["B017"]

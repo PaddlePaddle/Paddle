@@ -122,7 +122,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
-  optional : reserve_space
+  optional : scale, bias, reserve_space
 
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
@@ -214,7 +214,7 @@
   inplace : (x -> out)
 
 - op : c_sync_comm_stream
-  args : (Tensor x)
+  args : (Tensor x, int ring_id)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -452,10 +452,10 @@
   inplace: (x -> out)
 
 - op : frobenius_norm
-  args : (Tensor x, int64_t[] axis,  bool keep_dim,  bool reduce_all)
+  args : (Tensor x, IntArray axis,  bool keep_dim,  bool reduce_all)
   output : Tensor(out)
   infer_meta :
-    func : ReduceInferMetaBase
+    func : ReduceIntArrayAxisInferMetaBase
   kernel :
     func : frobenius_norm
   backward : frobenius_norm_grad
@@ -717,6 +717,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
   backward : maximum_grad
@@ -726,6 +727,7 @@
   output : Tensor(out)
   infer_meta :
     func : ReduceIntArrayAxisInferMeta
+    spmd_rule : ReductionMeanInferSpmdDynamic
   kernel :
     func : mean
   backward : mean_grad
@@ -1015,6 +1017,7 @@
   output : Tensor(out)
   infer_meta :
     func : SumInferMeta
+    spmd_rule : ReductionSumInferSpmdDynamic
   kernel :
     func : sum
     data_type : x

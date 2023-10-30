@@ -1406,6 +1406,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
+    
+        exit 102
         disable_ut_quickly='disable_ut'
     fi
 }
@@ -3379,14 +3381,16 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        cp -r ${PADDLE_ROOT}/build /tmp/
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
