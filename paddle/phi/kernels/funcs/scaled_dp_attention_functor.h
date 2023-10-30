@@ -170,7 +170,6 @@ void sgemm(const float* A,
 #endif
 }
 
-#if defined(__AVX512F__)
 // exp based-on jit code
 static inline __m512 vexp(const __m512& _x) {
   __m512 p16f_1 = _mm512_set1_ps(1.0f);
@@ -307,7 +306,6 @@ void update_out_blk(float* output,
     pre_max[i] = max[i];
   }
 }
-#endif
 
 // hard code: axis = 1
 // sum += sum(exp(A[i]))

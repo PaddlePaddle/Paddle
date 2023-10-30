@@ -25,7 +25,6 @@ void SelfDPAttenKernel(const Context& dev_ctx,
                        const float alpha,
                        const int head_number,
                        DenseTensor* out) {
-  auto place = dev_ctx.GetPlace();
   auto* input_d = x.data<T>();
   auto* output_d = dev_ctx.template Alloc<T>(out);
   float scale = static_cast<float>(alpha);
