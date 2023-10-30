@@ -19,6 +19,7 @@
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 namespace {
+
 // add_grad + matmul_grad + add_ -> matmul + fused_liner_param_gard_add
 class FusedMatmulAddGradAddPattern
     : public pir::drr::DrrPatternBase<FusedMatmulAddGradAddPattern> {
@@ -53,21 +54,13 @@ class FusedMatmulAddGradAddPattern
     const auto &dx_matmul_trans_y_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
           const auto &y_trans = match_ctx.Attr<bool>("trans_y");
-          if (y_trans) {
-            return false;
-          } else {
-            return true;
-          }
+          return !y_trans;
         });
 
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -120,21 +113,13 @@ class FusedMatmulGradAddPattern
     const auto &dx_matmul_trans_y_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
           const auto &y_trans = match_ctx.Attr<bool>("trans_y");
-          if (y_trans) {
-            return false;
-          } else {
-            return true;
-          }
+          return !y_trans;
         });
 
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -184,12 +169,8 @@ class FusedMatmulAddaPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -233,12 +214,8 @@ class FusedMatmulAddbPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
 
     const auto &true_attr = res.Attr(
@@ -286,12 +263,8 @@ class FusedMatmulAddGradAddaPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
@@ -335,12 +308,8 @@ class FusedMatmulAddGradAddbPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &muti_precision_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> bool {
-          if (match_ctx.Tensor("dweight").Dtype() ==
-              match_ctx.Tensor("weight_grad").Dtype()) {
-            return false;
-          } else {
-            return true;
-          }
+          return !(match_ctx.Tensor("dweight").Dtype() ==
+                   match_ctx.Tensor("weight_grad").Dtype());
         });
     const auto &true_attr = res.Attr(
         [](const pir::drr::MatchContext &match_ctx) -> bool { return true; });
