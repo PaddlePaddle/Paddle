@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
+#include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -39,3 +40,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::InferMetaInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::OpYamlInfoInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::VjpInterface)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::DecompInterface)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::GetKernelTypeForVarInterface)

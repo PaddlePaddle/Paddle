@@ -22,5 +22,7 @@ namespace pir {
 phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key);
 
 const phi::KernelKey GetKernelKeyforVar(pir::Operation* op,
-                                        phi::KernelKey* kernel_key);
+                                        const std::string& var_name,
+                                        const phi::DenseTensor& tensor,
+                                        phi::KernelKey* expected_kernel_key);
 }  // namespace pir

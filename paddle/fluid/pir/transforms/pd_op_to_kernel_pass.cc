@@ -1278,9 +1278,10 @@ std::vector<pir::Value> BuildOpInputList(
     }
     vec_inputs.push_back(new_in);
 
-    // phi::KernelKey kernel_key_for_var = pir::GetKernelKeyforVar();
-    // bool check_dtype_transfer =
+    // phi::KernelKey kernel_key_for_var =
+    // pir::GetKernelKeyforVar(parameter_name); bool check_dtype_transfer =
     // framework::NeedTransformDataType(kernel_key_for_var, kernel_key);
+    // update ctx and original inputs
   }
 
   return vec_inputs;

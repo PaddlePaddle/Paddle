@@ -59,15 +59,16 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
+#include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+{only_pd_op_header_files}
 
 {op_to_multi_kernels_map}
 
@@ -101,10 +102,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
   void VerifySig();
-  phi::KernelKey GetKernelTypeForVar(
-    const std::string& var_name,
-    const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type);
+{get_kernel_type_for_var_declare}
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -115,6 +113,13 @@ op_0_attribute_declare_str = (
 op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
+
+get_kernel_type_for_var_declare_template = """
+  static phi::KernelKey GetKernelTypeForVar(
+      const std::string& var_name,
+      const phi::DenseTensor& tensor,
+      const phi::KernelKey& expected_kernel_type);
+"""
 
 # =====================================
 # String Template for cc file code gen
@@ -1059,6 +1064,8 @@ def OpGenerator(
             op_interfaces += ["paddle::dialect::VjpInterface"]
         if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
             op_interfaces += ["paddle::dialect::DecompInterface"]
+        if dialect_name == "pd_op":
+            op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
@@ -1142,6 +1149,12 @@ def OpGenerator(
                 build_mutable_attr_is_input_attr_num_over_1 = ""
                 build_func_with_attr_is_map = ""
                 build_func_with_muta_attr_is_input = ""
+
+                get_kernel_type_for_var_declare_str = ""
+                if dialect_name == "pd_op":
+                    get_kernel_type_for_var_declare_str = (
+                        get_kernel_type_for_var_declare_template
+                    )
 
                 if op_infer_meta_map is not None:
                     (
@@ -1275,6 +1288,7 @@ def OpGenerator(
                         build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
+                        get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
                     )
                     op_defined_str = ""
                 else:
@@ -1295,6 +1309,7 @@ def OpGenerator(
                         build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
+                        get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
                     )
                     attribute_names_str = (
                         '"'
@@ -1448,12 +1463,15 @@ def OpGenerator(
 
                 # generate op GetKernelKeyForVar function str
                 op_get_kernel_type_for_var_str = ''
-                op_get_kernel_type_for_var_str = gen_kernel_type_for_var_str(
-                    op_class_name,
-                    op_data_transform_map,
-                    op_kernel_map,
-                    op_info.op_compat_item,
-                )
+                if dialect_name == "pd_op":
+                    op_get_kernel_type_for_var_str = (
+                        gen_kernel_type_for_var_str(
+                            op_class_name,
+                            op_data_transform_map,
+                            op_kernel_map,
+                            op_info.op_compat_item,
+                        )
+                    )
 
                 op_infer_meta_str = gen_op_infer_meta_str(
                     op_info, op_class_name, op_info_items
@@ -1551,12 +1569,17 @@ def OpGenerator(
 
     head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
+    only_pd_op_header_files_str = ""
+
     if dialect_name == "pd_op":
         op_to_multi_kernels_map = OP_TO_MULTI_KERNELS_MAP_H
         for name in reversed(namespaces):
             op_to_multi_kernels_map = NAMESPACE_GARD_TEMPLATE.format(
                 namespace=name, input=op_to_multi_kernels_map
             )  # Add namespaces
+        only_pd_op_header_files_str = (
+            "#include \"paddle/phi/core/kernel_factory.h\""
+        )
     else:
         op_to_multi_kernels_map = ""
 
@@ -1569,6 +1592,7 @@ def OpGenerator(
         op_to_multi_kernels_map=op_to_multi_kernels_map,
         input=head_file_str,
         declare_type_id=declare_type_id_str,
+        only_pd_op_header_files=only_pd_op_header_files_str,
     )  # Add head
 
     # (5) Generate source file str
