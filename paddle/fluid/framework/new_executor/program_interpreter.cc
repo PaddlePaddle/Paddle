@@ -1016,15 +1016,35 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
   SetDeviceId(instr_node.DeviceContext().GetPlace());
 
   try {
-    instr_node.WaitEvent(place_);
-
-    if (!instr_node.IsArtificial()) {
-      RunOperator(instr_node);
-      CheckGC(instr_node);
-      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+    {
+      platform::RecordEvent profile_event(
+          "instr_node.WaitEvent", platform::TracerEventType::Operator, 1);
+      instr_node.WaitEvent(place_);
     }
 
-    instr_node.RecordEvent(place_);
+    if (!instr_node.IsArtificial()) {
+      {
+        platform::RecordEvent profile_event(
+            "instr_node.RunOperator", platform::TracerEventType::Operator, 1);
+        RunOperator(instr_node);
+      }
+      {
+        platform::RecordEvent profile_event(
+            "instr_node.CheckGC", platform::TracerEventType::Operator, 1);
+        CheckGC(instr_node);
+      }
+      {
+        platform::RecordEvent profile_event("instr_node.LogDeviceMemoryStats",
+                                            platform::TracerEventType::Operator,
+                                            1);
+        memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+      }
+    }
+    {
+      platform::RecordEvent profile_event(
+          "instr_node.RecordEvent", platform::TracerEventType::Operator, 1);
+      instr_node.RecordEvent(place_);
+    }
   } catch (platform::EnforceNotMet& ex) {
     framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
     exception_holder_.Catch(std::make_exception_ptr(ex));
