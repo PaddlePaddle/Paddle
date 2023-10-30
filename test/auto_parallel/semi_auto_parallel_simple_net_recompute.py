@@ -25,7 +25,7 @@ import paddle.distributed as dist
 from paddle import nn
 
 
-class TestSimpleNetWithGradientMergeForSemiAutoParallel(
+class TestSimpleNetWithRecomputeForSemiAutoParallel(
     TestSimpleNetForSemiAutoParallel
 ):
     def __init__(self):
@@ -38,7 +38,7 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         self.init_input_data()
         self.init_single_card_net_result()
 
-    def run_dynamic_gradient_merge(self, layer, shard_input=False):
+    def run_dynamic_recompute(self, layer, shard_input=False):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
@@ -53,27 +53,29 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
                     mesh=self._mesh, sharding_specs=['x', None]
                 ),
             )
+        image.stop_gradient = False
+        out = layer(image)
 
-        for i in range(2):
-            out = layer(image)
-            label = paddle.to_tensor(self.label)
-            loss = loss_fn(out, label)
-            loss.backward()
+        label = paddle.to_tensor(self.label)
+        loss = loss_fn(out, label)
 
+        loss.backward()
         return loss, layer.parameters()
 
     def init_single_card_net_result(self):
         (
             self.base_loss,
             self.base_parameters,
-        ) = self.run_dynamic_gradient_merge(DemoNet("gradient_merge_demo"))
+        ) = self.run_dynamic_recompute(
+            DemoNet("recompute_demo", is_recompute=True)
+        )
 
     def test_dp_demo_net(self):
         (
             self.dp_loss,
             self.dp_parameters,
-        ) = self.run_dynamic_gradient_merge(
-            DemoNet("gradient_merge_dp_demo"),
+        ) = self.run_dynamic_recompute(
+            DemoNet("recompute_dp_demo", is_recompute=True),
             shard_input=True,
         )
         self.check_tensor_eq(self.dp_loss, self.base_loss)
@@ -84,12 +86,14 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
 
     def test_mp_demo_net(self):
         mp_layer = dist.shard_layer(
-            DemoNet("gradient_merge_mp_demo"), self._mesh, self.shard_fn
+            DemoNet("recompute_mp_demo", is_recompute=True),
+            self._mesh,
+            self.shard_fn,
         )
         (
             self.mp_loss,
             self.mp_parameters,
-        ) = self.run_dynamic_gradient_merge(mp_layer)
+        ) = self.run_dynamic_recompute(mp_layer)
 
         self.check_tensor_eq(self.mp_loss, self.base_loss)
         for param, param_base in zip(self.mp_parameters, self.base_parameters):
@@ -102,4 +106,4 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
 
 
 if __name__ == '__main__':
-    TestSimpleNetWithGradientMergeForSemiAutoParallel().run_test_case()
+    TestSimpleNetWithRecomputeForSemiAutoParallel().run_test_case()
