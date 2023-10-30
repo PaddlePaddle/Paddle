@@ -14,7 +14,7 @@
 
 import unittest
 
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 import paddle.distributed as dist
@@ -54,8 +54,7 @@ def train():
         print(loss)
 
 
-@dy2static_unittest
-class TestParamsNoGrad(unittest.TestCase):
+class TestParamsNoGrad(Dy2StTestBase):
     def test_two_card(self):
         if (
             paddle.is_compiled_with_cuda()

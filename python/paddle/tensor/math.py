@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
-from paddle.common_ops_import import VarDesc, dygraph_only, dygraph_utils
+from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -1105,13 +1105,10 @@ def multiply_(x, y, name=None):
     return _C_ops.multiply_(x, y)
 
 
-@dygraph_only
-def _elementwise_op_with_axis_in_dygraph(
-    x, y, axis=-1, name=None, op_type="Undifined"
-):
+def _elementwise_op_with_axis(x, y, axis=-1, name=None, op_type="Undifined"):
     assert (
-        in_dynamic_mode()
-    ), "You can only call `_elementwise_op_with_axis_in_dygraph` function within in_dynamic_mode"
+        in_dynamic_or_pir_mode()
+    ), "You can only call `_elementwise_op_with_axis` function within in_dynamic_or_pir_mode"
     assert op_type in ["add", "subtract", "multiply", "divide"], (
         "op_name input error! _elementwise_op_with_axis is an inner function to replace elementwise_add/sub/mul/div. Input op_name=%s, Expect op_name=[add|subtract|multiply|divide]\n"
         % op_type
@@ -1132,8 +1129,8 @@ def _elementwise_op_with_axis_in_dygraph(
 
 def _add_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
-    if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "add")
+    if in_dynamic_or_pir_mode():
+        return _elementwise_op_with_axis(x, y, axis, name, "add")
     else:
         op_type = 'elementwise_add'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1142,9 +1139,7 @@ def _add_with_axis(x, y, axis=-1, name=None):
 def _subtract_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
     if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(
-            x, y, axis, name, "subtract"
-        )
+        return _elementwise_op_with_axis(x, y, axis, name, "subtract")
     else:
         op_type = 'elementwise_sub'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1153,9 +1148,7 @@ def _subtract_with_axis(x, y, axis=-1, name=None):
 def _multiply_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
     if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(
-            x, y, axis, name, "multiply"
-        )
+        return _elementwise_op_with_axis(x, y, axis, name, "multiply")
     else:
         op_type = 'elementwise_mul'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -1164,7 +1157,7 @@ def _multiply_with_axis(x, y, axis=-1, name=None):
 def _divide_with_axis(x, y, axis=-1, name=None):
     # opt performance, only dynamic mode needs reshape
     if in_dynamic_mode():
-        return _elementwise_op_with_axis_in_dygraph(x, y, axis, name, "divide")
+        return _elementwise_op_with_axis(x, y, axis, name, "divide")
     else:
         op_type = 'elementwise_div'
         return _elementwise_op(LayerHelper(op_type, **locals()))
@@ -3429,7 +3422,7 @@ def log10(x, name=None):
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log10(x)
     else:
         check_variable_and_dtype(
