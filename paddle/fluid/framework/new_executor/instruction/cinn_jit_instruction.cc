@@ -17,7 +17,7 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/instruction.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/cinn/runtime/cuda/cuda_util.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/framework/paddle2cinn/transform_type.h"
@@ -26,7 +26,7 @@ namespace paddle {
 namespace framework {
 
 class CinnJitInstruction::FnPtrImpl {
-  using CUDAJITInfo = cinn::hlir::framework::newir::CUDAJITInfo;
+  using CUDAJITInfo = cinn::hlir::framework::pir::CUDAJITInfo;
 
  public:
   explicit FnPtrImpl(const CUDAJITInfo& cuda_jit_info)

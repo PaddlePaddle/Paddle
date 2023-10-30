@@ -640,7 +640,7 @@ class TestStrideGPU(TestStride):
 
 class TestToStaticCheck(unittest.TestCase):
     def test_error(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def func():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)
@@ -650,7 +650,7 @@ class TestToStaticCheck(unittest.TestCase):
         self.assertRaises(ValueError, func)
 
     def test_no_error(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def func():
             x_np = np.random.random(size=[2, 3, 4]).astype('float32')
             x = paddle.to_tensor(x_np)

@@ -15,7 +15,7 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
-#include "paddle/cinn/hlir/framework/new_ir_compiler.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/enforce.h"
 
@@ -35,7 +35,7 @@ void JitKernelOp::VerifySig() {
       "Type of attribute: instruction is not right.");
 }
 
-const hlir::framework::newir::CUDAJITInfo& JitKernelOp::cuda_jit_info() {
+const hlir::framework::pir::CUDAJITInfo& JitKernelOp::cuda_jit_info() {
   return attributes()
       .at(kAttrName)
       .dyn_cast<cinn::dialect::CUDAJITInfoAttribute>()

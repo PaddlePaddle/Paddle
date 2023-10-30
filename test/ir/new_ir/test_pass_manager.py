@@ -51,12 +51,12 @@ class TestShadowOutputSlice(unittest.TestCase):
         self.assertTrue('pd_op.uniform' in op_names)
         pm = pir.PassManager()
         pm.add_pass(
-            'dead_code_elimination'
+            'dead_code_elimination_pass'
         )  # apply pass to elimitate dead code
         pm.run(new_program)
         op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
-        self.assertEqual(pm.passes(), ['dead_code_elimination'])
+        self.assertEqual(pm.passes(), ['dead_code_elimination_pass'])
         self.assertFalse(pm.empty())
         self.assertTrue(
             'pd_op.uniform' not in op_names
