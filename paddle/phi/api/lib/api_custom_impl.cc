@@ -165,6 +165,11 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
         (*kernel_fn)(*dev_ctx, input_x, dense_out);
       }
+      auto current_process_mesh =
+          paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+              spmd_info.first)
+              ? paddle::get<0>(spmd_info.first[0]).process_mesh()
+              : paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
       auto current_process_mesh = spmd_info.first[0].process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
       return api_output;

@@ -672,9 +672,24 @@ ReshardApiInputToKernelInput(
     PADDLE_THROW(phi::errors::Unimplemented("size not equal"));
   }
   for (size_t i = 0; i < dist_attrs.size(); i++) {
-    VLOG(6) << "Reshard Input to: " << i << dist_attrs.at(i).to_string();
     output.push_back(
-        ReshardApiInputToKernelInput(dev_ctx, tensors.at(i), dist_attrs.at(i)));
+        ReshardApiInputToKernelInput(dev_ctx, tensors[i], dist_attrs[i]));
+  }
+  return output;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const std::vector<phi::distributed::ItemDistAttr>& dist_attrs) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> output;
+  if (tensors.size() != dist_attrs.size()) {
+    PADDLE_THROW(phi::errors::Unimplemented("size not equal"));
+  }
+  for (size_t i = 0; i < dist_attrs.size(); i++) {
+    output.push_back(
+        ReshardApiInputToKernelInput(dev_ctx, tensors[i], dist_attrs[i]));
   }
   return output;
 }
@@ -754,18 +769,24 @@ std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const std::vector<Tensor>& tensors,
-    const phi::distributed::ItemDistAttr& dist_attr) {
-  // TODO(liuzhenhai): add check
-  const auto& tensor_dist_attrs =
-      paddle::get<std::vector<phi::distributed::TensorDistAttr>>(dist_attr);
-  return ReshardApiInputToReplicatedKernelInput(
-      dev_ctx, tensors, tensor_dist_attrs);
-  std::vector<std::shared_ptr<phi::distributed::DistTensor>> result;
-  result.reserve(tensors.size());
+    const std::vector<phi::distributed::ItemDistAttr>& dist_attrs) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
   for (size_t i = 0; i < tensors.size(); ++i) {
-    result.emplace_back(ReshardApiInputToReplicatedKernelInput(
+    outputs.push_back(ReshardApiInputToReplicatedKernelInput(
         dev_ctx, tensors[i], dist_attrs[i]));
   }
+  return outputs;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const phi::distributed::ItemDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check
+  const auto& tensor_dist_attrs = paddle::get<1>(dist_attr);
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx, tensors, tensor_dist_attrs);
   return result;
 }
 
@@ -987,25 +1008,6 @@ PrepareDataForDistTensor(const paddle::optional<std::vector<Tensor>>& input,
         *input, target_args_def, transform_flag, is_stride_kernel);
   }
   return paddle::none;
-}
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-PrepareDataForDistTensor(
-    const std::vector<std::shared_ptr<phi::distributed::DistTensor>>& input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag,
-    bool is_stride_kernel) {
-  std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
-  for (auto e : input) {
-    if (e) {
-      auto tmp = PrepareDataForDistTensor(
-          e, target_args_def, transform_flag, is_stride_kernel);
-      out.push_back(tmp);
-    } else {
-      out.push_back(nullptr);
-    }
-  }
-  return out;
 }
 
 }  // namespace experimental
