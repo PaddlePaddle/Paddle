@@ -137,13 +137,16 @@ class Conv3DTestCase(unittest.TestCase):
                 w_var = paddle.static.data(
                     "weight", self.weight_shape, dtype=self.dtype
                 )
-                b_var = paddle.static.data(
-                    "bias", (self.num_filters,), dtype=self.dtype
-                )
+                if not self.no_bias:
+                    b_var = paddle.static.data(
+                        "bias", (self.num_filters,), dtype=self.dtype
+                    )
+                else:
+                    b_var = None
                 y_var = F.conv3d(
                     x_var,
                     w_var,
-                    None if self.no_bias else b_var,
+                    b_var,
                     padding=self.padding,
                     stride=self.stride,
                     dilation=self.dilation,
@@ -181,7 +184,6 @@ class Conv3DTestCase(unittest.TestCase):
         return y_np, t1
 
     def _test_equivalence(self, place):
-        place = base.CPUPlace()
         result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
@@ -189,13 +191,22 @@ class Conv3DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
+    def _test_pir_equivalence(self, place):
+        with paddle.pir_utils.IrGuard():
+            result1 = self.functional(place)
+        with dg.guard(place):
+            result2, g1 = self.paddle_nn_layer()
+        np.testing.assert_array_almost_equal(result1, result2)
+
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
+        self._test_pir_equivalence(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_pir_equivalence(place)
 
 
 class Conv3DErrorTestCase(Conv3DTestCase):

@@ -176,7 +176,7 @@ TEST(DrrTest, FusedLinearParamGradAdd0) {
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateFusedLinearParamGradAddPass());
   // pm.EnablePassTiming();
-  // pm.EnableIRPrinting();
+  pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(verify_pass(program), true);
@@ -195,7 +195,7 @@ TEST(DrrTest, FusedLinearParamGradAdd1) {
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateFusedLinearParamGradAddPass());
   // pm.EnablePassTiming();
-  // pm.EnableIRPrinting();
+  pm.EnableIRPrinting();
 
   CHECK_EQ(pm.Run(&program), true);
   EXPECT_EQ(verify_pass(program), true);

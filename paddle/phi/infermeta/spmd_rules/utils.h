@@ -133,6 +133,12 @@ struct VariadicSpmdRuleArgumentParser
     }
   }
 
+  void operator()(const std::vector<DistMetaTensor>& x) {
+    for (auto& t : x) {
+      inputs.emplace_back(&t);
+    }
+  }
+
   // deal with outputs
   void operator()(DistMetaTensor* out) { outputs.emplace_back(out); }
 
