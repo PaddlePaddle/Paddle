@@ -163,6 +163,49 @@ class TestElementwiseApiForSemiAutoParallel:
             unary_func=F.relu,
         )
 
+    def test_maximum_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.maximum,
+        )
+
+    def test_maximum_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 16, 32],
+            y_shape=[16, 32],
+            out_shape=[4, 16, 32],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.maximum,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
