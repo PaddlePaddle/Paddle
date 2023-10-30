@@ -16,7 +16,7 @@ import inspect
 import sys
 import unittest
 
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 from paddle.jit.api import to_static
 from paddle.jit.dy2static import DygraphToStaticAst
@@ -56,8 +56,7 @@ def decorated_func2(x):
     return x
 
 
-@dy2static_unittest
-class TestOriginInfo(unittest.TestCase):
+class TestOriginInfo(Dy2StTestBase):
     def setUp(self):
         self.set_test_func()
         self.dygraph_func = unwrap(self.func)
