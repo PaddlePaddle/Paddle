@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult
+from ..pir import OpResult, Value
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -513,7 +513,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
         with paddle.static.program_guard(program):
             for i, fetch_input in enumerate(fetch_list):
                 assert isinstance(
-                    fetch_input, OpResult
+                    fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
@@ -1945,7 +1945,9 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str, OpResult))
+        is_fetch_var = lambda var: isinstance(
+            var, (Variable, str, OpResult, Value)
+        )
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -1971,7 +1973,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".format(
+                    "Require fetch_list[{}] 's type shall be one of (OpResult, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )

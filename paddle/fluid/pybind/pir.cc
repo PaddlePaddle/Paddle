@@ -78,6 +78,7 @@ namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_ir_opresult_pytype = nullptr;
+PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
 
@@ -408,6 +409,7 @@ void BindValue(py::module *m) {
         when build network.
 
   )DOC");
+  g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value
       .def(
           "get_defining_op",
