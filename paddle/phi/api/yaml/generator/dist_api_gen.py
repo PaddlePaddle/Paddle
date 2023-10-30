@@ -95,7 +95,7 @@ INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
 GENERAL_INFER_SPMD_TEMPLATE = """
-    auto spmd_info = phi::distributed::VariadicReplicatedInferSpmd({});
+    auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic({});
 """
 UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE = """
     // API `{}` does not support InferSpmd now
