@@ -37,7 +37,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             job_type_list.append(job.type())
             micro_batch_id_list.append(job.micro_batch_id())
         expect_job_type_list = [
-            "lr",
             "forward",
             "forward",
             "forward",
@@ -57,7 +56,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             "optimizer",
         ]
         expect_micro_batch_id_list = [
-            0,
             0,
             1,
             2,
@@ -97,7 +95,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             job_type_list.append(job.type())
             micro_batch_id_list.append(job.micro_batch_id())
         expect_job_type_list = [
-            "lr",
             "forward",
             "forward",
             "forward",
@@ -117,7 +114,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             "optimizer",
         ]
         expect_micro_batch_id_list = [
-            0,
             0,
             1,
             2,
@@ -157,7 +153,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             job_type_list.append(job.type())
             micro_batch_id_list.append(job.micro_batch_id())
         expect_job_type_list = [
-            "lr",
             "forward",
             "forward",
             "backward",
@@ -177,7 +172,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             "optimizer",
         ]
         expect_micro_batch_id_list = [
-            0,
             0,
             1,
             0,
@@ -217,7 +211,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             job_type_list.append(job.type())
             micro_batch_id_list.append(job.micro_batch_id())
         expect_job_type_list = [
-            "lr",
             "forward",
             "backward",
             "forward",
@@ -237,7 +230,6 @@ class TestStandaloneExecutor1F1BPlan(unittest.TestCase):
             "optimizer",
         ]
         expect_micro_batch_id_list = [
-            0,
             0,
             0,
             1,

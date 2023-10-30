@@ -15,10 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -65,8 +62,7 @@ class Linear(paddle.nn.Layer):
         return pre, loss
 
 
-@dy2static_unittest
-class TestPool2D(unittest.TestCase):
+class TestPool2D(Dy2StTestBase):
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
@@ -83,7 +79,7 @@ class TestPool2D(unittest.TestCase):
 
             return prediction.numpy()
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 

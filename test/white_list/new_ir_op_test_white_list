@@ -79,6 +79,7 @@ test_elementwise_mul_op
 test_elementwise_pow_op
 test_erfinv_op
 test_expand_v2_op
+test_exponential_op
 test_eye_op
 test_fill_any_op
 test_fill_constant_batch_size_like

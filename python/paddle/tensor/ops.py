@@ -242,7 +242,7 @@ def acos(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.98231316, 1.77215421, 1.47062886, 1.26610363])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
@@ -289,7 +289,7 @@ def acosh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.76274717, 2.06343699, 2.29243159])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
