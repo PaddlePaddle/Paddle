@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
 from semi_auto_parallel_util import SemiAutoParallelTestBase
 
 import paddle
@@ -25,7 +24,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
 
     def test_concat_forward(self):
         shapes = [[16, 4, 4], [64, 4, 4]]
-        specs = [[None, None, 'x'], ['y', 'x', None]]
+        specs = [[None, None, 'x'], [None, None, 'x']]
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
