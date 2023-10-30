@@ -11,5 +11,5 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach()
 
 if(WIN32 AND NOT WITH_GPU)
-  set_tests_properties(test_resnet50_backward PROPERTIES TIMEOUT 300)
+  set_tests_properties(test_resnet50_backward PROPERTIES TIMEOUT 420)
 endif()
