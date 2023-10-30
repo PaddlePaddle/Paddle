@@ -153,11 +153,10 @@ TEST(CinnJitInstruction, Run) {
 
   paddle::framework::interpreter::ExecutionConfig exe_conf;
   exe_conf.create_local_scope = false;
-  InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+  InterpreterCore executor(place, {"out"}, kernel_program->block(), &exe_scope);
 
   std::set<std::string> out_names;
-  out_names.insert("out@fetch");
+  out_names.insert("out");
   auto local_names = exe_scope.LocalVarNames();
   for (size_t i = 0; i < local_names.size(); ++i) {
     out_names.insert(local_names[i]);
@@ -166,7 +165,7 @@ TEST(CinnJitInstruction, Run) {
   executor.SetSkipGcVars(out_names);
   executor.Run({}, true);
   auto out_tensor =
-      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+      executor.local_scope()->FindVar("out")->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.35701);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 1.35701);
