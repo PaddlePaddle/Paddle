@@ -67,17 +67,18 @@ def get_pir_program_and_param_map():
         tmp1 = paddle.add(x, y)
         tmp2 = paddle.multiply(tmp1, z)
         tmp3 = paddle.mean(tmp2, axis=-1, keepdim=True)
+        tmp4 = paddle.rsqrt(tmp3)
         scale = paddle.tensor.fill_constant(
-            shape=tmp3.shape[1:],
-            dtype=tmp3.dtype,
+            shape=tmp4.shape[1:],
+            dtype=tmp4.dtype,
             value=1.0,
         )
         scale.stop_gradient = True
-        tmp4 = paddle.nn.functional.layer_norm(
-            tmp3, tmp3.shape[1:], scale, None, 1e-5
+        tmp5 = paddle.nn.functional.layer_norm(
+            tmp4, tmp4.shape[1:], scale, None, 1e-5
         )
-        tmp5 = paddle.nn.functional.dropout(tmp4, p=0.5)
-        out = paddle.add(x, tmp5)
+        tmp6 = paddle.nn.functional.dropout(tmp5, p=0.5)
+        out = paddle.add(x, tmp6)
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
@@ -127,6 +128,7 @@ class TestDecomposeOp(unittest.TestCase):
                     'elementwise_add_3@GRAD': 'elementwise_add_3',
                     'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
+                    'rsqrt_1.tmp_0@GRAD': 'rsqrt_1.tmp_0',
                     'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
                     'x@GRAD': 'x',
                     'x@GRAD@RENAME@block0@0': 'x',
@@ -137,7 +139,6 @@ class TestDecomposeOp(unittest.TestCase):
                 grad_var_to_var_map = get_new_ir_grad_var_to_var_map(
                     param_mappings, old_ir_grad_var_to_var_map
                 )
-
                 # get global outputs and grads info, when decomposing an op that corresponds to global outputs and grads, then update the global outputs and grads
                 (
                     fwd_leaf_ops,
@@ -152,23 +153,25 @@ class TestDecomposeOp(unittest.TestCase):
                     newir_program.global_block(), global_grads
                 )
 
-                decompose_bwd_ops_names = [
+                bwd_ops_to_be_decomposed = [
                     "pd_op.layer_norm_grad",
                     "pd_op.dropout_grad",
                     "pd_op.mean_grad",
                     "pd_op.add_grad",
                     "pd_op.multiply_grad",
+                    "pd_op.rsqrt_grad",
                 ]
                 for bwd_op in newir_ops:
                     if (
                         flag == "decompose"
-                        and bwd_op.name() in decompose_bwd_ops_names
+                        and bwd_op.name() in bwd_ops_to_be_decomposed
                     ):
                         fwd_op = get_fwd_op(bwd_op, grad_var_to_var_map)
                         assert fwd_op is not None, "fwd_op is None"
 
                         # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
                         if core.has_vjp(fwd_op):
+                            # operators with custom_vjp rules, such as layer_norm op, dropout op, et al.
                             if core.has_custom_vjp(fwd_op):
                                 bwd_leaf_op_index = (
                                     bwd_leaf_ops.index(bwd_op)
@@ -207,6 +210,7 @@ class TestDecomposeOp(unittest.TestCase):
                                         fwd_leaf_op_index,
                                         fwd_leaf_ops_output_indexes,
                                     )
+                            # primitive operators with vjp rules, such as add op, multiply op, et al.
                             else:
                                 bwd_leaf_op_index = (
                                     bwd_leaf_ops.index(bwd_op)
@@ -227,6 +231,7 @@ class TestDecomposeOp(unittest.TestCase):
                                         bwd_leaf_op_index,
                                         bwd_leaf_ops_output_indexes,
                                     )
+                        # operators without vjp rules
                         else:
                             fwd_inputs = tuple(
                                 x.source() for x in fwd_op.operands()
