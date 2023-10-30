@@ -21,6 +21,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn.clip import _allow_pure_fp16_global_norm_clip
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -195,6 +196,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         self.check_gradient_clip(base.CPUPlace())
 
     # test whether the output is right when use grad_clip
+    @test_with_pir_api
     def test_new_gradient_clip(self):
         def func(params_grads):
             clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.clip_norm)
