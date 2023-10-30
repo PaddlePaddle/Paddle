@@ -31,7 +31,7 @@ if(WITH_TESTING AND WITH_CINN)
     pd_op_dialect
     cinn_op_dialect
     add_broadcast_to_elementwise_pass
-    pir)
+    pir_pattern_rewrite)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   cc_test_old(
