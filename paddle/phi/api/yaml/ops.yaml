@@ -1012,10 +1012,10 @@
   backward : frame_grad
 
 - op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
-    func : CreateIntArrayInferMeta
+    func : CreateVecShapeInferMeta
     param : [value, dtype]
   kernel :
     func : full_int_array
@@ -1306,7 +1306,7 @@
     func : is_empty
 
 - op : isclose
-  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8",  bool equal_nan=false)
+  args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8,  bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
     func : ValueCompareInferMeta

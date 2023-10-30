@@ -502,7 +502,7 @@ inline void NewIRRunProgramAPI(
     // Step 2. create new interpretercore
     auto kernel_forward_program =
         paddle::dialect::PdOpLowerToKernelPass(forward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_forward_program),
         place,
         /*is_grad=*/false,
@@ -708,13 +708,12 @@ inline void RunProgramAPI(
                                                       input_names,
                                                       params,
                                                       place);
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(ir_program),
-              place,
-              /*is_grad=*/false,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(ir_program),
+          place,
+          /*is_grad=*/false,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -865,13 +864,12 @@ inline void RunProgramGradAPI(
                                                         global_inner_scope,
                                                         place);
 
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(res),
-              place,
-              /*is_grad=*/true,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(res),
+          place,
+          /*is_grad=*/true,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -1041,7 +1039,7 @@ inline void NewIRRunProgramGradAPI(
     // Step 1. share input_vars & parameters into scope
     auto kernel_backward_program =
         paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_backward_program),
         place,
         /*is_grad=*/true,
@@ -1193,6 +1191,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&x_grad,
+                                                        this->OutputMeta()[0]);
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&params_grad,
+                                                        this->OutputMeta()[1]);
     return {x_grad, params_grad};
   }
 
@@ -1237,7 +1239,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
-        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+        auto selected_row = std::make_shared<phi::SelectedRows>();
+        x_grad->emplace_back(selected_row);
       }
       x_grad->back().set_name(x_grad_names[i]);
     }

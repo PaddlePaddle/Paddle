@@ -36,6 +36,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/block.h"
@@ -66,6 +68,10 @@ using pir::Value;
 using pybind11::return_value_policy;
 
 USE_PASS(dead_code_elimination_pass);
+USE_PASS(attention_fuse_pass);
+USE_PASS(fused_gemm_epilogue_pass);
+USE_PASS(fused_dropout_add_pass);
+USE_PASS(fused_linear_param_grad_add_pass);
 USE_PASS(inplace_pass);
 
 PHI_DECLARE_bool(print_ir);

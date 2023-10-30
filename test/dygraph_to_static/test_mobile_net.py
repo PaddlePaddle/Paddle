@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -656,8 +656,7 @@ def predict_analysis_inference(args, data):
     return out
 
 
-@dy2static_unittest
-class TestMobileNet(unittest.TestCase):
+class TestMobileNet(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -727,7 +726,7 @@ class TestMobileNet(unittest.TestCase):
             err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
+    @test_pir_only
     def test_mobile_net_new_ir(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
