@@ -18,7 +18,7 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -212,13 +212,12 @@ class NetWithError(paddle.nn.Layer):
         return y
 
 
-@dy2static_unittest
-class TestEnableDeclarative(unittest.TestCase):
+class TestEnableDeclarative(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
 
-    @ast_only_test
+    @test_ast_only
     def test_raise_error(self):
         with base.dygraph.guard():
             paddle.jit.enable_to_static(True)
@@ -268,9 +267,8 @@ def switch_mode_function():
     return True
 
 
-@dy2static_unittest
-class TestFunctionTrainEvalMode(unittest.TestCase):
-    @ast_only_test
+class TestFunctionTrainEvalMode(Dy2StTestBase):
+    @test_ast_only
     def test_switch_mode(self):
         paddle.disable_static()
         switch_mode_function.eval()
@@ -299,8 +297,7 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
             net.foo.train()
 
 
-@dy2static_unittest
-class TestIfElseEarlyReturn(unittest.TestCase):
+class TestIfElseEarlyReturn(Dy2StTestBase):
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
@@ -314,8 +311,7 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
-@dy2static_unittest
-class TestRemoveCommentInDy2St(unittest.TestCase):
+class TestRemoveCommentInDy2St(Dy2StTestBase):
     def func_with_comment(self):
         # Comment1
         x = paddle.to_tensor([1, 2, 3])
@@ -356,8 +352,7 @@ class Net2:
         return func1(data)
 
 
-@dy2static_unittest
-class TestParameterRecorder(unittest.TestCase):
+class TestParameterRecorder(Dy2StTestBase):
     def test_recorder(self):
         """function calls nn.Layer case."""
         net = Net()
