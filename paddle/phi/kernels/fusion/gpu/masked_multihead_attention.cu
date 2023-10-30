@@ -92,6 +92,9 @@ struct Masked_multihead_attention_params {
   int beam_width;
   int cache_batch_size;
   int num_head;
+  // k_num_head and v_num_head must be equal, we unify them.
+  // kv_num_head = k_num_head && kv_num_head == v_num_head
+  int kv_num_head;
   int timestep;  // cache_seq_length
   int seq_len;
   int max_seq_length;
@@ -404,10 +407,12 @@ __global__ void masked_multihead_attention_kernel(
   const int hi = blockIdx.x;
   const int bhi = bi * params.num_head + hi;
 
-  const int group = 2;
-  // 就是当前的cuda
-  // thread所应该取得的k和v的batch维度和head维度的这两个维度加起来！
-  const int kv_bhi = bi * group + hi / 16;
+  const int kv_num_head = params.kv_num_head;
+  const int num_head_per_group = params.num_head / kv_num_head;
+  // hi means the head index in query processed by this cuda thread.
+  // kv_bhi means the merged batch and head index in key and value processed by
+  // this cuda thread.
+  const int kv_bhi = bi * kv_num_head + hi / num_head_per_group;
 
   const int bbhi = bbi * params.beam_width * params.num_head + hi;
   const int ti =
@@ -424,10 +429,9 @@ __global__ void masked_multihead_attention_kernel(
                           ? params.timestep
                           : params.sequence_lengths[bi];
 
-  // qkv [B, S=1, 3, num_head, head_dim]
-  // qkv [B, S=1, num_head + 2 * group, head_dim]
-  // 这里的 hi 指的是 query 的 head！
-  int qkv_base_offset = bi * (params.num_head + 2 * group) * Dh + hi * Dh;
+  // qkv [B, S=1, num_head + 2 * kv_num_head, head_dim]
+  // this hi means the head index in query!
+  int qkv_base_offset = bi * (params.num_head + 2 * kv_num_head) * Dh + hi * Dh;
 
   constexpr int QK_VEC_SIZE = sizeof(Qk_vec) / sizeof(T);
   static_assert(Dh_MAX % QK_VEC_SIZE == 0, "");
@@ -453,7 +457,7 @@ __global__ void masked_multihead_attention_kernel(
   if (tid < QK_VECS_PER_WARP) {
     int qk_offset = qkv_base_offset + tid * QK_VEC_SIZE;
     int q_bias_offset = hi * Dh + tid * QK_VEC_SIZE;
-    int k_bias_offset = hi / 16 * Dh + tid * QK_VEC_SIZE;
+    int k_bias_offset = hi / num_head_per_group * Dh + tid * QK_VEC_SIZE;
 
     Qk_vec q;
     zero(q);
@@ -470,8 +474,10 @@ __global__ void masked_multihead_attention_kernel(
     //         ? *reinterpret_cast<const Qk_vec *>(&k_base[qk_offset])
     //         : k;
     if (Dh == Dh_MAX || tid * QK_VEC_SIZE < Dh) {
-      load_func.template load<Qk_vec>(
-          k, params.num_head * Dh + qk_offset - hi * Dh + hi / 16 * Dh);
+      load_func.template load<Qk_vec>(k,
+                                      params.num_head * Dh + qk_offset -
+                                          hi * Dh +
+                                          hi / num_head_per_group * Dh);
     }
 
     if (params.add_qkv_bias) {
@@ -752,7 +758,7 @@ __global__ void masked_multihead_attention_kernel(
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
-  T *v_cache = &params.cache_kv[params.cache_batch_size * group *
+  T *v_cache = &params.cache_kv[params.cache_batch_size * kv_num_head *
                                     params.max_seq_length * Dh +
                                 kv_bhi * params.max_seq_length * Dh + vi];
   T *v_cache_batch = &params.cache_kv[params.batch_size * params.num_head *
@@ -767,8 +773,8 @@ __global__ void masked_multihead_attention_kernel(
 
   V_vec_acum out;
   zero(out);
-  // 上面已经得到了【1 * seq】这么多输出了，分散在 logits_smem！里
-  // 下面就进行【1 * seq】* 【seq * head_dim】
+  // now we have got [1, seq] ，distributed in logits_smem.
+  // next we compute [1, seq]* [seq, head_dim]
   // V_PER_ITER 的意思就是每个线程需要处理这么多seq！
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
@@ -805,11 +811,12 @@ __global__ void masked_multihead_attention_kernel(
     V_vec v;
     load_func.template load<V_vec>(v,
                                    qkv_base_offset + vi - hi * Dh +
-                                       params.num_head * Dh + group * Dh +
-                                       hi / 16 * Dh);
+                                       params.num_head * Dh + kv_num_head * Dh +
+                                       hi / num_head_per_group * Dh);
     if (params.add_qkv_bias) {
       v_bias = *reinterpret_cast<const V_vec *>(
-          &params.qkv_bias[(group + params.num_head) * Dh + hi * Dh + vi]);
+          &params
+               .qkv_bias[(kv_num_head + params.num_head) * Dh + hi * Dh + vi]);
       v = add(v, v_bias);
     }
 
@@ -1339,11 +1346,16 @@ void DispatchWithDtype(const Context &dev_ctx,
   const auto &x_dims = x.dims();
   int bsz = x_dims[0];
   int cache_bsz = cache_kv.dims()[1];
-  int num_head = 32;
   int max_seq_len = cache_kv.dims()[3];
   int dim_head = cache_kv.dims()[4];
   int timestep = max_seq_len;
   float inv_sqrt_dh = 1. / sqrt(dim_head);
+
+  int k_num_head = cache_kv.dims()[2];
+  int v_num_head = k_num_head;
+  // this num_head means query's head
+  int num_head =
+      x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
   Masked_multihead_attention_params<T> params;
   bool mask_broadcast_num_heads = true;
@@ -1405,6 +1417,7 @@ void DispatchWithDtype(const Context &dev_ctx,
   params.batch_size = bsz;
   params.cache_batch_size = cache_bsz;
   params.num_head = num_head;
+  params.kv_num_head = k_num_head;
   params.timestep = timestep;
   params.seq_len = seq_len;
   params.max_seq_length = max_seq_len;
