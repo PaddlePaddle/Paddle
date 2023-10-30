@@ -149,6 +149,7 @@ def _can_apply_infer_spmd_rule(dist_op):
         "transpose2",
         "split",
         "unsqueeze2",
+        "softmax_with_cross_entropy",
     ]
     op_type = dist_op.serial_op.type
     return enable and contains_spmd_rule(op_type) and op_type in __adapted_ops__

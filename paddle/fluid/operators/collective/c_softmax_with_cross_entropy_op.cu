@@ -170,12 +170,14 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                             "NCCLCommContext is nullptr, collective op should "
                             "has ring_id attr."));
 
-      stream = comm_ctx->GetStream();
+      // stream = comm_ctx->GetStream();
+      stream = dev_ctx.stream();
       VLOG(3) << "new comm_context_manager has ring_id " << rid;
     } else {  // old comm_context
       comm = platform::NCCLCommContext::Instance().Get(rid, place);
 
-      stream = comm->stream();
+      // stream = comm->stream();
+      stream = dev_ctx.stream();
       VLOG(3) << "old NCCLCommContext has ring_id " << rid;
     }
 
