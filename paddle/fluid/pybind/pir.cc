@@ -161,7 +161,7 @@ void BindProgram(py::module *m) {
                 var y : LOD_TENSOR.shape(-1, 1).dtype(int32).stop_gradient(True)
                 persist trainable param fc.w_0 : LOD_TENSOR.shape(784, 10).dtype(float32).stop_gradient(False)
                 var fc.tmp_0 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
-                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)    
+                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
                 var fc.tmp_1 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
                 var fc.tmp_2 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
 
@@ -1227,24 +1227,37 @@ void BindUtils(pybind11::module *m) {
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle import pir
-                paddle.enable_static()
+                >>> import os
+                >>> # Paddle will remove this flag in the next version
+                >>> new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[new_ir_flag] = 'True'
 
-                x = paddle.randn([4, 4])
-                main_program, start_program = (
-                    paddle.static.Program(),
-                    paddle.static.Program(),
-                )
-                with paddle.static.program_guard(main_program, start_program):
-                    x_s = paddle.static.data('x', [4, 4], x.dtype)
-                    x_s.stop_gradient = False
-                    y_s = paddle.matmul(x_s, x_s)
-                    z_s = paddle.add(y_s, y_s)
-                    k_s = paddle.tanh(z_s)
-                newir_program = pir.translate_to_new_ir(main_program.desc)
+                >>> import paddle
+                >>> from paddle import pir
+                >>> paddle.enable_static()
 
-                print(newir_program)
+                >>> x = paddle.randn([4, 4])
+                >>> main_program, start_program = (
+                ...    paddle.static.Program(),
+                ...    paddle.static.Program(),
+                ...)
+
+                >>> with paddle.static.program_guard(main_program, start_program):
+                ...    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...    x_s.stop_gradient = False
+                ...    y_s = paddle.matmul(x_s, x_s)
+                ...    z_s = paddle.add(y_s, y_s)
+                ...    k_s = paddle.tanh(z_s)
+                >>> newir_program = pir.translate_to_new_ir(main_program.desc)
+
+                >>> print(newir_program)
+                {
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                }
+
 
       )DOC");
   m->def(
@@ -1289,25 +1302,39 @@ void BindUtils(pybind11::module *m) {
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle import pir
-                paddle.enable_static()
+                >>> import os
+                >>> # Paddle will remove this flag in the next version
+                >>> new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[new_ir_flag] = 'True'
 
-                x = paddle.randn([4, 4])
-                main_program, start_program = (
-                    paddle.static.Program(),
-                    paddle.static.Program(),
-                )
-                with paddle.static.program_guard(main_program, start_program):
-                    x_s = paddle.static.data('x', [4, 4], x.dtype)
-                    x_s.stop_gradient = False
-                    y_s = paddle.matmul(x_s, x_s)
-                    z_s = paddle.add(y_s, y_s)
-                    k_s = paddle.tanh(z_s)
-                newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+                >>> import paddle
+                >>> from paddle import pir
+                >>> paddle.enable_static()
 
-                print(newir_program)
-                print(mappings)
+                >>> x = paddle.randn([4, 4])
+                >>> main_program, start_program = (
+                ...     paddle.static.Program(),
+                ...     paddle.static.Program(),
+                ... )
+
+                >>> with paddle.static.program_guard(main_program, start_program):
+                ...     x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...     x_s.stop_gradient = False
+                ...     y_s = paddle.matmul(x_s, x_s)
+                ...     z_s = paddle.add(y_s, y_s)
+                ...     k_s = paddle.tanh(z_s)
+                >>> newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+
+                >>> print(newir_program)
+                {
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                }
+
+                >>> print(mappings)
+                {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=pd_op.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=pd_op.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=pd_op.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=pd_op.tensor<4x4xf32>)]}
     )DOC");
 }
 
