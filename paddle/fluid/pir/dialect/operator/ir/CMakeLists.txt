@@ -185,11 +185,11 @@ cc_library(
 cc_library(
   pd_op_dialect_op
   SRCS ${op_source_file} manual_op.cc control_flow_op.cc
-  DEPS pd_op_dialect_core pir_control_flow)
+  DEPS pd_op_dialect_core pir)
 cc_library(
   api_builder
   SRCS api_builder.cc
-  DEPS pir_core)
+  DEPS pir)
 cc_library(
   pd_op_dialect_api
   SRCS ${api_source_file} manual_api.cc

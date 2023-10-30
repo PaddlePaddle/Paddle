@@ -29,5 +29,5 @@ if(WITH_CINN)
   cc_library(
     pd_build_cinn_pass
     SRCS build_cinn_pass.cc
-    DEPS pd_op_dialect cinn_op_dialect pir_control_flow cinnapi)
+    DEPS pd_op_dialect cinn_op_dialect pir cinnapi)
 endif()
