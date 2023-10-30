@@ -20,7 +20,7 @@ import paddle
 import paddle.distributed as dist
 
 
-class TestBitwiseApiForSemiAutoParallel:
+class TestCompareApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
         self._backend = os.getenv("backend")
@@ -39,8 +39,8 @@ class TestBitwiseApiForSemiAutoParallel:
     def test_binary_body(
         self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
     ):
-        x = paddle.randint(0, 100, x_shape, self._dtype)
-        y = paddle.randint(0, 100, y_shape, self._dtype)
+        x = paddle.randn(x_shape, self._dtype)
+        y = paddle.randn(y_shape, self._dtype)
         x.stop_gradient = False
         y.stop_gradient = False
 
@@ -62,27 +62,27 @@ class TestBitwiseApiForSemiAutoParallel:
             self.check_tensor_eq(x.grad, dist_x.grad)
             self.check_tensor_eq(y.grad, dist_y.grad)
 
-    def test_bitwise_and_x_shard(self):
+    def test_equal_x_shard(self):
         self.test_binary_body(
             x_shape=[16, 32],
             y_shape=[16, 32],
             out_shape=[16, 32],
             x_specs=['x', None],
             y_specs=[None, None],
-            binary_func=paddle.bitwise_and,
+            binary_func=paddle.equal,
         )
 
-    def test_bitwise_and_x_shard_broadcast(self):
+    def test_equal_x_shard_broadcast(self):
         self.test_binary_body(
             x_shape=[16, 32],
             y_shape=[2, 16, 32],
             out_shape=[2, 16, 32],
             x_specs=['x', None],
             y_specs=[None, None, None],
-            binary_func=paddle.bitwise_and,
+            binary_func=paddle.equal,
         )
 
-    def test_bitwise_and_x_y_shard(self):
+    def test_equal_x_y_shard(self):
         if self._backend == "cpu":
             return
         self.test_binary_body(
@@ -91,17 +91,17 @@ class TestBitwiseApiForSemiAutoParallel:
             out_shape=[16, 32],
             x_specs=['x', None],
             y_specs=[None, 'x'],
-            binary_func=paddle.bitwise_and,
+            binary_func=paddle.equal,
         )
 
-    def test_bitwise_and_x_y_shard_broadcast(self):
+    def test_equal_x_y_shard_broadcast(self):
         self.test_binary_body(
             x_shape=[4, 16, 32],
             y_shape=[16, 32],
             out_shape=[4, 16, 32],
             x_specs=['x', None, None],
             y_specs=[None, None],
-            binary_func=paddle.bitwise_and,
+            binary_func=paddle.equal,
         )
 
     def run_test_case(self):
@@ -112,11 +112,11 @@ class TestBitwiseApiForSemiAutoParallel:
         else:
             raise ValueError("Only support cpu or gpu backend.")
 
-        self.test_bitwise_and_x_shard()
-        self.test_bitwise_and_x_shard_broadcast()
-        self.test_bitwise_and_x_y_shard()
-        self.test_bitwise_and_x_y_shard_broadcast()
+        self.test_equal_x_shard()
+        self.test_equal_x_shard_broadcast()
+        self.test_equal_x_y_shard()
+        self.test_equal_x_y_shard_broadcast()
 
 
 if __name__ == '__main__':
-    TestBitwiseApiForSemiAutoParallel().run_test_case()
+    TestCompareApiForSemiAutoParallel().run_test_case()
