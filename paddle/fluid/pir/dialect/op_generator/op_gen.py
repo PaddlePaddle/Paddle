@@ -949,6 +949,7 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
 
 def check_need_update_ops(op_yaml_files):
     need_update_ops = False
+    update_yaml_file = None
     for yaml_file in op_yaml_files:
         if yaml_file.find("update_ops.parsed.yaml") != -1:
             need_update_ops = True
