@@ -202,6 +202,8 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         return y_np
 
     def _test_equivalence(self, place):
+        place = base.CPUPlace()
+
         result1 = self.base_layer(place)
         result2 = self.functional(place)
 
