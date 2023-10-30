@@ -1327,6 +1327,8 @@ class BatchNormOneDNNHandler
                          Place cpu_place,
                          const DenseTensor* x,
                          const float epsilon,
+                         const bool use_scale,
+                         const bool use_bias,
                          const bool fuse_with_relu,
                          const bool global_stats,
                          const bool test_mode)
@@ -1335,8 +1337,9 @@ class BatchNormOneDNNHandler
                                 dnnl::batch_normalization_backward>(engine,
                                                                     cpu_place) {
     // Flags are added by bitwise OR operation
-    auto flags = dnnl::normalization_flags::use_scale |
-                 dnnl::normalization_flags::use_shift;
+    auto flags = dnnl::normalization_flags::none;
+    if (use_scale) flags |= dnnl::normalization_flags::use_scale;
+    if (use_bias) flags |= dnnl::normalization_flags::use_shift;
     if (global_stats) flags |= dnnl::normalization_flags::use_global_stats;
     if (fuse_with_relu && test_mode)
       flags |= dnnl::normalization_flags::fuse_norm_relu;
@@ -1354,35 +1357,28 @@ class BatchNormOneDNNHandler
                          Place cpu_place,
                          const float epsilon,
                          const DenseTensor* in_x,
-                         const DenseTensor* scale,
+                         const bool use_scale,
+                         const bool use_bias,
                          const DenseTensor* out_grad)
       : OneDNNHandlerNoCachingT<T,
                                 dnnl::batch_normalization_forward,
                                 dnnl::batch_normalization_backward>(engine,
                                                                     cpu_place) {
-    auto scale_tz = vectorize<int64_t>(scale->dims());
-    PADDLE_ENFORCE_EQ(
-        scale_tz.size(),
-        1,
-        errors::InvalidArgument(
-            "Dims of scale tensor must be 1, but received scale's size is %d",
-            scale_tz.size()));
+    auto flags = dnnl::normalization_flags::none;
+    if (use_scale) flags |= dnnl::normalization_flags::use_scale;
+    if (use_bias) flags |= dnnl::normalization_flags::use_shift;
 
-    this->AcquireForwardPrimitiveDescriptor(
-        dnnl::prop_kind::forward_training,
-        in_x->mem_desc(),
-        in_x->mem_desc(),
-        epsilon,
-        dnnl::normalization_flags::use_scale |
-            dnnl::normalization_flags::use_shift);
-    this->AcquireBackwardPrimitiveDescriptor(
-        dnnl::prop_kind::backward,
-        out_grad->mem_desc(),
-        out_grad->mem_desc(),
-        in_x->mem_desc(),
-        epsilon,
-        dnnl::normalization_flags::use_scale |
-            dnnl::normalization_flags::use_shift);
+    this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
+                                            in_x->mem_desc(),
+                                            in_x->mem_desc(),
+                                            epsilon,
+                                            flags);
+    this->AcquireBackwardPrimitiveDescriptor(dnnl::prop_kind::backward,
+                                             out_grad->mem_desc(),
+                                             out_grad->mem_desc(),
+                                             in_x->mem_desc(),
+                                             epsilon,
+                                             flags);
   }
 
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
@@ -1403,6 +1399,36 @@ class BatchNormOneDNNHandler
     return std::make_tuple(scale_memory, shift_memory);
   }
 
+  std::shared_ptr<dnnl::memory> AcquireScaleMemory(const DenseTensor* scale) {
+    auto scale_tz = vectorize(scale->dims());
+    PADDLE_ENFORCE_EQ(
+        scale_tz.size(),
+        1,
+        errors::InvalidArgument(
+            "Dims of scale tensor must be 1, but received scale's size is %d",
+            scale_tz.size()));
+
+    auto scale_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), to_void_cast<T>(scale->data<T>()));
+
+    return scale_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireShiftMemory(const DenseTensor* shift) {
+    auto shift_tz = vectorize(shift->dims());
+    PADDLE_ENFORCE_EQ(
+        shift_tz.size(),
+        1,
+        errors::InvalidArgument(
+            "Dims of bias tensor must be 1, but received bias's size is %d",
+            shift_tz.size()));
+
+    auto shift_memory = this->AcquireMemoryFromPrimitive(
+        this->fwd_pd_->weights_desc(), to_void_cast<T>(shift->data<T>()));
+
+    return shift_memory;
+  }
+
   std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
   AcquireDiffScaleShiftMemory(T* diff_scale_data, T* diff_shift_data) {
     auto diff_scale_memory = this->AcquireMemoryFromPrimitive(
@@ -1411,6 +1437,20 @@ class BatchNormOneDNNHandler
         this->bwd_pd_->diff_weights_desc(), diff_shift_data);
 
     return std::make_tuple(diff_scale_memory, diff_shift_memory);
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDiffScaleMemory(T* diff_scale_data) {
+    auto diff_scale_memory = this->AcquireMemoryFromPrimitive(
+        this->bwd_pd_->diff_weights_desc(), diff_scale_data);
+
+    return diff_scale_memory;
+  }
+
+  std::shared_ptr<dnnl::memory> AcquireDiffShiftMemory(T* diff_shift_data) {
+    auto diff_shift_memory = this->AcquireMemoryFromPrimitive(
+        this->bwd_pd_->diff_weights_desc(), diff_shift_data);
+
+    return diff_shift_memory;
   }
 
   std::shared_ptr<dnnl::memory> AcquireMeanMemory(const DenseTensor* mean) {
