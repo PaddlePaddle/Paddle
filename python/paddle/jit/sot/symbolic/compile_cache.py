@@ -75,12 +75,12 @@ class FallbackWrapper:
         ):
             return args, kwargs
         amp_dtype = current_amp_state["dtype"]
-        log(3, f"[AMP] Cast float32 into {amp_dtype}")
+        log(3, f"[AMP] Cast {amp_dtype} into float32\n")
         return map_if(
             (args, kwargs),
             pred=lambda x: isinstance(x, paddle.Tensor)
-            and x.dtype == paddle.float32,
-            true_fn=lambda x: x.cast(amp_dtype),
+            and x.dtype == amp_dtype,
+            true_fn=lambda x: x.cast(paddle.float32),
             false_fn=lambda x: x,
         )
 
