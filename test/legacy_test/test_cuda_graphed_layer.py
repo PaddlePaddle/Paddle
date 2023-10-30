@@ -18,24 +18,38 @@ import numpy as np
 
 import paddle
 from paddle import nn
-from paddle.device.cuda.graphs import is_cuda_graph_supported, wrap_cuda_graph
+from paddle.device.cuda.cuda_graphed_layer import CUDAGraphedLayer
+
+seed = 102
 
 
-class SimpleModel(nn.Layer):
-    def __init__(self, in_size, out_size):
+class Model(nn.Layer):
+    def __init__(self, in_size, out_size, dropout=0):
+        paddle.seed(seed)
         super().__init__()
         self.linear = nn.Linear(in_size, out_size)
-        self.dropout_1 = paddle.nn.Dropout(0.1)
         self.relu = nn.ReLU()
-        self.dropout_2 = paddle.nn.Dropout(0.5)
-        self.gelu = nn.GELU()
+
+    def forward(self, x):
+        x = self.linear(x)
+        x = self.relu(x)
+        return x
+
+
+class DropoutModel(nn.Layer):
+    def __init__(self, in_size, out_size, dropout=0.5):
+        paddle.seed(seed)
+        super().__init__()
+        self.linear = nn.Linear(in_size, out_size)
+        self.dropout_1 = paddle.nn.Dropout(dropout)
+        self.relu = nn.ReLU()
+        self.dropout_2 = paddle.nn.Dropout(dropout)
 
     def forward(self, x):
         x = self.linear(x)
         x = self.dropout_1(x)
         x = self.relu(x)
         x = self.dropout_2(x)
-        x = self.gelu(x)
         return x
 
 
@@ -44,40 +58,32 @@ class SimpleModel(nn.Layer):
     "only support cuda >= 11.0",
 )
 class TestSimpleModel(unittest.TestCase):
-    def setUp(self):
-        paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 0.0})
-
-    def run_base(self, func, use_cuda_graph, memory_pool="default", seed=10):
+    def train(self, model):
         paddle.seed(seed)
-        is_layer = isinstance(func, paddle.nn.Layer)
-        if use_cuda_graph:
-            func = wrap_cuda_graph(func, memory_pool=memory_pool)
 
+        ans = []
         for _ in range(10):
             x = paddle.randn([3, 10], dtype='float32')
             x.stop_gradient = False
-            y = x * x + 100
-            loss = func(y).mean()
+            loss = model(x).mean()
             loss.backward()
-            if is_layer:
-                func.clear_gradients()
+            ans.append(x.grad.numpy())
 
-        return func, x.grad.numpy()
-
-    def check(self, func):
-        if not is_cuda_graph_supported():
-            return
-
-        _, value1 = self.run_base(func, False)
-        layer, value2 = self.run_base(func, True, "default")
-        _, value3 = self.run_base(func, True, "new")
-        _, value4 = self.run_base(func, True, layer)
-        np.testing.assert_array_equal(value1, value2)
-        np.testing.assert_array_equal(value1, value3)
-        np.testing.assert_array_equal(value1, value4)
+        return np.array(ans)
 
     def test_layer(self):
-        self.check(SimpleModel(10, 20))
+        model = Model(10, 20)
+        cuda_graphed_model = CUDAGraphedLayer(Model(10, 20))
+
+        dropout_model = DropoutModel(10, 20)
+        cuda_graphed_dropout_model = CUDAGraphedLayer(DropoutModel(10, 20))
+
+        np.testing.assert_array_equal(
+            self.train(model), self.train(cuda_graphed_model)
+        )
+        np.testing.assert_array_equal(
+            self.train(dropout_model), self.train(cuda_graphed_dropout_model)
+        )
 
 
 if __name__ == "__main__":
