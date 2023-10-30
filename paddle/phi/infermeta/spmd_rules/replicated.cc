@@ -140,7 +140,7 @@ SpmdInfo ReplicatedInferSpmdReverse(
           ToItemDistAttr(output_dist_attrs)};
 }
 
-SpmdInfo ReplicatedInferSpmdDynamic(
+SpmdInfo ReplicatedInferDynamic(
     const std::vector<paddle::variant<const DistMetaTensor*,
                                       const std::vector<DistMetaTensor>*>>&
         inputs) {
