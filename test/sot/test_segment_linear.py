@@ -57,7 +57,7 @@ class SimpleNet(nn.Layer):
 
 
 class TestExecutor(TestCaseBase):
-    @strict_mode_guard(0)
+    @strict_mode_guard(False)
     def test_simple(self):
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()

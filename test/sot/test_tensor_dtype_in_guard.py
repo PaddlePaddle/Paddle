@@ -59,7 +59,7 @@ def dtype_as_input(x, y):
 
 
 class TestDtypeInGuard(TestCaseBase):
-    @strict_mode_guard(0)
+    @strict_mode_guard(False)
     def test_dtype_in_guard(self):
         with test_instruction_translator_cache_context() as ctx:
             x = paddle.to_tensor([2], dtype="float32")
@@ -71,7 +71,7 @@ class TestDtypeInGuard(TestCaseBase):
             else:
                 self.assertEqual(ctx.translate_count, 2)
 
-    @strict_mode_guard(0)
+    @strict_mode_guard(False)
     def test_input_dtype_in_guard(self):
         with test_instruction_translator_cache_context() as ctx:
             x = paddle.float32
