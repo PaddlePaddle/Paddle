@@ -753,8 +753,14 @@ __global__ void masked_multihead_attention_kernel(
   constexpr int V_VEC_SIZE = Dh_MAX / THREADS_PER_VALUE;
   using V_vec = typename V_vec_<T, V_VEC_SIZE>::Type;
 
-  // vo的意思是 每个v的输出由 THREADS_PER_VALUE 个线程计算！
-  // vi的意思是
+  // now we have got [1, seq] ，distributed in logits_smem.
+  // next we compute [1, seq] * [seq, head_dim] = [1, head_dim]
+  // THREADS_PER_VALUE means num of threads per value's head_dim.
+  // we split the seq dimension for more cuda threads to compute.
+  // vo means the first seq index processed by this cuda thread in the value.
+  // vi means the head_dim index processed by this cuda thread in the value.
+  // so this cuda thread compute [1, k] * [k, vi:vi+V_VEC_SIZE] and k starts
+  // from vo and increases by a step V_PER_ITER.
   int vo = tid / THREADS_PER_VALUE;
   int vi = (tid % THREADS_PER_VALUE) * V_VEC_SIZE;
 
@@ -773,9 +779,7 @@ __global__ void masked_multihead_attention_kernel(
 
   V_vec_acum out;
   zero(out);
-  // now we have got [1, seq] ，distributed in logits_smem.
-  // next we compute [1, seq]* [seq, head_dim]
-  // V_PER_ITER 的意思就是每个线程需要处理这么多seq！
+  // V_PER_ITER is used to strip-mined the seq dimension.
   constexpr int V_PER_ITER = THREADS_PER_BLOCK / THREADS_PER_VALUE;
   if (Dh == Dh_MAX || vi < Dh) {
     for (int ti = vo; ti < act_time_step; ti += V_PER_ITER) {
@@ -803,8 +807,7 @@ __global__ void masked_multihead_attention_kernel(
 
   V_vec v_bias;
   zero(v_bias);
-  // 这个地方他妈的是要干啥呢？，有点像是要处理最后的一个v！
-  // vo 表示seq的索引哦！
+  // now we process the last v.
   if (vo == (act_time_step % V_PER_ITER) && (Dh == Dh_MAX || vi < Dh)) {
     // V_vec v = *reinterpret_cast<const V_vec *>(
     //     &params.qkv[2 * params.num_head * Dh + qkv_base_offset + vi]);
@@ -831,7 +834,7 @@ __global__ void masked_multihead_attention_kernel(
 
   __syncthreads();
 
-  // 似乎是想规约！
+  // now we do the reduction in the seq dimension to get [1, head_dim].
   if (Dh == Dh_MAX || vi < Dh) {
 #pragma unroll
     for (int active_groups = V_PER_ITER; active_groups >= 2;
@@ -856,7 +859,7 @@ __global__ void masked_multihead_attention_kernel(
     }
   }
 
-  // 这一步是干啥呢？只想让很少的线程负责写入！
+  // write the [1, head_dim] result back to global memory.
   if (vo == 0 && (Dh == Dh_MAX || vi < Dh)) {
 #ifdef MMHA_USE_FP32_ACUM_FOR_OUT
     // convert_from_float(*reinterpret_cast<V_vec *>(&params.out[bhi * Dh +
