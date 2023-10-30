@@ -47,7 +47,7 @@ function base_image(){
     sed -i "s#<setcuda>#ENV LD_LIBRARY_PATH=/usr/local/cuda-12.0/targets/x86_64-linux/lib:\$LD_LIBRARY_PATH #g" ${dockerfile_name}
     sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-12.0/bin:\$PATH #g" ${dockerfile_name}
-    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt#g' ${dockerfile_name}
+    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8616#g' ${dockerfile_name}
     sed -i 's#cudnn841#cudnn891#g' ${dockerfile_name}
     sed -i 's#CUDNN_VERSION=8.4.1#CUDNN_VERSION=8.9.1#g' ${dockerfile_name}
   else
