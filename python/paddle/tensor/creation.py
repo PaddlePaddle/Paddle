@@ -457,7 +457,7 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     if not isinstance(base, Variable):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -1643,7 +1643,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.meshgrid(list(args))
     else:
         name = kwargs.get("name", None)
@@ -2603,7 +2603,7 @@ def complex(real, imag, name=None):
             [[0j    , 1j    , 2j    ],
              [(1+0j), (1+1j), (1+2j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.complex(real, imag)
     else:
         check_variable_and_dtype(

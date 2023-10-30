@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_uitls import test_with_pir_api
 
 
 def meshgrid_wrapper(x):
@@ -41,10 +42,12 @@ class TestMeshgridOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['x0'], ['out0', 'out1'], check_prim=True)
+        self.check_grad(
+            ['x0'], ['out0', 'out1'], check_prim=True, check_pir=True
+        )
 
     def init_inputs_and_outputs(self):
         self.shape = self.get_x_shape()
@@ -122,15 +125,20 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['x0'], ['out0', 'out1'], check_prim=True
+            paddle.CUDAPlace(0),
+            ['x0'],
+            ['out0', 'out1'],
+            check_prim=True,
+            check_pir=True,
         )
 
 
 class TestMeshgridOp3(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         x = paddle.static.data(shape=[100], dtype='int32', name='x')
         y = paddle.static.data(shape=[200], dtype='int32', name='y')
@@ -167,6 +175,7 @@ class TestMeshgridOp3(unittest.TestCase):
 
 
 class TestMeshgridOp4(unittest.TestCase):
+    @test_with_pir_api
     def test_list_input(self):
         x = paddle.static.data(shape=[100], dtype='int32', name='x')
         y = paddle.static.data(shape=[200], dtype='int32', name='y')
@@ -204,6 +213,7 @@ class TestMeshgridOp4(unittest.TestCase):
 
 
 class TestMeshgridOp5(unittest.TestCase):
+    @test_with_pir_api
     def test_tuple_input(self):
         x = paddle.static.data(shape=[100], dtype='int32', name='x')
         y = paddle.static.data(shape=[200], dtype='int32', name='y')
