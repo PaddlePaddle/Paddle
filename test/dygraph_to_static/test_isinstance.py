@@ -26,10 +26,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import nn
@@ -78,7 +75,7 @@ class SequentialLayer(nn.Layer):
         return res
 
 
-@test_and_compare_with_new_ir(True)
+@compare_legacy_with_pir
 def train(model, to_static):
     paddle.jit.enable_to_static(to_static)
 
@@ -88,8 +85,7 @@ def train(model, to_static):
     return out.numpy()
 
 
-@dy2static_unittest
-class TestIsinstance(unittest.TestCase):
+class TestIsinstance(Dy2StTestBase):
     def test_isinstance_simple_return_layer(self):
         model = IsInstanceLayer(SimpleReturnLayer())
         self._test_model(model)
