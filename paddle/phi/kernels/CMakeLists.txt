@@ -142,10 +142,11 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
 endif()
 
-if(NOT (WITH_AVX
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG
-   AND WITH_MKL))
+if(NOT
+   (WITH_AVX
+    AND AVX512F_FOUND
+    AND AVX512F_FLAG
+    AND WITH_MKL))
   list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
 endif()
 
