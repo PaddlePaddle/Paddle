@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+
 import paddle
 import paddle.distributed as dist
 
@@ -52,6 +53,7 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
             dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
         )
         dist_tensor._uva()
+
 
 if __name__ == "__main__":
     unittest.main()
