@@ -1979,9 +1979,11 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
                                     PyObject* args,
                                     PyObject* kwargs) {
   EAGER_TRY
-  PADDLE_ENFORCE(self->tensor.defined() && self->tensor.is_dense_tensor(),
-                 paddle::platform::errors::Fatal(
-                     "function _use_gpudnn is only effective for DenseTensor"));
+  PADDLE_ENFORCE(
+      self->tensor.defined() &&
+          (self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor()),
+      paddle::platform::errors::Fatal("Function _use_gpudnn is only effective "
+                                      "for DenseTensor and DistTensor."));
 
   bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
@@ -2013,10 +2015,9 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
   if (self->tensor.is_dist_tensor()) {
     auto dist_tensor =
         static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
-    auto target_dist_tensor =
-        std::make_shared<phi::distributed::DistTensor>(
-            dist_tensor->dims(), dist_tensor->dist_attr()) *
-        (target_dist_tensor->unsafe_mutable_value()) = target_dense_tensor;
+    auto target_dist_tensor = std::make_shared<phi::distributed::DistTensor>(
+        dist_tensor->dims(), dist_tensor->dist_attr());
+    *(target_dist_tensor->unsafe_mutable_value()) = target_dense_tensor;
     target_tensor.set_impl(target_dist_tensor);
   } else {
     target_tensor.set_impl(
