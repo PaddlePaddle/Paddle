@@ -139,7 +139,9 @@ void GroupScheduler::operator()() {
   feasible_conditions_.emplace_back(&GroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
+#ifdef CINN_WITH_CUDA
   OptimizeReduction();
+#endif
   DoHorizontalLoopFusion();
   DoVerticalLoopFusion();
 #ifdef CINN_WITH_CUDA
