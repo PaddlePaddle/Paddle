@@ -54,8 +54,8 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::PassManager pm(ctx);
   pm.AddPass(pir::CreateBuildCinnPass());
-  // pm.EnablePassTiming();
-  // pm.EnableIRPrinting();
+  pm.EnablePassTiming();
+  pm.EnableIRPrinting();
   CHECK_EQ(pm.Run(origin_program.get()), true);
   LOG(INFO) << "after pass: " << *origin_program;
 

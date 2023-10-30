@@ -1128,7 +1128,7 @@ TEST(pattern_rewrite, Patterns) {
   //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateReorderBlockOpsPass());
-  // pm.EnablePassTiming();
+  pm.EnablePassTiming();
   pm.EnableIRPrinting();
   // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
   //     [](pir::Pass *pass, pir::Operation *op) {
