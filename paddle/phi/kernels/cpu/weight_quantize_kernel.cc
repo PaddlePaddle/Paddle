@@ -40,7 +40,7 @@ void quant_compute(const DeviceContext& dev_ctx,
   DDim dims = {num};
   const T* x_data = x.data<T>();
   D* out_data = out->data<D>();
-  float* scale_data = scale->data<float>();
+  T* scale_data = scale->data<T>();
 
   DenseTensor x_int(out->type());
   x_int.Resize({static_cast<int64_t>(m), static_cast<int64_t>(n)});
