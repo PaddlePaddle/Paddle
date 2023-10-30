@@ -145,18 +145,6 @@ repos:
         entry: bash ./tools/gen_ut_cmakelists.hook
         language: system
         files: testslist.csv$
-
--   repo: local
-    hooks:
-    -   id: sort-txt
-        name: sort-txt
-        language: system
-        entry: sh
-        args:
-         - -c
-         - |
-           LC_COLLATE=en_DK sort -o ./test/white_list/new_ir_op_test_white_list  ./test/white_list/new_ir_op_test_white_list
-
 -   repo: https://github.com/cheshirekow/cmake-format-precommit
     rev: v0.6.13
     hooks:
