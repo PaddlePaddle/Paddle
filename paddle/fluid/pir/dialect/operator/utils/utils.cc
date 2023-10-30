@@ -25,6 +25,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_broadcast_",
     "pd_op.c_sync_calc_stream_",
     "pd_op.c_sync_comm_stream_",
+    "pd_op.fused_elemwise_add_activation",
+    "pd_op.fused_elemwise_add_activation_grad",
     "pd_op.fused_gemm_epilogue",
     "pd_op.fused_gemm_epilogue_grad",
     "pd_op.dpsgd",
@@ -37,9 +39,7 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_allreduce_max_",
     "pd_op.c_allgather",
     "pd_op.seed",
-    "pd_op.share_data",
-    "pd_op.fused_elemwise_add_activation",
-    "pd_op.fused_elemwise_add_activation_grad"};
+    "pd_op.share_data"};
 
 enum class AttrType {
   UNDEFINED = 0,

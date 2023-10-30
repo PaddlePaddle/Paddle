@@ -194,6 +194,7 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
+
 void FusedElemwiseAddActivationGradInferMeta(
     const MetaTensor& x,
     const MetaTensor& y,
@@ -205,6 +206,7 @@ void FusedElemwiseAddActivationGradInferMeta(
     bool save_intermediate_out,
     MetaTensor* x_grad,
     MetaTensor* y_grad);
+
 void GatherNdGradInferMeta(const MetaTensor& x,
                            const MetaTensor& index,
                            const MetaTensor& out_grad,

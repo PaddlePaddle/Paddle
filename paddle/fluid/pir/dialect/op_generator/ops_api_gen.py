@@ -102,6 +102,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'fused_attention',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
+    'fused_elemwise_add_activation',
     'fused_feedforward',
     'fused_scale_bias_relu_conv_bnstats',
     'memcpy',
@@ -115,8 +116,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'shadow_feed',
-    "fused_attention",
-    'fused_elemwise_add_activation',
 ]
 
 
