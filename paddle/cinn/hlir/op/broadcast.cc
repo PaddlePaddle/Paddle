@@ -176,6 +176,7 @@ std::shared_ptr<OpStrategy> StrategyForBroadcastTo(
     const std::vector<Type> &out_type,
     const std::vector<std::vector<int>> &output_shapes,
     const Target &target) {
+  std::cerr << "in broadcast" << std::endl;
   std::vector<int> out_shape;
   std::vector<int> broadcast_axes;
   CHECK(attrs.attr_store.count("out_shape"));

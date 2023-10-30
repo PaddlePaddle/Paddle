@@ -140,7 +140,10 @@ bool IsSupportCinn(pir::Operation* op) {
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
-  if (op_name == "broadcast") {
+  std::cerr << "op_name " << op_name << std::endl;
+
+  if (op_name == "subtract" || op_name == "divide" ||
+      op_name == "broadcast_to") {
     return true;
   }
 

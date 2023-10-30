@@ -130,17 +130,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         std::cerr << "begin to build kernel \n";
-        auto group1 =
-            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
-        std::cerr << "end to build kernel \n";
-        compiler_list.push_back(ir_compiler);
-        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
-            {cinn::dialect::JitKernelOp::kAttrName,
-             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
-        };
-
-        // Generate jit kernel op input and output
         auto vec_ins = GetBlockOutsideInput(group->nodes);
 
         std::vector<pir::Value> vec_new_ins;
@@ -152,6 +141,20 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
             group->nodes,
             group->output_nodes,
             group_op.ops().back()->dyn_cast<pir::YieldOp>());
+
+        auto group1 =
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
+
+        group1->input_values = vec_ins;
+        group1->output_values = vec_outs;
+
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        std::cerr << "end to build kernel \n";
+        compiler_list.push_back(ir_compiler);
+        std::unordered_map<std::string, ::pir::Attribute> op_attrs{
+            {cinn::dialect::JitKernelOp::kAttrName,
+             cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
+        };
 
         std::vector<pir::Type> vec_types;
         for (auto& out : vec_outs) {
