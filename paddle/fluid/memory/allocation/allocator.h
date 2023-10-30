@@ -138,6 +138,7 @@ using DecoratedAllocationPtr =
 
 template <typename T>
 static T&& FillValue(T&& allocation) {
+#ifdef PADDLE_WITH_CUDA
   if (allocation != nullptr) {
     if (FLAGS_sync_after_alloc || FLAGS_alloc_fill_value >= 0) {
       PADDLE_ENFORCE_GPU_SUCCESS(cudaDeviceSynchronize());
@@ -156,6 +157,7 @@ static T&& FillValue(T&& allocation) {
       }
     }
   }
+#endif
   return std::forward<T>(allocation);
 }
 
