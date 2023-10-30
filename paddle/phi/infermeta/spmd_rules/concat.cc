@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/concat.h"
 
 #include <limits>
+#include <set>
 
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
@@ -23,6 +24,10 @@ namespace phi {
 namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
+
+static bool IsEmpty(const std::vector<int64_t>& shape) {
+  return shape.empty() || shape.at(0) == 0;
+}
 
 SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   /*
@@ -40,19 +45,16 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
                  [](const DistMetaTensor& meta) {
                    return phi::vectorize<int64_t>(meta.dims());
                  });
-  auto is_empty = [](const std::vector<int64_t>& shape) {
-    return shape.empty() || shape.at(0) == 0;
-  };
   bool all_empty =
-      std::all_of(tensor_shapes.begin(), tensor_shapes.end(), is_empty);
+      std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
   if (all_empty) {
     return SpmdInfo();
   }
-  auto not_empty = [is_empty](const std::vector<int64_t>& shape) {
-    return !is_empty(shape);
-  };
+
   auto non_empty_iter =
-      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), not_empty);
+      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
+        return !IsEmpty(shape);
+      });
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   // normlize dim
@@ -64,7 +66,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   auto n_inputs = x.size();
   for (size_t i = 0; i < n_inputs; ++i) {
     const auto& dist_attr = x[i].dist_attr();
-    if (not_empty(tensor_shapes[i]) && IsDimSharded(dist_attr, dim)) {
+    if ((!IsEmpty(tensor_shapes[i])) && IsDimSharded(dist_attr, dim)) {
       auto sharded_dist_attr = ReplicateTensorDim(dist_attr, dim);
       input_attrs.emplace_back(sharded_dist_attr);
     } else {
@@ -82,7 +84,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   auto has_mismatch = [&](int32_t mesh_dim) {
     bool mismatch = false;
     for (size_t i = 0; i < n_inputs; i++) {
-      if ((!is_empty(tensor_shapes[i])) &&
+      if ((!IsEmpty(tensor_shapes[i])) &&
           !PlacementEqual(inputs_placements[non_empty_index][mesh_dim],
                           inputs_placements[i][mesh_dim])) {
         mismatch = true;
@@ -123,7 +125,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
         for (size_t i = 0; i < n_inputs; i++) {
           auto& tensor_shape = tensor_shapes[i];
           auto& tensor_dist_attr = input_attrs[i];
-          if (is_empty(tensor_shape)) {
+          if (IsEmpty(tensor_shape)) {
             continue;
           }
 

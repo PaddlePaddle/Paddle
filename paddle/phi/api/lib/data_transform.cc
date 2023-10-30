@@ -743,12 +743,13 @@ ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
     const std::vector<Tensor>& tensors,
     const std::vector<phi::distributed::TensorDistAttr>& dist_attrs) {
-  std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> result;
+  result.reserve(tensors.size());
   for (size_t i = 0; i < tensors.size(); ++i) {
-    outputs.push_back(ReshardApiInputToReplicatedKernelInput(
+    result.emplace_back(ReshardApiInputToReplicatedKernelInput(
         dev_ctx, tensors[i], dist_attrs[i]));
   }
-  return outputs;
+  return result;
 }
 
 std::shared_ptr<phi::distributed::DistTensor>
@@ -939,7 +940,6 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
                                 transform_flag) &&
            !NeedTransform2Contiguous(is_stride_kernel,
                                      dense_tensor.meta().is_contiguous()))) {
-        VLOG(6) << "PrepareDataForDistTensor return transformed dist tensor";
         out.push_back(
             std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
       } else {

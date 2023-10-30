@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include <vector>
 
-#include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/type_defs.h"
 
@@ -29,6 +28,5 @@ SpmdInfo ReshapeInferSpmd(const DistMetaTensor& x,
 SpmdInfo ReshapeInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  const std::vector<int64_t>& shape);
-
 }  // namespace distributed
 }  // namespace phi
