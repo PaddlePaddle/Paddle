@@ -63,6 +63,8 @@ CUDA_ATOMIC_WRAPPER(Add, bool) {
     newval = (old & ~(0x000000ff << shift)) | (newval << shift);
     old = atomicCAS(address_as_ui, assumed, newval);
   } while (assumed != old);
+
+  return static_cast<bool>(old & 0xff);
 }
 
 CUDA_ATOMIC_WRAPPER(Add, uint8_t) {
@@ -82,6 +84,8 @@ CUDA_ATOMIC_WRAPPER(Add, uint8_t) {
     newval = (old & ~(0x000000ff << shift)) | (newval << shift);
     old = atomicCAS(address_as_ui, assumed, newval);
   } while (assumed != old);
+
+  return static_cast<uint8_t>(old & 0xff);
 }
 
 CUDA_ATOMIC_WRAPPER(Add, int8_t) {
@@ -97,10 +101,12 @@ CUDA_ATOMIC_WRAPPER(Add, int8_t) {
   do {
     assumed = old;
     old_byte = (old >> shift) & 0xff;
-    newval = static_cast<uint8_t>(val + static_cast<int8_t>(old_byte));
+    newval = static_cast<int8_t>(val + static_cast<int8_t>(old_byte));
     newval = (old & ~(0x000000ff << shift)) | (newval << shift);
     old = atomicCAS(address_as_ui, assumed, newval);
   } while (assumed != old);
+
+  return static_cast<int8_t>(old & 0xff);
 }
 
 CUDA_ATOMIC_WRAPPER(Add, int16_t) {
@@ -121,6 +127,8 @@ CUDA_ATOMIC_WRAPPER(Add, int16_t) {
                          : (old & 0xffff0000) | newval;
     old = atomicCAS(address_as_ui, assumed, newval);
   } while (assumed != old);
+
+  return static_cast<int16_t>(old & 0xffff);
 }
 // CUDA API uses unsigned long long int, we cannot use uint64_t here.
 // It because unsigned long long int is not necessarily uint64_t
