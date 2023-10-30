@@ -1617,42 +1617,33 @@ class Engine:
                     assert fwd_op is not None, "fwd_op is None"
 
                     if core.has_vjp(fwd_op):
+                        new_grads = decomp.decompose_bwd_op(
+                            block=newir_program.global_block(),
+                            fwd_op=fwd_op,
+                            bwd_op=op,
+                            grad_var_to_var_map=newir_grad_var_to_var_map,
+                            has_vjp=True,
+                        )
                         if core.has_custom_vjp(fwd_op):
-                            new_grads = decomp.decompose_bwd_op(
-                                newir_program.global_block(),
-                                op,
-                                fwd_op,
-                                newir_grad_var_to_var_map,
-                            )
-
                             new_fwd_outputs = decomp.decompose_fwd_op(
                                 newir_program.global_block(),
                                 fwd_op,
                                 newir_grad_var_to_var_map,
                             )
-                        else:
-                            new_grads = decomp.decompose_bwd_op(
-                                newir_program.global_block(),
-                                op,
-                                fwd_op,
-                                newir_grad_var_to_var_map,
-                            )
                     else:
-                        fwd_inputs = tuple(
-                            x.source() for x in fwd_op.operands()
-                        )
                         new_fwd_outputs = decomp.decompose_fwd_op(
                             newir_program.global_block(),
                             fwd_op,
                             newir_grad_var_to_var_map,
                         )
 
-                        new_grads = decomp.decompose_bwd_subgraph(
-                            newir_program.global_block(),
-                            op,
-                            newir_grad_var_to_var_map,
-                            new_fwd_outputs,
-                            fwd_inputs,
+                        new_grads = decomp.decompose_bwd_op(
+                            block=newir_program.global_block(),
+                            fwd_op=fwd_op,
+                            bwd_op=op,
+                            grad_var_to_var_map=newir_grad_var_to_var_map,
+                            has_vjp=False,
+                            fwd_outputs_after_decompose=new_fwd_outputs,
                         )
 
             # ops_name = [op.name() for op in newir_program.global_block().ops]
@@ -1722,7 +1713,7 @@ class Engine:
                     "when running, num ops: ",
                     len(self.newir_program.global_block().ops),
                 )
-                print("when running, program: ", self.newir_program)
+                # print("when running, program: ", self.newir_program)
                 outs = self._executor.run(
                     self.newir_program,
                     feed=feed_dict,

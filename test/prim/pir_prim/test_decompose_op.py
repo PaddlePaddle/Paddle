@@ -177,9 +177,10 @@ class TestDecomposeOp(unittest.TestCase):
                                 )
                                 new_grads = decomp.decompose_bwd_op(
                                     newir_program.global_block(),
-                                    bwd_op,
                                     fwd_op,
+                                    bwd_op,
                                     grad_var_to_var_map,
+                                    True,
                                 )
                                 if bwd_leaf_op_index is not None:
                                     decomp.replace_graph_outputs(
@@ -214,9 +215,10 @@ class TestDecomposeOp(unittest.TestCase):
                                 )
                                 new_grads = decomp.decompose_bwd_op(
                                     newir_program.global_block(),
-                                    bwd_op,
                                     fwd_op,
+                                    bwd_op,
                                     grad_var_to_var_map,
+                                    True,
                                 )
                                 if bwd_leaf_op_index is not None:
                                     decomp.replace_graph_outputs(
@@ -252,12 +254,13 @@ class TestDecomposeOp(unittest.TestCase):
                                 if bwd_op in bwd_leaf_ops
                                 else None
                             )
-                            new_grads = decomp.decompose_bwd_subgraph(
+                            new_grads = decomp.decompose_bwd_op(
                                 newir_program.global_block(),
+                                fwd_op,
                                 bwd_op,
                                 grad_var_to_var_map,
+                                False,
                                 new_fwd_outputs,
-                                fwd_inputs,
                             )
                             if bwd_leaf_op_index is not None:
                                 decomp.replace_graph_outputs(
@@ -268,7 +271,6 @@ class TestDecomposeOp(unittest.TestCase):
                                 )
 
             # execution
-            print("final graph: ", newir_program)
             exe = paddle.static.Executor()
             outs = exe.run(
                 newir_program,
