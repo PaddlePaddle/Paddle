@@ -519,4 +519,41 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
+void FusionGRUInferMeta(const MetaTensor& x,
+                        const MetaTensor& h0,
+                        const MetaTensor& weight_x,
+                        const MetaTensor& weight_h,
+                        const MetaTensor& bias,
+                        const std::string& activation,
+                        const std::string& gate_activation,
+                        const bool is_reverse,
+                        const bool use_seq,
+                        const bool origin_mode,
+                        const bool use_mkldnn,
+                        const std::string& mkldnn_data_type,
+                        const float scale_data,
+                        const float shift_data,
+                        const std::vector<float>& scale_weights,
+                        const bool force_fp32_output,
+                        MetaTensor* reordered_h0,
+                        MetaTensor* xx,
+                        MetaTensor* batched_input,
+                        MetaTensor* batched_out,
+                        MetaTensor* hidden);
+
+void FusionSeqConvEltAddReluInferMeta(const MetaTensor& x,
+                                      const MetaTensor& filter,
+                                      const MetaTensor& bias,
+                                      const int context_length,
+                                      const int context_start,
+                                      const int context_stride,
+                                      MetaTensor* out,
+                                      MetaTensor* col_mat);
+
+void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
+                                      const MetaTensor& fc_weight,
+                                      const MetaTensor& fc_bias,
+                                      const std::string& fc_activation,
+                                      MetaTensor* out,
+                                      MetaTensor* fc_out);
 }  // namespace phi

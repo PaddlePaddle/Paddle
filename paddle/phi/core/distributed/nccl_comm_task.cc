@@ -59,21 +59,38 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
 void NCCLCommTask::StartRecord() {
   backends::gpu::GPUDeviceGuard guard(place_.device);
   if (!start_event_created_) {
+#ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&nccl_start_event_, cuda_event_flags_));
+#else  // PADDLE_WITH_HIP
+    HIP_CHECK(hipEventCreateWithFlags(&nccl_start_event_, hip_event_flags_));
+#endif
     start_event_created_ = true;
   }
+#ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_start_event_, nccl_stream_));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventRecord(nccl_start_event_, nccl_stream_));
+#endif
 }
 void NCCLCommTask::EndRecord() {
   backends::gpu::GPUDeviceGuard guard(place_.device);
   if (!end_event_created_) {
+#ifdef PADDLE_WITH_CUDA
     CUDA_CHECK(cudaEventCreateWithFlags(&nccl_end_event_, cuda_event_flags_));
+#else  // PADDLE_WITH_HIP
+    HIP_CHECK(hipEventCreateWithFlags(&nccl_end_event_, hip_event_flags_));
+#endif
     end_event_created_ = true;
   }
+#ifdef PADDLE_WITH_CUDA
   CUDA_CHECK(cudaEventRecord(nccl_end_event_, nccl_stream_));
+#else  // PADDLE_WITH_HIP
+  HIP_CHECK(hipEventRecord(nccl_end_event_, nccl_stream_));
+#endif
 }
 
-bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
+bool NCCLCommTask::CudaEventQuery(gpuEvent_t event) {
+#ifdef PADDLE_WITH_CUDA
   cudaError_t ret = cudaEventQuery(event);
   if (ret == cudaSuccess) {
     return true;
@@ -83,6 +100,17 @@ bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
     // ignore and clear the error if not ready
     CUDA_CHECK(cudaGetLastError());
   }
+#else  // PADDLE_WITH_HIP
+  hipError_t ret = hipEventQuery(event);
+  if (ret == hipSuccess) {
+    return true;
+  } else if (ret != hipErrorNotReady) {
+    HIP_CHECK(ret);
+  } else {
+    // ignore and clear the error if not ready
+    HIP_CHECK(hipGetLastError());
+  }
+#endif
   return false;
 }
 
