@@ -416,6 +416,11 @@ void ProgramTranslator::TranslateBlock(
         pir::Operation::Create(yeild_inputs, attribute_map, {}, yeild_info);
     dst_block->push_back(yeild_op);
   }
+  std::stringstream os;
+  pir::IrPrinter ir_printer(os);
+  ir_printer.PrintBlock(dst_block);
+  std::cout << "new ir program" << std::endl;
+  std::cout << os.str() << std::endl;
 }
 
 pir::Operation* ProgramTranslator::TranslateCondIfOperation(

@@ -989,7 +989,7 @@ class _ExecutorCache:
             _apply_inplace_addto_pass(
                 program, enable_inplace, enable_addto, skip_var_names
             )
-
+        print(program)
         new_program = program.clone()
         if (
             new_program._pipeline_opt
