@@ -1654,36 +1654,34 @@ class Engine:
                     fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
                     assert fwd_op is not None, "fwd_op is None"
 
-                    if core.has_vjp(fwd_op):
-                        new_grads = decomp.decompose_bwd_op(
-                            block=newir_program.global_block(),
-                            fwd_op=fwd_op,
-                            bwd_op=op,
-                            grad_var_to_var_map=newir_grad_var_to_var_map,
-                            has_vjp=True,
-                        )
-                        # if core.has_custom_vjp(fwd_op):
-                        #     new_fwd_outputs = decomp.decompose_fwd_op(
-                        #         newir_program.global_block(),
-                        #         fwd_op,
-                        #         newir_grad_var_to_var_map,
-                        #     )
-                    else:
-                        breakpoint()
-                        new_fwd_outputs = decomp.decompose_fwd_op(
+                    (
+                        new_grads,
+                        bwd_has_decomposed,
+                    ) = decomp.decompose_bwd_op_directly(
+                        newir_program.global_block(),
+                        fwd_op,
+                        op,
+                        newir_grad_var_to_var_map,
+                    )
+                    if not bwd_has_decomposed:
+                        fwd_inputs = [x.source() for x in fwd_op.operands()]
+                        (
+                            new_fwd_outputs,
+                            fwd_has_decomposed,
+                        ) = decomp.decompose_fwd_op(
                             newir_program.global_block(),
                             fwd_op,
                             newir_grad_var_to_var_map,
                         )
-
-                        new_grads = decomp.decompose_bwd_op(
-                            block=newir_program.global_block(),
-                            fwd_op=fwd_op,
-                            bwd_op=op,
-                            grad_var_to_var_map=newir_grad_var_to_var_map,
-                            has_vjp=False,
-                            fwd_outputs_after_decompose=new_fwd_outputs,
-                        )
+                        if fwd_has_decomposed:
+                            new_grads = decomp.decompose_bwd_op_after_fwd_op(
+                                newir_program.global_block(),
+                                fwd_op,
+                                op,
+                                newir_grad_var_to_var_map,
+                                fwd_inputs,
+                                new_fwd_outputs,
+                            )
 
             ops_name = [op.name() for op in newir_program.global_block().ops]
             for op_name in bwd_ops_name:
