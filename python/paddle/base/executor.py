@@ -1855,23 +1855,6 @@ class Executor:
 
             ret = new_exe.run(list(feed.keys()), return_numpy)
 
-            # liuchenghao: run op profiling, temp code
-            if self._first_n_run > 0:
-                self._first_n_run -= 1
-                import paddle
-                from paddle.distributed.auto_parallel.static.utils import (
-                    measure_real_op_cost_wrt_program_and_place,
-                )
-
-                place: str = paddle.device.get_device()
-                place = paddle.CUDAPlace(int(place.split(':')[1]))
-                with open("mylog/profile.log.%d" % os.getpid(), 'a') as f:
-                    f.write(
-                        measure_real_op_cost_wrt_program_and_place(
-                            program, place, run_iters=16, verbose_level=2
-                        )
-                    )
-
             set_flags(stored_flag)
             return ret
 

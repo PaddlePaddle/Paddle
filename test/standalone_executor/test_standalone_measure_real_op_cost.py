@@ -110,7 +110,7 @@ class TestOpProfiling(unittest.TestCase):
 
         if run_profiling:
             measure_real_op_cost_wrt_program_and_place(
-                train_program, place, verbose=True
+                train_program, place, verbose_level=2
             )
 
             # run this line below to see if profiling results are

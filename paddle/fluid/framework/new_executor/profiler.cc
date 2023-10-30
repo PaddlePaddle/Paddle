@@ -18,84 +18,28 @@ namespace paddle {
 namespace framework {
 namespace profiler {
 
-OpDeviceProfileEvent::OpDeviceProfileEvent(
-    const platform::DeviceContext* device_context) {
-#if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaEventCreate(&this->event_obj_cuda_));
-  PADDLE_ENFORCE_NOT_NULL(
-      device_context,
-      platform::errors::PreconditionNotMet("device_context is nullptr."));
-  auto* gpu_context = dynamic_cast<const phi::GPUContext*>(device_context);
-  if (gpu_context == nullptr) {
-    VLOG(4) << "Dynamic cast from DeviceContext to GPUContext failed. "
-            << "This might because the op does not run on GPU. Here device "
-               "time stamp "
-            << "creation will slient fail.";
-  } else {
-    this->cuda_stream_ = gpu_context->stream();
-    VLOG(4) << "Successfully get cuda stream from device context.";
-  }
-#endif
-}
+OpProfileEvent::OpProfileEvent(const platform::DeviceContext* device_context) {}
 
-OpDeviceProfileEvent::~OpDeviceProfileEvent() {
-#if defined(PADDLE_WITH_CUDA)
-  // Cannot use PADDLE_ENFORCE_GPU_SUCCESS here since it
-  // will cause "throw() will always call terminate()"
-  // warning and warning will be treated as error. So i
-  // directly call CUDA API here.
-  if (this->event_obj_cuda_) {
-    cudaEventDestroy(this->event_obj_cuda_);
-  }
-#endif
-}
+OpProfileEvent::~OpProfileEvent() {}
 
-void OpDeviceProfileEvent::Record() {
-#if defined(PADDLE_WITH_CUDA)
-  if (this->cuda_stream_) {
-    // if cuda stream is successfully set, this means the op is running on GPU
-    // and everything is OK for recording the event.
-    PADDLE_ENFORCE_GPU_SUCCESS(
-        cudaEventRecord(this->event_obj_cuda_, this->cuda_stream_));
-  }
-#endif
+void OpProfileEvent::Record() {
   platform::Timer timer;
   timeval _now;
   gettimeofday(&_now, nullptr);
-  this->event_obj_cpu_.event_time_us_ =
-      _now.tv_sec * 1000 * 1000 + _now.tv_usec;
+  uint64_t us_since_epoch = static_cast<uint64_t>(_now.tv_sec) * 1000 * 1000 +
+                            static_cast<uint64_t>(_now.tv_usec);
+  this->event_obj_cpu_.event_time_us_ = us_since_epoch;
 }
 
-std::tuple<double, double> OpDeviceProfileEvent::MeasureTimeLapseWrtOtherEvent(
-    const OpDeviceProfileEvent& end_event) const {
+std::tuple<double, double> OpProfileEvent::MeasureTimeLapseWrtOtherEvent(
+    const OpProfileEvent& end_event) const {
   double device_time_lapse_us = -1.0;
-#if defined(PADDLE_WITH_CUDA)
-  if (cudaEventQuery(this->event_obj_cuda_) != cudaSuccess ||
-      cudaEventQuery(end_event.event_obj_cuda_) != cudaSuccess) {
-    VLOG(1) << "cuda event not set yet, time lapse measurment will return an "
-               "invalid value.";
-    return std::make_tuple(-1.0, -1.0);
-  } else if (this->cuda_stream_ == nullptr) {
-    // cuda stream not set, maybe the op is not running on GPU.
-    device_time_lapse_us = 0.0;  // simply set to 0.0 to imply that the op
-                                 // does not require GPU to finish.
-  } else {
-    float dt_ms = -1.0f;
-    PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
-        &dt_ms, this->event_obj_cuda_, end_event.event_obj_cuda_));
-    // cuda measures time lapse in ms, convert it to us
-    device_time_lapse_us = static_cast<double>(dt_ms) * 1000.0;
-    VLOG(4) << "measured device time lapse: " << device_time_lapse_us << " us.";
-  }
-#else
-  // implement other platforms
-#endif
 
   // measure CPU time cost
-  double cpu_time_lapse_us =
-      static_cast<double>(end_event.event_obj_cpu_.event_time_us_ -
-                          this->event_obj_cpu_.event_time_us_);
-  return std::make_tuple(cpu_time_lapse_us, device_time_lapse_us);
+  uint64_t cpu_time_lapse_us = end_event.event_obj_cpu_.event_time_us_ -
+                               this->event_obj_cpu_.event_time_us_;
+  return std::make_tuple(static_cast<double>(cpu_time_lapse_us),
+                         device_time_lapse_us);
 }
 
 OpRuntimeProfiler::OpRuntimeProfiler() {}
@@ -112,8 +56,7 @@ void OpRuntimeProfiler::RecordEvent(
                "RecordEvent will overwrite this event.";
   }
   // create a new event and record
-  std::shared_ptr event_ptr =
-      std::make_shared<OpDeviceProfileEvent>(device_context);
+  std::shared_ptr event_ptr = std::make_shared<OpProfileEvent>(device_context);
   event_ptr->Record();
   this->name_to_device_profile_events_.insert_or_assign(event_name, event_ptr);
 }
@@ -129,10 +72,12 @@ std::tuple<double, double> OpRuntimeProfiler::MeasureTimeLapseBetweenEvents(
             << end_event_name;
     return std::make_tuple(-1.0, -1.0);
   }
-  std::shared_ptr<OpDeviceProfileEvent> start_event =
+  std::shared_ptr<OpProfileEvent> start_event =
       this->name_to_device_profile_events_.at(start_event_name);
-  std::shared_ptr<OpDeviceProfileEvent> end_event =
-      this->name_to_device_profile_events_.at(start_event_name);
+  std::shared_ptr<OpProfileEvent> end_event =
+      this->name_to_device_profile_events_.at(end_event_name);
+  VLOG(6) << "Trying to meansure time lapse between event \""
+          << start_event_name << "\" and \"" << end_event_name << "\"";
   return start_event->MeasureTimeLapseWrtOtherEvent(*end_event);
 }
 

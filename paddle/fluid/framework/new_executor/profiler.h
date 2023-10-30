@@ -64,37 +64,26 @@ class ProfilerGuard {
 
 namespace profiler {
 
-class OpDeviceProfileEvent {
+class OpProfileEvent {
  public:
-  explicit OpDeviceProfileEvent(const platform::DeviceContext* device_context);
-  virtual ~OpDeviceProfileEvent();
+  explicit OpProfileEvent(const platform::DeviceContext* device_context);
+  virtual ~OpProfileEvent();
 
   // record event on host and device side (making a time stamp)
   void Record();
 
   // measure time lapse with respect to another event
   std::tuple<double, double> MeasureTimeLapseWrtOtherEvent(
-      const OpDeviceProfileEvent& end_event) const;
+      const OpProfileEvent& end_event) const;
 
  private:
-  ///////////////////////////////////
-  //        CUDA profiling         //
-  ///////////////////////////////////
-#if defined(PADDLE_WITH_CUDA)
-  // (owned) CUDA event object
-  cudaEvent_t event_obj_cuda_ = nullptr;
-  // (not owned) which stream the event is recorded onto
-  cudaStream_t cuda_stream_ = nullptr;
-#endif
-
   ///////////////////////////////////
   //      HOST side profiling      //
   ///////////////////////////////////
   struct cpuEvent_t {
     // cpu can also be treated as a compute device
-    double event_time_us_;
-  };
-  cpuEvent_t event_obj_cpu_;
+    uint64_t event_time_us_;
+  } event_obj_cpu_;
 };
 
 class OpRuntimeProfiler {
@@ -117,7 +106,7 @@ class OpRuntimeProfiler {
  protected:
   // mapping event name to event object, users just need to use event name
   // to record event of measure time lapse between events.
-  std::unordered_map<std::string, std::shared_ptr<OpDeviceProfileEvent>>
+  std::unordered_map<std::string, std::shared_ptr<OpProfileEvent>>
       name_to_device_profile_events_;
 };
 
