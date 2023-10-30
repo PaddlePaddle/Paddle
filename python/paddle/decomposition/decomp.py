@@ -370,6 +370,7 @@ def decompose_fwd_op(
             which maps the backward grad variable to its corresponding forward variable.
     Returns:
         new_outputs (tuple(Value)): the new outputs after decomposing.
+        has_decomposed: whether the forward op has been successfully decomposed.
     '''
 
     if not core._is_fwd_prim_enabled():
@@ -404,23 +405,113 @@ def decompose_fwd_op(
 
             fwd_op.replace_all_uses_with(new_outs)
             block.remove_op(fwd_op)
-            return new_outs
+            return new_outs, True
         else:
-            return tuple(orig_outs)
+            return tuple(orig_outs), False
 
 
-def decompose_bwd_op(
+def decompose_bwd_op_directly(
     block: Block,
     fwd_op: pir.Operation,
     bwd_op: pir.Operation,
     grad_var_to_var_map: dict,
-    has_vjp: bool,
-    fwd_outputs_after_decompose: tuple = None,
 ) -> tuple:
     '''
     Decompose the bwd_op into a list of primitive ops.
-    (1) if fwd_op has vjp rules (including custom vjp), call call_vjp() to get a list of primitive operators in backward graph, then replace bwd_op;
-    (2) if fwd_op has no vjp rules, decompose fwd_op to a list of primitive operators in forward graph firstly,
+    If fwd_op has composite vjp rules (including custom vjp), call call_vjp() to get a list of primitive operators in backward graph, then replace bwd_op.
+
+    Args:
+        block (Block): the block to which the bwd_op belongs.
+        fwd_op (pir.Operation): the forward op.
+        bwd_op (pir.Operation): the backward op to be decomposed.
+        grad_var_to_var_map (dict): a dict obtained from distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
+    Return:
+        new_input_grads (tuple(Value)): new results of backward op after decomposing.
+        has_decomposed: whether the backward op has been successfully decomposed. If a fwd op does not have composite vjp rules and can not be decomposed directly, this function will return False.
+    '''
+
+    if not core._is_bwd_prim_enabled():
+        raise RuntimeError(
+            "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
+        )
+
+    # prepare forward and backward op's input and outputs infos
+    fwd_inputs = [x.source() for x in fwd_op.operands()]
+    fwd_outputs = fwd_op.results()
+    bwd_inputs = [x.source() for x in bwd_op.operands()]
+    grad_inputs = bwd_op.results()
+    res = []
+
+    # prepare the input args of call_vjp(fwd_op, inputs, outputs, out_grads, stop_gradients)
+    grad_outputs = []
+    for bwd_input in bwd_inputs:
+        if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs):
+            grad_outputs.append([bwd_input])
+    fwd_outputs_ = [[fwd_output] for fwd_output in fwd_outputs]
+    fwd_inputs_ = [
+        [fwd_op.operand_source(i)] for i in range(0, fwd_op.num_operands())
+    ]
+    stop_gradients = []
+    for grad_input in grad_inputs:
+        if grad_input.initialized():
+            stop_gradients.append([False])
+        else:
+            stop_gradients.append([True])
+
+    # record the backward op's position for subsequent replacement
+    bwd_op_idx = block.ops.index(bwd_op)
+    before_num_ops = len(block.ops)
+    # generate primitive operators corresponding to the backward op
+    new_grad_inputs = core.call_vjp(
+        fwd_op, fwd_inputs_, fwd_outputs_, grad_outputs, stop_gradients
+    )
+    after_num_ops = len(block.ops)
+    num_appended_ops = after_num_ops - before_num_ops
+
+    # if forward op has no composite vjp rules, call_vjp() appends the same op as original backward op,
+    # which means the backward op can not be decomposed directly, return False
+    if num_appended_ops == 1 and block.ops[-1].name() == bwd_op.name():
+        return None, False
+    else:
+        # record new outputs of the decomposed backward op
+        for grad_input in new_grad_inputs:
+            if grad_input[0] is not None and grad_input[0].initialized():
+                res.append(grad_input[0])
+            else:
+                res.append(pir.fake_op_result())
+
+        # update_grad_var_to_var_map
+        for idx, grad_input in enumerate(grad_inputs):
+            if grad_input in grad_var_to_var_map.keys():
+                grad_var_to_var_map[res[idx]] = grad_var_to_var_map.pop(
+                    grad_input
+                )
+
+        # move the list of primitive operators to the position of backward op
+        insert_idx = bwd_op_idx
+        for i in range(before_num_ops, after_num_ops):
+            block.move_op(block.ops[i], insert_idx)
+            insert_idx += 1
+
+        # replace the following use of original backward op's outputs with new outputs, and then remove original backward op
+        bwd_op.replace_all_uses_with(res)
+        block.remove_op(bwd_op)
+
+        return tuple(res), True
+
+
+def decompose_bwd_op_after_fwd_op(
+    block: Block,
+    fwd_op: pir.Operation,
+    bwd_op: pir.Operation,
+    grad_var_to_var_map: dict,
+    fwd_inputs: dict,
+    fwd_outputs_after_decompose: tuple,
+) -> tuple:
+    '''
+    Decompose the bwd_op into a list of primitive ops.
+    If fwd_op has no composite vjp rules, and fwd_op has been decomposed to a list of primitive operators in forward graph previously,
     call grad() for the decomposed forward subgraph to get a list of primitive operators in backward graph, then replace bwd_op.
 
     Args:
@@ -429,8 +520,7 @@ def decompose_bwd_op(
         bwd_op (pir.Operation): the backward op to be decomposed.
         grad_var_to_var_map (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
-        has_vjp : whether forward op has vjp rules, has_vjp is True means forward op has vjp rules and does not
-            need to be decomposed when decomposing backward op.
+        fwd_inputs: (tuple(Value)): the output of the forward op,
         fwd_outputs_after_decompose (tuple(Value)): the output of the decomposed forward op, if forward op has no vjp rules, forward op shoule be decomposed firstly,
             fwd_outputs_after_decompose means the new output of the decomposed forward op. If forward op has vjp rules, fwd_outputs_after_decompose is None.
     Return:
@@ -441,88 +531,47 @@ def decompose_bwd_op(
         raise RuntimeError(
             "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
         )
-    if not has_vjp and fwd_outputs_after_decompose is None:
+    if fwd_outputs_after_decompose is None:
         raise RuntimeError(
             "To decompose backward op, please decompose forward op firstly"
         )
 
-    # record the backward op's position for subsequent replacement
-    bwd_op_idx = block.ops.index(bwd_op)
-    before_num_ops = len(block.ops)
-
     # prepare forward and backward op's input and outputs infos
-    fwd_inputs = [x.source() for x in fwd_op.operands()]
-    fwd_outputs = (
-        fwd_outputs_after_decompose
-        if (has_vjp is False and fwd_outputs_after_decompose is not None)
-        else fwd_op.results()
-    )
+    fwd_outputs = fwd_outputs_after_decompose
     bwd_inputs = [x.source() for x in bwd_op.operands()]
     grad_inputs = bwd_op.results()
     res = []
 
-    # if forward op has vjp rules, call call_vjp() directly to generate a list of primitive operators that combine to have the same semantics as the backward op
-    if has_vjp:
-        # prepare the input args of call_vjp(fwd_op, inputs, outputs, out_grads, stop_gradients)
-        grad_outputs = []
-        for bwd_input in bwd_inputs:
-            if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs):
-                grad_outputs.append([bwd_input])
-        fwd_outputs_ = [[fwd_output] for fwd_output in fwd_outputs]
-        fwd_inputs_ = [
-            [fwd_op.operand_source(i)] for i in range(0, fwd_op.num_operands())
-        ]
+    # prepare the input args of grad(outputs, inputs, out_grads)
+    grad_outputs = tuple(
+        bwd_input
+        for bwd_input in bwd_inputs
+        if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs)
+    )
+    fwd_outputs_ = tuple(
+        grad_var_to_var_map[grad_output] for grad_output in grad_outputs
+    )
+    fwd_inputs_ = tuple(
+        grad_var_to_var_map[grad_input]
+        for grad_input in grad_inputs
+        if grad_input.initialized()
+    )
 
-        stop_gradients = []
-        for grad_input in grad_inputs:
-            if grad_input.initialized():
-                stop_gradients.append([False])
-            else:
-                stop_gradients.append([True])
+    # record the backward op's position for subsequent replacement
+    bwd_op_idx = block.ops.index(bwd_op)
+    before_num_ops = len(block.ops)
+    # generate primitive operators corresponding to the backward op
+    new_grad_inputs = ir_backward.grad(fwd_outputs_, fwd_inputs_, grad_outputs)
+    after_num_ops = len(block.ops)
 
-        # generate primitive operators corresponding to the backward op
-        new_grad_inputs = core.call_vjp(
-            fwd_op, fwd_inputs_, fwd_outputs_, grad_outputs, stop_gradients
-        )
-
-        # record new outputs of the decomposed backward op
-        for grad_input in new_grad_inputs:
-            if grad_input[0] is not None and grad_input[0].initialized():
-                res.append(grad_input[0])
-            else:
-                res.append(pir.fake_op_result())
-
-    # if forward op has no vjp rules, and has been previously decomposed, call grad() to generate a list of primitive operators that combine to be the backward graph of the decomposed forward op,
-    # which also has the same semantics as the backward op
-    else:
-        # prepare the input args of grad(outputs, inputs, out_grads)
-        grad_outputs = tuple(
-            bwd_input
-            for bwd_input in bwd_inputs
-            if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs)
-        )
-        fwd_outputs_ = tuple(
-            grad_var_to_var_map[grad_output] for grad_output in grad_outputs
-        )
-        fwd_inputs_ = tuple(
-            grad_var_to_var_map[grad_input]
-            for grad_input in grad_inputs
-            if grad_input.initialized()
-        )
-
-        # generate primitive operators corresponding to the backward op
-        new_grad_inputs = ir_backward.grad(
-            fwd_outputs_, fwd_inputs_, grad_outputs
-        )
-
-        # record new outputs of the decomposed backward op
-        input_grads_idx = 0
-        for idx, grad_input in enumerate(grad_inputs):
-            if grad_input.initialized():
-                res.append(new_grad_inputs[input_grads_idx])
-                input_grads_idx += 1
-            else:
-                res.append(pir.fake_op_result())
+    # record new outputs of the decomposed backward op
+    input_grads_idx = 0
+    for idx, grad_input in enumerate(grad_inputs):
+        if grad_input.initialized():
+            res.append(new_grad_inputs[input_grads_idx])
+            input_grads_idx += 1
+        else:
+            res.append(pir.fake_op_result())
 
     # update_grad_var_to_var_map
     for idx, grad_input in enumerate(grad_inputs):
@@ -530,7 +579,6 @@ def decompose_bwd_op(
             grad_var_to_var_map[res[idx]] = grad_var_to_var_map.pop(grad_input)
 
     # move the list of primitive operators to the position of backward op
-    after_num_ops = len(block.ops)
     insert_idx = bwd_op_idx
     for i in range(before_num_ops, after_num_ops):
         block.move_op(block.ops[i], insert_idx)
