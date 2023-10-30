@@ -1977,6 +1977,64 @@ def stack(x, axis=0, name=None):
         return out
 
 
+def hstack(x, name=None):
+    """
+    TODO(megemini)
+    """
+    arrays = paddle.atleast_1d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    if arrays and arrays[0].ndim == 1:
+        return paddle.concat(arrays, axis=0, name=name)
+    else:
+        return paddle.concat(arrays, axis=1, name=name)
+
+
+def vstack(x, name=None):
+    """
+    TODO(megemini)
+    """
+    arrays = paddle.atleast_2d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    return paddle.concat(arrays, axis=0, name=name)
+
+
+def dstack(x, name=None):
+    """
+    TODO(megemini)
+    """
+    arrays = paddle.atleast_3d(*x)
+    if not isinstance(arrays, list):
+        arrays = [arrays]
+
+    return paddle.concat(arrays, axis=2, name=name)
+
+
+def column_stack(x, name=None):
+    """
+    TODO(megemini)
+    """
+    arrays = []
+
+    for tensor in x:
+        if tensor.ndim < 2:
+            arrays.append(tensor.reshape((tensor.numel(), 1)))
+        else:
+            arrays.append(tensor)
+
+    return paddle.hstack(arrays, name=name)
+
+
+def row_stack(x, name=None):
+    """
+    TODO(megemini)
+    """
+    return paddle.vstack(x, name=name)
+
+
 def split(x, num_or_sections, axis=0, name=None):
     """
     Split the input tensor into multiple sub-Tensors.
