@@ -12,22 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/primitive/composite/composite.h"
-#include "paddle/fluid/primitive/type/lazy_tensor.h"
-#include "paddle/phi/api/include/tensor.h"
-#include "paddle/phi/common/int_array.h"
-#include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/core/op_base.h"
+#pragma once
 
-// TODO(chenzhuo)
-// this file will be generated in pd_op_decomp.cc
+#include "paddle/pir/pass/pass.h"
+#include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
 
-namespace paddle {
+namespace cinn {
 namespace dialect {
-using IntArray = paddle::experimental::IntArray;
+namespace ir {
 
+class AddBroadcastToElementwisePass : public pir::Pass {
+ public:
+  AddBroadcastToElementwisePass();
+
+  bool Initialize(pir::IrContext *context) override;
+
+  void Run(pir::Operation *op) override;
+
+  bool CanApplyOn(pir::Operation *op) const override;
+
+ private:
+  pir::FrozenRewritePatternSet patterns_;
+};
+
+}  // namespace ir
 }  // namespace dialect
-}  // namespace paddle
+}  // namespace cinn

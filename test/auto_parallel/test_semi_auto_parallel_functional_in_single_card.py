@@ -19,15 +19,6 @@ import paddle.distributed as dist
 
 
 class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
-    def test_tensor_copy_to(self):
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-        dense_tensor = paddle.randn([10, 20])
-        dist_tensor = dist.shard_tensor(
-            dense_tensor,
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
-        )
-        dist_tensor._copy_to(paddle.CPUPlace(), True)
-
     def test_tensor_use_gpudnn(self):
         mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         dense_tensor = paddle.randn([10, 20])
@@ -54,6 +45,15 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
             dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
         )
         offset = dist_tensor._offset()
+
+    def test_tensor_copy_to(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._copy_to(paddle.CPUPlace(), True)
 
 
 if __name__ == "__main__":
