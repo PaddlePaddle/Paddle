@@ -19,11 +19,13 @@
 
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
@@ -277,11 +279,16 @@ std::shared_ptr<::pir::Program> BuildSoftmaxGroupProgram() {
 
 TEST(GroupOp, CINNLoweringSoftmax) {
   // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
   std::shared_ptr<::pir::Program> program = BuildSoftmaxGroupProgram();
 
   program->Print(std::cout);
 
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+  std::cerr << "after cinn op convert" << std::endl;
 
   program->Print(std::cout);
   pir::PassManager pm(ctx);
@@ -289,8 +296,12 @@ TEST(GroupOp, CINNLoweringSoftmax) {
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
+
   std::cerr << "fin build cinn pass process " << std::endl;
-  //   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+  program->Print(std::cout);
+  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+
+  res->Print(std::cout);
 
   //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
