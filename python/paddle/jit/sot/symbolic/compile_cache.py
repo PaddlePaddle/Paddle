@@ -63,7 +63,7 @@ class FallbackWrapper:
         self.SIR = SIR  # for debug
 
     def amp_cast_inputs(self, args, kwargs):
-        """Prepare inputs for amp, cast float32 into float16 if needed."""
+        """Prepare inputs for amp, cast float16 into float32 if needed."""
         current_amp_state = amp_state()
         if current_amp_state is None:
             return args, kwargs
