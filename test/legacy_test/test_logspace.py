@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_uitls import test_with_pir_api
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestLogspaceOpCommonCase(OpTest):

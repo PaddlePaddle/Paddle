@@ -20,7 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import static
 from paddle.base import dygraph
-from paddle.pir_uitls import test_with_pir_api
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
