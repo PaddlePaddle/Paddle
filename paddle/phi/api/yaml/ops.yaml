@@ -338,6 +338,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bitwise_not
     backend : x
@@ -551,6 +552,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cos
   inplace: (x -> out)
@@ -2373,6 +2375,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
   inplace: (x -> out)

@@ -432,6 +432,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : cos_grad
   backward : cos_double_grad
@@ -2091,6 +2092,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ElementwiseUnaryGradInferSpmd
   kernel :
     func : sin_grad
   backward : sin_double_grad

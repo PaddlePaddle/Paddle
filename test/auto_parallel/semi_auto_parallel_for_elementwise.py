@@ -290,7 +290,7 @@ class TestElementwiseApiForSemiAutoParallel:
             binary_func=paddle.divide,
         )
 
-    # TODO: The backward percesion of division is 1e-3, is it reasonable?
+    # TODO: The backward percesion(rtol) of division is 1e-3, is it reasonable?
     def test_divide_x_y_shard_broadcast(self):
         self.test_binary_body(
             x_shape=[4, 16, 32],
@@ -453,6 +453,22 @@ class TestElementwiseApiForSemiAutoParallel:
             unary_func=paddle.nn.functional.silu,
         )
 
+    def test_sin_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.sin,
+        )
+
+    def test_cos_x_shard(self):
+        self.test_unary_body(
+            x_shape=[4, 16],
+            out_shape=[4, 16],
+            x_specs=['x', None],
+            unary_func=paddle.cos,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -488,6 +504,8 @@ class TestElementwiseApiForSemiAutoParallel:
         self.test_exp_x_shard()
         self.test_rsqrt_x_shard()
         self.test_silu_x_shard()
+        self.test_sin_x_shard()
+        self.test_cos_x_shard()
 
 
 if __name__ == '__main__':

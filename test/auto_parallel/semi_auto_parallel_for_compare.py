@@ -104,6 +104,48 @@ class TestCompareApiForSemiAutoParallel:
             binary_func=paddle.equal,
         )
 
+    def test_not_equal_x_shard(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None],
+            binary_func=paddle.not_equal,
+        )
+
+    def test_not_equal_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.not_equal,
+        )
+
+    def test_not_equal_x_y_shard(self):
+        if self._backend == "cpu":
+            return
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            y_specs=[None, 'x'],
+            binary_func=paddle.not_equal,
+        )
+
+    def test_not_equal_x_y_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[4, 16, 32],
+            y_shape=[16, 32],
+            out_shape=[4, 16, 32],
+            x_specs=['x', None, None],
+            y_specs=[None, None],
+            binary_func=paddle.not_equal,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -116,6 +158,11 @@ class TestCompareApiForSemiAutoParallel:
         self.test_equal_x_shard_broadcast()
         self.test_equal_x_y_shard()
         self.test_equal_x_y_shard_broadcast()
+
+        self.test_not_equal_x_shard()
+        self.test_not_equal_x_shard_broadcast()
+        self.test_not_equal_x_y_shard()
+        self.test_not_equal_x_y_shard_broadcast()
 
 
 if __name__ == '__main__':

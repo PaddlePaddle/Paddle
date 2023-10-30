@@ -36,6 +36,23 @@ class TestBitwiseApiForSemiAutoParallel:
         np2 = b.numpy()
         np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
 
+    def test_unary_body(self, x_shape, out_shape, x_specs, unary_func):
+        x = paddle.randnnt(0, 100, x_shape, self._dtype)
+        x.stop_gradient = False
+
+        x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
+
+        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
+        dist_x.stop_gradient = False
+
+        dist_out = unary_func(dist_x)
+        out = unary_func(x)
+        self.check_tensor_eq(out, dist_out)
+
+        dist_out.backward()
+        out.backward()
+        self.check_tensor_eq(x.grad, dist_x.grad)
+
     def test_binary_body(
         self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
     ):
@@ -104,6 +121,24 @@ class TestBitwiseApiForSemiAutoParallel:
             binary_func=paddle.bitwise_and,
         )
 
+    def test_bitwise_not_x_shard(self):
+        self.test_unary_body(
+            x_shape=[16, 32],
+            out_shape=[16, 32],
+            x_specs=['x', None],
+            unary_func=paddle.bitwise_not,
+        )
+
+    def test_bitwise_not_x_shard_broadcast(self):
+        self.test_binary_body(
+            x_shape=[16, 32],
+            y_shape=[2, 16, 32],
+            out_shape=[2, 16, 32],
+            x_specs=['x', None],
+            y_specs=[None, None, None],
+            binary_func=paddle.bitwise_not,
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -116,6 +151,7 @@ class TestBitwiseApiForSemiAutoParallel:
         self.test_bitwise_and_x_shard_broadcast()
         self.test_bitwise_and_x_y_shard()
         self.test_bitwise_and_x_y_shard_broadcast()
+        self.test_bitwise_not_x_shard()
 
 
 if __name__ == '__main__':
