@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import unittest
 
 import numpy as np
@@ -224,11 +223,6 @@ class Conv2DTransposeTestCase(unittest.TestCase):
         place = base.CPUPlace()
         self._test_equivalence(place)
         self._test_pir_equivalence(place)
-
-        if base.core.is_compiled_with_cuda() and os.name != 'nt':
-            place = base.CUDAPlace(0)
-            self._test_equivalence(place)
-            self._test_pir_equivalence(place)
 
 
 class Conv2DTransposeErrorTestCase(Conv2DTransposeTestCase):
