@@ -240,80 +240,80 @@ int TokenMergePluginDynamic::enqueue(
 
    
   } else if (input_type == nvinfer1::DataType::kHALF) {
-    // VLOG(3) << "TRT Plugin DataType selected. TokenMerge-->fp16";
-    // phi::DenseTensor dst_token_tensor;
-    // dst_token_tensor.Resize({bsz, dst_token_number_, hid_dim});
-    // dev_ctx.Alloc<paddle::platform::float16>(&dst_token_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
+    VLOG(3) << "TRT Plugin DataType selected. TokenMerge-->fp16";
+    phi::DenseTensor dst_token_tensor;
+    dst_token_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&dst_token_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
 
-    // //src_token
-    // phi::DenseTensor src_token_tensor;
-    // src_token_tensor.Resize({bsz, src_token_number_, hid_dim});
-    // dev_ctx.Alloc<paddle::platform::float16>(&src_token_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
+    //src_token
+    phi::DenseTensor src_token_tensor;
+    src_token_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&src_token_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
     
-    // //dst_L2
-    // phi::DenseTensor dst_L2_tensor;
-    // dst_L2_tensor.Resize({bsz, dst_token_number_, hid_dim});
-    // dev_ctx.Alloc<paddle::platform::float16>(&dst_L2_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
+    //dst_L2
+    phi::DenseTensor dst_L2_tensor;
+    dst_L2_tensor.Resize({bsz, dst_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&dst_L2_tensor, sizeof(half) * bsz * dst_token_number_ * hid_dim);
 
-    // //src_L2
-    // phi::DenseTensor src_L2_tensor;
-    // src_L2_tensor.Resize({bsz, src_token_number_, hid_dim});
-    // dev_ctx.Alloc<paddle::platform::float16>(&src_L2_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
+    //src_L2
+    phi::DenseTensor src_L2_tensor;
+    src_L2_tensor.Resize({bsz, src_token_number_, hid_dim});
+    dev_ctx.Alloc<paddle::platform::float16>(&src_L2_tensor, sizeof(half) * bsz * src_token_number_ * hid_dim);
     
    
     
-    // //similarity
-    // phi::DenseTensor similarity_tensor;
-    // similarity_tensor.Resize({bsz, src_token_number_ * dst_token_number_});
-    // dev_ctx.Alloc<paddle::platform::float16>(&similarity_tensor, sizeof(half) * bsz * src_token_number_ * dst_token_number_);
+    //similarity
+    phi::DenseTensor similarity_tensor;
+    similarity_tensor.Resize({bsz, src_token_number_ * dst_token_number_});
+    dev_ctx.Alloc<paddle::platform::float16>(&similarity_tensor, sizeof(half) * bsz * src_token_number_ * dst_token_number_);
     
 
 
-    // //max_similarity and tensors for argsort
-    // phi::DenseTensor max_similarity_tensor;
-    // max_similarity_tensor.Resize({bsz, src_token_number_});
-    // dev_ctx.Alloc<paddle::platform::float16>(&max_similarity_tensor, sizeof(half) * bsz * src_token_number_);
+    //max_similarity and tensors for argsort
+    phi::DenseTensor max_similarity_tensor;
+    max_similarity_tensor.Resize({bsz, src_token_number_});
+    dev_ctx.Alloc<paddle::platform::float16>(&max_similarity_tensor, sizeof(half) * bsz * src_token_number_);
 
-    // phi::DenseTensor argsort_res0_tensor;
-    // // argsort_res0_tensor.Resize({bsz, src_token_number_});
-    // // dev_ctx.Alloc<float>(&argsort_res0_tensor, sizeof(float) * bsz * src_token_number_);
+    phi::DenseTensor argsort_res0_tensor;
+    // argsort_res0_tensor.Resize({bsz, src_token_number_});
+    // dev_ctx.Alloc<float>(&argsort_res0_tensor, sizeof(float) * bsz * src_token_number_);
 
-    // phi::DenseTensor argsort_res1_tensor;
-    // // argsort_res1_tensor.Resize({bsz, src_token_number_});
-    // // dev_ctx.Alloc<int>(&argsort_res1_tensor, sizeof(int) * bsz * src_token_number_);
+    phi::DenseTensor argsort_res1_tensor;
+    // argsort_res1_tensor.Resize({bsz, src_token_number_});
+    // dev_ctx.Alloc<int>(&argsort_res1_tensor, sizeof(int) * bsz * src_token_number_);
 
 
-    // const half *origin_tensor = reinterpret_cast<const half *>(inputs[0]);
-    // half *merged_tensor = reinterpret_cast<half *>(outputs[0]);
-    // int *rand_select_arr = reinterpret_cast<int *>(outputs[1]);
-    // int *whether_tobe_merge = reinterpret_cast<int *>(outputs[2]);
+    const half *origin_tensor = reinterpret_cast<const half *>(inputs[0]);
+    half *merged_tensor = reinterpret_cast<half *>(outputs[0]);
+    int *rand_select_arr = reinterpret_cast<int *>(outputs[1]);
+    int *whether_tobe_merge = reinterpret_cast<int *>(outputs[2]);
 
-    // tokenMerge<half> tome;
-    // return tome(dev_ctx,
-    //                   use_rand_,
-    //                   bsz,
-    //                   token_number_,
-    //                   src_token_number_,
-    //                   dst_token_number_,
-    //                   final_token_number_,
-    //                   src_need_merged_number_,
-    //                   hid_dim_,
-    //                   height_,
-    //                   width_,
-    //                   origin_tensor,
-    //                   src_token_tensor,
-    //                   dst_token_tensor,
-    //                   src_L2_tensor,
-    //                   dst_L2_tensor,
-    //                   similarity_tensor,
-    //                   max_similarity_tensor,
-    //                   max_similarity_idx_tensor,
-    //                   argsort_res0_tensor,
-    //                   argsort_res1_tensor,
-    //                   divied_rank_tensor,
-    //                   merged_tensor,
-    //                   rand_select_arr,
-    //                   whether_tobe_merge);
+    tokenMerge<half> tome;
+    return tome(dev_ctx,
+                      use_rand_,
+                      bsz,
+                      token_number_,
+                      src_token_number_,
+                      dst_token_number_,
+                      final_token_number_,
+                      src_need_merged_number_,
+                      hid_dim_,
+                      height_,
+                      width_,
+                      origin_tensor,
+                      src_token_tensor,
+                      dst_token_tensor,
+                      src_L2_tensor,
+                      dst_L2_tensor,
+                      similarity_tensor,
+                      max_similarity_tensor,
+                      max_similarity_idx_tensor,
+                      argsort_res0_tensor,
+                      argsort_res1_tensor,
+                      divied_rank_tensor,
+                      merged_tensor,
+                      rand_select_arr,
+                      whether_tobe_merge);
     return 0;
 
 

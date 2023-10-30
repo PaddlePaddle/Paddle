@@ -22,11 +22,11 @@ class tome_TypeTrait {
   using Type = T;
 };
 
-// template <>
-// class tome_TypeTrait<half> {
-//  public:
-//   using Type = typename phi::dtype::float16;
-// };
+template <>
+class tome_TypeTrait<half> {
+ public:
+  using Type = typename phi::dtype::float16;
+};
 
 
 /**
@@ -398,7 +398,6 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
   dim3 grid_dim_for_rand_select(token_number / (4 * WARP_SIZE), bsz);
   dim3 block_dim_for_rand_select(WARP_SIZE);
   token_merge_rand_select_kernel<<<grid_dim_for_rand_select, block_dim_for_rand_select, 0, dev_ctx.stream()>>>(rand_select, token_number, use_rand);
-  VLOG(3) << "finish step0" ;
   //1.split origined_tensor
   dim3 grid_dim_for_split(height / 16, width / 2, bsz);
   dim3 block_dim_for_split(WARP_SIZE, 8);
@@ -414,10 +413,7 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     src_token,
     dst_L2,
     src_L2);
-  VLOG(3) << "finish step1";
-  if (std::is_same<T, float>::value){
-    PrintMatrix<float>(src_token, 2 * 32 * 24 * 320, 32 * 24 * 320, 320, "src_tensor");
-  }
+  
 
 
 
@@ -429,10 +425,7 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
                                         true,
                                         &similarity_tensor);
   
-  VLOG(3) << "finish step2";
-  if (std::is_same<T, float>::value){
-    PrintMatrix<float>(similarity, 2 * 256 * 768, 256 * 768, 256, "similarity_tensor");
-  }
+ 
 
   //step3: get dst_token that is most similar to src_token
   dim3 grid_for_max_similarity(src_token_number / 8, bsz);
@@ -442,11 +435,8 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
                                                                                             dst_token_number,
                                                                                             max_similarity,
                                                                                             max_similarity_idx);
-  PrintMatrix<float>(max_similarity, 2 * src_token_number, src_token_number, 1, "max_similarity");
-  PrintMatrix<int>(max_similarity_idx, 2 * src_token_number, src_token_number, 1, "max_similarity_idx");
   
 
-  VLOG(3) << "finish step3";
   //step4: argsort by echo src_token's max similarity
   phi::ArgsortKernel<typename tome_TypeTrait<T>::Type, phi::GPUContext>(dev_ctx,
                                         max_similarity_tensor,
@@ -455,10 +445,8 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
                                         &argsort_res0_tensor,
                                         &argsort_res1_tensor);
 
-  VLOG(3) << "finish step4";
   auto src_token_need_tobe_merged_id = argsort_res1_tensor.data<int64_t>();
   
-  PrintMatrix<int64_t>(src_token_need_tobe_merged_id, 2 * src_token_number, src_token_number, 1, "src_token_need_tobe_merged_id");
   
   //step5: do reduce
   dim3 grid_dim_for_reduce(src_token_number / 8, bsz);
@@ -475,13 +463,8 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     max_similarity_idx,
     divied_rank,
     whether_to_be_merged);
-  VLOG(3) << "finish step5";
-  if (std::is_same<T, float>::value){
-    PrintMatrix<int>(divied_rank, 2 * dst_token_number, dst_token_number, 1, "divied_rank");
-  }
+
   //step6: do concat
-  PrintMatrix<float>(dst_token, 2 * dst_token_number * hid_dim, dst_token_number * hid_dim, hid_dim, "dst_token_step6");
-  VLOG(3) << "final_token_number = " << final_token_number;
   dim3 grid_dim_for_concat(final_token_number / 8, bsz);
   dim3 block_dim_for_concat(32, 8);
   token_merge_concat_kernel<<<grid_dim_for_concat, block_dim_for_concat>>>(
@@ -497,14 +480,11 @@ int32_t tokenMerge<T>::operator()(const phi::GPUContext &dev_ctx,
     src_token_need_merged_num,
     whether_to_be_merged,
     merged_tensor);
-  VLOG(3) << "finish step6";
-  if (std::is_same<T, float>::value){
-    PrintMatrix<float>(merged_tensor, 2 * final_token_number* hid_dim, final_token_number * hid_dim, hid_dim, "merged_tensor");
-  }
+  
   return cudaGetLastError() != cudaSuccess;
 }
 template struct tokenMerge<float>;
-// template struct tokenMerge<half>;
+template struct tokenMerge<half>;
 }  // namespace plugin
 }  // namespace tensorrt
 }  // namespace inference
