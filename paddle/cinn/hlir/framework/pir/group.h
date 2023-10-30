@@ -43,8 +43,9 @@ struct Group {
   std::string fn_name;
   OpPatternKind op_pattern_kind;
   std::vector<::pir::Operation*> ops;
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
+
+  std::vector<::pir::Value> input_values;
+  std::vector<::pir::Value> output_values;
 
  private:
   void Initialize() {

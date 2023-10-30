@@ -54,18 +54,24 @@ std::vector<pir::Value> GetBlockOutsideInput(
 }
 
 std::vector<pir::Value> GetBlockOutsideOutput(
-    const std::vector<pir::Operation*> op_list) {
+    const std::vector<pir::Operation*> op_list,
+    const std::unordered_set<::pir::Operation*>& output_node,
+    pir::YieldOp yield_op) {
   std::vector<pir::Value> vec_res;
-  std::unordered_set<::pir::Value> block_inner_output;
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
-      block_inner_output.insert(op_list[k]->operand_source(i));
+  std::unordered_set<::pir::Value> used_value;
+  for (auto it = output_node.begin(); it != output_node.end(); ++it) {
+    for (size_t i = 0; i < (*it)->num_operands(); ++i) {
+      used_value.insert((*it)->operand_source(i));
     }
+  }
+
+  for (size_t i = 0; i < yield_op.num_operands(); ++i) {
+    used_value.insert(yield_op.operand_source(i));
   }
 
   for (size_t k = 0; k < op_list.size(); ++k) {
     for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
-      if (!block_inner_output.count(op_list[k]->result(i))) {
+      if (used_value.count(op_list[k]->result(i))) {
         vec_res.push_back(op_list[k]->result(i));
       }
     }
@@ -123,9 +129,11 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       for (auto group : group_list) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+        std::cerr << "begin to build kernel \n";
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        std::cerr << "end to build kernel \n";
         compiler_list.push_back(ir_compiler);
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
@@ -140,7 +148,10 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        auto vec_outs = GetBlockOutsideOutput(group->nodes);
+        auto vec_outs = GetBlockOutsideOutput(
+            group->nodes,
+            group->output_nodes,
+            group_op.ops().back()->dyn_cast<pir::YieldOp>());
 
         std::vector<pir::Type> vec_types;
         for (auto& out : vec_outs) {
