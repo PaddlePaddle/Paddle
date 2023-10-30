@@ -1337,13 +1337,13 @@ def l1_loss(input, label, reduction='mean', name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
         check_variable_and_dtype(
             label,
             'label',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
 

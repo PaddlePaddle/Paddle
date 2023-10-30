@@ -15,13 +15,12 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 
 #include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/fluid/pir/drr/api/match_context.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass.h"
-#include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pattern_rewrite/pattern_applicator.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
 #include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
@@ -66,7 +65,7 @@ std::vector<int64_t> GetOutputShape(const phi::DDim& x, const phi::DDim& y) {
   return vec_res;
 }
 
-bool is_same_dim(const phi::DDim& first, const std::vector<int64_t>& second) {
+bool IsSameDim(const phi::DDim& first, const std::vector<int64_t>& second) {
   if (first.size() == second.size()) {
     bool same = true;
 
@@ -94,7 +93,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
-    if (!is_same_dim(x_dims, output_shape)) {
+    if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0), std::vector<int64_t>({}), output_shape);
@@ -102,7 +101,7 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 
-    if (!is_same_dim(y_dims, output_shape)) {
+    if (!IsSameDim(y_dims, output_shape)) {
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
           op->operand_source(1), std::vector<int64_t>({}), output_shape);
 
@@ -115,45 +114,12 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
   return false;
 }
 
-class AddBrodcastToElementwiseAddPattern
-    : public pir::OpRewritePattern<paddle::dialect::AddOp> {
+template <typename OPTYPE>
+class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::AddOp>::OpRewritePattern;
+  using pir::OpRewritePattern<OPTYPE>::OpRewritePattern;
 
-  bool MatchAndRewrite(paddle::dialect::AddOp op,
-                       pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter);
-  }
-};
-
-class AddBrodcastToElementwiseSubPattern
-    : public pir::OpRewritePattern<paddle::dialect::SubtractOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::SubtractOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::SubtractOp op,
-                       pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter);
-  }
-};
-
-class AddBrodcastToElementwiseDivPattern
-    : public pir::OpRewritePattern<paddle::dialect::DivideOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::DivideOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::DivideOp op,
-                       pir::PatternRewriter& rewriter) const override {
-    return ProcessOp(op, &rewriter);
-  }
-};
-
-class AddBrodcastToElementwiseMulPattern
-    : public pir::OpRewritePattern<paddle::dialect::MultiplyOp> {
- public:
-  using pir::OpRewritePattern<paddle::dialect::MultiplyOp>::OpRewritePattern;
-
-  bool MatchAndRewrite(paddle::dialect::MultiplyOp op,
+  bool MatchAndRewrite(OPTYPE op,
                        pir::PatternRewriter& rewriter) const override {
     return ProcessOp(op, &rewriter);
   }
@@ -164,10 +130,10 @@ AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
 
 bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
-  ps.Add<AddBrodcastToElementwiseAddPattern>(context);
-  ps.Add<AddBrodcastToElementwiseSubPattern>(context);
-  ps.Add<AddBrodcastToElementwiseDivPattern>(context);
-  ps.Add<AddBrodcastToElementwiseMulPattern>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
+  ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
