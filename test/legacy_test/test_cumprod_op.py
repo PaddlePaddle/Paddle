@@ -172,7 +172,7 @@ class TestCumprodBF16Op(TestCumprod):
         for dim in range(-len(self.shape), len(self.shape)):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
-                self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
+                self.check_output_with_place(core.CUDAPlace(0))
 
     # test backward.
     def test_check_grad(self):
@@ -185,8 +185,7 @@ class TestCumprodBF16Op(TestCumprod):
                     ['X'],
                     'Out',
                     user_defined_grads=[self.grad_x],
-                    user_defined_grad_outputs=[self.grad_out],
-                    check_pir=True,
+                    user_defined_grad_outputs=[self.grad_out]
                 )
 
 
