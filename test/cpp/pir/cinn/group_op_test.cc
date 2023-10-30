@@ -214,10 +214,10 @@ TEST(GroupOp, CINNLowering) {
   paddle::framework::Scope exe_scope;
 
   paddle::framework::InterpreterCore executor(
-      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+      place, {"out"}, kernel_program->block(), &exe_scope);
 
   std::set<std::string> out_names;
-  out_names.insert("out@fetch");
+  out_names.insert("out");
   auto local_names = exe_scope.LocalVarNames();
   for (size_t i = 0; i < local_names.size(); ++i) {
     out_names.insert(local_names[i]);
@@ -227,7 +227,7 @@ TEST(GroupOp, CINNLowering) {
   executor.Run({}, true);
 
   auto out_tensor =
-      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+      executor.local_scope()->FindVar("out")->Get<phi::DenseTensor>();
 
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 3.88455);
   bool res1 = simple_cmp(out_tensor.data<float>()[1], 3.88455);

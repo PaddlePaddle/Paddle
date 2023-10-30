@@ -97,8 +97,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                         ->attributes()
                                         .at("name")
                                         .dyn_cast<pir::StrAttribute>()
-                                        .AsString() +
-                                    "@fetch";
+                                        .AsString();
         }
       }
       auto kernel_program =

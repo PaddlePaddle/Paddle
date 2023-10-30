@@ -1097,37 +1097,19 @@ paddle::framework::FetchList PirInterpreter::Run(
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
+  framework::FetchList fetch_res;
 
-    for (auto& var_name : fetch_var_names_) {
-      auto* var = inner_scope->FindVar(var_name);
-      VLOG(0) << "fetch " << var_name << "[" << var << "]";
-      fetch_res.push_back(var->Get<phi::DenseTensor>());
-    }
-
-    VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
+  for (auto& var_name : fetch_var_names_) {
+    auto* var = inner_scope->FindVar(var_name);
+    VLOG(0) << "fetch " << var_name << "[" << var << "]";
+    fetch_res.push_back(var->Get<phi::DenseTensor>());
   }
+
+  VLOG(4) << "get fetch list size: " << fetch_res.size();
+  return fetch_res;
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
@@ -1188,38 +1170,21 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  // return Fetch Tensors
-  Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
 
-    if (need_fetch) {
-      for (auto& var_name : fetch_var_names_) {
-        auto* var = inner_scope->FindVar(var_name);
-        VLOG(0) << "fetch " << var_name << "[" << var << "]";
-        fetch_res.push_back(var->Get<phi::DenseTensor>());
-      }
+  framework::FetchList fetch_res;
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope = InnerScope();
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(0) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
+
     VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var && need_fetch) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+  return fetch_res;
 }
 
 void PirInterpreter::TraceRunImpl() {
