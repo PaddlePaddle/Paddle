@@ -559,11 +559,27 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  // TODO(liuzhenhai): add check dist_attr
+  return SetKernelDistOutput(
+      out, paddle::get<phi::distributed::TensorDistAttr>(dist_attr));
+}
+
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
     return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
                                                           dist_attr);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  if (out) {
+    return std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<phi::distributed::TensorDistAttr>(dist_attr));
   }
   return nullptr;
 }
