@@ -24,8 +24,8 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/batch_norm_utils.h"
 #include "paddle/phi/kernels/gpudnn/conv_cudnn_frontend.h"
 
-DECLARE_bool(cudnn_deterministic);
-DECLARE_bool(cudnn_exhaustive_search);
+PHI_DECLARE_bool(cudnn_deterministic);
+PHI_DECLARE_bool(cudnn_exhaustive_search);
 
 namespace phi {
 namespace fusion {
