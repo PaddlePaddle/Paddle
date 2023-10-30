@@ -120,13 +120,10 @@ if(WITH_AVX
    AND AVX512F_FLAG
    AND WITH_MKL)
   set_source_files_properties(
-    kernels/funcs/scaled_dp_attention_functor.h
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
-  set_source_files_properties(
     kernels/fusion/cpu/self_dp_attention_kernel.cc
     PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized  -mfma ${AVX512F_FLAG}")
 else()
-  list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
+  list(REMOVE_ITEM kernel_cc "kernels/fusion/cpu/self_dp_attention_kernel.cc")
 endif()
 
 if(WITH_GPU)

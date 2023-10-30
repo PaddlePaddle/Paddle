@@ -313,6 +313,23 @@
     data_type : input
   optional : bias_qk
 
+- op : quantize_xpu
+  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
+  output : Tensor(y)
+  infer_meta :
+    func : QuantizeXPUInferMeta
+  kernel :
+    func : quantize_xpu
+    data_type : x
+
+- op : self_dp_attention
+  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
+  output : Tensor(out)
+  infer_meta :
+    func : SelfDPAttenInferMeta
+  kernel :
+    func : self_dp_attention
+
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)
@@ -332,22 +349,3 @@
     func : yolo_box_xpu
     data_type : x
   optional : x_max
-
-<<<<<<< HEAD
-- op : self_dp_attention
-  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
-  output : Tensor(out)
-  infer_meta :
-    func : SelfDPAttenInferMeta
-  kernel :
-    func : self_dp_attention
-=======
-- op : quantize_xpu
-  args : (Tensor x, DataType out_dtype, float scale = 1.0f)
-  output : Tensor(y)
-  infer_meta :
-    func : QuantizeXPUInferMeta
-  kernel :
-    func : quantize_xpu
-    data_type : x
->>>>>>> 3da2ae91dee89e155c5e86fb71b5c180ad777128

@@ -142,6 +142,8 @@ if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cc EXCLUDE REGEX ".*_grad_kernel\\.cc$")
 endif()
 
+list(REMOVE_ITEM kernel_cc "fusion/cpu/self_dp_attention_kernel.cc")
+
 file(
   GLOB kernel_xpu
   RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"

@@ -26,12 +26,6 @@ register_operators(
   resnet_basic_block_op)
 
 op_library(fusion_lstm_op)
-if(WITH_AVX
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG
-   AND WITH_MKL)
-
-endif()
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)
