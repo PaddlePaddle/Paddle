@@ -4287,6 +4287,14 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
       x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
   PADDLE_ENFORCE_EQ(
+      num_head % k_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          num_head,
+          k_num_head));
+  PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
       5,
       errors::InvalidArgument("The cache_kv must be 5 dims, but got %d",
