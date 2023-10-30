@@ -17,7 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 from paddle import base
@@ -354,8 +354,7 @@ def tensor_array_slice_in_enumerate():
     return feat_n2
 
 
-@dy2static_unittest
-class TestTransformBase(unittest.TestCase):
+class TestTransformBase(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -558,8 +557,7 @@ class TestSliceTensorArrayInEnumerate(TestTransformForOriginalList):
         self.transformed_result_compare()
 
 
-@dy2static_unittest
-class TestForZip(unittest.TestCase):
+class TestForZip(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
