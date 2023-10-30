@@ -349,21 +349,12 @@ class FusedCommBuffer:
         if self._params_step_dict[param.name] > 0:
             return
 
-        import os
-
-        zero_comm_buffer = int(os.environ.get("FLAGS_zero_comm_buffer", 0))
-
         if self.grad_storage is None:
             assert self._params_step_dict[param.name] == 0
 
-            if not zero_comm_buffer:
-                self.grad_storage = paddle.empty(
-                    [self.buffer_size], dtype=self._dtype
-                )
-            else:
-                self.grad_storage = paddle.zeros(
-                    [self.buffer_size], dtype=self._dtype
-                )
+            self.grad_storage = paddle.empty(
+                [self.buffer_size], dtype=self._dtype
+            )
 
         if self._act == HOOK_ACTION.REDUCE_SCATTER:
             self._sharding_param_grad_view[
@@ -383,10 +374,8 @@ class FusedCommBuffer:
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
-        if self._params_step_dict[param.name] == 0 and not zero_comm_buffer:
+        if self._params_step_dict[param.name] == 0:
             paddle.assign(grad_var, tmp_var)
-        else:
-            tmp_var.add_(grad_var)
 
         tmp_var.get_tensor()._set_dims(param.shape)
 
