@@ -1986,8 +1986,15 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
   bool use_gpudnn = pybind::CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 0), 0);
 
   // Set the same use_gpudnn attribute, return directly
-  phi::DenseTensor* dense_tensor =
-      static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+
   phi::DenseTensorMeta* dense_tensor_meta =
       phi::DenseTensorUtils::GetMutableMeta(dense_tensor);
   if (use_gpudnn == dense_tensor_meta->use_gpudnn) {
@@ -2001,10 +2008,21 @@ static PyObject* tensor__use_gpudnn(TensorObject* self,
   target_dense_tensor.ShareDataWith(*dense_tensor);
   target_dense_tensor.set_meta(target_dense_meta);
   // Construct returned tensor
-  paddle::Tensor target_tensor(
-      std::make_shared<phi::DenseTensor>(target_dense_tensor),
-      self->tensor.name());
+  paddle::Tensor target_tensor(self->tensor.name());
   target_tensor.set_autograd_meta(self->tensor.mutable_autograd_meta());
+  if (self->tensor.is_dist_tensor()) {
+    auto dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get());
+    auto target_dist_tensor =
+        std::make_shared<phi::distributed::DistTensor>(
+            dist_tensor->dims(), dist_tensor->dist_attr()) *
+        (target_dist_tensor->unsafe_mutable_value()) = target_dense_tensor;
+    target_tensor.set_impl(target_dist_tensor);
+  } else {
+    target_tensor.set_impl(
+        std::make_shared<phi::DenseTensor>(target_dense_tensor));
+  }
+
   VLOG(4) << "Tensor: " << target_tensor.name()
           << " set use_gpudnn = " << use_gpudnn;
 
