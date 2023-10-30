@@ -472,6 +472,7 @@ def decompose_bwd_op_directly(
     # if forward op has no composite vjp rules, call_vjp() appends the same op as original backward op,
     # which means the backward op can not be decomposed directly, return False
     if num_appended_ops == 1 and block.ops[-1].name() == bwd_op.name():
+        block.remove_op(block.ops[-1])
         return None, False
     else:
         # record new outputs of the decomposed backward op
