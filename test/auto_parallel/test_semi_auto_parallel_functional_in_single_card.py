@@ -28,6 +28,33 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         )
         dist_tensor._copy_to(paddle.CPUPlace(), True)
 
+    def test_tensor_use_gpudnn(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._use_gpudnn(False)
+
+    def test_tensor_data_ptr(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        prt = dist_tensor.data_ptr()
+
+    def test_tensor_offset(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        offset = dist_tensor._offset()
+
 
 if __name__ == "__main__":
     unittest.main()

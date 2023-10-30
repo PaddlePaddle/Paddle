@@ -2675,8 +2675,8 @@ static PyObject* tensor__reset_grad_inplace_version(TensorObject* self,
   }
 
   paddle::Tensor* grad = egr::EagerUtils::mutable_grad(self->tensor);
-  if (grad && grad->defined() && grad->is_dense_tensor() &&
-      grad->initialized()) {
+  if (grad && grad->defined() && grad->initialized() &&
+      (grad->is_dense_tensor() || grad->is_dist_tensor())) {
     grad->reset_inplace_version(set_to_zero);
   }
   RETURN_PY_NONE
@@ -2727,14 +2727,21 @@ static PyObject* tensor__offset(TensorObject* self,
                                 PyObject* args,
                                 PyObject* kwargs) {
   EAGER_TRY
-  auto t = std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
   PADDLE_ENFORCE_EQ(
-      t->IsInitialized(),
+      dense_tensor->IsInitialized(),
       true,
       platform::errors::InvalidArgument("Tensor %s has not been initialized!",
                                         self->tensor.name()));
 
-  return ToPyObject(t->offset());
+  return ToPyObject(dense_tensor->offset());
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
@@ -2771,9 +2778,14 @@ static PyObject* tensor__grad_value(TensorObject* self,
   if (grad->is_dense_tensor()) {
     auto* grad_tensor = static_cast<phi::DenseTensor*>(grad->impl().get());
     return ToPyObject(grad_tensor);
+  } else if (grad->is_dist_tensor()) {
+    auto* grad_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    return ToPyObject(grad_tensor);
   } else {
     PADDLE_THROW(paddle::platform::errors::Fatal(
-        "this method is only supported for DenseTensor"));
+        "This method is only supported for DenseTensor and DistTensor."));
     RETURN_PY_NONE
   }
   EAGER_CATCH_AND_THROW_RETURN_NULL
@@ -2856,7 +2868,15 @@ static PyObject* tensor_data_ptr(TensorObject* self,
         (int64_t)std::dynamic_pointer_cast<phi::DenseTensor>(  // NOLINT
             self->tensor.impl())
             ->data());
+  } else if (self->tensor.initialized() && self->tensor.is_dist_tensor()) {
+    return ToPyObject(
+        (int64_t)
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(  // NOLINT
+                self->tensor.impl())
+                ->unsafe_mutable_value()
+                ->data());
   }
+
   RETURN_PY_NONE
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
