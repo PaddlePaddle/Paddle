@@ -278,9 +278,11 @@ void ProgramInterpreter::ProfileInstructionList(
     }
   }
 
-  // make sure all instructions are executed on device side, then we starts
-  // collecting profiling information
+// make sure all instructions are executed on device side, then we starts
+// collecting profiling information
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::GpuDeviceSync();
+#endif
 
   // then starts collecting profiling information, and write op run time
   // info into dist_attr.
@@ -400,12 +402,18 @@ void ProgramInterpreter::ProfileOperator(
     std::string op_end_event_signature = profile_signature + "@end";
     const platform::DeviceContext& dev_ctx = instr_node.DeviceContext();
 
+    auto SyncDevice = []() -> void {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+    };
+
     // compute
     if (op_with_kernel == nullptr) {  // operator base
-      platform::GpuDeviceSync();
+      SyncDevice();
       instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
       op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
-      platform::GpuDeviceSync();
+      SyncDevice();
       op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
     } else {
       phi::Kernel* kernel = instr_node.PhiKernel();
@@ -418,25 +426,25 @@ void ProgramInterpreter::ProfileOperator(
               const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
               &phi_kernel_context);
 
-          platform::GpuDeviceSync();
+          SyncDevice();
           (*kernel)(&phi_kernel_context);  // op run case 2
           op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
-          platform::GpuDeviceSync();
+          SyncDevice();
           op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
 
         } else {
-          platform::GpuDeviceSync();
+          SyncDevice();
           (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
           op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
-          platform::GpuDeviceSync();
+          SyncDevice();
           op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
         }
       } else {  // fluid kernel
-        platform::GpuDeviceSync();
+        SyncDevice();
         instr_node.KernelFunc()(
             *instr_node.InnerExecutionContext().get());  // op run case 4
         op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
-        platform::GpuDeviceSync();
+        SyncDevice();
         op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
       }
     }
