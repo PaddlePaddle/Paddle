@@ -8,5 +8,3 @@ list(APPEND IR_SRCS ${IR_PARSER_SRCS})
 set(core_srcs
     ${IR_SRCS}
     CACHE INTERNAL "")
-
-#ir_library(pir_core SRCS ${IR_SRCS} DEPS ddim)
