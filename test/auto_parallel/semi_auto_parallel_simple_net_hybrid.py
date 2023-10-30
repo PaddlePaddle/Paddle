@@ -22,6 +22,7 @@ from semi_auto_parallel_simple_net import (
 
 import paddle
 import paddle.distributed as dist
+import paddle.nn.functional as F
 from paddle import nn
 
 
@@ -51,7 +52,7 @@ class DPAndMPDemoNet(nn.Layer):
         )
 
     def forward(self, x):
-        y = paddle.matmul(
+        out = F.linear(
             dist.shard_tensor(
                 x,
                 dist_attr=dist.DistAttr(
@@ -60,8 +61,10 @@ class DPAndMPDemoNet(nn.Layer):
             ),
             self.w0,
         )
-        z = paddle.matmul(y, self.w1)
-        return z
+        out = F.relu(out)
+        out = F.linear(out, self.w1)
+
+        return out
 
 
 class TestSimpleNetHybridStrategyForSemiAutoParallel(
@@ -81,12 +84,14 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
     def test_dp_mp_demo_net(self):
         (
             self.dp_mp_loss,
-            self.dp_mp_w0_grad,
-            self.dp_mp_w1_grad,
+            self.dp_mp_w0,
+            self.dp_mp_w1,
         ) = self.run_dynamic(DPAndMPDemoNet(self.w0, self.w1, self._mesh))
         self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_mp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.dp_mp_w1_grad, self.base_w1_grad)
+        self.check_tensor_eq(self.dp_mp_w0, self.base_w0)
+        self.check_tensor_eq(self.dp_mp_w1, self.base_w1)
+        self.check_tensor_eq(self.dp_mp_w0.grad, self.base_w0.grad)
+        self.check_tensor_eq(self.dp_mp_w1.grad, self.base_w1.grad)
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()
