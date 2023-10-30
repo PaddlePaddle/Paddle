@@ -343,6 +343,15 @@ class TestIscloseOpLargeDimInput(TestIscloseOp):
         self.equal_nan = False
 
 
+class TestIscloseOpDoubleTol(TestIscloseOp):
+    def set_args(self):
+        self.input = np.array([1.0, 1e-9]).astype("float64")
+        self.other = np.array([1.0, 1e-10]).astype("float64")
+        self.rtol = np.array([1e-13]).astype("float64")
+        self.atol = np.array([1e-14]).astype("float64")
+        self.equal_nan = False
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
