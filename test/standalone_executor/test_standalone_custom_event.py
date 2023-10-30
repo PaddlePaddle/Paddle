@@ -148,10 +148,12 @@ class TestMannulEvent(unittest.TestCase):
                     )
             job_list.append(job)
 
-        type_to_program = {}
+        job_types = []
         for program_id in range(prog_num):
-            type_to_program[f"prog_{program_id}"] = main_progs[program_id]
-        set_skip_gc_vars(micro_batch_num, type_to_program, job_list)
+            job_types.append(f"prog_{program_id}")
+        type_to_program = set_skip_gc_vars(
+            micro_batch_num, job_types, main_progs, job_list
+        )
 
         for type in type_to_program.keys():
             type_to_program[type] = type_to_program[type].desc

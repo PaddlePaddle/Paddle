@@ -57,6 +57,5 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         dist_tensor._share_buffer_to(to)
         self.assertTrue(dist_tensor._is_shared_buffer_with(to))
 
-
 if __name__ == "__main__":
     unittest.main()
