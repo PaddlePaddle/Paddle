@@ -36,7 +36,6 @@ from ...tensor.creation import create_parameter  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
 from .common import layer_norm  # noqa: F401
-from .common import quant_linear
 
 
 from .common import embedding  # noqa: F401
