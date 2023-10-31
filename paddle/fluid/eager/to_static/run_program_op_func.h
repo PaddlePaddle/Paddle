@@ -134,7 +134,6 @@ inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run run_program ad function.";
@@ -156,8 +155,7 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(
-      x_tmp, params_tmp, out, step_scope, dout, require_any_grad, attrs);
+  RunProgramAPI(x_tmp, params_tmp, out, step_scope, require_any_grad, attrs);
   VLOG(2) << "start run run_program grad";
   auto is_test = false;
   if (attrs.count("is_test")) {
@@ -213,7 +211,6 @@ inline void newir_run_program_ad_func(
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run newir run_program ad function.";
@@ -266,7 +263,7 @@ inline void newir_run_program_ad_func(
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
   NewIRRunProgramAPI(
-      x, params, out, middles, step_scope, dout, require_any_grad, attrs);
+      x, params, out, middles, step_scope, require_any_grad, attrs);
   if (require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
 
