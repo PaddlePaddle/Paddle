@@ -52,7 +52,7 @@
   optional : bias, branch, branch_max, x_max
 
 - op : conv2d_fusion
-  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_data, int workspace_size_MB = 32, int[] strides = {1, 1}, int[] paddings = {0, 0}, int[] dilations = {1, 1} ,int[] split_channels = {}, str padding_algorithm = "EXPLICIT", int groups = 1, str data_format = "NCHW", str activation = "relu", bool exhaustive_search = false)
+  args : (Tensor input, Tensor filter, Tensor bias, Tensor residual_data, int[] strides = {1, 1}, int[] paddings = {0, 0}, str padding_algorithm = "EXPLICIT", int[] dilations = {1, 1} , int groups = 1, str data_format = "NCHW", str activation = "relu", bool exhaustive_search = false,int[] split_channels = {},int workspace_size_MB = 32)
   output : (Tensor(output), Tensor[](outputs){split_channels.size()})
   infer_meta :
     func : Conv2dFusionInferMeta

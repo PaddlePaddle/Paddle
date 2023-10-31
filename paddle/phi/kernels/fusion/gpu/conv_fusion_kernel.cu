@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
 #include <xxhash.h>
 
 #include <algorithm>
@@ -34,6 +33,7 @@
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 #include "paddle/utils/optional.h"
 
+#ifdef PADDLE_WITH_CUDA
 namespace phi {
 namespace fusion {
 

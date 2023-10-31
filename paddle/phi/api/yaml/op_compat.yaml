@@ -578,16 +578,6 @@
   outputs :
     output : Output
     outputs : Outputs
-  attrs :
-    dilations : Dilations
-    strides : Strides
-    paddings : Paddings
-    padding_algorithm : PaddingAlgorithm
-    groups : Groups
-    data_format : DataFormat
-    activation : Activation
-    exhaustive_search : ExhaustiveSearch
-    split_channels : SplitChannels
   extra :
     attrs : [bool is_test = false, bool use_cudnn = false, bool fuse_relu_before_depthwise_conv = false, bool use_mkldnn = false,
              bool use_quantizer = false, str mkldnn_data_type = "float32", bool fuse_relu = false,
