@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
+#ifdef PADDLE_WITH_CUDA&& CUDA_VERSION >= 7100
 #include <xxhash.h>
 
 #include <algorithm>
@@ -33,7 +33,6 @@
 #include "paddle/phi/kernels/impl/conv_cudnn_impl.h"
 #include "paddle/utils/optional.h"
 
-#ifdef PADDLE_WITH_CUDA
 namespace phi {
 namespace fusion {
 
@@ -364,8 +363,8 @@ void Conv2dFusionKernel(const Context& ctx,
                         int groups,
                         const std::string& data_format,
                         const std::string& activation,
-                        bool exhaustive_search,
                         const std::vector<int>& split_channels,
+                        bool exhaustive_search,
                         int workspace_size_MB,
                         DenseTensor* output,
                         std::vector<DenseTensor*> outputs) {
