@@ -53,7 +53,7 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
             dense_tensor,
             dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
         )
-        dist_tensor._copy_to(paddle.CPUPlace(), True)
+        dist_tensor._copy_to(paddle.CUDAPlace(0), True)
 
 
 if __name__ == "__main__":
