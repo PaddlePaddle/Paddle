@@ -920,7 +920,7 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
@@ -983,7 +983,7 @@ def cond(x, p=None, name=None):
         """
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if porder == "nuc":
                 return _C_ops.sum(s, axis, None, False)
             max_out = _C_ops.max(s, axis, False)
@@ -1054,7 +1054,7 @@ def cond(x, p=None, name=None):
                 return out
 
     def empty_tensor(input, shape):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
