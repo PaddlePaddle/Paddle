@@ -769,7 +769,13 @@ class DistForwardAPI(ForwardAPI):
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
-                    or self.inputs['input_info'][param]
+                ):
+                    input_decl_code += LIST_DIST_META_IN_TEMPLATE.format(
+                        name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
                     == "const paddle::optional<std::vector<Tensor>>&"
                 ):
                     # TODO(chenweihang): support other input type later,

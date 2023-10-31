@@ -35,24 +35,21 @@ namespace auto_parallel {
 auto& get_dims_mapping(const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr =
-      paddle::get<phi::distributed::TensorDistAttr>(dist_attr);
+  const auto& tensor_attr = paddle::get<0>(dist_attr);
   return tensor_attr.dims_mapping();
 }
 
 bool is_partial(const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr =
-      paddle::get<phi::distributed::TensorDistAttr>(dist_attr);
+  const auto& tensor_attr = paddle::get<0>(dist_attr);
   return tensor_attr.is_partial();
 }
 
 auto get_partial_dims(const phi::distributed::ArgDistAttr& dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr));
-  const auto& tensor_attr =
-      paddle::get<phi::distributed::TensorDistAttr>(dist_attr);
+  const auto& tensor_attr = paddle::get<0>(dist_attr);
   return tensor_attr.partial_dims();
 }
 
@@ -77,7 +74,7 @@ void check_partial_dims(const phi::distributed::ArgDistAttr& dist_attr,
 void clean_partial_status(phi::distributed::ArgDistAttr* dist_attr) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<phi::distributed::TensorDistAttr>(*dist_attr);
+  auto& tensor_attr = paddle::get<0>(*dist_attr);
   tensor_attr.clean_partial_status();
 }
 
@@ -85,7 +82,7 @@ void clean_partial_dims(phi::distributed::ArgDistAttr* dist_attr,
                         std::vector<int64_t> dims) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<phi::distributed::TensorDistAttr>(*dist_attr);
+  auto& tensor_attr = paddle::get<0>(*dist_attr);
   tensor_attr.clean_partial_dims(dims);
 }
 
@@ -93,7 +90,7 @@ void set_partial_status(phi::distributed::ArgDistAttr* dist_attr,
                         std::vector<int64_t> dims) {
   EXPECT_TRUE(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(*dist_attr));
-  auto& tensor_attr = paddle::get<phi::distributed::TensorDistAttr>(*dist_attr);
+  auto& tensor_attr = paddle::get<0>(*dist_attr);
   tensor_attr.set_partial_status(dims);
 }
 
@@ -764,9 +761,7 @@ TEST(ConcatRule, Ctor) {
           infered_dist_attrs.first[0]));
   EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
       infered_dist_attrs.second[0]));
-  auto& inputs_infer1 =
-      paddle::get<std::vector<phi::distributed::TensorDistAttr>>(
-          infered_dist_attrs.first[0]);
+  auto& inputs_infer1 = paddle::get<1>(infered_dist_attrs.first[0]);
   for (auto e : inputs_infer1) {
     check_dim_mapping(e, {-1, 1, 0});
     check_partial_dims(e, {});
@@ -785,9 +780,7 @@ TEST(ConcatRule, Ctor) {
           infered_dist_attrs.first[0]));
   EXPECT_TRUE(paddle::holds_alternative<phi::distributed::TensorDistAttr>(
       infered_dist_attrs.second[0]));
-  auto& inputs_infer2 =
-      paddle::get<std::vector<phi::distributed::TensorDistAttr>>(
-          infered_dist_attrs.first[0]);
+  auto& inputs_infer2 = paddle::get<1>(infered_dist_attrs.first[0]);
   for (auto e : inputs_infer2) {
     check_dim_mapping(e, {1, -1, 0});
     check_partial_dims(e, {});
@@ -795,6 +788,30 @@ TEST(ConcatRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {1, -1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
 }
+TEST(Util, Ctor) {
+  // test equal test not equal
+  using phi::distributed::PartialStatus;
+  using phi::distributed::PlacementEqual;
+  using phi::distributed::ReplicatedStatus;
+  using phi::distributed::ShardStatus;
+  auto a = std::make_shared<PartialStatus>(phi::ReduceType::kRedSum);
+  auto b = std::make_shared<PartialStatus>(phi::ReduceType::kRedMin);
+  EXPECT_TRUE(PlacementEqual(a, a));
+  EXPECT_TRUE(!PlacementEqual(a, b));
+  auto c = std::make_shared<ShardStatus>(0);
+  auto d = std::make_shared<ShardStatus>(1);
+  EXPECT_TRUE(!PlacementEqual(a, c));
+  EXPECT_TRUE(!PlacementEqual(b, c));
+  EXPECT_TRUE(PlacementEqual(c, c));
+  EXPECT_TRUE(!PlacementEqual(c, d));
+  auto e = std::make_shared<ReplicatedStatus>();
+  EXPECT_TRUE(PlacementEqual(e, e));
+  EXPECT_TRUE(!PlacementEqual(a, e));
+  EXPECT_TRUE(!PlacementEqual(b, e));
+  EXPECT_TRUE(!PlacementEqual(c, e));
+  EXPECT_TRUE(!PlacementEqual(d, e));
+}
+
 }  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace paddle

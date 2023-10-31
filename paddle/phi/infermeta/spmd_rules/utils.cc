@@ -176,10 +176,6 @@ bool IsDimSharded(const TensorDistAttr& dist_attr, int dim) {
   return dist_attr.is_shard(-1, dim);
 }
 
-bool IsTensorPartial(const TensorDistAttr& dist_attr) {
-  return dist_attr.is_partial();
-}
-
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b) {
   if (a->is_partial()) {

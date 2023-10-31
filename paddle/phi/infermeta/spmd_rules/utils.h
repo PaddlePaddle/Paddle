@@ -71,8 +71,6 @@ TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
 
 bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);
 
-bool IsTensorPartial(const TensorDistAttr& dist_str);
-
 std::vector<int64_t> GetLocalShape(
     const std::vector<int64_t> shape,
     const ProcessMesh& mesh,
