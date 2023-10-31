@@ -16,14 +16,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 import paddle.nn.functional as F
 
 
-@dy2static_unittest
-class TestSetItemBase(unittest.TestCase):
+class TestSetItemBase(Dy2StTestBase):
     def setUp(self) -> None:
         pass
 

@@ -93,7 +93,6 @@ class IR_API Value {
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
-
 }  // namespace pir
 
 namespace std {

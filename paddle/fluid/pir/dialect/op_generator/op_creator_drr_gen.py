@@ -20,13 +20,13 @@ from op_gen import OpCompatParser, OpInfoParser, to_pascal_case
 CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+{op_header}
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 
 namespace pir {{
 namespace drr {{
 
-void OperationFactory::RegisterGeneratedOpCreator() {{
+void OperationFactory::Register{dialect}GeneratedOpCreator() {{
 {body}
 }}
 
@@ -41,7 +41,7 @@ NORMAL_FUNCTION_TEMPLATE = """
       [](const std::vector<Value>& inputs,
          const pir::AttributeMap& attrs,
          pir::PatternRewriter& rewriter) {{
-        return rewriter.Build<paddle::dialect::{op_class_name}>(
+        return rewriter.Build<{namespace}::{op_class_name}>(
          {params_code});
       }});
 """
@@ -63,20 +63,54 @@ MUTABLE_ATTR_FUNCTION_TEMPLATE = """
       }});
 """
 
+Dialect2NameSpaceMap = {"pd_op": "paddle::dialect", "cinn_op": "cinn::dialect"}
+Dialect2OpHeaderMap = {
+    "pd_op": "#include \"paddle/fluid/pir/dialect/operator/ir/pd_op.h\"",
+    "cinn_op": "#include \"paddle/cinn/hlir/dialect/operator/ir/cinn_op.h\"",
+}
+
 
 class OpCreatorCodeGen:
     def __init__(self, op_yaml_files, op_compat_yaml_file, dialect_name):
         self.op_info_items = self.parse_yaml(op_yaml_files, op_compat_yaml_file)
         self.dialect_name = dialect_name
 
+    def _check_need_update_ops(self, op_yaml_files):
+        need_update_ops = False
+        update_yaml_file = None
+        for yaml_file in op_yaml_files:
+            if yaml_file.find("update_ops.parsed.yaml") != -1:
+                need_update_ops = True
+                update_yaml_file = yaml_file
+                break
+        return need_update_ops, update_yaml_file
+
+    def _update_ops(self, op_yaml_items, update_yaml_file):
+        with open(update_yaml_file, "r") as f:
+            update_ops = yaml.safe_load(f)
+        for i in range(len(op_yaml_items)):
+            for update_op in update_ops:
+                if op_yaml_items[i]['name'] == update_op['name']:
+                    op_yaml_items[i] = update_op
+                    break
+
     def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = self._check_need_update_ops(
+            op_yaml_files
+        )
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            self._update_ops(op_yaml_items, update_yaml_file)
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -107,6 +141,7 @@ class OpCreatorCodeGen:
                 if len(op_info_item.mutable_attribute_name_list) == 0:
                     body_code += NORMAL_FUNCTION_TEMPLATE.format(
                         op_name=ir_op_name,
+                        namespace=Dialect2NameSpaceMap[self.dialect_name],
                         op_class_name=(to_pascal_case(phi_op_name) + "Op"),
                         params_code=", ".join(params_no_mutable_attr),
                     )
@@ -139,7 +174,13 @@ class OpCreatorCodeGen:
                     )
 
         with open(cpp_file_path, 'w') as f:
-            f.write(CPP_FILE_TEMPLATE.format(body=body_code))
+            f.write(
+                CPP_FILE_TEMPLATE.format(
+                    dialect=to_pascal_case(self.dialect_name),
+                    op_header=Dialect2OpHeaderMap[self.dialect_name],
+                    body=body_code,
+                )
+            )
 
 
 def ParseArguments():

@@ -46,6 +46,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
+    def test_reduction_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_reduction.py",
+                user_defined_envs=envs,
+            )
+
     def test_several_replicated_spmd_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
@@ -53,6 +63,16 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_for_replicated_spmd.py",
+                user_defined_envs=envs,
+            )
+
+    def test_add_n_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_for_add_n.py",
                 user_defined_envs=envs,
             )
 
