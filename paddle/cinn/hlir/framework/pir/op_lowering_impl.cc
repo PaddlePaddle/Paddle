@@ -139,8 +139,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
   // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
-  if (group->ops.size() == 1U & group->output_ops.size() == 0) {
-    group->output_ops.insert(group->ops[0]);
+  if (group->ops.size() >= 1U & group->output_ops.size() == 0) {
+    group->output_ops.insert(group->ops[group->ops.size() - 1]);
   }
   group->input_names.clear();
   group->output_names.clear();
@@ -287,6 +287,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
+  VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
   for (auto& op : group->output_ops) {
     // collect all output tensor.
     for (auto opresult : op->results()) {
@@ -522,8 +523,8 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     }
 
     auto masters = GetMasters(op, ops_inline, ops_set);
-    // op can be inline.
-    if (CanbeInline(op, reducer, consumers, masters, group, ops_set)) {
+    // TODO(Aurelius84): support inline later.
+    if (CanbeInline(op, reducer, consumers, masters, group, ops_set) && false) {
       VLOG(3) << "Before compute inline, ir is:\n"
               << ir_sch.GetModule().GetExprs().at(0);
       auto block = ir_sch.GetBlock(CompatibleInfo::ValueName(op->result(0)));
@@ -572,11 +573,9 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       }
     } else {
       VLOG(3) << "Before assign node " << op_name
-              << " into horizontal link reducer "
-              << CompatibleInfo::OpName(*greducer) << ", ir is:\n"
+              << " into horizontal link reducer, ir is:\n"
               << ir_sch.GetModule().GetExprs().at(0);
       // if node is horizontal with reduce or node is reduce, loop assign
-      //
       // master.
       auto loops = ir_sch.GetLoops(op_out_name);
       if (op_kind == framework::kElementWise) {

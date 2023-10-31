@@ -67,6 +67,7 @@ struct Group {
   // for op lowering.
   std::vector<std::string> input_names;
   std::vector<std::string> output_names;
+  std::string fn_name{""};
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -151,7 +152,13 @@ struct Group {
 
   OpPatternKind kind() const { return op_pattern_kind; }
 
-  std::string FuncName() const { return CompatibleInfo::GroupOpsName(ops); }
+  std::string FuncName() const {
+    if (fn_name == "") {
+      // TODO(Aurelius84): Polish this implementation.
+      const_cast<Group*>(this)->fn_name = CompatibleInfo::GroupOpsName(ops);
+    }
+    return this->fn_name;
+  }
 
  private:
   // input groups

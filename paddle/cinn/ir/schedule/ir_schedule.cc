@@ -2105,12 +2105,11 @@ void ScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
         << "the number of iter bind values must be more than loop vars!";
     for (int idx = 0; idx < block_realize->iter_values.size(); ++idx) {
       auto& iter = block_realize->iter_values[idx];
-      VLOG(1) << "iter: " << iter;
       if (iter.is_var()) {
         CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
             << "loops is not the same order with tensor!";
       } else {
-        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not Int";
+        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
         CHECK_EQ(iter.as_int32(), 0);
       }
     }

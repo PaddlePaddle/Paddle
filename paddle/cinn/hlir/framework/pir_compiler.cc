@@ -147,7 +147,7 @@ std::vector<std::unique_ptr<Instruction>> PIRCompiler::BuildInstructions(
                                                      groups[idx]->input_names,
                                                      groups[idx]->output_names,
                                                      fn_name));
-    VLOG(1) << "Lookup kernel name: " << fn_name;
+    VLOG(4) << "Lookup kernel name: " << fn_name;
     auto* fn_ptr = compiler_->Lookup(fn_name);
     CHECK(fn_ptr);
     instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
