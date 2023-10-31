@@ -1010,7 +1010,7 @@ def sinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(
