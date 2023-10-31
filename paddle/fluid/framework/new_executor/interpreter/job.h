@@ -58,10 +58,6 @@ class Job final {
     fetch_var_names_.push_back(fetch_var_name);
   }
 
-  // int FetchCol(std::string fetch_var_name){
-  //   return fetch_var_names_to_col_[fetch_var_name];
-  // }
-
   std::vector<std::string> FetchVarNames() { return fetch_var_names_; }
 
  private:
