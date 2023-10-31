@@ -92,7 +92,6 @@ TEST(SerializationLoggerTest, dump_case0) {
 
   const std::vector<int64_t> size_vec{1024};
   const std::vector<int64_t> dtype_vec{10};
-  std::vector<int64_t> comm_type_(9);
   std::vector<int64_t> comm_group_(8);
   uint64_t comm_id = 0;
   std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups{

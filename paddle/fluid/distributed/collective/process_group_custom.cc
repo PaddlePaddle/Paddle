@@ -22,36 +22,13 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
-#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
-#define PROFILER_PERFIX "XCCL_EVENT_"
 constexpr int64_t kWaitBlockTImeout = 10;
 
 PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 
-#define ENUM_TO_STRING(name, ...)                   \
-  inline const char* name##_to_string(name value) { \
-    switch (value) {                                \
-      __VA_ARGS__                                   \
-      default:                                      \
-        return "UNKNOWN";                           \
-    }                                               \
-  }
-#define ENUM_CASE(name, val) \
-  case name::val:            \
-    return #val;
 namespace paddle {
 namespace distributed {
-ENUM_TO_STRING(CommType,
-               ENUM_CASE(CommType, BROADCAST) ENUM_CASE(CommType, ALLREDUCE)
-                   ENUM_CASE(CommType, REDUCE) ENUM_CASE(CommType, ALLGATHER)
-                       ENUM_CASE(CommType, GATHER) ENUM_CASE(CommType, SCATTER)
-                           ENUM_CASE(CommType, REDUCE_SCATTER)
-                               ENUM_CASE(CommType, ALLTOALL)
-                                   ENUM_CASE(CommType, SEND)
-                                       ENUM_CASE(CommType, RECV)
-                                           ENUM_CASE(CommType, BARRIER)
-                                               ENUM_CASE(CommType, UNKNOWN))
 
 using phi::distributed::CheckSizeOnEachRank;
 using phi::distributed::GetPointerByOffset;
@@ -141,9 +118,7 @@ ProcessGroupCustom::ProcessGroupCustom(
     : ProcessGroupWithStream(rank, size, gid),
       store_(store),
       device_type_(device_type),
-      comm_group_(ranks) {
-  comm_type_.resize(9);
-}
+      comm_group_(ranks) {}
 
 void ProcessGroupCustom::GroupStart(const std::string& dev_type) {
   phi::DeviceManager::CCLGroupStart(dev_type);
@@ -217,8 +192,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  comm_type_[static_cast<int>(CommunicationType::Allreduce)] =
-      static_cast<int>(opts.reduce_op);
   platform::RecordEvent record_event(
       "xccl allreduce compute", platform::TracerEventType::Communication, 1);
   return RunFnInXCCLEnv(
@@ -331,7 +304,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   int root_id = opts.source_rank * in_wrapper.size() + opts.source_root;
-  comm_type_[static_cast<int>(CommunicationType::Broadcast)] = root_id;
   platform::RecordEvent record_event(
       "xccl broadcast compute", platform::TracerEventType::Communication, 1);
   return RunFnInXCCLEnv(
@@ -507,7 +479,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     bool sync_op,
     bool use_calc_stream) {
   // numel > 0 indicates the tensor need to be sliced
-  comm_type_[static_cast<int>(CommunicationType::Recv)] = src_rank;
   phi::DenseTensor partial_tensor;
   if (numel > 0) {
     partial_tensor = GetPartialTensor(*tensor, offset, numel);
@@ -536,7 +507,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
-  comm_type_[static_cast<int>(CommunicationType::Send)] = dst_rank;
   platform::RecordEvent record_event(
       "xccl send compute", platform::TracerEventType::Communication, 1);
   return RunFnInXCCLEnv(
@@ -903,8 +873,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const AllreduceOptions& opts) {
-  comm_type_[static_cast<int>(CommunicationType::Allreduce)] =
-      static_cast<int>(opts.reduce_op);
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -933,7 +901,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
   int root_id = opts.source_rank * in_tensors.size() + opts.source_root;
-  comm_type_[static_cast<int>(CommunicationType::Broadcast)] = root_id;
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -986,7 +953,6 @@ inline void CheckTensorsInDifferentDevices(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
-  comm_type_[static_cast<int>(CommunicationType::Send)] = dst_rank;
   platform::RecordEvent record_event(
       "xccl send compute", platform::TracerEventType::Communication, 1);
   auto task = PointToPoint(
@@ -1005,7 +971,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
-  comm_type_[static_cast<int>(CommunicationType::Recv)] = src_rank;
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
   platform::RecordEvent record_event(
       "xccl recv compute", platform::TracerEventType::Communication, 1);
@@ -1105,9 +1070,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
-  comm_type_[static_cast<int>(CommunicationType::Reduce_OP)] =
-      static_cast<int>(opts.reduce_op);
-  comm_type_[static_cast<int>(CommunicationType::Reduce_DST)] = opts.root_rank;
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
@@ -1135,8 +1097,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ScatterOptions& opts) {
-  comm_type_[static_cast<int>(CommunicationType::Scatter)] =
-      static_cast<int>(opts.root_rank);
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
