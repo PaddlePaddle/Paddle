@@ -1908,12 +1908,12 @@ struct RandIntOpTranscriber : public OpTranscriber {
                "[op:%s] Output %s should not be null",
                op_desc.Type(),
                var_name);
-    int dtype_num = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    int dtype_attr_val = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
 
     paddle::framework::proto::VarType::Type var_type =
-        static_cast<paddle::framework::proto::VarType::Type>(dtype_num);
+        static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
 
-    pir::Type dtype = type_translator.operator[](var_type)(ctx, *var);
+    pir::Type dtype = type_translator[var_type](ctx, *var);
     paddle::dialect::DenseTensorTypeStorage::Dim dim =
         phi::make_ddim(var->GetShape());
     paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
@@ -1947,6 +1947,7 @@ OpTranslator::OpTranslator() {
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
+  special_handlers["randint"] = RandIntOpTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
@@ -1957,7 +1958,6 @@ OpTranslator::OpTranslator() {
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
-  special_handlers["randint"] = RandIntOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable
