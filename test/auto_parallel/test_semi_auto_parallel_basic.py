@@ -56,13 +56,13 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_several_grad_api(self):
+    def test_bitwise_api(self):
         envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
+            {"dtype": "int32", "seed": "2023"}, self._changeable_envs
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_for_grad_api.py",
+                "semi_auto_parallel_for_bitwise.py",
                 user_defined_envs=envs,
             )
 

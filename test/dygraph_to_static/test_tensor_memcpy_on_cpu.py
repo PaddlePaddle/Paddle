@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -41,14 +41,14 @@ def tensor_copy_to_cuda_with_warning(x, device_id=None, blocking=True):
     return y
 
 
-class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
+class TestTensorCopyToCpuOnDefaultCPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
         x2 = tensor_copy_to_cpu(x1)
         return x1.place, x2.place, x2.numpy()
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_tensor_cpu_on_default_cpu(self):
         paddle.base.framework._set_expected_place(paddle.CPUPlace())
         dygraph_x1_place, dygraph_place, dygraph_res = self._run(
@@ -62,14 +62,14 @@ class TestTensorCopyToCpuOnDefaultCPU(unittest.TestCase):
         self.assertTrue(static_place.is_cpu_place())
 
 
-class TestTensorCopyToCUDAOnDefaultCPU(unittest.TestCase):
+class TestTensorCopyToCUDAOnDefaultCPU(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         x1 = paddle.ones([1, 2, 3])
         x2 = tensor_copy_to_cuda(x1)
         return x1.place, x2.place, x2.numpy()
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_tensor_cuda_on_default_cpu(self):
         if not paddle.base.is_compiled_with_cuda():
             return
