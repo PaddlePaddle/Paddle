@@ -852,11 +852,15 @@ class TestAtan(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_out_name(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -2297,10 +2301,13 @@ class TestAtanh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAtanh_Complex64(TestAtanh):
@@ -4736,10 +4743,10 @@ create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin)
-create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestAtan, check_pir=True)
 create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh)
-create_test_act_fp16_class(TestAtanh)
+create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
     TestRelu, check_prim=True, enable_cinn=True, check_pir=True
@@ -4890,10 +4897,10 @@ create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin)
-create_test_act_bf16_class(TestAtan)
+create_test_act_bf16_class(TestAtan, check_pir=True)
 create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh)
-create_test_act_bf16_class(TestAtanh)
+create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(
