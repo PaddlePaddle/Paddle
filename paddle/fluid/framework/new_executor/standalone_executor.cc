@@ -29,7 +29,7 @@
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -111,7 +111,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
       plan_.UpdateIrProgram("job_" + std::to_string(job_idx), shared_program);
 
-      if (FLAGS_new_ir_apply_inplace_pass) {
+      if (FLAGS_pir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
         pm.AddPass(pir::CreateInplacePass());
         pm.Run(shared_program.get());
