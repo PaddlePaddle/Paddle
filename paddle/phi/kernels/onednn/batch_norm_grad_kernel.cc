@@ -111,16 +111,11 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   std::shared_ptr<dnnl::memory> scale_memory(nullptr);
   std::shared_ptr<dnnl::memory> diff_scale_memory(nullptr);
   std::shared_ptr<dnnl::memory> diff_shift_memory(nullptr);
-  if (scale && bias) {
+  if (scale) {
     scale_memory = handler.AcquireScaleMemory(Scale);
     diff_scale_memory = handler.AcquireDiffScaleMemory(diff_scale_data);
-    diff_shift_memory = handler.AcquireDiffShiftMemory(diff_shift_data);
-  } else if (scale) {
-    scale_memory = handler.AcquireScaleMemory(Scale);
-    diff_scale_memory = handler.AcquireDiffScaleMemory(diff_scale_data);
-  } else if (bias) {
-    diff_shift_memory = handler.AcquireDiffShiftMemory(diff_shift_data);
   }
+  if (bias) diff_shift_memory = handler.AcquireDiffShiftMemory(diff_shift_data);
 
   auto& astream = OneDNNContext::tls().get_stream();
   batch_norm_bwd_p->execute(astream,

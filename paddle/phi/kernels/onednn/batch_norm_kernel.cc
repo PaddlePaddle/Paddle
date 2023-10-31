@@ -84,14 +84,8 @@ void BatchNormKernel(const Context &dev_ctx,
   std::shared_ptr<dnnl::memory> shift_memory(nullptr);
   auto Scale = scale.get_ptr();
   auto Bias = bias.get_ptr();
-  if (scale && bias) {
-    scale_memory = handler.AcquireScaleMemory(Scale);
-    shift_memory = handler.AcquireShiftMemory(Bias);
-  } else if (scale) {
-    scale_memory = handler.AcquireScaleMemory(Scale);
-  } else if (bias) {
-    shift_memory = handler.AcquireShiftMemory(Bias);
-  }
+  if (scale) scale_memory = handler.AcquireScaleMemory(Scale);
+  if (bias) shift_memory = handler.AcquireShiftMemory(Bias);
 
   auto &astream = OneDNNContext::tls().get_stream();
   batch_norm_p->execute(astream,
