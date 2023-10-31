@@ -1245,6 +1245,8 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  data_transform :
+    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
