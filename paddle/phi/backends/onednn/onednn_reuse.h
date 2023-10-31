@@ -1381,24 +1381,6 @@ class BatchNormOneDNNHandler
                                              flags);
   }
 
-  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
-  AcquireScaleShiftMemory(const DenseTensor* scale, const DenseTensor* shift) {
-    auto scale_tz = vectorize(scale->dims());
-    PADDLE_ENFORCE_EQ(
-        scale_tz.size(),
-        1,
-        errors::InvalidArgument(
-            "Dims of scale tensor must be 1, but received scale's size is %d",
-            scale_tz.size()));
-
-    auto scale_memory = this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(), to_void_cast<T>(scale->data<T>()));
-    auto shift_memory = this->AcquireMemoryFromPrimitive(
-        this->fwd_pd_->weights_desc(), to_void_cast<T>(shift->data<T>()));
-
-    return std::make_tuple(scale_memory, shift_memory);
-  }
-
   std::shared_ptr<dnnl::memory> AcquireScaleMemory(const DenseTensor* scale) {
     auto scale_tz = vectorize(scale->dims());
     PADDLE_ENFORCE_EQ(
@@ -1427,16 +1409,6 @@ class BatchNormOneDNNHandler
         this->fwd_pd_->weights_desc(), to_void_cast<T>(shift->data<T>()));
 
     return shift_memory;
-  }
-
-  std::tuple<std::shared_ptr<dnnl::memory>, std::shared_ptr<dnnl::memory>>
-  AcquireDiffScaleShiftMemory(T* diff_scale_data, T* diff_shift_data) {
-    auto diff_scale_memory = this->AcquireMemoryFromPrimitive(
-        this->bwd_pd_->diff_weights_desc(), diff_scale_data);
-    auto diff_shift_memory = this->AcquireMemoryFromPrimitive(
-        this->bwd_pd_->diff_weights_desc(), diff_shift_data);
-
-    return std::make_tuple(diff_scale_memory, diff_shift_memory);
   }
 
   std::shared_ptr<dnnl::memory> AcquireDiffScaleMemory(T* diff_scale_data) {

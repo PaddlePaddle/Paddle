@@ -85,9 +85,8 @@ void BatchNormKernel(const Context &dev_ctx,
   auto Scale = scale.get_ptr();
   auto Bias = bias.get_ptr();
   if (scale && bias) {
-    auto scaleshift_mems = handler.AcquireScaleShiftMemory(Scale, Bias);
-    scale_memory = std::get<0>(scaleshift_mems);
-    shift_memory = std::get<1>(scaleshift_mems);
+    scale_memory = handler.AcquireScaleMemory(Scale);
+    shift_memory = handler.AcquireShiftMemory(Bias);
   } else if (scale) {
     scale_memory = handler.AcquireScaleMemory(Scale);
   } else if (bias) {
