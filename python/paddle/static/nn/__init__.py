@@ -101,5 +101,4 @@ __all__ = [
     'sequence_enumerate',
     'sequence_reverse',
     'prelu',
-    'quant_linear',
 ]
