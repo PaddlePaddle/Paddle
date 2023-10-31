@@ -683,7 +683,7 @@ class AllocatorFacadePrivate {
     }
   }
 
-  phi::stream::stream_t GetStream(
+  phi::stream::stream_t GetCustomStream(
       const std::shared_ptr<phi::Allocation>& allocation) const {
     const std::shared_ptr<StreamSafeCustomDeviceAllocation>
         stream_safe_custom_device_allocation =
@@ -1527,6 +1527,21 @@ bool AllocatorFacade::IsStreamSafeCUDAAllocatorUsed() {
   return GetPrivate()->IsStreamSafeCUDAAllocatorUsed();
 }
 
+phi::stream::stream_t AllocatorFacade::GetStream(
+    const std::shared_ptr<phi::Allocation>& allocation) const {
+#if defined(PADDLE_WITH_CUSTOM_DEVICE)
+  if (allocation->place().GetType() == phi::AllocationType::CUSTOM) {
+    return GetPrivate()->GetCustomStream(allocation);
+  }
+#endif
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (allocation->place().GetType() == phi::AllocationType::GPU) {
+    return GetPrivate()->GetStream(allocation);
+  }
+#endif
+  return nullptr;
+}
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 uint64_t AllocatorFacade::Release(const platform::CUDAPlace& place,
                                   gpuStream_t stream) {
@@ -1564,11 +1579,6 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
                            /*create_if_not_found=*/true);
   }
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
-}
-
-gpuStream_t AllocatorFacade::GetStream(
-    const std::shared_ptr<phi::Allocation>& allocation) const {
-  return GetPrivate()->GetStream(allocation);
 }
 
 void AllocatorFacade::SetDefaultStream(const platform::CUDAPlace& place,
@@ -1650,11 +1660,6 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
                            /*create_if_not_found=*/true);
   }
   return m->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
-}
-
-phi::stream::stream_t AllocatorFacade::GetStream(
-    const std::shared_ptr<phi::Allocation>& allocation) const {
-  return GetPrivate()->GetStream(allocation);
 }
 
 void AllocatorFacade::SetDefaultStream(const platform::CustomPlace& place,
