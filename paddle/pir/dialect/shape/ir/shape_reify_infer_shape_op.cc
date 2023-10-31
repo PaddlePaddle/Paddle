@@ -87,17 +87,19 @@ void TransposeOp::Build(Builder &builder,
   IrContext *ctx = IrContext::Instance();
   Type dtype = IndexType::get(ctx);
   phi::DDim in_dims = x.type().dyn_cast<DenseTensorType>().dims();
-  phi::DDim out_dims = in_dims.transpose(perm);
+  // phi::DDim out_dims = in_dims.transpose(perm);
   phi::DataLayout data_layout = phi::DataLayout::NCHW;
   phi::LoD lod = {{0, 1, 2}};
   size_t offset = 0;
 
+  // Todo(zhangbopd): change in_dims to out out_dims after spliting ddims to
+  // common library.
   argument.output_types.emplace_back(
-      DenseTensorType::get(ctx, dtype, out_dims, data_layout, lod, offset));
+      DenseTensorType::get(ctx, dtype, in_dims, data_layout, lod, offset));
 }
 
 std::vector<int64_t> TransposeOp::permutation() {
-  // TODO(zhangbopd):
+  // TODO(zhangbopd): should not return just {1, 0}.
   return {1, 0};
 }
 

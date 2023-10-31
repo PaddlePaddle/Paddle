@@ -42,5 +42,3 @@ collect_srcs(
   utils/type_info.cc)
 
 cc_library(ddim SRCS ddim.cc)
-
-set_target_properties(ddim PROPERTIES LINK_INTERFACE_MULTIPLICITY 3)
