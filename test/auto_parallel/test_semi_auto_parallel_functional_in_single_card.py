@@ -55,6 +55,35 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         )
         dist_tensor._copy_to(paddle.CUDAPlace(0), True)
 
+    def test_tensor__share_buffer_to(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dense_tensor2 = paddle.randn([10, 10])
+        to = dist.shard_tensor(
+            dense_tensor2,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._share_buffer_to(to)
+
+    def test_tensor__is_shared_buffer_with(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dense_tensor2 = paddle.randn([10, 10])
+        to = dist.shard_tensor(
+            dense_tensor2,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._share_buffer_to(to)
+        self.assertTrue(dist_tensor._is_shared_buffer_with(to))
+
 
 if __name__ == "__main__":
     unittest.main()
