@@ -37,15 +37,15 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
-        phi::errors::InvalidArgument(
-            "Drr tensor [%s] must exists in pattern graph.", tensor_name));
+        phi::errors::NotFound("Drr tensor [%s] must exists in pattern graph.",
+                              tensor_name));
     return *tensor_map_.at(tensor_name);
   }
 
   const IrOperation& Operation(const OpCall* op_call) const {
     PADDLE_ENFORCE_NE(operation_map_.count(op_call),
                       0,
-                      phi::errors::InvalidArgument(
+                      phi::errors::NotFound(
                           "Drr operation [%s] must exists in pattern graph.",
                           op_call->name()));
     return *operation_map_.at(op_call);
@@ -61,7 +61,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         tensor_map_.end(),
-        phi::errors::OutOfRange(
+        phi::errors::NotFound(
             "the drr tensor(%s) is not found in the map to ir value.",
             tensor_name));
     return *iter->second;
@@ -72,7 +72,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         iter,
         attr_map_.end(),
-        phi::errors::OutOfRange(
+        phi::errors::NotFound(
             "the drr attr(%s) is not found in the map to ir attribute.",
             attr_name));
     return iter->second;

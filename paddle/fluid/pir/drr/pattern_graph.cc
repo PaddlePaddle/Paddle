@@ -27,10 +27,10 @@ const drr::OpCall &PatternGraph::AddOpCall(
   owned_op_call_.push_back(op_call);
   for (const auto *input : op_call->inputs()) {
     const auto &tensor_name = input->name();
-    PADDLE_ENFORCE_NE(id2owned_tensor_.count(tensor_name),
-                      0,
-                      phi::errors::InvalidArgument(
-                          "intput tensor [%s] not exist.", tensor_name));
+    PADDLE_ENFORCE_NE(
+        id2owned_tensor_.count(tensor_name),
+        0,
+        phi::errors::NotFound("intput tensor [%s] not exist.", tensor_name));
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
     if (input->producer() == nullptr) {
@@ -44,8 +44,8 @@ const drr::OpCall &PatternGraph::AddOpCall(
     const auto &out_tensor_name = output->name();
     PADDLE_ENFORCE_NE(id2owned_tensor_.count(out_tensor_name),
                       0,
-                      phi::errors::InvalidArgument(
-                          "output tensor [%s] not exist.", out_tensor_name));
+                      phi::errors::NotFound("output tensor [%s] not exist.",
+                                            out_tensor_name));
     id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
@@ -64,8 +64,8 @@ drr::Tensor &PatternGraph::AddTmpTensor(
     const std::shared_ptr<drr::Tensor> &tensor) {
   PADDLE_ENFORCE_EQ(id2owned_tensor_.count(tensor->name()),
                     0,
-                    phi::errors::InvalidArgument("tensor [%s] must not exist.",
-                                                 tensor->name()));
+                    phi::errors::PreconditionNotMet(
+                        "tensor [%s] must not exist.", tensor->name()));
   id2owned_tensor_[tensor->name()] = tensor;
   output_tensors_.insert(tensor->name());
   return *id2owned_tensor_[tensor->name()];
@@ -129,9 +129,9 @@ void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {
   PADDLE_ENFORCE_EQ(
       output_tensors_.count(from.name()),
       1,
-      phi::errors::InvalidArgument("The Tensor (%s) which be assigned must be "
-                                   "the output of result pattern graph.",
-                                   from.name()));
+      phi::errors::PreconditionNotMet("The Tensor (%s) which be assigned must "
+                                      "be the output of result pattern graph.",
+                                      from.name()));
   tensor_assign_map_[from.name()] = to.name();
 }
 
@@ -164,7 +164,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   for (const auto &tensor_name : inputs_tensor) {
     PADDLE_ENFORCE_NE(id2owned_tensor.count(tensor_name),
                       0,
-                      phi::errors::InvalidArgument(
+                      phi::errors::NotFound(
                           "Drr input tensor [%s] must exists in pattern graph.",
                           tensor_name));
     for (const auto &tensor_comsumer :
