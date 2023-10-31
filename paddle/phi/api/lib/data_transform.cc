@@ -647,7 +647,7 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("arg must be a TensorDistAttr"));
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
   const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
   return ReshardApiInputToKernelInput(dev_ctx, tensor, tensor_dist_attr);
 }
@@ -661,7 +661,7 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
           dist_attrs),
       true,
       phi::errors::PreconditionNotMet(
-          "arg must be a vector of  TensorDistAttr"));
+          "Arg must be a vector of  TensorDistAttr"));
   const auto& tensor_dist_attrs = paddle::get<1>(dist_attrs);
   return ReshardApiInputToKernelInput(dev_ctx, tensors, tensor_dist_attrs);
 }
@@ -760,7 +760,7 @@ ReshardApiInputToReplicatedKernelInput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("arg must be a TensorDistAttr"));
+      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
   const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
   return ReshardApiInputToReplicatedKernelInput(
       dev_ctx, tensor, tensor_dist_attr);
@@ -774,7 +774,7 @@ ReshardApiInputToReplicatedKernelInput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("arg must be a TensorDistAttr"));
+      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
   const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
   return ReshardApiInputToReplicatedKernelInput(
       dev_ctx, tensor, tensor_dist_attr);
@@ -803,7 +803,7 @@ ReshardApiInputToReplicatedKernelInput(
           dist_attr),
       true,
       phi::errors::PreconditionNotMet(
-          "arg must be a vector of TensorDistAttr"));
+          "Arg must be a vector of TensorDistAttr"));
   const auto& tensor_dist_attrs = paddle::get<1>(dist_attr);
   return ReshardApiInputToReplicatedKernelInput(
       dev_ctx, tensors, tensor_dist_attrs);

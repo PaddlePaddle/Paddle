@@ -564,7 +564,7 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   PADDLE_ENFORCE_EQ(
       paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
       true,
-      phi::errors::PreconditionNotMet("arg must be a singe TensorDistAttr"));
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
   return SetKernelDistOutput(out, paddle::get<0>(dist_attr));
 }
 
@@ -583,7 +583,7 @@ std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     PADDLE_ENFORCE_EQ(
         paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
         true,
-        phi::errors::PreconditionNotMet("arg must be a singe TensorDistAttr"));
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
     return std::make_shared<phi::distributed::DistTensor>(
         phi::DDim(), paddle::get<0>(dist_attr));
   }

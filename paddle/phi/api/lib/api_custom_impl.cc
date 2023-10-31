@@ -170,7 +170,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
               spmd_info.first[0]),
           true,
           phi::errors::PreconditionNotMet(
-              "arg must be a singe TensorDistAttr"));
+              "Arg must be a single TensorDistAttr"));
       auto current_process_mesh =
           paddle::get<0>(spmd_info.first[0]).process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
