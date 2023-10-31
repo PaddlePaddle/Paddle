@@ -186,10 +186,9 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     for (const auto &item : optim_input_shape()) {
       std::string key = item.first;
       std::string value_str = Vec2Str(item.second);
-      std::cout << "optim_input_shape key: " << key << ", value: " << value_str
-                << "\n";
+      LOG(INFO) << "optim_input_shape key: " << key << ", value: " << value_str;
     }
-    std::cout << "with_dynamic_shape" << std::endl;
+    LOG(INFO) << "with_dynamic_shape";
     for (int i = 0; i < numInputs; ++i) {
       if (optim_input_shape().count(m_IOTensorNames[i])) {
         const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
@@ -201,13 +200,10 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   }
 
   if (batch_size > params_.max_batch_size) {
-    std::cout << "=====Error======" << std::endl;
-    std::cout << "The batch size is larger than the model expects!"
-              << std::endl;
-    std::cout << "Model max batch size is: " << params_.max_batch_size
-              << std::endl;
-    std::cout << "Batch size provided to call to runInference:" << batch_size
-              << std::endl;
+    LOG(ERROR) << "=====Error======";
+    LOG(ERROR) << "The batch size is larger than the model expects!";
+    LOG(ERROR) << "Model max batch size is: " << params_.max_batch_size;
+    LOG(ERROR) << "Batch size provided to call to runInference:" << batch_size;
     return false;  // batchSize超过模型限制
   }
 
