@@ -318,18 +318,12 @@ static void ShareTensorsFromScopeWithPartialBlock(
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
     backward_global_block && backward_global_block->HasVar(name);
+    auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
-        name == paddle::framework::kFakeVarName) {
+        name == paddle::framework::kFakeVarName || var == nullptr) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
-    auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        paddle::platform::errors::NotFound("The output tensor %s is not in "
-                                           "RunProgram(Grad)Op'"
-                                           "s internal scope.",
-                                           name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
