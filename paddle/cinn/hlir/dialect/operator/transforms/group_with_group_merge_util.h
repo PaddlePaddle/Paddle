@@ -89,7 +89,6 @@ inline bool is_same_size(const std::shared_ptr<ir::Group>& first,
 }
 
 inline bool is_const_group(const std::shared_ptr<ir::Group>& group) {
-  std::cerr << "is constant " << group->CollectNodes()[0]->name() << std::endl;
   return group->CollectNodes().size() == 1 &&
          ConstantOps.count(group->CollectNodes()[0]->name());
 }
@@ -540,7 +539,6 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
 
 inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
                                const std::shared_ptr<ir::Group>& second) {
-  std::cerr << "reduce fuse reduce " << std::endl;
   if (!limit_args(first, second)) {
     return false;
   }

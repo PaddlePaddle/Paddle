@@ -398,10 +398,6 @@ struct HorizontalFuseUtil {
   static bool DetectFusabilityByKind(FusePassCtxT* ctx,
                                      const OpGroupPtr& src,
                                      const OpGroupPtr& dst) {
-    std::cerr << "src and dst " << src.group_id() << "\t" << dst.group_id()
-              << std::endl;
-    std::cerr << "src and dst kind " << src.kind() << "\t" << dst.kind()
-              << std::endl;
     const KindKeyT kind_pair(src.kind(), dst.kind());
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
@@ -410,7 +406,6 @@ struct HorizontalFuseUtil {
     }
     auto out = iter->second(src, dst);
 
-    std::cerr << "fuse result " << out << std::endl;
     return out;
   }
 
@@ -522,7 +517,6 @@ class DefaultInputFusePass final : public InputFusePass {
   int Benefit() const override { return 100; }
 
   void operator()(InputFusePassCtx* ctx) const override {
-    std::cerr << "=========================================\n";
     const auto& consumer_set = ctx->PickConsumersWithSameInputs();
 
     const std::unordered_set<OpGroupPtr> consumer_candidates =
@@ -558,7 +552,6 @@ class DefaultInputFusePass final : public InputFusePass {
                 ctx, candidate, last)) {
           continue;
         }
-        std::cerr << "push back herre !!!!!!!!!!!!!!!!!\n";
         groups.push_back(candidate);
         fusionable = true;
         break;
@@ -572,10 +565,6 @@ class DefaultInputFusePass final : public InputFusePass {
 
     for (const auto& groups : fusionable_consumers) {
       if (groups.size() > 1) {
-        // std::cerr << "!!!!!!!!!!!!!!!!!" << std::endl;
-        for (size_t i = 0; i < groups.size(); ++i) {
-          std::cerr << "groups " << groups[i].GetGroup()->group_id << std::endl;
-        }
         ctx->MarkFusible(groups);
       }
     }
@@ -1035,28 +1024,6 @@ class GeneralFusionMergePassHelper {
  public:
   explicit GeneralFusionMergePassHelper(const GroupList& group_list) {
     fusion_groups_ = group_list;
-    std::cerr << "after init===========================\n";
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
-
-    std::cerr << "@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n";
-    for (size_t i = 0; i < group_list.size(); ++i) {
-      auto group = group_list[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
-    std::cerr << "fin ~~~~~~~~~~~~~~~~~~~~\n";
     // init input to consumers.
     InitInputToConsumers();
     // init fusion group index.
@@ -1083,18 +1050,6 @@ class GeneralFusionMergePassHelper {
       FusionPassMap::Instance().Insert(
           "DefaultInputFusePass", std::make_shared<ir::DefaultInputFusePass>());
     }
-
-    std::cerr << "end init===========================\n";
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
-    std::cerr << "end init ----------------------------\n";
   }
 
   GroupList operator()() {
@@ -1118,64 +1073,13 @@ class GeneralFusionMergePassHelper {
  private:
   void DoFusionMerge() {
     VLOG(3) << "DoFusionMerge...!";
-    std::cerr << "group size 1 " << fusion_groups_.size() << std::endl;
-    // for( size_t i = 0; i < fusion_groups_.size(); ++i )
-    // {
-    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
-    // }
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
     while (DoGeneralHorizontalFusion()) {
     }
-    std::cerr << "group size 2 " << fusion_groups_.size() << std::endl;
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
-    //  for( size_t i = 0; i < fusion_groups_.size(); ++i )
-    // {
-    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
-    // }
+
     while (DoGeneralVerticalFusion()) {
     }
-    std::cerr << "group size 3 " << fusion_groups_.size() << std::endl;
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
-    }
-    //  for( size_t i = 0; i < fusion_groups_.size(); ++i )
-    // {
-    //   std::cerr << "group " << fusion_groups_[i]->group_id << std::endl;
-    // }
-    while (DoGeneralRecomputeAndVerticalFusion()) {
-    }
-    std::cerr << "group size 5 " << fusion_groups_.size() << std::endl;
 
-    for (size_t i = 0; i < fusion_groups_.size(); ++i) {
-      auto group = fusion_groups_[i];
-      std::cerr << "group ============= " << i << std::endl;
-      std::cerr << group->group_id << std::endl;
-      std::cerr << group->op_pattern_kind << std::endl;
-      for (size_t j = 0; j < group->nodes.size(); ++j) {
-        std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-      }
+    while (DoGeneralRecomputeAndVerticalFusion()) {
     }
   }
 
@@ -1232,30 +1136,20 @@ class GeneralFusionMergePassHelper {
       auto producer = fusion_groups_[idx];
       VLOG(3) << "Fusion Producer idx " << idx << " Group -> "
               << producer->group_id;
-      std::cerr << "group id " << producer->group_id << std::endl;
       // if producer is sub group.
       if (producer->belong_groups.size()) {
         continue;
       }
       // do horizontal fusion.
       bool recompute_success = GeneralRecomputeFuse(producer);
-      std::cerr << "recomput " << recompute_success << std::endl;
       updated |= recompute_success;
       if (!recompute_success) {
         updated |= GeneralVerticalFuse(producer);
-        std::cerr << "general vertical " << updated << std::endl;
       }
     }
 
     // fuse input consumers
-    for (auto& group : fusion_groups_) {
-      std::cerr << "!!!@@@ group id  " << group->group_id << std::endl;
-    }
     updated |= GeneralInputFuse();
-    for (auto& group : fusion_groups_) {
-      std::cerr << "@@@ group id  " << group->group_id << std::endl;
-    }
-    std::cerr << "update " << updated << std::endl;
 
     if (updated) {
       UpdateFusionGroup();
@@ -1264,17 +1158,12 @@ class GeneralFusionMergePassHelper {
   }
 
   void UpdateFusionGroup() {
-    std::cerr << "update fusion " << std::endl;
     VLOG(3) << "UpdateFusionGroup...";
-    for (auto& group : fusion_groups_) {
-      std::cerr << "!!! group id  " << group->group_id << std::endl;
-    }
     GroupList fusion_groups;
     std::unordered_set<GroupPtr, Hasher, Comparator> fusion_groups_set;
     // update fusion_groups_
     for (auto& group : fusion_groups_) {
       if (!group->belong_groups.size()) {
-        std::cerr << "group id " << group->group_id << std::endl;
         fusion_groups.push_back(group);
         fusion_groups_set.insert(group);
       }
@@ -1286,14 +1175,12 @@ class GeneralFusionMergePassHelper {
       bool is_ring = true;
       for (size_t idx = 0; idx < fusion_groups.size(); ++idx) {
         auto& group = fusion_groups[idx];
-        std::cerr << "id " << group->group_id << std::endl;
         if (!group.get()) {
           continue;
         }
 
         bool exist = false;
         for (const auto& producer : group->producer_groups()) {
-          std::cerr << "producer " << producer->group_id << std::endl;
           if (fusion_groups_set.count(producer)) {
             VLOG(4) << group->group_id << " " << producer->group_id;
             exist = true;
@@ -1466,6 +1353,10 @@ class GeneralFusionMergePassHelper {
         fused_group->group_id += "_" + consumer->group_id;
       } else {
         fused_group->group_id = consumer->group_id;
+      }
+
+      for (auto* op : consumer->nodes) {
+        fused_group->nodes.push_back(op);
       }
       // set op pattern kind
       fused_group->op_pattern_kind =
@@ -2203,14 +2094,10 @@ class GeneralFusionMergePassHelper {
 
       for (const auto& producer : group->producer_groups()) {
         CHECK(producer->belong_groups.size());
-        std::cerr << "add producer "
-                  << (*producer->belong_groups.begin())->group_id << std::endl;
         producers.insert(*producer->belong_groups.begin());
       }
 
       for (auto& consumer : *group->mut_consumer_groups()) {
-        std::cerr << "add comsumer "
-                  << (*consumer->belong_groups.begin())->group_id << std::endl;
         CHECK(consumer->belong_groups.size());
         consumers.insert(*consumer->belong_groups.begin());
       }
@@ -2238,20 +2125,6 @@ GroupList GeneralFusionMergePassInternal(const GroupList& group_list) {
   GeneralFusionMergePassHelper fusion_merge_pass_helper(group_list);
   auto res = fusion_merge_pass_helper();
 
-  std::cerr << "after fuse " << res.size() << std::endl;
-
-  std::cerr << "group size " << res[0]->nodes.size() << std::endl;
-
-  std::cerr << "after general fuse " << std::endl;
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
-    std::cerr << "group ============= " << i << std::endl;
-    std::cerr << group->group_id << std::endl;
-    std::cerr << group->op_pattern_kind << std::endl;
-    for (size_t j = 0; j < group->nodes.size(); ++j) {
-      std::cerr << "nodes " << group->nodes[j]->name() << std::endl;
-    }
-  }
   return res;
 }
 

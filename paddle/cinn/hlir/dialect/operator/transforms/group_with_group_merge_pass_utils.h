@@ -134,9 +134,6 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   const auto& inshape = op_node.inputs()[0].shape();
   const auto& axes = op_node.GetAttr<std::vector<int64_t>>("dim");
 
-  for (size_t i = 0; i < axes.size(); ++i) {
-    std::cerr << "!!!!!!!!!!!!!!!!!!!!!! " << axes[i] << std::endl;
-  }
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
@@ -214,7 +211,6 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int64_t>>("dim");
 
   for (auto& dim : reducer_0_reduce_dim) {
-    std::cerr << "reduece 0 " << dim << std::endl;
     // if dim = -1, set as shape.size() - 1
     if (dim == -1) {
       dim = reducer_0_reduce_dim.size() - 1;
@@ -222,7 +218,6 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   }
 
   for (auto& dim : reducer_1_reduce_dim) {
-    std::cerr << "reduece 1 " << dim << std::endl;
     // if dim = -1,  set as shape.size() - 1
     if (dim == -1) {
       dim = reducer_1_reduce_dim.size() - 1;
