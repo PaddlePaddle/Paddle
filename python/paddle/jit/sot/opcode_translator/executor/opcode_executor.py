@@ -227,7 +227,6 @@ def jump_break_graph_decorator(normal_jump: Callable):
     def inner(self: OpcodeExecutor, instr: Instruction):
         result = self.stack.top
         if isinstance(result, TensorVariable):
-            self.stack.pop()
             # fallback when in OpcodeExecutor
             # raise error in OpcodeInlineExecutor
             log(3, "[BreakGraph] jump break graph, because if tensor\n")
@@ -327,7 +326,11 @@ class OpcodeExecutorBase:
 
     """
 
+    class EmptyCode:
+        pass
+
     call_stack: list[OpcodeExecutorBase] = []
+    empty_code = EmptyCode()
 
     @staticmethod
     def validate_value(value):
@@ -352,7 +355,7 @@ class OpcodeExecutorBase:
         self._current_line: int = -1
         self._instructions = get_instructions(self._code)
         self._graph = graph
-        self.new_code: types.CodeType | None = None
+        self.new_code: types.CodeType | None = self.empty_code
         self.guard_fn = None
         self._name = "Executor"
         self._call_shape: tuple[
@@ -1505,6 +1508,26 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 )
             )
 
+    def start_compile_with_name_store(self, ret_vars, inputs_names, instr_idx):
+        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+            store_vars = {}
+            for name in inputs_names:
+                _var = self.get_var(name)
+                if _var not in self.stack:
+                    store_vars[_var] = name
+            return self._graph._restore_origin_opcode(
+                self.stack, store_vars, instr_idx
+            )
+        else:
+            store_vars = list(self.stack)
+            for name in inputs_names:
+                _var = self.get_var(name)
+                if _var not in self.stack:
+                    store_vars.append(_var)
+            return self._graph._build_compile_fn_with_name_store(
+                ret_vars, store_vars
+            )
+
     def _create_resume_fn(self, index, stack_size=0):
         """
         Create a resume function and its inputs at the specified index.
@@ -1522,7 +1545,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         return fn, inputs
 
     @fallback_when_occur_error
-    def _break_graph_in_jump(self, result: VariableBase, instr: Instruction):
+    def _break_graph_in_jump(self, result: TensorVariable, instr: Instruction):
         """
         Break the graph at a JUMP instruction.
 
@@ -1532,7 +1555,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         """
         self._graph.add_global_guarded_variable(result)
-        stack_size = len(self.stack)
+        # minus the bool value
+        stack_size = len(self.stack) - 1
+
+        # gen call static fn opcode
         if_fn, if_inputs = self._create_resume_fn(
             self.indexof(instr) + 1, stack_size
         )
@@ -1540,29 +1566,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
             self.indexof(instr.jump_to), stack_size
         )
 
-        # gen call static fn opcode
-        inputs_name = if_inputs | else_inputs
-        inputs_var = [
-            self.get_var(name)
-            for name in inputs_name
-            if self.get_var(name) is not result
-        ]
-        ret_vars = [
-            result,
-        ] + inputs_var
-        # Collect all the to store variables.
-        store_vars = []
-        for stack_arg in self.stack:
-            store_vars.append(stack_arg)
-        for name in inputs_name:
-            store_vars.append(self.get_var(name))
+        inputs_names = if_inputs | else_inputs
 
-        var_loader = self._graph.start_compile_with_name_store(
-            ret_vars, store_vars
+        var_loader = self.start_compile_with_name_store(
+            [], inputs_names, self.indexof(instr)
         )
-        # only pop the input of if/else resume fn, and keep the bool tensor result on the stack
-        for _ in inputs_var:
-            self._graph.pycode_gen.gen_pop_top()
+        self.stack.pop()
+
+        var_loader.load(result)
 
         # gen call if/else resume fn opcode
         if if_fn is not None:
@@ -1632,30 +1643,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.stack = origin_stack
 
         # gen call static fn opcode
-        ret_vars = [
-            arg
-            for arg in self.stack
-            if isinstance(arg, (TensorVariable, ContainerVariable))
-        ]
+
         resume_input_name = analysis_inputs(self._instructions, index + 1)
-        ret_vars = ret_vars + [
-            self.get_var(name)
-            for name in resume_input_name
-            if self.get_var(name) not in ret_vars
-        ]
 
-        # Collect all the to store variables.
-        store_vars = []
-        for stack_arg in self.stack:
-            store_vars.append(stack_arg)
-        for name in resume_input_name:
-            store_vars.append(self.get_var(name))
-        var_loader = self._graph.start_compile_with_name_store(
-            ret_vars, store_vars
+        var_loader = self.start_compile_with_name_store(
+            [], resume_input_name, self.indexof(instr)
         )
-
-        for _ in ret_vars:
-            self._graph.pycode_gen.gen_pop_top()
 
         # gen graph break call fn opcode
         stack_effect = calc_stack_effect(instr)
@@ -1696,30 +1689,14 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
     def transform(self):
         self.run()
-        if self.new_code is None:
+        if self.new_code is self.empty_code:
             raise InnerError("OpExecutor return a empty new_code.")
-        # stopped by RETURN_VALUE and has sir len is enough => disable_eval_frame
-        simulate_complete = bool(self.stop_state == "Return")
-        if simulate_complete:
-            if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-                raise FallbackError(
-                    "Fallback after simulate for reasons.",
-                    disable_eval_frame=True,
-                )
-            else:
-                # if simulate stop with graph successfully, the all codes will be
-                # surrounded by the eval_frame triggers which exist in self.new_code
-                # we need not set disable_eval_frame=False here (for it already is)
-                return (
-                    CustomCode(self.new_code, True),
-                    self.guard_fn,
-                )
-        else:
-            # if return because breakgraph, need open eval_frame
-            return (
-                CustomCode(self.new_code, False),
-                self.guard_fn,
-            )
+        # Always set disable_eval_frame = True, because we have
+        # already inserted eval_frame triggers in opcode
+        return (
+            CustomCode(self.new_code, True),
+            self.guard_fn,
+        )
 
     def _gen_loop_body_between(
         self, inputs: list, for_iter_idx: int, start: int, end: int
@@ -1836,9 +1813,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         log(3, "[Resumed Function]: break graph in loop create loop body as\n")
         log_do(3, lambda: dis.dis(loop_body_fn))
 
-        # 0.3 create after loop part function
+        # 0.3 create after loop part function, minus 1 for iterator
         after_loop_fn, fn_inputs = self._create_resume_fn(
-            loop_body_end_idx, len(self.stack)
+            loop_body_end_idx, len(self.stack) - 1
         )
 
         total_inputs = OrderedSet(list(fn_inputs) + list(loop_body_inputs[:-1]))
@@ -1849,23 +1826,17 @@ class OpcodeExecutor(OpcodeExecutorBase):
             for name in total_inputs
             if name in chain(self._locals, self._cells)
         ]
-        ret_vars = [self.get_var(name) for name in ret_names]
-        store_vars = [ret_vars[idx] for idx in range(len(ret_names))]
-        store_vars.extend(iter(self.stack))
-        store_vars.append(iterator.get_hold())
-        var_loader = self._graph.start_compile_with_name_store(
-            ret_vars, store_vars
+
+        var_loader = self.start_compile_with_name_store(
+            [], ret_names, self.indexof(for_iter)
         )
 
-        for _ in ret_vars:
-            self._graph.pycode_gen.gen_pop_top()
+        # 2. restore vars with origin name
+        for name in ret_names:
+            var_loader.load(self.get_var(name))
+            self._graph.pycode_gen.gen_store(name, self._code)
 
-        # 2. restore vars
-        for idx in range(len(ret_names)):
-            var_loader.load(ret_vars[idx])
-            self._graph.pycode_gen.gen_store(ret_names[idx], self._code)
-
-        # 3. setup vars which is created in loop
+        # 3. setup vars which is created in loop as Undefind
         undefined_names = set()
         for name in loop_body_inputs[:-1]:
             if not self.has_var(name, all_used_vars[name]):
@@ -1873,12 +1844,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self._graph.pycode_gen.gen_load_const(SotUndefinedVar())
                 self._graph.pycode_gen.gen_store(name, self._code)
 
-        # close eval_frame
-        # TODO: need support effective strategies
-        # self._graph.pycode_gen.gen_disable_eval_frame()
-
         # 4.1 load iterator
-        iterator.reconstruct(self._graph.pycode_gen)
+        var_loader.load(iterator)
+        self.stack.pop()
 
         # 4.2 gen FOR_ITER and unpack data
         self._graph.pycode_gen.extend_instrs(
@@ -1921,10 +1889,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
         nop = self._graph.pycode_gen._add_instr("NOP")
         for_iter.jump_to = nop
         jump_if_break.jump_to = nop
-
-        # open eval_frame
-        # TODO: need support effective strategies
-        # self._graph.pycode_gen.gen_enable_eval_frame()
 
         # 8. call after_loop_fn
         self._graph.pycode_gen.gen_load_object(
@@ -2055,6 +2019,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
             if backup_iter_idx:
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)
+            self.stack.push(iterator)
             self._break_graph_in_for_loop(iterator, instr)
             return Stop(state="BreakGraph")
 
@@ -2063,8 +2028,11 @@ class OpcodeExecutor(OpcodeExecutorBase):
             len(self.stack) == 1
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
-        self._graph.start_compile(ret_val)
-        self._graph.pycode_gen.gen_return()
-        self.new_code = self._graph.pycode_gen.gen_pycode()
+        if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
+            self.new_code = None
+        else:
+            self._graph.start_compile(ret_val)
+            self._graph.pycode_gen.gen_return()
+            self.new_code = self._graph.pycode_gen.gen_pycode()
         self.guard_fn = self._graph.guard_fn
         return Stop(state="Return")

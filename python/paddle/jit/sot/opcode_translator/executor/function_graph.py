@@ -40,6 +40,7 @@ from ...utils import (
     map_if,
     tmp_name_guard,
 )
+from ..instruction_utils import get_instructions
 from .guard import Guard, StringifyExpression, make_guard
 from .mutable_data import MutationDel, MutationNew, MutationSet
 from .pycode_generator import PyCodeGen
@@ -241,7 +242,26 @@ class FunctionGraph:
 
             return make_guard(guards)
 
-    def start_compile_with_name_store(self, ret_vars, to_store_vars):
+    def _restore_origin_opcode(self, stack, store_vars, instr_idx):
+        class VariableLoader:
+            def __init__(self, store_var_info, pycode_gen):
+                self._store_var_info = store_var_info
+                self._pycode_gen: PyCodeGen = pycode_gen
+
+            def load(self, var, allow_push_null=True):
+                self._pycode_gen.gen_load_fast(self._store_var_info[var])
+
+        origin_instr = get_instructions(self.pycode_gen._origin_code)
+        self.pycode_gen.extend_instrs(iter(origin_instr[0 : instr_idx + 1]))
+
+        name_gen = NameGenerator("__start_compile_saved_orig_")
+        for var in stack[::-1]:
+            store_vars[var] = name_gen.next()
+            self.pycode_gen.gen_store_fast(store_vars[var])
+
+        return VariableLoader(store_vars, self.pycode_gen)
+
+    def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
         class VariableLoader:
             def __init__(self, index_for_load, pycode_gen):
                 self._index_for_load = index_for_load
@@ -249,6 +269,7 @@ class FunctionGraph:
 
             def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
+                    # PUSH_NULL is an opcode
                     if allow_push_null:
                         var.reconstruct(self._pycode_gen)
                     else:
