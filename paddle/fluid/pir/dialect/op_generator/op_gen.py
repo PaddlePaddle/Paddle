@@ -212,7 +212,7 @@ attr_types_map = {
     'Scalar(int)': ['pir::Int32Attribute', 'int'],
     'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
     'Scalar(float)': ['pir::FloatAttribute', 'float'],
-    'Scalar(dobule)': ['pir::DoubleAttribute', 'dobule'],
+    'Scalar(double)': ['pir::DoubleAttribute', 'double'],
     'Scalar[]': [
         'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
         'const std::vector<Scalar>&',
