@@ -1158,22 +1158,17 @@ void MergeReduceLoop(
 
   auto op_out_name = CompatibleInfo::ValueName(op->result(0));
   auto master_out_name = CompatibleInfo::ValueName(master->result(0));
-  VLOG(1) << "---> A";
   int min_index_loop = INT_MAX;
   std::string post_ = "", post__ = "_0";
   for (int idx = 0;; ++idx) {
-    VLOG(1) << "---> B";
     if (!tmp_tensor_info.count(op_out_name + post__)) {
       break;
     }
-    VLOG(1) << "---> C";
     auto tensor_ = tmp_tensor_info.at(op_out_name + post_);
-    VLOG(1) << "---> D";
     auto tensor__ = tmp_tensor_info.at(op_out_name + post__);
     if (!ir_sch.HasBlock(tensor__->name)) {
       break;
     }
-    VLOG(1) << "---> E";
     auto dst_loops = ir_sch.GetLoops(tensor_->name);
     auto src_loops = ir_sch.GetLoops(tensor__->name);
     int index = -1;
@@ -1187,7 +1182,6 @@ void MergeReduceLoop(
     min_index_loop = std::min(min_index_loop, index);
     MergeLoops(
         ir_sch.GetModule().GetExprs().at(0), src_loops, dst_loops, index);
-    VLOG(1) << "---> F";
     post_ = "_" + std::to_string(idx);
     post__ = "_" + std::to_string(idx + 1);
   }
@@ -1265,9 +1259,7 @@ void LoopComputeAt(
       prefix = post;
       post = "_" + std::to_string(idx);
     }
-    VLOG(1) << "---> " << prefix << " , " << post;
     auto tensor = tmp_tensor_info.at(master_out_name + prefix);
-    VLOG(1) << "---> " << tensor->name;
     master_loops = ir_sch.GetLoops(tensor->name);
   }
 
@@ -1309,18 +1301,14 @@ void LoopAssignReduce(
   } else {
     ir_sch.FlattenLoops(loops, false);
   }
-  VLOG(1) << "--> A " << reducer;
   std::vector<int> shape =
       CompatibleInfo::ValueShape(reducer->operand_source(0));
-  VLOG(1) << "--> A1";
   auto axes = GetReducerDimAttr(reducer);
-  VLOG(1) << "--> A2";
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
     }
   }
-  VLOG(1) << "--> B";
   auto copy_loop_info = [](std::vector<ir::Expr>& loops,
                            std::vector<ir::Expr>& rloops) {
     for (int idx = 0; idx < std::min(rloops.size(), loops.size()); ++idx) {
@@ -1388,7 +1376,6 @@ void LoopAssignReduce(
         break;
       }
     }
-    VLOG(1) << "--> C";
     // prepare factors of two step split
     std::vector<int> first_step_factors;
     std::vector<int> second_step_factors;
@@ -1420,10 +1407,8 @@ void LoopAssignReduce(
     copy_loop_info(loops, rloops);
     return;
   }
-  VLOG(1) << "--> D";
   // node output is same shape with reduce input.
   if (WithoutLastDimInReduce(shape, axes)) {
-    VLOG(1) << "--> E";
     // if using two strep reduce.
     if (tmp_tensor_info.count(reducer_data_name + "_1")) {
       VLOG(4) << "Try assign loop of " << op_data_name
@@ -1462,7 +1447,6 @@ void LoopAssignReduce(
       copy_loop_info(nloops, rloops);
     }
   } else {
-    VLOG(1) << "--> F";
     if (tmp_tensor_info.count(reducer_data_name + "_1")) {
       {
         auto nloops = ir_sch.GetLoops(op_data_name);
@@ -1481,10 +1465,8 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else if (tmp_tensor_info.count(reducer_data_name + "_0")) {
-      VLOG(1) << "--> G";
       auto tensor = tmp_tensor_info.at(reducer_data_name + "_0");
       auto rloops = ir_sch.GetLoops(tensor->name);
-      VLOG(1) << tensor->name << " " << rloops;
       std::vector<int> factors;
       for (auto& loop : rloops) {
         // FIXME(Aurelius84): Need add broadcast_to Op
