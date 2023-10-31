@@ -219,10 +219,6 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       bool use_calc_stream);
 
   void BroadcastUniqueXCCLID(phi::ccl::CCLRootId* nccl_id);
-  void BuildCommunicationField(std::vector<Place> places,
-                               std::string key,
-                               int i,
-                               bool use_calc_stream);
 
   void CreateXCCLEnvCache(const Place& place, const std::string& place_key);
 
