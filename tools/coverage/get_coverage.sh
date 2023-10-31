@@ -223,10 +223,11 @@ function gen_python_diff_html_report() {
 # assert coverage lines
 
 function covinfo_combine_full(){
-    #lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
-    lcov -a $(ls cpp-coverage*.info) -o cpp-coverage.info
-    #lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -o python-coverage.info
-    lcov -a $(ls python-coverage*.info) -o python-coverage.info
+    touch python-coverage4.info
+    lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
+    #lcov -a $(ls cpp-coverage*.info) -o cpp-coverage.info
+    lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -a python-coverage4.info -o python-coverage.info
+    #lcov -a $(ls python-coverage*.info) -o python-coverage.info
     gen_full_html_report || true
     gen_python_full_html_report || true    
 }
