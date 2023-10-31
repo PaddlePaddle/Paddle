@@ -15,7 +15,7 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 from paddle.base import core
@@ -100,8 +100,7 @@ def case_to_tensor_default_dtype():
     return paddle.to_tensor(1)
 
 
-@dy2static_unittest
-class TestToTensorReturnVal(unittest.TestCase):
+class TestToTensorReturnVal(Dy2StTestBase):
     def test_to_tensor_badreturn(self):
         paddle.disable_static()
         x = paddle.to_tensor([3])
@@ -173,8 +172,7 @@ class TestToTensorReturnVal(unittest.TestCase):
             )
 
 
-@dy2static_unittest
-class TestStatic(unittest.TestCase):
+class TestStatic(Dy2StTestBase):
     def test_static(self):
         paddle.enable_static()
         main_prog = Program()
