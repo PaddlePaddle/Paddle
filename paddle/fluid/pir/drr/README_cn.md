@@ -3,7 +3,7 @@
 ## 1. 相关背景
 
 PASS是对IR进行优化的关键组件，而DAG-to-DAG的变换是最常见的Pass类型。DAG-to-DAG PatternRewrite类型的PASS的实现主要分为两步：匹配和重写。匹配阶段需要根据Tensor和Op的组织结构在Program中完全匹配到原有子图，在重写阶段将原有子图替换为目标子图，并且原有子图和目标子图需要满足两个子图的输入和输出完全相同。为了降低PASS的开发成本，我们开发了基于声明式重写的DRR ( Declarative Rewrite Rule ) 工具来处理这种PatternRewrite类型的PASS。用户可以通过一套简洁易用的接口对原有子图和目标子图进行模式声明，DRR工具就能自动的在Program中对原图进行匹配，并替换成目标子图。
-![img1](https://github.com/gongshaotian/Paddle/assets/141618702/942a9f69-7e21-47bf-a479-933c551b2d92)
+
 DRR(Declarative Rewrite Rule) PASS API并不是IR，而是对IR的统一封装，目的是让用户集中在对优化逻辑的处理上，而不需要关心对底层IR的处理。DRR主要由以下三大组件构成：
 + `Source Pattern`：用于描述在Program中待匹配的模式子图
 + `Result Pattern`：用于描述需要替换为的模式子图

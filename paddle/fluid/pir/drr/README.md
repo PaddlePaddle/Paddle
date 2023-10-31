@@ -3,7 +3,7 @@
 ## 1. Related Background
 
 PASS is a key component for optimizing IR, and the transformation of DAG-to-DAG is the most common pass type. The implementation of PASS with DAG-to-DAG PatternRewrite type is mainly divided into two steps: matching and rewriting. In the matching stage, it is necessary to fully match the source pattern in the Program. In the rewriting stage, the original subgraph is replaced with the target subgraph, and the source pattern and result pattern must meet the requirement that the input and output of the two subgraphs are identical. In order to reduce the development cost of PASS, we have developed a DRR (Declarative Rewrite Rule) tool based on declarative rewriting to handle PASS of the PatternRewrite type. Users can declare source patterns and result patterns through a simple and easy-to-use interface, and DRR tools can automatically match source patterns in Program and replace them with result patterns.
-![img1](https://github.com/gongshaotian/Paddle/assets/141618702/942a9f69-7e21-47bf-a479-933c551b2d92)
+
 The DRR PASS API is not IR, but a unified encapsulation of IR, with the aim of allowing users to focus on optimizing logic processing without worrying about processing the underlying IR. DRR is mainly composed of the following three major components:
 + `Source Pattern`：Used to describe the pattern subgraph to be matched in the Program
 + `Result Pattern`：Used to describe the pattern subgraph replaced with
@@ -157,12 +157,12 @@ In this simple example, we first inherit the specialization template class of Dr
 	<tr>
 		<td> std::vector&lt;Constraint&gt; constraints() const</td>
 		<td> Return the list of constraints within the PatternContext</td>
-		<td> 无 </td>
+		<td> None </td>
 	</tr>
 	<tr>
 		<td> std::shared_ptr&lt;ResultPatternGraph&gt; result_pattern_graph() const</td>
 		<td> Return the ResultPatternGraph object inside the PatternContext</td>
-		<td> 无 </td>
+		<td> None </td>
 	</tr>
 </table>
 
