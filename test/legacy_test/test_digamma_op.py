@@ -21,6 +21,7 @@ from scipy.special import psi
 import paddle
 from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDigammaOp(OpTest):
@@ -96,6 +97,7 @@ class TestDigammaBF16Op(OpTest):
 
 
 class TestDigammaAPI(unittest.TestCase):
+    @test_with_pir_api
     def setUp(self):
         # switch to static
         paddle.enable_static()

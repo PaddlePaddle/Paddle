@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(0)
 
@@ -205,6 +206,7 @@ class TestCumprodComplex128Op(TestCumprod):
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
+    @test_with_pir_api
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
