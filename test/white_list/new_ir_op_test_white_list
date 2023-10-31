@@ -32,6 +32,7 @@ test_channel_shuffle
 test_cholesky_op
 test_cholesky_solve_op
 test_class_center_sample_op
+
 test_clip_by_norm_op
 test_clip_op
 test_compare_op
