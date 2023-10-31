@@ -58,10 +58,12 @@ _cudnn_version = None
 
 def is_compiled_with_custom_device(device_type):
     """
+
     Whether paddle was built with Paddle_CUSTOM_DEVICE .
 
     Args:
         std::string, the registered device type, like "npu".
+
     Return:
         bool, ``True`` if CustomDevice is supported, otherwise ``False``.
 
@@ -124,7 +126,7 @@ def XPUPlace(dev_id):
     """
     Return a Baidu Kunlun Place
 
-    Parameters:
+    Args:
         dev_id(int): Baidu Kunlun device id
 
     Examples:
@@ -568,17 +570,20 @@ class Event:
 
 class Stream:
     '''
-    A device stream wrapper around StreamBase.
-    Parameters:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
-        It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-        where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
 
+    A device stream wrapper around StreamBase.
+
+    Args:
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
+            It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         priority(int, optional): priority of the CUDA stream. Can be either
             1 (high priority) or 2 (low priority). By default, streams have
             priority 2.
+
     Returns:
         Stream: The stream.
+
     Examples:
         .. code-block:: python
 
@@ -590,6 +595,7 @@ class Stream:
             >>> s2 = paddle.device.Stream('custom_cpu')
             >>> s3 = paddle.device.Stream('custom_cpu:0')
             >>> s4 = paddle.device.Stream(paddle.CustomPlace('custom_cpu', 0))
+
     '''
 
     def __init__(self, device=None, priority=2, stream_base=None):
@@ -634,11 +640,15 @@ class Stream:
 
     def wait_event(self, event):
         '''
+
         Makes all future work submitted to the stream wait for an event.
-        Parameters:
+
+        Args:
             event (Event): an event to wait for.
+
         Returns:
             None.
+
         Examples:
             .. code-block:: python
 
@@ -651,18 +661,23 @@ class Stream:
                 >>> e = paddle.device.Event()
                 >>> e.record(s1)
                 >>> s2.wait_event(e)
+
         '''
         self.stream_base.wait_event(event.event_base)
 
     def wait_stream(self, stream):
         '''
+
         Synchronizes with another stream.
         All future work submitted to this stream will wait until all kernels
         submitted to a given stream at the time of call complete.
-        Parameters:
+
+        Args:
             stream (Stream): a stream to synchronize.
+
         Returns:
             None.
+
         Examples:
             .. code-block:: python
 
@@ -673,17 +688,22 @@ class Stream:
                 >>> s1 = paddle.device.Stream()
                 >>> s2 = paddle.device.Stream()
                 >>> s1.wait_stream(s2)
+
         '''
         self.stream_base.wait_stream(stream.stream_base)
 
     def record_event(self, event=None):
         '''
+
         Records an event.
-        Parameters:
+
+        Args:
             event (Event, optional): event to record. If not given, a new one
-                will be allocated.
+            will be allocated.
+
         Returns:
             Event: Recorded event.
+
         Examples:
             .. code-block:: python
 
@@ -696,6 +716,7 @@ class Stream:
 
                 >>> e2 = paddle.device.Event()
                 >>> s.record_event(e2)
+
         '''
         if event is None:
             event = Event(self.device)
@@ -704,9 +725,12 @@ class Stream:
 
     def query(self):
         '''
+
         Checks if all the work submitted has been completed.
+
         Returns:
             bool: Whether all kernels in this stream are completed.
+
         Examples:
             .. code-block:: python
 
@@ -716,6 +740,7 @@ class Stream:
                 >>> paddle.set_device('custom_cpu')
                 >>> s = paddle.device.Stream()
                 >>> s.query()
+
         '''
         return self.stream_base.query()
 
