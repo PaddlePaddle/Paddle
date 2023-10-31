@@ -26,7 +26,7 @@
 #include "paddle/fluid/pir/drr/ir_operation_factory.h"
 #include "paddle/fluid/pir/drr/match_context_impl.h"
 #include "paddle/fluid/pir/drr/pattern_graph.h"
-#include "paddle/pir/core/enforce.h"
+#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/type_name.h"
 #include "paddle/pir/pattern_rewrite/pattern_match.h"
@@ -49,9 +49,11 @@ class DrrRewritePattern : public pir::RewritePattern {
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
-    IR_ENFORCE(!source_pattern_graph_->owned_op_call().empty(),
-               "source_pattern_graph is empty, please check the drr pattern "
-               "define code.");
+    PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
+                      true,
+                      phi::errors::InvalidArgument(
+                          "Source pattern graph is empty."
+                          "Please check the drr pattern define code."));
   }
 
   bool MatchAndRewrite(pir::Operation* op,
