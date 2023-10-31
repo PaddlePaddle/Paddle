@@ -57,14 +57,15 @@ std::vector<DimTrans*> MakeUnsqueezeDimTrans(
 }
 
 std::vector<DimTrans*> MakeUnsqueezeDimTransReverse(
-    const std::vector<int64_t>& out_shape, const std::vector<int64_t>& axis) {
-  int64_t n = static_cast<int64_t>(out_shape.size() - axis.size());
+    const std::vector<int64_t>& out_shape,
+    const std::vector<int64_t>& axis,
+    const int& x_ndim,
+    const int& out_ndim) {
   std::vector<DimTrans*> ret;
-  ret.resize(n);
+  ret.resize(x_ndim);
   fill(ret.begin(), ret.end(), new Singleton());
 
-  for (int64_t i = 0, j = 0, m = static_cast<int64_t>(out_shape.size()); i < m;
-       i++) {
+  for (int64_t i = 0, j = 0; i < out_ndim; i++) {
     auto it = find(axis.begin(), axis.end(), i);
 
     if (it == axis.end()) {
@@ -97,7 +98,7 @@ SpmdInfo UnsqueezeInferSpmd(const DistMetaTensor& x,
   // Step1: Build the transformation from
   // the original shape to the target shape
 
-  std::vector<int64_t> out_shape(x_shape);
+  std::vector<int64_t> out_shape;
   std::vector<int64_t> axis_copy(axis);
 
   for (int64_t i = 0; i < static_cast<int64_t>(axis_copy.size()); i++) {
@@ -171,7 +172,7 @@ SpmdInfo UnsqueezeInferSpmdReverse(const DistMetaTensor& x,
   }
 
   std::vector<DimTrans*> trans =
-      MakeUnsqueezeDimTransReverse(out_shape, axis_copy);
+      MakeUnsqueezeDimTransReverse(out_shape, axis_copy, x_ndim, out_ndim);
 
   // Step2: Infer the dims mapping of input with
   // output's dims_mapping and the transformation.
