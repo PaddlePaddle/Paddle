@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def meshgrid_wrapper(x):
@@ -137,10 +138,8 @@ class TestMeshgridOpBFP16OP(TestMeshgridOp):
 
 
 class TestMeshgridOp3(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -161,22 +160,24 @@ class TestMeshgridOp3(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid(x, y)
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
+
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid(x, y)
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp4(unittest.TestCase):
+    @test_with_pir_api
     def test_list_input(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -197,23 +198,24 @@ class TestMeshgridOp4(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid([x, y])
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid([x, y])
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 
 
 class TestMeshgridOp5(unittest.TestCase):
+    @test_with_pir_api
     def test_tuple_input(self):
-        x = paddle.static.data(shape=[100], dtype='int32', name='x')
-        y = paddle.static.data(shape=[200], dtype='int32', name='y')
-
         input_1 = np.random.randint(
             0,
             100,
@@ -234,14 +236,17 @@ class TestMeshgridOp5(unittest.TestCase):
         out_2 = np.reshape(input_2, [1, 200])
         out_2 = np.broadcast_to(out_2, [100, 200])
 
-        exe = base.Executor(place=base.CPUPlace())
-        grid_x, grid_y = paddle.tensor.meshgrid((x, y))
-        res_1, res_2 = exe.run(
-            base.default_main_program(),
-            feed={'x': input_1, 'y': input_2},
-            fetch_list=[grid_x, grid_y],
-        )
+        with paddle.static.program_guard(paddle.static.Program()):
+            x = paddle.static.data(shape=[100], dtype='int32', name='x')
+            y = paddle.static.data(shape=[200], dtype='int32', name='y')
 
+            exe = base.Executor(place=base.CPUPlace())
+            grid_x, grid_y = paddle.tensor.meshgrid((x, y))
+            res_1, res_2 = exe.run(
+                paddle.static.default_main_program(),
+                feed={'x': input_1, 'y': input_2},
+                fetch_list=[grid_x, grid_y],
+            )
         np.testing.assert_array_equal(res_1, out_1)
         np.testing.assert_array_equal(res_2, out_2)
 

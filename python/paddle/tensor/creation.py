@@ -441,20 +441,20 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     tensor_start = start
     tensor_stop = stop
     tensor_base = base
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'logspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if not isinstance(base, Variable):
+    if not isinstance(base, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
     if in_dynamic_or_pir_mode():
