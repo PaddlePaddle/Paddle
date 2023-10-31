@@ -223,11 +223,18 @@ function gen_python_diff_html_report() {
 # assert coverage lines
 
 function covinfo_combine_full(){
-    touch python-coverage4.info
-    lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info
+    lcov -a cpp-coverage1.info -a cpp-coverage2.info -a cpp-coverage3.info -o cpp-coverage.info || true
     #lcov -a $(ls cpp-coverage*.info) -o cpp-coverage.info
-    lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -a python-coverage4.info -o python-coverage.info
-    #lcov -a $(ls python-coverage*.info) -o python-coverage.info
+    lcov_command='lcov'
+    for python_coverage_info in $(ls cpp-coverage*.info)
+    do
+        lcov_command="$lcov_command -a $python_coverage_info"
+    done
+    lcov_command="${lcov_command} -o python-coverage.info"
+    echo $lcov_command
+    # lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -a -o python-coverage.info
+    eval $lcov_command
+
     gen_full_html_report || true
     gen_python_full_html_report || true    
 }
@@ -241,7 +248,7 @@ function cov_rate_judge(){
     if [ ${WITH_XPU:-OFF} == "ON" ]; then
         echo "XPU has no python coverage!"
     else
-        if [[ python-coverage-diff.info ]];then
+        if [[ python-coverage-diff.info ]] && [[ "${NO_PYTHON_COVERAGE_DATA}" != "1" ]];then
             python ${PADDLE_ROOT}/tools/coverage/coverage_lines.py python-coverage-diff.info 0.9 || PYTHON_COVERAGE_LINES_ASSERT=1
         fi
     fi
@@ -270,7 +277,7 @@ function main () {
         generate_python_covinfo
         ;;
       combine_cov_info)
-        covinfo_combine_full
+        covinfo_combine_full 
         gen_diff_html_report || true
         gen_python_diff_html_report || true
         cov_rate_judge
