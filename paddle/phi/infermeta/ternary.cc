@@ -295,10 +295,10 @@ void FlashAttnInferMeta(const MetaTensor& q,
   out->set_layout(q.layout());
 }
 
-void ArangeInferMeta(const MetaTensor& start,
-                     const MetaTensor& end,
-                     const MetaTensor& step,
-                     MetaTensor* out) {
+void ArangeTensorInferMeta(const MetaTensor& start,
+                           const MetaTensor& end,
+                           const MetaTensor& step,
+                           MetaTensor* out) {
   PADDLE_ENFORCE_EQ(phi::product(start.dims()),
                     1,
                     phi::errors::InvalidArgument(
