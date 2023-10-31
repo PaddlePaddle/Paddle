@@ -153,10 +153,10 @@ struct CommunicationSupplementOriginEvent {
 
   uint64_t timestamp_ns;
   const char *comm_type = nullptr;  // not owned, designed for performance
-  // comm dtypes
-  std::map<std::string, std::vector<std::string>> dtypes_;
   // comm groups
   std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+  // comm dtypes
+  std::map<std::string, std::vector<std::string>> dtypes_;
   // comm id
   uint64_t comm_id;
 };
