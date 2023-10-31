@@ -73,10 +73,10 @@ set(IR_LIB
     CACHE FILEPATH "IR Library" FORCE)
 
 if(WITH_SHARED_IR)
-  ir_static_library(pir SRCS ${PIR_SRCS} DEPS ddim)
   add_library(pir SHARED ${PIR_SRCS})
   target_link_libraries(pir ddim)
 else()
+  ir_static_library(pir SRCS ${PIR_SRCS} DEPS ddim)
   add_library(pir STATIC ${PIR_SRCS})
   target_link_libraries(pir ddim)
 endif()
