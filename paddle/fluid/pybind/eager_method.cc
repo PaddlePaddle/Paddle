@@ -2962,7 +2962,8 @@ static PyObject* tensor_method_strides(TensorObject* self,
                                        PyObject* kwargs) {
   EAGER_TRY
   std::vector<int64_t> value;
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     return ToPyObject(value);
   }
   auto stride = self->tensor.strides();
@@ -3002,20 +3003,24 @@ static PyObject* tensor_contiguous(TensorObject* self,
                                    PyObject* args,
                                    PyObject* kwargs) {
   EAGER_TRY
-  if (self->tensor.is_dense_tensor()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+  if (self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor()) {
+    phi::DenseTensor* dense_tensor = nullptr;
+    if (self->tensor.is_dist_tensor()) {
+      dense_tensor =
+          static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+              ->unsafe_mutable_value();
+    } else {
+      dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    }
     if (dense_tensor->meta().is_contiguous()) {
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     } else {
       eager_gil_scoped_release guard;
-      self->tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
-          paddle::experimental::Trans2Contiguous(*(dense_tensor.get())))));
+      *dense_tensor = paddle::experimental::Trans2Contiguous(*dense_tensor);
       Py_INCREF(self);
       return reinterpret_cast<PyObject*>(self);
     }
-
   } else {
     Py_INCREF(self);
     return reinterpret_cast<PyObject*>(self);
@@ -3050,6 +3055,11 @@ static PyObject* tensor_is_contiguous(TensorObject* self,
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     return ToPyObject(dense_tensor->meta().is_contiguous());
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dense_tensor = std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                            self->tensor.impl())
+                            ->unsafe_mutable_value();
+    return ToPyObject(dense_tensor->meta().is_contiguous());
   } else {
     return ToPyObject(true);
   }
@@ -3074,19 +3084,27 @@ static PyObject* tensor_method__uva(TensorObject* self,
                                     PyObject* kwargs) {
   EAGER_TRY
   VLOG(4) << "Running in tensor_method__uva.";
-  PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(),
-                    true,
-                    platform::errors::InvalidArgument(
-                        "Unified virtual addressing only support "
-                        "DenseTensor currently."));
+  PADDLE_ENFORCE_EQ(
+      self->tensor.is_dense_tensor() || self->tensor.is_dist_tensor(),
+      true,
+      platform::errors::InvalidArgument(
+          "Unified virtual addressing only support "
+          "DenseTensor and DistTensor currently."));
   PADDLE_ENFORCE_EQ(platform::is_cpu_place(self->tensor.place()),
                     true,
                     platform::errors::InvalidArgument(
                         "Unified virtual addressing only support "
                         "CPU Tensor currently."));
   int device_id = pybind::CastPyArg2AttrLong(PyTuple_GET_ITEM(args, 0), 0);
-  auto* self_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  tensor_uva(self_tensor, device_id);
+  phi::DenseTensor* dense_tensor = nullptr;
+  if (self->tensor.is_dist_tensor()) {
+    dense_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+  } else {
+    dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  }
+  tensor_uva(dense_tensor, device_id);
 
   RETURN_PY_NONE
 
