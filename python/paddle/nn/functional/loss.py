@@ -2899,21 +2899,23 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
-                    ret = out_sum / (count + (count == 0.0))
+                    ret = out_sum / (count + paddle.equal(count, 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = _C_ops.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = _C_ops.sum(weight_ignored, [], None, False)
-                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                    ret = out_sum / (weight_sum + paddle.equal(weight_sum, 0.0))
                 return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
                     weight_gather_reshape, [], None, False
                 )
-                return out_sum / (total_weight + (total_weight == 0.0))
+                return out_sum / (
+                    total_weight + paddle.equal(total_weight, 0.0)
+                )
             else:
                 return _C_ops.mean_all(out)
 
