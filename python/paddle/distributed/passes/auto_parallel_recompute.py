@@ -37,7 +37,10 @@ from ..auto_parallel.static.utils import (
     set_dist_op_desc_original_id,
     set_var_dist_attr,
 )
+from ..utils.log_utils import get_logger
 from .pass_base import PassBase, register_pass
+
+logger = get_logger(logging.INFO)
 
 
 class RecomputeState(ProgramStats):
@@ -287,10 +290,55 @@ class RecomputePass(PassBase):
         no_grad_set = self.get_attr("no_grad_set")
         no_recompute_segments = self.get_attr("no_recompute_segments")
         self._dist_context = self.get_attr("dist_context")
+        self._refined_ops_patterns = self.get_attr("refined_ops_patterns", [])
 
         # 0. get op_path which is related to loss
         main_block = main_program.global_block()
         op_path = _find_op_path(main_program, loss, no_grad_set)
+        op_path_names = [op.type for op in op_path]
+
+        # mark exclude ops for refined-reompute(mainly linear and flash_attn)
+        pp_stages = len(self._dist_context.process_meshes)
+        all_ops_len = len(op_path)
+        exclude_ops_ids = []
+        for refined_ops_pattern in self._refined_ops_patterns:
+            num = (
+                refined_ops_pattern['num'] * pp_stages
+            )  # 'num == 1' represents to all ops
+            num = num if num >= 0 else all_ops_len
+            pattern_count = 0
+            main_ops = refined_ops_pattern['main_ops']
+            pre_ops = refined_ops_pattern['pre_ops']
+            suf_ops = refined_ops_pattern['suf_ops']
+            main_start_id = len(pre_ops)
+            main_ops_len = len(main_ops)
+            pattern_ops = pre_ops + main_ops + suf_ops
+            pattern_ops_len = len(pattern_ops)
+
+            for i in range(all_ops_len - pattern_ops_len + 1):
+                if (
+                    op_path_names[i : i + pattern_ops_len] == pattern_ops
+                    and pattern_count < num
+                ):
+                    pattern_count += 1
+                    exclude_ops_ids.extend(
+                        list(
+                            range(
+                                i + main_start_id,
+                                i + main_start_id + main_ops_len,
+                            )
+                        )
+                    )
+        logger.debug(
+            f"The excluded ops in recompute segments are:\n{exclude_ops_ids}"
+        )
+
+        for idx in exclude_ops_ids:
+            if is_recompute_op(op_path[idx]):
+                rc_mark_str = op_path[idx].attr("op_namescope")
+                op_path[idx]._set_attr(
+                    "op_namescope", rc_mark_str + "_exclude_rc"
+                )
 
         # 1. build recompute state
         rc_state = RecomputeState(main_block, op_path)
@@ -305,15 +353,15 @@ class RecomputePass(PassBase):
             return
 
         for i, (idx1, idx2) in enumerate(segments):
-            logging.info(f"recompute segment[{i + 1}/{len(segments)}]")
-            logging.info(
+            logger.debug(f"recompute segment[{i + 1}/{len(segments)}]")
+            logger.debug(
                 "segment start op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx1].type,
                     rc_state.ops[idx1].input_arg_names,
                     rc_state.ops[idx1].output_arg_names,
                 )
             )
-            logging.info(
+            logger.debug(
                 "segment end op: [{}]: [{}] [{}]".format(
                     rc_state.ops[idx2 - 1].type,
                     rc_state.ops[idx2 - 1].input_arg_names,
@@ -329,7 +377,7 @@ class RecomputePass(PassBase):
                 rc_state.get_out_of_subgraph_vars(segment[0], segment[1])
             )
         cross_vars = set(vars_should_be_hold) - set(rc_state.checkpoints)
-        logging.info(
+        logger.debug(
             "found [{}] vars which cross recompute segment: [{}],"
             "better checkpoints might be set to reduce those vars".format(
                 len(cross_vars), cross_vars
