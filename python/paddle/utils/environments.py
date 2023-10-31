@@ -71,7 +71,9 @@ class BooleanEnvironmentVariable(EnvironmentVariable[bool]):
 class IntegerEnvironmentVariable(EnvironmentVariable[int]):
     def __init__(self, name: str, default: int):
         super().__init__(name, default)
-        assert isinstance(default, int), "default must be an integer"
+        assert isinstance(default, int) and not isinstance(
+            default, bool
+        ), "default must be an integer"
 
     def get(self) -> int:
         try:
@@ -80,7 +82,9 @@ class IntegerEnvironmentVariable(EnvironmentVariable[int]):
             return self.default
 
     def set(self, value: int) -> None:
-        assert isinstance(value, int), "value must be an integer"
+        assert isinstance(value, int) and not isinstance(
+            value, bool
+        ), "value must be an integer"
         os.environ[self.name] = str(value)
 
 
