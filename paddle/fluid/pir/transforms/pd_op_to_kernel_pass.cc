@@ -31,7 +31,7 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/data_transfer_utils.h"
+#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -1310,12 +1310,22 @@ std::vector<pir::Value> BuildOpInputList(
     }
     vec_inputs.push_back(new_in);
 
-    // phi::KernelKey kernel_key_for_var =
-    // pir::GetKernelKeyforVar(parameter_name); bool check_dtype_transfer =
-    // framework::NeedTransformDataType(kernel_key_for_var, kernel_key);
-    // update ctx and original inputs
-  }
+    // std::string var_name = GetValue2VarName(cur_in)
+    // auto fake_tensors = GetFakeTensorList(cur_in);
+    // phi::KernelKey kernel_dtype_for_var = pir::GetKernelKeyforVar(op_item,
+    // var_name, fake_tensors, kernel_key);
 
+    // bool check_dtype_transfer =
+    // NeedTransformDataType(expected_kernel_key.dtype(), kernel_dtype_for_var);
+    // if (need_trans_dtype) {
+    //   VLOG(4) << "trans input: " << var_name << "'s dtype from " <<
+    //   expected_kernel_key.dtype() << " to " << kernel_dtype_for_var;
+
+    //   std::string new_var_name;
+    //   pir::AddDtypeTransferOp(place, op_item, kernel_op, block, ctx,
+    //   map_op_pair, map_value_pair);
+    // }
+  }
   return vec_inputs;
 }
 
