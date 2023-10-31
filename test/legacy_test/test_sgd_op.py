@@ -485,8 +485,6 @@ class TestSGDSimple(unittest.TestCase):
             return
         out1 = self.run_dygraph()
         out2 = self.run_static()
-        print(out1)
-        print(out2)
         np.testing.assert_allclose(out1, out2)
 
 
