@@ -55,6 +55,9 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
 
         loss.backward()
 
+        grads = paddle.base.core.eager.get_grads_types(
+            [layer.parameters()[0], layer.parameters()[1]]
+        )
         layer.parameters()[0]._reset_grad_inplace_version()
         tmp = layer.parameters()[1]._grad_value()
 
