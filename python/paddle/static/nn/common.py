@@ -2644,15 +2644,15 @@ def batch_norm(
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2666,9 +2666,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
