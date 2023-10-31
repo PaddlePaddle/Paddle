@@ -167,4 +167,4 @@ repos:
       name: sort-txt-file
       entry: python ./tools/codestyle/sort_txt_file.py
       language: python
-      files: ./test/white_list/new_ir_op_test_white_list$
+      files: ./test/white_list/new_ir_op_test_white_list
