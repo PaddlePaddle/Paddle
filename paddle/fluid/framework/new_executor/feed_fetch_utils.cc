@@ -106,9 +106,9 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
   }
 }
 
-void MergeFetchTensor(const FetchUnmergedList& unmerged_fetch_list,
-                      const int64_t micro_batch_num,
-                      FetchList* out) {
+void MergeFetchTensors(const FetchUnmergedList& unmerged_fetch_list,
+                       const int64_t micro_batch_num,
+                       FetchList* out) {
   if (unmerged_fetch_list.size() == 0) return;
 
   PADDLE_ENFORCE_EQ(unmerged_fetch_list.size(),
