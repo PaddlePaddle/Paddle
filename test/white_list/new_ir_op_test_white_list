@@ -36,6 +36,7 @@ test_class_center_sample_op
 test_clip_by_norm_op
 test_clip_op
 test_compare_op
+
 test_compare_reduce_op
 test_complex_abs
 test_complex_op
