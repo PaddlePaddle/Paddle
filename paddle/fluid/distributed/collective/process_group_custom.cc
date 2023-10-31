@@ -22,6 +22,7 @@
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/utils/data_type.h"
 
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 constexpr int64_t kWaitBlockTImeout = 10;
 
