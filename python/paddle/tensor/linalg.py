@@ -1905,7 +1905,7 @@ def det(x, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
         check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
