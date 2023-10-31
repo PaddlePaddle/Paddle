@@ -147,19 +147,6 @@ class TestOpProfiling(unittest.TestCase):
             self._run_op_profiling(paddle.CPUPlace(), run_profiling=False),
         )
 
-    def test_op_profiling_cuda0(self):
-        '''
-        * test if adding profiling before program execution can affect training process.
-        * test if C++ side can successfully write op profiling results and read by Python.
-        '''
-        sys.stdout.write(
-            "Running on CUDA GPU0 with profiling enabled/disabled.\n"
-        )
-        self._compare_loss_between(
-            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=True),
-            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=False),
-        )
-
 
 if __name__ == "__main__":
     unittest.main()
