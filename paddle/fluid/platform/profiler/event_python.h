@@ -127,8 +127,12 @@ struct HostPythonNode {
   uint64_t op_id;
   // comm id
   uint64_t comm_id;
-  // input groups
+  // comm groups
   std::map<std::string, std::vector<std::vector<int64_t>>> comm_groups;
+
+  // comm dtypes
+  std::map<std::string, std::vector<std::string>> comm_dtypes;
+
   // children node
   std::vector<HostPythonNode*> children_node_ptrs;
   // runtime node

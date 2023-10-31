@@ -133,6 +133,7 @@ HostPythonNode* ProfilerResult::CopyTree(HostTraceEventNode* root) {
       root->GetCommunicationSupplementEventNode();
   if (comm_supplement_node != nullptr) {
     host_python_node->comm_groups = comm_supplement_node->CommGroups();
+    host_python_node->comm_dtypes = comm_supplement_node->Dtypes();
     host_python_node->comm_id = comm_supplement_node->CommId();
   }
 
