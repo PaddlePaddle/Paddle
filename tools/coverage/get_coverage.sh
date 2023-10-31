@@ -231,9 +231,9 @@ function covinfo_combine_full(){
         lcov_command="$lcov_command -a $python_coverage_info"
     done
     lcov_command="${lcov_command} -o python-coverage.info"
-    echo $lcov_command
+    echo $lcov_command 
     # lcov -a python-coverage1.info -a python-coverage2.info -a python-coverage3.info -a -o python-coverage.info
-    eval $lcov_command
+    eval $lcov_command || true
 
     gen_full_html_report || true
     gen_python_full_html_report || true    
