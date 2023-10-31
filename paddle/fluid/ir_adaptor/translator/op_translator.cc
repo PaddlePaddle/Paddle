@@ -1249,10 +1249,10 @@ struct TrilAndTriuOpTranscriber : public OpTranscriber {
 using ValueInfo =
     std::tuple<std::vector<int64_t>, dialect::DenseTensorType, pir::OpResult>;
 
-ValueInfo getMatmulInfo(const OpDesc& op_desc,
-                        const std::vector<std::string>& names,
-                        TranslationContext* param_map,
-                        const std::string& var_name) {
+ValueInfo GetTensorInfoByVarName(const OpDesc& op_desc,
+                                 const std::vector<std::string>& names,
+                                 TranslationContext* param_map,
+                                 const std::string& var_name) {
   IR_ENFORCE(names.size() == 1,
              "Expected op[%s]'s input %s has only 1 variable, but got %d",
              op_desc.Type(),
@@ -1320,12 +1320,10 @@ struct MulOpTranscriber : public OpTranscriber {
     const int y_num_col_dims =
         PADDLE_GET_CONST(int, op_desc.GetAttr("y_num_col_dims"));
 
-    ValueInfo x_info =
-        getMatmulInfo(op_desc, op_desc.Input("X", true), param_map, "X");
+    ValueInfo x_info = GetTensorInfoByVarName(
+        op_desc, op_desc.Input("X", true), param_map, "X");
 
-    const std::vector<int64_t>& x_shape = std::get<0>(x_info);
-    const dialect::DenseTensorType& x_tensor_type = std::get<1>(x_info);
-    pir::OpResult& x_value = std::get<2>(x_info);
+    const auto& [x_shape, x_tensor_type, x_value] = x_info;
 
     IR_ENFORCE(x_num_col_dims <= static_cast<int>(x_shape.size()),
                "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
@@ -1334,12 +1332,10 @@ struct MulOpTranscriber : public OpTranscriber {
                x_shape.size(),
                x_num_col_dims);
 
-    ValueInfo y_info =
-        getMatmulInfo(op_desc, op_desc.Input("Y", true), param_map, "Y");
+    ValueInfo y_info = GetTensorInfoByVarName(
+        op_desc, op_desc.Input("Y", true), param_map, "Y");
 
-    const std::vector<int64_t>& y_shape = std::get<0>(y_info);
-    const dialect::DenseTensorType& y_tensor_type = std::get<1>(y_info);
-    pir::OpResult& y_value = std::get<2>(y_info);
+    const auto& [y_shape, y_tensor_type, y_value] = y_info;
 
     IR_ENFORCE(y_num_col_dims <= static_cast<int>(y_shape.size()),
                "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
@@ -1397,8 +1393,8 @@ struct MulOpTranscriber : public OpTranscriber {
     OpTranscriber::RecordOpResultMapping(
         ctx, param_map, op_desc, operation, arg_to_idx);
     if (op_desc.HasOutput("Out")) {
-      ValueInfo out_info =
-          getMatmulInfo(op_desc, op_desc.Output("Out"), param_map, "Out");
+      ValueInfo out_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Output("Out"), param_map, "Out");
 
       const dialect::DenseTensorType& out_tensor_type = std::get<1>(out_info);
       pir::OpResult& out_value = std::get<2>(out_info);
@@ -1411,13 +1407,13 @@ struct MulOpTranscriber : public OpTranscriber {
       const int y_num_col_dims =
           PADDLE_GET_CONST(int, op_desc.GetAttr("y_num_col_dims"));
 
-      ValueInfo x_info =
-          getMatmulInfo(op_desc, op_desc.Input("X", true), param_map, "X");
+      ValueInfo x_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("X", true), param_map, "X");
 
       const std::vector<int64_t>& x_shape = std::get<0>(x_info);
 
-      ValueInfo y_info =
-          getMatmulInfo(op_desc, op_desc.Input("Y", true), param_map, "Y");
+      ValueInfo y_info = GetTensorInfoByVarName(
+          op_desc, op_desc.Input("Y", true), param_map, "Y");
 
       const std::vector<int64_t>& y_shape = std::get<0>(y_info);
 
@@ -1480,12 +1476,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
     const int y_num_col_dims =
         PADDLE_GET_CONST(int, op_desc.GetAttr("y_num_col_dims"));
 
-    ValueInfo x_info =
-        getMatmulInfo(op_desc, op_desc.Input("X", true), param_map, "X");
+    ValueInfo x_info = GetTensorInfoByVarName(
+        op_desc, op_desc.Input("X", true), param_map, "X");
 
-    const std::vector<int64_t>& x_shape = std::get<0>(x_info);
-    const dialect::DenseTensorType& x_tensor_type = std::get<1>(x_info);
-    pir::OpResult& x_value = std::get<2>(x_info);
+    const auto& [x_shape, x_tensor_type, x_value] = x_info;
 
     IR_ENFORCE(x_num_col_dims <= static_cast<int>(x_shape.size()),
                "Expected op[%s]'s attr `x_num_col_dims` less than or equal to "
@@ -1494,12 +1488,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
                x_shape.size(),
                x_num_col_dims);
 
-    ValueInfo y_info =
-        getMatmulInfo(op_desc, op_desc.Input("Y", true), param_map, "Y");
+    ValueInfo y_info = GetTensorInfoByVarName(
+        op_desc, op_desc.Input("Y", true), param_map, "Y");
 
-    const std::vector<int64_t>& y_shape = std::get<0>(y_info);
-    const dialect::DenseTensorType& y_tensor_type = std::get<1>(y_info);
-    pir::OpResult& y_value = std::get<2>(y_info);
+    const auto& [y_shape, y_tensor_type, y_value] = y_info;
 
     IR_ENFORCE(y_num_col_dims <= static_cast<int>(y_shape.size()),
                "Expected op[%s]'s attr `y_num_col_dims` less than or equal to "
@@ -1508,7 +1500,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
                y_shape.size(),
                y_num_col_dims);
 
-    ValueInfo out_grad_info = getMatmulInfo(
+    ValueInfo out_grad_info = GetTensorInfoByVarName(
         op_desc, op_desc.Input("Out@GRAD", true), param_map, "Out@GRAD");
 
     const dialect::DenseTensorType& out_grad_tensor_type =
@@ -1636,7 +1628,9 @@ struct MulGradOpTranscriber : public OpTranscriber {
       return;
     }
 
-    gradReshape("Y@GRAD");
+    if (y_grad_output.size()) {
+      gradReshape("Y@GRAD");
+    }
   }
 };
 
