@@ -216,6 +216,38 @@
     func : fused_scale_bias_relu_conv_bnstats
     data_type : x
 
+- op : fusion_gru
+  args : (Tensor x, Tensor h0, Tensor weight_x, Tensor weight_h, Tensor bias, str activation = "tanh", str gate_activation = "sigmoid", bool is_reverse = false, bool use_seq = true, bool origin_mode = false, bool use_mkldnn = false, str mkldnn_data_type = "float32", float scale_data = 1.0f, float shift_data = 0.0f, float[] scale_weights = {1.0f}, bool force_fp32_output = false)
+  output : Tensor(reordered_h0), Tensor(xx), Tensor(batched_input), Tensor(batched_out), Tensor(hidden)
+  infer_meta :
+    func : FusionGRUInferMeta
+  kernel :
+    func : fusion_gru
+    data_type : x
+  optional : h0, bias
+  intermediate : reordered_h0, xx, batched_input, batched_out
+
+- op : fusion_seqconv_eltadd_relu
+  args : (Tensor x, Tensor filter, Tensor bias, int context_length, int context_start = 0, int context_stride = 1)
+  output : Tensor(out), Tensor(col_mat)
+  infer_meta :
+    func : FusionSeqConvEltAddReluInferMeta
+  kernel :
+    func : fusion_seqconv_eltadd_relu
+    data_type : x
+  intermediate : col_mat
+
+- op : fusion_seqexpand_concat_fc
+  args : (Tensor[] x, Tensor fc_weight, Tensor fc_bias, str fc_activation="identity")
+  output : Tensor(out), Tensor(fc_out)
+  infer_meta :
+    func : FusionSeqExpandConcatFCInferMeta
+  kernel :
+    func : fusion_seqexpand_concat_fc
+    data_type : x
+  optional : fc_bias
+  intermediate : fc_out
+
 - op : fusion_transpose_flatten_concat
   args : (Tensor[] x, int[] trans_axis, int flatten_axis, int concat_axis)
   output : Tensor(out)
