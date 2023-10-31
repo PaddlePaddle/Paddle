@@ -192,12 +192,12 @@ class TestLinearInterpOp(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output(atol=1e-7)
+            self.check_output(atol=1e-7, check_pir=True)
         else:
-            self.check_output(atol=1e-5)
+            self.check_output(atol=1e-5, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
 
     def init_test_case(self):
         create_test_case0(self)
@@ -339,14 +339,11 @@ class TestLinearInterpOpAPI2_0(unittest.TestCase):
 
 class TestLinearInterpOpFP16(TestLinearInterpOp):
     def test_check_output(self):
-        self.check_output(atol=1e-3)
+        self.check_output(atol=1e-3, check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
-            ['X'],
-            'Out',
-            in_place=True,
-            max_relative_error=1e-2,
+            ['X'], 'Out', in_place=True, max_relative_error=1e-2, check_pir=True
         )
 
     def init_test_case(self):
@@ -416,12 +413,17 @@ class TestLinearInterpOpBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, atol=1e-2)
+        self.check_output_with_place(place, atol=1e-2, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', in_place=True, max_relative_error=1e-2
+            place,
+            ['X'],
+            'Out',
+            in_place=True,
+            max_relative_error=1e-2,
+            check_pir=True,
         )
 
     def init_test_case(self):
@@ -475,9 +477,13 @@ class TestResizeLinearOpUint8(OpTest):
 
     def test_check_output(self):
         if platform.system() == "Linux":
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-7)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-7, check_pir=True
+            )
         else:
-            self.check_output_with_place(place=core.CPUPlace(), atol=1e-5)
+            self.check_output_with_place(
+                place=core.CPUPlace(), atol=1e-5, check_pir=True
+            )
 
     def init_test_case(self):
         self.interp_method = 'linear'

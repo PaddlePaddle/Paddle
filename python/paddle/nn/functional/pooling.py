@@ -1522,8 +1522,9 @@ def adaptive_avg_pool1d(x, output_size, name=None):
     pool_size = [1] + convert_to_list(output_size, 1, 'pool_size')
 
     x = unsqueeze(x, [2])
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         pool_out = _C_ops.pool2d(
             x,
             pool_size,
@@ -1779,8 +1780,9 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         if output_size[2] is None:
             output_size[2] = in_w
 
-    if in_dygraph_mode():
-        x = x._use_gpudnn(False)
+    if in_dynamic_or_pir_mode():
+        if in_dynamic_mode():
+            x = x._use_gpudnn(False)
         return _C_ops.pool3d(
             x,
             output_size,
