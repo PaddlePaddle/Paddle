@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestInverseOp(OpTest):
@@ -40,10 +41,10 @@ class TestInverseOp(OpTest):
         self.outputs = {'Output': inverse}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['Input'], 'Output')
+        self.check_grad(['Input'], 'Output', check_pir=True)
 
 
 class TestInverseOpBatched(TestInverseOp):
@@ -60,7 +61,9 @@ class TestInverseOpLarge(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(['Input'], 'Output', max_relative_error=1e-6)
+        self.check_grad(
+            ['Input'], 'Output', max_relative_error=1e-6, check_pir=True
+        )
 
 
 class TestInverseOpFP32(TestInverseOp):
@@ -70,7 +73,9 @@ class TestInverseOpFP32(TestInverseOp):
         self.python_api = paddle.tensor.math.inverse
 
     def test_grad(self):
-        self.check_grad(['Input'], 'Output', max_relative_error=1e-2)
+        self.check_grad(
+            ['Input'], 'Output', max_relative_error=1e-2, check_pir=True
+        )
 
 
 class TestInverseOpBatchedFP32(TestInverseOpFP32):
@@ -113,6 +118,7 @@ class TestInverseAPI(unittest.TestCase):
                 fetches[0], np.linalg.inv(input_np), rtol=1e-05
             )
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -181,6 +187,7 @@ class TestInverseSingularAPI(unittest.TestCase):
             except ValueError as ex:
                 print("The mat is singular")
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
