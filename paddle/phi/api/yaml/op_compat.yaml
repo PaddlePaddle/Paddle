@@ -987,8 +987,8 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : exponential_
-  backward : exponential__grad
+- op : exponential_ (exponential)
+  backward : exponential__grad (exponential_grad)
   inputs :
     x : X
   outputs :
@@ -1263,8 +1263,6 @@
     scale : Scale
   outputs :
     out : Out
-  attrs :
-    epsilon : epsilon
 
 - op : fused_fc_elementwise_layernorm
   inputs :
@@ -1278,11 +1276,6 @@
     out : Out
     mean : Mean
     variance : Variance
-  attrs :
-    x_num_col_dims : x_num_col_dims
-    activation_type : activation_type
-    epsilon : epsilon
-    begin_norm_axis : begin_norm_axis
 
 - op : fused_feedforward
   backward: fused_feedforward_grad
@@ -1332,15 +1325,51 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
+- op : fusion_gru
+  inputs :
+    x : X
+    h0 : H0
+    weight_x : WeightX
+    weight_h : WeightH
+    bias : Bias
+  outputs :
+    reordered_h0 : ReorderedH0
+    xx : XX
+    batched_input : BatchedInput
+    batched_out : BatchedOut
+    hidden : Hidden
+  attrs :
+    scale_data : Scale_data
+    shift_data : Shift_data
+    scale_weights : Scale_weights
+
+- op : fusion_seqconv_eltadd_relu
+  inputs :
+    x : X
+    filter : Filter
+    bias : Bias
+  outputs :
+    out : Out
+    col_mat : ColMat
+  attrs :
+    context_length : contextLength
+    context_start : contextStart
+    context_stride : contextStride
+
+- op : fusion_seqexpand_concat_fc
+  inputs :
+    x : X
+    fc_weight : FCWeight
+    fc_bias : FCBias
+  outputs :
+    out : Out
+    fc_out : FCOut
+
 - op : fusion_transpose_flatten_concat
   inputs :
     x : X
   outputs :
     out : Out
-  attrs :
-    trans_axis : trans_axis
-    flatten_axis : flatten_axis
-    concat_axis : concat_axis
 
 - op : gather
   backward : gather_grad
@@ -1851,6 +1880,10 @@
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]

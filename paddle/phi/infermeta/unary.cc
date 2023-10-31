@@ -672,6 +672,15 @@ void DecodeJpegInferMeta(const MetaTensor& x,
   }
 }
 
+void DeQuantizeXPUInferMeta(const MetaTensor& x,
+                            DataType out_dtype,
+                            float scale,
+                            MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
+}
+
 void DiagEmbedInferMeta(
     const MetaTensor& x, int offset, int dim1, int dim2, MetaTensor* out) {
   auto x_dims = x.dims();
@@ -3767,6 +3776,15 @@ void FillSplitOutDims(const MetaTensor& x,
       (*out)[i]->set_layout(x.layout());
     }
   }
+}
+
+void QuantizeXPUInferMeta(const MetaTensor& x,
+                          DataType out_dtype,
+                          float scale,
+                          MetaTensor* y) {
+  auto x_dims = x.dims();
+  y->set_dims(x_dims);
+  y->set_dtype(out_dtype);
 }
 
 void SplitInferMeta(const MetaTensor& x,

@@ -83,3 +83,18 @@ else()
   cc_test_old(test_mkldnn_op_nhwc SRCS test_mkldnn_op_nhwc.cc DEPS
               ${paddle_lib} python)
 endif()
+
+cc_test(
+  test_mkldnn_pool_adaptive_op
+  SRCS test_mkldnn_pool_adaptive_op.cc
+  DEPS fleet_executor
+       conditional_block_op
+       standalone_executor
+       executor
+       op_registry
+       generated_static_op
+       generated_op
+       phi
+       scope
+       device_context
+       enforce)
