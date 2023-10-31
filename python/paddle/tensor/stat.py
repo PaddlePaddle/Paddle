@@ -159,8 +159,8 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
-    n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
-        paddle.numel(out), paddle.int64
+    n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
+        paddle.numel(out), "int64"
     )
     n = n.astype(dtype)
     if unbiased:

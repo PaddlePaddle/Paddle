@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_std(x, axis=None, unbiased=True, keepdim=False):
@@ -46,6 +47,7 @@ class TestStdAPI(unittest.TestCase):
     def set_attrs(self):
         pass
 
+    @test_with_pir_api
     def static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.shape, self.dtype)
@@ -120,6 +122,7 @@ class TestStdError(unittest.TestCase):
 
 
 class Testfp16Std(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
