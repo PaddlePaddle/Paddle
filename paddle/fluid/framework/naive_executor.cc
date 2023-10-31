@@ -31,7 +31,6 @@
 #endif
 #ifdef PADDLE_WITH_NVTX
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
-#include "paddle/fluid/platform/profiler.h"
 #endif
 #ifdef PADDLE_WITH_LITE
 #include "paddle/fluid/operators/lite/lite_engine_op.h"
@@ -65,15 +64,11 @@ void NaiveExecutor::RunInterpreterCore(
     const std::vector<std::string> &feed_names, bool need_fetch) {
   platform::ScopedFlushDenormal flush;
 #ifdef PADDLE_WITH_NVTX
-  platform::CudaProfilerStart();
-  platform::NvprofEnableRecordEvent();
   platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
 #endif
   interpreter_core_->Run(feed_names, need_fetch);
 #ifdef PADDLE_WITH_NVTX
   platform::CudaNvtxRangePop();
-  platform::NvprofDisableRecordEvent();
-  platform::CudaProfilerStop();
 #endif
 }
 
