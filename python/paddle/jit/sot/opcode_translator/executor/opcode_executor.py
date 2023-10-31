@@ -1508,25 +1508,43 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 )
             )
 
-    def start_compile_with_name_store(self, ret_vars, inputs_names, instr_idx):
+    def gen_compute_in_break_with_name_store(
+        self, restore_vars, restore_names, instr_idx
+    ):
+        """
+        branch 1: if the graph size is too small, just run in dygraph
+        branch 2: if the graph is big enough, create compiled_fn
+
+        This api will generator opcodes in different situation, the generated codes
+        will do the same thing as origin code.
+
+        restore_vars:
+            vars which has no name but want to be restored (and not in stack)
+            this arg only used in branch 2. (in branch 1, the only thing need
+            to restore is the stack values)
+        restore_names:
+            the names used in resume functions, branch 2 will restore these values too,
+            branch 1 also need these names for generating opcode, but they are not needed
+            to be restored
+        instr_idx:
+            the index for branch 1 to find the boundary and copy origin opcode
+        """
         if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            store_vars = {}
-            for name in inputs_names:
+            store_var_info = {}
+            for name in restore_names:
                 _var = self.get_var(name)
                 if _var not in self.stack:
-                    store_vars[_var] = name
+                    store_var_info[_var] = name
             return self._graph._restore_origin_opcode(
-                self.stack, store_vars, instr_idx
+                self.stack, store_var_info, instr_idx
             )
         else:
-            store_vars = list(self.stack)
-            for name in inputs_names:
+            store_vars = restore_vars + list(self.stack)
+            for name in restore_names:
                 _var = self.get_var(name)
-                if _var not in self.stack:
+                if _var not in self.stack and _var not in restore_vars:
                     store_vars.append(_var)
-            return self._graph._build_compile_fn_with_name_store(
-                ret_vars, store_vars
-            )
+            return self._graph._build_compile_fn_with_name_store([], store_vars)
 
     def _create_resume_fn(self, index, stack_size=0):
         """
@@ -1568,12 +1586,13 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         inputs_names = if_inputs | else_inputs
 
-        var_loader = self.start_compile_with_name_store(
+        var_loader = self.gen_compute_in_break_with_name_store(
             [], inputs_names, self.indexof(instr)
         )
-        self.stack.pop()
 
         var_loader.load(result)
+        # the result is used by if opcode, and should not be input of resume_fn
+        self.stack.pop()
 
         # gen call if/else resume fn opcode
         if if_fn is not None:
@@ -1646,7 +1665,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         resume_input_name = analysis_inputs(self._instructions, index + 1)
 
-        var_loader = self.start_compile_with_name_store(
+        var_loader = self.gen_compute_in_break_with_name_store(
             [], resume_input_name, self.indexof(instr)
         )
 
@@ -1691,10 +1710,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
         self.run()
         if self.new_code is self.empty_code:
             raise InnerError("OpExecutor return a empty new_code.")
-        # Always set disable_eval_frame = True, because we have
-        # already inserted eval_frame triggers in opcode
         return (
-            CustomCode(self.new_code, True),
+            CustomCode(self.new_code, self.new_code is None),
             self.guard_fn,
         )
 
@@ -1775,6 +1792,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         TODO: check var is in globals or builtins, only locals considered now
         '''
+        # pop iterator
+        self.stack.pop()
+
         # 0. prepare sub functions
         # 0.1 find the range of loop body
         assert for_iter.jump_to is not None
@@ -1815,7 +1835,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 0.3 create after loop part function, minus 1 for iterator
         after_loop_fn, fn_inputs = self._create_resume_fn(
-            loop_body_end_idx, len(self.stack) - 1
+            loop_body_end_idx, len(self.stack)
         )
 
         total_inputs = OrderedSet(list(fn_inputs) + list(loop_body_inputs[:-1]))
@@ -1827,8 +1847,11 @@ class OpcodeExecutor(OpcodeExecutorBase):
             if name in chain(self._locals, self._cells)
         ]
 
-        var_loader = self.start_compile_with_name_store(
-            [], ret_names, self.indexof(for_iter)
+        # For reconstruct iterator, we need restore the list/tuple hold by iterator
+        # first for which might be the output of compiled_fn,
+        # However, hold of iter has not name, so set it as restore_vars (the 1st arg)
+        var_loader = self.gen_compute_in_break_with_name_store(
+            [iterator.get_hold()], ret_names, self.indexof(for_iter)
         )
 
         # 2. restore vars with origin name
@@ -1846,7 +1869,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 4.1 load iterator
         var_loader.load(iterator)
-        self.stack.pop()
 
         # 4.2 gen FOR_ITER and unpack data
         self._graph.pycode_gen.extend_instrs(

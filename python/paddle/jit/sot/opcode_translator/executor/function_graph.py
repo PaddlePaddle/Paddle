@@ -242,24 +242,34 @@ class FunctionGraph:
 
             return make_guard(guards)
 
-    def _restore_origin_opcode(self, stack, store_vars, instr_idx):
+    def _restore_origin_opcode(self, restore_vars, store_var_info, instr_idx):
         class VariableLoader:
             def __init__(self, store_var_info, pycode_gen):
                 self._store_var_info = store_var_info
                 self._pycode_gen: PyCodeGen = pycode_gen
 
             def load(self, var, allow_push_null=True):
-                self._pycode_gen.gen_load_fast(self._store_var_info[var])
+                if isinstance(var, NullVariable):
+                    # PUSH_NULL is an opcode
+                    if allow_push_null:
+                        var.reconstruct(self._pycode_gen)
+                    else:
+                        # Avoid passing NULL as a parameter to the resume function
+                        self._pycode_gen.gen_load_null_variable()
+                    return
+                # only restored vars in stack, so used gen_load to process global var
+                self._pycode_gen.gen_load(self._store_var_info[var])
 
         origin_instr = get_instructions(self.pycode_gen._origin_code)
         self.pycode_gen.extend_instrs(iter(origin_instr[0 : instr_idx + 1]))
 
         name_gen = NameGenerator("__start_compile_saved_orig_")
-        for var in stack[::-1]:
-            store_vars[var] = name_gen.next()
-            self.pycode_gen.gen_store_fast(store_vars[var])
 
-        return VariableLoader(store_vars, self.pycode_gen)
+        for var in restore_vars[::-1]:
+            store_var_info[var] = name_gen.next()
+            self.pycode_gen.gen_store_fast(store_var_info[var])
+
+        return VariableLoader(store_var_info, self.pycode_gen)
 
     def _build_compile_fn_with_name_store(self, ret_vars, to_store_vars):
         class VariableLoader:
@@ -276,6 +286,7 @@ class FunctionGraph:
                         # Avoid passing NULL as a parameter to the resume function
                         self._pycode_gen.gen_load_null_variable()
                     return
+                # all vars to be load are saved by this function, so load_fast is correct
                 self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
 
         # var_id -> local_name mapping
@@ -285,7 +296,8 @@ class FunctionGraph:
         )
         self.start_compile(*(ret_vars + to_store_vars))
         name_gen = NameGenerator("__start_compile_saved_")
-        for var in to_store_vars:
+
+        for var in to_store_vars[::-1]:
             index_for_load[var.id] = name_gen.next()
 
             def _log_fn():
@@ -296,8 +308,8 @@ class FunctionGraph:
 
             log_do(4, _log_fn)
 
-        for var in to_store_vars[::-1]:
             self.pycode_gen.gen_store_fast(index_for_load[var.id])
+
         return VariableLoader(index_for_load, self.pycode_gen)
 
     @event_register("start_compile", event_level=2)
