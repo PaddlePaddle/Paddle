@@ -165,6 +165,7 @@ repos:
   hooks:
     - id: sort-txt-file
       name: sort-txt-file
+      description: Sorts each line string in a text file
       entry: python ./tools/codestyle/sort_txt_file.py
       language: python
       files: ./test/white_list/new_ir_op_test_white_list
