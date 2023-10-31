@@ -18,6 +18,7 @@ import logging
 import numbers
 import os
 import random
+import time
 import warnings
 
 import numpy as np
@@ -254,16 +255,6 @@ class Engine:
         self.newir_program_initialized = False
         self.newir_program = None
         self.param_mapping = None
-
-        # pid = os.getpid()
-        # path = "/paddle2/PaddleNLP/model_zoo/gpt-3/"
-        # self.f_grad_var_to_var = open(path+"grad_var_to_var_"+str(pid)+".txt", "w")
-        # self.f_pir_grad_var_to_var = open(path+"pir_grad_var_to_var_"+str(pid)+".txt", "w")
-        # self.f_program = open(path+"program_"+str(pid)+".txt", "w")
-        # self.f_pir_program = open(path+"pir_program_"+str(pid)+".txt", "w")
-        # self.f_param_mapping = open(path+"param_mapping_"+str(pid)+".txt", "w")
-        # self.f_forward_ops = open(path+"forward_ops_"+str(pid)+".txt", "w")
-        # self.f_backward_ops = open(path+"backward_ops_"+str(pid)+".txt", "w")
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -1525,6 +1516,7 @@ class Engine:
                         'name': out.name,
                     },
                 )
+                out.stop_gradient = False
             else:
                 warnings.warn(
                     "The variable %s is not found in program. It is not declared or is pruned."
@@ -1639,15 +1631,15 @@ class Engine:
             core._set_prim_forward_enabled(True)
             ops = newir_program.global_block().ops
             bwd_ops_name = [
-                "pd_op.layer_norm_grad",
-                "pd_op.dropout_grad",
-                "pd_op.reshape_grad",
-                "pd_op.divide_grad",
-                "pd_op.add_grad",
-                "pd_op.gelu_grad",
-                "pd_op.multiply_grad",
-                "pd_op.sum_grad",
-                "pd_op.transpose_grad",
+                # "pd_op.layer_norm_grad",
+                # "pd_op.dropout_grad",
+                # "pd_op.reshape_grad",
+                # "pd_op.divide_grad",
+                # "pd_op.add_grad",
+                # "pd_op.gelu_grad",
+                # "pd_op.multiply_grad",
+                # "pd_op.sum_grad",
+                # "pd_op.transpose_grad",
             ]
             for op in ops:
                 if op.name() in bwd_ops_name:
@@ -1704,8 +1696,6 @@ class Engine:
 
         if os.environ.get("FLAGS_enable_prim_in_distribute") is not None:
             if not self.newir_program_initialized:
-                # f_program.write(self.main_program)
-                # print(self.main_program, file=self.f_program)
                 tmp_program = self._add_data_ops(self.main_program, feed_dict)
                 (
                     newir_program,
@@ -1722,29 +1712,22 @@ class Engine:
                 insert_point = 0
                 for data_op in data_ops:
                     global_block.move_op(data_op, insert_point)
-                # f_pir_program.write(newir_program)
-                # f_param_mapping.write(param_mapping)
-                # print(newir_program, file=self.f_pir_program)
-                # print(param_mapping, file=self.f_param_mapping)
-
-                # fwd_ops, bwd_ops = self._get_all_ops(newir_program)
-                # print(fwd_ops, file=self.f_forward_ops)
-                # print(bwd_ops, file=self.f_backward_ops)
 
                 # decomposing
-                print(
-                    "before decompose, num ops: ",
-                    len(newir_program.global_block().ops),
-                )
+                # print(
+                #     "before decompose, num ops: ",
+                #     len(newir_program.global_block().ops),
+                # )
                 newir_program_after_decompose = self._decompose_newir_program(
                     newir_program, param_mapping
                 )
-                print(
-                    "after decompose, num ops: ",
-                    len(newir_program_after_decompose.global_block().ops),
-                )
+                # print(
+                #     "after decompose, num ops: ",
+                #     len(newir_program_after_decompose.global_block().ops),
+                # )
 
-                self.newir_program = newir_program_after_decompose
+                # self.newir_program = newir_program_after_decompose
+                self.newir_program = newir_program
                 self.param_mapping = param_mapping
                 self.newir_program_initialized = True
 
@@ -1752,17 +1735,11 @@ class Engine:
             for fetch_name in fetch_names:
                 result = self.param_mapping[fetch_name]
                 assert len(result) == 1
-                op = result[0].get_defining_op()
-                fetch_list.append(op.result(0))
+                fetch_list.append(result[0])
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.newir_program, self.newir_prune_startup_prog
+                self.newir_program,
             ):
-                print(
-                    "when running, num ops: ",
-                    len(self.newir_program.global_block().ops),
-                )
-                # print("when running, program: ", self.newir_program)
                 outs = self._executor.run(
                     self.newir_program,
                     feed=feed_dict,
@@ -1770,6 +1747,7 @@ class Engine:
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
                 )
+                time.sleep(1)
 
         else:
             outs = self._executor.run(
