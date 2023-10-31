@@ -7,6 +7,9 @@ set(rev_legacy_path ${parsed_yaml_path}/legacy_backward_ops.parsed.yaml)
 set(fwd_pd_op_path
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops.parsed.yaml
 )
+set(update_fwd_pd_op_path
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/update_ops.parsed.yaml
+)
 set(rev_pd_op_path
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/generated/ops_backward.parsed.yaml
 )
@@ -23,7 +26,8 @@ execute_process(
   COMMAND
     ${PYTHON_EXECUTABLE} ${scripts} --fwd_path ${fwd_path} --fwd_legacy_path
     ${fwd_legacy_path} --rev_path ${rev_path} --rev_legacy_path
-    ${rev_legacy_path} --fwd_pd_op_path ${fwd_pd_op_path} --rev_pd_op_path
+    ${rev_legacy_path} --fwd_pd_op_path ${fwd_pd_op_path}
+    --update_fwd_pd_op_path ${update_fwd_pd_op_path} --rev_pd_op_path
     ${rev_pd_op_path} --prim_path ${prim_path} --templates_dir ${templates_dir}
     --compat_path ${compat_path} --destination_dir ${destination_dir}
   RESULT_VARIABLE _result)
