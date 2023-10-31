@@ -701,7 +701,6 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
   auto& name2id = op_yaml_info.InputName2Id();
 
   std::string fluid_op_name = op_yaml_info.GetOriginOpName();
-
   auto& op_normalizer = paddle::translator::OpNameNormalizer::instance();
 
   auto scope = value_exec_info.GetScope();
@@ -830,6 +829,10 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
           "only support AllocatedDenseTensor, AllocatedSelectedRowsType  and "
           "pir::vector type"));
     }
+  }
+
+  if (fluid_op_name == "sparse_momentum") {
+    attr_map["axis"] = 0;
   }
 
   auto& op_info = OpInfoMap::Instance().Get(fluid_op_name);
