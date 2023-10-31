@@ -2814,9 +2814,7 @@ def cross_entropy(
         _, out = _C_ops.cross_entropy_with_softmax(
             input, label, soft_label, use_softmax, True, ignore_index, axis
         )
-        import pdb
 
-        pdb.set_trace()
         if weight is not None:
             # trans weight from class to sample, shape:N or [N,H,W] for 1d and 2d cases.
             if soft_label:
