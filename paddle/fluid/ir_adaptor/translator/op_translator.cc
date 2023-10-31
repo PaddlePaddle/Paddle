@@ -33,6 +33,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/core/utils/data_type.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
@@ -2052,6 +2053,27 @@ struct OneHotTranscriber : public OpTranscriber {
   };
 };
 
+pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
+                                       const OpDesc& op_desc,
+                                       const OpAttributeInfo& attr_info) {
+  auto start_proto_dtype =
+      op_desc.Block()->FindVarRecursive("Start")->GetDataType();
+  auto start_phi_dtype = phi::TransToPhiDataType(start_proto_dtype);
+  auto dtype_attr =
+      paddle::dialect::DataTypeAttribute::get(ctx, start_phi_dtype);
+  return dtype_attr;
+}
+
+struct ArangeOpTranscriber : public OpTranscriber {
+  AttributeHandlerFn GetSpecialAttributeHandlers(
+      const std::string& attr_name) override {
+    if (attr_name != "dtype") {
+      return nullptr;
+    }
+    return TranslateDtypeForArange;
+  }
+};
+
 pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
                                   const OpDesc& op_desc,
                                   const OpAttributeInfo& attr_info) {
@@ -2074,8 +2096,8 @@ pir::Attribute TranslateReduceAll(pir::IrContext* ctx,
 
 struct ReduceOpTranscriber : public OpTranscriber {
   AttributeHandlerFn GetSpecialAttributeHandlers(
-      const std::string& input_name) override {
-    if (input_name != "axis") {
+      const std::string& attr_name) override {
+    if (attr_name != "axis") {
       return nullptr;
     }
     return TranslateReduceAll;
@@ -2470,6 +2492,79 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
   }
 };
 
+struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      target_op_name = "pd_op.repeat_interleave_with_tensor_index";
+    } else {
+      target_op_name = "pd_op.repeat_interleave";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    auto x_names = op_desc.Input("X", true);
+    auto input = param_map->at(x_names[0]).value;
+    op_inputs.push_back(input);
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      auto repeats_names = op_desc.Input("RepeatsTensor", true);
+      input = param_map->at(repeats_names[0]).value;
+      op_inputs.push_back(input);
+    }
+    return op_inputs;
+  }
+};
+
+struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    std::string target_op_name;
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      target_op_name = "pd_op.repeat_interleave_with_tensor_index_grad";
+    } else {
+      target_op_name = "pd_op.repeat_interleave_grad";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    return op_info;
+  }
+
+  std::vector<pir::Value> GenerateOperationInput(
+      pir::IrContext* ctx,
+      TranslationContext* param_map,
+      const OpDesc& op_desc,
+      const std::string& normalized_op_name,
+      const OpInputInfoList& input_infos,
+      pir::Block* block) override {
+    std::vector<pir::Value> op_inputs;
+    auto x_names = op_desc.Input("X", true);
+    auto input = param_map->at(x_names[0]).value;
+    op_inputs.push_back(input);
+    if (op_desc.HasInput("RepeatsTensor") &&
+        !op_desc.Input("RepeatsTensor").empty()) {
+      auto repeats_names = op_desc.Input("RepeatsTensor", true);
+      input = param_map->at(repeats_names[0]).value;
+      op_inputs.push_back(input);
+    }
+    auto out_grad_names = op_desc.Input("Out@GRAD", true);
+    input = param_map->at(out_grad_names[0]).value;
+    op_inputs.push_back(input);
+
+    return op_inputs;
+  }
+};
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2477,9 +2572,10 @@ OpTranslator::OpTranslator() {
   general_handler = OpTranscriber();
   special_handlers["add_n"] = AddNOpTranscriber();
   special_handlers["assign_value"] = AssignValueOpTranscriber();
+  special_handlers["range"] = ArangeOpTranscriber();
   special_handlers["cast"] = CastOpTranscriber();
-  special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["data"] = DataOpTranscriber();
+  special_handlers["feed"] = FeedOpTranscriber();
   special_handlers["fetch"] = FetchOpTranscriber();
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
@@ -2491,11 +2587,14 @@ OpTranslator::OpTranslator() {
   special_handlers["one_hot_v2"] = OneHotTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
+  special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();
+  special_handlers["repeat_interleave_grad"] =
+      RepeatInterLeaveGradOpTranscriber();
   special_handlers["rnn"] = RnnOpTranscriber();
-  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
-  special_handlers["share_buffer"] = ShareBufferOpTranscriber();
   special_handlers["set_value"] = LegacySetValueDispatcher();
   special_handlers["set_value_grad"] = SetValueGradOpTranscriber();
+  special_handlers["shadow_output"] = ShadowOutputOpTranscriber();
+  special_handlers["share_buffer"] = ShareBufferOpTranscriber();
   special_handlers["split"] = SplitOpTranscriber();
   special_handlers["sum"] = AddNOpTranscriber();
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
