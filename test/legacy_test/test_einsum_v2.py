@@ -383,7 +383,7 @@ class TestNumpyTests(unittest.TestCase):
             rtol=rtol,
             atol=atol,
             err_msg=error_msg.format(
-                paddle.get_device(), expect, actual, self.__class__.__name__
+                self._get_place(False), expect, actual, self.__class__.__name__
             ),
         )
 
