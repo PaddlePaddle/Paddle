@@ -1,6 +1,4 @@
 add_definitions(-DIR_LIBRARY)
-set_property(GLOBAL PROPERTY IR_TARGETS "")
-set_property(GLOBAL PROPERTY IR_MODULES "")
 
 set(core_srcs CACHE INTERNAL "" FORCE)
 set(pass_srcs CACHE INTERNAL "" FORCE)
@@ -54,11 +52,12 @@ set(IR_LIB
     "${CMAKE_CURRENT_BINARY_DIR}/${IR_NAME}"
     CACHE FILEPATH "IR Library" FORCE)
 
-# get_property(ir_modules GLOBAL PROPERTY IR_MODULES)
 if(WITH_SHARED_IR)
   add_library(pir SHARED ${PIR_SRCS})
   target_link_libraries(pir ddim)
+  set_property(GLOBAL PROPERTY IR_TARGETS pir)
 else()
   add_library(pir STATIC ${PIR_SRCS})
   target_link_libraries(pir ddim)
+  set_property(GLOBAL PROPERTY IR_TARGETS pir)
 endif()
