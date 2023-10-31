@@ -16,7 +16,7 @@ ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel patch
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
-RUN bash build_scripts/install_nccl2.sh 
+#RUN bash build_scripts/install_nccl2.sh 
 RUN bash build_scripts/install_trt.sh 
 RUN rm -rf build_scripts
 RUN ln -s /usr/local/ssl/include/openssl /usr/include
