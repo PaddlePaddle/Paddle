@@ -14,6 +14,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 
+#include "paddle/fluid/framework/program_desc.h"
+
 namespace paddle {
 namespace framework {
 namespace interpreter {
@@ -75,20 +77,6 @@ std::shared_ptr<::pir::Program> Plan::IrProgram(
 void Plan::UpdateIrProgram(const std::string& job_type,
                            std::shared_ptr<::pir::Program> ir_prog) {
   type_to_ir_program_[job_type] = ir_prog;
-}
-
-void Plan::UpdateFetchVarNames(int index, std::string fetch_var_name) {
-  if (static_cast<int>(fetch_var_names_.size()) < index) {
-    fetch_var_names_.resize(index + 1, "");
-  }
-  fetch_var_names_[index] = fetch_var_name;
-}
-
-std::vector<std::string> Plan::FetchVarNames() {
-  for (auto& name : fetch_var_names_) {
-    PADDLE_ENFORCE(name != "");
-  }
-  return fetch_var_names_;
 }
 
 int64_t Plan::MicroBatchNum() const { return micro_batch_num_; }
