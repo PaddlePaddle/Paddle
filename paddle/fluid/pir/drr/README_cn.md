@@ -36,10 +36,10 @@ class RemoveRedundentCastPattern
   }
 };
 ~~~
-pat.Op()会根据传入的name信息创建对应的Op对象，Op对象在传入Tensor对象执行时便会在Pattern Graph中创建对应的OpCall对象，同时在DAG中建立OpCall与Tensor的连接关系，这个阶段仅会根据用户代码创建中间DAG子图，此时并不会进行与新IR Program的匹配替换流程。
+在这个简单的例子中，我们首先继承了DrrPatternBase的特化模版类，然后在这个类中重写了operator()重载函数。在operator() 函数中我们使用Op、Tensor和Attribute声明出了包含两个连续castOp的SourcePattern。很明显SourcePattern是可以进行常量折叠优化的，我们使用一个castOp就能达到SourcePattern想要的达到的效果，即我们声明出的ResultPattern。做完这些我们就完成了一个DAG-to-DAG PatternRewrite类型的PASS的声明。
 
-**注意：DRR仅支持对闭包的子图( SourcePattern )进行匹配替换，若声明出的 SourcePattern 不闭包可能会出现未知的错误**
-## 2. 接口文档
+**注意：DRR仅支持对闭包的 SourcePattern 和 ResultPattern 进行匹配替换，若声明出的子图不闭包可能会出现未知的错误**
+## 2. 接口列表
 
 <table>
 	 <tr>
@@ -74,7 +74,8 @@ pat.Op()会根据传入的name信息创建对应的Op对象，Op对象在传入T
 	<tr>
 		<td> const drr::Op& Op(const std::string& op_type, const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {})</td>
 		<td> 在SourcePattern中声明一个Op</td>
-		<td> op_type: 声明的op名称，需要满足 "pd_op.xxx"的格式。例如 : "pd_op.reshape" <br> attributes : 所创建的op的属性信息 </td>
+		<td> op_type: 声明的op名称，可以通过paddle::dialect::xxOp
+	::name()接口获取，或直接传入Op的名称 <br> attributes : 所创建的op的属性信息 </td>
 	</tr>
 	<tr>
 		<td> void RequireEqual(const TensorShape& first, const TensorShape& second)</td>
@@ -102,7 +103,8 @@ pat.Op()会根据传入的name信息创建对应的Op对象，Op对象在传入T
       const std::string& op_type,
       const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {}) </td>
 		<td> 在SourcePattern中声明一个Op </td>
-		<td> op_type: 声明的op名称，需要满足 "pd_op.xxx"的格式。例如 : "pd_op.reshape" <br> attributes : 所创建的op的属性信息 </td>
+		<td> op_type: 声明的op名称，可以通过paddle::dialect::xxOp
+	::name()接口获取，或直接传入Op的名称<br> attributes : 所创建的op的属性信息 </td>
 	</tr>
 	<tr>
 		<td> void RequireEqual(const TensorShape& first, const TensorShape& second)</td>
@@ -170,6 +172,7 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // 声明Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
@@ -179,8 +182,9 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // Result patterns：要替换为的子图
+    // 声明Result Pattern
     pir::drr::ResultPattern res = pat.ResultPattern();
+    // 声明Constrain
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
@@ -202,7 +206,7 @@ class FoldExpandToConstantPattern
     : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Source Pattern 中可匹配的类型包括 Op 和 Tensor
+    // 声明Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
@@ -217,7 +221,7 @@ class FoldExpandToConstantPattern
     const auto &expand = pat.Op(paddle::dialect::ExpandOp::name());
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
-    // Result patterns：要替换为的子图.      Constrains: 本Pass无额外约束规则
+    // 声明Result Pattern      Constrains: 本Pass无额外约束规则
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},

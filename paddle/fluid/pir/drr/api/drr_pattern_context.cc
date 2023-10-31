@@ -145,7 +145,7 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
   PADDLE_ENFORCE_EQ(this->pattern_graph_,
                     other.pattern_graph_,
-                    pir::errors::InvalidArgument(
+                    phi::errors::InvalidArgument(
                         "The two tensor must be in the same pattern graph."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {

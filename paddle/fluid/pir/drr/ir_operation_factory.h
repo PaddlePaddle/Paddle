@@ -49,7 +49,7 @@ class OperationFactory {
     PADDLE_ENFORCE_NE(
         iter,
         op_creator_map.end(),
-        platform::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "The create function for op: (%s) is not found.", op_name));
     return iter->second(inputs, attrs, rewriter);
   }

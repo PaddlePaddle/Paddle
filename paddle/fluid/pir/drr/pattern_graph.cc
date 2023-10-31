@@ -29,7 +29,7 @@ const drr::OpCall &PatternGraph::AddOpCall(
     const auto &tensor_name = input->name();
     PADDLE_ENFORCE_NE(id2owned_tensor_.count(tensor_name),
                       0,
-                      pir::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "intput tensor [%s] not exist.", tensor_name));
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
@@ -44,7 +44,7 @@ const drr::OpCall &PatternGraph::AddOpCall(
     const auto &out_tensor_name = output->name();
     PADDLE_ENFORCE_NE(id2owned_tensor_.count(out_tensor_name),
                       0,
-                      pir::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "output tensor [%s] not exist.", out_tensor_name));
     id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
@@ -64,7 +64,7 @@ drr::Tensor &PatternGraph::AddTmpTensor(
     const std::shared_ptr<drr::Tensor> &tensor) {
   PADDLE_ENFORCE_EQ(id2owned_tensor_.count(tensor->name()),
                     0,
-                    pir::errors::InvalidArgument("tensor [%s] must not exist.",
+                    phi::errors::InvalidArgument("tensor [%s] must not exist.",
                                                  tensor->name()));
   id2owned_tensor_[tensor->name()] = tensor;
   output_tensors_.insert(tensor->name());
@@ -129,7 +129,7 @@ void ResultPatternGraph::AssignTensor(const Tensor &from, const Tensor &to) {
   PADDLE_ENFORCE_EQ(
       output_tensors_.count(from.name()),
       1,
-      pir::errors::InvalidArgument("The Tensor (%s) which be assigned must be "
+      phi::errors::InvalidArgument("The Tensor (%s) which be assigned must be "
                                    "the output of result pattern graph.",
                                    from.name()));
   tensor_assign_map_[from.name()] = to.name();
@@ -164,7 +164,7 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   for (const auto &tensor_name : inputs_tensor) {
     PADDLE_ENFORCE_NE(id2owned_tensor.count(tensor_name),
                       0,
-                      pir::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Drr input tensor [%s] must exists in pattern graph.",
                           tensor_name));
     for (const auto &tensor_comsumer :

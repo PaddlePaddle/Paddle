@@ -37,7 +37,7 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
-        pir::errors::InvalidArgument(
+        phi::errors::InvalidArgument(
             "Drr tensor [%s] must exists in pattern graph.", tensor_name));
     return *tensor_map_.at(tensor_name);
   }
@@ -45,7 +45,7 @@ class MatchContextImpl final {
   const IrOperation& Operation(const OpCall* op_call) const {
     PADDLE_ENFORCE_NE(operation_map_.count(op_call),
                       0,
-                      pir::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Drr operation [%s] must exists in pattern graph.",
                           op_call->name()));
     return *operation_map_.at(op_call);
