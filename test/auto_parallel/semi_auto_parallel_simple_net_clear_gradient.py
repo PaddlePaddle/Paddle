@@ -14,7 +14,6 @@
 
 import os
 
-import numpy as np
 from semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
@@ -24,20 +23,8 @@ import paddle
 import paddle.distributed as dist
 from paddle import nn
 
-hook_triggered = False
 
-
-def backward_hook():
-    def trigger_hook(grad):
-        global hook_triggered
-        hook_triggered = True
-        assert grad.is_dist()
-        return paddle.scale(grad, 1.0)
-
-    return trigger_hook
-
-
-class TestSimpleNetWithGradientHookForSemiAutoParallel(
+class TestSimpleNetWithClearGradientForSemiAutoParallel(
     TestSimpleNetForSemiAutoParallel
 ):
     def __init__(self):
@@ -49,47 +36,40 @@ class TestSimpleNetWithGradientHookForSemiAutoParallel(
         paddle.set_device(self._backend)
         self.init_input_data()
 
-    def run_dynamic(self, layer):
+    def run_dynamic_clear_gradient(self, layer, shard_input=False):
+        # create loss
         loss_fn = nn.MSELoss()
+        # run forward and backward
         image = paddle.to_tensor(self.image)
-
+        if shard_input:
+            image = dist.shard_tensor(
+                image,
+                dist_attr=dist.DistAttr(
+                    mesh=self._mesh, sharding_specs=['x', None]
+                ),
+            )
         out = layer(image)
+
         label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
+
         loss.backward()
 
-    def test_register_grad_hook(self):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
+        for param in layer.parameters():
+            param.clear_gradient()
+            param.clear_gradient(False)
 
-        model = dist.shard_layer(
-            DemoNet("mp_demo_register_grad_hook"), self._mesh, self.shard_fn
+    def test_demo_net(self):
+        mp_layer = dist.shard_layer(
+            DemoNet("clear_gradient_demo"),
+            self._mesh,
+            self.shard_fn,
         )
-        model.parameters()[0]._register_grad_hook(backward_hook())
-
-        self.run_dynamic(model)
-        global hook_triggered
-        assert hook_triggered
-        hook_triggered = False
-
-    def test_register_hook(self):
-        paddle.seed(self._seed)
-        np.random.seed(self._seed)
-
-        model = dist.shard_layer(
-            DemoNet("mp_demo_register_hook"), self._mesh, self.shard_fn
-        )
-        model.parameters()[0].register_hook(backward_hook())
-
-        self.run_dynamic(model)
-        global hook_triggered
-        assert hook_triggered
-        hook_triggered = False
+        self.run_dynamic_clear_gradient(mp_layer)
 
     def run_test_case(self):
-        self.test_register_grad_hook()
-        self.test_register_hook()
+        self.test_demo_net()
 
 
 if __name__ == '__main__':
-    TestSimpleNetWithGradientHookForSemiAutoParallel().run_test_case()
+    TestSimpleNetWithClearGradientForSemiAutoParallel().run_test_case()
