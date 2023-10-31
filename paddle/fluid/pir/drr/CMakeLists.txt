@@ -7,8 +7,12 @@ set(op_compat_yaml_file ${PADDLE_SOURCE_DIR}/paddle/phi/api/yaml/op_compat.yaml)
 set(op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/ops.parsed.yaml
 )
+
 set(op_forward_yaml_file2
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/legacy_ops.parsed.yaml
+)
+set(op_forward_yaml_file3
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/update_ops.parsed.yaml
 )
 set(op_backward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/backward_ops.parsed.yaml
@@ -34,9 +38,10 @@ set(parsed_op_dir
 
 set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
+set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 
 set(op_creator_file
