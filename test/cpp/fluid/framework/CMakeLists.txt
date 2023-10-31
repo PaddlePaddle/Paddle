@@ -261,15 +261,10 @@ cc_test(
   SRCS dlpack_tensor_test.cc
   DEPS dlpack_tensor glog)
 
-cc_test_old(
+cc_test(
   op_compatible_info_test
-  SRCS
-  op_compatible_info_test.cc
-  DEPS
-  op_compatible_info
-  proto_desc
-  string_helper
-  glog)
+  SRCS op_compatible_info_test.cc
+  DEPS op_compatible_info proto_desc string_helper glog)
 
 cc_test(
   infershape_utils_test

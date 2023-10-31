@@ -48,48 +48,46 @@ if(WITH_TESTING)
   # cc_test_old(cinn_lib_test SRCS cinn_lib_test.cc DEPS cinnapi)
   # set_tests_properties(cinn_lib_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(cinn_cache_key_test SRCS cinn_cache_key_test.cc DEPS
-              cinn_cache_key)
+  cc_test(
+    cinn_cache_key_test
+    SRCS cinn_cache_key_test.cc
+    DEPS cinn_cache_key)
   set_tests_properties(cinn_cache_key_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  cc_test(
     build_cinn_pass_test
-    SRCS
-    build_cinn_pass_test.cc
-    DEPS
-    fleet_executor
-    build_cinn_pass
-    cinn_compiler
-    op_registry
-    mul_op
-    activation_op
-    elementwise_add_op
-    generated_op
-    generated_static_op)
+    SRCS build_cinn_pass_test.cc
+    DEPS fleet_executor
+         build_cinn_pass
+         cinn_compiler
+         op_registry
+         mul_op
+         activation_op
+         elementwise_add_op
+         generated_op
+         generated_static_op)
   set_tests_properties(build_cinn_pass_test PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(build_cinn_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(
+  cc_test(
     cinn_zero_tensor_trick_pass_test
-    SRCS
-    cinn_zero_tensor_trick_pass_test.cc
-    DEPS
-    fleet_executor
-    build_cinn_pass
-    cinn_compiler
-    op_registry
-    elementwise_add_op
-    generated_op)
+    SRCS cinn_zero_tensor_trick_pass_test.cc
+    DEPS fleet_executor build_cinn_pass cinn_compiler op_registry
+         elementwise_add_op generated_op)
   set_tests_properties(cinn_zero_tensor_trick_pass_test
                        PROPERTIES LABELS "RUN_TYPE=CINN")
   target_link_libraries(cinn_zero_tensor_trick_pass_test ${PYTHON_LIBRARIES})
 
-  cc_test_old(transform_desc_test SRCS transform_desc_test.cc DEPS
-              transform_desc)
+  cc_test(
+    transform_desc_test
+    SRCS transform_desc_test.cc
+    DEPS transform_desc)
   set_tests_properties(transform_desc_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(transform_type_test SRCS transform_type_test.cc DEPS
-              transform_type)
+  cc_test(
+    transform_type_test
+    SRCS transform_type_test.cc
+    DEPS transform_type)
   set_tests_properties(transform_type_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   # cc_test_old(cinn_graph_symbolization_test SRCS

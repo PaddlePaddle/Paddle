@@ -111,19 +111,17 @@ cc_test(
   DEPS lod_tensor device_context generated_static_op)
 
 if(WITH_CINN)
-  cc_test_old(
+  cc_test(
     op_debug_string_test
-    SRCS
-    op_debug_string_test.cc
-    DEPS
-    executor
-    fleet_executor
-    cinn_compiler
-    recurrent_op_helper
-    recurrent_op
-    elementwise_add_op
-    ${COMMON_OP_DEPS}
-    python)
+    SRCS op_debug_string_test.cc
+    DEPS executor
+         fleet_executor
+         cinn_compiler
+         recurrent_op_helper
+         recurrent_op
+         elementwise_add_op
+         ${COMMON_OP_DEPS}
+         python)
 else()
   paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()

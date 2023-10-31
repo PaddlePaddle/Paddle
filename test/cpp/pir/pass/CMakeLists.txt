@@ -1,9 +1,4 @@
-cc_test_old(
+cc_test(
   pass_manager_test
-  SRCS
-  pass_manager_test.cc
-  DEPS
-  pir
-  pd_op_dialect
-  phi
-  gtest)
+  SRCS pass_manager_test.cc
+  DEPS pir pd_op_dialect phi gtest)
