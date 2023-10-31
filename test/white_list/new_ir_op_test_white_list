@@ -168,6 +168,7 @@ test_put_along_axis_op
 test_range
 test_reduce_op
 test_reduce_op_static_build
+test_repeat_interleave_op
 test_reshape_op
 test_reverse_op
 test_roi_align_op
