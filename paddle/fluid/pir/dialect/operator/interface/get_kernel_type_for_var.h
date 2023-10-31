@@ -13,7 +13,7 @@
 // limitations under the License.
 #pragma once
 
-#include "paddle/phi/core/kernel_factory.h"
+#include "paddle/phi/common/data_type.h"
 #include "paddle/pir/core/op_base.h"
 
 namespace paddle {
@@ -22,25 +22,26 @@ class GetKernelTypeForVarInterface
     : public pir::OpInterfaceBase<GetKernelTypeForVarInterface> {
  public:
   struct Concept {
-    explicit Concept(phi::KernelKey (*get_kernel_type_for_var)(
+    explicit Concept(phi::DataType (*get_kernel_type_for_var)(
         const std::string& var_name,
-        const phi::DenseTensor& tensor,
-        const phi::KernelKey& expected_kernel_type))
+        const phi::DataType& tensor_dtype,
+        const phi::DataType& expected_kernel_dtype))
         : get_kernel_type_for_var_(get_kernel_type_for_var) {}
-    phi::KernelKey (*get_kernel_type_for_var_)(
+
+    phi::DataType (*get_kernel_type_for_var_)(
         const std::string& var_name,
-        const phi::DenseTensor& tensor,
-        const phi::KernelKey& expected_kernel_type);
+        const phi::DataType& tensor_dtype,
+        const phi::DataType& expected_kernel_dtype);
   };
 
   template <class ConcreteOp>
   struct Model : public Concept {
-    static phi::KernelKey GetKernelTypeForVar(
+    static phi::DataType GetKernelTypeForVar(
         const std::string& var_name,
-        const phi::DenseTensor& tensor,
-        const phi::KernelKey& expected_kernel_type) {
+        const phi::DataType& tensor_dtype,
+        const phi::DataType& expected_kernel_dtype) {
       return ConcreteOp::GetKernelTypeForVar(
-          var_name, tensor, expected_kernel_type);
+          var_name, tensor_dtype, expected_kernel_dtype);
     }
 
     Model() : Concept(GetKernelTypeForVar) {}
@@ -50,12 +51,12 @@ class GetKernelTypeForVarInterface
   GetKernelTypeForVarInterface(pir::Operation* op, Concept* impl)
       : pir::OpInterfaceBase<GetKernelTypeForVarInterface>(op), impl_(impl) {}
 
-  phi::KernelKey GetKernelTypeForVar(
+  phi::DataType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type) {
+      const phi::DataType& tensor_dtype,
+      const phi::DataType& expected_kernel_dtype) {
     return impl_->get_kernel_type_for_var_(
-        var_name, tensor, expected_kernel_type);
+        var_name, tensor_dtype, expected_kernel_dtype);
   }
 
  private:

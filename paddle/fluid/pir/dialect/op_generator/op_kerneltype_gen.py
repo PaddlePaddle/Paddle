@@ -13,14 +13,14 @@
 # limitations under the License.
 
 OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE = """
-phi::KernelKey {op_name}::GetKernelTypeForVar(
+phi::DataType {op_name}::GetKernelTypeForVar(
     const std::string& var_name,
-    const phi::DenseTensor& tensor,
-    const phi::KernelKey& expected_kernel_type) {{
+    const phi::DataType& tensor_dtype,
+    const phi::DataType& expected_kernel_dtype) {{
   VLOG(4) << "Get KernelType for Var of op: {op_name}";
   {data_transform_check}
   {complex_promote_check}
-  return phi::KernelKey(tensor.place(), tensor.layout(), expected_kernel_type.dtype());
+  return expected_kernel_dtype;
 }}
 """
 
@@ -31,21 +31,21 @@ OP_DATA_TRANSFORM_CHECK_TEMPLATE = """
 OP_SKIP_TRANSFORM_CHECK_TEMPLATE = """
   // deal skip data transform
   if ({skip_transform_check}){{
-    return phi::KernelKey(phi::Backend::ALL_BACKEND, expected_kernel_type.layout(), expected_kernel_type.dtype());
+    return expected_kernel_dtype;
   }}
 """
 
 OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
   // deal support data transform
   VLOG(8) << "SUPPORT_TRANSFORM: " << \"{support_dtype_name};";
-  return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+  return tensor_dtype;
 """
 
 OP_COMPLEX_PROMOTE_CHECK_TEMPLATE = """
   // deal complex_promote
   if (framework::IsComplexType(expected_kernel_type.dtype())) {{
     // only promote inputs’s types when contains complex input
-    return phi::KernelKey(tensor.place(), tensor.layout(), tensor.dtype());
+    return tensor_dtype;
   }}
 """
 

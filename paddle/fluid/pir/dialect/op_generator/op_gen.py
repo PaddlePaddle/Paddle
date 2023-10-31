@@ -115,10 +115,10 @@ op_n_attribute_declare_str = (
 )
 
 get_kernel_type_for_var_declare_template = """
-  static phi::KernelKey GetKernelTypeForVar(
+  static phi::DataType GetKernelTypeForVar(
       const std::string& var_name,
-      const phi::DenseTensor& tensor,
-      const phi::KernelKey& expected_kernel_type);
+        const phi::DataType& tensor_dtype,
+        const phi::DataType& expected_kernel_dtype);
 """
 
 # =====================================
@@ -1589,9 +1589,10 @@ def OpGenerator(
             op_to_multi_kernels_map = NAMESPACE_GARD_TEMPLATE.format(
                 namespace=name, input=op_to_multi_kernels_map
             )  # Add namespaces
-        only_pd_op_header_files_str = (
-            "#include \"paddle/phi/core/kernel_factory.h\""
-        )
+        only_pd_op_header_files_str = """
+#include \"paddle/phi/common/data_type.h\"
+#include \"paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h\"
+            """
     else:
         op_to_multi_kernels_map = ""
 
