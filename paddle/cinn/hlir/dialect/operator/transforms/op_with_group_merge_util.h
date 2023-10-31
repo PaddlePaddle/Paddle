@@ -116,8 +116,6 @@ struct Group {
   std::unordered_set<std::shared_ptr<Group>> belong_groups;
 
   // for op lowering.
-  std::vector<std::string> input_names;
-  std::vector<std::string> output_names;
 
   struct SharedGroupHasher {
     size_t operator()(const std::shared_ptr<Group>& group) const noexcept {
@@ -259,7 +257,7 @@ inline bool is_same_size(::pir::Operation* producer,
 inline bool without_last_dimension_in_reduce(
     ::pir::Operation* producer, const std::shared_ptr<Group>& consumer) {
   auto in_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
-  auto reduce_axes = GetVectorAttr(producer, "axis");
+  auto reduce_axes = GetVectorAttr(producer, "dim");
   return WithoutLastDimInReduce(in_shape, reduce_axes);
 }
 
@@ -283,8 +281,8 @@ inline bool reduce_fuse_reduce(::pir::Operation* producer,
   auto reducer_output_shape =
       phi::vectorize<int64_t>(GetValueShape(reducer->result(0)));
 
-  auto producer_reduce_dim = GetVectorAttr(producer, "axis");
-  auto reducer_reduce_dim = GetVectorAttr(reducer, "axis");
+  auto producer_reduce_dim = GetVectorAttr(producer, "dim");
+  auto reducer_reduce_dim = GetVectorAttr(reducer, "dim");
 
   for (auto& dim : producer_reduce_dim) {
     // if dim = -1, set as shape.size() - 1
@@ -389,7 +387,7 @@ inline bool horizontal_or_vertical_reduce_relation(
 
   // check producer has same shape with reducer node.
   auto reduce_shape = phi::vectorize(GetFirstInputShape(reducer));
-  auto reduce_axes = GetVectorAttr(reducer, "axis");
+  auto reduce_axes = GetVectorAttr(reducer, "dim");
 
   for (auto& axis : reduce_axes) {
     // if axis = -1, set as shape.size() - 1
@@ -484,7 +482,7 @@ inline bool reduce_fuse_broadcast(::pir::Operation* producer,
   // }
 
   auto rinput_shape = phi::vectorize<int64_t>(GetFirstInputShape(producer));
-  auto reduce_axes = GetVectorAttr(producer, "axis");
+  auto reduce_axes = GetVectorAttr(producer, "dim");
   auto keep_dim = producer->attributes()
                       .at("keep_dim")
                       .dyn_cast<::pir::BoolAttribute>()
