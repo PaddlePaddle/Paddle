@@ -51,7 +51,7 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
 void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       const int64_t micro_batch_num,
                       Scope* scope,
-                      std::vector<FeedList>* out) {
+                      std::vector<std::vector<phi::DenseTensor>>* out) {
   out->resize(micro_batch_num);
   for (size_t i = 0; i < feed_names.size(); ++i) {
     auto feed_name = feed_names[i];

@@ -30,7 +30,7 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
 void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       const int64_t micro_batch_num,
                       Scope* scope,
-                      std::vector<FeedList>* out);
+                      std::vector<std::vector<phi::DenseTensor>>* out);
 
 void FetchTensors(const std::vector<std::string>& job_fetch_names,
                   const std::vector<std::string>& fetch_var_names,

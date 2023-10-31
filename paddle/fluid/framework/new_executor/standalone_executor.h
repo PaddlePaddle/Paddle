@@ -51,7 +51,6 @@ class StandaloneExecutor {
   std::vector<Scope*> micro_batch_scopes_;
 
   std::vector<std::string> fetch_var_names_;
-  std::vector<FeedList> feed_list_;
   FetchUnmergedList fetch_list_;
 
   std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>

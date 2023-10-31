@@ -177,9 +177,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     is_interpretercore_build_result_shared_ = true;
   }
 
-  // std::vector<std::vector<phi::DenseTensor>> splited_feeds;
+  std::vector<std::vector<phi::DenseTensor>> splited_feeds;
   if (FLAGS_enable_new_ir_in_executor) {
-    SplitFeedTensors(feed_names, plan_.MicroBatchNum(), scope_, &feed_list_);
+    SplitFeedTensors(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
   }
 
   fetch_list_.resize(plan_.MicroBatchNum());
@@ -210,7 +210,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
                    fetch_var_names_,
                    job->MicroBatchId(),
                    micro_batch_scopes_[job->MicroBatchId()],
-                   fetch_list_);
+                   &fetch_list_);
     } else {
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
