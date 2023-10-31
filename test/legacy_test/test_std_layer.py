@@ -47,7 +47,6 @@ class TestStdAPI(unittest.TestCase):
     def set_attrs(self):
         pass
 
-    @test_with_pir_api
     def static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', self.shape, self.dtype)
@@ -63,6 +62,7 @@ class TestStdAPI(unittest.TestCase):
         paddle.enable_static()
         return out.numpy()
 
+    @test_with_pir_api
     def test_api(self):
         out_ref = ref_std(self.x, self.axis, self.unbiased, self.keepdim)
         out_dygraph = self.dygraph()
