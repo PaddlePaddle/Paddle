@@ -53,8 +53,6 @@ WhileInstruction::WhileInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-
   VLOG(6) << "finish process inputs outputs index";
 
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
@@ -63,15 +61,16 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = inner_scope->GetVar(
+  cond_var_ = parent_exe_info->GetScope()->FindVar(
       parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(inner_scope->GetVar(
+    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
         parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(inner_scope->GetVar(
+    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
@@ -153,9 +152,10 @@ void WhileInstruction::GetValueFromBodyBlock() {
         out_var->Get<phi::DenseTensor>());
   }
 }
+
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
-  while (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+  while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     PassArgsToBodyBlock();
     body_inter_->Run({}, false);
     GetValueFromBodyBlock();

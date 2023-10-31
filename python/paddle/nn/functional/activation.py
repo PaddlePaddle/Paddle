@@ -1448,7 +1448,7 @@ def swish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
