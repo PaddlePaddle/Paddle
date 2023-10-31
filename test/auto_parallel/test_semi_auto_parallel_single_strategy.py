@@ -108,7 +108,7 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
         )
         for envs in envs_list:
             self.run_test_case(
-                "semi_auto_parallel_zero_grads.py",
+                "semi_auto_parallel_simple_net_zero_grads.py",
                 user_defined_envs=envs,
             )
 
