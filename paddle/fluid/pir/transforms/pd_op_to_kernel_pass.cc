@@ -615,19 +615,16 @@ phi::KernelKey GetKernelKey(
             paddle::experimental::BackendSet(data_op_backend);
         VLOG(8) << "Update kernel backend set from owner op (DataOp): "
                 << data_op_backend;
-      } else if (op->operand_source(i)
-                     .dyn_cast<pir::OpResult>()
-                     .owner()
-                     ->isa<pir::CombineOp>()) {
-        auto combine_op =
-            op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+      } else if (op_res.owner()->isa<pir::CombineOp>()) {
+        auto combine_op = op_res.owner();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
-          if (combine_op->operand_source(j)
-                  .dyn_cast<pir::OpResult>()
-                  .owner()
-                  ->isa<DataOp>()) {
-            auto data_op =
-                combine_op->operand_source(j).dyn_cast<pir::OpResult>().owner();
+          auto combine_op_res =
+              combine_op->operand_source(j).dyn_cast<pir::OpResult>();
+          if (!combine_op_res) {
+            continue;
+          }
+          if (combine_op_res.owner()->isa<DataOp>()) {
+            auto data_op = combine_op_res.owner();
             auto data_place =
                 data_op->attribute<PlaceAttribute>("place").data();
 

@@ -103,9 +103,12 @@
 #endif
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(new_ir_apply_inplace_pass);
 
 namespace paddle {
 namespace {
@@ -725,6 +728,13 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
+
+      if (FLAGS_new_ir_apply_inplace_pass) {
+        ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
+        pm.AddPass(::pir::CreateInplacePass());
+        pm.Run(pir_program_.get());
+      }
+
       executor_->PrepareInterpreterCore(
           sub_scope_, *pir_program_, execution_config);
     } else {
