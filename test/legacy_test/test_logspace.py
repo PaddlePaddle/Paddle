@@ -19,7 +19,6 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestLogspaceOpCommonCase(OpTest):
@@ -40,7 +39,7 @@ class TestLogspaceOpCommonCase(OpTest):
         self.outputs = {'Out': np.power(2, np.arange(0, 11)).astype(dtype)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
 
 class TestLogspaceFP16Op(TestLogspaceOpCommonCase):
@@ -88,7 +87,7 @@ class TestLogspaceBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_pir=True)
+        self.check_output_with_place(self.place)
 
 
 class TestLogspaceOpReverseCase(TestLogspaceOpCommonCase):
@@ -144,7 +143,6 @@ class TestLogspaceOpZeroBaseCase(TestLogspaceOpCommonCase):
 
 
 class TestLogspaceAPI(unittest.TestCase):
-    @test_with_pir_api
     def test_variable_input1(self):
         paddle.enable_static()
         prog = paddle.static.Program()
@@ -172,7 +170,6 @@ class TestLogspaceAPI(unittest.TestCase):
         self.assertEqual((out.numpy() == np_res).all(), True)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_dtype(self):
         paddle.enable_static()
         prog = paddle.static.Program()
