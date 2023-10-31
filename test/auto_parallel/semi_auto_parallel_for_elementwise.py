@@ -27,18 +27,19 @@ class TestElementwiseApiForSemiAutoParallel:
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-
+        self._rtol = 1e-6
+        self._atol = 0.0
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
-    def check_tensor_eq(self, a, b, rtol=1e-5):
+    def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=rtol, verbose=True)
+        np.testing.assert_allclose(
+            np1, np2, rtol=self._rtol, atol=self._atol, verbose=True
+        )
 
-    def test_unary_body(
-        self, x_shape, out_shape, x_specs, unary_func, rtol=1e-5
-    ):
+    def test_unary_body(self, x_shape, out_shape, x_specs, unary_func):
         x = paddle.randn(x_shape, self._dtype)
         x.stop_gradient = False
 
@@ -49,21 +50,14 @@ class TestElementwiseApiForSemiAutoParallel:
 
         dist_out = unary_func(dist_x)
         out = unary_func(x)
-        self.check_tensor_eq(out, dist_out, rtol=rtol)
+        self.check_tensor_eq(out, dist_out)
 
         dist_out.backward()
         out.backward()
-        self.check_tensor_eq(x.grad, dist_x.grad, rtol=rtol)
+        self.check_tensor_eq(x.grad, dist_x.grad)
 
     def test_binary_body(
-        self,
-        x_shape,
-        y_shape,
-        out_shape,
-        x_specs,
-        y_specs,
-        binary_func,
-        rtol=1e-5,
+        self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
     ):
         x = paddle.randn(x_shape, self._dtype)
         y = paddle.randn(y_shape, self._dtype)
@@ -80,12 +74,12 @@ class TestElementwiseApiForSemiAutoParallel:
 
         dist_out = binary_func(dist_x, dist_y)
         out = binary_func(x, y)
-        self.check_tensor_eq(out, dist_out, rtol=rtol)
+        self.check_tensor_eq(out, dist_out)
 
         dist_out.backward()
         out.backward()
-        self.check_tensor_eq(x.grad, dist_x.grad, rtol=rtol)
-        self.check_tensor_eq(y.grad, dist_y.grad, rtol=rtol)
+        self.check_tensor_eq(x.grad, dist_x.grad)
+        self.check_tensor_eq(y.grad, dist_y.grad)
 
     def test_add_x_shard(self):
         self.test_binary_body(
@@ -109,9 +103,9 @@ class TestElementwiseApiForSemiAutoParallel:
 
     def test_add_x_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[16, 32],
-            y_shape=[2, 16, 32],
-            out_shape=[2, 16, 32],
+            x_shape=[8, 16],
+            y_shape=[2, 8, 16],
+            out_shape=[2, 8, 16],
             x_specs=['x', None],
             y_specs=[None, None, None],
             binary_func=paddle.add,
@@ -249,13 +243,12 @@ class TestElementwiseApiForSemiAutoParallel:
 
     def test_multiply_x_y_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[4, 16, 32],
-            y_shape=[16, 32],
-            out_shape=[4, 16, 32],
+            x_shape=[4, 6, 8],
+            y_shape=[6, 8],
+            out_shape=[4, 6, 8],
             x_specs=['x', None, None],
             y_specs=[None, None],
             binary_func=paddle.multiply,
-            rtol=1e-4,
         )
 
     def test_divide_x_shard(self):
@@ -290,16 +283,14 @@ class TestElementwiseApiForSemiAutoParallel:
             binary_func=paddle.divide,
         )
 
-    # TODO: The backward percesion(rtol) of division is 1e-3, is it reasonable?
     def test_divide_x_y_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[4, 16, 32],
-            y_shape=[16, 32],
-            out_shape=[4, 16, 32],
+            x_shape=[2, 4, 6],
+            y_shape=[4, 6],
+            out_shape=[2, 4, 6],
             x_specs=['x', None, None],
             y_specs=[None, None],
             binary_func=paddle.divide,
-            rtol=1e-3,
         )
 
     def test_bitwise_and_x_shard(self):
@@ -378,9 +369,9 @@ class TestElementwiseApiForSemiAutoParallel:
 
     def test_elementwise_pow_x_y_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[4, 16, 32],
-            y_shape=[16, 32],
-            out_shape=[4, 16, 32],
+            x_shape=[4, 6, 8],
+            y_shape=[6, 8],
+            out_shape=[4, 6, 8],
             x_specs=['x', None, None],
             y_specs=[None, None],
             binary_func=paddle.pow,
@@ -420,13 +411,12 @@ class TestElementwiseApiForSemiAutoParallel:
 
     def test_equal_x_y_shard_broadcast(self):
         self.test_binary_body(
-            x_shape=[4, 16, 32],
-            y_shape=[16, 32],
-            out_shape=[4, 16, 32],
+            x_shape=[2, 6, 4],
+            y_shape=[6, 4],
+            out_shape=[2, 6, 4],
             x_specs=['x', None, None],
             y_specs=[None, None],
             binary_func=paddle.equal,
-            rtol=1e-4,
         )
 
     def test_exp_x_shard(self):

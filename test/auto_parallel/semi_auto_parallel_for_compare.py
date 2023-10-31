@@ -27,14 +27,17 @@ class TestCompareApiForSemiAutoParallel:
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._check_grad = False
-
+        self._rtol = 1e-6
+        self._atol = 0.0
         paddle.seed(self._seed)
         np.random.seed(self._seed)
 
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+        np.testing.assert_allclose(
+            np1, np2, rtol=self._rtol, atol=self._atol, verbose=True
+        )
 
     def test_binary_body(
         self, x_shape, y_shape, out_shape, x_specs, y_specs, binary_func
