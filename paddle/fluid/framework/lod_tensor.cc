@@ -445,6 +445,11 @@ void MergeLoDTensor(phi::DenseTensor *target,
   LoD new_lod = lod_tensors[0]->lod();
   auto rank = lod_tensors[0]->dims().size();
 
+  if (rank == 0) {
+    std::vector<int> init_shape = {1};
+    new_dim = new_dim.reshape(init_shape);
+  }
+
   for (size_t i = 1; i < lod_tensors.size(); ++i) {
     auto *t = lod_tensors[i];
     if (t->numel() && t->IsInitialized()) {
@@ -465,23 +470,34 @@ void MergeLoDTensor(phi::DenseTensor *target,
               "actual layout is %s.",
               phi::DataLayoutToString(new_layout),
               phi::DataLayoutToString(t->layout())));
-      auto tensor_dims = t->dims();
-      PADDLE_ENFORCE_EQ(tensor_dims.size(),
-                        new_dim.size(),
-                        platform::errors::InvalidArgument(
-                            "dimensions of DenseTensor does not match"));
-      for (int j = 1; j < t->dims().size(); j++) {
-        PADDLE_ENFORCE_EQ(
-            tensor_dims[j],
-            new_dim[j],
-            platform::errors::InvalidArgument(
-                "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
-                j,
-                new_dim[j],
-                tensor_dims[j]));
-      }
       if (rank > 0) {
+        auto tensor_dims = t->dims();
+        PADDLE_ENFORCE_EQ(tensor_dims.size(),
+                          new_dim.size(),
+                          platform::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        for (int j = 1; j < t->dims().size(); j++) {
+          PADDLE_ENFORCE_EQ(
+              tensor_dims[j],
+              new_dim[j],
+              platform::errors::InvalidArgument(
+                  "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                  j,
+                  new_dim[j],
+                  tensor_dims[j]));
+        }
         new_dim[0] += t->dims()[0];
+      } else if (rank == 0) {
+        auto tensor_dims = t->dims();
+        PADDLE_ENFORCE_EQ(tensor_dims.size(),
+                          0,
+                          platform::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        PADDLE_ENFORCE_EQ(new_dim.size(),
+                          1,
+                          platform::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        new_dim[0] += 1;
       }
     }
 
@@ -510,7 +526,13 @@ void MergeLoDTensor(phi::DenseTensor *target,
 
   int begin = 0;
   for (auto *src : lod_tensors) {
-    int end = static_cast<int>(begin + src->dims()[0]);
+    int src_dim;
+    if (src->dims()[0] == 0) {
+      src_dim = 1;
+    } else {
+      src_dim = src->dims()[0];
+    }
+    int end = static_cast<int>(begin + src_dim);
     if (end == begin) {
       continue;
     }

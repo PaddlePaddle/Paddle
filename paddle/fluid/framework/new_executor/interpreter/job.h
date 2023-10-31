@@ -31,26 +31,9 @@ class Job final {
 
   const std::string& Type() const { return type_; }
 
-  int ColAttrForFetchOp(int fetch_op_id) const {
-    return fetch_op_id_to_col_attr_.at(fetch_op_id);
-  }
-
   int64_t MicroBatchId() const { return micro_batch_id_; }
 
   std::set<std::string> SkipGcVars() const { return skip_gc_vars_; }
-
-  std::vector<int> AllFetchOpIds() const {
-    std::vector<int> fetch_op_ids;
-    fetch_op_ids.reserve(fetch_op_id_to_col_attr_.size());
-    for (auto& item : fetch_op_id_to_col_attr_) {
-      fetch_op_ids.push_back(item.first);
-    }
-    return fetch_op_ids;
-  }
-
-  void SetColAttrForFetchOp(int fetch_op_id, int col_attr) {
-    fetch_op_id_to_col_attr_[fetch_op_id] = col_attr;
-  }
 
   void SetMicroBatchId(int64_t micro_batch_id) {
     PADDLE_ENFORCE_GE(
@@ -71,11 +54,21 @@ class Job final {
     skip_gc_vars_ = skip_gc_vars;
   }
 
+  void SetFetchVarName(std::string fetch_var_name) {
+    fetch_var_names_.push_back(fetch_var_name);
+  }
+
+  // int FetchCol(std::string fetch_var_name){
+  //   return fetch_var_names_to_col_[fetch_var_name];
+  // }
+
+  std::vector<std::string> FetchVarNames() { return fetch_var_names_; }
+
  private:
   const std::string type_;
   int64_t micro_batch_id_;
-  std::unordered_map<int, int> fetch_op_id_to_col_attr_;
   std::set<std::string> skip_gc_vars_;
+  std::vector<std::string> fetch_var_names_;
 };
 
 }  // namespace interpreter

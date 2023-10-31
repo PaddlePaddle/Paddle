@@ -27,10 +27,20 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
                                const int64_t micro_batch_num,
                                const int64_t micro_batch_id);
 
-void SplitFeedTensor(const std::vector<std::string>& feed_names,
-                     const int64_t micro_batch_num,
-                     Scope* scope,
-                     std::vector<std::vector<phi::DenseTensor>>* out);
+void SplitFeedTensors(const std::vector<std::string>& feed_names,
+                      const int64_t micro_batch_num,
+                      Scope* scope,
+                      std::vector<FeedList>* out);
+
+void FetchTensors(const std::vector<std::string>& job_fetch_names,
+                  const std::vector<std::string>& fetch_var_names,
+                  const int64_t micro_batch_id,
+                  Scope* scope,
+                  FetchUnmergedList* fetch_list);
+
+void MergeFetchTensors(const FetchUnmergedList& unmerged_fetch_list,
+                       const int64_t micro_batch_num,
+                       FetchList* out);
 
 }  // namespace framework
 }  // namespace paddle

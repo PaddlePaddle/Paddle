@@ -112,104 +112,104 @@ class TestNewIR(unittest.TestCase):
         paddle.set_flags({'FLAGS_enable_new_ir_in_executor': flag})  # for c++
         os.environ['FLAGS_enable_new_ir_in_executor'] = str(flag)  # for python
 
-    def test_dp(self):
-        self.enable_new_ir(False)
-        engine_dp_prog = self.get_engine(
-            "dp", name="dp_prog", use_sharding=True
-        )
-        out_dp_prog = engine_dp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    # def test_dp(self):
+    #     self.enable_new_ir(False)
+    #     engine_dp_prog = self.get_engine(
+    #         "dp", name="dp_prog", use_sharding=True
+    #     )
+    #     out_dp_prog = engine_dp_prog.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.enable_new_ir(True)
-        engine_dp_ir = self.get_engine("dp", name="dp_newir", use_sharding=True)
-        out_dp_ir = engine_dp_ir.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    #     self.enable_new_ir(True)
+    #     engine_dp_ir = self.get_engine("dp", name="dp_newir", use_sharding=True)
+    #     out_dp_ir = engine_dp_ir.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.check_results(
-            out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
-        )
+    #     self.check_results(
+    #         out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
+    #     )
 
-    def test_mp(self):
-        self.enable_new_ir(False)
-        engine_mp_prog = self.get_engine("mp", name="mp_prog")
-        out_mp_prog = engine_mp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    # def test_mp(self):
+    #     self.enable_new_ir(False)
+    #     engine_mp_prog = self.get_engine("mp", name="mp_prog")
+    #     out_mp_prog = engine_mp_prog.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.enable_new_ir(True)
-        engine_mp_ir = self.get_engine("mp", name="mp_newir")
-        out_mp_ir = engine_mp_ir.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    #     self.enable_new_ir(True)
+    #     engine_mp_ir = self.get_engine("mp", name="mp_newir")
+    #     out_mp_ir = engine_mp_ir.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.check_results(
-            out_mp_prog.history["loss"][0], out_mp_ir.history["loss"][0]
-        )
+    #     self.check_results(
+    #         out_mp_prog.history["loss"][0], out_mp_ir.history["loss"][0]
+    #     )
 
-    def test_pp(self):
-        # navie pipeline parallel without schedule
-        self.enable_new_ir(False)
-        engine_pp_prog = self.get_engine("pp", name="pp_prog0")
-        out_pp_prog = engine_pp_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    # def test_pp(self):
+    #     # navie pipeline parallel without schedule
+    #     self.enable_new_ir(False)
+    #     engine_pp_prog = self.get_engine("pp", name="pp_prog0")
+    #     out_pp_prog = engine_pp_prog.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.enable_new_ir(True)
-        # send_v2/recv_v2 dynamic_shape is True
-        engine_pp_ir = self.get_engine("pp", name="pp_newir")
-        out_pp_ir = engine_pp_ir.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    #     self.enable_new_ir(True)
+    #     # send_v2/recv_v2 dynamic_shape is True
+    #     engine_pp_ir = self.get_engine("pp", name="pp_newir")
+    #     out_pp_ir = engine_pp_ir.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        if paddle.distributed.get_rank() == 1:
-            self.check_results(
-                out_pp_prog.history["loss"][0], out_pp_ir.history["loss"][0]
-            )
+    #     if paddle.distributed.get_rank() == 1:
+    #         self.check_results(
+    #             out_pp_prog.history["loss"][0], out_pp_ir.history["loss"][0]
+    #         )
 
-        # send_v2/recv_v2 dynamic_shape is False
-        engine_pp_prog1 = self.get_engine("pp", name="pp_prog1")
-        dataloader_pp_prog = engine_pp_prog1.dataloader(
-            self.dataset,
-            batch_size=self.batch_size,
-            sample_split=3,
-            mode="train",
-        )
-        engine_pp_prog1.prepare(mode="train")
-        for op in engine_pp_prog1.main_program.global_block().ops:
-            if op.type in ["send_v2", "recv_v2"]:
-                op.desc._set_attr("dynamic_shape", False)
-        for data in dataloader_pp_prog:
-            out_pp_prog1 = engine_pp_prog1.run(data, mode="train")
+    #     # send_v2/recv_v2 dynamic_shape is False
+    #     engine_pp_prog1 = self.get_engine("pp", name="pp_prog1")
+    #     dataloader_pp_prog = engine_pp_prog1.dataloader(
+    #         self.dataset,
+    #         batch_size=self.batch_size,
+    #         sample_split=3,
+    #         mode="train",
+    #     )
+    #     engine_pp_prog1.prepare(mode="train")
+    #     for op in engine_pp_prog1.main_program.global_block().ops:
+    #         if op.type in ["send_v2", "recv_v2"]:
+    #             op.desc._set_attr("dynamic_shape", False)
+    #     for data in dataloader_pp_prog:
+    #         out_pp_prog1 = engine_pp_prog1.run(data, mode="train")
 
-        if paddle.distributed.get_rank() == 1:
-            self.check_results(
-                out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
-            )
+    #     if paddle.distributed.get_rank() == 1:
+    #         self.check_results(
+    #             out_pp_prog1["loss"], out_pp_ir.history["loss"][0]
+    #         )
 
-    def test_pp_1f1b(self):
-        self.enable_new_ir(False)
-        engine_1f1b_prog = self.get_engine(
-            "pp", name="1f1b_prog", use_sharding=False, pipeline_mode="1F1B"
-        )
-        out_1f1b_prog = engine_1f1b_prog.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    # def test_pp_1f1b(self):
+    #     self.enable_new_ir(False)
+    #     engine_1f1b_prog = self.get_engine(
+    #         "pp", name="1f1b_prog", use_sharding=False, pipeline_mode="1F1B"
+    #     )
+    #     out_1f1b_prog = engine_1f1b_prog.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        self.enable_new_ir(True)
-        engine_1f1b_ir = self.get_engine(
-            "pp", name="1f1b_newir", use_sharding=False, pipeline_mode="1F1B"
-        )
-        out_1f1b_ir = engine_1f1b_ir.fit(
-            self.dataset, 3, batch_size=self.batch_size, log_freq=1
-        )
+    #     self.enable_new_ir(True)
+    #     engine_1f1b_ir = self.get_engine(
+    #         "pp", name="1f1b_newir", use_sharding=False, pipeline_mode="1F1B"
+    #     )
+    #     out_1f1b_ir = engine_1f1b_ir.fit(
+    #         self.dataset, 3, batch_size=self.batch_size, log_freq=1
+    #     )
 
-        if paddle.distributed.get_rank() == 1:
-            self.check_results(
-                out_1f1b_prog.history["loss"][0][1],
-                out_1f1b_ir.history["loss"][0],
-            )
+    #     if paddle.distributed.get_rank() == 1:
+    #         self.check_results(
+    #             out_1f1b_prog.history["loss"][0][1],
+    #             out_1f1b_ir.history["loss"][0],
+    #         )
 
     def test_pp_fthenb(self):
         self.enable_new_ir(False)

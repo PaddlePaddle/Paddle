@@ -48,12 +48,10 @@ void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
   }
 }
 
-void SplitFeedTensor(const std::vector<std::string>& feed_names,
-                     const int64_t micro_batch_num,
-                     Scope* scope,
-                     std::vector<std::vector<phi::DenseTensor>>* out) {
-  if (micro_batch_num < 2) return;
-
+void SplitFeedTensors(const std::vector<std::string>& feed_names,
+                      const int64_t micro_batch_num,
+                      Scope* scope,
+                      std::vector<FeedList>* out) {
   out->resize(micro_batch_num);
   for (size_t i = 0; i < feed_names.size(); ++i) {
     auto feed_name = feed_names[i];
@@ -73,6 +71,7 @@ void SplitFeedTensor(const std::vector<std::string>& feed_names,
       int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
       VLOG(4) << "Split feed data:" << feed_name << ", dims:("
               << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
+
       for (int64_t j = 0; j < micro_batch_num; ++j) {
         (*out)[j].resize(i + 1);
         (*out)[j][i].ShareDataWith(
@@ -83,6 +82,55 @@ void SplitFeedTensor(const std::vector<std::string>& feed_names,
           "Type (%s) not support in SplitFeedTensor.",
           ToTypeName(feed_var->Type())));
     }
+  }
+}
+
+void FetchTensors(const std::vector<std::string>& job_fetch_names,
+                  const std::vector<std::string>& fetch_var_names,
+                  const int64_t micro_batch_id,
+                  Scope* scope,
+                  FetchUnmergedList* fetch_list) {
+  PADDLE_ENFORCE_GT(fetch_list->size(),
+                    micro_batch_id,
+                    platform::errors::InvalidArgument(""));
+
+  fetch_list->at(micro_batch_id).resize(fetch_var_names.size());
+  for (auto& var_name : job_fetch_names) {
+    int col = find(fetch_var_names.begin(), fetch_var_names.end(), var_name) -
+              fetch_var_names.begin();
+    auto* var = scope->FindVar(var_name);
+    auto& src = var->Get<phi::DenseTensor>();
+    auto* dst =
+        &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
+    TensorCopySync(src, platform::CPUPlace(), dst);
+  }
+}
+
+void MergeFetchTensor(const FetchUnmergedList& unmerged_fetch_list,
+                      const int64_t micro_batch_num,
+                      FetchList* out) {
+  if (unmerged_fetch_list.size() == 0) return;
+
+  PADDLE_ENFORCE_EQ(unmerged_fetch_list.size(),
+                    micro_batch_num,
+                    platform::errors::InvalidArgument(""));
+
+  if (micro_batch_num < 2) {
+    *out = std::move(unmerged_fetch_list[0]);
+    return;
+  }
+
+  out->resize(unmerged_fetch_list[0].size());
+  for (size_t i = 0; i < unmerged_fetch_list[0].size(); ++i) {
+    std::vector<const phi::DenseTensor*> tensors_ptr;
+    for (auto micro_batch_id = 0; micro_batch_id < micro_batch_num;
+         ++micro_batch_id) {
+      tensors_ptr.push_back(&PADDLE_GET_CONST(
+          phi::DenseTensor, unmerged_fetch_list[micro_batch_id][i]));
+    }
+    phi::DenseTensor merge_tensor;
+    MergeLoDTensor(&merge_tensor, tensors_ptr, platform::CPUPlace());
+    out->at(i) = std::move(merge_tensor);
   }
 }
 

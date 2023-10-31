@@ -1023,7 +1023,8 @@ void PirInterpreter::ConstructEventForJitInput() {
 
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1100,10 +1101,12 @@ paddle::framework::FetchList PirInterpreter::Run(
   if (FLAGS_enable_new_ir_in_executor) {
     framework::FetchList fetch_res;
 
-    for (auto& var_name : fetch_var_names_) {
-      auto* var = inner_scope->FindVar(var_name);
-      VLOG(0) << "fetch " << var_name << "[" << var << "]";
-      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    if (need_fetch) {
+      for (auto& var_name : fetch_var_names_) {
+        auto* var = inner_scope->FindVar(var_name);
+        VLOG(0) << "fetch " << var_name << "[" << var << "]";
+        fetch_res.push_back(var->Get<phi::DenseTensor>());
+      }
     }
 
     VLOG(4) << "get fetch list size: " << fetch_res.size();

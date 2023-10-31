@@ -43,7 +43,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) override;
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
