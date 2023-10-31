@@ -16,7 +16,10 @@ import unittest
 
 import numpy as np
 from op_test import OpTest
-from test_conv2d_transpose_op import TestConv2DTransposeOp
+from test_conv2d_transpose_op import (
+    TestConv2DTransposeOp,
+    conv2dtranspose_wrapper,
+)
 
 from paddle import enable_static
 
@@ -43,6 +46,7 @@ class TestConv2DTransposeMKLDNNOp(TestConv2DTransposeOp):
         self.data_format = "NCHW"
         self.op_type = "conv2d_transpose"
         self._cpu_only = True
+        self.python_api = conv2dtranspose_wrapper
 
     def init_test_case(self):
         self.use_mkldnn = True
