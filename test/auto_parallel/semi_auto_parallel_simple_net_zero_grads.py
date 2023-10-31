@@ -24,7 +24,7 @@ import paddle.distributed as dist
 from paddle import nn
 
 
-class TestSimpleNetWithGradApiForSemiAutoParallel(
+class TestSimpleNetWithZeroGradsForSemiAutoParallel(
     TestSimpleNetForSemiAutoParallel
 ):
     def __init__(self):
@@ -36,7 +36,7 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
         paddle.set_device(self._backend)
         self.init_input_data()
 
-    def run_dynamic_grad_api(self, layer, shard_input=False):
+    def run_dynamic_zero_grads(self, layer, shard_input=False):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
@@ -55,19 +55,20 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
 
         loss.backward()
 
-        grads = paddle.base.core.eager.get_grads_types(
-            [layer.parameters()[0], layer.parameters()[1]]
-        )
-        layer.parameters()[0]._reset_grad_inplace_version()
-        tmp = layer.parameters()[1]._grad_value()
+        for param in layer.parameters():
+            param._zero_grads()
 
     def test_demo_net(self):
         mp_layer = dist.shard_layer(
-            DemoNet("grad_api_demo"),
+            DemoNet("zero_grads_demo"),
             self._mesh,
             self.shard_fn,
         )
-        self.run_dynamic_grad_api(mp_layer)
+        self.run_dynamic_zero_grads(mp_layer)
 
     def run_test_case(self):
         self.test_demo_net()
+
+
+if __name__ == "__main__":
+    TestSimpleNetWithZeroGradsForSemiAutoParallel().run_test_case()
