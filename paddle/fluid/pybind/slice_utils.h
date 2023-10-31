@@ -26,7 +26,6 @@
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/operators/utils.h"
-#include "paddle/phi/api/include/api.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -475,8 +474,7 @@ static paddle::Tensor getTensorWithBasicIndexing(
   if (slice_axes->empty()) {
     out = tensor;
   } else {
-    // out = paddle::Tensor(egr::Controller::Instance().GenerateUniqueName());
-    if (!use_strided_slice) {
+    if (!(*use_strided_slice)) {
       eager_gil_scoped_release guard;
       out = slice_ad_func(tensor,
                           *slice_axes,
@@ -484,8 +482,6 @@ static paddle::Tensor getTensorWithBasicIndexing(
                           *slice_ends,
                           *infer_flags,
                           *decrease_axis);
-      // out = slice(tensor, slice_axes, slice_starts, slice_ends,
-      // infer_flags,decrease_axis);
     } else {
       eager_gil_scoped_release guard;
       std::vector<int> slice_axes_int32(slice_axes->begin(), slice_axes->end());
@@ -572,6 +568,57 @@ static paddle::Tensor dealWithAdvancedIndex(
               });
   }
   return transed_tensor;
+}
+
+static paddle::Tensor getValueForBoolTensor(paddle::Tensor tensor,
+                                            paddle::Tensor bool_index) {
+  PADDLE_ENFORCE(bool_index.size() <= tensor.size(),
+                 platform::errors::InvalidArgument(
+                     "The dims of bool index doesn't match indexed array, "
+                     "the dims of bool index except to be equal or less "
+                     "than %d, but received %d}.",
+                     tensor.size(),
+                     bool_index.size()));
+  auto tensor_shape = tensor.shape();
+  int i = 0;
+  while (i < bool_index.size()) {
+    PADDLE_ENFORCE_EQ(
+        bool_index.shape()[i],
+        tensor_shape[i],
+        platform::errors::InvalidArgument(
+            "The dimension of bool index doesn't match indexed array along "
+            "dimension %d, the target dimension is %d, but received %d",
+            i,
+            tensor_shape[i],
+            bool_index.shape()[i]));
+    i++;
+  }
+  bool* idx_is_not_empty = static_cast<bool*>((any_ad_func(bool_index).data()));
+  if (*idx_is_not_empty) {
+    auto bool_2_idx = nonzero_ad_func(bool_index);
+    return gather_nd_ad_func(tensor, bool_2_idx);
+  } else {
+    std::vector<int> empty_shape(tensor_shape.begin() + i - 1,
+                                 tensor_shape.end());
+    empty_shape[0] = 0;
+    return empty_ad_func(empty_shape, tensor.dtype());
+  }
+}
+
+static void ParseBoolAndBroadcastIndices(
+    std::vector<paddle::Tensor>* advanced_index) {
+  for (size_t i = 0; i < advanced_index->size(); i++) {
+    if ((*advanced_index)[i].dtype() == phi::DataType::BOOL) {
+      paddle::Tensor bool_2_idx = nonzero_ad_func((*advanced_index)[i]);
+      paddle::Tensor bool_2_idx_sliced =
+          slice_ad_func(bool_2_idx, {1}, {0}, {1}, {1}, {1});
+      (*advanced_index)[i] = bool_2_idx_sliced;
+    }
+  }
+  if (advanced_index->size() > 1) {
+    auto broadcasted_index = broadcast_tensors_ad_func(*advanced_index);
+    advanced_index->assign(broadcasted_index.begin(), broadcasted_index.end());
+  }
 }
 
 }  // namespace pybind

@@ -1431,7 +1431,8 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   bool has_advanced_index = false;
   bool use_strided_slice = false;
   std::vector<int> advanced_index_dim(
-      rank * 2, -1);  // content is dim, *2 is to avoid all index are None
+      rank * 2,
+      -1);  // content is dim, multiple 2 is to avoid all index are None
   std::vector<paddle::Tensor> advanced_index;  // content is index tensor
 
   // step1: parsing the index and recording them
@@ -1459,6 +1460,7 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                         &none_axes,
                                         &infer_flags,
                                         &use_strided_slice);
+
   if (!has_advanced_index) {
     return ToPyObject(out);
   }
@@ -1466,30 +1468,53 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
   // step3: Dealing with advanced indexing
   std::vector<paddle::Tensor> transed_index;
 
-  std::vector<int> trans_back_dim(tensor.shape().size());
+  std::vector<int> trans_back_dim;
+  // std::vector<int> trans_back_dim(tensor.shape().size());
   // std::itoa(trans_back_dim.begin(), trans_back_dim.end(), 0);
 
-  int pos_of_new_dim, rank_of_new_dim;
+  int pos_of_new_dim = 0, rank_of_new_dim = 0;
 
-  auto transed_tensor = dealWithAdvancedIndex(tensor,
-                                              &advanced_index_dim,
-                                              &advanced_index,
-                                              false,
-                                              &transed_index,
-                                              &trans_back_dim,
-                                              &pos_of_new_dim,
-                                              &rank_of_new_dim);
+  paddle::Tensor transed_tensor = dealWithAdvancedIndex(out,
+                                                        &advanced_index_dim,
+                                                        &advanced_index,
+                                                        false,
+                                                        &transed_index,
+                                                        &trans_back_dim,
+                                                        &pos_of_new_dim,
+                                                        &rank_of_new_dim);
+  VLOG(4) << "pos_of_new_dim: " << pos_of_new_dim
+          << " rank_of_new_dim: " << rank_of_new_dim;
 
-  if (advanced_index.size() == 1 &&
-      advanced_index[0].dtype() == phi::DataType::BOOL) {
+  if (transed_index.size() == 1 &&
+      transed_index[0].dtype() == phi::DataType::BOOL) {
     // get value for bool tensor
-    auto item = advanced_index[0];
-    auto item_shape = item.shape();
+    out = getValueForBoolTensor(transed_tensor, transed_index[0]);
   } else {
     // get value for int tensor
+    ParseBoolAndBroadcastIndices(&transed_index);
+    paddle::Tensor transed_advanced_index_tensor =
+        stack_ad_func(transed_index, -1);
+    out = gather_nd_ad_func(transed_tensor, transed_advanced_index_tensor);
   }
 
-  return ToPyObject(transed_tensor);
+  if (pos_of_new_dim != 0) {
+    std::vector<int> perm(out.size(), 0);
+    int tmp1 = pos_of_new_dim, tmp2 = 0,
+        tmp3 = pos_of_new_dim + rank_of_new_dim;
+    for (int i = 0; i < out.size(); i++) {
+      if (i < rank_of_new_dim) {
+        perm[i] =
+            tmp1++;  // range(pos_of_new_dim, pos_of_new_dim + rank_of_new_dim)
+      } else if (i >= rank_of_new_dim && i < pos_of_new_dim + rank_of_new_dim) {
+        perm[i] = tmp2++;  // range(0, pos_of_new_dim)
+      } else {
+        perm[i] = tmp3++;  // range(pos_of_new_dim + rank_of_new_dim, out.ndim)
+      }
+    }
+    out = transpose_ad_func(out, perm);
+  }
+
+  return ToPyObject(out);
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 

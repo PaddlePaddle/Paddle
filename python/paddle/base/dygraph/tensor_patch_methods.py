@@ -753,6 +753,8 @@ def monkey_patch_tensor():
         return False
 
     def __getitem__(self, item):
+        return self._getitem_dygraph(item)
+
         if contain_tensor_or_list(item):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
@@ -760,7 +762,8 @@ def monkey_patch_tensor():
 
         else:
             # 2. Call c++ func getitem_index_not_tensor to speedup.
-            return self._getitem_index_not_tensor(item)
+            # return self._getitem_index_not_tensor(item)
+            return self._getitem_dygraph(item)
 
     def __setitem__(self, item, value):
         def is_combine_index(item):
