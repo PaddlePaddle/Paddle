@@ -35,6 +35,7 @@ from .operators import (
 from .process_group import get_world_process_group
 from .utils import (
     __no_shape_var_type__,
+    _g_gradient_clip_ops,
     is_gradient_clip_op,
     is_naive_data_parallel,
 )
@@ -1689,13 +1690,7 @@ class Completer:
             op = ops[idx]
             if int(op.attr('op_role')) == int(OpRole.Optimize):
                 if is_gradient_clip_op(op):
-                    if op.type in [
-                        "sum",
-                        "sqrt",
-                        "fill_constant",
-                        "elementwise_max",
-                        "elementwise_div",
-                    ]:
+                    if op.type in _g_gradient_clip_ops:
                         # complete op dist_attr with global world ranks
                         op_dist_attr = OperatorDistAttr()
                         op_dist_attr.process_mesh = ProcessMesh(world_ranks)
@@ -1749,10 +1744,7 @@ class Completer:
                             ref_process_mesh = ref_dist_attr.process_mesh
 
                         # complete out_var's tensor_dist_attr
-                        if op.type == "stack":
-                            out_var = vars[op.output("Y")[0]]
-                        else:
-                            out_var = vars[op.output("Out")[0]]
+                        out_var = vars[op.output("Out")[0]]
                         out_dist_attr = TensorDistAttr()
                         out_dist_attr.process_mesh = ref_process_mesh
                         if out_var.shape == in_var.shape:

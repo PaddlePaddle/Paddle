@@ -42,6 +42,15 @@ __no_shape_var_type__ = [
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]
+_g_gradient_clip_ops = [
+    "sum",
+    "sqrt",
+    "fill_constant",
+    "elementwise_max",
+    "elementwise_div",
+    "stack",
+    "reduce_sum",
+]
 
 
 def get_logger(log_level, name="auto_parallel"):

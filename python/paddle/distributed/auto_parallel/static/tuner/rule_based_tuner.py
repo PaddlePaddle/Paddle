@@ -1719,7 +1719,10 @@ class RuleBasedTuner:
                                 assert ref_dist_attr is not None
                                 ref_process_mesh = ref_dist_attr.process_mesh
 
-                            out_var = vars[op.output("Out")[0]]
+                            if op.type == "stack":
+                                out_var = vars[op.output("Y")[0]]
+                            else:
+                                out_var = vars[op.output("Out")[0]]
                             out_dist_attr = TensorDistAttr()
                             out_dist_attr.process_mesh = ref_process_mesh
                             if out_var.shape == in_var.shape:

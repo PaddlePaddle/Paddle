@@ -245,7 +245,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             [
                 'squared_l2_norm',
                 'squared_l2_norm',
-                'sum',
+                'stack',
+                'reduce_sum',
                 'sqrt',
                 'fill_constant',
                 'elementwise_max',
@@ -262,7 +263,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
             [
                 'squared_l2_norm',
                 'squared_l2_norm',
-                'sum',
+                'stack',
+                'reduce_sum',
                 'cast',
                 'sqrt',
                 'fill_constant',

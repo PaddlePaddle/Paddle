@@ -37,13 +37,6 @@ from .utils import is_gradient_clip_op, is_optimize_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
-_g_gradient_clip_ops = [
-    "sum",
-    "sqrt",
-    "fill_constant",
-    "elementwise_max",
-    "elementwise_div",
-]
 _g_subblock_ops = ["while", "conditional_block"]
 
 
