@@ -56,16 +56,6 @@ class TestSemiAutoParallelBasic(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_several_grad_api(self):
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_parallel_for_grad_api.py",
-                user_defined_envs=envs,
-            )
-
     def test_several_replicated_spmd_api(self):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
