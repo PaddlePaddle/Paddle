@@ -21,7 +21,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -94,10 +94,12 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
@@ -125,13 +127,13 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -170,10 +172,12 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
@@ -201,13 +205,13 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -249,10 +253,12 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
@@ -280,13 +286,13 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -312,10 +318,12 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 # Test Python API
@@ -422,29 +430,37 @@ class TestScatterNdOpAPI(unittest.TestCase):
             np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
-        @switch_to_static_graph
-        def test_static_graph():
-            with paddle.static.program_guard(
-                paddle.static.Program(), paddle.static.Program()
-            ):
-                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-                index_t = paddle.static.data(
-                    name="index", dtype=index.dtype, shape=index.shape
-                )
-                val_t = paddle.static.data(
-                    name="val", dtype=val.dtype, shape=val.shape
-                )
-                out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
-                feed = {x_t.name: x, index_t.name: index, val_t.name: val}
-                fetch = [out_t]
 
-                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                cpu_exe = paddle.static.Executor(paddle.CPUPlace())
-                cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                np.testing.assert_array_equal(gpu_value, cpu_value)
+class TestScatterNdOpStaticAPI(unittest.TestCase):
+    @test_with_pir_api
+    def test_static_graph():
+        if not base.core.is_compiled_with_cuda():
+            return
 
-        test_static_graph()
+        shape = [2, 3, 4]
+        x = np.arange(int(np.prod(shape))).reshape(shape)
+        index = np.array([[0, 0, 2], [0, 1, 2]])
+        val = np.array([-1, -3])
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+            index_t = paddle.static.data(
+                name="index", dtype=index.dtype, shape=index.shape
+            )
+            val_t = paddle.static.data(
+                name="val", dtype=val.dtype, shape=val.shape
+            )
+            out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
+            feed = {x_t.name: x, index_t.name: index, val_t.name: val}
+            fetch = [out_t]
+
+            gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+            gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+            cpu_exe = paddle.static.Executor(paddle.CPUPlace())
+            cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
+            np.testing.assert_array_equal(gpu_value, cpu_value)
 
 
 # Test Raise Error
