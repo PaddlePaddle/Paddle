@@ -210,7 +210,7 @@ test_update_loss_scaling_op
 test_update_loss_scaling_op_static_build
 test_viterbi_decode_op
 test_warpctc_op
-test_yolov3_loss_op
 test_warprnnt_op
+test_yolov3_loss_op
 test_where_op
 test_yolo_box_op
