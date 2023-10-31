@@ -126,6 +126,24 @@ bool ModelLayoutIsNHWC(const std::vector<ir::Node *> &op_nodes) {
   return false;
 }
 
+// Do additional check if OP's weight is not persistable
+bool isOpWeight(
+    ir::Node *op_node,
+    ir::Node *var_node,
+    const std::unordered_map<std::string, std::string> &op_weight_pair) {
+  if (var_node->Var()->Persistable()) return true;
+  auto *op_desc = op_node->Op();
+  std::string op_type = op_desc->Type();
+  std::string var_name = var_node->Var()->Name();
+  if (op_weight_pair.count(op_type)) {
+    if (var_name ==
+        op_desc->Input(op_weight_pair.find(op_type)->second).front()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace
 
 void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
@@ -155,6 +173,10 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
                                                     "bilinear_interp_v2",
                                                     "nearest_interp",
                                                     "nearest_interp_v2"};
+  // Op's weight could be temporary variable, so we save the name of OP's weight
+  // input
+  std::unordered_map<std::string, std::string> op_weight_pair{
+      {"conv2d", "Filter"}};
   // Ops must run under the original layout even though it has
   // data_format/data_layout attribute, otherwise it will be very troublesome!
   std::unordered_set<std::string> must_original_layout_ops{
@@ -193,7 +215,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
     auto op_inputs = op_node->inputs;
     for (auto *in_var_node : op_inputs) {
       CHECK_EQ(in_var_node->IsVar(), true);
-      if (in_var_node->Var()->Persistable()) continue;
+      if (isOpWeight(op_node, in_var_node, op_weight_pair)) continue;
 
       auto input_shape = in_var_node->Var()->GetShape();
       input_shape_4 &= (input_shape.size() == 4);
@@ -326,7 +348,7 @@ void TrtSupportNHWCPass::ApplyImpl(Graph *graph) const {
         for (auto *in_var_node : op_inputs) {
           CHECK_EQ(in_var_node->IsVar(), true);
 
-          if (in_var_node->Var()->Persistable()) continue;
+          if (isOpWeight(op_node, in_var_node, op_weight_pair)) continue;
           if (vars_to_nchw.count(in_var_node)) continue;
 
           DoInsertTransposeOp(graph,
