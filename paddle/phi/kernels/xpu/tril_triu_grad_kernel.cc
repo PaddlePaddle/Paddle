@@ -70,18 +70,24 @@ PD_REGISTER_KERNEL(tril_grad,
                    phi::TrilGradKernel,
                    int,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(triu_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::TriuGradKernel,
                    int,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}
 PD_REGISTER_KERNEL(tril_triu_grad,
                    XPU,
                    ALL_LAYOUT,
                    phi::TrilTriuGradKernel,
                    int,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

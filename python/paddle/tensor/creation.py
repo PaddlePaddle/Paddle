@@ -1432,7 +1432,17 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1471,7 +1481,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -1546,7 +1556,7 @@ def triu(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
             retained. A positive value excludes just as many diagonals above the main
