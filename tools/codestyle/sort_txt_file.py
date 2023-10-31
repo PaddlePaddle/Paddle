@@ -26,8 +26,6 @@ def sort_by_dict_order(file_path):
 
 if __name__ == '__main__':
     file_paths = sys.argv[1:]
-    print("文件路径")
-    print(file_paths)
     for file_path in file_paths:
         file_path = os.path.normpath(file_path)
         sort_by_dict_order(file_path)

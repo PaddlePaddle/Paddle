@@ -1,5 +1,3 @@
-
-
 test_accuracy_op
 test_adadelta_op
 test_adagrad_op
@@ -19,6 +17,7 @@ test_arg_min_max_v2_op
 test_assign_value_op
 test_atan2_op
 test_auc_op
+
 test_auc_single_pred_op
 test_bce_loss
 test_bicubic_interp_v2_op
