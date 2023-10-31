@@ -161,11 +161,18 @@ repos:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
 
-- repo: local
-  hooks:
-    - id: sort-txt-file
-      name: sort-txt-file
-      description: Sorts each line string in a text file
-      entry: python ./tools/codestyle/sort_txt_file.py
-      language: python
-      files: ./test/white_list/new_ir_op_test_white_list
+-   repo: local
+    hooks:
+      - id: sort-lines
+        name: Sort lines in TXT files
+        entry: python
+        args:
+          - -c
+          - |
+            import fileinput
+
+            for line in fileinput.input():
+                sorted_line = ' '.join(sorted(line.strip().split()))
+                print(sorted_line)
+        files: ./test/white_list/new_ir_op_test_white_list
+        language: python
