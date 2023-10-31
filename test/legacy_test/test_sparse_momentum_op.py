@@ -178,5 +178,81 @@ class TestSparseMomentumOp(OpTest):
         self.check_output(atol=5e-3 if self.multi_precision else 1e-5)
 
 
+class TestSparseMomentumOpDtype1(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.index_dtype = np.int64
+
+
+class TestSparseMomentumOpDtype2(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.index_dtype = np.int32
+
+
+class TestSparseMomentumOpDtype3(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float64
+        self.index_dtype = np.int64
+
+
+class TestSparseMomentumOpAxis(TestSparseMomentumOp):
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestSparseMomentumOpNesterov(TestSparseMomentumOp):
+    def init_use_nesterov(self):
+        self.use_nesterov = True
+
+
+class TestSparseMomentumOpMultiPrecision(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.index_dtype = np.int32
+
+    def init_multi_precision(self):
+        self.multi_precision = True
+
+    def init_use_nesterov(self):
+        self.use_nesterov = True
+
+
+class TestSparseMomentumOpMultiPrecision1(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.index_dtype = np.int64
+
+    def init_multi_precision(self):
+        self.multi_precision = True
+
+    def init_use_nesterov(self):
+        self.use_nesterov = True
+
+
+class TestSparseMomentumOpMultiPrecision2(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.index_dtype = np.int32
+
+    def init_multi_precision(self):
+        self.multi_precision = True
+
+    def init_use_nesterov(self):
+        self.use_nesterov = False
+
+
+class TestSparseMomentumOpMultiPrecision3(TestSparseMomentumOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+        self.index_dtype = np.int64
+
+    def init_multi_precision(self):
+        self.multi_precision = True
+
+    def init_use_nesterov(self):
+        self.use_nesterov = False
+
+
 if __name__ == "__main__":
     unittest.main()
