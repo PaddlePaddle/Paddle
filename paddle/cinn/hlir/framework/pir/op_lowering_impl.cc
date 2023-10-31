@@ -57,6 +57,9 @@ std::vector<ir::Tensor> CollectInputTensor(
   for (auto in_value : CompatibleInfo::RealOperandSources(*op)) {
     VLOG(4) << "input tensor name: " << CompatibleInfo::ValueName(in_value);
     ir::Tensor tensor = details::GetTensor(in_value);
+    std::cerr << "collect input name  " << op->name() << "\t"
+              << tensor->buffer->name << "\t" << tensor->buffer->memory_type
+              << std::endl;
     if (!tensor_map->count(in_value)) {
       // record tensor.
       (*tensor_map)[in_value] = tensor;
@@ -248,6 +251,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     // input data name.
     // group->input_names.push_back(arg_tensor->name);
     // input args
+    std::cerr << "input tensor " << arg_tensor->buffer->name << std::endl;
     group_func_args.emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
   }
@@ -268,6 +272,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       continue;
     }
     // output arg tensors
+
+    std::cerr << "tensor " << tensor->buffer->name << "\t"
+              << tensor->buffer->type() << std::endl;
     group_func_arg_tensors->push_back(tensor);
     // output args
     // group->output_names.push_back(tensor->name);
@@ -303,6 +310,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   poly::StageMap stages;
   auto temp_buffers =
       lang::GetTempBuffers(*group_func_arg_tensors, stages, func_body);
+
+  // temp buffer !!
+  // temp_buffers.clear();
   // 3.Building LoweredFunc
   auto func = ir::_LoweredFunc_::Make(group->fn_name,
                                       group_func_args,

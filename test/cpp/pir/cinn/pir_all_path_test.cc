@@ -59,7 +59,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
 
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {64, 128};
+  const std::vector<int64_t> shape = {8, 8};
   auto x = builder
                .Build<paddle::dialect::FullOp>(
                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
@@ -68,16 +68,16 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   auto max =
       builder.Build<paddle::dialect::MaxOp>(x, std::vector<int64_t>{-1}, true)
           .result(0);
-  auto sub = builder.Build<paddle::dialect::SubtractOp>(x, max).result(0);
-  auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
-  auto sum =
-      builder
-          .Build<paddle::dialect::SumOp>(
-              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
-          .result(0);
-  auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum);
+  //   auto sub = builder.Build<paddle::dialect::SubtractOp>(x, max).result(0);
+  //   auto exp = builder.Build<paddle::dialect::ExpOp>(sub).result(0);
+  //   auto sum =
+  //       builder
+  //           .Build<paddle::dialect::SumOp>(
+  //               exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
+  //           .result(0);
+  //   auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum);
 
-  builder.Build<paddle::dialect::FetchOp>(out.result(0), "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(max, "out", 0);
   return program;
 }
 
@@ -107,6 +107,24 @@ TEST(GroupOp, TestBuild) {
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   res->Print(std::cout);
+
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+
+  kernel_program->Print(std::cout);
+
+  paddle::framework::Scope exe_scope;
+
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+  executor.Run({}, true);
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+
+  std::cerr << out_tensor << std::endl;
 }
 
 // TEST(GroupOp, TestBuildBadCAse) {

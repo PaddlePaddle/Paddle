@@ -227,7 +227,11 @@ std::vector<ir::Buffer> GetTempBuffers(const std::vector<ir::Argument>& args,
       });
 
   std::vector<ir::Buffer> temp_buffers;
-  for (auto& i : name_to_buffer) temp_buffers.push_back(i.second);
+  for (auto& i : name_to_buffer) {
+    if (i.second->memory_type != cinn::ir::MemoryType::Heap) {
+      temp_buffers.push_back(i.second);
+    }
+  }
   return temp_buffers;
 }
 

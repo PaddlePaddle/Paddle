@@ -90,7 +90,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 int GetSharedSize(::pir::Operation* node) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(node->result(0)));
 
-  auto axes = GetVectorAttr(node, "axis");
+  auto axes = GetVectorAttr(node, "dim");
 
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;

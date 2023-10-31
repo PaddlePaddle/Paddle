@@ -59,11 +59,6 @@ std::vector<pir::Value> GetBlockOutsideOutput(
     pir::YieldOp yield_op) {
   std::vector<pir::Value> vec_res;
   std::unordered_set<::pir::Value> used_value;
-  for (auto it = output_node.begin(); it != output_node.end(); ++it) {
-    for (size_t i = 0; i < (*it)->num_operands(); ++i) {
-      used_value.insert((*it)->operand_source(i));
-    }
-  }
 
   for (size_t i = 0; i < yield_op.num_operands(); ++i) {
     used_value.insert(yield_op.operand_source(i));
@@ -85,6 +80,7 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
   std::vector<pir::Operation*> vec_res;
   for (size_t i = 0; i < op_list.size(); ++i) {
     if (!op_list[i]->isa<pir::YieldOp>()) {
+      std::cerr << "process op  " << op_list[i]->name() << std::endl;
       vec_res.push_back(op_list[i]);
     }
   }
@@ -118,9 +114,12 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
 
+      std::cerr << "finish op fusion\n";
       // fusion merge
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
+
+      std::cerr << "fusion fusion merge\n";
 
       PADDLE_ENFORCE_EQ(group_list.size(),
                         1u,
@@ -130,6 +129,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         std::cerr << "begin to build kernel \n";
+        std::cerr << "group nodes size " << group->nodes.size() << std::endl;
         auto vec_ins = GetBlockOutsideInput(group->nodes);
 
         std::vector<pir::Value> vec_new_ins;
@@ -145,9 +145,13 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
 
+        for (auto op : group->nodes) {
+          std::cerr << "lowering op  " << op->name() << std::endl;
+        }
         group1->input_values = vec_ins;
         group1->output_values = vec_outs;
 
+        std::cerr << "jit kernel " << std::endl;
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         std::cerr << "end to build kernel \n";
         compiler_list.push_back(ir_compiler);

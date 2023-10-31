@@ -104,6 +104,7 @@ CinnJitInstruction::CinnJitInstruction(
         result.type().dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
     tensor->set_type(
         paddle::dialect::TransToPhiDataType(alloc_tensor_type.dtype()));
+    std::cerr << "resize " << alloc_tensor_type.dims() << std::endl;
     tensor->Resize(alloc_tensor_type.dims());
   }
 }
@@ -116,7 +117,9 @@ void CinnJitInstruction::Run() {
     gpu_ctx->Alloc(tensor_args_[i], tensor_args_[i]->dtype());
   }
 
+  std::cerr << "before kernel run\n" << std::endl;
   fn_ptr_impl_->Run(tensor_args_, static_cast<void*>(stream));
+  std::cerr << "fin run kernel \n";
 }
 
 const std::string& CinnJitInstruction::Name() const {

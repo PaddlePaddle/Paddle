@@ -241,7 +241,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // }
 
   auto input_shape = GetValueShape(reducer->operand_source(0));
-  std::vector<int> reduce_axes = GetVectorAttr<int>(reducer, "dim");
+  auto reduce_axes = GetVectorAttr(reducer, "dim");
 
   // int max_num_threads = helper->target_.max_num_threads();
   int max_num_threads = 1000;
@@ -568,8 +568,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   auto reducer_1_input_shape = GetValueShape(reducer_1->operand_source(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
 
-  std::vector<int> reducer_0_reduce_dim = GetVectorAttr<int>(reducer_0, "dim");
-  std::vector<int> reducer_1_reduce_dim = GetVectorAttr<int>(reducer_1, "dim");
+  auto reducer_0_reduce_dim = GetVectorAttr(reducer_0, "dim");
+  auto reducer_1_reduce_dim = GetVectorAttr(reducer_1, "dim");
 
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1

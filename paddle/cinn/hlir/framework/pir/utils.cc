@@ -33,8 +33,8 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
     {"pd_op.add", "elementwise_add"},
-    {"pd_op.subtract", "elementwise_sub"},
-    {"pd_op.divide", "elementwise_div"},
+    {"pd_op.subtract", "subtract"},
+    {"pd_op.divide", "divide"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {

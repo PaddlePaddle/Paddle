@@ -132,7 +132,7 @@ bool WithoutLastDimInReduce(const phi::DDim& inshape,
 
 static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   const auto& inshape = op_node.inputs()[0].shape();
-  const auto& axes = op_node.GetAttr<std::vector<int64_t>>("axis");
+  const auto& axes = op_node.GetAttr<std::vector<int64_t>>("dim");
 
   for (size_t i = 0; i < axes.size(); ++i) {
     std::cerr << "!!!!!!!!!!!!!!!!!!!!!! " << axes[i] << std::endl;
@@ -210,8 +210,8 @@ static bool ReduceFuseReduce1(const OpGroupPtr& first,
   const auto& reducer_1_input_shape = reducer_1->inputs()[0].shape();
   const auto& reducer_1_output_shape = reducer_1->outputs()[0].shape();
 
-  auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int64_t>>("axis");
-  auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int64_t>>("axis");
+  auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int64_t>>("dim");
+  auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int64_t>>("dim");
 
   for (auto& dim : reducer_0_reduce_dim) {
     std::cerr << "reduece 0 " << dim << std::endl;

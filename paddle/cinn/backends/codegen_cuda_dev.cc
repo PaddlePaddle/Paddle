@@ -283,6 +283,10 @@ void CodeGenCUDA_Dev::PrintTempBufferCreation(const ir::Buffer &buffer) {
       print_gpu_memory("");
       break;
 
+    case ir::MemoryType::Heap:
+      print_gpu_memory("__shared__ ");
+      break;
+
     default:
       LOG(FATAL) << "CUDA device codegen not support memory " << buffer->name
                  << ", type " << buffer->memory_type;
