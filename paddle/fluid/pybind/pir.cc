@@ -1229,8 +1229,8 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
-                >>> os.environ[new_ir_flag] = 'True'
+                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
                 >>> from paddle import pir
@@ -1304,8 +1304,8 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> new_ir_flag = 'FLAGS_enable_new_ir_in_executor'
-                >>> os.environ[new_ir_flag] = 'True'
+                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
                 >>> from paddle import pir
