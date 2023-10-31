@@ -67,6 +67,11 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/flags.h"
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
+
 PHI_DECLARE_string(tensor_operants_mode);
 
 namespace paddle {
