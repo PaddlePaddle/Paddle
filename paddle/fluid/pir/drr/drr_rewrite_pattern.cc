@@ -293,8 +293,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
                       source_pattern_graph.CountOfOpCalls(),
                       phi::errors::PreconditionNotMet(
                           "Matching faile."
-                          "The number of OpCalls in source_pattern_graph and "
-                          "step is not equal."));
+                          "The number of successfully matched Ops and"
+                          "the number of OpCalls in source pattern graph and"
+                          "is not equal."));
   } else {
     return matched;
   }
@@ -340,8 +341,8 @@ MatchContextImpl DrrRewritePattern::CreateOperations(
         result_pattern_graph.id2owend_tensor().count(in_tensor),
         0,
         phi::errors::NotFound(
-            "Not fount input tensor."
-            "Drr input tensor [%s] must exists in result pattern graph.",
+            "Not found the input tensor."
+            "Drr input tensor [%s] must exist in the result pattern graph.",
             in_tensor));
     if (!result_pattern_graph.id2owend_tensor().at(in_tensor)->is_none()) {
       res_match_ctx.BindIrValue(
@@ -523,7 +524,8 @@ void DrrRewritePattern::DeleteSourcePatternOp(
         src_match_ctx.operation_map().count(op_call),
         0,
         phi::errors::NotFound("Not found OpCall."
-                              "Drr OpCall [%s] must exists in match context.",
+                              "Only Opcall that exist in match context can be "
+                              "deleted, Not found [%s].",
                               op_call->name()));
     auto* op = src_match_ctx.operation_map().at(op_call)->get();
     VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op

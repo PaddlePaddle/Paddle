@@ -49,11 +49,12 @@ class DrrRewritePattern : public pir::RewritePattern {
         source_pattern_graph_(drr_context.source_pattern_graph()),
         constraints_(drr_context.constraints()),
         result_pattern_graph_(drr_context.result_pattern_graph()) {
-    PADDLE_ENFORCE_NE(source_pattern_graph_->owned_op_call().empty(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "Source pattern graph is empty."
-                          "Please check the drr pattern define code."));
+    PADDLE_ENFORCE_NE(
+        source_pattern_graph_->owned_op_call().empty(),
+        true,
+        phi::errors::InvalidArgument("Source pattern graph is empty."
+                                     "Suggested fix: Please check the DRR "
+                                     "source pattern definition code."));
   }
 
   bool MatchAndRewrite(pir::Operation* op,

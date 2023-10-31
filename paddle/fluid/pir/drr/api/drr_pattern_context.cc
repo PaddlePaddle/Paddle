@@ -146,7 +146,8 @@ void Tensor::operator=(const Tensor& other) const {  // NOLINT
   PADDLE_ENFORCE_EQ(this->pattern_graph_,
                     other.pattern_graph_,
                     phi::errors::InvalidArgument(
-                        "The two tensor must be in the same pattern graph."));
+                        "Matching failed."
+                        "The two must be in the same pattern graph."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);
