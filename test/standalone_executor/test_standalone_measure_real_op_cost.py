@@ -91,13 +91,10 @@ class TestOpProfiling(unittest.TestCase):
 
     def _run_op_profiling(self, place, run_profiling=True):
         # enable static build and deterministic feature
-        paddle.framework.set_flags(
-            {
-                'FLAGS_new_executor_static_build': 1,
-                'FLAGS_embedding_deterministic': 1,
-                'FLAGS_cudnn_deterministic': 1,
-            }
-        )
+        paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
+        if core.is_compiled_with_cuda():
+            paddle.framework.set_flags({'FLAGS_embedding_deterministic': 1})
+            paddle.framework.set_flags({'FLAGS_cudnn_deterministic': 1})
         paddle.seed(123)
         np.random.seed(456)
 
@@ -145,6 +142,21 @@ class TestOpProfiling(unittest.TestCase):
         self._compare_loss_between(
             self._run_op_profiling(paddle.CPUPlace(), run_profiling=True),
             self._run_op_profiling(paddle.CPUPlace(), run_profiling=False),
+        )
+
+    def test_op_profiling_cuda0(self):
+        '''
+        * test if adding profiling before program execution can affect training process.
+        * test if C++ side can successfully write op profiling results and read by Python.
+        '''
+        if not core.is_compiled_with_cuda():
+            return True
+        sys.stdout.write(
+            "Running on CUDA device 0 with profiling enabled/disabled.\n"
+        )
+        self._compare_loss_between(
+            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=True),
+            self._run_op_profiling(paddle.CUDAPlace(0), run_profiling=False),
         )
 
 
