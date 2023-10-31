@@ -1508,6 +1508,7 @@ class GeneralFusionMergePassHelper {
     }
     const auto& fuse_passes = GetVerticalFusePasses();
     for (const auto& fuse_pass : fuse_passes) {
+      // TODO(Aurelius84): Broadcast_Test_2 failed here
       (*fuse_pass)(ctx);
     }
   }
