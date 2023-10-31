@@ -12,12 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _legacy_C_ops
+import paddle
+from paddle import _C_ops, _legacy_C_ops
 from paddle.base import core
 from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.base.framework import default_main_program
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 
 __all__ = []
 
@@ -27,6 +32,18 @@ def _verify_dropout_rate(dropout_rate):
         raise TypeError("dropout_rate argument should be a number")
     if dropout_rate < 0 or dropout_rate > 1:
         raise ValueError("dropout_rate argument should between 0 and 1")
+
+
+def _default_main_program():
+    assert (
+        in_dynamic_or_pir_mode()
+    ), "in static branch, default_main_program is got from LayerHelper"
+    if in_dynamic_mode():
+        return paddle.base.framework.default_main_program()
+    elif in_pir_mode():
+        return paddle.pir.core.default_main_program()
+
+    return None
 
 
 def fused_feedforward(
@@ -625,8 +642,8 @@ def fused_multi_head_attention(
         )
 
     if in_dynamic_or_pir_mode():
-        if default_main_program().random_seed != 0:
-            seed = default_main_program().random_seed
+        if _default_main_program().random_seed != 0:
+            seed = _default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
@@ -672,72 +689,125 @@ def fused_multi_head_attention(
                     "When enable transpose_qkv_wb, the 1st dim of qkv_bias and 2nd dim of "
                     "qkv_weight should be the same, i.e., embed_dim."
                 )
-        (
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            _,
-            cache_kv_out,
-            final_out,
-        ) = _legacy_C_ops.fused_attention(
-            x,
-            pre_ln_scale,
-            pre_ln_bias,
-            qkv_weight,
-            qkv_bias,
-            cache_kv,
-            attn_mask,
-            linear_weight,
-            linear_bias,
-            ln_scale,
-            ln_bias,
-            'num_heads',
-            num_heads,
-            'transpose_qkv_wb',
-            transpose_qkv_wb,
-            'pre_layer_norm',
-            pre_layer_norm,
-            'epsilon',
-            pre_ln_epsilon,
-            'dropout_rate',
-            dropout_rate,
-            'attn_dropout_rate',
-            attn_dropout_rate,
-            'ln_epsilon',
-            ln_epsilon,
-            'is_test',
-            not training,
-            'attn_dropout_fix_seed',
-            seed is not None,
-            'dropout_fix_seed',
-            seed is not None,
-            'attn_dropout_seed',
-            seed if seed is not None else 0,
-            'dropout_seed',
-            seed if seed is not None else 0,
-            'attn_dropout_implementation',
-            mode,
-            'dropout_implementation',
-            mode,
-            'add_residual',
-            add_residual,
-            'ring_id',
-            ring_id,
-        )
+        if in_dynamic_mode():
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                cache_kv_out,
+                final_out,
+            ) = _legacy_C_ops.fused_attention(
+                x,
+                pre_ln_scale,
+                pre_ln_bias,
+                qkv_weight,
+                qkv_bias,
+                cache_kv,
+                attn_mask,
+                linear_weight,
+                linear_bias,
+                ln_scale,
+                ln_bias,
+                'num_heads',
+                num_heads,
+                'transpose_qkv_wb',
+                transpose_qkv_wb,
+                'pre_layer_norm',
+                pre_layer_norm,
+                'epsilon',
+                pre_ln_epsilon,
+                'dropout_rate',
+                dropout_rate,
+                'attn_dropout_rate',
+                attn_dropout_rate,
+                'ln_epsilon',
+                ln_epsilon,
+                'is_test',
+                not training,
+                'attn_dropout_fix_seed',
+                seed is not None,
+                'dropout_fix_seed',
+                seed is not None,
+                'attn_dropout_seed',
+                seed if seed is not None else 0,
+                'dropout_seed',
+                seed if seed is not None else 0,
+                'attn_dropout_implementation',
+                mode,
+                'dropout_implementation',
+                mode,
+                'add_residual',
+                add_residual,
+                'ring_id',
+                ring_id,
+            )
+        else:
+            (
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                _,
+                cache_kv_out,
+                final_out,
+            ) = _C_ops.fused_attention(
+                x,
+                pre_ln_scale,
+                pre_ln_bias,
+                qkv_weight,
+                qkv_bias,
+                cache_kv,
+                attn_mask,
+                linear_weight,
+                linear_bias,
+                ln_scale,
+                ln_bias,
+                num_heads,
+                transpose_qkv_wb,
+                pre_layer_norm,
+                pre_ln_epsilon,
+                attn_dropout_rate,
+                not training,
+                seed is not None,
+                seed if seed is not None else 0,
+                mode,
+                dropout_rate,
+                seed is not None,
+                seed if seed is not None else 0,
+                mode,
+                ln_epsilon,
+                add_residual,
+                ring_id,
+            )
+
         if cache_kv is not None:
             return final_out, cache_kv_out
         return final_out
