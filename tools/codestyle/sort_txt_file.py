@@ -17,6 +17,7 @@ import sys
 
 
 def sort_by_dict_order(file_path):
+    """Sorts each line string in a text file under the specified path."""
     with open(file_path, 'r') as f:
         lines = f.readlines()
     sorted_lines = sorted(lines)
