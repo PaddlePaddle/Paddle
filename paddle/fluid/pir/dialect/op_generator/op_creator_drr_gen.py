@@ -75,14 +75,42 @@ class OpCreatorCodeGen:
         self.op_info_items = self.parse_yaml(op_yaml_files, op_compat_yaml_file)
         self.dialect_name = dialect_name
 
+    def _check_need_update_ops(self, op_yaml_files):
+        need_update_ops = False
+        update_yaml_file = None
+        for yaml_file in op_yaml_files:
+            if yaml_file.find("update_ops.parsed.yaml") != -1:
+                need_update_ops = True
+                update_yaml_file = yaml_file
+                break
+        return need_update_ops, update_yaml_file
+
+    def _update_ops(self, op_yaml_items, update_yaml_file):
+        with open(update_yaml_file, "r") as f:
+            update_ops = yaml.safe_load(f)
+        for i in range(len(op_yaml_items)):
+            for update_op in update_ops:
+                if op_yaml_items[i]['name'] == update_op['name']:
+                    op_yaml_items[i] = update_op
+                    break
+
     def parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = self._check_need_update_ops(
+            op_yaml_files
+        )
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            self._update_ops(op_yaml_items, update_yaml_file)
+
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])

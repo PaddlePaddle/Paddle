@@ -145,10 +145,22 @@ void Tensor::copy_(const Tensor &src,
                     src.impl())->dist_attr().process_mesh();
     rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
 
-    // 1. InferSpmd (Infer DistAttr of Inputs&Outputs)
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
-    // 2. Create API Output & Prepare Dist and Dense Output
+    auto this_dist_attr =
+              std::static_pointer_cast<phi::distributed::DistTensor>(
+              this->impl())->dist_attr();
+    PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
+                       || this_dist_attr.empty()),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "DistAttr is different of dst "
+                          "tensor and args %s, which "
+                          "current tensor holds %s "
+                          "Copy cannot be performed!",
+                          meta_dist_input_x.dist_attr(),
+                          this_dist_attr));
+
     auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
     auto dense_out = dist_out->unsafe_mutable_value();
     if (!rank_is_in_current_mesh) {
@@ -158,32 +170,20 @@ void Tensor::copy_(const Tensor &src,
             phi::DenseTensorMeta());
     }
 
-    // 3. Infer DistTensor's Global Shape
     phi::MetaTensor meta_dist_out(dist_out);
     phi::UnchangedInferMeta(MakeMetaTensor(*(src.impl_)), &meta_dist_out);
 
     if (rank_is_in_current_mesh) {
-      // 4. Select Kernel
-
-      // 5. Reshard Input
       auto dist_input_x = static_cast<phi::distributed::DistTensor*>(
                           src.impl().get());;
 
-      // 6. PrepareData (DataTransform & Prepare Dense Input)
       auto input_x = &dist_input_x->value();
 
-      // 7. Infer Local DenseTensor Meta
       phi::MetaTensor meta_dense_out(dense_out);
       phi::UnchangedInferMeta(MakeMetaTensor(*input_x), &meta_dense_out);
 
-      // 8. DenseTensor Kernel Call
       phi::Copy(*dev_ctx, *input_x, target_place, blocking, dense_out);
-
-      // 9. Reshard Partial Output to Replicated (Temporary)
     }
-
-    // 10. Set Output Dist Attr For Default Impl
-    // API `copy_` does not need to set DistAttr for output.
     return;
   }
 #endif

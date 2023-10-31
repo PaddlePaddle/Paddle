@@ -15,14 +15,12 @@
 from __future__ import annotations
 
 import dis
-import sys
 from functools import partial
 
 from ..profiler import EventGuard
-from ..utils import CodeStatus, log, log_do
+from ..utils import log_do, log_format
 from .custom_code import CustomCode
 from .executor.executor_cache import OpcodeExecutorCache
-from .skip_files import need_skip
 
 
 def print_locals(frame):
@@ -55,58 +53,28 @@ def eval_frame_callback(frame, **kwargs) -> CustomCode:
     with EventGuard(
         f"eval_frame_callback: {frame.f_code.co_name}", event_level=2
     ):
-        # is generator
-        if frame.f_code.co_flags & 0x20 > 0:
-            return CustomCode(None, True)
+        log_format(
+            2, "[eval_frame_callback] start to translate: {}\n", frame.f_code
+        )
+        log_do(4, partial(print_locals, frame))
 
-        # NOTE(SigureMo): Temporary fallback when code has exception handling.
-        if sys.version_info >= (3, 11) and frame.f_code.co_exceptiontable:
-            log(
+        log_format(3, "[transform] OriginCode: {}\n", frame.f_code.co_name)
+        log_do(3, lambda: dis.dis(frame.f_code))
+
+        custom_code = OpcodeExecutorCache()(frame, **kwargs)
+
+        if custom_code.code is None:
+            log_format(
                 3,
-                f"[eval_frame_callback] {frame.f_code} has co_exceptiontable\n",
+                "[transform] NewCode (same as origin code): {}\n",
+                frame.f_code.co_name,
             )
-            return CustomCode(None, False)
-
-        if need_skip(frame):
-            log(3, f"[eval_frame_callback] skip {frame.f_code}\n")
-            custom_code = CustomCode(None, False)
-            new_code = frame.f_code
         else:
-            log(
-                2, f"[eval_frame_callback] start to translate: {frame.f_code}\n"
-            )
-            log_do(4, partial(print_locals, frame))
-
-            log(3, f"[transform] OriginCode: {frame.f_code.co_name}\n")
-            log_do(3, lambda: dis.dis(frame.f_code))
-
-            custom_code = OpcodeExecutorCache()(frame, **kwargs)
-
-            if custom_code.code is None:
-                log(
-                    3,
-                    "[transform] NewCode (same as origin code): "
-                    + frame.f_code.co_name
-                    + "\n",
-                )
-                new_code = frame.f_code
-            else:
-                log(
-                    3,
-                    "[transform] NewCode: " + custom_code.code.co_name + "\n",
-                )
-                log_do(3, lambda: dis.dis(custom_code.code))
-                new_code = custom_code.code
-
-        # just check those codes which need open eval_frame
-        if (
-            custom_code.disable_eval_frame is False
-            and CodeStatus().is_code_without_graph(new_code)
-        ):
-            log(
+            log_format(
                 3,
-                "[eval_frame_callback] Code has no graph, block it.\n",
+                "[transform] NewCode: {}\n",
+                custom_code.code.co_name,
             )
-            return CustomCode(None, True)
+            log_do(3, lambda: dis.dis(custom_code.code))
 
         return custom_code

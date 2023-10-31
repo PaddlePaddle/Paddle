@@ -14,6 +14,7 @@
 
 import argparse
 import hashlib
+import os
 import pathlib
 import sys
 
@@ -303,6 +304,16 @@ def process_optional_output_info(apis):
                     output['optional'] = False
 
 
+def update_apis(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_apis = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_api in update_apis:
+            if op_yaml_items[i]['name'] == update_api['name']:
+                op_yaml_items[i] = update_api
+                break
+
+
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
@@ -311,6 +322,7 @@ def gen(
     rev_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
     fwd_pd_op_path: pathlib.Path,
+    update_fwd_pd_op_path: pathlib.Path,
     rev_pd_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
@@ -328,6 +340,7 @@ def gen(
             backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
         fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
+        update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
         rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
@@ -355,7 +368,13 @@ def gen(
         load(rev_pd_op_path),
     )
     filter_compat_info(compats)
-    apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds + ir_fwds]
+
+    fwd_apis = fwds + legacy_fwds + ir_fwds
+    # replace old ir ops with pir ops
+    if os.path.exists(update_fwd_pd_op_path):
+        update_apis(fwd_apis, update_fwd_pd_op_path)
+
+    apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
     apis = apis + [
         {**api, **{'is_fwd': False}} for api in revs + legacy_revs + ir_revs
     ]
@@ -415,6 +434,11 @@ if __name__ == "__main__":
         help='The ir forward ops parsed  yaml file.',
     )
     parser.add_argument(
+        '--update_fwd_pd_op_path',
+        type=str,
+        help='The ir update forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
         '--rev_pd_op_path',
         type=str,
         help='The ir backward ops parsed  yaml file.',
@@ -439,6 +463,7 @@ if __name__ == "__main__":
         pathlib.Path(args.rev_legacy_path),
         pathlib.Path(args.compat_path),
         pathlib.Path(args.fwd_pd_op_path),
+        pathlib.Path(args.update_fwd_pd_op_path),
         pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
