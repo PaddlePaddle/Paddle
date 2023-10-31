@@ -25,6 +25,7 @@ test_bilinear_tensor_product_op
 test_bincount_op
 test_bincount_op_static_build
 test_bitwise_op
+
 test_bmm_op
 test_box_coder_op
 test_cast_op
