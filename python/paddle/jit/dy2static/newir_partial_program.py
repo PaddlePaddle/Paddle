@@ -652,7 +652,9 @@ class PartialProgramLayer:
             program, targets = self._hooker.before_append_backward(
                 program, targets
             )
-            self._outputs = NestSequence(targets, need_check=True)
+            self._outputs = NestSequence(
+                self._outputs.restore(targets), need_check=True
+            )
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -692,7 +694,9 @@ class PartialProgramLayer:
                 ) = self._hooker.after_append_backward(
                     program, targets, forward_end_idx
                 )
-                self._outputs = NestSequence(targets, need_check=True)
+                self._outputs = NestSequence(
+                    self._outputs.restore(targets), need_check=True
+                )
 
             # TODO: add later
             # self.prepare_gradient_aggregation(
