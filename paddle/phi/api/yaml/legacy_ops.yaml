@@ -317,6 +317,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : divide
   inplace: (x -> out)
@@ -348,6 +349,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
   backward : elementwise_pow_grad
@@ -415,6 +417,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
   inplace: (x -> out)
@@ -783,6 +786,7 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
@@ -803,6 +807,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
   inplace: (x -> out)
