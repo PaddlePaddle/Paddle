@@ -185,7 +185,7 @@ class TestCumprodBF16Op(TestCumprod):
                     ['X'],
                     'Out',
                     user_defined_grads=[self.grad_x],
-                    user_defined_grad_outputs=[self.grad_out]
+                    user_defined_grad_outputs=[self.grad_out],
                 )
 
 
