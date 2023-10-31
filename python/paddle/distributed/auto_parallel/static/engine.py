@@ -1588,41 +1588,10 @@ class Engine:
             self._mode
         ]._dist_op_context.grad_var_to_var
         assert len(grad_var_to_var.keys()) == 1
-        # f_grad_var_to_var.write(grad_var_to_var)
-        # print(grad_var_to_var, file=self.f_grad_var_to_var)
         grad_var_to_var_map = grad_var_to_var[1]
         newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
             param_mapping, grad_var_to_var_map
         )
-        # f_pir_grad_var_to_var.write(newir_grad_var_to_var_map)
-        # print(newir_grad_var_to_var_map, file=self.f_pir_grad_var_to_var)
-
-        """ forward and backward ops of pir program when running single card gpt-3
-        fwd_ops:
-        ['pd_op.data', 'builtin.get_parameter', 'pd_op.embedding', 'pd_op.add', 'pd_op.dropout',
-        'pd_op.layer_norm', 'pd_op.matmul', 'pd_op.full_int_array', 'pd_op.reshape', 'pd_op.full',
-        'pd_op.split_with_num', 'builtin.slice', 'pd_op.transpose', 'pd_op.scale', 'pd_op.fused_softmax_mask_upper_triangle',
-        'pd_op.gelu', 'pd_op.unsqueeze', 'pd_op.cross_entropy_with_softmax', 'pd_op.cast', 'pd_op.multiply', 'pd_op.sum',
-        'pd_op.divide', 'builtin.combine', 'pd_op.add_n_with_kernel', 'pd_op.concat', 'pd_op.embedding_grad_dense',
-        'pd_op.check_finite_and_unscale_', 'pd_op.any', 'pd_op.memcpy_d2h', 'pd_op.update_loss_scaling_',
-        'pd_op.squared_l2_norm', 'pd_op.sqrt', 'pd_op.maximum', 'pd_op.multiply_', 'pd_op.adamw_']
-        bwd_ops:
-        ['pd_op.multiply_grad', 'pd_op.divide_grad', 'pd_op.sum_grad', 'pd_op.reshape_grad', 'pd_op.cross_entropy_with_softmax_grad',
-        'pd_op.matmul_grad', 'pd_op.layer_norm_grad', 'pd_op.add_grad', 'pd_op.dropout_grad', 'pd_op.gelu_grad', 'pd_op.transpose_grad',
-        'pd_op.fused_softmax_mask_upper_triangle_grad']
-        """
-
-        """ forward and backward ops or pir program when running distributed gpt-3 (2 process have same ops)
-        fwd_ops:
-        ['pd_op.data', 'builtin.get_parameter', 'pd_op.embedding', 'pd_op.add', 'pd_op.layer_norm', 'pd_op.matmul',
-        'pd_op.full_int_array', 'pd_op.reshape', 'pd_op.full', 'pd_op.split_with_num', 'builtin.slice', 'pd_op.transpose',
-        'pd_op.scale', 'pd_op.fused_softmax_mask_upper_triangle', 'pd_op.gelu', 'pd_op.unsqueeze', 'pd_op.cross_entropy_with_softmax',
-        'pd_op.multiply', 'pd_op.sum', 'pd_op.divide', 'pd_op.c_allreduce_sum_', 'pd_op.scale_', 'builtin.combine', 'pd_op.add_n_with_kernel',
-        'pd_op.concat', 'pd_op.embedding_grad_dense', 'pd_op.squared_l2_norm', 'pd_op.sqrt', 'pd_op.maximum', 'pd_op.multiply_', 'pd_op.adamw_']
-        bwd_ops:
-        ['pd_op.divide_grad', 'pd_op.sum_grad', 'pd_op.multiply_grad', 'pd_op.reshape_grad', 'pd_op.cross_entropy_with_softmax_grad',
-        'pd_op.matmul_grad', 'pd_op.layer_norm_grad', 'pd_op.add_grad', 'pd_op.gelu_grad', 'pd_op.transpose_grad', 'pd_op.fused_softmax_mask_upper_triangle_grad']
-        """
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
@@ -1631,15 +1600,15 @@ class Engine:
             core._set_prim_forward_enabled(True)
             ops = newir_program.global_block().ops
             bwd_ops_name = [
-                # "pd_op.layer_norm_grad",
-                # "pd_op.dropout_grad",
-                # "pd_op.reshape_grad",
-                # "pd_op.divide_grad",
-                # "pd_op.add_grad",
-                # "pd_op.gelu_grad",
-                # "pd_op.multiply_grad",
-                # "pd_op.sum_grad",
-                # "pd_op.transpose_grad",
+                "pd_op.layer_norm_grad",
+                "pd_op.dropout_grad",
+                "pd_op.reshape_grad",
+                "pd_op.divide_grad",
+                "pd_op.add_grad",
+                "pd_op.gelu_grad",
+                "pd_op.multiply_grad",
+                "pd_op.sum_grad",
+                "pd_op.transpose_grad",
             ]
             for op in ops:
                 if op.name() in bwd_ops_name:
@@ -1718,15 +1687,15 @@ class Engine:
                 #     "before decompose, num ops: ",
                 #     len(newir_program.global_block().ops),
                 # )
-                newir_program_after_decompose = self._decompose_newir_program(
-                    newir_program, param_mapping
-                )
+                # newir_program_after_decompose = self._decompose_newir_program(
+                #     newir_program, param_mapping
+                # )
                 # print(
                 #     "after decompose, num ops: ",
                 #     len(newir_program_after_decompose.global_block().ops),
                 # )
-
                 # self.newir_program = newir_program_after_decompose
+
                 self.newir_program = newir_program
                 self.param_mapping = param_mapping
                 self.newir_program_initialized = True

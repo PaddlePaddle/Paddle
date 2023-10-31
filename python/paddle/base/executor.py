@@ -798,7 +798,11 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            return _merge_tensors(tensors, self._plan.micro_batch_num())
+            if not get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                return _merge_tensors(tensors, self._plan.micro_batch_num())
+            return tensors
         else:
             if self._plan.micro_batch_num() > 1:
                 raise RuntimeError(
