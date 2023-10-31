@@ -319,6 +319,7 @@ class TestUnsqueezeSPMDRule(unittest.TestCase):
 
         # shape: [1, 8, 16] --> [1, 1, 8, 16] (input --> output)
         # dims_mapping: [-1, 0, 1, -1] --> [-1, 1, -1], [-1, -1, 1, -1] (output --> input, output)
+        self.x_dist_tensor_spec.shape = [1, 8, 16]
         self.output_dist_tensor_spec.shape = [1, 1, 8, 16]
         self.output_dist_tensor_spec.set_dims_mapping([-1, 0, 1, -1])
         self.attrs['axis'] = [0]
