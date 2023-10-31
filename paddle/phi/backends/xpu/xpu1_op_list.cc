@@ -149,6 +149,10 @@ XPUOpMap& get_kl1_ops() {
            phi::DataType::INT32,
            phi::DataType::INT64,
        })},
+      {"greater_than",
+       XPUKernelSet({phi::DataType::INT64,
+                     phi::DataType::INT32,
+                     phi::DataType::FLOAT32})},
       {"hard_switch_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"hard_switch", XPUKernelSet({phi::DataType::FLOAT32})},
       {"index_select",
@@ -357,7 +361,7 @@ XPUOpMap& get_kl1_ops() {
       {"where_index", XPUKernelSet({phi::DataType::BOOL})},
       {"where",
        XPUKernelSet({phi::DataType::INT32,
-                     phi::DataType::INT64,
+                     // phi::DataType::INT64,
                      phi::DataType::FLOAT32})},
       // AddMore
   };
