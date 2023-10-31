@@ -51,6 +51,7 @@ from .common import Unflatten  # noqa: F401
 from .pooling import AvgPool1D  # noqa: F401
 from .pooling import AvgPool2D  # noqa: F401
 from .pooling import AvgPool3D  # noqa: F401
+from .pooling import LPPool2D  # noqa: F401
 from .pooling import MaxPool1D  # noqa: F401
 from .pooling import MaxPool2D  # noqa: F401
 from .pooling import MaxPool3D  # noqa: F401

@@ -74,6 +74,7 @@ from .layer.common import Unflatten  # noqa: F401
 from .layer.pooling import AvgPool1D  # noqa: F401
 from .layer.pooling import AvgPool2D  # noqa: F401
 from .layer.pooling import AvgPool3D  # noqa: F401
+from .layer.pooling import LPPool2D  # noqa: F401
 from .layer.pooling import MaxPool1D  # noqa: F401
 from .layer.pooling import MaxPool2D  # noqa: F401
 from .layer.pooling import MaxPool3D  # noqa: F401
@@ -223,6 +224,7 @@ __all__ = [
     'Softplus',
     'KLDivLoss',
     'AvgPool2D',
+    'LPPool2D',
     'L1Loss',
     'LeakyReLU',
     'AvgPool1D',

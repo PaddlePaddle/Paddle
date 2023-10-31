@@ -10,30 +10,50 @@ endif()
 cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
             ${PATTERN_REWRITE_TEST_DEPS})
 
-cc_test(
-  drr_test
-  SRCS drr_test.cc
-  DEPS drr)
+paddle_test(drr_test SRCS drr_test.cc DEPS drr)
 
-cc_test(
+paddle_test(
   drr_same_type_binding_test
-  SRCS drr_same_type_binding_test.cc
-  DEPS drr gtest pd_op_dialect pir)
+  SRCS
+  drr_same_type_binding_test.cc
+  DEPS
+  drr
+  gtest
+  pd_op_dialect
+  pir)
 
-cc_test(
+paddle_test(
   drr_fuse_linear_test
-  SRCS drr_fuse_linear_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  SRCS
+  drr_fuse_linear_test.cc
+  DEPS
+  fusion_passes
+  drr
+  gtest
+  pd_op_dialect
+  pir)
 
-cc_test(
+paddle_test(
   drr_fuse_linear_param_grad_add_test
-  SRCS drr_fuse_linear_param_grad_add_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  SRCS
+  drr_fuse_linear_param_grad_add_test.cc
+  DEPS
+  fusion_passes
+  drr
+  gtest
+  pd_op_dialect
+  pir)
 
-cc_test(
+paddle_test(
   drr_attention_fuse_test
-  SRCS drr_attention_fuse_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  SRCS
+  drr_attention_fuse_test.cc
+  DEPS
+  fusion_passes
+  drr
+  gtest
+  pd_op_dialect
+  pir)
 
 set_tests_properties(
   pattern_rewrite_test PROPERTIES ENVIRONMENT

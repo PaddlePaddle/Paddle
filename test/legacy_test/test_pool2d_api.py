@@ -138,7 +138,6 @@ class TestPool2D_API(unittest.TestCase):
                 norm_type,
                 kernel_size=2,
                 stride=2,
-                padding=0,
                 ceil_mode=True,
             )
 
@@ -153,7 +152,7 @@ class TestPool2D_API(unittest.TestCase):
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
             lp_pool2d_dg = paddle.nn.layer.LPPool2D(
-                kernel_size=2, norm_type=2, stride=2, padding=0, ceil_mode=True
+                norm_type=2, kernel_size=2, stride=2, ceil_mode=True
             )
             result = lp_pool2d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
@@ -399,6 +398,7 @@ class TestPool2D_API(unittest.TestCase):
             self.check_max_dygraph_padding_results(place)
             self.check_max_dygraph_ceilmode_results(place)
             self.check_max_dygraph_nhwc_results(place)
+            self.check_lp_dygraph_ceilmode_results(place)
 
     @test_with_pir_api
     def test_pool2d_static(self):

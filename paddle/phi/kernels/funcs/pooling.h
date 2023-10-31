@@ -32,19 +32,17 @@ namespace phi {
 namespace funcs {
 
 __device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
-                                                     dtype::float16 exponent) {
-  return static_cast<dtype::float16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
+                                                     float exponent) {
+  return static_cast<dtype::float16>(pow(static_cast<float>(base), exponent));
 }
-__device__ __forceinline__ dtype::bfloat16 inline_pow(
-    dtype::bfloat16 base, dtype::bfloat16 exponent) {
-  return static_cast<dtype::bfloat16>(
-      pow(static_cast<float>(base), static_cast<float>(exponent)));
+__device__ __forceinline__ dtype::bfloat16 inline_pow(dtype::bfloat16 base,
+                                                      float exponent) {
+  return static_cast<dtype::bfloat16>(pow(static_cast<float>(base), exponent));
 }
 __device__ __forceinline__ float inline_pow(float base, float exponent) {
   return pow(base, exponent);
 }
-__device__ __forceinline__ double inline_pow(double base, double exponent) {
+__device__ __forceinline__ double inline_pow(double base, float exponent) {
   return pow(base, exponent);
 }
 
@@ -121,6 +119,16 @@ class MaxPoolGrad {
 
 template <class T>
 class AvgPoolGrad {
+ public:
+  static constexpr bool use_x = false;
+  HOSTDEVICE inline void compute(
+      const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
+    *dx += (scale * dy);
+  }
+};
+
+template <class T>
+class LPPoolGrad {
  public:
   static constexpr bool use_x = false;
   HOSTDEVICE inline void compute(
