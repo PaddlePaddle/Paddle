@@ -168,6 +168,61 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              std::vector<void *> *buffers,
                              int batch_size,
                              cudaStream_t stream) {
+  int totalBindings = infer_engine_->getNbBindings();
+
+  int numInputs = 0;
+  for (int i = 0; i < totalBindings; ++i) {
+    if (infer_engine_->bindingIsInput(i)) {
+      numInputs++;
+    }
+  }
+
+  for (int i = 0; i < infer_engine_->getNbIOTensors(); ++i) {
+    const auto tensorName = infer_engine_->getIOTensorName(i);
+    m_IOTensorNames.emplace_back(tensorName);
+  }
+
+  if (with_dynamic_shape()) {
+    for (const auto &item : optim_input_shape()) {
+      std::string key = item.first;
+      std::string value_str = Vec2Str(item.second);
+      std::cout << "optim_input_shape key: " << key << ", value: " << value_str
+                << "\n";
+    }
+    std::cout << "with_dynamic_shape" << std::endl;
+    for (int i = 0; i < numInputs; ++i) {
+      if (optim_input_shape().count(m_IOTensorNames[i])) {
+        const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
+        nvinfer1::Dims4 inputDims = {
+            dims_vec[0], dims_vec[1], dims_vec[2], dims_vec[3]};
+        context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
+      }
+    }
+  }
+
+  if (batch_size > params_.max_batch_size) {
+    std::cout << "=====Error======" << std::endl;
+    std::cout << "The batch size is larger than the model expects!"
+              << std::endl;
+    std::cout << "Model max batch size is: " << params_.max_batch_size
+              << std::endl;
+    std::cout << "Batch size provided to call to runInference:" << batch_size
+              << std::endl;
+    return false;  // batchSize超过模型限制
+  }
+
+  if (!context->allInputDimensionsSpecified()) {
+    throw std::runtime_error("Error, not all required dimensions specified.");
+  }
+
+  for (size_t j = 0; j < buffers->size(); ++j) {
+    bool status =
+        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
+    if (!status) {
+      return false;
+    }
+  }
+
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
                "entire graph.";
@@ -178,7 +233,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-    ret = context->enqueueV2(buffers->data(), stream, nullptr);
+    ret = context->enqueueV3(stream);
   }
   return ret;
 }
