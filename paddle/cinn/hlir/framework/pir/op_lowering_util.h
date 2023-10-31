@@ -81,7 +81,7 @@ void LoopAssignReduce(
     ::pir::Operation* reducer,
     const Target& target,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info);
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
 void LoopComputeAt(
     ir::IRSchedule& ir_sch,  // NOLINT
@@ -89,7 +89,7 @@ void LoopComputeAt(
     ::pir::Operation* master,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info);
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
 void SyncThreadWithShared(
     ir::IRSchedule& ir_sch,  // NOLINT

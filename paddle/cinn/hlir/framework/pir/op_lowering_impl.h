@@ -120,7 +120,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       ScheduleDetermineFunction schedule_determine_func,
       std::vector<ir::Tensor>* group_func_arg_tensors,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-      std::unordered_map<std::string, ::pir::Value>* tmp_tensor_info);
+      std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info);
 
   /**
    * @brief Lower an Op to CINN IR. The Compute and Lower processes will be
@@ -135,7 +135,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       ::pir::Operation* op,
       std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-      std::unordered_map<std::string, ::pir::Value>* tmp_tensor_info,
+      std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
       std::vector<ir::Tensor>* op_func_arg_tensors);
 
   /**
@@ -161,7 +161,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
       ir::IRSchedule& ir_sch,  // NOLINT
       const GroupPtr& group,
       const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-      const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info);
+      const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info);
 
   // Functions used to determine which Ops to schedule at op level, define a
   // policy for each type of group.

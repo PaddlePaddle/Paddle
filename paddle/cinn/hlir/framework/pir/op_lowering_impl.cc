@@ -138,6 +138,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
+  // TODO(Aurelius84): The logic shoule be moved into op_fusion module.
+  if (group->ops.size() == 1U & group->output_ops.size() == 0) {
+    group->output_ops.insert(group->ops[0]);
+  }
   group->input_names.clear();
   group->output_names.clear();
   switch (group->op_pattern_kind) {
@@ -170,10 +174,8 @@ bool OpLowererImpl::ElementwiseScheduleDetermineFunction(::pir::Operation* op) {
 }
 
 bool OpLowererImpl::ReduceScheduleDetermineFunction(::pir::Operation* op) {
-  // TODO(Aurelius84): Support this.
-  // auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
-  // return op_pattern_dict[op] == framework::kReduction;
-  return true;
+  VLOG(3) << "in ReduceScheduleDetermineFunction";
+  return CompatibleInfo::OpKind(*op) == framework::kReduction;
 }
 
 bool OpLowererImpl::NonFusibleScheduleDetermineFunction(::pir::Operation* op) {
@@ -194,7 +196,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::unordered_map<::pir::Value, ir::Tensor> tensor_map;
   // for some op, it will output more tmp value and regard as
   // XX_0, XX_1, so we log them in tmp_tensor_info;
-  std::unordered_map<std::string, ::pir::Value> tmp_tensor_info;
+  std::unordered_map<std::string, ir::Tensor> tmp_tensor_info;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
   std::vector<ir::Expr> func_bodies = LowerOps(ops,
                                                do_op_schedule,
@@ -285,9 +287,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
   }
 
   group->output_names.clear();
-  // FIXME(Aurelius84): Do we need to use output_ops?
-  // Currently we regards all ops as output_ops.
-  for (auto& op : group->ops) {
+  for (auto& op : group->output_ops) {
     // collect all output tensor.
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
@@ -352,7 +352,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     ScheduleDetermineFunction schedule_determine_func,
     std::vector<ir::Tensor>* group_func_arg_tensors,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-    std::unordered_map<std::string, ::pir::Value>* tmp_tensor_info) {
+    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info) {
   auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
   std::vector<Expr> func_bodies;
   for (auto* op : ops) {
@@ -395,7 +395,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
     std::shared_ptr<hlir::framework::OpImpl> op_impl,
     ::pir::Operation* op,
     std::unordered_map<::pir::Value, ir::Tensor>* tensor_map,
-    std::unordered_map<std::string, ::pir::Value>* tmp_tensor_info,
+    std::unordered_map<std::string, ir::Tensor>* tmp_tensor_info,
     std::vector<ir::Tensor>* op_func_arg_tensors) {
   VLOG(4) << "Do lower with Compute, op: " << op->name();
   std::vector<common::CINNValue> cinn_inputs;
@@ -414,7 +414,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       op_impl->fcompute(common::CINNValuePack{cinn_inputs});
 
   poly::StageMap tmp_stages = pack.back();
-  int pos = 0;
+  std::string post = "";
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
     Expr expr = pack[idx];
     // Insert the output tensor defined by Compute into the tensor_map
@@ -422,18 +422,18 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
       // Some op may output multiple temp tensors in their Compute
       // definition, but only one output  in the graph, and we use id +
       // "_0"/"_1" as key.
-      (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
-      std::string tensor_name = CompatibleInfo::ValueName(op_results[idx]) +
-                                "_" + std::to_string(pos);
-      (*tmp_tensor_info)[tensor_name] = op_results[idx];
-      ++pos;
+      if (idx < op_results.size()) {
+        (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
+      }
+      std::string tensor_name = CompatibleInfo::ValueName(op_results[0]) + post;
+      VLOG(3) << "Add tmp tensor name for reducer op: " << tensor_name;
+      (*tmp_tensor_info)[tensor_name] = expr.as_tensor_ref();
+      post = "_" + std::to_string(idx);
     } else {
       // If the number of output tensors defined by Compute is less equal than
       // the output node_data on the graph, then there is a one-to-one
       // correspondence, and the redundant output node_data contact empty.
       (*tensor_map)[op_results[idx]] = expr.as_tensor_ref();
-      std::string tensor_name = CompatibleInfo::ValueName(op_results[idx]);
-      (*tmp_tensor_info)[tensor_name] = op_results[idx];
     }
 
     // Insert output tensors into function arg
@@ -496,7 +496,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     ir::IRSchedule& ir_sch,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   // topological order.
   auto ops_set = group->OpSet();
   auto v_consumers = BuildVirtualConsumer(group);
@@ -652,7 +652,6 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       auto loop_inner = loops.back();
       int vector_width = 1;
       auto psize = ir::GetLoopExtent(loop_inner);
-      // TODO(Aurelius84): support this
       auto dtype = details::GetTensorDtype(tensor_name, tensor_map);
       VLOG(4) << tensor_name << " dtype " << dtype;
       if (psize % 8 == 0 && (dtype.is_float16() || dtype.is_bfloat16())) {

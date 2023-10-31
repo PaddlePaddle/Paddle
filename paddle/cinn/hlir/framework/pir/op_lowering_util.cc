@@ -810,17 +810,19 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
 }
 
 std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
+  VLOG(3) << "GetReducerDimAttr from " << reduce_op->name();
   auto* source_op = reduce_op->operand_source(/*dim_idx=*/1)
                         .dyn_cast<::pir::OpResult>()
                         .owner();
   CHECK(source_op->isa<paddle::dialect::FullIntArrayOp>());
-  const std::vector<int64_t>& dim_val =
-      source_op->attributes()
-          .at("value")
-          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-          .data()
-          .GetData();
-  std::vector<int> dim(dim_val.begin(), dim_val.end());
+  std::vector<int> dim;
+  auto dim_attr = source_op->attributes()
+                      .at("value")
+                      .dyn_cast<::pir::ArrayAttribute>()
+                      .AsVector();
+  for (auto& attr : dim_attr) {
+    dim.push_back(attr.dyn_cast<::pir::Int64Attribute>().data());
+  }
   return dim;
 }
 
@@ -922,7 +924,8 @@ void MergeReduceToReduce(
     ::pir::Operation* op,
     ::pir::Operation* master,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
+  VLOG(3) << "start to MergeReduceToReduce...";
   auto op_out_name = CompatibleInfo::ValueName(op->result(0));
   auto master_out_name = CompatibleInfo::ValueName(master->result(0));
   auto shape = CompatibleInfo::ValueShape(op->operand_source(0));
@@ -951,11 +954,8 @@ void MergeReduceToReduce(
         }
         // first step reduce
         {
-          auto n_tensor =
-              tensor_map.find(tmp_tensor_info.at(op_out_name + "_0"))->second;
-          auto m_tensor =
-              tensor_map.find(tmp_tensor_info.at(master_out_name + "_0"))
-                  ->second;
+          auto n_tensor = tmp_tensor_info.at(op_out_name + "_0");
+          auto m_tensor = tmp_tensor_info.at(master_out_name + "_0");
 
           auto block = ir_sch.GetBlock(n_tensor->name);
           auto loops = ir_sch.GetLoops(m_tensor->name);
@@ -968,10 +968,8 @@ void MergeReduceToReduce(
           }
         }
       } else {
-        auto n_tensor =
-            tensor_map.find(tmp_tensor_info.at(op_out_name + "_0"))->second;
-        auto m_tensor =
-            tensor_map.find(tmp_tensor_info.at(master_out_name + "_0"))->second;
+        auto n_tensor = tmp_tensor_info.at(op_out_name + "_0");
+        auto m_tensor = tmp_tensor_info.at(master_out_name + "_0");
         if (n_tensor->shape == m_tensor->shape) {
           // second step reduce
           {
@@ -987,11 +985,8 @@ void MergeReduceToReduce(
           }
           // first step reduce
           {
-            auto n_tensor =
-                tensor_map.find(tmp_tensor_info.at(op_out_name + "_0"))->second;
-            auto m_tensor =
-                tensor_map.find(tmp_tensor_info.at(master_out_name + "_0"))
-                    ->second;
+            auto n_tensor = tmp_tensor_info.at(op_out_name + "_0");
+            auto m_tensor = tmp_tensor_info.at(master_out_name + "_0");
 
             auto n_loops = ir_sch.GetLoops(n_tensor->name + "__reduce_init");
             auto m_loops = ir_sch.GetLoops(m_tensor->name + "__reduce_init");
@@ -1051,10 +1046,8 @@ void MergeReduceToReduce(
       }
       // reduce
       {
-        auto n_tensor =
-            tensor_map.find(tmp_tensor_info.at(op_out_name + "_1"))->second;
-        auto m_tensor =
-            tensor_map.find(tmp_tensor_info.at(master_out_name + "_1"))->second;
+        auto n_tensor = tmp_tensor_info.at(op_out_name + "_1");
+        auto m_tensor = tmp_tensor_info.at(master_out_name + "_1");
 
         auto block = ir_sch.GetBlock(n_tensor->name);
         auto loops = ir_sch.GetLoops(m_tensor->name);
@@ -1068,10 +1061,8 @@ void MergeReduceToReduce(
       }
       // block shuffle
       {
-        auto n_tensor =
-            tensor_map.find(tmp_tensor_info.at(op_out_name + "_0"))->second;
-        auto m_tensor =
-            tensor_map.find(tmp_tensor_info.at(master_out_name + "_0"))->second;
+        auto n_tensor = tmp_tensor_info.at(op_out_name + "_0");
+        auto m_tensor = tmp_tensor_info.at(master_out_name + "_0");
 
         auto n_block = ir_sch.GetBlock(n_tensor->name);
         auto m_block = ir_sch.GetBlock(m_tensor->name);
@@ -1103,10 +1094,8 @@ void MergeReduceToReduce(
       }
       // shuffle reduce
       {
-        auto n_tensor =
-            tensor_map.find(tmp_tensor_info.at(op_out_name + "_0"))->second;
-        auto m_tensor =
-            tensor_map.find(tmp_tensor_info.at(master_out_name + "_0"))->second;
+        auto n_tensor = tmp_tensor_info.at(op_out_name + "_0");
+        auto m_tensor = tmp_tensor_info.at(master_out_name + "_0");
 
         auto block = ir_sch.GetBlock(n_tensor->name);
         auto loops = ir_sch.GetLoops(m_tensor->name);
@@ -1122,7 +1111,7 @@ void InsertSyncThread(
     ir::IRSchedule& ir_sch,  // NOLINT
     ::pir::Operation* op,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   auto shape = CompatibleInfo::ValueShape(op->operand_source(0));
   auto axes = GetReducerDimAttr(op);
   if (axes.empty()) {
@@ -1140,8 +1129,7 @@ void InsertSyncThread(
     if (!tmp_tensor_info.count(op_out_name + post)) {
       break;
     }
-    auto tensor =
-        tensor_map.find(tmp_tensor_info.at(op_out_name + post))->second;
+    auto tensor = tmp_tensor_info.at(op_out_name + post);
     if (!ir_sch.HasBlock(tensor->name)) {
       break;
     }
@@ -1161,7 +1149,8 @@ void MergeReduceLoop(
     ::pir::Operation* op,
     ::pir::Operation* master,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
+  VLOG(3) << "start to MergeReduceLoop...";
   if (CompatibleInfo::OpKind(*master) == kReduction && op != master) {
     MergeReduceToReduce(ir_sch, op, master, tensor_map, tmp_tensor_info);
     return;
@@ -1169,21 +1158,22 @@ void MergeReduceLoop(
 
   auto op_out_name = CompatibleInfo::ValueName(op->result(0));
   auto master_out_name = CompatibleInfo::ValueName(master->result(0));
-
+  VLOG(1) << "---> A";
   int min_index_loop = INT_MAX;
   std::string post_ = "", post__ = "_0";
   for (int idx = 0;; ++idx) {
+    VLOG(1) << "---> B";
     if (!tmp_tensor_info.count(op_out_name + post__)) {
       break;
     }
-    auto tensor_ =
-        tensor_map.find(tmp_tensor_info.at(op_out_name + post_))->second;
-    auto tensor__ =
-        tensor_map.find(tmp_tensor_info.at(op_out_name + post__))->second;
+    VLOG(1) << "---> C";
+    auto tensor_ = tmp_tensor_info.at(op_out_name + post_);
+    VLOG(1) << "---> D";
+    auto tensor__ = tmp_tensor_info.at(op_out_name + post__);
     if (!ir_sch.HasBlock(tensor__->name)) {
       break;
     }
-
+    VLOG(1) << "---> E";
     auto dst_loops = ir_sch.GetLoops(tensor_->name);
     auto src_loops = ir_sch.GetLoops(tensor__->name);
     int index = -1;
@@ -1197,7 +1187,7 @@ void MergeReduceLoop(
     min_index_loop = std::min(min_index_loop, index);
     MergeLoops(
         ir_sch.GetModule().GetExprs().at(0), src_loops, dst_loops, index);
-
+    VLOG(1) << "---> F";
     post_ = "_" + std::to_string(idx);
     post__ = "_" + std::to_string(idx + 1);
   }
@@ -1241,7 +1231,7 @@ void LoopComputeAt(
     ::pir::Operation* master,
     const GroupPtr& group,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   auto op_out_name = CompatibleInfo::ValueName(op->result(0));
   if (!group->output_ops.count(op)) {
     auto block = ir_sch.GetBlock(op_out_name);
@@ -1267,8 +1257,7 @@ void LoopComputeAt(
       if (!tmp_tensor_info.count(master_out_name + post)) {
         break;
       }
-      auto tensor =
-          tensor_map.find(tmp_tensor_info.at(master_out_name + post))->second;
+      auto tensor = tmp_tensor_info.at(master_out_name + post);
       if (!ir_sch.HasBlock(tensor->name)) {
         break;
       }
@@ -1276,9 +1265,9 @@ void LoopComputeAt(
       prefix = post;
       post = "_" + std::to_string(idx);
     }
-
-    auto tensor =
-        tensor_map.find(tmp_tensor_info.at(master_out_name + prefix))->second;
+    VLOG(1) << "---> " << prefix << " , " << post;
+    auto tensor = tmp_tensor_info.at(master_out_name + prefix);
+    VLOG(1) << "---> " << tensor->name;
     master_loops = ir_sch.GetLoops(tensor->name);
   }
 
@@ -1302,7 +1291,7 @@ void LoopAssignReduce(
     ::pir::Operation* reducer,
     const Target& target,
     const std::unordered_map<::pir::Value, ir::Tensor>& tensor_map,
-    const std::unordered_map<std::string, ::pir::Value>& tmp_tensor_info) {
+    const std::unordered_map<std::string, ir::Tensor>& tmp_tensor_info) {
   // if node is reducer, return.
   if (CompatibleInfo::OpKind(*op) == framework::kReduction) {
     return;
@@ -1320,15 +1309,18 @@ void LoopAssignReduce(
   } else {
     ir_sch.FlattenLoops(loops, false);
   }
-
-  std::vector<int> shape = CompatibleInfo::ValueShape(op->operand_source(0));
+  VLOG(1) << "--> A " << reducer;
+  std::vector<int> shape =
+      CompatibleInfo::ValueShape(reducer->operand_source(0));
+  VLOG(1) << "--> A1";
   auto axes = GetReducerDimAttr(reducer);
+  VLOG(1) << "--> A2";
   if (axes.empty()) {
     for (int idx = 0; idx < shape.size(); idx++) {
       axes.push_back(idx);
     }
   }
-
+  VLOG(1) << "--> B";
   auto copy_loop_info = [](std::vector<ir::Expr>& loops,
                            std::vector<ir::Expr>& rloops) {
     for (int idx = 0; idx < std::min(rloops.size(), loops.size()); ++idx) {
@@ -1396,7 +1388,7 @@ void LoopAssignReduce(
         break;
       }
     }
-
+    VLOG(1) << "--> C";
     // prepare factors of two step split
     std::vector<int> first_step_factors;
     std::vector<int> second_step_factors;
@@ -1428,18 +1420,18 @@ void LoopAssignReduce(
     copy_loop_info(loops, rloops);
     return;
   }
-
+  VLOG(1) << "--> D";
   // node output is same shape with reduce input.
   if (WithoutLastDimInReduce(shape, axes)) {
+    VLOG(1) << "--> E";
     // if using two strep reduce.
     if (tmp_tensor_info.count(reducer_data_name + "_1")) {
       VLOG(4) << "Try assign loop of " << op_data_name
               << " into two strep reduce loop of " << reducer_data_name;
       LoopAssignReduceWithoutLast(ir_sch, op_data_name, shape, axes, target);
       auto nloops = ir_sch.GetLoops(op_data_name);
-      auto rloops = ir_sch.GetLoops(
-          tensor_map.find(tmp_tensor_info.at(reducer_data_name + "_0"))
-              ->second->name);
+      auto rloops =
+          ir_sch.GetLoops(tmp_tensor_info.at(reducer_data_name + "_0")->name);
 
       VLOG(4) << op_data_name << "'s loop level is " << nloops.size()
               << ", and " << reducer_data_name << "'s loop level is "
@@ -1470,6 +1462,7 @@ void LoopAssignReduce(
       copy_loop_info(nloops, rloops);
     }
   } else {
+    VLOG(1) << "--> F";
     if (tmp_tensor_info.count(reducer_data_name + "_1")) {
       {
         auto nloops = ir_sch.GetLoops(op_data_name);
@@ -1478,9 +1471,8 @@ void LoopAssignReduce(
       LoopAssignReduceWithLast(ir_sch, op_data_name, shape, axes, target);
 
       auto nloops = ir_sch.GetLoops(op_data_name);
-      auto rloops = ir_sch.GetLoops(
-          tensor_map.find(tmp_tensor_info.at(reducer_data_name + "_1"))
-              ->second->name);
+      auto rloops =
+          ir_sch.GetLoops(tmp_tensor_info.at(reducer_data_name + "_1")->name);
       if (nloops.size() < rloops.size()) {
         ir_sch.Split(nloops[0], {1, -1});
       }
@@ -1489,12 +1481,18 @@ void LoopAssignReduce(
       // copy loop info form rloops.
       copy_loop_info(nloops, rloops);
     } else if (tmp_tensor_info.count(reducer_data_name + "_0")) {
-      auto tensor =
-          tensor_map.find(tmp_tensor_info.at(reducer_data_name + "_0"))->second;
+      VLOG(1) << "--> G";
+      auto tensor = tmp_tensor_info.at(reducer_data_name + "_0");
       auto rloops = ir_sch.GetLoops(tensor->name);
+      VLOG(1) << tensor->name << " " << rloops;
       std::vector<int> factors;
       for (auto& loop : rloops) {
-        factors.push_back(loop.As<ir::For>()->extent.as_int32());
+        // FIXME(Aurelius84): Need add broadcast_to Op
+        int factor = loop.As<ir::For>()->extent.as_int32();
+        if (factor == 1) {
+          factor = -1;
+        }
+        factors.push_back(factor);
       }
       auto nloops = ir_sch.GetLoops(op_data_name);
       ir_sch.Split(nloops.back(), factors);

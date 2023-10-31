@@ -52,7 +52,7 @@ struct Group {
   // output ops of the group.
   std::unordered_set<::pir::Operation*> output_ops;
   // op pattern kind.
-  OpPatternKind op_pattern_kind{kElementWise};
+  OpPatternKind op_pattern_kind{kReduction};
   // internal op, the output is used by multi-op.
   // internal op can't use compute inline, should use buffer.
   std::unordered_set<::pir::Operation*> internal_ops;
