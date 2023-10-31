@@ -2640,7 +2640,7 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
