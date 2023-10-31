@@ -852,11 +852,15 @@ class TestAtan(TestActivation, TestParameter):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_out_name(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -915,10 +919,13 @@ class TestSinh(TestActivation):
 
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSinh_Complex64(TestSinh):
@@ -945,6 +952,7 @@ class TestSinhAPI(unittest.TestCase):
             z_expected = np.sinh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
@@ -985,6 +993,7 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with program_guard(Program()):
@@ -2300,10 +2309,13 @@ class TestAtanh(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestAtanh_Complex64(TestAtanh):
@@ -4436,6 +4448,7 @@ class TestSwish(TestActivation):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir=True,
         )
 
 
@@ -4455,6 +4468,7 @@ class TestSwishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4478,6 +4492,7 @@ class TestSwishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4736,10 +4751,10 @@ create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
 create_test_act_fp16_class(TestAsin, check_pir=True)
-create_test_act_fp16_class(TestAtan)
+create_test_act_fp16_class(TestAtan, check_pir=True)
 create_test_act_fp16_class(TestAcosh, check_pir=True)
 create_test_act_fp16_class(TestAsinh, check_pir=True)
-create_test_act_fp16_class(TestAtanh)
+create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
     TestRelu, check_prim=True, enable_cinn=True, check_pir=True
@@ -4890,10 +4905,10 @@ create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
 create_test_act_bf16_class(TestAsin, check_pir=True)
-create_test_act_bf16_class(TestAtan)
+create_test_act_bf16_class(TestAtan, check_pir=True)
 create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
-create_test_act_bf16_class(TestAtanh)
+create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
 create_test_act_bf16_class(
