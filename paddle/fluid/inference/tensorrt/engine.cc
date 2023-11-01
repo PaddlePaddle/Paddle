@@ -201,7 +201,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
       if (optim_input_shape().count(m_IOTensorNames[i])) {
         const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
         nvinfer1::Dims4 inputDims = {
-            dims_vec[0], dims_vec[1], dims_vec[2], dims_vec[3]};
+            batch_size, dims_vec[1], dims_vec[2], dims_vec[3]};
         context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
       }
     }
