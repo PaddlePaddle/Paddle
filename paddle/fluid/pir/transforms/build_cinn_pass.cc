@@ -140,6 +140,13 @@ bool IsSupportCinn(pir::Operation* op) {
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
+  std::cerr << "op_name " << op_name << std::endl;
+
+  if (op_name == "subtract" || op_name == "divide" ||
+      op_name == "broadcast_to") {
+    return true;
+  }
+
   OpTransInfo trans_info;
   bool is_support = registered && !trans_info.default_deny_ops().count(op_name);
   // if the op type is registered in CINN and allow_ops is not empty, return
@@ -212,6 +219,32 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
 struct SubGraph;
 using SubGraphPtr = std::shared_ptr<SubGraph>;
 
+std::vector<pir::Operation*> GetProducerOpsReverseSort(
+    pir::Operation* op,
+    const std::unordered_map<pir::Operation*, size_t>& op2id) {
+  std::unordered_set<pir::Operation*> producers;
+
+  std::vector<pir::Operation*> vec_res;
+  for (auto& operand : op->operands()) {
+    auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
+    if (!producers.count(source_op)) {
+      producers.insert(source_op);
+      PADDLE_ENFORCE(
+          op2id.count(source_op),
+          phi::errors::PreconditionNotMet("source op MUST in op2id map"));
+      vec_res.emplace_back(source_op);
+    }
+  }
+
+  std::sort(vec_res.begin(),
+            vec_res.end(),
+            [&op2id](pir::Operation* a, pir::Operation* b) {
+              return op2id.at(a) > op2id.at(b);
+            });
+
+  return vec_res;
+}
+
 std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
@@ -267,7 +300,12 @@ class CinnSubgraphDetector {
   using OpClassifier = std::function<bool(pir::Operation*)>;
 
   CinnSubgraphDetector(pir::Block* block, const OpClassifier& classifier)
-      : block_(block), op_classifier_(classifier) {}
+      : block_(block), op_classifier_(classifier) {
+    sort_ops_ = InverselyTopologicalSort(block_);
+    for (size_t i = 0; i < sort_ops_.size(); ++i) {
+      op2id_[sort_ops_[i]] = i;
+    }
+  }
 
   std::vector<GroupOpsVec> operator()() {
     DoOpFusion();
@@ -287,18 +325,19 @@ class CinnSubgraphDetector {
  protected:
   // Do Op Fusion
   void DoOpFusion() {
-    sort_ops_ = InverselyTopologicalSort(block_);
     // do fusion
     for (auto* op : sort_ops_) {
+      std::cerr << "sort op " << op->name() << std::endl;
       auto subgraph = subgraph_map_.count(op)
                           ? subgraph_map_[op]
                           : std::make_shared<SubGraph>(op, op_classifier_(op));
       if (!subgraph_map_.count(op)) {
         subgraph_map_[op] = subgraph;
       }
-      auto producers = GetProducerOps(op);
+      auto producers = GetProducerOpsReverseSort(op, op2id_);
 
       for (auto* producer : producers) {
+        std::cerr << "produer " << producer->name() << std::endl;
         if (op_classifier_(producer) != subgraph->substitute) {
           continue;
         }
@@ -315,8 +354,11 @@ class CinnSubgraphDetector {
           continue;
         }
         // fuse producer to sub-graph
-        subgraph->Insert(producer);
-        subgraph_map_[producer] = subgraph;
+        std::cerr << "add producer " << producer->name() << std::endl;
+        if (!subgraph->op_set.count(producer)) {
+          subgraph->Insert(producer);
+          subgraph_map_[producer] = subgraph;
+        }
       }
     }
   }
@@ -361,6 +403,7 @@ class CinnSubgraphDetector {
   void DoSubGraphFusion() {
     while (true) {
       bool update = false;
+      std::cerr << "subgraph_list_ " << subgraph_list_.size() << std::endl;
       for (auto& subgraph : subgraph_list_) {
         // sub graph is not substitute
         if (!subgraph->substitute) {
@@ -404,6 +447,14 @@ class CinnSubgraphDetector {
       candidate->substitute = false;
 
       // merge nodes
+      std::cerr << "!!!!!!!!!!!" << std::endl;
+      for (size_t i = 0; i < producer->ops.size(); ++i) {
+        std::cerr << "producer " << producer->ops[i]->name() << std::endl;
+      }
+      for (size_t i = 0; i < candidate->ops.size(); ++i) {
+        std::cerr << "consumer  " << candidate->ops[i]->name() << std::endl;
+      }
+      std::cerr << "===========" << std::endl;
       producer->ops.insert(
           producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
       producer->op_set.insert(candidate->op_set.begin(),
@@ -516,6 +567,7 @@ class CinnSubgraphDetector {
   OpClassifier op_classifier_;
 
   std::vector<pir::Operation*> sort_ops_;
+  std::unordered_map<pir::Operation*, size_t> op2id_;
   std::vector<SubGraphPtr> subgraph_list_;
   std::unordered_map<pir::Operation*, SubGraphPtr> subgraph_map_;
 };
@@ -524,6 +576,7 @@ std::vector<pir::Value> AnalysisOutputs(GroupOpsVec& group_ops) {  // NOLINT
   std::set<pir::Value> inputs;
   std::set<pir::Value> outputs;
   for (auto* op : group_ops) {
+    std::cerr << "group ops " << op->name() << std::endl;
     VLOG(4) << "AnalysisOutputs from " << op->name();
     for (auto& operand : op->operands()) {
       inputs.emplace(operand.source());
@@ -554,22 +607,33 @@ void ReplaceWithGroupOp(pir::Block* block,
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
   for (auto& value : outputs) {
+    std::cerr << "get ouput op"
+              << value.dyn_cast<pir::OpResult>().owner()->name() << std::endl;
     output_types.emplace_back(value.type());
   }
+  std::cerr << "begin to build group op" << std::endl;
   // step 2: Replace the old op with GroupOp.
   auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
+  std::cerr << "finish build" << std::endl;
   pir::Block* group_block = new_group_op.block();
+  std::cerr << "before move " << std::endl;
   for (auto* op : group_ops) {
+    std::cerr << op->name() << std::endl;
     op->MoveTo(group_block, group_block->begin());
   }
+  std::cerr << "after move " << std::endl;
   // step 3: Insert YieldOp for outputs
-  builder.SetInsertionPointToEnd(group_block);
-  builder.Build<::pir::YieldOp>(outputs);
+
   // step 4: Replace outputs of inner ops
   std::vector<pir::OpResult> group_outs = new_group_op->results();
   for (size_t i = 0; i < outputs.size(); ++i) {
     outputs[i].ReplaceAllUsesWith(group_outs[i]);
   }
+
+  builder.SetInsertionPointToEnd(group_block);
+  std::cerr << "before add yeidl" << std::endl;
+  builder.Build<::pir::YieldOp>(outputs);
+  std::cerr << "finish replace" << std::endl;
 }
 
 class BuildCinnPass : public pir::Pass {
