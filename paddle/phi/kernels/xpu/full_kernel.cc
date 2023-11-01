@@ -63,7 +63,6 @@ void FullLikeKernel(const Context& dev_ctx,
                                 T>::type>::type;
 
   auto common_type_value = static_cast<CommonType>(value);
-
   bool is_out_range = true;
   if (std::isinf(value) || std::isnan(value)) {
     is_out_range = false;
