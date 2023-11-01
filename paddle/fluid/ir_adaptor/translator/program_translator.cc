@@ -16,8 +16,6 @@
 
 #include <unordered_map>
 
-#include <iostream>
-
 #include "glog/logging.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
@@ -322,9 +320,6 @@ void ProgramTranslator::Translate() {
                  legacy_program_->Block(0).OpSize(),
                  &param_map_,
                  program_->block());
-  std::cout << "----------[AllBlockDone]----------------\n";
-  std::cout << *program_ << std::endl;
-  std::cout << "----------[AllBlockDone]----------------\n";
 
   SetParameterFromSingleBlock(legacy_program_->Block(0));
 
@@ -333,18 +328,10 @@ void ProgramTranslator::Translate() {
     SetStopGradientAttributeForAllValue(block);
   }
 
-  std::cout << "----------[StopGradient]----------------\n";
-  std::cout << *program_ << std::endl;
-  std::cout << "----------[StopGradient]----------------\n";
-
   for (size_t block_idx = 0; block_idx < legacy_program_->Size(); block_idx++) {
     const BlockDesc& block = legacy_program_->Block(block_idx);
     SetIsPersisableAttributeForAllValue(block);
   }
-
-  std::cout << "----------[Persistable]----------------\n";
-  std::cout << *program_ << std::endl;
-  std::cout << "----------[Persistable]----------------\n";
 }
 
 void ProgramTranslator::TranslateBlock(
