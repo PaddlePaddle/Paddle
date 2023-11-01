@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 import paddle.distributed as dist
 
@@ -53,7 +55,60 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
             dense_tensor,
             dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
         )
-        dist_tensor._copy_to(paddle.CPUPlace(), True)
+        dist_tensor._copy_to(paddle.CUDAPlace(0), True)
+
+    def test_tensor__share_buffer_to(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dense_tensor2 = paddle.randn([10, 10])
+        to = dist.shard_tensor(
+            dense_tensor2,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._share_buffer_to(to)
+
+    def test_tensor__is_shared_buffer_with(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dense_tensor2 = paddle.randn([10, 10])
+        to = dist.shard_tensor(
+            dense_tensor2,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._share_buffer_to(to)
+        self.assertTrue(dist_tensor._is_shared_buffer_with(to))
+
+    def test_tensor_strides(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dense_tensor = dense_tensor.reshape([20, 10])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        strides = dist_tensor.get_strides()
+        is_contiguous = dist_tensor.is_contiguous()
+        dist_tensor = dist_tensor.contiguous()
+
+    def test_tensor_uva(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        place = paddle.CPUPlace()
+        np_value = np.random.random(size=[10, 30]).astype('float32')
+        dense_tensor = paddle.to_tensor(np_value, place=place)
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            place=place,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        dist_tensor._uva()
 
 
 if __name__ == "__main__":
