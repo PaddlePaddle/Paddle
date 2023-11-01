@@ -361,26 +361,26 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         check_variable_and_dtype(
             logits_var,
             'input',
-            ['float32', 'float64'],
-            'c_cross_entropy_with_softmax',
+            ['float16', 'float32', 'float64'],
+            'c_softmax_with_cross_entropy',
         )
         check_variable_and_dtype(
             label_var,
             'input',
             ['int32', 'int64', 'float32', 'float64'],
-            'c_cross_entropy_with_softmax',
+            'c_softmax_with_cross_entropy',
         )
         check_variable_and_dtype(
             loss_var,
             'output',
-            ['float32', 'float64'],
-            'c_cross_entropy_with_softmax',
+            ['float16', 'float32', 'float64'],
+            'c_softmax_with_cross_entropy',
         )
         check_variable_and_dtype(
             softmax_var,
             'output',
-            ['float32', 'float64'],
-            'c_cross_entropy_with_softmax',
+            ['float16', 'float32', 'float64'],
+            'c_softmax_with_cross_entropy',
         )
 
         # infer new var shape with op dist attr
