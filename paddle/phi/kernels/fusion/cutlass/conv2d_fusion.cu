@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
 
@@ -29,12 +28,16 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::vector<int>& strides,
                         const std::vector<int>& paddings,
                         const std::string& padding_algorithm,
-                        int groups,
                         const std::vector<int>& dilations,
+                        int groups,
                         const std::string& data_format,
                         const std::string& activation,
+                        const std::vector<int>& split_channels,
+                        bool exhaustive_search,
+                        int workspace_size_MB,
                         float fuse_alpha,
-                        DenseTensor* output) {
+                        DenseTensor* output,
+                        std::vector<DenseTensor*> outputs) {
   ctx.template Alloc<T>(output);
   auto in_dims = x.dims();
   auto filter_dims = filter.dims();
@@ -162,7 +165,7 @@ void Conv2dFusionKernel(const Context& ctx,
 }  // namespace fusion
 }  // namespace phi
 
-PD_REGISTER_KERNEL(conv2d_fusion_cutlass,
+PD_REGISTER_KERNEL(conv2d_fusion,
                    GPU,
                    ALL_LAYOUT,
                    phi::fusion::cutlass_internal::Conv2dFusionKernel,

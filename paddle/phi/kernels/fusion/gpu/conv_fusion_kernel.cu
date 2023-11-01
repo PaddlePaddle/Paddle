@@ -366,6 +366,7 @@ void Conv2dFusionKernel(const Context& ctx,
                         const std::vector<int>& split_channels,
                         bool exhaustive_search,
                         int workspace_size_MB,
+                        float fuse_alpha,
                         DenseTensor* output,
                         std::vector<DenseTensor*> outputs) {
   auto handle = ctx.cudnn_handle();
