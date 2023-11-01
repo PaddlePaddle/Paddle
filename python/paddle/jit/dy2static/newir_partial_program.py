@@ -261,20 +261,13 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if use_scope_cache:
-            if program_id not in self._scope_cache:
-                scope = core.Scope()
-                self._scope_cache[program_id] = [scope]
-                return scope
-            else:
-                for scope in self._scope_cache[program_id]:
-                    if scope._can_reused:
-                        return scope
-                scope = core.Scope()
-                self._scope_cache[program_id].append(scope)
-                return scope
-        else:
+        if not use_scope_cache:
             return core.Scope()
+        scope = self._scope_cache.get(program_id, None)
+        if scope is None or not scope._can_reused:
+            scope = core.Scope()
+            self._scope_cache[program_id] = scope
+        return scope
 
     @LazyInitialized
     def _double_grads(self):
@@ -1091,19 +1084,6 @@ class PartialProgramLayer:
                 raise NotImplementedError(
                     "only support selected_row and dense_tensor grad type."
                 )
-
-    def _remove_op_call_stack(self, main_program):
-        """
-        Remove op's python call stack with redundant low-level error messages related to
-        transforamtions to avoid confusing users.
-        """
-        assert isinstance(main_program, framework.Program)
-        for block in main_program.blocks:
-            for op in block.ops:
-                if op.has_attr("op_callstack"):
-                    op._remove_attr("op_callstack")
-
-        return main_program
 
     def _check_params_all_inited(self, main_program):
         """

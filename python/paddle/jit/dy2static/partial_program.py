@@ -272,23 +272,16 @@ class PartialProgramLayer:
         if get_flags('FLAGS_enable_new_ir_in_executor')[
             'FLAGS_enable_new_ir_in_executor'
         ]:
-            self._scope_cache = self._pir_scope_cache
+            _scope_cache = self._pir_scope_cache
         else:
-            self._scope_cache = self._legacy_scope_cache
-        if use_scope_cache:
-            if program_id not in self._scope_cache:
-                scope = core.Scope()
-                self._scope_cache[program_id] = [scope]
-                return scope
-            else:
-                for scope in self._scope_cache[program_id]:
-                    if scope._can_reused:
-                        return scope
-                scope = core.Scope()
-                self._scope_cache[program_id].append(scope)
-                return scope
-        else:
+            _scope_cache = self._legacy_scope_cache
+        if not use_scope_cache:
             return core.Scope()
+        scope = _scope_cache.get(program_id, None)
+        if scope is None or not scope._can_reused:
+            scope = core.Scope()
+            _scope_cache[program_id] = scope
+        return scope
 
     @LazyInitialized
     def _double_grads(self):
@@ -1066,19 +1059,6 @@ class PartialProgramLayer:
             if grad_var is None:
                 continue
             param._set_grad_type(grad_var.type())
-
-    def _remove_op_call_stack(self, main_program):
-        """
-        Remove op's python call stack with redundant low-level error messages related to
-        transforamtions to avoid confusing users.
-        """
-        assert isinstance(main_program, framework.Program)
-        for block in main_program.blocks:
-            for op in block.ops:
-                if op.has_attr("op_callstack"):
-                    op._remove_attr("op_callstack")
-
-        return main_program
 
     def _check_params_all_inited(self, main_program):
         """
