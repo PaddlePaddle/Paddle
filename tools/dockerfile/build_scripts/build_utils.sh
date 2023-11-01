@@ -107,7 +107,8 @@ function do_cpython_build {
     LD_LIBRARY_PATH="/usr/local/ssl/lib:${prefix}/lib" ${prefix}/bin/pip install wheel==0.40.0
     cd /
     ls ${MY_DIR}
-    local abi_tag=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python ${MY_DIR}/python-tag-abi-tag.py)
+    abi_version=$(LD_LIBRARY_PATH="${prefix}/lib" ${prefix}/bin/python -V|awk '{print $2}'|awk -F '.' '{print $1$2}')
+    local abi_tag=$(echo cp$abi_version-cp$abi_version)
     ln -s ${prefix} /opt/python/${abi_tag}
 }
 
