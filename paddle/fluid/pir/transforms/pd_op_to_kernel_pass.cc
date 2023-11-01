@@ -1321,19 +1321,22 @@ std::vector<pir::Value> BuildOpInputList(
       auto kernel_dtype_for_var = pir::GetKernelTypeforVar(
           op_item, var_name, (*fake_tensors[0]).dtype(), &expected_kernel_key);
 
-      // bool check_dtype_transfer =
-      //     pir::NeedTransformDataType(expected_kernel_key.dtype(),
-      //     expected_kernel_key.dtype());
-      // if (check_dtype_transfer) {
-      //   VLOG(4) << "trans input: " << var_name << "'s dtype from " <<
-      //   expected_kernel_key.dtype() << " to " << kernel_dtype_for_var;
+      bool check_dtype_transfer = pir::NeedTransformDataType(
+          expected_kernel_key.dtype(), expected_kernel_key.dtype());
+      if (check_dtype_transfer) {
+        VLOG(4) << "trans input: " << var_name << "'s dtype from "
+                << expected_kernel_key.dtype() << " to "
+                << kernel_dtype_for_var;
 
-      //   auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
-      //   new_in = pir::AddDtypeTransferOp(
-      //       new_in, block, kernel_key, out_place, kernel_dtype_for_var,
-      //       expected_kernel_key.dtype());
-      //   vec_inputs.push_back(new_in);
-      // }
+        auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
+        new_in = pir::AddDtypeTransferOp(new_in,
+                                         block,
+                                         kernel_key,
+                                         out_place,
+                                         kernel_dtype_for_var,
+                                         expected_kernel_key.dtype());
+        vec_inputs.push_back(new_in);
+      }
     }
   }
   return vec_inputs;
