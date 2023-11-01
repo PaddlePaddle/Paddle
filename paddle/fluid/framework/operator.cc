@@ -3056,7 +3056,7 @@ static void SetDnnAttrIntoDeviceContext(
     }
   }
 #endif
-#ifdef PADDLE_WITH_CUDA
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::GPUContext::classof(dev_ctx) &&
       attr_propertys.Support(operators::ExtraAttrProperty::GPUDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to GPUDNNContext.";
