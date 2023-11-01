@@ -458,15 +458,19 @@ inline void NewIRRunProgramAPI(
 
   auto *forward_program =
       forward_global_block->GetParentOp()->GetParentProgram();
-  auto *backward_program =
-      backward_global_block->GetParentOp()->GetParentProgram();
 
   if (FLAGS_print_ir) {
     std::ostringstream print_stream;
     print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
-    print_stream << "BackwardProgram is:\n";
-    backward_program->Print(print_stream);
+    if (!is_test) {
+      auto *backward_program =
+          backward_global_block->GetParentOp()->GetParentProgram();
+      print_stream << "BackwardProgram is:\n";
+      backward_program->Print(print_stream);
+    } else {
+      print_stream << "BackwardProgram is empty in test mode.\n";
+    }
     std::cout << "Program (fwd | bwd): \n" << print_stream.str() << std::endl;
   }
 
