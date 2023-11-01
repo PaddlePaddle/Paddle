@@ -331,6 +331,10 @@ struct InferMetaTrait {
 template <typename T>
 struct InferMetaTrait<T, decltype(T::infer_meta_)> {
   static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
     info->infer_meta_ = [](phi::InferMetaContext* ctx) {
       T inference;
       inference.infer_meta_(ctx);
