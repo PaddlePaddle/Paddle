@@ -15,13 +15,12 @@
 import time
 from multiprocessing import Manager, Process
 
+# deprecated module import
+# (TODO: GhostScreaming) It will be removed later.
+from paddle.base import core
 from paddle.distributed.fleet.base.private_helper_function import (
     wait_server_ready,
 )
-
-# deprecated module import
-# (TODO: GhostScreaming) It will be removed later.
-from paddle.fluid import core
 
 __all__ = []
 

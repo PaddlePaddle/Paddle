@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestDiagV2Op(OpTest):
@@ -226,9 +226,9 @@ class TestDiagV2API(unittest.TestCase):
         result12 = paddle.diag(x5, offset=-1)
         result13 = paddle.diag(x6, offset=-1)
 
-        place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         (
             res0,
             res1,
@@ -285,23 +285,23 @@ class TestDiagV2API(unittest.TestCase):
         np.testing.assert_allclose(res13, self.expected12, rtol=1e-05)
 
     def test_cpu(self):
-        paddle.disable_static(place=paddle.fluid.CPUPlace())
+        paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
 
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static()
 
     def test_gpu(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
-        paddle.disable_static(place=paddle.fluid.CUDAPlace(0))
+        paddle.disable_static(place=paddle.base.CUDAPlace(0))
         self.run_imperative()
         paddle.enable_static()
 
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
             self.run_static(use_gpu=True)
 
 

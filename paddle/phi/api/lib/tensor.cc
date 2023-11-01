@@ -52,6 +52,14 @@ Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
 }
 
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
+               std::shared_ptr<AbstractAutogradMeta> autograd_meta)
+    : impl_(std::move(tensor_impl)), autograd_meta_(std::move(autograd_meta)) {
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+}
+
 Tensor::Tensor(const Place &place) {
   LOG_FIRST_N(WARNING, 1)
       << "The Tensor(place) constructor is deprecated since version "
@@ -87,7 +95,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                const std::string &name)
-    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
+    : impl_(std::move(tensor_impl)), name_(name) {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
@@ -105,6 +113,10 @@ std::vector<int64_t> Tensor::shape() const {
 const phi::DDim &Tensor::strides() const {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->strides();
+  } else if (is_dist_tensor()) {
+    return static_cast<phi::distributed::DistTensor *>(impl_.get())
+        ->unsafe_mutable_value()
+        ->strides();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support strides operation on DenseTensor now."));
@@ -399,7 +411,7 @@ void Tensor::reset() {
 
 Tensor &Tensor::operator=(const Tensor &x) & = default;
 
-Tensor &Tensor::operator=(Tensor &&x) & {
+Tensor &Tensor::operator=(Tensor &&x) &noexcept {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);

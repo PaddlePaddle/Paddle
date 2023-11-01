@@ -34,7 +34,7 @@ class TestCloudRoleMaker2(unittest.TestCase):
 
     def test_pslib_2(self):
         """Test cases for pslib."""
-        from paddle import fluid
+        from paddle import base
         from paddle.incubate.distributed.fleet.parameter_server.distribute_transpiler import (
             fleet,
         )
@@ -52,17 +52,17 @@ class TestCloudRoleMaker2(unittest.TestCase):
         os.environ["PADDLE_PSERVERS_IP_PORT_LIST"] = "127.0.0.1:36002"
         os.environ["PADDLE_TRAINER_ID"] = "0"
         os.environ["PADDLE_TRAINERS_NUM"] = "1"
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         try:
             fleet.init(None)
         except:
             print("no mpi4py, skip test_pslib_2")
             return
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
+        with base.program_guard(train_program, startup_program):
             show = paddle.static.data(
                 name="show", shape=[-1, 1], dtype="float32", lod_level=1
             )

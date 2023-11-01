@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 def overlap_add(x, hop_length, axis=-1):
@@ -46,15 +46,15 @@ def overlap_add(x, hop_length, axis=-1):
         reshape_output = True
         if axis == 0:
             target_shape = [seq_length] + list(x.shape[2:])
-            x = x.reshape(n_frames, frame_length, np.product(x.shape[2:]))
+            x = x.reshape(n_frames, frame_length, np.prod(x.shape[2:]))
         else:
             target_shape = list(x.shape[:-2]) + [seq_length]
-            x = x.reshape(np.product(x.shape[:-2]), frame_length, n_frames)
+            x = x.reshape(np.prod(x.shape[:-2]), frame_length, n_frames)
 
     if axis == 0:
         x = x.transpose((2, 1, 0))
 
-    y = np.zeros(shape=[np.product(x.shape[:-2]), seq_length], dtype=x.dtype)
+    y = np.zeros(shape=[np.prod(x.shape[:-2]), seq_length], dtype=x.dtype)
     for i in range(x.shape[0]):
         for frame in range(x.shape[-1]):
             sample = frame * hop_length

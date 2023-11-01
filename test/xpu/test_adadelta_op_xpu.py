@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -165,9 +165,9 @@ class XPUTestAdadelta(XPUOpTestWrapper):
         def test_adadelta(self):
             self.dtype = self.in_type
             paddle.enable_static()
-            place = fluid.XPUPlace(0)
-            main = fluid.Program()
-            with fluid.program_guard(main):
+            place = base.XPUPlace(0)
+            main = base.Program()
+            with base.program_guard(main):
                 x = paddle.static.data(
                     name='x', shape=[-1, 13], dtype=self.dtype
                 )
@@ -187,9 +187,9 @@ class XPUTestAdadelta(XPUOpTestWrapper):
                 train_reader = paddle.batch(
                     paddle.dataset.uci_housing.train(), batch_size=1
                 )
-                feeder = fluid.DataFeeder(place=place, feed_list=[x, y])
-                exe = fluid.Executor(place)
-                exe.run(fluid.default_startup_program())
+                feeder = base.DataFeeder(place=place, feed_list=[x, y])
+                exe = base.Executor(place)
+                exe.run(base.default_startup_program())
                 for data in train_reader():
                     exe.run(main, feed=feeder.feed(data), fetch_list=fetch_list)
 

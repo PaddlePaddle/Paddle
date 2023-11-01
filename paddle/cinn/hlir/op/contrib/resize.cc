@@ -14,8 +14,6 @@
 
 #include "paddle/cinn/hlir/op/contrib/resize.h"
 
-#include <gflags/gflags.h>
-
 #include <memory>
 #include <string>
 #include <utility>

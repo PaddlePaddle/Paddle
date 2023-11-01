@@ -18,7 +18,7 @@ import nets
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -28,8 +28,8 @@ DTYPE = "float32"
 paddle.dataset.mnist.fetch()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def cnn_model(data):
@@ -40,7 +40,7 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -51,7 +51,7 @@ def cnn_model(data):
         pool_size=2,
         pool_stride=2,
         act="relu",
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -65,7 +65,7 @@ def cnn_model(data):
         x=conv_pool_2,
         size=SIZE,
         activation="softmax",
-        weight_attr=fluid.param_attr.ParamAttr(
+        weight_attr=base.param_attr.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01)
         ),
     )
@@ -93,7 +93,7 @@ class TestFleetMetaOptimizerFuseAllReducePrecision(TestDistRunnerBase):
             input=predict, label=label, total=batch_size_tensor
         )
 
-        test_program = fluid.default_main_program().clone(for_test=True)
+        test_program = base.default_main_program().clone(for_test=True)
 
         # Reader
         train_reader = paddle.batch(

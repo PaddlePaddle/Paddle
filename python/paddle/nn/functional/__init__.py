@@ -140,7 +140,7 @@ from .sparse_attention import sparse_attention
 from .flash_attention import scaled_dot_product_attention
 from .flash_attention import sdp_kernel
 
-__all__ = [  # noqa
+__all__ = [
     'celu',
     'conv1d',
     'conv1d_transpose',
@@ -183,7 +183,6 @@ __all__ = [  # noqa
     'log_softmax',
     'glu',
     'gumbel_softmax',
-    'diag_embed',
     'sequence_mask',
     'dropout',
     'dropout2d',

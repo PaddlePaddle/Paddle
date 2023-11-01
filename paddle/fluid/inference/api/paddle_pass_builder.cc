@@ -74,11 +74,11 @@ size_t PaddlePassBuilder::GetPassIndex(const std::string &pass_type) {
 }
 
 void PaddlePassBuilder::InsertPass(size_t idx, const std::string &pass_type) {
-  passes_.insert(std::begin(passes_) + idx, pass_type);
+  passes_.insert(std::begin(passes_) + idx, pass_type);  // NOLINT
 }
 
 void PaddlePassBuilder::DeletePass(size_t idx) {
-  passes_.erase(std::begin(passes_) + idx);
+  passes_.erase(std::begin(passes_) + idx);  // NOLINT
 }
 
 void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
@@ -89,23 +89,24 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "trt_support_nhwc_pass",
-      "adaptive_pool2d_convert_global_pass",          //
-      "trt_map_ops_to_matrix_multiply_pass",          //
-      "shuffle_channel_detect_pass",                  //
-      "quant_conv2d_dequant_fuse_pass",               //
-      "delete_quant_dequant_op_pass",                 //
-      "delete_quant_dequant_filter_op_pass",          //
-      "trt_delete_weight_dequant_linear_op_pass",     //
-      "delete_quant_dequant_linear_op_pass",          //
-      "identity_op_clean_pass",                       //
-      "add_support_int8_pass",                        //
-      "simplify_with_basic_ops_pass",                 //
-      "trt_embedding_eltwise_layernorm_fuse_pass",    //
-      "preln_embedding_eltwise_layernorm_fuse_pass",  //
-      "trt_multihead_matmul_fuse_pass_v2",            //
-      "trt_multihead_matmul_fuse_pass_v3",            //
-      "multihead_matmul_roformer_fuse_pass",          //
-      "constant_folding_pass",                        //
+      "adaptive_pool2d_convert_global_pass",                      //
+      "trt_map_ops_to_matrix_multiply_pass",                      //
+      "shuffle_channel_detect_pass",                              //
+      "quant_conv2d_dequant_fuse_pass",                           //
+      "delete_quant_dequant_op_pass",                             //
+      "delete_quant_dequant_filter_op_pass",                      //
+      "trt_delete_weight_dequant_linear_op_pass",                 //
+      "delete_quant_dequant_linear_op_pass",                      //
+      "identity_op_clean_pass",                                   //
+      "add_support_int8_pass",                                    //
+      "simplify_with_basic_ops_pass",                             //
+      "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
+      "trt_embedding_eltwise_layernorm_fuse_pass",                //
+      "preln_embedding_eltwise_layernorm_fuse_pass",              //
+      "trt_multihead_matmul_fuse_pass_v2",                        //
+      "trt_multihead_matmul_fuse_pass_v3",                        //
+      "multihead_matmul_roformer_fuse_pass",                      //
+      "constant_folding_pass",                                    //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
@@ -497,7 +498,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
   std::vector<std::string> fc_passes_to_erase(
       {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
-    int idx = GetPassIndex(pass);
+    int idx = static_cast<int>(GetPassIndex(pass));
     if (idx != -1) {
       passes_.erase(std::begin(passes_) + idx);
     }
@@ -506,6 +507,8 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      "delete_quant_dequant_linear_op_pass",
+      "delete_weight_dequant_linear_op_pass",
       "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
@@ -527,8 +530,9 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
-      "conv1d_xpu_fuse_pass",
+      // "conv1d_xpu_fuse_pass",
       "duplicated_transpose_fuse_pass",
+      "conv2d_bias_fuse_pass",
       "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
@@ -547,15 +551,21 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "conv2d_transpose_xpu_fuse_pass",
+      "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "layer_norm_act_xpu_fuse_pass",
       "fast_layernorm_xpu_fuse_pass",
+      "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
       "fast_where_xpu_fuse_pass",
+      "elementwise_mul_add_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_isolated_node_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
+      "xpu_quantize_op_pass",
+      "xpu_quantize_squash_pass",
+      "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });
   use_xpu_ = true;

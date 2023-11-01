@@ -27,7 +27,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_bool(verbose_function_register);
+PD_DECLARE_bool(verbose_function_register);
 
 namespace cinn {
 namespace backends {

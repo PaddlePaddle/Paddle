@@ -17,14 +17,14 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestTF32Switch(unittest.TestCase):
     def test_on_off(self):
         if core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+            place = base.CUDAPlace(0)
             self.assertTrue(core.get_cublas_switch())  # default
             core.set_cublas_switch(False)
             self.assertFalse(core.get_cublas_switch())  # turn off
@@ -39,9 +39,9 @@ class TestTF32Switch(unittest.TestCase):
 class TestTF32OnMatmul(unittest.TestCase):
     def test_dygraph_without_out(self):
         if core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+            place = base.CUDAPlace(0)
             core.set_cublas_switch(False)  # turn off
-            with fluid.dygraph.guard(place):
+            with base.dygraph.guard(place):
                 input_array1 = np.random.rand(4, 12, 64, 88).astype("float32")
                 input_array2 = np.random.rand(4, 12, 88, 512).astype("float32")
                 data1 = paddle.to_tensor(input_array1)

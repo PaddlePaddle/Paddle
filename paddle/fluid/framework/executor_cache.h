@@ -30,9 +30,9 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 namespace paddle {
@@ -168,6 +168,7 @@ class InterpreterCoreInfo {
   struct CacheValue {
     std::shared_ptr<InterpreterCore> core_{nullptr};
     std::set<std::string> skip_eager_delete_vars_;
+    std::unique_ptr<::pir::Program> ir_prog_{nullptr};
   };
 
   bool IsAvailable(bool is_grad) {
@@ -242,26 +243,29 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
-    std::unique_ptr<::ir::Program> ir_prog,
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
+    std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope);
 
-std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string>& output_names,
     const std::vector<paddle::Tensor>& x,
-    const std::vector<paddle::Tensor>& params);
+    const std::vector<std::string>& x_names,
+    const std::vector<paddle::Tensor>& params,
+    const phi::Place& place);
 
-std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
     const std::vector<paddle::Tensor*>& params_grad,
-    const paddle::framework::Scope* scope);
+    const paddle::framework::Scope* scope,
+    const phi::Place& place);
 
 }  // namespace framework
 }  // namespace paddle

@@ -52,8 +52,8 @@ class TestBase(IPUOpTest):
 
     @IPUOpTest.static_graph
     def build_model(self):
-        generator = paddle.fluid.unique_name.UniqueNameGenerator()
-        with paddle.fluid.unique_name.guard(generator):
+        generator = paddle.base.unique_name.UniqueNameGenerator()
+        with paddle.base.unique_name.guard(generator):
             x = paddle.static.data(
                 name=self.feed_list[0],
                 shape=self.feed_shape[0],

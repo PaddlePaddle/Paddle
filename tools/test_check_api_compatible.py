@@ -74,7 +74,7 @@ class Test_check_compatible(unittest.TestCase):
 class Test_check_compatible_str(unittest.TestCase):
     def setUp(self) -> None:
         self.fullargspec_prefix = 'inspect.Full'
-        # paddle.fluid.layer_helper_base.LayerHelperBase.create_parameter
+        # paddle.base.layer_helper_base.LayerHelperBase.create_parameter
         self.argspec_str_o = (
             self.fullargspec_prefix
             + """ArgSpec(args=['self', 'attr', 'shape', 'dtype', 'is_bias', 'default_initializer', 'stop_gradient', 'type'], varargs=None, varkw=None, defaults=(None, False, None, False, VarType.LOD_TENSOR), kwonlyargs=[], kwonlydefaults=None, annotations={})"""

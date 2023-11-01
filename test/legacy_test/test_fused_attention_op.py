@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 import paddle.incubate.nn.functional as incubate_f
 import paddle.nn.functional as F
 from paddle import tensor
-from paddle.fluid.framework import default_main_program
+from paddle.base.framework import default_main_program
 from paddle.nn.layer.common import Dropout, Linear
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.transformer import _convert_attention_mask
@@ -31,6 +32,7 @@ default_main_program().random_seed = 42
 
 class TestFusedAttentionOp(OpTest):
     def setUp(self):
+        self.with_new_comm()
         self.config()
         self.generate_input_data()
 
@@ -78,6 +80,9 @@ class TestFusedAttentionOp(OpTest):
         self.norm2 = LayerNorm(self.embed_dim)
         paddle.set_default_dtype(self.x_type)
         self.dropout = Dropout(self.dropout_prob, mode="upscale_in_train")
+
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
 
     def config(self):
         self.x_type = np.float32
@@ -348,6 +353,11 @@ class TestFusedAttentionOp(OpTest):
         np.testing.assert_allclose(
             x_grad_ref, x_grad.numpy(), rtol=self.rtol, atol=self.atol
         )
+
+
+class TestFusedAttentionOpWithNewComm(TestFusedAttentionOp):
+    def with_new_comm(self):
+        os.environ["FLAGS_dynamic_static_unified_comm"] = "1"
 
 
 class TestFusedAttentionOpBiasIsNone(TestFusedAttentionOp):

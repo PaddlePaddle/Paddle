@@ -18,13 +18,13 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid import ParamAttr
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base import ParamAttr
+from paddle.base.dygraph import to_variable
 from paddle.jit import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 
@@ -34,8 +34,8 @@ DATATYPE = 'float32'
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def get_interp1d_mask(
@@ -215,7 +215,7 @@ class BMN(paddle.nn.Layer):
             self.num_sample,
             self.num_sample_perbin,
         )
-        self.sample_mask = fluid.dygraph.base.to_variable(sample_mask)
+        self.sample_mask = base.dygraph.base.to_variable(sample_mask)
         self.sample_mask.stop_gradient = True
 
         self.p_conv3d1 = paddle.nn.Conv3D(
@@ -637,14 +637,13 @@ def val_bmn(model, args):
     return loss_data
 
 
-@dy2static_unittest
-class TestTrain(unittest.TestCase):
+class TestTrain(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
-            fluid.CPUPlace()
-            if not fluid.is_compiled_with_cuda()
-            else fluid.CUDAPlace(0)
+            base.CPUPlace()
+            if not base.is_compiled_with_cuda()
+            else base.CUDAPlace(0)
         )
 
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -661,7 +660,7 @@ class TestTrain(unittest.TestCase):
         paddle.jit.enable_to_static(to_static)
         loss_data = []
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
             global local_random
@@ -751,7 +750,7 @@ class TestTrain(unittest.TestCase):
                         break
             return np.array(loss_data)
 
-    @test_with_new_ir
+    @test_pir_only
     def test_train_new_ir(self):
         static_res = self.train_bmn(self.args, self.place, to_static=True)
         dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
@@ -834,7 +833,7 @@ class TestTrain(unittest.TestCase):
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             bmn = BMN(self.args)
             # load dygraph trained parameters
             model_dict = paddle.load(self.dy_param_path + ".pdparams")
@@ -849,7 +848,7 @@ class TestTrain(unittest.TestCase):
 
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(self.place)
+        exe = base.Executor(self.place)
         # load inference model
         [
             inference_program,
@@ -870,7 +869,7 @@ class TestTrain(unittest.TestCase):
         return pred_res
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             bmn = paddle.jit.load(self.model_save_prefix)
             bmn.eval()
 

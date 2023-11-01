@@ -99,7 +99,7 @@ struct DLDeviceVisitor {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     ::DLDevice device;
     device.device_type = kDLGPU;
-    device.device_id = place.device;
+    device.device_id = place.device;  // NOLINT
     return device;
 #else
     PADDLE_THROW(platform::errors::Unavailable(

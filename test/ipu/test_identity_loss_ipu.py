@@ -15,13 +15,13 @@
 import unittest
 
 import numpy as np
-from op_test_ipu import IPUOpTest, np_dtype_to_fluid_str
+from op_test_ipu import IPUOpTest, np_dtype_to_base_str
 
 import paddle
 import paddle.optimizer
 import paddle.static
-from paddle import fluid
-from paddle.fluid import compiler
+from paddle import base
+from paddle.base import compiler
 
 paddle.enable_static()
 
@@ -49,18 +49,18 @@ class TestBase(IPUOpTest):
         self.feed_shape = [x.shape for x in self.feed.values()]
         self.feed_list = list(self.feed.keys())
         self.feed_dtype = [
-            np_dtype_to_fluid_str(x.dtype) for x in self.feed.values()
+            np_dtype_to_base_str(x.dtype) for x in self.feed.values()
         ]
 
     def _test_base(self, reduction):
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
         SEED = 0
         main_prog.random_seed = SEED
         startup_prog.random_seed = SEED
 
-        with fluid.scope_guard(scope):
+        with base.scope_guard(scope):
             with paddle.static.program_guard(main_prog, startup_prog):
                 x = paddle.static.data(
                     name=self.feed_list[0],

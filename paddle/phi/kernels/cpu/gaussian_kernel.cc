@@ -48,7 +48,38 @@ void GaussianKernel(const Context& dev_ctx,
   }
 }
 
+template <typename T, typename Context>
+void GaussianInplaceKernel(const Context& dev_ctx,
+                           const DenseTensor& x,
+                           float mean,
+                           float std,
+                           int seed,
+                           DenseTensor* out) {
+  T* data = dev_ctx.template Alloc<T>(out);
+  std::normal_distribution<T> dist(mean, std);
+
+  int64_t size = out->numel();
+  std::shared_ptr<std::mt19937_64> engine;
+  if (seed) {
+    engine = std::make_shared<std::mt19937_64>();
+    engine->seed(seed);
+  } else {
+    engine = dev_ctx.GetGenerator()->GetCPUEngine();
+  }
+
+  for (int64_t i = 0; i < size; ++i) {
+    data[i] = dist(*engine);
+  }
+}
+
 }  // namespace phi
 
 PD_REGISTER_KERNEL(
     gaussian, CPU, ALL_LAYOUT, phi::GaussianKernel, float, double) {}
+
+PD_REGISTER_KERNEL(gaussian_inplace,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::GaussianInplaceKernel,
+                   float,
+                   double) {}

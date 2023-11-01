@@ -14,10 +14,10 @@ limitations under the License. */
 
 #pragma once
 
+#include <glog/logging.h>
 #include <limits>
 #include <string>
 #include <utility>
-
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/backend_set.h"
 #include "paddle/phi/api/lib/data_type_set.h"
@@ -96,16 +96,16 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
   // data_promote
   DataTypeSet dtype_set{DataType::UNDEFINED};
 
-  // TODO(chenweihang): deal with multiple diff input Tensors
-  // TODO(chenweihang): add global device guard method to set backend
   inline void AssignKernelKeySet(const phi::TensorBase& tensor) {
     // assign Backend
     BackendSet tensor_backend_set = detail::GetTensorBackendSet(tensor);
+    VLOG(8) << "Get BackendSet from tensor";
     key_set.backend_set = key_set.backend_set | tensor_backend_set;
     // tensor's attribute use_gpudnn=False, explicitly disable gpudnn kernel
     if (tensor_backend_set == BackendSet(Backend::GPU) || disable_gpudnn) {
       disable_gpudnn = true;
       key_set.backend_set = key_set.backend_set - BackendSet(Backend::GPUDNN);
+      VLOG(8) << "Disable kernel backend: GPUDNN";
     }
     // assign DataLayout
     phi::DataLayout tensor_layout = tensor.layout();
@@ -117,6 +117,7 @@ struct KernelKeyParser : ArgsIterator<KernelKeyParser> {
     auto promote_result = PromoteTypes(dtype_set);
     if (promote_result != DataType::UNDEFINED) {
       key_set.dtype = promote_result;
+      VLOG(8) << "promote kernel DataType:" << promote_result;
     }
   }
 
@@ -173,20 +174,32 @@ struct KernelTypeParser : ArgsIterator<KernelTypeParser> {
 /* ------------------ for auto parallel ----------------------- */
 
 struct DistTensorTypeParser : ArgsIterator<DistTensorTypeParser> {
-  bool result = true;
+  bool result = false;
 
-  void operator()(const Tensor& x) { result &= x.is_dist_tensor(); }
+  bool short_circuit() { return result; }
+
+  void operator()(const Tensor& x) { result = x.is_dist_tensor(); }
 
   void operator()(const paddle::optional<Tensor>& x) {
     if (x) {
-      result &= x.get_ptr()->is_dist_tensor();
+      result = x.get_ptr()->is_dist_tensor();
     }
   }
 
   void operator()(const std::vector<Tensor>& x) {
     if (!x.empty()) {
       for (auto& t : x) {
-        result &= t.is_dist_tensor();
+        result = t.is_dist_tensor();
+      }
+    }
+  }
+
+  void operator()(const paddle::optional<std::vector<Tensor>>& x) {
+    if (x) {
+      if (!(x.get_ptr()->empty())) {
+        for (auto& t : *(x.get_ptr())) {
+          result = t.is_dist_tensor();
+        }
       }
     }
   }

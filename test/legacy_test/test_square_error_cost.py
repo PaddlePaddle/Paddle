@@ -17,9 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.executor import Executor
 
 
 class TestSquareErrorCost(unittest.TestCase):
@@ -39,10 +39,10 @@ class TestSquareErrorCost(unittest.TestCase):
         for use_cuda in (
             [False, True] if core.is_compiled_with_cuda() else [False]
         ):
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
             exe = Executor(place)
             (result,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": input_val, "label": label_val},
                 fetch_list=[output],
             )

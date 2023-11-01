@@ -15,13 +15,12 @@
 import re
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-)
-from paddle.fluid.framework import Variable, core, default_main_program
+from paddle.autograd.py_layer import PyLayerMeta
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
+from paddle.base.framework import Variable, core, default_main_program
 
+from .py_layer import StaticPyLayer
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
@@ -41,23 +40,30 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
-        """
-        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
-        """
-        return _convert_into_variable(x)
+    if in_to_static_mode():
+        if isinstance(x, paddle.base.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
 
-    # get the new output of the var
-    if in_declarative_mode() and isinstance(x, Variable):
-        cur_block = default_main_program().current_block()
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
 
-        from paddle.jit.dy2static.program_translator import ProgramTranslator
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
 
-        new_var = ProgramTranslator.get_instance()._inplace_map.get(
-            cur_block.program, x.desc.id()
-        )
-        if new_var is not None:
-            return new_var
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
 
     return x
 
@@ -564,7 +570,7 @@ def convert_zip(*args):
         if isinstance(arg, Variable) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i))
+                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 

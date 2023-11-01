@@ -106,7 +106,7 @@ static int FindFCIdx(Node* x, const std::string& act_type = "relu") {
   for (size_t k = 0; k < x->outputs.size(); ++k) {
     auto* out_op = x->outputs[k];
     if (IsFCWithAct(out_op, act_type) && out_op->outputs.size() == 1U) {
-      return k;
+      return static_cast<int>(k);
     }
   }
   return -1;
@@ -120,7 +120,7 @@ static int FindInputIdx(Node* n,
   }
   for (size_t i = 0; i < n->inputs.size(); ++i) {
     if (n->inputs[i]->Name() == n->Op()->Input(name)[0]) {
-      return i;
+      return static_cast<int>(i);
     }
   }
   return -1;

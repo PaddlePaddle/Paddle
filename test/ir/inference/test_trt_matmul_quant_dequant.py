@@ -19,9 +19,9 @@ from quant_dequant_test import QuantDequantTest
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
@@ -63,13 +63,13 @@ class TensorRTMatMulQuantDequantDims3Test(QuantDequantTest):
         self.startup_program.random_seed = 2
         self.test_main_program.random_seed = 2
         # self.test_startup_program.random_seed = 2
-        with fluid.unique_name.guard():
-            with fluid.program_guard(self.main_program, self.startup_program):
+        with base.unique_name.guard():
+            with base.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
                 opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
-        with fluid.unique_name.guard():
-            with fluid.program_guard(
+        with base.unique_name.guard():
+            with base.program_guard(
                 self.test_main_program, self.startup_program
             ):
                 network()
@@ -175,13 +175,13 @@ class TensorRTMatMulQuantDequantDims4Test(QuantDequantTest):
         self.startup_program.random_seed = 2
         self.test_main_program.random_seed = 2
         # self.test_startup_program.random_seed = 2
-        with fluid.unique_name.guard():
-            with fluid.program_guard(self.main_program, self.startup_program):
+        with base.unique_name.guard():
+            with base.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
                 opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
-        with fluid.unique_name.guard():
-            with fluid.program_guard(
+        with base.unique_name.guard():
+            with base.program_guard(
                 self.test_main_program, self.startup_program
             ):
                 network()
@@ -286,13 +286,13 @@ class TensorRTMatMulQuantDequantDims3DynamicTest(QuantDequantTest):
         self.startup_program.random_seed = 2
         self.test_main_program.random_seed = 2
         # self.test_startup_program.random_seed = 2
-        with fluid.unique_name.guard():
-            with fluid.program_guard(self.main_program, self.startup_program):
+        with base.unique_name.guard():
+            with base.program_guard(self.main_program, self.startup_program):
                 self.loss, result = network()
                 opt = paddle.optimizer.Adam(learning_rate=0.0001)
                 opt.minimize(self.loss)
-        with fluid.unique_name.guard():
-            with fluid.program_guard(
+        with base.unique_name.guard():
+            with base.program_guard(
                 self.test_main_program, self.startup_program
             ):
                 network()

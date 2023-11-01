@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 SEED = 2020
 np.random.seed(SEED)
@@ -32,12 +33,12 @@ def function(x: A) -> A:
     return 2 * x
 
 
-class TestTransformWhileLoop(unittest.TestCase):
+class TestTypeHint(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            fluid.CUDAPlace(0)
-            if fluid.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         self.x = np.zeros(shape=(1), dtype=np.int32)
         self._init_dyfunc()
@@ -45,6 +46,7 @@ class TestTransformWhileLoop(unittest.TestCase):
     def _init_dyfunc(self):
         self.dyfunc = function
 
+    @compare_legacy_with_pir
     def _run_static(self):
         return self._run(to_static=True)
 
@@ -52,9 +54,9 @@ class TestTransformWhileLoop(unittest.TestCase):
         return self._run(to_static=False)
 
     def _run(self, to_static):
-        with fluid.dygraph.guard(self.place):
+        with base.dygraph.guard(self.place):
             # Set the input of dyfunc to Tensor
-            tensor_x = fluid.dygraph.to_variable(self.x, zero_copy=False)
+            tensor_x = base.dygraph.to_variable(self.x, zero_copy=False)
             if to_static:
                 ret = paddle.jit.to_static(self.dyfunc)(tensor_x)
             else:
@@ -69,11 +71,6 @@ class TestTransformWhileLoop(unittest.TestCase):
         dygraph_numpy = self._run_dygraph()
         print(static_numpy, dygraph_numpy)
         np.testing.assert_allclose(dygraph_numpy, static_numpy, rtol=1e-05)
-
-
-class TestTypeHint(TestTransformWhileLoop):
-    def _init_dyfunc(self):
-        self.dyfunc = function
 
 
 if __name__ == '__main__':

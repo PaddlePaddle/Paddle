@@ -370,11 +370,16 @@ def get_host_name_ip():
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
     """Add argparse's argument.
-    Usage:
-    .. code-block:: python
-        parser = argparse.ArgumentParser()
-        add_argument("name", str, "Jonh", "User name.", parser)
-        args = parser.parse_args()
+
+    Examples:
+        .. code-block:: python
+
+            >>> import argparse
+            >>> from paddle.distributed.fleet.launch_utils import add_arguments
+            >>> parser = argparse.ArgumentParser()
+            >>> add_arguments("name", str, "Jonh", "User name.", parser)
+            >>> args = parser.parse_args()
+
     """
     type = strtobool if type == bool else type
     argparser.add_argument(
@@ -578,8 +583,8 @@ def start_local_trainers(
             )
             logger.info(
                 "details about PADDLE_TRAINER_ENDPOINTS can be found in "
-                "{}/endpoints.log, and detail running logs maybe found in "
-                "{}/workerlog.0".format(log_dir, log_dir)
+                f"{log_dir}/endpoints.log, and detail running logs maybe found in "
+                f"{log_dir}/workerlog.0"
             )
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
@@ -694,20 +699,16 @@ def get_gpus(gpus):
             for x in gpus.split(','):
                 assert x in cuda_visible_devices_list, (
                     "Can't find "
-                    "your gpus {} in CUDA_VISIBLE_DEVICES[{}].".format(
-                        x, cuda_visible_devices
-                    )
+                    f"your gpus {x} in CUDA_VISIBLE_DEVICES[{cuda_visible_devices}]."
                 )
             res_gpus = [
                 cuda_visible_devices_list.index(x.strip())
                 for x in gpus.split(',')
             ]
             logger.info(
-                "Change selected_gpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "CUDA_VISIBLE_DEVICES:{}".format(
-                    gpus, res_gpus, cuda_visible_devices_list
-                )
+                f"Change selected_gpus into reletive values. --ips:{gpus} "
+                f"will change into relative_ips:{res_gpus} according to your "
+                f"CUDA_VISIBLE_DEVICES:{cuda_visible_devices_list}"
             )
 
     return res_gpus
@@ -729,21 +730,16 @@ def get_xpus(xpus):
             for x in xpus.split(','):
                 assert x in xpu_visible_devices_list, (
                     "Can't find "
-                    "your xpus {} in XPU_VISIBLE_DEVICES[{}].".format(
-                        x,
-                        xpu_visible_devices,
-                    )
+                    f"your xpus {x} in XPU_VISIBLE_DEVICES[{xpu_visible_devices}]."
                 )
             res_xpus = [
                 xpu_visible_devices_list.index(x.strip())
                 for x in xpus.split(',')
             ]
             logger.info(
-                "Change selected_xpus into reletive values. --ips:{} "
-                "will change into relative_ips:{} according to your "
-                "XPU_VISIBLE_DEVICES:{}".format(
-                    xpus, res_xpus, xpu_visible_devices_list
-                )
+                f"Change selected_xpus into reletive values. --ips:{xpus} "
+                f"will change into relative_ips:{res_xpus} according to your "
+                f"XPU_VISIBLE_DEVICES:{xpu_visible_devices_list}"
             )
 
     return res_xpus
@@ -821,9 +817,7 @@ def get_device_proc_info(args):
             devices_per_proc = list(range(0, args.nproc_per_node))
     else:
         raise AssertionError(
-            "Can't support device_mode:{}, support only cpu|gpu|xpu now.".format(
-                device_mode
-            )
+            f"Can't support device_mode:{device_mode}, support only cpu|gpu|xpu now."
         )
 
     return (device_mode, devices_per_proc)
@@ -838,7 +832,6 @@ def direct_start(args):
     ] + args.training_script_args
     proc = subprocess.Popen(cmd)
     proc.wait()
-    return
 
 
 def get_custom_endpoints(origin_endpoints, offset=0):
@@ -961,10 +954,8 @@ def get_mapped_cluster_from_args_without_rank_mapping(args, device_mode):
     ), "ranks length should be equal to ips length."
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} "
-        "node_rank:{} node_ranks:{}".format(
-            node_ips, node_ip, node_rank, node_ranks[node_rank]
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
+        f"node_rank:{node_rank} node_ranks:{node_ranks[node_rank]}"
     )
 
     # NOTE: there are different number of global mapped ranks on each node.
@@ -1098,10 +1089,8 @@ def get_mapped_cluster_from_args_with_rank_mapping(args, device_mode):
     ), "ranks length should be equal to ips length."
 
     logger.debug(
-        "parsed from args: node_ips:{} node_ip:{} "
-        "node_rank:{} node_ranks:{}".format(
-            node_ips, node_ip, node_rank, node_ranks[node_rank]
-        )
+        f"parsed from args: node_ips:{node_ips} node_ip:{node_ip} "
+        f"node_rank:{node_rank} node_ranks:{node_ranks[node_rank]}"
     )
 
     # NOTE: there are different number of global mapped ranks on each node.
@@ -1511,20 +1500,14 @@ class ParameterServerLauncher:
             for i in range(len(self.server_endpoints_ips)):
                 if ip == self.server_endpoints_ips[i]:
                     server = Trainer()
-                    server.endpoint = "{}:{}".format(
-                        ip,
-                        self.server_endpoints_port[i],
-                    )
+                    server.endpoint = f"{ip}:{self.server_endpoints_port[i]}"
                     server.rank = server_rank
                     server_rank += 1
                     pod.servers.append(server)
             for j in range(len(self.worker_endpoints_ips)):
                 if ip == self.worker_endpoints_ips[j]:
                     worker = Trainer()
-                    worker.endpoint = "{}:{}".format(
-                        ip,
-                        self.worker_endpoints_port[j],
-                    )
+                    worker.endpoint = f"{ip}:{self.worker_endpoints_port[j]}"
                     worker.rank = worker_rank
                     worker.stage = 1
                     worker_rank += 1
@@ -1532,9 +1515,8 @@ class ParameterServerLauncher:
             for m in range(len(self.coordinator_endpoints_ips)):
                 if ip == self.coordinator_endpoints_ips[m]:
                     coordinator = Trainer()
-                    coordinator.endpoint = "{}:{}".format(
-                        ip,
-                        self.coordinator_endpoints_port[m],
+                    coordinator.endpoint = (
+                        f"{ip}:{self.coordinator_endpoints_port[m]}"
                     )
                     coordinator.rank = coordinator_rank
                     coordinator.stage = 1

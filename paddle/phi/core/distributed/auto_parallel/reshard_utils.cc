@@ -15,22 +15,18 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 #include "glog/logging.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
 
 namespace {
-int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids) {
-  int64_t cur_global_rank = GetCurGlobalRank();
-  auto iter =
-      std::find(process_ids.begin(), process_ids.end(), cur_global_rank);
-  return iter - process_ids.begin();
-}
-
 std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
   std::string unique_comm_key = "ReshardGroup";
   for (const auto& id : process_ids) {
@@ -40,16 +36,18 @@ std::string GenUniqueCommKey(const std::vector<int64_t>& process_ids) {
 }
 }  // namespace
 
-bool IsDimsMappingShard(const std::vector<int64_t>& dims_mapping) {
-  return std::any_of(dims_mapping.begin(),
-                     dims_mapping.end(),
-                     [](int64_t value) { return value != -1; });
-}
-
-bool IsDimsMappingReplicated(const std::vector<int64_t>& dims_mapping) {
-  return std::all_of(dims_mapping.begin(),
-                     dims_mapping.end(),
-                     [](int64_t value) { return value == -1; });
+int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
+                                  int64_t global_rank) {
+  if (global_rank == -1) {
+    global_rank = GetCurGlobalRank();
+  }
+  auto iter = std::find(process_ids.begin(), process_ids.end(), global_rank);
+  PADDLE_ENFORCE_NE(
+      iter,
+      process_ids.end(),
+      phi::errors::NotFound("Global rank %lld cannot be found in process_mesh",
+                            global_rank));
+  return iter - process_ids.begin();
 }
 
 std::vector<int64_t> GetCurRankCoordInMesh(const ProcessMesh& process_mesh) {
@@ -100,11 +98,7 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     } else if (phi::CustomContext::classof(&dev_ctx)) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
       CommContextManager::CreateXCCLCommContext(
-          store,
-          unique_comm_key,
-          dev_ctx.GetPlace().GetDeviceType(),
-          rank,
-          world_size);
+          store, unique_comm_key, dev_ctx.GetPlace(), rank, world_size);
 #endif
     } else {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -124,9 +118,9 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   return comm_context;
 }
 
-std::map<int64_t, int64_t> GetSplitAxisWithDimsMapping(
+std::map<int, int64_t> GetSplitAxisWithDimsMapping(
     const std::vector<int64_t>& dims_mapping) {
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis;
+  std::map<int, int64_t> split_axis_to_mesh_axis;
   for (size_t i = 0; i < dims_mapping.size(); ++i) {
     if (dims_mapping[i] != -1) {
       split_axis_to_mesh_axis.emplace(i, dims_mapping[i]);
@@ -142,6 +136,48 @@ std::vector<int64_t> BalancedSplit(int64_t total_nums, int64_t num_of_pieces) {
     result[i] += 1;
   }
   return result;
+}
+
+bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
+  int64_t cur_global_rank = GetCurGlobalRank();
+  const auto& process_ids = process_mesh.process_ids();
+  return (std::find(process_ids.begin(), process_ids.end(), cur_global_rank) !=
+          process_ids.end());
+}
+
+// Only Input is DistTensor and current device id isn't in DistTensor's mesh
+// will return true.
+bool NeedComputationClipForPP(
+    const std::shared_ptr<phi::TensorBase>& tensor_impl) {
+  PADDLE_ENFORCE_EQ(
+      phi::distributed::DistTensor::classof(tensor_impl.get()),
+      true,
+      phi::errors::InvalidArgument(
+          "The input tensor of NeedComputationClipForPP should be "
+          "``phi::distributed::DistTensor``. "
+          "However it's %s",
+          typeid(tensor_impl.get()).name()));
+  return !IsCurRankInMesh(
+      std::static_pointer_cast<phi::distributed::DistTensor>(tensor_impl)
+          ->dist_attr()
+          .process_mesh());
+}
+
+Place GetDefaultPlace() {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
+    return paddle::DefaultGPUPlace();
+  }
+#endif
+  return paddle::CPUPlace();
+}
+
+phi::DeviceContext* GetDistTensorDeviceContext(
+    const std::shared_ptr<phi::distributed::DistTensor>& input) {
+  // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
+  // tensor. In such case, we need to get default place.
+  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
+  return phi::DeviceContextPool::Instance().Get(place);
 }
 
 }  // namespace distributed

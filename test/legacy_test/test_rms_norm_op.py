@@ -16,8 +16,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def quant_helper(
@@ -331,7 +332,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 self.epsilon,
                 begin_norm_axis=1,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -381,7 +382,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -435,7 +436,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
                 residual=residual_static,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -448,6 +449,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
             )
         return out_s[0], paddle_naive_rmsnorm_out
 
+    @test_with_pir_api
     def test_rmsnorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -462,6 +464,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_residual_bias_add_rmsnorm_fp16(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -481,6 +484,7 @@ class TestRMSNormStaticOp(unittest.TestCase):
             atol=1e-3,
         )
 
+    @test_with_pir_api
     def test_rmsnorm_int8(self):
         if not paddle.is_compiled_with_cuda():
             return

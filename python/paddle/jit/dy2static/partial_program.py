@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -20,12 +19,12 @@ import numpy as np
 import paddle
 from paddle import _legacy_C_ops
 from paddle.amp.auto_cast import _in_amp_guard, _in_pure_fp16_guard
-from paddle.fluid import backward, core, framework, program_guard
-from paddle.fluid.compiler import BuildStrategy
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import _apply_pass
-from paddle.fluid.unique_name import guard as UniqueNameGuard
+from paddle.base import backward, core, framework, program_guard
+from paddle.base.compiler import BuildStrategy
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import _apply_pass, get_flags
+from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -190,7 +189,8 @@ class PartialProgramLayer:
         assert isinstance(self._build_strategy, BuildStrategy)
 
         self._origin_main_program = self._verify_program(main_program)
-        self._cuda_graph_vec = self._create_cuda_graph_vec()
+        with paddle.base.framework._dygraph_guard(paddle.base.dygraph.Tracer()):
+            self._cuda_graph_vec = self._create_cuda_graph_vec()
         self._cuda_graph_capture_mode = ""
         self._cuda_graph_pool_id = 0
         # Set default mode to train
@@ -214,7 +214,9 @@ class PartialProgramLayer:
             )
 
         # program_id -> list(scope)
-        self._scope_cache = {}
+        self._pir_scope_cache = {}
+        self._legacy_scope_cache = {}
+        self._scope_cache = self._legacy_scope_cache
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
@@ -267,6 +269,12 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
+        if get_flags('FLAGS_enable_new_ir_in_executor')[
+            'FLAGS_enable_new_ir_in_executor'
+        ]:
+            self._scope_cache = self._pir_scope_cache
+        else:
+            self._scope_cache = self._legacy_scope_cache
         if use_scope_cache:
             if program_id not in self._scope_cache:
                 scope = core.Scope()
@@ -634,7 +642,9 @@ class PartialProgramLayer:
             filter(_need_aggregation, self._outputs.tolist())
         )
         for _var in to_processed_vars:
-            _insert_aggregation_ops_for_var(target_program, _var)
+            target_program: paddle.static.Program
+            target_var = target_program.global_block().var(_var.name)
+            _insert_aggregation_ops_for_var(target_program, target_var)
 
     @switch_to_static_graph
     def _append_backward_desc(self, main_program):
@@ -836,7 +846,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -850,7 +862,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,
@@ -866,10 +880,10 @@ class PartialProgramLayer:
         """
         var_names = []
         for var in self._inputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         for var in self._outputs:
-            if isinstance(var, paddle.fluid.framework.Variable):
+            if isinstance(var, paddle.base.framework.Variable):
                 var_names.append(var.desc.name())
         return var_names
 
@@ -981,7 +995,6 @@ class PartialProgramLayer:
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             eager_tensor.stop_gradient = var.stop_gradient
-            return None
 
         for idx, var in zip(self._outputs.var_ids, out_vars):
             set_stop_gradient(idx, var)
@@ -1152,4 +1165,9 @@ def add_build_strategy_for(
         builded_program = paddle.static.Program()
         for var in program.block(0).vars.values():
             builded_program.block(0)._clone_variable(var, False)
+
+    # set back the parent_idx of blocks
+    for origin, current in zip(program.blocks, builded_program.blocks):
+        current.desc.set_parent_idx(origin.desc.parent)
+
     return builded_program

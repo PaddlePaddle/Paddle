@@ -17,7 +17,7 @@ import unittest
 
 from legacy_test.test_dist_base import TestDistBase
 
-from paddle import fluid
+from paddle import base
 
 flag_name = os.path.splitext(__file__)[0]
 
@@ -30,7 +30,7 @@ class TestDistMnistGradMerge(TestDistBase):
         self._nccl2_reduce_layer = True
 
     def test_dist_train(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist_gradient_merge.py",
                 delta=1e-5,
@@ -47,7 +47,7 @@ class TestDistMnistGradMergeNoFuse(TestDistBase):
         self._fuse_all_reduce = False
 
     def test_dist_train(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             self.check_with_place(
                 "dist_mnist_gradient_merge.py",
                 delta=1e-5,
@@ -67,7 +67,7 @@ class TestDistMnistGradMergeRawOptimizerBase(TestDistBase):
         return False
 
     def test_dist_train(self):
-        if fluid.core.is_compiled_with_cuda():
+        if base.core.is_compiled_with_cuda():
             avg = str(self.enable_avg())
             log_name = flag_name + "_raw_optimizer_gm_avg_" + avg
             self.check_with_place(

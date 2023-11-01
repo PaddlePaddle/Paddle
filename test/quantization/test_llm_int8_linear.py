@@ -19,9 +19,9 @@ from test_weight_only_linear import convert_uint16_to_float, get_cuda_version
 
 import paddle
 import paddle.nn.quant as Q
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import default_main_program
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
 
 np.random.seed(123)
@@ -53,7 +53,7 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         x = np.random.random((self.batch, self.token, self.in_features))
         self.x = paddle.to_tensor(x, dtype=self.dtype)
         if self.bias:
-            bias_attr = fluid.ParamAttr(
+            bias_attr = base.ParamAttr(
                 trainable=False,
                 regularizer=None,
                 initializer=paddle.nn.initializer.Constant(value=1.0),
@@ -88,9 +88,9 @@ class LLMInt8LinearTestCase(unittest.TestCase):
 
     def get_llm_int8_linear_out_static(self):
         paddle.enable_static()
-        main = fluid.Program()
-        start = fluid.Program()
-        with fluid.program_guard(main, start):
+        main = base.Program()
+        start = base.Program()
+        with base.program_guard(main, start):
             x = paddle.static.data("x", self.x.shape, dtype=self.x.dtype)
 
             weight = paddle.static.data(
@@ -126,7 +126,7 @@ class LLMInt8LinearTestCase(unittest.TestCase):
                 'bias': bias_np,
                 "weight_scale": weight_scale_np,
             }
-            exe = fluid.Executor(paddle.CUDAPlace(0))
+            exe = base.Executor(paddle.CUDAPlace(0))
             exe.run(start)
             (out,) = exe.run(main, feed=feed_dict, fetch_list=[out])
         paddle.disable_static()

@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core, dygraph
+from paddle import base
+from paddle.base import core, dygraph
 
 paddle.seed(102)
 np.random.seed(102)
@@ -51,13 +51,13 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         self.upper_1 = 0.33
 
         self.places = [
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         ]
 
     def check_static_result(self, place):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
@@ -70,9 +70,9 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             in_np = np.random.uniform(-1.0, 1.0, [2, 3, 4, 5]).astype("float32")
 
             res_np1 = ref_rrelu(in_np, self.lower_0, self.upper_0)
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res1],
             )
@@ -81,7 +81,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             res_np2 = ref_rrelu(in_np, self.lower_1, self.upper_1)
             fetches = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res2],
             )
@@ -108,19 +108,19 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             (res_1,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
             (res_2,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_2,
                 use_prune=True,
             )
             (res_3,) = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_3,
                 use_prune=True,
@@ -153,13 +153,13 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
             res_2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_2,
                 use_prune=True,
@@ -267,37 +267,37 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
     def test_error_layer(self):
         def error_int_dtype():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float64")
                 rrelu = paddle.nn.RReLU(2, 3)
                 rrelu(paddle.to_tensor(x))
 
         def error_lower_dtype():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float32")
                 rrelu = paddle.nn.RReLU(0, 0.5)
                 rrelu(paddle.to_tensor(x))
 
         def error_upper_dtype():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float32")
                 rrelu = paddle.nn.RReLU(0.5, 1)
                 rrelu(paddle.to_tensor(x))
 
         def error_lower_range():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float32")
                 rrelu = paddle.nn.RReLU(-1.0, 0.5)
                 rrelu(paddle.to_tensor(x))
 
         def error_upper_range():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float32")
                 rrelu = paddle.nn.RReLU(0.5, 2.0)
                 rrelu(paddle.to_tensor(x))
 
         def error_lower_upper():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 3]).astype("float32")
                 rrelu = paddle.nn.RReLU(0.5, 0.2)
                 rrelu(paddle.to_tensor(x))

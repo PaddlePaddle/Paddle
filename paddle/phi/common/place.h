@@ -19,6 +19,8 @@ limitations under the License. */
 
 #include "paddle/phi/api/include/dll_decl.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/test_macros.h"
+
 namespace paddle {
 enum class PlaceType;
 }
@@ -35,7 +37,7 @@ enum class AllocationType : int8_t {
   CUSTOM = 9,
 };
 
-class CustomRegisteredDeviceMap {
+class TEST_API CustomRegisteredDeviceMap {
  public:
   static CustomRegisteredDeviceMap& Instance();
 
@@ -65,11 +67,7 @@ class PADDLE_API Place {
         device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
                             .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
 
-  explicit Place(AllocationType type, const std::string& dev_type = "")
-      : device(0),
-        alloc_type_(type),
-        device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
-                            .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+  explicit Place(AllocationType type, const std::string& dev_type = "");
 
   // See NOTE [ Why need to temporarily adapt to PlaceType? ]
   Place(paddle::PlaceType type);  // NOLINT
@@ -96,7 +94,7 @@ class PADDLE_API Place {
 
   std::string DebugString() const;
 
-  struct Hash {
+  struct TEST_API Hash {
     // Note: Now the number of bits we need does not exceed 32 bits, so there is
     // no need to use 64 bits. If needed in the future, it can be expanded,
     // but now we don’t over-design.

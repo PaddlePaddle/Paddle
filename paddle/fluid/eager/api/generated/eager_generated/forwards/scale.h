@@ -15,12 +15,13 @@
 #pragma once
 
 #include "paddle/fluid/eager/eager_tensor.h"
+#include "paddle/utils/test_macros.h"
 namespace egr {
 
-paddle::Tensor scale(const paddle::Tensor& x,
-                     float scale,
-                     float bias,
-                     bool bias_after_scale,
-                     bool trace_backward);
+TEST_API paddle::Tensor scale(const paddle::Tensor& x,
+                              float scale,
+                              float bias,
+                              bool bias_after_scale,
+                              bool trace_backward);
 
 }  // namespace egr

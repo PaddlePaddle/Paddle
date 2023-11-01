@@ -17,10 +17,16 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
+    test_legacy_and_pir,
+)
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.autograd import PyLayer
 from paddle.jit.api import to_static
 from paddle.jit.dy2static.partial_program import partial_program_from
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
@@ -29,9 +35,7 @@ SEED = 2020
 
 np.random.seed(SEED)
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
 class SimpleFcLayer(paddle.nn.Layer):
@@ -39,7 +43,7 @@ class SimpleFcLayer(paddle.nn.Layer):
         super().__init__()
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         y = self._linear(x)
         z = self._linear(y)
@@ -47,22 +51,49 @@ class SimpleFcLayer(paddle.nn.Layer):
         return out, y
 
 
-class TestDyToStaticSaveInferenceModel(unittest.TestCase):
+class cus_tanh(PyLayer):
+    @staticmethod
+    def forward(ctx, x):
+        y = paddle.tanh(x)
+        ctx.save_for_backward(y)
+        return y
+
+    @staticmethod
+    def backward(ctx, dy):
+        (y,) = ctx.saved_tensor()
+        grad = dy * (1 - paddle.square(y))
+        return grad
+
+
+class SimplePyLayerNet(paddle.nn.Layer):
+    def __init__(self, fc_size):
+        super().__init__()
+        self._linear = paddle.nn.Linear(fc_size, fc_size)
+
+    @to_static(full_graph=True)
+    def forward(self, x):
+        y = self._linear(x)
+        out = cus_tanh.apply(y)
+        loss = paddle.mean(out)
+        return loss, out
+
+
+class TestDyToStaticSaveInferenceModel(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @ast_only_test
+    @test_ast_only
     def test_save_inference_model(self):
         fc_size = 20
         x_data = np.random.random((fc_size, fc_size)).astype('float32')
-        with fluid.dygraph.guard(place):
-            fluid.default_startup_program().random_seed = SEED
-            fluid.default_main_program().random_seed = SEED
+        with base.dygraph.guard(place):
+            base.default_startup_program().random_seed = SEED
+            base.default_main_program().random_seed = SEED
 
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             layer = SimpleFcLayer(fc_size)
             adam = paddle.optimizer.SGD(
                 learning_rate=0.1, parameters=layer.parameters()
@@ -96,8 +127,52 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             layer, [x_data], dygraph_out.numpy(), feed=[x]
         )
 
+    @test_ast_only
+    def test_save_pylayer_model(self):
+        fc_size = 20
+        x_data = np.random.random((fc_size, fc_size)).astype('float32')
+        paddle.base.framework._set_expected_place(place)
+
+        base.default_startup_program().random_seed = SEED
+        base.default_main_program().random_seed = SEED
+        paddle.disable_static()
+        x = base.dygraph.to_variable(x_data)
+        layer = SimplePyLayerNet(fc_size)
+        adam = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
+
+        for i in range(5):
+            loss, pred = layer(x)
+            loss.backward()
+            adam.minimize(loss)
+            layer.clear_gradients()
+
+        infer_model_prefix = os.path.join(
+            self.temp_dir.name, "test_dy2stat_inference_in_guard/model_pylayer"
+        )
+        paddle.jit.save(
+            layer=layer,
+            path=infer_model_prefix,
+            input_spec=[x],
+            output_spec=[pred],
+        )
+        # Check the correctness of the inference
+        loss_out, _ = layer(x)
+
+        loss_out_numpy = float(loss_out)
+        self.check_save_inference_model(
+            layer, [x_data], loss_out_numpy, enable_new_ir=False
+        )
+        self.check_save_inference_model(
+            layer, [x_data], loss_out_numpy, fetch=[loss], enable_new_ir=False
+        )
+        self.check_save_inference_model(
+            layer, [x_data], loss_out_numpy, feed=[x], enable_new_ir=False
+        )
+
     def check_save_inference_model(
-        self, model, inputs, gt_out, feed=None, fetch=None
+        self, model, inputs, gt_out, feed=None, fetch=None, enable_new_ir=True
     ):
         expected_persistable_vars = {p.name for p in model.parameters()}
 
@@ -115,17 +190,25 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
             input_spec=feed if feed else None,
             output_spec=fetch if fetch else None,
         )
-        # Check the correctness of the inference
-        infer_out = self.load_and_run_inference(
-            infer_model_dir, model_filename, params_filename, inputs
-        )
+        if enable_new_ir:
+            wrapped_load_and_run_inference = compare_legacy_with_pir(
+                self.load_and_run_inference
+            )
+            infer_out = wrapped_load_and_run_inference(
+                infer_model_dir, model_filename, params_filename, inputs
+            )
+        else:
+            infer_out = self.load_and_run_inference(
+                infer_model_dir, model_filename, params_filename, inputs
+            )
+
         np.testing.assert_allclose(gt_out, infer_out, rtol=1e-05)
 
     def load_and_run_inference(
         self, model_path, model_filename, params_filename, inputs
     ):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         [
             inference_program,
             feed_target_names,
@@ -145,15 +228,16 @@ class TestDyToStaticSaveInferenceModel(unittest.TestCase):
         return np.array(results[0])
 
 
-class TestPartialProgramRaiseError(unittest.TestCase):
-    @ast_only_test
+class TestPartialProgramRaiseError(Dy2StTestBase):
+    @test_ast_only
+    @test_legacy_and_pir
     def test_param_type(self):
         paddle.jit.enable_to_static(True)
         x_data = np.random.random((20, 20)).astype('float32')
 
-        with fluid.dygraph.guard(fluid.CPUPlace()):
+        with base.dygraph.guard(base.CPUPlace()):
             net = SimpleFcLayer(20)
-            x = fluid.dygraph.to_variable(x_data)
+            x = base.dygraph.to_variable(x_data)
             out = net(x)
 
             program_cache = net.forward.program_cache
@@ -163,7 +247,7 @@ class TestPartialProgramRaiseError(unittest.TestCase):
 
             concrete_program.parameters = params[0]
             # TypeError: Type of self._params should be list or tuple,
-            # but received <class 'paddle.fluid.framework.EagerParamBase'>.
+            # but received <class 'paddle.base.framework.EagerParamBase'>.
             with self.assertRaises(TypeError):
                 partial_program_from(concrete_program)
 

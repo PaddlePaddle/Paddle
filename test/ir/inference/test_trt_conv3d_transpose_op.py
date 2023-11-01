@@ -18,15 +18,15 @@ import numpy as np
 from inference_pass_test import InferencePassTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.core import AnalysisConfig, PassVersionChecker
+from paddle import base
+from paddle.base import core
+from paddle.base.core import AnalysisConfig, PassVersionChecker
 
 
 class TensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 4, 4, 32, 32], dtype="float32"
             )
@@ -93,7 +93,7 @@ class TensorRTSubgraphPassConv3dTransposeMultigroupTest(
 class DynamicShapeTensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
     def setUp(self):
         self.set_params()
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, -1, -1, -1], dtype="float32"
             )

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNumelOp(OpTest):
@@ -34,7 +34,7 @@ class TestNumelOp(OpTest):
         self.outputs = {'Out': np.array(np.size(x))}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -89,31 +89,31 @@ class TestNumelOpComplex(TestNumelOp):
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex64(TestNumelOpComplex):
+class TestNumelOp1Complex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (11, 66)
 
 
-class Test2NumelOpComplex64(TestNumelOpComplex):
+class TestNumelOp2Complex64(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex64
         self.shape = (0,)
 
 
-class Test0NumelOpComplex128(TestNumelOpComplex):
+class TestNumelOp0Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (6, 56, 8, 55)
 
 
-class Test1NumelOpComplex128(TestNumelOpComplex):
+class TestNumelOp1Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (11, 66)
 
 
-class Test2NumelOpComple128(TestNumelOpComplex):
+class TestNumelOp2Complex128(TestNumelOpComplex):
     def init(self):
         self.dtype = np.complex128
         self.shape = (0,)
@@ -136,7 +136,7 @@ class TestNumelOpBF16(OpTest):
 
     def test_check_output(self):
         place = paddle.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def init(self):
         self.shape = (6, 56, 8, 55)
@@ -148,10 +148,11 @@ class TestNumelOp1BF16(TestNumelOpBF16):
 
 
 class TestNumelAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_numel_static(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
             x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
@@ -188,9 +189,9 @@ class TestNumelAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program, startup_program):
 
             def test_x_type():
                 shape = [1, 4, 5]
@@ -198,6 +199,16 @@ class TestNumelAPI(unittest.TestCase):
                 out_1 = paddle.numel(input_1)
 
             self.assertRaises(TypeError, test_x_type)
+
+    def test_pir_error(self):
+        with paddle.pir_utils.IrGuard():
+
+            def test_x_type():
+                shape = [1, 4, 5]
+                input_1 = np.random.random(shape).astype("int32")
+                out_1 = paddle.numel(input_1)
+
+            self.assertRaises(ValueError, test_x_type)
 
 
 if __name__ == '__main__':

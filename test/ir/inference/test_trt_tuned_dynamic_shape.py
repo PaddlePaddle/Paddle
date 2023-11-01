@@ -19,18 +19,18 @@ import numpy as np
 import paddle
 
 paddle.enable_static()
-from paddle import fluid
+from paddle import base
 from paddle.inference import Config, create_predictor
 
 
 class TRTTunedDynamicShapeTest(unittest.TestCase):
     def get_model(self):
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0)
+        exe = base.Executor(place)
 
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             data = paddle.static.data(
                 name="data", shape=[-1, 6, 64, 64], dtype="float32"
             )

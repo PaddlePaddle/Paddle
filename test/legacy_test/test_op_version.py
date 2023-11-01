@@ -14,7 +14,7 @@
 
 import unittest
 
-from paddle import fluid, utils
+from paddle import base, utils
 
 
 class OpLastCheckpointCheckerTest(unittest.TestCase):
@@ -24,7 +24,7 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
         self.fake_op = 'for_pybind_test__'
 
     def test_op_attr_info(self):
-        update_type = fluid.core.OpUpdateType.kNewAttr
+        update_type = base.core.OpUpdateType.kNewAttr
         info_list = self.checker.filter_updates(
             self.fake_op, update_type, 'STRINGS'
         )
@@ -34,7 +34,7 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
         self.assertEqual(info_list[0].remark(), 'std::vector<std::string>')
 
     def test_op_input_output_info(self):
-        update_type = fluid.core.OpUpdateType.kNewInput
+        update_type = base.core.OpUpdateType.kNewInput
         info_list = self.checker.filter_updates(
             self.fake_op, update_type, 'NewInput'
         )
@@ -43,7 +43,7 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
         self.assertEqual(info_list[0].remark(), 'NewInput_')
 
     def test_op_bug_fix_info(self):
-        update_type = fluid.core.OpUpdateType.kBugfixWithBehaviorChanged
+        update_type = base.core.OpUpdateType.kBugfixWithBehaviorChanged
         info_list = self.checker.filter_updates(self.fake_op, update_type)
         self.assertTrue(info_list)
         self.assertEqual(info_list[0].remark(), 'BugfixWithBehaviorChanged_')
@@ -52,7 +52,7 @@ class OpLastCheckpointCheckerTest(unittest.TestCase):
 class OpVersionTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
         super().__init__(methodName)
-        self.vmap = fluid.core.get_op_version_map()
+        self.vmap = base.core.get_op_version_map()
         self.fake_op = 'for_pybind_test__'
 
     def test_checkpoints(self):

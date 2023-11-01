@@ -16,7 +16,7 @@ import copy
 import logging
 
 import paddle
-from paddle.fluid.log_helper import get_logger
+from paddle.base.log_helper import get_logger
 
 _logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
@@ -35,11 +35,11 @@ class OperatorStatsUnit:
         if dtype is None:
             self.other_calls = self.other_calls + 1
         else:
-            if dtype == paddle.fluid.core.VarDesc.VarType.FP32:
+            if dtype == paddle.base.core.VarDesc.VarType.FP32:
                 self.fp32_calls = self.fp32_calls + 1
-            elif dtype == paddle.fluid.core.VarDesc.VarType.FP16:
+            elif dtype == paddle.base.core.VarDesc.VarType.FP16:
                 self.fp16_calls = self.fp16_calls + 1
-            elif dtype == paddle.fluid.core.VarDesc.VarType.BF16:
+            elif dtype == paddle.base.core.VarDesc.VarType.BF16:
                 self.bf16_calls = self.bf16_calls + 1
             else:
                 self.other_calls = self.other_calls + 1
@@ -61,10 +61,10 @@ class OperatorStatsUnit:
 
 def _is_floating_point(dtype):
     if dtype in [
-        paddle.fluid.core.VarDesc.VarType.FP64,
-        paddle.fluid.core.VarDesc.VarType.FP32,
-        paddle.fluid.core.VarDesc.VarType.FP16,
-        paddle.fluid.core.VarDesc.VarType.BF16,
+        paddle.base.core.VarDesc.VarType.FP64,
+        paddle.base.core.VarDesc.VarType.FP32,
+        paddle.base.core.VarDesc.VarType.FP16,
+        paddle.base.core.VarDesc.VarType.BF16,
     ]:
         return True
     else:

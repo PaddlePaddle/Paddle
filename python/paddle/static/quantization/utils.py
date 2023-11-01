@@ -16,7 +16,7 @@ import sys
 
 import numpy as np
 
-from ...fluid.framework import IrNode, Operator
+from ...base.framework import IrNode, Operator
 from .quant_config import SUPPORT_QUANTIZATION_OP_DICT
 
 _channelwise_quant_axis1_ops = [

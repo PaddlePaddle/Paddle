@@ -5,7 +5,7 @@ library(reticulate) # call Python library
 use_python("/opt/python3.7/bin/python")
 
 np <- import("numpy")
-paddle <- import("paddle.fluid.core")
+paddle <- import("paddle.base.core")
 
 set_config <- function() {
     config <- paddle$AnalysisConfig("")

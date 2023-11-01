@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -164,7 +164,7 @@ class TestAdaptiveAvgPool3DAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )
@@ -296,7 +296,7 @@ class TestAdaptiveAvgPool3DClassAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_4, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_4, out_5],
             )

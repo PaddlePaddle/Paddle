@@ -30,8 +30,8 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_nvcc_cmd_path);
-DECLARE_bool(nvrtc_compile_to_cubin);
+PD_DECLARE_string(cinn_nvcc_cmd_path);
+PD_DECLARE_bool(nvrtc_compile_to_cubin);
 
 namespace cinn {
 namespace backends {

@@ -61,12 +61,14 @@ ir::IRSchedule TestAutoGenRuleBase::MakeIRSchedule(
           "inferdtype");
   auto& shape_dict = graph->GetMutableAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  hlir::framework::OpLowerer op_lowerer(dtype_dict, shape_dict, target_);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target_);
 
   lowered_funcs_ =
       op_lowerer.Lower(graph->fusion_groups.front(),
                        /*apply_op_schedule = */ apply_manual_schedule,
-                       /*apply_group_schedule = */ apply_manual_schedule);
+                       /*apply_group_schedule = */ apply_manual_schedule,
+                       /*apply_pass = */ apply_manual_schedule);
   CHECK(!lowered_funcs_.empty()) << "lowered_funcs_ is empty";
 
   std::vector<Expr> bodys;

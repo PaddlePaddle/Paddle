@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/manual_api.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
+#include "paddle/fluid/primitive/backend/generated/generated_backend.h"
 #include "paddle/fluid/primitive/backend/manual/manual_backend.h"
 #include "paddle/fluid/primitive/primitive/primitive.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
@@ -22,53 +24,42 @@ namespace primitive {
 namespace backend {
 
 using LazyTensor = paddle::primitive::LazyTensor;
-
 template <>
-std::vector<Tensor> concat_grad<LazyTensor>(const std::vector<Tensor>& x,
-                                            const Tensor& out_grad,
-                                            const Tensor& axis) {
-  std::vector<ir::OpResult> x_res;
-  for (uint64_t idx = 0; idx < x.size(); idx++) {
-    x_res.emplace_back(std::static_pointer_cast<LazyTensor>(x[idx].impl())
-                           ->getValue()
-                           .dyn_cast<ir::OpResult>());
-  }
+std::vector<Tensor> add_n_grad<LazyTensor>(const std::vector<Tensor>& x,
+                                           const Tensor& out_grad) {
+  std::vector<pir::Value> x_res(x.size());
+  std::transform(x.begin(), x.end(), x_res.begin(), [](const Tensor& t) {
+    return std::static_pointer_cast<LazyTensor>(t.impl())->value();
+  });
+  pir::Value out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
+  auto op_res = paddle::dialect::add_n_grad(x_res, out_grad_res);
 
-  ir::OpResult out_grad_res =
-      std::static_pointer_cast<LazyTensor>(out_grad.impl())
-          ->getValue()
-          .dyn_cast<ir::OpResult>();
-
-  ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
-                              ->getValue()
-                              .dyn_cast<ir::OpResult>();
-
-  std::vector<ir::OpResult> op_res =
-      paddle::dialect::concat_grad(x_res, out_grad_res, axis_res);
-
-  std::vector<Tensor> op_result;
-  for (uint64_t idx = 0; idx < op_res.size(); idx++) {
-    op_result.emplace_back(
-        std::make_shared<primitive::LazyTensor>(op_res[idx]));
-  }
-  return op_result;
+  std::vector<Tensor> x_grad(op_res.size());
+  std::transform(op_res.begin(),
+                 op_res.end(),
+                 x_grad.begin(),
+                 [](const pir::OpResult& res) {
+                   return Tensor(std::make_shared<LazyTensor>(res));
+                 });
+  return x_grad;
 }
 
 template <>
-Tensor split_grad<LazyTensor>(const std::vector<Tensor>& out_grads,
-                              const Tensor& axis) {
-  std::vector<ir::OpResult> out_grads_res;
-  for (uint64_t idx = 0; idx < out_grads.size(); idx++) {
-    out_grads_res.emplace_back(
-        std::static_pointer_cast<LazyTensor>(out_grads[idx].impl())
-            ->getValue()
-            .dyn_cast<ir::OpResult>());
-  }
-  ir::OpResult axis_res = std::static_pointer_cast<LazyTensor>(axis.impl())
-                              ->getValue()
-                              .dyn_cast<ir::OpResult>();
-  ir::OpResult op_res = paddle::dialect::split_grad(out_grads_res, axis_res);
-  return Tensor(std::make_shared<primitive::LazyTensor>(op_res));
+Tensor embedding_grad<LazyTensor>(const Tensor& x,
+                                  const Tensor& weight,
+                                  const Tensor& out_grad,
+                                  int64_t padding_idx,
+                                  bool sparse) {
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  pir::Value weight_res =
+      std::static_pointer_cast<LazyTensor>(weight.impl())->value();
+  pir::Value out_grad_res =
+      std::static_pointer_cast<LazyTensor>(out_grad.impl())->value();
+  auto op_res = paddle::dialect::embedding_grad(
+      x_res, weight_res, out_grad_res, padding_idx, sparse);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  return out;
 }
 
 }  // namespace backend

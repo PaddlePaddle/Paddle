@@ -81,7 +81,7 @@ def to_tensor(pic, data_format='CHW'):
     else:
         nchannel = len(pic.mode)
 
-    dtype = paddle.fluid.data_feeder.convert_dtype(img.dtype)
+    dtype = paddle.base.data_feeder.convert_dtype(img.dtype)
     if dtype == 'uint8':
         img = paddle.cast(img, np.float32) / 255.0
 

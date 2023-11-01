@@ -97,11 +97,11 @@ struct BenchFunc {
     for (int i = 0; i < FLAGS_burning; ++i) {
       tgt(args...);
     }
-    auto start = phi::PosixInNsec() * 1e-3;
+    double start = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     for (int i = 0; i < FLAGS_repeat; ++i) {
       tgt(args...);
     }
-    auto end = phi::PosixInNsec() * 1e-3;
+    double end = static_cast<double>(phi::PosixInNsec()) * 1e-3;
     return static_cast<double>(end - start) / FLAGS_repeat;
   }
 };
@@ -113,7 +113,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   BenchFunc<KernelTuple, Args...> benchmark;
   std::vector<std::pair<std::string, double>> infos;
   auto funcs = jit::GetAllCandidateFuncsWithTypes<KernelTuple, PlaceType>(attr);
-  for (auto f : funcs) {
+  for (auto const& f : funcs) {
     infos.push_back(std::make_pair(f.first, benchmark(f.second, args...)));
   }
 
@@ -128,7 +128,7 @@ void BenchAllImpls(const typename KernelTuple::attr_type& attr, Args... args) {
   std::ostringstream loginfos;
   loginfos << "Kernel Type " << jit::to_string(KernelTuple::kernel_type) << ": "
            << attr << ": ";
-  for (auto pair : infos) {
+  for (auto const& pair : infos) {
     loginfos << pair.first << " takes " << pair.second << " us; ";
   }
   LOG(INFO) << loginfos.str();

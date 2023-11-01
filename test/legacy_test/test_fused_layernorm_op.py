@@ -16,8 +16,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def quant_helper(
@@ -433,7 +433,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 self.epsilon,
                 begin_norm_axis=1,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -483,7 +483,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_max_bound=self.quant_max_bound,
                 quant_min_bound=self.quant_min_bound,
             )
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -532,7 +532,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_min_bound=self.quant_min_bound,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -590,7 +590,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 residual=residual_static,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),
@@ -664,7 +664,7 @@ class TestlayernormStaticOp(unittest.TestCase):
                 quant_min_bound=self.quant_min_bound,
             )
 
-            exe = fluid.Executor(self.place)
+            exe = base.Executor(self.place)
             out_s = exe.run(
                 feed={
                     "x_static": x_np.astype(dtype),

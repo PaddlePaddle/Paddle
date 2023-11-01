@@ -14,9 +14,21 @@
 
 import collections
 import re
+from typing import List
 
 PREFIX_TENSOR_NAME = 'input_'
 PREFIX_META_TENSOR_NAME = 'meta_'
+
+
+def parse_plain_list(s: str, sep=",") -> List[str]:
+    """Copy from `paddle/fluid/operators/generator/parse_utils.py`"""
+    if sep == ",":
+        patten = re.compile(r',(?![^{]*\})')  # support "int[] a={1,2}"
+        items = re.split(patten, s.strip())
+        items = [x.strip() for x in items]
+        return items
+    else:
+        return [item.strip() for item in s.strip().split(sep)]
 
 
 class BaseAPI:
@@ -163,7 +175,7 @@ class BaseAPI:
             'Scalar(int)': 'const Scalar&',
             'Scalar(int64_t)': 'const Scalar&',
             'Scalar(float)': 'const Scalar&',
-            'Scalar(dobule)': 'const Scalar&',
+            'Scalar(double)': 'const Scalar&',
             'Scalar[]': 'const std::vector<phi::Scalar>&',
             'int': 'int',
             'int32_t': 'int32_t',
@@ -367,14 +379,13 @@ class BaseAPI:
         data_transform = {'skip_transform': [], 'support_trans_dtype': []}
         if 'data_transform' in api_item_yaml:
             if 'skip_transform' in api_item_yaml['data_transform']:
-                data_transform['skip_transform'] = api_item_yaml[
-                    'data_transform'
-                ]['skip_transform']
+                data_transform['skip_transform'] = parse_plain_list(
+                    api_item_yaml['data_transform']['skip_transform']
+                )
             if 'support_trans_dtype' in api_item_yaml['data_transform']:
-                data_transform['support_trans_dtype'] = api_item_yaml[
-                    'data_transform'
-                ]['support_trans_dtype']
-
+                data_transform['support_trans_dtype'] = parse_plain_list(
+                    api_item_yaml['data_transform']['support_trans_dtype']
+                )
         return data_transform
 
     # Override by child class
@@ -753,7 +764,21 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
+{code_indent}  // inplace vector of tensors should also be transferred to CPU when kernel has fallen back
+{code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
+{code_indent}  paddle::optional<std::vector<phi::DenseTensor>> {PREFIX_TENSOR_NAME}{input_name}_vec;
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+{code_indent}    if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
+{code_indent}      {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}      for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}_vec->size(); ++i) {{
+{code_indent}        {PREFIX_TENSOR_NAME}{input_name}->at(i) = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}      }}
+{code_indent}    }}
+{code_indent}  }}
+{code_indent}  else {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});
+{code_indent}  }}"""
             )
         else:
             input_name_tensor_map[input_name].append(
@@ -762,7 +787,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  paddle::optional<std::vector<const phi::DenseTensor*>> {PREFIX_TENSOR_NAME}{input_name};
 {code_indent}  if ({PREFIX_TENSOR_NAME}{input_name}_vec){{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name} = paddle::optional<std::vector<const phi::DenseTensor*>>({PREFIX_TENSOR_NAME}{input_name}_vec->size());
@@ -791,7 +816,19 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});"""
+{code_indent}  // inplace vector of tensors should also be transferred to CPU when kernel has fallen back
+{code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name};
+{code_indent}  std::unique_ptr<std::vector<phi::DenseTensor>> {PREFIX_TENSOR_NAME}{input_name}_vec;
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name}.resize({PREFIX_TENSOR_NAME}{input_name}_vec->size());
+{code_indent}    for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
+{code_indent}      {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
+{code_indent}    }}
+{code_indent}  }}
+{code_indent}  else {{
+{code_indent}    {PREFIX_TENSOR_NAME}{input_name} = TensorToConstDenseTensorPtr({input_name});
+{code_indent}  }}"""
             )
         else:
             input_name_tensor_map[input_name].append(
@@ -800,7 +837,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             input_tensor_code = (
                 input_tensor_code
                 + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name}_vec = PrepareData({input_name}, GetKernelInputArgDef(kernel.InputAt({kernel_param.index(input_name)}), actual_kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
 {code_indent}  std::vector<const phi::DenseTensor*> {PREFIX_TENSOR_NAME}{input_name}({PREFIX_TENSOR_NAME}{input_name}_vec->size());
 {code_indent}  for (size_t i = 0; i < {PREFIX_TENSOR_NAME}{input_name}.size(); ++i) {{
 {code_indent}    {PREFIX_TENSOR_NAME}{input_name}[i] = &{PREFIX_TENSOR_NAME}{input_name}_vec->at(i);
@@ -1212,6 +1249,7 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
             "unsqueeze",
             "reshape",
             "flatten",
+            "transpose",
         ]:
             i = 0
             for kernel_out in outputs_args:
@@ -1231,7 +1269,9 @@ PADDLE_API {self.get_return_type(inplace_flag=True)} {api_func_name}({self.get_d
 {code_indent}    phi::KernelFactory::Instance().AddToLowPrecisionKernelList("{self.api}", kernel_data_type);
 {code_indent}  }}
 {code_indent}  VLOG(6) << "{kernel_name} kernel: " << kernel;
-{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+{code_indent}  // add actual_kernel_backend to select actual kernel backend after a potential falling-back to CPU
+{code_indent}  Backend actual_kernel_backend = kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend;
+{code_indent}  auto* dev_ctx = GetDeviceContextByBackend(actual_kernel_backend);
 {input_tensors}
 {output_create}
 {pre_save_stride}

@@ -118,7 +118,7 @@ void AdamDenseParamSparseGradKernel(
   }
 
   phi::SelectedRows tmp_grad_merge;
-  const phi::SelectedRows* grad_merge_ptr;
+  const phi::SelectedRows* grad_merge_ptr = nullptr;
   if (is_strict_sorted) {
     grad_merge_ptr = &grad;
   } else {
@@ -192,12 +192,12 @@ void AdamDenseParamSparseGradKernel(
                  "multi thread, currently "
               << param_row_count;
     }
-    for (size_t i = 0; i < grad_rows.size(); ++i) {
+    for (int i = 0; i < static_cast<int>(grad_rows.size()); ++i) {
       row_id_to_grad_row_offset[grad_rows[i]] = i;
     }
     std::vector<std::future<void>> fs;
-    int64_t line_in_each_thread =
-        param_row_count / FLAGS_inner_op_parallelism + 1;
+    int64_t line_in_each_thread = static_cast<int64_t>(
+        param_row_count / FLAGS_inner_op_parallelism + static_cast<int64_t>(1));
     for (int i = 0; i < FLAGS_inner_op_parallelism; ++i) {
       int64_t start = i * line_in_each_thread;
       int64_t end = (i + 1) * line_in_each_thread;

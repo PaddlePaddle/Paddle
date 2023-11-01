@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle import ir
-from paddle.fluid import core
+from paddle import pir
+from paddle.base import core
 from paddle.framework import LayerHelper
 
 paddle.enable_static()
@@ -45,22 +45,21 @@ class TestShadowOutputSlice(unittest.TestCase):
                     attrs={"name": out.name},
                 )
 
-        new_program = ir.translate_to_new_ir(main_program.desc)
-        op_names = [op.name() for op in new_program.block().ops]
+        new_program = pir.translate_to_new_ir(main_program.desc)
+        op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
-        self.assertTrue('pd.uniform' in op_names)
-        pm = ir.PassManager()
+        self.assertTrue('pd_op.uniform' in op_names)
+        pm = pir.PassManager()
         pm.add_pass(
-            'dead_code_elimination'
+            'dead_code_elimination_pass'
         )  # apply pass to elimitate dead code
         pm.run(new_program)
-        op_names = [op.name() for op in new_program.block().ops]
+        op_names = [op.name() for op in new_program.global_block().ops]
         # print(op_names)
-        # TODO(zhiqiu): unify the name of pass
-        self.assertEqual(pm.passes(), ['DeadCodeEliminationPass'])
+        self.assertEqual(pm.passes(), ['dead_code_elimination_pass'])
         self.assertFalse(pm.empty())
         self.assertTrue(
-            'pd.uniform' not in op_names
+            'pd_op.uniform' not in op_names
         )  # uniform is elimited because its output is not used
 
 

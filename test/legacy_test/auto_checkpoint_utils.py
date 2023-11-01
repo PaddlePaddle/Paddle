@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 
 import paddle
-import paddle.fluid.incubate.checkpoint.auto_checkpoint as acp
-from paddle import fluid
-from paddle.fluid import unique_name
-from paddle.fluid.framework import program_guard
+import paddle.base.incubate.checkpoint.auto_checkpoint as acp
+from paddle import base
+from paddle.base import unique_name
+from paddle.base.framework import program_guard
 
 BATCH_NUM = 4
 BATCH_SIZE = 1
@@ -30,7 +30,7 @@ BATCH_SIZE = 1
 CLASS_NUM = 2
 
 USE_GPU = False  # whether use GPU to run model
-places = fluid.cuda_places() if USE_GPU else fluid.cpu_places()
+places = base.cuda_places() if USE_GPU else base.cpu_places()
 
 logger = None
 
@@ -86,10 +86,10 @@ class AutoCheckpointBase(unittest.TestCase):
             sgd, loss, image, label = simple_net()
 
             if minimize:
-                compiled = fluid.CompiledProgram(main_prog)
+                compiled = base.CompiledProgram(main_prog)
             else:
                 compiled = None
-            loader = fluid.io.DataLoader.from_generator(
+            loader = base.io.DataLoader.from_generator(
                 feed_list=[image, label],
                 capacity=64,
                 use_double_buffer=True,
@@ -106,15 +106,15 @@ class AutoCheckpointBase(unittest.TestCase):
         return compiled, loader, sgd, loss, image, label
 
     def _generate(self):
-        main_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        exe = fluid.Executor(places[0])
+        main_prog = base.Program()
+        startup_prog = base.Program()
+        exe = base.Executor(places[0])
 
         return exe, main_prog, startup_prog
 
     def _reset_generator(self):
-        unique_name.generator = fluid.unique_name.UniqueNameGenerator()
-        acp.generator = fluid.unique_name.UniqueNameGenerator()
+        unique_name.generator = base.unique_name.UniqueNameGenerator()
+        acp.generator = base.unique_name.UniqueNameGenerator()
         acp.g_acp_type = None
         acp.g_checker = acp.AutoCheckpointChecker()
         acp.g_program_attr = {}

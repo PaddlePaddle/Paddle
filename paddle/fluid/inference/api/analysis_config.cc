@@ -477,9 +477,12 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(collect_shape_range_info_);
   CP_MEMBER(shape_range_info_path_);
   CP_MEMBER(trt_use_inspector_);
+  CP_MEMBER(trt_inspector_serialize_);
   CP_MEMBER(trt_use_explicit_quantization_);
   CP_MEMBER(trt_engine_memory_sharing_);
   CP_MEMBER(trt_engine_memory_sharing_identifier_);
+  CP_MEMBER(trt_optimization_level_);
+  CP_MEMBER(trt_ops_run_float_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -574,6 +577,8 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(apply_optim_);
   CP_MEMBER(skip_load_params_);
 
+  CP_MEMBER(use_new_executor_);
+
   if (use_gpu_) {
     PADDLE_ENFORCE_EQ(use_xpu_,
                       false,
@@ -604,7 +609,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
     // deleted_pass.
     pass_builder_->ClearPasses();
     auto other_passes = other.pass_builder()->AllPasses();
-    for (auto pass : other_passes) {
+    for (auto const &pass : other_passes) {
       pass_builder_->AppendPass(pass);
     }
   }
@@ -621,7 +626,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
                         other_passes.begin(),
                         other_passes.end(),
                         std::inserter(deleted_passes, deleted_passes.begin()));
-    for (auto ps : deleted_passes) {
+    for (auto const &ps : deleted_passes) {
       pass_builder_->DeletePass(ps);
     }
   }
@@ -838,7 +843,10 @@ void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_dla_core_ = dla_core;
 }
 
-void AnalysisConfig::EnableTensorRtInspector() { trt_use_inspector_ = true; }
+void AnalysisConfig::EnableTensorRtInspector(bool inspector_serialize) {
+  trt_use_inspector_ = true;
+  trt_inspector_serialize_ = inspector_serialize;
+}
 
 void AnalysisConfig::EnableTensorRtExplicitQuantization() {
   trt_use_explicit_quantization_ = true;
@@ -851,6 +859,17 @@ void AnalysisConfig::Exp_DisableTensorRtOPs(
 }
 
 void AnalysisConfig::EnableVarseqlen() { trt_use_varseqlen_ = true; }
+
+void AnalysisConfig::SetTensorRtOptimizationLevel(int level) {
+  PADDLE_ENFORCE(
+      level >= 0 && level <= 5,
+      platform::errors::InvalidArgument(
+          "The input level in SetTRTOptimizationLevel is invalid. The "
+          "level must be in range [0, 5], but received level = %d (default "
+          "level is 3).",
+          level));
+  trt_optimization_level_ = level;
+}
 
 // TODO(Superjomn) refactor this, buggy.
 void AnalysisConfig::Update() {
@@ -1132,7 +1151,7 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << xpu_config_.quant_post_static_gelu_out_threshold;
   ss << xpu_config_.quant_post_dynamic_activation_method;
   ss << xpu_config_.quant_post_dynamic_weight_precision;
-  for (auto type : xpu_config_.quant_post_dynamic_op_types) ss << type;
+  for (auto const &type : xpu_config_.quant_post_dynamic_op_types) ss << type;
   ss << xpu_lite_l3_locked_;
   ss << xpu_lite_enable_multi_stream_;
 
@@ -1148,11 +1167,11 @@ std::string AnalysisConfig::SerializeInfoCache() {
   ss << ipu_available_memory_proportion_;
   ss << ipu_enable_half_partial_;
   ss << ipu_enable_model_runtime_executor_;
-  for (auto custom_op : ipu_custom_ops_info_)
-    for (auto attr : custom_op) ss << attr;
+  for (auto const &custom_op : ipu_custom_ops_info_)
+    for (auto const &attr : custom_op) ss << attr;
   ss << ";";
-  for (auto pattern : ipu_custom_patterns_)
-    for (auto attr : pattern) ss << attr;
+  for (auto const &pattern : ipu_custom_patterns_)
+    for (auto const &attr : pattern) ss << attr;
   ss << ";";
   for (auto &op : mixed_black_list_) ss << op.c_str();
   for (auto &op : mixed_white_list_) ss << op.c_str();

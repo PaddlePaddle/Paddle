@@ -157,8 +157,8 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     const auto& w_dims = weights[0]->dims();
     phi::jit::matmul_attr_t attr;
     attr.m = i_dims[0];
-    attr.n = w_dims[1];
-    attr.k = w_dims[0];
+    attr.n = static_cast<int>(w_dims[1]);
+    attr.k = static_cast<int>(w_dims[0]);
     relus[0]->Resize({attr.m, attr.n});
     fc_relu(in->data<T>(),
             weights[0]->data<T>(),
@@ -169,9 +169,9 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
     for (int i = 1; i < weight_sz - 1; ++i) {
       const auto& i_dims = relus[i - 1]->dims();
       const auto& w_dims = weights[i]->dims();
-      attr.m = i_dims[0];
-      attr.n = w_dims[1];
-      attr.k = w_dims[0];
+      attr.m = static_cast<int>(i_dims[0]);
+      attr.n = static_cast<int>(w_dims[1]);
+      attr.k = static_cast<int>(w_dims[0]);
       relus[i]->Resize({attr.m, attr.n});
       fc_relu(relus[i - 1]->data<T>(),
               weights[i]->data<T>(),
@@ -182,9 +182,9 @@ class FusionRepeatedFCReluKernel : public framework::OpKernel<T> {
 
     const auto& i_dims_last = relus[weight_sz - 2]->dims();
     const auto& w_dims_last = weights[weight_sz - 1]->dims();
-    attr.m = i_dims_last[0];
-    attr.n = w_dims_last[1];
-    attr.k = w_dims_last[0];
+    attr.m = static_cast<int>(i_dims_last[0]);
+    attr.n = static_cast<int>(w_dims_last[1]);
+    attr.k = static_cast<int>(w_dims_last[0]);
     fc_relu(relus[weight_sz - 2]->data<T>(),
             weights[weight_sz - 1]->data<T>(),
             biases[weight_sz - 1]->data<T>(),

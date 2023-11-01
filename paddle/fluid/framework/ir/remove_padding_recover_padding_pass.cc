@@ -23,15 +23,18 @@ namespace framework {
 namespace ir {
 namespace patterns {
 void EmbEltwiseLayernorm::operator()() {
-  // Create nodes for fused_embedding_eltwise_layernorm.
-  auto* emb_elt_layernorm_op =
-      pattern->NewNode(emb_elt_layernorm_op_repr())
-          ->assert_is_op("fused_embedding_eltwise_layernorm");
+  // Create nodes for fused_embedding_eltwise_layernorm or
+  // prompt_tuning_emb_eltwise_layernorm.
+  std::unordered_set<std::string> embedding_ops{
+      "fused_embedding_eltwise_layernorm",
+      "prompt_tuning_emb_eltwise_layernorm"};
+  auto* emb_elt_layernorm_op = pattern->NewNode(emb_elt_layernorm_op_repr())
+                                   ->assert_is_ops(embedding_ops);
   auto* emb_elt_layernorm_out =
       pattern->NewNode(emb_elt_layernorm_out_repr())
-          ->assert_is_op_output("fused_embedding_eltwise_layernorm", "Out");
+          ->assert_is_ops_output(embedding_ops, "Out");
 
-  // Add links for fused_embedding_eltwise_layernorm op.
+  // Add links for embedding_ops.
   emb_elt_layernorm_op->LinksTo({emb_elt_layernorm_out});
 }
 

@@ -23,8 +23,8 @@ import numpy as np
 from feed_data_reader import FeedDataReader
 
 import paddle
-from paddle import fluid
-from paddle.fluid import compiler, core
+from paddle import base
+from paddle.base import compiler, core
 
 __all__ = ['TestParallelExecutorBase']
 DeviceType = core.DeviceType
@@ -71,22 +71,22 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         paddle.seed(0)
         paddle.framework.random._manual_program_seed(0)
-        main = fluid.Program()
-        startup = fluid.Program()
+        main = base.Program()
+        startup = base.Program()
 
-        with fluid.program_guard(main, startup):
+        with base.program_guard(main, startup):
             feed_dict, loss = cls.build_model(
                 feed_dict, get_data_from_feeder, main, method, optimizer
             )
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if use_device == DeviceType.CUDA
-            else fluid.XPUPlace(0)
+            else base.XPUPlace(0)
             if use_device == DeviceType.XPU
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup)
 
         build_strategy, exec_strategy = cls.set_strategy(
@@ -112,9 +112,9 @@ class TestParallelExecutorBase(unittest.TestCase):
 
         if batch_size is not None:
             batch_size *= (
-                fluid.core.get_cuda_device_count()
+                base.core.get_cuda_device_count()
                 if use_device == DeviceType.CUDA
-                else fluid.core.get_xpu_device_count()
+                else base.core.get_xpu_device_count()
                 if use_device == DeviceType.XPU
                 else int(os.environ.get('CPU_NUM', multiprocessing.cpu_count()))
             )
@@ -171,21 +171,21 @@ class TestParallelExecutorBase(unittest.TestCase):
         use_fast_executor=True,
         enable_sequential_execution=False,
     ):
-        main = fluid.Program()
-        startup = fluid.Program()
-        with fluid.program_guard(main, startup):
+        main = base.Program()
+        startup = base.Program()
+        with base.program_guard(main, startup):
             feed_dict, loss = cls.build_model(
                 feed_dict, get_data_from_feeder, main, method, optimizer
             )
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if use_device == DeviceType.CUDA
-            else fluid.XPUPlace(0)
+            else base.XPUPlace(0)
             if use_device == DeviceType.XPU
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         exe.run(startup)
 
         build_strategy, exec_strategy = cls.set_strategy(
@@ -222,14 +222,14 @@ class TestParallelExecutorBase(unittest.TestCase):
         use_reduce,
         use_device,
     ):
-        exec_strategy = fluid.ExecutionStrategy()
+        exec_strategy = base.ExecutionStrategy()
         if use_fast_executor:
             exec_strategy.use_experimental_executor = True
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.reduce_strategy = (
-            fluid.BuildStrategy.ReduceStrategy.Reduce
+            base.BuildStrategy.ReduceStrategy.Reduce
             if use_reduce
-            else fluid.BuildStrategy.ReduceStrategy.AllReduce
+            else base.BuildStrategy.ReduceStrategy.AllReduce
         )
         build_strategy.fuse_elewise_add_act_ops = fuse_elewise_add_act_ops
         build_strategy.fuse_relu_depthwise_conv = fuse_relu_depthwise_conv

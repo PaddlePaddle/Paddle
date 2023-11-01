@@ -45,9 +45,9 @@ void SoftmaxCsrKernel(const Context& dev_ctx,
   int row_number = 1;
   for (int i = 0; i < x_rank - 1; ++i) {
     if (i < x_rank - 2) {
-      batch_size *= x_dim[i];
+      batch_size *= static_cast<int>(x_dim[i]);
     } else if (i == x_rank - 2) {
-      row_number = x_dim[i];
+      row_number = static_cast<int>(x_dim[i]);
     }
   }
 

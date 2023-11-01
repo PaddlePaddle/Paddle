@@ -61,6 +61,7 @@ limitations under the License. */
 
 #include "paddle/utils/string/printf.h"
 #include "paddle/utils/string/to_string.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/phi/backends/dynload/cublas.h"
@@ -227,9 +228,9 @@ struct BinaryCompareMessageConverter<false> {
 };
 }  // namespace details
 
-int GetCallStackLevel();
-std::string GetCurrentTraceBackString(bool for_signal = false);
-std::string SimplifyErrorTypeFormat(const std::string& str);
+TEST_API int GetCallStackLevel();
+TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
+TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
 
 template <typename StrType>
 static std::string GetErrorSumaryString(StrType&& what,

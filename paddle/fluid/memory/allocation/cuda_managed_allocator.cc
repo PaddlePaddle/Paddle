@@ -48,7 +48,7 @@ void CUDAManagedAllocator::FreeImpl(phi::Allocation* allocation) {
 phi::Allocation* CUDAManagedAllocator::AllocateImpl(size_t size) {
   std::call_once(once_flag_, [this] { platform::SetDeviceId(place_.device); });
 
-  int dev_id = place_.device;
+  int dev_id = place_.device;  // NOLINT
   void* ptr;
   auto result = platform::RecordedGpuMalloc(&ptr,
                                             size,

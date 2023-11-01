@@ -211,6 +211,11 @@ void EmbeddingInferMeta(const MetaTensor& x,
                         int64_t padding_idx,
                         MetaTensor* out);
 
+void CEmbeddingInferMeta(const MetaTensor& weight,
+                         const MetaTensor& x,
+                         int64_t start_index,
+                         MetaTensor* out);
+
 void ExpandAsInferMeta(const MetaTensor& x,
                        const MetaTensor& y,
                        const std::vector<int>& target_shape,
@@ -341,12 +346,6 @@ void MatmulInferMeta(const MetaTensor& x,
                      bool trans_x,
                      bool trans_y,
                      MetaTensor* out);
-
-void MatmulInt8InferMeta(const MetaTensor& x,
-                         const MetaTensor& y,
-                         bool trans_x,
-                         bool trans_y,
-                         MetaTensor* out);
 
 void MatmulWithFlattenInferMeta(const MetaTensor& x,
                                 const MetaTensor& y,
@@ -493,5 +492,11 @@ void Unpool3dInferMeta(const MetaTensor& x,
                        const std::string& data_format,
                        MetaTensor* out,
                        MetaConfig config = MetaConfig());
+
+void WeightDequantizeInferMeta(const MetaTensor& x,
+                               const MetaTensor& scale,
+                               const std::string& algo,
+                               DataType out_dtype,
+                               MetaTensor* out);
 
 }  // namespace phi

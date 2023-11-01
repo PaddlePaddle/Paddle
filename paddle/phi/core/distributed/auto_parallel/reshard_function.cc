@@ -30,7 +30,7 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
 }
 
 void ReshardFunction::SetValue(DistTensor* tensor, const DenseTensor& value) {
-  tensor->value_ = value;
+  tensor->value_ = std::make_shared<DenseTensor>(value);
 }
 
 void ReshardFunction::SetDistProps(DistTensor* tensor,
@@ -45,8 +45,18 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
   tensor->dist_attr_ = dist_attr;
 }
 
+void ReshardFunction::SetDistProps(DistTensor* tensor,
+                                   const TensorDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(dist_attr.verify(vectorize(tensor->dims())),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The input dist_attr and dims are improper."));
+
+  tensor->dist_attr_ = dist_attr;
+}
+
 DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
-  return &tensor->value_;
+  return tensor->value_.get();
 }
 
 ReshardFunction* ChooseProperReshardFunction(

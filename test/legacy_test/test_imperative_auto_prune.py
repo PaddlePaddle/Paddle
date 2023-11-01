@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn import Embedding
 from paddle.tensor import random
 
@@ -167,24 +167,24 @@ class MyLayer2(paddle.nn.Layer):
 
 class TestImperativeAutoPrune(unittest.TestCase):
     def test_auto_prune(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             case1 = AutoPruneLayer0(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
             value2 = np.arange(25).reshape(5, 5).astype("float32")
-            v1 = fluid.dygraph.to_variable(value1)
-            v2 = fluid.dygraph.to_variable(value2)
+            v1 = base.dygraph.to_variable(value1)
+            v2 = base.dygraph.to_variable(value2)
             loss = case1(v1, v2)
             loss.backward()
             self.assertIsNotNone(case1.linear2.weight._grad_ivar())
             self.assertIsNotNone(case1.linear1.weight._grad_ivar())
 
     def test_auto_prune2(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             case2 = AutoPruneLayer1(input_size=5)
             value1 = np.arange(25).reshape(5, 5).astype("float32")
             value2 = np.arange(25).reshape(5, 5).astype("float32")
-            v1 = fluid.dygraph.to_variable(value1)
-            v2 = fluid.dygraph.to_variable(value2)
+            v1 = base.dygraph.to_variable(value1)
+            v2 = base.dygraph.to_variable(value2)
             loss = case2(v1, v2)
 
             loss.backward()
@@ -193,12 +193,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
 
     # TODO(jiabin): Support this when we support better split tensor
     def test_auto_prune3(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             case3 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
-            v1 = fluid.dygraph.to_variable(value1)
-            v2 = fluid.dygraph.to_variable(value2)
+            v1 = base.dygraph.to_variable(value1)
+            v2 = base.dygraph.to_variable(value2)
             loss, part2 = case3(v1, v2, 1)
             part2.retain_grads()
             loss.backward()
@@ -206,12 +206,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune4(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
-            v1 = fluid.dygraph.to_variable(value1)
-            v2 = fluid.dygraph.to_variable(value2)
+            v1 = base.dygraph.to_variable(value1)
+            v2 = base.dygraph.to_variable(value2)
             loss, part2 = case4(v1, v2, 1)
             part2.retain_grads()
             part2.backward()
@@ -219,12 +219,12 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 1).all())
 
     def test_auto_prune5(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             case4 = AutoPruneLayer3(input_size=784)
             value1 = np.arange(784).reshape(1, 784).astype("float32")
             value2 = np.arange(1).reshape(1, 1).astype("int64")
-            v1 = fluid.dygraph.to_variable(value1)
-            v2 = fluid.dygraph.to_variable(value2)
+            v1 = base.dygraph.to_variable(value1)
+            v2 = base.dygraph.to_variable(value2)
             loss, part1, part2 = case4(v1, v2, 2)
             part2.retain_grads()
             part1.backward()
@@ -232,15 +232,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertTrue((part2.gradient() == 0).all())
 
     def test_auto_prune6(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
             linear = paddle.nn.Linear(13, 5)
             linear2 = paddle.nn.Linear(3, 3)
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
+            a = base.dygraph.to_variable(value0)
+            b = base.dygraph.to_variable(value1)
+            c = base.dygraph.to_variable(value2)
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
@@ -250,15 +250,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertIsNone(out1.gradient())
 
     def test_auto_prune7(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
             linear = paddle.nn.Linear(13, 5)
             linear2 = paddle.nn.Linear(3, 3)
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
+            a = base.dygraph.to_variable(value0)
+            b = base.dygraph.to_variable(value1)
+            c = base.dygraph.to_variable(value2)
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
@@ -268,15 +268,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertIsNone(out1.gradient())
 
     def test_auto_prune8(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
             linear = paddle.nn.Linear(13, 5)
             linear2 = paddle.nn.Linear(5, 3)
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
+            a = base.dygraph.to_variable(value0)
+            b = base.dygraph.to_variable(value1)
+            c = base.dygraph.to_variable(value2)
             out1 = linear(a)
             linear_origin = linear.weight.numpy()
             out2 = linear2(out1)
@@ -296,15 +296,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             )
 
     def test_auto_prune9(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
             linear = paddle.nn.Linear(13, 5)
             linear2 = paddle.nn.Linear(5, 3)
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
+            a = base.dygraph.to_variable(value0)
+            b = base.dygraph.to_variable(value1)
+            c = base.dygraph.to_variable(value2)
             out1 = linear(a)
             linear_origin = linear.weight.numpy()
             out2 = linear2(out1)
@@ -326,21 +326,21 @@ class TestImperativeAutoPrune(unittest.TestCase):
                 assert type(e) == ValueError
 
     def test_auto_prune10(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value0 = np.arange(26).reshape(2, 13).astype("float32")
             value1 = np.arange(6).reshape(2, 3).astype("float32")
             value2 = np.arange(10).reshape(2, 5).astype("float32")
             linear = paddle.nn.Linear(13, 5)
             linear2 = paddle.nn.Linear(3, 3)
-            a = fluid.dygraph.to_variable(value0)
-            b = fluid.dygraph.to_variable(value1)
-            c = fluid.dygraph.to_variable(value2)
+            a = base.dygraph.to_variable(value0)
+            b = base.dygraph.to_variable(value1)
+            c = base.dygraph.to_variable(value2)
             out1 = linear(a)
             out2 = linear2(b)
             out1.stop_gradient = True
             out = paddle.concat([out1, out2, c], axis=1)
-            # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support fluid anymore.
-            fluid.set_flags({'FLAGS_sort_sum_gradient': True})
+            # TODO(jiabin): In Eager Mode we don't actually need sort_sum_gradient, this test should be removed when we don't support base anymore.
+            base.set_flags({'FLAGS_sort_sum_gradient': True})
             out.backward()
             self.assertIsNone(linear.weight.gradient())
             self.assertIsNone(out1.gradient())
@@ -355,15 +355,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
         ).astype("int64")
         embed = np.random.randn(batch_size, size).astype("float32")
 
-        place = fluid.CPUPlace()
-        with fluid.dygraph.guard(place):
+        place = base.CPUPlace()
+        with base.dygraph.guard(place):
             model = MyLayer(size, vocab_size, size)
             grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = paddle.optimizer.Adam(
                 0.001, parameters=model.parameters(), grad_clip=grad_clip
             )
-            indices = fluid.dygraph.to_variable(indices)
-            embed = fluid.dygraph.to_variable(embed)
+            indices = base.dygraph.to_variable(indices)
+            embed = base.dygraph.to_variable(embed)
             dummy_loss = model(embed)
 
             loss = model.embed_linear0(indices)
@@ -375,15 +375,15 @@ class TestImperativeAutoPrune(unittest.TestCase):
             assert model.embed1.weight._grad_ivar() is None
             assert model.linear_1.weight._grad_ivar() is None
 
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             model = MyLayer2(size, vocab_size, size)
             grad_clip = paddle.nn.ClipGradByGlobalNorm(0.001)
             optimizer = paddle.optimizer.Adam(
                 0.001, parameters=model.parameters(), grad_clip=grad_clip
             )
 
-            indices = fluid.dygraph.to_variable(indices)
-            emebd = fluid.dygraph.to_variable(embed)
+            indices = base.dygraph.to_variable(indices)
+            emebd = base.dygraph.to_variable(embed)
             dummy_loss = model(indices)
 
             loss = model.embed_linear0(indices)
@@ -396,11 +396,11 @@ class TestImperativeAutoPrune(unittest.TestCase):
             assert model.linear_1.weight._grad_ivar() is None
 
     def test_case2_prune_no_grad_branch(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value1 = np.arange(784).reshape(1, 784)
             value2 = np.arange(1).reshape(1, 1)
-            v1 = fluid.dygraph.to_variable(value1).astype("float32")
-            v2 = fluid.dygraph.to_variable(value2).astype("float32")
+            v1 = base.dygraph.to_variable(value1).astype("float32")
+            v2 = base.dygraph.to_variable(value2).astype("float32")
             case3 = AutoPruneLayer2(input_size=784)
             loss = case3(v1, v2)
             loss.backward()
@@ -408,10 +408,10 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertIsNotNone(case3.linear.weight._grad_ivar())
 
     def test_case3_prune_no_grad_branch2(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             value1 = np.arange(1).reshape(1, 1)
             linear = paddle.nn.Linear(1, 1)
-            label = fluid.dygraph.to_variable(value1).astype("float32")
+            label = base.dygraph.to_variable(value1).astype("float32")
             label = linear(label)
             label = paddle.cast(label, dtype="float32")
             label = paddle.cast(label, dtype='int64')
@@ -421,7 +421,7 @@ class TestImperativeAutoPrune(unittest.TestCase):
             self.assertIsNone(linear.weight._grad_ivar())
 
     def test_case4_with_no_grad_op_maker(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             out = random.gaussian(shape=[20, 30])
             loss = paddle.mean(out)
             loss.backward()

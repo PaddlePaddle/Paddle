@@ -39,6 +39,9 @@ class TestCrossEntropyWithSoftmaxSPMDRule(unittest.TestCase):
             label_shape, label_tensor_dist_attr
         )
 
+        self.loss_spec = DistTensorSpec(self.lable_dist_tensor_spec)
+        self.softmax_out_spec = DistTensorSpec(self.x_dist_tensor_spec)
+
         self.attrs = {
             'ignore_index': -1,
             'axis': -1,
@@ -146,6 +149,122 @@ class TestCrossEntropyWithSoftmaxSPMDRule(unittest.TestCase):
                 self.attrs,
             )
         self.attrs['axis'] = -1
+
+    def test_cross_entropy_with_softmax_infer_backward(self):
+        # GPT DP case
+        # [1, 0, -1], [1, 0, -1] (outputs) -->
+        # [1, 0, -1], [1, 0, -1], (inputs)
+        # [1, 0, -1], [1, 0, -1] (outputs)
+        self.attrs['axis'] = -1
+        self.attrs['use_softmax'] = True
+        self.attrs['soft_label'] = False
+        self.softmax_out_spec.set_dims_mapping([1, 0, -1])
+        self.loss_spec.set_dims_mapping([1, 0, -1])
+
+        result_dist_attrs = self.rule1.infer_backward(
+            [self.x_dist_tensor_spec, self.lable_dist_tensor_spec],
+            [self.softmax_out_spec, self.loss_spec],
+            self.attrs,
+        )
+        self.assertEqual(len(result_dist_attrs), 2)
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(len(infered_input_dist_attrs), 2)
+        self.assertEqual(len(infered_output_dist_attrs), 2)
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, 0, -1])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [1, 0, -1])
+
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [1, 0, -1]
+        )  # softmax output
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [1, 0, -1]
+        )  # loss
+
+        # GPT MP case, shard normalized axis
+        # [-1, -1, 0], [-1, -1, -1] (outputs) -->
+        # [-1, -1, 0], [-1, -1, -1], (inputs)
+        # [-1, -1, 0], [-1, -1, -1] (outputs)
+        self.attrs['axis'] = -1
+        self.attrs['use_softmax'] = True
+        self.attrs['soft_label'] = False
+        self.softmax_out_spec.set_dims_mapping([-1, -1, 0])
+        self.loss_spec.set_dims_mapping([-1, -1, -1])
+
+        result_dist_attrs = self.rule1.infer_backward(
+            [self.x_dist_tensor_spec, self.lable_dist_tensor_spec],
+            [self.softmax_out_spec, self.loss_spec],
+            self.attrs,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [-1, -1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [-1, -1, -1])
+
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [-1, -1, 0]
+        )  # softmax output
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [-1, -1, -1]
+        )  # loss
+
+        # GPT MP-DP case
+        # [-1, -1, 0], [1, -1, -1] (outputs) -->
+        # [1, -1, 0], [1, -1, -1], (inputs)
+        # [1, -1, 0], [1, -1, -1] (outputs)
+        self.attrs['axis'] = -1
+        self.attrs['use_softmax'] = True
+        self.attrs['soft_label'] = False
+        self.softmax_out_spec.set_dims_mapping([-1, -1, 0])
+        self.loss_spec.set_dims_mapping([1, -1, -1])
+
+        result_dist_attrs = self.rule1.infer_backward(
+            [self.x_dist_tensor_spec, self.lable_dist_tensor_spec],
+            [self.softmax_out_spec, self.loss_spec],
+            self.attrs,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [1, -1, -1])
+
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [1, -1, 0]
+        )  # softmax output
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [1, -1, -1]
+        )  # loss
+
+        # Soft Label, normalized axis = 1
+        # [1, -1, 0], [1, -1, -1] (outputs) -->
+        # [1, -1, 0], [1, -1, 0], (inputs)
+        # [1, -1, 0], [1, -1, 0] (outputs)
+        self.attrs['axis'] = 1
+        self.attrs['use_softmax'] = True
+        self.attrs['soft_label'] = True
+        self.softmax_out_spec.set_dims_mapping([1, -1, 0])
+        self.loss_spec.set_dims_mapping([1, -1, -1])
+        result_dist_attrs = self.rule1.infer_backward(
+            [self.x_dist_tensor_spec, self.lable_dist_tensor_spec],
+            [self.softmax_out_spec, self.loss_spec],
+            self.attrs,
+        )
+        infered_input_dist_attrs = result_dist_attrs[0]
+        infered_output_dist_attrs = result_dist_attrs[1]
+
+        self.assertEqual(infered_input_dist_attrs[0].dims_mapping, [1, -1, 0])
+        self.assertEqual(infered_input_dist_attrs[1].dims_mapping, [1, -1, 0])
+
+        self.assertEqual(
+            infered_output_dist_attrs[0].dims_mapping, [1, -1, 0]
+        )  # softmax output
+        self.assertEqual(
+            infered_output_dist_attrs[1].dims_mapping, [1, -1, 0]
+        )  # loss
 
 
 if __name__ == "__main__":

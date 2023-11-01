@@ -266,7 +266,9 @@ class MultiHeadAttention(nn.Layer):
         if self.use_new_recompute and self.recompute_granularity == "core_attn":
             out, weights = auto.recompute(self.core_attn)(q, k, v, attn_mask)
         else:
-            out, weights = self.core_attn(q, k, v, attn_mask)
+            out, weights = auto.exclude_ops_in_recompute(self.core_attn)(
+                q, k, v, attn_mask
+            )
 
         # project to output
         out = self.out_proj(out)
@@ -809,7 +811,7 @@ class GPTForPretraining(nn.Layer):
             x_dims_mapping = ["x"] + [None for i in range(len(x.shape) - 1)]
             w_dims_mapping = ["y"] + [None for i in range(len(w.shape) - 1)]
 
-        with paddle.fluid.name_scope('skip_quant'):
+        with paddle.base.name_scope('skip_quant'):
             if mesh:
                 matmul = auto.shard_op(
                     paddle.matmul, mesh, [x_dims_mapping, w_dims_mapping, None]

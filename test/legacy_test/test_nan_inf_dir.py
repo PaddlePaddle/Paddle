@@ -110,7 +110,7 @@ class TestNanInfDirCheckResult(unittest.TestCase):
         self.check_num_nan_inf(
             x_np, use_cuda=False, subdir="check_nan_inf_dir_cpu"
         )
-        if paddle.fluid.core.is_compiled_with_cuda():
+        if paddle.base.core.is_compiled_with_cuda():
             self.check_num_nan_inf(
                 x_np, use_cuda=True, subdir="check_nan_inf_dir_gpu"
             )

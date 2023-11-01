@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 
@@ -55,7 +56,7 @@ class SimpleNet(paddle.nn.Layer):
         return out
 
 
-class TestNestLayerHook(unittest.TestCase):
+class TestNestLayerHook(Dy2StTestBase):
     def setUp(self):
         paddle.seed(2022)
         self.x = paddle.randn([4, 10])
@@ -65,6 +66,7 @@ class TestNestLayerHook(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @compare_legacy_with_pir
     def train_net(self, to_static=False):
         paddle.seed(2022)
         net = SimpleNet()
@@ -91,9 +93,7 @@ class TestNestLayerHook(unittest.TestCase):
             st_out,
             dy_out,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\nstatic_res is {}'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph_res is {dy_out}\nstatic_res is {st_out}',
         )
         np.testing.assert_allclose(
             st_out,

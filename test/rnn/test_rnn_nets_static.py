@@ -46,7 +46,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.SimpleRNN(
                     16,
@@ -57,7 +57,7 @@ class TestSimpleRNN(unittest.TestCase):
                 )
 
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_net_static(rnn1, rnn2, place)
@@ -86,7 +86,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -121,7 +121,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -153,7 +153,7 @@ class TestSimpleRNN(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -202,7 +202,7 @@ class TestGRU(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.GRU(
                     16,
@@ -213,7 +213,7 @@ class TestGRU(unittest.TestCase):
                 )
 
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_net_static(rnn1, rnn2, place)
@@ -243,7 +243,7 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x, prev_h)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -278,7 +278,7 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -310,7 +310,7 @@ class TestGRU(unittest.TestCase):
 
         y1, h1 = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -358,7 +358,7 @@ class TestLSTM(unittest.TestCase):
 
         mp = paddle.static.Program()
         sp = paddle.static.Program()
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 rnn2 = paddle.nn.LSTM(
                     16,
@@ -369,7 +369,7 @@ class TestLSTM(unittest.TestCase):
                 )
 
         exe = paddle.static.Executor(place)
-        scope = paddle.fluid.Scope()
+        scope = paddle.base.Scope()
         with paddle.static.scope_guard(scope):
             exe.run(sp)
             convert_params_for_net_static(rnn1, rnn2, place)
@@ -399,7 +399,7 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, (prev_h, prev_c))
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -440,7 +440,7 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -473,7 +473,7 @@ class TestLSTM(unittest.TestCase):
 
         y1, (h1, c1) = rnn1(x, sequence_length=sequence_length)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.program_guard(mp, sp):
                 x_data = paddle.static.data(
                     "input",
@@ -507,9 +507,7 @@ class TestLSTM(unittest.TestCase):
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
-    devices = (
-        ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() else ["cpu"]
-    )
+    devices = ["cpu", "gpu"] if paddle.base.is_compiled_with_cuda() else ["cpu"]
     for direction in ["forward", "bidirectional", "bidirect"]:
         for time_major in [True, False]:
             for device in devices:

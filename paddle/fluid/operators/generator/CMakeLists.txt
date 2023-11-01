@@ -25,7 +25,7 @@ function(install_py_pyyaml)
   execute_process(
     COMMAND
       ${PYTHON_EXECUTABLE} "-c"
-      "import re, pyyaml; print(re.compile('/__init__.py.*').sub('',pyyaml.__file__))"
+      "import re, yaml; print(re.compile('/__init__.py.*').sub('',yaml.__file__))"
     RESULT_VARIABLE _pyyaml_status
     ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
@@ -122,7 +122,6 @@ set(generated_static_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_static_sig.cc)
 set(generated_sparse_argument_mapping_path
     ${CMAKE_SOURCE_DIR}/paddle/phi/ops/compat/generated_sparse_sig.cc)
-
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir} RESULTS_VARIABLE
@@ -139,6 +138,7 @@ message(
 - ${legacy_bw_op_yaml_file}
 - ${fused_op_yaml_file}
 - ${static_op_yaml_file}")
+
 execute_process(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/paddle/fluid/operators/generator
   COMMAND ${PYTHON_EXECUTABLE} parse_op.py --op_yaml_path ${op_yaml_file}

@@ -15,8 +15,8 @@
 import paddle
 
 # TODO: define loss functions of neural network
-from paddle import fluid, in_dynamic_mode
-from paddle.fluid.framework import in_dygraph_mode
+from paddle import base, in_dynamic_mode
+from paddle.base.framework import in_dynamic_or_pir_mode
 
 from .. import functional as F
 from .layers import Layer
@@ -261,6 +261,11 @@ class CrossEntropyLoss(Layer):
         soft_label (bool, optional): Indicate whether label is soft.
             If soft_label=False, the label is hard.  If soft_label=True, the label is soft.
             Default is ``False``.
+        label_smoothing (float, optional): A float in [0.0, 1.0].
+            Specifies the amount of smoothing when computing the loss, where 0.0 means no smoothing.
+            The targets become  a mixture of the original ground truth and a uniform distribution as
+            described in paper 'Rethinking the Inception Architecture for Computer Vision'.
+            Default is ``0.0``.
         axis (int, optional): The index of dimension to perform softmax calculations.
             It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the number
             of dimensions of input :attr:`input`.
@@ -287,8 +292,12 @@ class CrossEntropyLoss(Layer):
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` ,
-            and the sum of the labels for each sample should be 1.
+            2. If soft_label=True and no label_smoothing, the shape and data type
+            should be same with ``input`` , and the sum of the labels for each sample should be 1.
+
+            3. If has label_smoothing, (i.e. label_smoothing > 0.0), no matter what ``soft_label`` is,
+            the shape and data type of ``label`` could be either the situation 1 or situation 2.
+            In other words, if label_smoothing > 0.0, the format of label could be one-hot label or integer label.
 
         - **output** (Tensor), Return the softmax cross_entropy loss of ``input`` and ``label``.
           The data type is the same as input.
@@ -328,24 +337,52 @@ class CrossEntropyLoss(Layer):
             >>> import paddle
             >>> paddle.seed(2023)
             >>> axis = -1
-            >>> ignore_index = -100
             >>> N = 4
             >>> C = 3
             >>> shape = [N, C]
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> # case1: soft labels without label_smoothing
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
-            >>> paddle_loss_mean = paddle.nn.functional.cross_entropy(logits,
-            ...                                                       labels,
-            ...                                                       soft_label=True,
-            ...                                                       axis=axis,
-            ...                                                       weight=weight,
-            ...                                                       reduction=reduction)
-            >>> print(paddle_loss_mean)
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight, reduction=reduction, soft_label=True, label_smoothing=0.0)
+            >>> dy_ret = cross_entropy_loss(logits, labels)
+            >>> print(dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
             1.14554912)
+
+
+
+            >>> # case2: soft labels with label_smoothing
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> axis = -1
+            >>> N = 4
+            >>> C = 3
+            >>> shape = [N, C]
+            >>> label_smoothing = 0.4
+            >>> reduction='mean'
+            >>> weight = None
+            >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> interger_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> one_hot_labels = paddle.nn.functional.one_hot(interger_labels, C).astype('float32')
+
+            >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+            ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing)
+
+            >>> # integer labels
+            >>> interger_label_dy_ret = cross_entropy_loss(logits, interger_labels)
+            >>> print(interger_label_dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.10520368)
+
+            >>> # one_hot labels
+            >>> one_hot_label_dy_ret = cross_entropy_loss(logits, one_hot_labels)
+            >>> print(one_hot_label_dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.10520368)
 
     """
 
@@ -357,6 +394,7 @@ class CrossEntropyLoss(Layer):
         soft_label=False,
         axis=-1,
         use_softmax=True,
+        label_smoothing=0.0,
         name=None,
     ):
         super().__init__()
@@ -366,6 +404,7 @@ class CrossEntropyLoss(Layer):
         self.soft_label = soft_label
         self.axis = axis
         self.use_softmax = use_softmax
+        self.label_smoothing = label_smoothing
         self.name = name
 
     def forward(self, input, label):
@@ -378,6 +417,7 @@ class CrossEntropyLoss(Layer):
             soft_label=self.soft_label,
             axis=self.axis,
             use_softmax=self.use_softmax,
+            label_smoothing=self.label_smoothing,
             name=self.name,
         )
 
@@ -577,20 +617,20 @@ class MSELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.reduction = reduction
 
     def forward(self, input, label):
         if not in_dynamic_mode():
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 input, 'input', ['float32', 'float64'], 'MSELoss'
             )
-            fluid.data_feeder.check_variable_and_dtype(
+            base.data_feeder.check_variable_and_dtype(
                 label, 'label', ['float32', 'float64'], 'MSELoss'
             )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             square_out = paddle._C_ops.square(paddle.subtract(input, label))
         else:
             square_out = paddle.square(paddle.subtract(input, label))
@@ -1969,7 +2009,7 @@ class MultiMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.p = p
         self.margin = margin

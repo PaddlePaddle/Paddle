@@ -15,14 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestExponentialOp1(OpTest):
@@ -41,7 +37,7 @@ class TestExponentialOp1(OpTest):
         self.dtype = "float64"
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist1, _ = np.histogram(outs[0], range=(0, 5))
@@ -364,7 +360,7 @@ class TestExponentialFP16Op(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist1, _ = np.histogram(outs[0], range=(0, 5))
@@ -415,7 +411,7 @@ class TestExponentialBP16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
+            checker=self.verify_output, place=place, check_pir=True
         )
 
     def verify_output(self, outs):

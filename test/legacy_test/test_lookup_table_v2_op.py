@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestStaticGraphSupportMultipleInt(unittest.TestCase):
@@ -62,10 +62,16 @@ class TestLookupTableOp(OpTest):
         return "int64"
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
+        self.check_grad(
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_cinn=True,
+            check_pir=True,
+        )
 
 
 class TestLookupTableOpInt16(OpTest):
@@ -93,10 +99,16 @@ class TestLookupTableOpWithTensorIds(OpTest):
         self.outputs = {'Out': table[ids.flatten()].reshape((2, 4, 5, 31))}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True)
+        self.check_grad(
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_cinn=True,
+            check_pir=True,
+        )
 
 
 @skip_check_grad_ci(
@@ -110,7 +122,7 @@ class TestLookupTableOpWithPadding(TestLookupTableOp):
         padding_idx = np.random.choice(ids, 1)[0]
         self.outputs['Out'][ids == padding_idx] = np.zeros(31)
         self.attrs = {'padding_idx': int(padding_idx)}
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 @skip_check_grad_ci(
@@ -125,7 +137,7 @@ class TestLookupTableOpWithTensorIdsAndPadding(TestLookupTableOpWithTensorIds):
         padding_idx = np.random.choice(flatten_idx, 1)[0]
         self.outputs['Out'][np.squeeze(ids == padding_idx)] = np.zeros(31)
         self.attrs = {'padding_idx': padding_idx}
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
 
 class TestLookupTableWIsSelectedRows(unittest.TestCase):
@@ -203,15 +215,16 @@ class TestLookupTableIsSparse(unittest.TestCase):
         self.y_data = np.array([[0.1, 0.3, 0, 0.4, 0.7]]).astype("float32")
 
     def get_w_grad(self, is_sparse):
+        paddle.enable_static()
         self.init_data()
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program, fluid.Program()):
+        main_program = base.Program()
+        with base.program_guard(main_program, base.Program()):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int64')
             y_ = paddle.static.data(name='y_', shape=[-1, 5], dtype='float32')
             emb = paddle.static.nn.embedding(
                 input=x,
                 size=[10, 16],
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="emb_weight",
                     learning_rate=10,
                     initializer=paddle.nn.initializer.Assign(self.w_data),
@@ -226,9 +239,9 @@ class TestLookupTableIsSparse(unittest.TestCase):
             sgd_optimizer = paddle.optimizer.SGD(learning_rate=1e-4)
             sgd_optimizer.minimize(loss)
 
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(fluid.default_startup_program())
+            place = base.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(base.default_startup_program())
             ret = exe.run(
                 feed={'x': self.x_data, 'y_': self.y_data},
                 fetch_list=['emb_weight'],
@@ -250,14 +263,15 @@ class TestLookupTableIsSparse(unittest.TestCase):
 
 class TestLookupTableApi(unittest.TestCase):
     def test_api(self):
+        paddle.enable_static()
         x = paddle.static.data(name='x', shape=[-1, 20], dtype='int64')
         emb = paddle.static.nn.embedding(input=x, size=[128, 64])
 
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         x_data = np.random.randint(0, 127, [2, 20]).astype("int64")
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={
                 'x': x_data,
@@ -341,12 +355,17 @@ class TestEmbeddingBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=True)
+        self.check_output_with_place(place, check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['W'], 'Out', no_grad_set=set('Ids'), check_cinn=True
+            place,
+            ['W'],
+            'Out',
+            no_grad_set=set('Ids'),
+            check_cinn=True,
+            check_pir=True,
         )
 
 

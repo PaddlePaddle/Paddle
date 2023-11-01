@@ -22,7 +22,7 @@ from paddle.nn.clip import ClipGradBase, _squared_l2_norm
 
 class ClipGradForMOEByGlobalNorm(ClipGradBase):
     r"""
-    The Algrithm is the same as paddle.nn.ClipGradByGlobalNorm
+    The Algorithm is the same as paddle.nn.ClipGradByGlobalNorm
     Given a list of Tensor :math:`t\_list` , calculate the global norm for the elements of all tensors in
     :math:`t\_list` , and limit it to ``clip_norm`` .
 
@@ -50,7 +50,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
 
     Note:
         ``need_clip`` of ``ClipGradyGlobalNorm`` HAS BEEN DEPRECATED since 2.0.
-        Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
+        Please use ``need_clip`` in ``ParamAttr`` to specify the clip scope.
 
     Reference:
         https://github.com/laekov/fastmoe/blob/master/examples/megatron/clip-grad-v2.2.patch
@@ -64,22 +64,22 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
         group_name (str, optional): The group name for this clip. Default value is ``default_moe_group``.
 
     Examples:
+
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10,
-                                      weight_attr=paddle.ParamAttr(need_clip=True),
-                                      bias_attr=paddle.ParamAttr(need_clip=False))
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
+            >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
+            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
+            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
 
-            is_expert_func = lambda param: "expert_" in param.name
-            clip = paddle.nn.ClipGradForMOEByGlobalNorm(clip_norm=1.0,is_expert_func, None)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.step()
+            >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0) # Cause paddle.nn hasn't this interface, so we use ClipGradByGlobalNorm here.
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            >>> sdg.step()
     """
 
     def __init__(
@@ -124,7 +124,7 @@ class ClipGradForMOEByGlobalNorm(ClipGradBase):
             else:
                 sum_square_list.append(sum_square)
 
-        # all parameters have been filterd out
+        # all parameters have been filtered out
         if (
             len(sum_square_list)
             + len(sum_square_list_fp16)

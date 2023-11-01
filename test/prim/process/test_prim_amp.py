@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 from paddle.nn import BatchNorm
 
 np.random.seed(2023)

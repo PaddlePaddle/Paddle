@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 np.random.seed(1024)
 
@@ -36,6 +36,11 @@ class TestIndexSelectOp(OpTest):
             low=0, high=self.x_shape[self.dim], size=self.index_size
         )
         x_np = np.random.random(self.x_shape).astype(self.x_type)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x_np = (
+                np.random.random(self.x_shape)
+                + 1j * np.random.random(self.x_shape)
+            ).astype(self.x_type)
         self.inputs = {'X': x_np, 'Index': index_np}
         self.attrs = {'dim': self.dim}
         outer_loop = np.prod(self.x_shape[: self.dim])
@@ -60,10 +65,16 @@ class TestIndexSelectOp(OpTest):
         self.index_size = 100
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_output(check_prim=False)
+        else:
+            self.check_output(check_prim=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            self.check_grad(['X'], 'Out', check_prim=False)
+        else:
+            self.check_grad(['X'], 'Out', check_prim=True)
 
 
 class TestIndexSelectOpCase2(TestIndexSelectOp):
@@ -77,8 +88,8 @@ class TestIndexSelectOpCase2(TestIndexSelectOp):
 
 class TestIndexSelectOpCaseSingleThread(TestIndexSelectOp):
     def init_dtype_type(self):
-        if fluid.is_compiled_with_cuda():
-            fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+        if base.is_compiled_with_cuda():
+            base.set_flags({'FLAGS_cudnn_deterministic': True})
         self.x_type = np.float32
         self.index_type = np.int32
         self.dim = -2
@@ -146,6 +157,24 @@ class TestIndexSelectBF16Op(OpTest):
         self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
 
 
+class TestIndexSelectComplex64(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.x_type = np.complex64
+        self.index_type = np.int32
+        self.dim = -2
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
+class TestIndexSelectComplex128(TestIndexSelectOp):
+    def init_dtype_type(self):
+        self.x_type = np.complex128
+        self.index_type = np.int32
+        self.dim = -2
+        self.x_shape = (10, 10, 4, 10)
+        self.index_size = 10
+
+
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
         self.data_x = np.array(
@@ -166,7 +195,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 4])
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index, axis=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
                 fetch_list=[z.name],
@@ -182,7 +211,7 @@ class TestIndexSelectAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 4])
             index = paddle.static.data(name='index', shape=[3], dtype='int32')
             z = paddle.index_select(x, index)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'index': self.data_index},
                 fetch_list=[z.name],
@@ -197,9 +226,9 @@ class TestIndexSelectAPI(unittest.TestCase):
         paddle.disable_static()
         self.input_data()
         # case 1:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            index = fluid.dygraph.to_variable(self.data_index)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            index = base.dygraph.to_variable(self.data_index)
             z = paddle.index_select(x, index)
             np_z = z.numpy()
         expect_out = np.array(
@@ -208,9 +237,9 @@ class TestIndexSelectAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
-            index = fluid.dygraph.to_variable(self.data_index)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
+            index = base.dygraph.to_variable(self.data_index)
             z = paddle.index_select(x, index, axis=1)
             np_z = z.numpy()
         expect_out = np.array(

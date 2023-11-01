@@ -97,6 +97,7 @@ using paddle::PaddlePredictor;
 using paddle::PaddleTensor;
 using paddle::PassStrategy;
 using paddle::ZeroCopyTensor;
+using paddle_infer::experimental::InternalUtils;
 
 namespace {
 void BindPaddleDType(py::module *m);
@@ -116,6 +117,7 @@ void BindPaddlePassBuilder(py::module *m);
 void BindPaddleInferPredictor(py::module *m);
 void BindPaddleInferTensor(py::module *m);
 void BindPredictorPool(py::module *m);
+void BindInternalUtils(py::module *m);
 
 #ifdef PADDLE_WITH_DNNL
 void BindMkldnnQuantizerConfig(py::module *m);
@@ -204,7 +206,7 @@ py::dtype PaddleDTypeToNumpyDType(PaddleDType dtype) {
 
 py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
   py::dtype dt = PaddleDTypeToNumpyDType(tensor.dtype);
-  return py::array(std::move(dt), {tensor.shape}, tensor.data.data());
+  return py::array(dt, {tensor.shape}, tensor.data.data());
 }
 
 template <typename T>
@@ -212,7 +214,7 @@ void ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
                           py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
-  tensor.Reshape(std::move(shape));
+  tensor.Reshape(shape);
   tensor.copy_from_cpu(static_cast<const T *>(data.data()));
 }
 
@@ -233,18 +235,20 @@ void PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
                              py::array_t<T, py::array::c_style> data) {
   std::vector<int> shape;
   std::copy_n(data.shape(), data.ndim(), std::back_inserter(shape));
-  tensor.Reshape(std::move(shape));
+  tensor.Reshape(shape);
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
 paddle_infer::PlaceType ToPaddleInferPlace(
     phi::AllocationType allocation_type) {
-  if (allocation_type == phi::AllocationType::CPU) {
+  if (allocation_type == phi::AllocationType::CPU) {  // NOLINT
     return paddle_infer::PlaceType::kCPU;
   } else if (allocation_type == phi::AllocationType::GPU) {
     return paddle_infer::PlaceType::kGPU;
   } else if (allocation_type == phi::AllocationType::XPU) {
     return paddle_infer::PlaceType::kXPU;
+  } else if (allocation_type == phi::AllocationType::CUSTOM) {
+    return paddle_infer::PlaceType::kCUSTOM;
   } else {
     return paddle_infer::PlaceType::kCPU;
   }
@@ -254,7 +258,7 @@ void PaddleInferShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                   phi::DenseTensor input_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < input_tensor.dims().size(); ++i) {
-    shape.push_back(input_tensor.dims()[i]);
+    shape.push_back(input_tensor.dims()[i]);  // NOLINT
   }
   if (input_tensor.dtype() == phi::DataType::FLOAT64) {
     tensor.ShareExternalData(
@@ -302,7 +306,7 @@ void PaddleTensorShareExternalData(paddle_infer::Tensor &tensor,  // NOLINT
                                    paddle::Tensor &&paddle_tensor) {
   std::vector<int> shape;
   for (int i = 0; i < paddle_tensor.dims().size(); ++i) {
-    shape.push_back(paddle_tensor.dims()[i]);
+    shape.push_back(paddle_tensor.dims()[i]);  // NOLINT
   }
 
   if (paddle_tensor.dtype() == phi::DataType::FLOAT64) {
@@ -507,6 +511,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddleInferTensor(m);
   BindPaddlePassBuilder(m);
   BindPredictorPool(m);
+  BindInternalUtils(m);
 #ifdef PADDLE_WITH_DNNL
   BindMkldnnQuantizerConfig(m);
 #endif
@@ -850,6 +855,9 @@ void BindAnalysisConfig(py::module *m) {
       .def("enable_memory_optim",
            &AnalysisConfig::EnableMemoryOptim,
            py::arg("x") = true)
+      .def("enable_new_executor",
+           &AnalysisConfig::EnableNewExecutor,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -918,7 +926,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("dla_core") = 0)
       .def("tensorrt_dla_enabled", &AnalysisConfig::tensorrt_dla_enabled)
       .def("enable_tensorrt_inspector",
-           &AnalysisConfig::EnableTensorRtInspector)
+           &AnalysisConfig::EnableTensorRtInspector,
+           py::arg("inspector_serialize") = false)
       .def("tensorrt_inspector_enabled",
            &AnalysisConfig::tensorrt_inspector_enabled)
       .def("enable_tensorrt_explicit_quantization",
@@ -926,6 +935,10 @@ void BindAnalysisConfig(py::module *m) {
       .def("tensorrt_explicit_quantization_enabled",
            &AnalysisConfig::tensorrt_explicit_quantization_enabled)
       .def("tensorrt_engine_enabled", &AnalysisConfig::tensorrt_engine_enabled)
+      .def("set_tensorrt_optimization_level",
+           &AnalysisConfig::SetTensorRtOptimizationLevel)
+      .def("tensorrt_optimization_level",
+           &AnalysisConfig::tensorrt_optimization_level)
       .def("enable_dlnne",
            &AnalysisConfig::EnableDlnne,
            py::arg("min_subgraph_size") = 3,
@@ -974,19 +987,19 @@ void BindAnalysisConfig(py::module *m) {
       .def("disable_mkldnn_fc_passes",
            &AnalysisConfig::DisableMkldnnFcPasses,
            R"DOC(
-           Disable Mkldnn FC
-           Args:
+            Disable Mkldnn FC
+            Returns:
                 None.
-           Returns:
-                None.
-           Examples:
-               .. code-block:: python
-                from paddle.inference import Config
 
-                config = Config("")
-                config.enable_mkldnn()
-                config.disable_mkldnn_fc_passes()
-           )DOC")
+            Examples:
+                .. code-block:: python
+
+                    >>> from paddle.inference import Config
+
+                    >>> config = Config("")
+                    >>> config.enable_mkldnn()
+                    >>> config.disable_mkldnn_fc_passes()
+            )DOC")
 #endif
       .def("set_mkldnn_op", &AnalysisConfig::SetMKLDNNOp)
       .def("set_model_buffer", &AnalysisConfig::SetModelBuffer)
@@ -1255,8 +1268,8 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("set_passes",
            [](PaddlePassBuilder &self, const std::vector<std::string> &passes) {
              self.ClearPasses();
-             for (auto pass : passes) {
-               self.AppendPass(std::move(pass));
+             for (auto const &pass : passes) {
+               self.AppendPass(pass);
              }
            })
       .def("append_pass", &PaddlePassBuilder::AppendPass)
@@ -1296,6 +1309,24 @@ void BindPaddlePassBuilder(py::module *m) {
       .def("enable_mkldnn", &GpuPassStrategy::EnableMKLDNN)
       .def("enable_mkldnn_quantizer", &GpuPassStrategy::EnableMkldnnQuantizer)
       .def("enable_mkldnn_bfloat16", &GpuPassStrategy::EnableMkldnnBfloat16);
+}
+
+void BindInternalUtils(py::module *m) {
+  py::class_<InternalUtils> internal_utils(*m, "InternalUtils");
+  internal_utils
+      .def_static("set_transformer_posid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerPosid(&config, tensor_name);
+                  })
+      .def_static("set_transformer_maskid",
+                  [](paddle_infer::Config &config, std::string tensor_name) {
+                    InternalUtils::SetTransformerMaskid(&config, tensor_name);
+                  })
+      .def_static("disable_tensorrt_half_ops",
+                  [](paddle_infer::Config &config,
+                     const std::unordered_set<std::string> &ops) {
+                    InternalUtils::DisableTensorRtHalfOps(&config, ops);
+                  });
 }
 }  // namespace
 }  // namespace pybind

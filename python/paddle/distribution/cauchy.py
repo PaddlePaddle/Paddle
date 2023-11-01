@@ -17,8 +17,8 @@ import numbers
 import numpy as np
 
 import paddle
+from paddle.base import framework
 from paddle.distribution import distribution
-from paddle.fluid import framework
 
 
 class Cauchy(distribution.Distribution):

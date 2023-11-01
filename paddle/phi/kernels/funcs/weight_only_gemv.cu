@@ -189,7 +189,12 @@ struct ConvertDstFunc<__nv_bfloat16> {
 template <typename T>
 struct HalfMul {
   static __device__ __forceinline__ T apply(const T& x, const T& y) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 530
     return __hmul(x, y);
+#else
+    float res = static_cast<float>(float16(x)) * static_cast<float>(float16(y));
+    return float16(res).to_half();
+#endif
   }
 };
 

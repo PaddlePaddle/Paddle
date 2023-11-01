@@ -1,3 +1,14 @@
+if(NOT WITH_GFLAGS)
+  cc_library(paddle_flags SRCS flags_native.cc)
+  if(CINN_ONLY)
+    return()
+  endif()
+  cc_test(
+    flags_native_test
+    SRCS flags_native_test.cc
+    DEPS paddle_flags)
+endif()
+
 add_subdirectory(string)
 
 cc_test(
@@ -22,12 +33,4 @@ if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
     pybind_util
     SRCS pybind.cc
     DEPS phi)
-endif()
-
-if(NOT WITH_GFLAGS)
-  cc_library(paddle_flags SRCS flags_native.cc)
-  cc_test(
-    flags_native_test
-    SRCS flags_native_test.cc
-    DEPS paddle_flags)
 endif()

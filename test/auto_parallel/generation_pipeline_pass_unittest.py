@@ -159,7 +159,7 @@ class TestGenerationPipeline(unittest.TestCase):
             engine._executor.run(
                 engine.main_program, use_program_cache=False, return_numpy=False
             )
-        except paddle.fluid.core.EOFException:
+        except paddle.base.core.EOFException:
             print("test done")
             train_dataloader._inner_dataloader.reset()
 

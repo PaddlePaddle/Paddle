@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestIndexSampleOp(OpTest):
@@ -28,6 +28,11 @@ class TestIndexSampleOp(OpTest):
         self.python_api = paddle.index_sample
         self.config()
         xnp = np.random.random(self.x_shape).astype(self.x_type)
+        if self.x_type == np.complex64 or self.x_type == np.complex128:
+            xnp = (
+                np.random.random(self.x_shape)
+                + 1j * np.random.random(self.x_shape)
+            ).astype(self.x_type)
         indexnp = np.random.randint(
             low=0, high=self.x_shape[1], size=self.index_shape
         ).astype(self.index_type)
@@ -122,6 +127,28 @@ class TestCase6(TestIndexSampleOp):
         self.index_type = "int64"
 
 
+class TestIndexSampleComplex64(TestIndexSampleOp):
+    def config(self):
+        """
+        For complex64 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = np.complex64
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
+class TestIndexSampleComplex128(TestIndexSampleOp):
+    def config(self):
+        """
+        For complex64 x type
+        """
+        self.x_shape = (10, 128)
+        self.x_type = np.complex128
+        self.index_shape = (10, 64)
+        self.index_type = "int64"
+
+
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
     or not core.is_bfloat16_supported(core.CUDAPlace(0)),
@@ -184,9 +211,9 @@ class TestIndexSampleShape(unittest.TestCase):
         index = paddle.static.data(name='index', shape=[-1, 3], dtype='int32')
         output = paddle.index_sample(x=x, index=index)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place=place)
-        exe.run(fluid.default_startup_program())
+        place = base.CPUPlace()
+        exe = base.Executor(place=place)
+        exe.run(base.default_startup_program())
 
         feed = {'x': x_np, 'index': index_np}
         res = exe.run(feed=feed, fetch_list=[output])
@@ -194,7 +221,7 @@ class TestIndexSampleShape(unittest.TestCase):
 
 class TestIndexSampleDynamic(unittest.TestCase):
     def test_result(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.to_tensor(
                 [
                     [1.0, 2.0, 3.0, 4.0],

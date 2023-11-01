@@ -15,8 +15,8 @@
 __all__ = []
 
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base.framework import dygraph_only
+from paddle.base.layer_helper import LayerHelper
 
 
 def relu(x, name=None):
@@ -38,12 +38,15 @@ def relu(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 1.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.nn.functional.relu(sparse_x)
-            # [0., 0., 1.]
+            >>> dense_x = paddle.to_tensor([-2., 0., 1.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.nn.functional.relu(sparse_x)
+            >>> print(out)
+            Tensor(shape=[3], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   indices=[[0, 2]],
+                   values=[0., 1.])
     """
     if in_dynamic_mode():
         return _C_ops.sparse_relu(x)
@@ -84,48 +87,48 @@ def softmax(x, axis=-1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.seed(100)
+            >>> import paddle
+            >>> paddle.seed(100)
 
-            mask = paddle.rand((3, 4)) < 0.5
-            x = paddle.rand((3, 4)) * mask
-            print(x)
-            # Tensor(shape=[3, 4], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-            #        [[0.83438963, 0.70008713, 0.        , 0.88831252],
-            #         [0.02200012, 0.        , 0.75432241, 0.65136462],
-            #         [0.96088767, 0.82938021, 0.35367414, 0.86653489]])
+            >>> mask = paddle.rand((3, 4)) < 0.5
+            >>> x = paddle.rand((3, 4)) * mask
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.        , 0.95717543, 0.43864486, 0.        ],
+             [0.84765935, 0.45680618, 0.39412445, 0.        ],
+             [0.59444654, 0.        , 0.78364515, 0.        ]])
 
-            csr = x.to_sparse_csr()
-            print(csr)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0 , 3 , 6 , 10],
-            #        cols=[0, 1, 3, 0, 2, 3, 0, 1, 2, 3],
-            #        values=[0.83438963, 0.70008713, 0.88831252, 0.02200012, 0.75432241,
-            #                0.65136462, 0.96088767, 0.82938021, 0.35367414, 0.86653489])
+            >>> csr = x.to_sparse_csr()
+            >>> print(csr)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   crows=[0, 2, 5, 7],
+                   cols=[1, 2, 0, 1, 2, 0, 2],
+                   values=[0.95717543, 0.43864486, 0.84765935, 0.45680618, 0.39412445,
+                           0.59444654, 0.78364515])
 
-            out = paddle.sparse.nn.functional.softmax(csr)
-            print(out)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        crows=[0 , 3 , 6 , 10],
-            #        cols=[0, 1, 3, 0, 2, 3, 0, 1, 2, 3],
-            #        values=[0.34132850, 0.29843223, 0.36023921, 0.20176248, 0.41964680,
-            #                0.37859070, 0.30015594, 0.26316854, 0.16354506, 0.27313042])
+            >>> out = paddle.sparse.nn.functional.softmax(csr)
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   crows=[0, 2, 5, 7],
+                   cols=[1, 2, 0, 1, 2, 0, 2],
+                   values=[0.62680405, 0.37319586, 0.43255258, 0.29261294, 0.27483448,
+                           0.45284089, 0.54715902])
 
-            coo = x.to_sparse_coo(sparse_dim=2)
-            print(coo)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        indices=[[0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
-            #                 [0, 1, 3, 0, 2, 3, 0, 1, 2, 3]],
-            #        values=[0.83438963, 0.70008713, 0.88831252, 0.02200012, 0.75432241,
-            #                0.65136462, 0.96088767, 0.82938021, 0.35367414, 0.86653489])
+            >>> coo = x.to_sparse_coo(sparse_dim=2)
+            >>> print(coo)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   indices=[[0, 0, 1, 1, 1, 2, 2],
+                            [1, 2, 0, 1, 2, 0, 2]],
+                   values=[0.95717543, 0.43864486, 0.84765935, 0.45680618, 0.39412445,
+                           0.59444654, 0.78364515])
 
-            out = paddle.sparse.nn.functional.softmax(coo)
-            print(out)
-            # Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(gpu:0), stop_gradient=True,
-            #        indices=[[0, 0, 0, 1, 1, 1, 2, 2, 2, 2],
-            #                 [0, 1, 3, 0, 2, 3, 0, 1, 2, 3]],
-            #        values=[0.34132853, 0.29843226, 0.36023924, 0.20176250, 0.41964683,
-            #                0.37859073, 0.30015597, 0.26316857, 0.16354507, 0.27313042])
+            >>> out = paddle.sparse.nn.functional.softmax(coo)
+            >>> print(out)
+            Tensor(shape=[3, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                   indices=[[0, 0, 1, 1, 1, 2, 2],
+                            [1, 2, 0, 1, 2, 0, 2]],
+                   values=[0.62680405, 0.37319589, 0.43255258, 0.29261294, 0.27483445,
+                           0.45284092, 0.54715902])
     """
     if in_dynamic_mode():
         return _C_ops.sparse_softmax(x, axis)
@@ -162,11 +165,11 @@ def relu6(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 8.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.nn.functional.relu6(sparse_x)
+            >>> dense_x = paddle.to_tensor([-2., 0., 8.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.nn.functional.relu6(sparse_x)
     """
     return _C_ops.sparse_relu6(x)
 
@@ -198,10 +201,10 @@ def leaky_relu(x, negative_slope=0.01, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            dense_x = paddle.to_tensor([-2., 0., 5.])
-            sparse_x = dense_x.to_sparse_coo(1)
-            out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
+            >>> dense_x = paddle.to_tensor([-2., 0., 5.])
+            >>> sparse_x = dense_x.to_sparse_coo(1)
+            >>> out = paddle.sparse.nn.functional.leaky_relu(sparse_x, 0.5)
     """
     return _C_ops.sparse_leaky_relu(x, negative_slope)

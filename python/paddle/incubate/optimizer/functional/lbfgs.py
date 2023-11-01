@@ -82,53 +82,51 @@ def minimize_lbfgs(
         .. code-block:: python
             :name: code-example1
 
-            # Example1: 1D Grid Parameters
-            import paddle
-            # Randomly simulate a batch of input data
-            inputs = paddle. normal(shape=(100, 1))
-            labels = inputs * 2.0
-            # define the loss function
-            def loss(w):
-                y = w * inputs
-                return paddle.nn.functional.square_error_cost(y, labels).mean()
-            # Initialize weight parameters
-            w = paddle.normal(shape=(1,))
-            # Call the bfgs method to solve the weight that makes the loss the smallest, and update the parameters
-            for epoch in range(0, 10):
-                # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
-                w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
-                # Use paddle.assign to update parameters in place
-                paddle. assign(w_update, w)
+            >>> # Example1: 1D Grid Parameters
+            >>> import paddle
+            >>> # Randomly simulate a batch of input data
+            >>> inputs = paddle. normal(shape=(100, 1))
+            >>> labels = inputs * 2.0
+            >>> # define the loss function
+            >>> def loss(w):
+            ...     y = w * inputs
+            ...     return paddle.nn.functional.square_error_cost(y, labels).mean()
+            >>> # Initialize weight parameters
+            >>> w = paddle.normal(shape=(1,))
+            >>> # Call the bfgs method to solve the weight that makes the loss the smallest, and update the parameters
+            >>> for epoch in range(0, 10):
+            ...     # Call the bfgs method to optimize the loss, note that the third parameter returned represents the weight
+            ...     w_update = paddle.incubate.optimizer.functional.minimize_bfgs(loss, w)[2]
+            ...     # Use paddle.assign to update parameters in place
+            ...     paddle.assign(w_update, w)
 
         .. code-block:: python
             :name: code-example2
 
-            # Example2: Multidimensional Grid Parameters
-            import paddle
-            def flatten(x):
-                return x. flatten()
-            def unflatten(x):
-                return x.reshape((2,2))
-            # Assume the network parameters are more than one dimension
-            def net(x):
-                assert len(x.shape) > 1
-                return x.square().mean()
-            # function to be optimized
-            def bfgs_f(flatten_x):
-                return net(unflatten(flatten_x))
-            x = paddle.rand([2,2])
-            for i in range(0, 10):
-                # Flatten x before using minimize_bfgs
-                x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]
-                # unflatten x_update, then update parameters
-                paddle. assign(unflatten(x_update), x)
+            >>> # Example2: Multidimensional Grid Parameters
+            >>> import paddle
+            >>> def flatten(x):
+            ...     return x. flatten()
+            >>> def unflatten(x):
+            ...     return x.reshape((2,2))
+            >>> # Assume the network parameters are more than one dimension
+            >>> def net(x):
+            ...     assert len(x.shape) > 1
+            ...     return x.square().mean()
+            >>> # function to be optimized
+            >>> def bfgs_f(flatten_x):
+            ...     return net(unflatten(flatten_x))
+            >>> x = paddle.rand([2,2])
+            >>> for i in range(0, 10):
+            ...     # Flatten x before using minimize_bfgs
+            ...     x_update = paddle.incubate.optimizer.functional.minimize_bfgs(bfgs_f, flatten(x))[2]
+            ...     # unflatten x_update, then update parameters
+            ...     paddle.assign(unflatten(x_update), x)
 
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
-                dtype
-            )
+            f"The dtype must be 'float32' or 'float64', but the specified is {dtype}."
         )
 
     op_name = 'minimize_lbfgs'

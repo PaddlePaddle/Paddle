@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.executor import Executor
 from paddle.incubate.layers.nn import shuffle_batch
+
+sys.path.append("../dygraph_to_static")
+from dygraph_to_static_utils_new import compare_legacy_with_pir
 
 paddle.enable_static()
 
@@ -63,7 +67,6 @@ class TestWhileOp(unittest.TestCase):
 
             i = paddle.increment(x=i)
             paddle.tensor.array_write(result, i=i, array=mem_array)
-            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
 
             with while_op2.block():
                 d2 = paddle.tensor.array_read(array=data_array, i=j)
@@ -73,14 +76,17 @@ class TestWhileOp(unittest.TestCase):
                 j = paddle.increment(x=j)
                 paddle.tensor.array_write(result2, i=j, array=mem_array)
                 paddle.assign(paddle.less_than(x=j, y=array_len2), cond2)
+
+            paddle.assign(paddle.less_than(x=i, y=array_len), cond)
         sum_result = paddle.tensor.array_read(array=mem_array, i=j)
         loss = paddle.mean(sum_result)
         return loss, sum_result
 
+    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array, support while_grad).
     def test_simple_net(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             loss, sum_result = self.simple_net()
 
             append_backward(loss)
@@ -98,13 +104,13 @@ class TestWhileOp(unittest.TestCase):
             )
             self.assertAlmostEqual(numpy.sum(d), numpy.sum(outs[0]), delta=0.01)
 
+    # TODO(zhangbo): Support pir test(support write_to_array and read_from_array)
     def test_simple_net_forward(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             self.simple_net()
-            binary = fluid.compiler.CompiledProgram(main_program)
-
+            binary = base.compiler.CompiledProgram(main_program)
             cpu = core.CPUPlace()
             exe = Executor(cpu)
             d = []
@@ -115,6 +121,7 @@ class TestWhileOp(unittest.TestCase):
             for _ in range(2):
                 exe.run(binary, feed={'d0': d[0], 'd1': d[1], 'd2': d[2]})
 
+    @compare_legacy_with_pir
     def test_exceptions(self):
         i = paddle.zeros(shape=[2], dtype='int64')
         array_len = paddle.tensor.fill_constant(
@@ -129,8 +136,9 @@ class TestWhileOp(unittest.TestCase):
 
 
 class BadInputTest(unittest.TestCase):
+    @compare_legacy_with_pir
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 x = [1, 2, 3]
@@ -166,8 +174,8 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
         output = shuffle_temp
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         input_x = numpy.array([[1, 2, 3, 4], [4, 5, 6, 7], [7, 8, 9, 10]])
         input_x = input_x.reshape(3, 1, 4)
@@ -175,7 +183,7 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
         input_y = input_y.reshape(3, 1, 1)
 
         (res,) = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={'x': input_x, 'y': input_y},
             fetch_list=[output],
         )
@@ -184,13 +192,14 @@ class TestIgnoreVarNameInWhile(unittest.TestCase):
 
 
 class TestOutputsMustExistsInputs(unittest.TestCase):
+    @compare_legacy_with_pir
     def test_outputs_exists_inputs(self):
         """
         We guarantee that the output tensor must be in the input tensor, so that the output and input can correspond to each other, but the input can be greater than the number of outputs. It's required in paddle2onnx.
         """
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
 
             def func(x):
                 s = paddle.zeros([])

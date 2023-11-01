@@ -15,12 +15,12 @@
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestProgramToReadableCode(unittest.TestCase):
     def setUp(self):
-        self.program = fluid.Program()
+        self.program = base.Program()
         self.block = self.program.current_block()
         self.var = self.block.create_var(
             name="X", shape=[-1, 23, 48], dtype='float32'
@@ -45,7 +45,7 @@ class TestProgramToReadableCode(unittest.TestCase):
                 shape=[3, 2], dtype='int32', value=-1
             )
 
-        with fluid.program_guard(program):
+        with base.program_guard(program):
             x = paddle.tensor.fill_constant(
                 shape=[1], dtype='float32', value=0.1
             )

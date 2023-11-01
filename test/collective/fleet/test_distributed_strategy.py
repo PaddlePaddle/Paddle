@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.transpiler.distribute_transpiler import (
     DistributeTranspilerConfig,
     ServerRuntimeConfig,
@@ -82,8 +82,8 @@ class TestStrategyFactor(unittest.TestCase):
         self.assertEqual(strategy._program_config.geo_sgd_need_push_nums, 5)
         self.assertEqual(strategy._build_strategy.async_mode, True)
 
-        # test set_build_strategy using fluid.BuildStrategy
-        build_strategy_class = fluid.BuildStrategy()
+        # test set_build_strategy using base.BuildStrategy
+        build_strategy_class = base.BuildStrategy()
         build_strategy_class.memory_optimize = False
         strategy.set_build_strategy(build_strategy_class)
         build_strategy = strategy.get_build_strategy()
@@ -160,8 +160,8 @@ class TestStrategyFactor(unittest.TestCase):
             trainer_runtime_config_illegal,
         )
 
-        # test set_execute_strategy using fluid.ExecutionStrategy
-        exec_strategy_class = fluid.ExecutionStrategy()
+        # test set_execute_strategy using base.ExecutionStrategy
+        exec_strategy_class = base.ExecutionStrategy()
         exec_strategy_class.num_threads = 4
         strategy.set_execute_strategy(exec_strategy_class)
         exec_strategy = strategy.get_execute_strategy()

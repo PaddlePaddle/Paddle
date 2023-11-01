@@ -19,21 +19,19 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.dy2static import error
 from paddle.jit.dy2static.origin_info import unwrap
-
-os.environ['ENABLE_FALL_BACK'] = "False"  # NOTE: ast only
 
 
 def inner_func():
     paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")
-    return
+    return  # noqa: PLR1711
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def func_error_in_compile_time(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     inner_func()
     if paddle.mean(x) < 0:
         x_v = x - 1
@@ -42,28 +40,28 @@ def func_error_in_compile_time(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def func_error_in_compile_time_2(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     x = paddle.reshape(x, shape=[1, 2])
     return x
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def func_error_in_runtime(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
     x = paddle.reshape(x, shape=[1, two])
     return x
 
 
 @unwrap
-@paddle.jit.to_static()
+@paddle.jit.to_static(full_graph=True)
 def func_decorated_by_other_1():
     return 1
 
 
-@paddle.jit.to_static()
+@paddle.jit.to_static(full_graph=True)
 @unwrap
 def func_decorated_by_other_2():
     return 1
@@ -75,7 +73,8 @@ class LayerErrorInCompiletime(paddle.nn.Layer):
         self._linear = paddle.nn.Linear(fc_size, fc_size)
 
     @paddle.jit.to_static(
-        input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')]
+        input_spec=[paddle.static.InputSpec(shape=[20, 20], dtype='float32')],
+        full_graph=True,
     )
     def forward(self, x):
         y = self._linear(x)
@@ -88,7 +87,7 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self):
         self.test_func()
 
@@ -97,12 +96,12 @@ class LayerErrorInCompiletime2(paddle.nn.Layer):
         NOTE: The next line has a tab. And this test to check the IndentationError when spaces and tabs are mixed.
 	A tab here.
         """  # fmt: skip
-        return
+        return  # noqa: PLR1711
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def func_error_in_runtime_with_empty_line(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")
 
     x = paddle.reshape(x, shape=[1, two])
@@ -115,7 +114,7 @@ class SuggestionErrorTestNet(paddle.nn.Layer):
         super().__init__()
         self.inner_net = SuggestionErrorTestNet2()
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, x):
         return self.inner_net.forward(x)
 
@@ -257,11 +256,7 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 37, in func_error_in_compile_time'.format(
-                self.filepath
-            ),
             'inner_func()',
-            f'File "{self.filepath}", line 30, in inner_func',
             'def inner_func():',
             'paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
             '<--- HERE',
@@ -288,11 +283,8 @@ class TestErrorStaticLayerCallInCompiletime_2(
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 48, in func_error_in_compile_time_2'.format(
-                self.filepath
-            ),
             'def func_error_in_compile_time_2(x):',
-            'x = fluid.dygraph.to_variable(x)',
+            'x = base.dygraph.to_variable(x)',
             'x = paddle.reshape(x, shape=[1, 2])',
             '<--- HERE',
             'return x',
@@ -314,7 +306,6 @@ class TestErrorStaticLayerCallInCompiletime_3(
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 93, in forward',
             '@paddle.jit.to_static',
             'def forward(self):',
             'self.test_func()',
@@ -338,10 +329,7 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 56, in func_error_in_runtime'.format(
-                self.filepath
-            ),
-            'x = fluid.dygraph.to_variable(x)',
+            'x = base.dygraph.to_variable(x)',
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
@@ -355,9 +343,6 @@ class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
 
     def set_message(self):
         self.expected_message = [
-            'File "{}", line 108, in func_error_in_runtime_with_empty_line'.format(
-                self.filepath
-            ),
             'two = paddle.tensor.fill_constant(shape=[1], value=2, dtype="int32")',
             'x = paddle.reshape(x, shape=[1, two])',
             '<--- HERE',
@@ -378,7 +363,6 @@ class TestJitSaveInCompiletime(TestErrorBase):
 
     def set_message(self):
         self.expected_message = [
-            f'File "{self.filepath}", line 82, in forward',
             'def forward(self, x):',
             'y = self._linear(x)',
             'z = paddle.tensor.fill_constant(shape=[1, 2], value=9, dtype="int")',
@@ -397,7 +381,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
         self._test_raise_new_exception()
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def func_ker_error(x):
     d = {'x': x}
     y = d['y'] + x
@@ -412,7 +396,7 @@ class TestKeyError(unittest.TestCase):
             func_ker_error(x)
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def NpApiErr():
     a = paddle.to_tensor([1, 2])
     b = np.sum(a.numpy())
@@ -442,7 +426,7 @@ class test_set_state_dict_err_layer(paddle.nn.Layer):
         super().__init__()
         self.linear = paddle.nn.Linear(5, 2)
 
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def forward(self, x):
         old_dict = self.state_dict()
         wgt = old_dict['linear.weight']

@@ -49,9 +49,9 @@ int Timer::Count() { return _count; }
 
 double Timer::ElapsedUS() { return static_cast<double>(_elapsed); }
 
-double Timer::ElapsedMS() { return _elapsed / 1000.0; }
+double Timer::ElapsedMS() { return _elapsed / 1000.0; }  // NOLINT
 
-double Timer::ElapsedSec() { return _elapsed / 1000000.0; }
+double Timer::ElapsedSec() { return _elapsed / 1000000.0; }  // NOLINT
 
 int64_t Timer::Tickus() {
   gettimeofday(&_now, nullptr);

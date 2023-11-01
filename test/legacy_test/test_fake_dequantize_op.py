@@ -16,7 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def quantize_max_abs(x, max_range):
@@ -247,7 +247,7 @@ class TestChannelWiseDequantizeOp(OpTest):
         self.outputs = {'Y': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestChannelWiseDequantizeOp1(TestChannelWiseDequantizeOp):
@@ -281,7 +281,7 @@ class TestDequantizeOp(OpTest):
         self.outputs = {'Y': ydq}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_dygraph=False)
 
 
 class TestDequantizeOpDouble(TestDequantizeOp):
@@ -319,11 +319,11 @@ class TestDequantizeOpHalf(TestDequantizeOp):
 
     def _get_places(self):
         import paddle
-        from paddle.fluid import core
+        from paddle.base import core
 
         if core.is_compiled_with_cuda():
-            place = paddle.fluid.core.CUDAPlace(0)
-            if paddle.fluid.core.is_float16_supported(place):
+            place = paddle.base.core.CUDAPlace(0)
+            if paddle.base.core.is_float16_supported(place):
                 return [place]
             else:
                 return []

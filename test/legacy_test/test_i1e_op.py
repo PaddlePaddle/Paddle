@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 from scipy import special
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 np.random.seed(42)
 paddle.seed(42)

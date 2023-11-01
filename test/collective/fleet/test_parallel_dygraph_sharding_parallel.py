@@ -39,6 +39,9 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_sharding_state_dict(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
 
+    def test_group_param_tensor_fusion(self):
+        self.run_mnist_2gpu('hybrid_parallel_tensor_fusion_with_group.py')
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -38,7 +38,8 @@ IRSchedule MakeIRSchedule(frontend::Program* program) {
           "inferdtype");
   auto& shape_dict = graph->GetMutableAttrs<
       absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
-  hlir::framework::OpLowerer op_lowerer(dtype_dict, shape_dict, target);
+  auto op_lowerer =
+      hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
 
   std::vector<LoweredFunc> lowered_funcs =
       op_lowerer.Lower(graph->fusion_groups.front(), false, false);
@@ -96,8 +97,8 @@ frontend::Program CreateReduceProgram() {
 TEST(ScheduleBlockGraph, elementwise) {
   frontend::Program program = CreateElementwiseProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
-  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << GetIR(ir_sch);
+  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
   CHECK_EQ(sbg.BlockIdsInOrder().size(), 6);
   CHECK_EQ(sbg.nodes().size(), 6);
@@ -137,8 +138,8 @@ TEST(ScheduleBlockGraph, elementwise) {
 TEST(ScheduleBlockGraph, reduce) {
   frontend::Program program = CreateReduceProgram();
   IRSchedule ir_sch = MakeIRSchedule(&program);
-  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << GetIR(ir_sch);
+  ScheduleBlockGraph sbg(ir_sch);
   LOG(INFO) << sbg.Visualize();
   CHECK_EQ(sbg.BlockIdsInOrder().size(), 8);
   CHECK_EQ(sbg.nodes().size(), 8);

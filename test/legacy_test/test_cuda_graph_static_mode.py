@@ -18,8 +18,8 @@ import numpy as np
 from simple_nets import simple_fc_net_with_inputs
 
 import paddle
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.device.cuda.graphs import CUDAGraph
-from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 def can_use_cuda_graph():
@@ -48,6 +48,10 @@ def build_program(main, startup, batch_size, class_num):
     return image, label, loss, lr
 
 
+@unittest.skipIf(
+    not paddle.is_compiled_with_cuda() or float(paddle.version.cuda()) < 11.0,
+    "only support cuda >= 11.0",
+)
 class TestCUDAGraphInStaticMode(unittest.TestCase):
     def setUp(self):
         if can_use_cuda_graph():

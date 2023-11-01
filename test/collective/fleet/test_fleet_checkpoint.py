@@ -16,10 +16,10 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
+from paddle.base.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 from paddle.distributed.fleet.utils.fs import HDFSClient, LocalFS
-from paddle.fluid.incubate.checkpoint.auto_checkpoint import ExeTrainStatus
-from paddle.fluid.incubate.checkpoint.checkpoint_saver import CheckpointSaver
 from paddle.incubate.distributed.fleet import role_maker
 from paddle.incubate.distributed.fleet.collective import fleet
 
@@ -39,8 +39,8 @@ class FleetTest(unittest.TestCase):
             name='img', shape=[None, 28, 28], dtype='float32'
         )
         label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-        feeder = fluid.DataFeeder(
-            feed_list=[image, label], place=fluid.CPUPlace()
+        feeder = base.DataFeeder(
+            feed_list=[image, label], place=base.CPUPlace()
         )
         predict = paddle.static.nn.fc(x=image, size=10, activation='softmax')
         loss = paddle.nn.functional.cross_entropy(
@@ -52,8 +52,8 @@ class FleetTest(unittest.TestCase):
         dist_optimizer = fleet.distributed_optimizer(optimizer)
         dist_optimizer.minimize(avg_loss)
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
 
         status = ExeTrainStatus()
         status.epoch_no = 2
