@@ -288,6 +288,7 @@ class ProgramConfig:
         assert _type in [
             np.float32,
             np.float16,
+            None,
         ], "PaddleTRT only supports FP32 / FP16 IO"
         self.input_type = _type
 
