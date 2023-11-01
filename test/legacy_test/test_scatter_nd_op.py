@@ -21,7 +21,6 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -432,7 +431,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 
 class TestScatterNdOpStaticAPI(unittest.TestCase):
-    @test_with_pir_api
     def test_static_graph():
         if not base.core.is_compiled_with_cuda():
             return
