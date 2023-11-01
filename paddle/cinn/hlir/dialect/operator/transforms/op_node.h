@@ -31,11 +31,11 @@ class OpNode {
 
   OpPatternKind kind() const {
     auto kind = GetOpKind(node_->name());
-    if (kind == kBroadcast) {
+    if (kind == OpPatternKind::kBroadcast) {
       // As binary op was defined as broadcast, actually it should be
       // element-wise.
       if (node_->name() != "broadcast_to") {
-        return kElementWise;
+        return OpPatternKind::kElementWise;
       }
     }
     return kind;
