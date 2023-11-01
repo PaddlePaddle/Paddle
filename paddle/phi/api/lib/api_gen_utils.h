@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_meta_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/distributed/type_defs.h"
 #include "paddle/phi/core/meta_tensor.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -147,10 +148,16 @@ phi::distributed::DistTensor* SetKernelDistOutput(
     const phi::distributed::TensorDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
 
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
+
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out,
     const phi::distributed::TensorDistAttr& dist_attr =
         phi::distributed::TensorDistAttr());
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr);
 
 std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     std::vector<Tensor*> out);
