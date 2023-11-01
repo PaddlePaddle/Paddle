@@ -400,9 +400,10 @@ void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
                                                                  // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
-    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+    instr_node->ResetContextWithScope(
+        ins_map, outs_map, *local_scope, instr_node->OpBase()->Type());
   } else {
-    instr_node->ResetContext(ins_map, outs_map);
+    instr_node->ResetContext(ins_map, outs_map, instr_node->OpBase()->Type());
   }
 }
 
@@ -875,8 +876,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        op_with_kernel->Info().infer_shape_(
-            instr_node.InnerInferShapeContext().get());
+        if (op_with_kernel->Info().infer_meta_) {
+          op_with_kernel->Info().infer_shape_(
+              instr_node.InnerInferMetaContext())
+        } else {
+          op_with_kernel->Info().infer_shape_(
+              instr_node.InnerInferShapeContext().get());
+        }
       }
       infershape_event.End();
       platform::RecordOpInfoSupplement(op->Type(),

@@ -327,6 +327,10 @@ struct OpInfoFiller<T, kShapeInference> {
       T inference;
       inference(ctx);
     };
+    info->infer_meta_ = [](phi::InferMetaContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
   }
 };
 

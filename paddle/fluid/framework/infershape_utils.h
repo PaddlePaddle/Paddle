@@ -151,6 +151,7 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
           paddle::framework::BuildInferMetaContext(ctx, #op_type);  \
       fn(&infer_meta_context);                                      \
     }                                                               \
+    void operator()(phi::InferMetaContext* ctx) const { fn(ctx); }  \
   }
 
 }  // namespace framework

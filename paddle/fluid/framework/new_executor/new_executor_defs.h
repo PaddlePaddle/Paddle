@@ -23,6 +23,7 @@
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
@@ -262,15 +263,19 @@ class Instruction {
   const std::vector<size_t>& GCCheckVars() const;
 
   void ResetContext(const VariableValueMap& in_vars,
-                    const VariableValueMap& out_vars);
+                    const VariableValueMap& out_vars,
+                    const std::string& op_name);
 
   void ResetContextWithScope(const VariableValueMap& in_vars,
                              const VariableValueMap& out_vars,
-                             const framework::Scope& scope);
+                             const framework::Scope& scope,
+                             const std::string& op_name);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+
+  const phi::InferMetaContext* InnerInferMetaContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -307,6 +312,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  phi::InferMetaContext infermeta_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;
