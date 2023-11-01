@@ -57,12 +57,6 @@ PD_DEFINE_bool(cinn_use_op_fusion,
                BoolFromEnv("FLAGS_cinn_use_op_fusion", true),
                "Whether to use op fusion pass.");
 
-DEFINE_bool(
-    gemm_use_half_precision_compute_type,
-    BoolFromEnv("FLAGS_gemm_use_half_precision_compute_type", false),
-    "whether to use fp16 compute type when the input and output is fp16,"
-    "faster but it may loss precision.");
-
 PD_DEFINE_bool(general_fusion_merge_pass,
                BoolFromEnv("FLAGS_general_fusion_merge_pass", true),
                "Whether to use general fusion_merge pass.");
