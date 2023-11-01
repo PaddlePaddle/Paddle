@@ -15,6 +15,7 @@
 # TODO: define logic functions of a tensor
 
 import paddle
+from paddle.test_promotion import judge_dtype_for_type_promotion
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
@@ -102,6 +103,7 @@ def _logical_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_and(x, y, out=None, name=None):
     r"""
 
@@ -148,6 +150,7 @@ def logical_and(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_and_(x, y, name=None):
     r"""
     Inplace version of ``logical_and`` API, the output Tensor will be inplaced with input ``x``.
@@ -164,6 +167,7 @@ def logical_and_(x, y, name=None):
         return _C_ops.logical_and_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_or(x, y, out=None, name=None):
     """
 
@@ -209,6 +213,7 @@ def logical_or(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_or_(x, y, name=None):
     r"""
     Inplace version of ``logical_or`` API, the output Tensor will be inplaced with input ``x``.
@@ -225,6 +230,7 @@ def logical_or_(x, y, name=None):
         return _C_ops.logical_or_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_xor(x, y, out=None, name=None):
     r"""
 
@@ -271,6 +277,7 @@ def logical_xor(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logical_xor_(x, y, name=None):
     r"""
     Inplace version of ``logical_xor`` API, the output Tensor will be inplaced with input ``x``.
@@ -503,6 +510,7 @@ def allclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def equal(x, y, name=None):
     """
 
@@ -586,6 +594,7 @@ def equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def equal_(x, y, name=None):
     r"""
     Inplace version of ``equal`` API, the output Tensor will be inplaced with input ``x``.
@@ -603,6 +612,7 @@ def equal_(x, y, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def greater_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x >= y` elementwise, which is equivalent function to the overloaded operator `>=`.
@@ -674,6 +684,7 @@ def greater_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def greater_equal_(x, y, name=None):
     r"""
     Inplace version of ``greater_equal`` API, the output Tensor will be inplaced with input ``x``.
@@ -691,6 +702,7 @@ def greater_equal_(x, y, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def greater_than(x, y, name=None):
     """
     Returns the truth value of :math:`x > y` elementwise, which is equivalent function to the overloaded operator `>`.
@@ -762,6 +774,7 @@ def greater_than(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def greater_than_(x, y, name=None):
     r"""
     Inplace version of ``greater_than`` API, the output Tensor will be inplaced with input ``x``.
@@ -779,6 +792,7 @@ def greater_than_(x, y, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def less_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x <= y` elementwise, which is equivalent function to the overloaded operator `<=`.
@@ -851,6 +865,7 @@ def less_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def less_equal_(x, y, name=None):
     r"""
     Inplace version of ``less_equal`` API, the output Tensor will be inplaced with input ``x``.
@@ -868,6 +883,7 @@ def less_equal_(x, y, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def less_than(x, y, name=None):
     """
     Returns the truth value of :math:`x < y` elementwise, which is equivalent function to the overloaded operator `<`.
@@ -940,6 +956,7 @@ def less_than(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def less_than_(x, y, name=None):
     r"""
     Inplace version of ``less_than`` API, the output Tensor will be inplaced with input ``x``.
@@ -957,6 +974,7 @@ def less_than_(x, y, name=None):
 
 
 @templatedoc()
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def not_equal(x, y, name=None):
     """
     Returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
@@ -1029,6 +1047,7 @@ def not_equal(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def not_equal_(x, y, name=None):
     r"""
     Inplace version of ``not_equal`` API, the output Tensor will be inplaced with input ``x``.
@@ -1121,6 +1140,7 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_and(x, y, out=None, name=None):
     r"""
 
@@ -1163,6 +1183,7 @@ def bitwise_and(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_and_(x, y, name=None):
     r"""
     Inplace version of ``bitwise_and`` API, the output Tensor will be inplaced with input ``x``.
@@ -1179,6 +1200,7 @@ def bitwise_and_(x, y, name=None):
         return _C_ops.bitwise_and_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_or(x, y, out=None, name=None):
     r"""
 
@@ -1213,7 +1235,7 @@ def bitwise_or(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -1, -3])
     """
-    if in_dynamic_or_pir_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_or(x, y)
 
     return _bitwise_op(
@@ -1222,6 +1244,7 @@ def bitwise_or(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_or_(x, y, name=None):
     r"""
     Inplace version of ``bitwise_or`` API, the output Tensor will be inplaced with input ``x``.
@@ -1238,6 +1261,7 @@ def bitwise_or_(x, y, name=None):
         return _C_ops.bitwise_or_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_xor(x, y, out=None, name=None):
     r"""
 
@@ -1272,7 +1296,7 @@ def bitwise_xor(x, y, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [-1, -3, -4])
     """
-    if in_dynamic_or_pir_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_xor(x, y)
     return _bitwise_op(
         op_name="bitwise_xor", x=x, y=y, name=name, out=out, binary_op=True
@@ -1280,6 +1304,7 @@ def bitwise_xor(x, y, out=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def bitwise_xor_(x, y, name=None):
     r"""
     Inplace version of ``bitwise_xor`` API, the output Tensor will be inplaced with input ``x``.
@@ -1328,7 +1353,7 @@ def bitwise_not(x, out=None, name=None):
             Tensor(shape=[3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [ 4,  0, -2])
     """
-    if in_dynamic_or_pir_mode() and out is None:
+    if in_dynamic_mode() and out is None:
         return _C_ops.bitwise_not(x)
 
     return _bitwise_op(

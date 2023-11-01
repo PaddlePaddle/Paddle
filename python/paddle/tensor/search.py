@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc, Variable
+from paddle.test_promotion import judge_dtype_for_type_promotion
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_variable_and_dtype
@@ -629,6 +630,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
         return values, indices
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def where(condition, x=None, y=None, name=None):
     r"""
     Return a Tensor of elements selected from either :attr:`x` or :attr:`y` according to corresponding elements of :attr:`condition`. Concretely,
@@ -740,6 +742,7 @@ def where(condition, x=None, y=None, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def where_(condition, x=None, y=None, name=None):
     r"""
     Inplace version of ``where`` API, the output Tensor will be inplaced with input ``x``.

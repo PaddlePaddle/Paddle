@@ -460,6 +460,11 @@ def monkey_patch_variable():
     def _binary_creator_(
         method_name, op_type, reverse=False, scalar_method=None
     ):
+        from paddle.test_promotion import judge_dtype_for_type_promotion
+
+        @judge_dtype_for_type_promotion(
+            type_promoting_args=("self", "other_var")
+        )
         def __impl__(self, other_var):
             # 1. scalar exists cases
             # we need combine the tensor.dtype and scalar.dtype, cast correct object

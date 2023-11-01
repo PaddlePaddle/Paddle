@@ -73,6 +73,49 @@ static bool IsNumpyType(PyObject* obj) {
          type_name == "numpy.int32" || type_name == "numpy.int16";
 }
 
+static bool IsAllNumpyType(PyObject* obj) {
+  // It is not a good way to judge the type of obj by its type'name. Maybe using
+  // `PyArray_IsScalar` will be better. However, this interface cannot be used
+  // by including pybind11, and it needs to compile with numpy.
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
+         type_name == "numpy.int32" || type_name == "numpy.int16" ||
+         type_name == "numpy.bool" || type_name == "numpy.complex64" ||
+         type_name == "numpy.complex128" || type_name == "numpy.float32" ||
+         type_name == "numpy.float64" || type_name == "numpy.float16" ||
+         type_name == "numpy.uint8" || type_name == "numpy.int8";
+}
+
+static DataType Numpy2DataType(PyObject* obj) {
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  if (type_name == "numpy.int64" || type_name == "numpy.longlong") {
+    return DataType::INT64;
+  } else if (type_name == "numpy.int32") {
+    return DataType::INT32;
+  } else if (type_name == "numpy.int16") {
+    return DataType::INT16;
+  } else if (type_name == "numpy.int8") {
+    return DataType::INT8;
+  } else if (type_name == "numpy.uint8") {
+    return DataType::UINT8;
+  } else if (type_name == "numpy.float32") {
+    return DataType::FLOAT32;
+  } else if (type_name == "numpy.float16") {
+    return DataType::FLOAT16;
+  } else if (type_name == "numpy.float64") {
+    return DataType::FLOAT64;
+  } else if (type_name == "numpy.bool") {
+    return DataType::BOOL;
+  } else if (type_name == "numpy.complex64") {
+    return DataType::COMPLEX64;
+  } else if (type_name == "numpy.complex128") {
+    return DataType::COMPLEX128;
+  } else {
+    std::cout << "got unknow numpy scalar type: " << type_name << std::endl;
+    return DataType::UNDEFINED;
+  }
+}
+
 static bool IsNumpyArray(PyObject* obj) {
   auto type_name = std::string(Py_TYPE(obj)->tp_name);
   return type_name == "numpy.ndarray";
@@ -207,6 +250,47 @@ static PyObject* tensor__add__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
 
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
@@ -309,6 +393,47 @@ static PyObject* tensor__sub__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
       IsNumpyType(other_obj)) {
@@ -405,6 +530,46 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -504,6 +669,46 @@ static PyObject* tensor__mul__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -615,6 +820,46 @@ static PyObject* tensor__div__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -730,6 +975,46 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar_div function for __rdiv__ and __rtruediv__
@@ -848,6 +1133,46 @@ static PyObject* tensor__gt__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __gt__ now
@@ -938,6 +1263,46 @@ static PyObject* tensor__ge__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __ge__ now
@@ -1119,6 +1484,46 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar_matmul function for __matmul__ now
@@ -1227,6 +1632,46 @@ static PyObject* tensor__lt__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
@@ -1317,6 +1762,46 @@ static PyObject* tensor__le__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
@@ -1407,6 +1892,46 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases or not
   // there is no scalar case for floordiv, but alse need to cast self_tensor
@@ -1502,6 +2027,46 @@ static PyObject* tensor__pow__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -1588,6 +2153,46 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   paddle::Tensor self_tensor = self->tensor;
 
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases or not
   // there is no scalar case for rpow, but alse need to cast self_tensor in
@@ -1679,6 +2284,46 @@ static PyObject* tensor__ne__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __ne__ now
@@ -1769,6 +2414,46 @@ static PyObject* tensor__eq__method(TensorObject* self,
   paddle::Tensor ret;
   paddle::Tensor self_tensor = self->tensor;
   PyObject* other_obj = PyTuple_GET_ITEM(args, 0);
+  // find dtype diff
+  //  init self_obj_dtype
+  auto self_obj_dtype = self_tensor.dtype();
+  phi::DataType other_obj_dtype;
+  if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
+      PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
+    if (PyCheckInteger(other_obj)) {
+      other_obj_dtype = DataType::INT64;
+    } else if (PyFloat_Check(other_obj)) {
+      other_obj_dtype = DataType::FLOAT32;
+    } else if (PyComplex_Check(other_obj)) {
+      other_obj_dtype = DataType::COMPLEX64;
+    } else if (PyBool_Check(other_obj)) {
+      other_obj_dtype = DataType::BOOL;
+    } else {
+      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
+                << " other_obj: " << other_obj << std::endl;
+      other_obj_dtype = DataType::UNDEFINED;
+    }
+  } else if (IsAllNumpyType(other_obj)) {
+    other_obj_dtype = Numpy2DataType(other_obj);
+  } else if (PyCheckTensor(other_obj)) {
+    paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else if (IsNumpyArray(other_obj)) {
+    py::object numpy_value = py::object(py::handle(other_obj), true);
+    paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
+    InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
+    other_obj_dtype = tmp_other_tensor.dtype();
+  } else {
+    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    other_obj_dtype = DataType::UNDEFINED;
+  }
+
+  // check diff
+  PADDLE_ENFORCE_EQ(
+      other_obj_dtype,
+      self_obj_dtype,
+      paddle::platform::errors::Fatal(
+          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
 
   // 1. scalar exists cases
   // there is no scalar function for __eq__ now

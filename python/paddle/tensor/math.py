@@ -21,6 +21,7 @@ import numpy as np
 import paddle
 from paddle import _C_ops, _legacy_C_ops
 from paddle.common_ops_import import VarDesc, dygraph_utils
+from paddle.test_promotion import judge_dtype_for_type_promotion
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import (
@@ -451,6 +452,7 @@ def scale_(x, scale=1.0, bias=0.0, bias_after_scale=True, act=None, name=None):
         return _C_ops.scale_(x, scale, float(bias), bias_after_scale)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def pow(x, y, name=None):
     """
     Compute the power of Tensor elements. The equation is:
@@ -533,6 +535,7 @@ def pow(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def pow_(x, y, name=None):
     """
     Inplace version of ``pow`` API, the output Tensor will be inplaced with input ``x``.
@@ -630,6 +633,7 @@ def _elementwise_op(helper):
     return helper.append_activation(out)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def add(x, y, name=None):
     """
     Elementwise Add Operator.
@@ -689,6 +693,7 @@ def add(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def add_(x, y, name=None):
     """
     Inplace version of ``add`` API, the output Tensor will be inplaced with input ``x``.
@@ -706,6 +711,7 @@ def add_(x, y, name=None):
     return _C_ops.add_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def logaddexp(x, y, name=None):
     """
     Elementwise LogAddExp Operator.
@@ -766,6 +772,7 @@ def logaddexp(x, y, name=None):
     return paddle.log1p(paddle.exp(-paddle.abs(x - y))) + paddle.maximum(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def subtract(x, y, name=None):
     """
     Substract two tensors element-wise. The equation is:
@@ -829,6 +836,7 @@ def subtract(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def subtract_(x, y, name=None):
     """
     Inplace version of ``subtract`` API, the output Tensor will be inplaced with input ``x``.
@@ -846,6 +854,7 @@ def subtract_(x, y, name=None):
     return _C_ops.subtract_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def divide(x, y, name=None):
     """
     Divide two tensors element-wise. The equation is:
@@ -887,6 +896,7 @@ def divide(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def divide_(x, y, name=None):
     r"""
     Inplace version of ``divide`` API, the output Tensor will be inplaced with input ``x``.
@@ -902,6 +912,7 @@ def divide_(x, y, name=None):
     return _C_ops.divide_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def floor_divide(x, y, name=None):
     """
     Floor divide two tensors element-wise and rounds the quotinents to the nearest integer toward zero. The equation is:
@@ -948,6 +959,7 @@ def floor_divide(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def floor_divide_(x, y, name=None):
     r"""
     Inplace version of ``floor_divide`` API, the output Tensor will be inplaced with input ``x``.
@@ -963,6 +975,7 @@ def floor_divide_(x, y, name=None):
     return _C_ops.floor_divide_(x, y)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def remainder(x, y, name=None):
     r"""
     Mod two tensors element-wise. The equation is:
@@ -1005,6 +1018,7 @@ def remainder(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def remainder_(x, y, name=None):
     r"""
     Inplace version of ``remainder`` API, the output Tensor will be inplaced with input ``x``.
@@ -1034,6 +1048,7 @@ floor_mod_.__doc__ = r"""
     """
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def multiply(x, y, name=None):
     """
     multiply two tensors element-wise. The equation is:
@@ -1088,6 +1103,7 @@ def multiply(x, y, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def multiply_(x, y, name=None):
     """
     Inplace version of ``multiply`` API, the output Tensor will be inplaced with input ``x``.
@@ -1163,6 +1179,7 @@ def _divide_with_axis(x, y, axis=-1, name=None):
         return _elementwise_op(LayerHelper(op_type, **locals()))
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def maximum(x, y, name=None):
     """
     Compare two tensors and returns a new tensor containing the element-wise maxima. The equation is:
@@ -1225,6 +1242,7 @@ def maximum(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_max', **locals()))
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def minimum(x, y, name=None):
     """
     Compare two tensors and return a new tensor containing the element-wise minima. The equation is:
@@ -1287,6 +1305,7 @@ def minimum(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_min', **locals()))
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def fmax(x, y, name=None):
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the maximum value of the element.
@@ -1351,6 +1370,7 @@ def fmax(x, y, name=None):
         return _elementwise_op(LayerHelper('elementwise_fmax', **locals()))
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def fmin(x, y, name=None):
     """
     Compares the elements at the corresponding positions of the two tensors and returns a new tensor containing the minimum value of the element.
@@ -5090,6 +5110,7 @@ def neg_(x, name=None):
     )
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def atan2(x, y, name=None):
     r"""
     Element-wise arctangent of x/y with consideration of the quadrant.
@@ -5231,6 +5252,7 @@ def logit_(x, eps=None, name=None):
         return _C_ops.logit_(x, eps)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def lerp(x, y, weight, name=None):
     r"""
     Does a linear interpolation between x and y based on weight.
@@ -5290,6 +5312,7 @@ def lerp(x, y, weight, name=None):
 
 
 @inplace_apis_in_dygraph_only
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def lerp_(x, y, weight, name=None):
     r"""
     Inplace version of ``lerp`` API, the output Tensor will be inplaced with input ``x``.
@@ -5495,6 +5518,7 @@ def deg2rad(x, name=None):
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def gcd(x, y, name=None):
     """
     Computes the element-wise greatest common divisor (GCD) of input |x| and |y|.
@@ -5580,6 +5604,7 @@ def gcd(x, y, name=None):
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def gcd_(x, y, name=None):
     r"""
     Inplace version of ``gcd`` API, the output Tensor will be inplaced with input ``x``.
@@ -5625,6 +5650,7 @@ def gcd_(x, y, name=None):
         return x
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def lcm(x, y, name=None):
     """
     Computes the element-wise least common multiple (LCM) of input |x| and |y|.
@@ -5685,6 +5711,7 @@ def lcm(x, y, name=None):
     return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def lcm_(x, y, name=None):
     r"""
     Inplace version of ``lcm`` API, the output Tensor will be inplaced with input ``x``.
@@ -5970,6 +5997,7 @@ def angle(x, name=None):
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def heaviside(x, y, name=None):
     r"""
     Computes the Heaviside step function determined by corresponding element in y for each element in x. The equation is
@@ -6597,6 +6625,7 @@ def vander(x, n=None, increasing=False, name=None):
     return res
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "y"))
 def nextafter(x, y, name=None):
     r"""
     Return the next floating-point value after input towards other, elementwise.

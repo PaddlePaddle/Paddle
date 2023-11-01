@@ -15,6 +15,7 @@
 import paddle
 from paddle import _C_ops, _legacy_C_ops, in_dynamic_mode
 from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.test_promotion import judge_dtype_for_type_promotion
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ...base.data_feeder import check_dtype, check_variable_and_dtype
@@ -61,7 +62,7 @@ def celu(x, alpha=1.0, name=None):
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
@@ -511,6 +512,7 @@ def leaky_relu_(x, negative_slope=0.01, name=None):
         return _C_ops.leaky_relu_(x, negative_slope)
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("x", "weight"))
 def prelu(x, weight, data_format="NCHW", name=None):
     """
     prelu activation. The calculation formula is follows:
@@ -594,7 +596,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
             ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
         mode = 'channel'
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
@@ -813,7 +815,7 @@ def log_sigmoid(x, name=None):
             [-0.31326166, -0.12692805, -0.04858733, -0.01814996])
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
@@ -942,7 +944,7 @@ def relu6(x, name=None):
             [0.        , 0.30000001, 6.        ])
     """
     threshold = 6.0
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.relu6(x)
 
     check_variable_and_dtype(
@@ -1683,7 +1685,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if dtype is not None:
             x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)

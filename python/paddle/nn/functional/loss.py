@@ -19,6 +19,7 @@ import paddle
 from paddle import _C_ops, base, in_dynamic_mode
 from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
+from paddle.test_promotion import judge_dtype_for_type_promotion
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
@@ -1041,6 +1042,7 @@ def hsigmoid_loss(
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("input", "label"))
 def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
     r"""
     Calculate smooth_l1_loss. Creates a criterion that uses a squared
@@ -1256,6 +1258,7 @@ def margin_ranking_loss(
             return result_out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("input", "label"))
 def l1_loss(input, label, reduction='mean', name=None):
     r"""
 
@@ -1480,6 +1483,7 @@ def nll_loss(
         return out
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("input", "label"))
 def poisson_nll_loss(
     input,
     label,
@@ -1723,6 +1727,7 @@ def kl_div(input, label, reduction='mean', name=None):
         return loss
 
 
+@judge_dtype_for_type_promotion(type_promoting_args=("input", "label"))
 def mse_loss(input, label, reduction='mean', name=None):
     r"""
     Accept input predications and label and returns the mean square error.

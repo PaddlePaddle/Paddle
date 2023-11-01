@@ -512,6 +512,7 @@ from . import (  # noqa: F401
     fft,
     signal,
     _pir_ops,
+    test_promotion,
 )
 from .hapi import (
     Model,
