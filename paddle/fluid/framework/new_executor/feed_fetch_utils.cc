@@ -52,34 +52,41 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
                       const int64_t micro_batch_num,
                       Scope* scope,
                       std::vector<std::vector<phi::DenseTensor>>* out) {
-  out->resize(micro_batch_num);
+  std::vector<phi::DenseTensor> feed_tensors;
   for (size_t i = 0; i < feed_names.size(); ++i) {
     auto feed_name = feed_names[i];
     auto feed_var = scope->GetVar(feed_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        feed_var,
+        platform::errors::NotFound("Variable %s should not be nullptr.",
+                                   feed_names[i]));
+    feed_tensors.push_back(feed_var->Get<phi::DenseTensor>());
+  }
 
-    if (feed_var->IsType<phi::DenseTensor>()) {
-      phi::DenseTensor feed_tensor = feed_var->Get<phi::DenseTensor>();
-      int64_t numel_size = feed_tensor.dims()[0];
-      PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
-                        0,
-                        platform::errors::InvalidArgument(
-                            "Split expects feed data (%s)'s dim[0] (%d) is "
-                            "diviable by micro_batch_num (%d).",
-                            feed_name,
-                            numel_size,
-                            micro_batch_num));
-      int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
-      VLOG(4) << "Split feed data:" << feed_name << ", dims:("
-              << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
-      for (int64_t j = 0; j < micro_batch_num; ++j) {
-        (*out)[j].resize(i + 1);
-        (*out)[j][i].ShareDataWith(
-            feed_tensor.Slice(j * split_size, j * split_size + split_size));
-      }
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "Type (%s) not support in SplitFeedTensor.",
-          ToTypeName(feed_var->Type())));
+  out->resize(micro_batch_num);
+  if (micro_batch_num < 2) {
+    (*out)[0] = std::move(feed_tensors);
+    return;
+  }
+
+  for (size_t i = 0; i < feed_tensors.size(); ++i) {
+    int64_t numel_size = feed_tensors[i].dims()[0];
+    PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
+                      0,
+                      platform::errors::InvalidArgument(
+                          "Split expects feed data (%s)'s dim[0] (%d) is "
+                          "diviable by micro_batch_num (%d).",
+                          feed_names[i],
+                          numel_size,
+                          micro_batch_num));
+    int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
+    VLOG(4) << "Split feed data:" << feed_names[i] << ", dims:("
+            << feed_tensors[i].dims()
+            << "), micro_batch_num:" << micro_batch_num;
+    for (int64_t j = 0; j < micro_batch_num; ++j) {
+      (*out)[j].resize(i + 1);
+      (*out)[j][i].ShareDataWith(
+          feed_tensors[i].Slice(j * split_size, j * split_size + split_size));
     }
   }
 }
@@ -89,9 +96,13 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
                   const int64_t micro_batch_id,
                   Scope* scope,
                   FetchUnmergedList* fetch_list) {
-  PADDLE_ENFORCE_GT(fetch_list->size(),
-                    micro_batch_id,
-                    platform::errors::InvalidArgument(""));
+  PADDLE_ENFORCE_GT(
+      fetch_list->size(),
+      micro_batch_id,
+      phi::errors::Unavailable("The fetch list size (%lld) should be greater "
+                               "than micro_batch_id (%lld)",
+                               fetch_list->size(),
+                               micro_batch_id));
 
   fetch_list->at(micro_batch_id).resize(fetch_var_names.size());
   for (auto& var_name : job_fetch_names) {
@@ -105,27 +116,31 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
   }
 }
 
-void MergeFetchTensors(const FetchUnmergedList& unmerged_fetch_list,
+void MergeFetchTensors(const FetchUnmergedList& fetch_list,
                        const int64_t micro_batch_num,
                        FetchList* out) {
-  if (unmerged_fetch_list.size() == 0) return;
+  if (fetch_list.size() == 0) return;
 
-  PADDLE_ENFORCE_EQ(unmerged_fetch_list.size(),
-                    micro_batch_num,
-                    platform::errors::InvalidArgument(""));
+  PADDLE_ENFORCE_EQ(
+      fetch_list.size(),
+      micro_batch_num,
+      phi::errors::Unavailable("The fetch_list size (%lld) shoule be equal to "
+                               "the micro_batch_num (%lld)",
+                               fetch_list.size(),
+                               micro_batch_num));
 
   if (micro_batch_num < 2) {
-    *out = std::move(unmerged_fetch_list[0]);
+    *out = std::move(fetch_list[0]);
     return;
   }
 
-  out->resize(unmerged_fetch_list[0].size());
-  for (size_t i = 0; i < unmerged_fetch_list[0].size(); ++i) {
+  out->resize(fetch_list[0].size());
+  for (size_t i = 0; i < fetch_list[0].size(); ++i) {
     std::vector<const phi::DenseTensor*> tensors_ptr;
     for (auto micro_batch_id = 0; micro_batch_id < micro_batch_num;
          ++micro_batch_id) {
-      tensors_ptr.push_back(&PADDLE_GET_CONST(
-          phi::DenseTensor, unmerged_fetch_list[micro_batch_id][i]));
+      tensors_ptr.push_back(
+          &PADDLE_GET_CONST(phi::DenseTensor, fetch_list[micro_batch_id][i]));
     }
     phi::DenseTensor merge_tensor;
     MergeLoDTensor(&merge_tensor, tensors_ptr, platform::CPUPlace());

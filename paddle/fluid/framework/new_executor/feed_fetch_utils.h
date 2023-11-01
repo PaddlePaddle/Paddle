@@ -38,7 +38,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
                   Scope* scope,
                   FetchUnmergedList* fetch_list);
 
-void MergeFetchTensors(const FetchUnmergedList& unmerged_fetch_list,
+void MergeFetchTensors(const FetchUnmergedList& fetch_list,
                        const int64_t micro_batch_num,
                        FetchList* out);
 
