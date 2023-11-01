@@ -142,6 +142,10 @@ bool IsSupportCinn(pir::Operation* op) {
 
   std::cerr << "op_name " << op_name << std::endl;
 
+  if (op_name == "full" || op_name == "fill_constant") {
+    return false;
+  }
+
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to") {
     return true;
@@ -573,26 +577,51 @@ class CinnSubgraphDetector {
 };
 
 std::vector<pir::Value> AnalysisOutputs(GroupOpsVec& group_ops) {  // NOLINT
-  std::set<pir::Value> inputs;
-  std::set<pir::Value> outputs;
+  // Get output by ud chain
+  std::unordered_set<pir::Value> used_by_outside;
+  std::unordered_set<pir::Operation*> op_set;
+
   for (auto* op : group_ops) {
-    std::cerr << "group ops " << op->name() << std::endl;
-    VLOG(4) << "AnalysisOutputs from " << op->name();
-    for (auto& operand : op->operands()) {
-      inputs.emplace(operand.source());
-    }
-    for (auto& result : op->results()) {
-      outputs.emplace(result);
+    op_set.insert(op);
+  }
+
+  std::vector<pir::Value> vec_res;
+  for (auto* op : group_ops) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      auto result = op->result(i);
+
+      for (auto use_iter = result.use_begin(); use_iter != result.use_end();
+           ++use_iter) {
+        if (!op_set.count(use_iter->owner())) {
+          vec_res.push_back(result);
+          break;
+        }
+      }
     }
   }
-  std::vector<pir::Value> results;
-  std::set_symmetric_difference(outputs.begin(),
-                                outputs.end(),
-                                inputs.begin(),
-                                inputs.end(),
-                                std::back_inserter(results));
-  VLOG(3) << "Outputs size for GroupOp " << results.size();
-  return results;
+
+  return vec_res;
+
+  // std::set<pir::Value> inputs;
+  // std::set<pir::Value> outputs;
+  // for (auto* op : group_ops) {
+  //   std::cerr << "group ops " << op->name() << std::endl;
+  //   VLOG(4) << "AnalysisOutputs from " << op->name();
+  //   for (auto& operand : op->operands()) {
+  //     inputs.emplace(operand.source());
+  //   }
+  //   for (auto& result : op->results()) {
+  //     outputs.emplace(result);
+  //   }
+  // }
+  // std::vector<pir::Value> results;
+  // std::set_symmetric_difference(outputs.begin(),
+  //                               outputs.end(),
+  //                               inputs.begin(),
+  //                               inputs.end(),
+  //                               std::back_inserter(results));
+  // VLOG(3) << "Outputs size for GroupOp " << results.size();
+  // return results;
 }
 
 void ReplaceWithGroupOp(pir::Block* block,
