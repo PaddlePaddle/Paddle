@@ -19,6 +19,12 @@
 #include "paddle/phi/kernels/fusion/gpu/block_attn.h"
 #include "paddle/phi/kernels/gpu/flash_attn_utils.h"
 #include "paddle/utils/none.h"
+#include "paddle/phi/core/flags.h"
+#include <fstream>
+
+
+PHI_DECLARE_int32(max_enc_len_this_time_data);
+PHI_DECLARE_int32(max_dec_len_this_time_data);
 
 namespace phi {
 namespace fusion {
@@ -86,19 +92,29 @@ void BlockMultiheadAttentionKernel(
   VLOG(1) << "token_num: " << token_num
           << " pre_cache_length: " << pre_cache_length;
 
-  phi::DenseTensor max_dec_len_tensor;
-  max_dec_len_tensor.Resize({{1}});
-  auto* max_dec_len_data = dev_ctx.template Alloc<int>(
-      &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
-  int max_dec_len_this_time =
-      GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
+  // phi::DenseTensor max_dec_len_tensor;
+  // max_dec_len_tensor.Resize({{1}});
+  // auto* max_dec_len_data = dev_ctx.template Alloc<int>(
+  //     &max_dec_len_tensor, max_dec_len_tensor.numel() * sizeof(int));
+  // int max_dec_len_this_time =
+  //     GetMaxLen(dev_ctx, seq_lens_decoder, &max_dec_len_tensor, bsz);
 
-  phi::DenseTensor max_enc_len_tensor;
-  max_enc_len_tensor.Resize({{1}});
-  auto* max_enc_len_data = dev_ctx.template Alloc<int>(
-      &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
-  int max_enc_len_this_time =
-      GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
+  // phi::DenseTensor max_enc_len_tensor;
+  // max_enc_len_tensor.Resize({{1}});
+  // auto* max_enc_len_data = dev_ctx.template Alloc<int>(
+  //     &max_enc_len_tensor, max_enc_len_tensor.numel() * sizeof(int));
+  // int max_enc_len_this_time =
+  //     GetMaxLen(dev_ctx, seq_lens_encoder, &max_enc_len_tensor, bsz);
+
+ 
+
+  int max_enc_len_this_time = 0;
+  int max_dec_len_this_time = 0;
+
+  std::ifstream infile("max_len.txt", std::ios::in);
+  infile >> max_enc_len_this_time >> max_dec_len_this_time;
+  infile.close();
+
 
   phi::DenseTensor qkv_out_decoder;
   if (max_dec_len_this_time > 0) {

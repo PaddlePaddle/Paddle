@@ -1350,3 +1350,14 @@ PHI_DEFINE_EXPORTED_bool(dynamic_static_unified_comm,
                          "Whether to use new communication library in auto "
                          "parallel and static mode.");
 #endif  // FLAGS_dynamic_static_unified_comm
+
+
+PHI_DEFINE_EXPORTED_int32(
+    max_enc_len_this_time_data,
+    0,
+    "max_enc_len_this_time");
+
+PHI_DEFINE_EXPORTED_int32(
+    max_dec_len_this_time_data,
+    0,
+    "max_enc_len_this_time");
