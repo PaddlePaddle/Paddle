@@ -142,10 +142,6 @@ bool IsSupportCinn(pir::Operation* op) {
 
   std::cerr << "op_name " << op_name << std::endl;
 
-  if (op_name == "full" || op_name == "fill_constant") {
-    return false;
-  }
-
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to") {
     return true;
