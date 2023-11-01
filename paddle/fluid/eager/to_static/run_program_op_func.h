@@ -189,20 +189,7 @@ inline void run_program_ad_func(
     grad_node->SetFwdParams(params_tmp);
     grad_node->SetStepScope(step_scope);
 
-    // Set Grad out rank as same as fwd input and set stop gradient to bwd
-    // NOTE(@xiongkun): Not every tensor in x(list of tensor) is required
-    // gradient. for example: x[1] is not used for output, the x[1] is ignored.
-
-    std::vector<const paddle::Tensor*> x_require_grad;
-    for (size_t i = 0; i < x.size(); ++i) {
-      auto& name = x_names[i];
-      if (forward_global_block->HasVar(name) ||
-          backward_global_block->HasVar(name)) {
-        x_require_grad.push_back(&x[i]);
-      }
-    }
-
-    grad_node->SetGradOutMeta(x_require_grad, /*slot id*/ 0);
+    grad_node->SetGradOutMeta(x, /*slot id*/ 0);
     grad_node->SetGradOutMeta(params, /*slot id*/ 1);
 
     VLOG(2) << "clear_no_grad_edges.";
@@ -251,8 +238,12 @@ inline void newir_run_program_ad_func(
   std::shared_ptr<NewIRGradNodeRunProgram> grad_node;
   VLOG(2) << "start run run_program with require_any_grad = "
           << require_any_grad;
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
 
-  if (require_any_grad) {
+  if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     grad_node = std::make_shared<NewIRGradNodeRunProgram>(1, 2);
     grad_node->GetMiddle().resize(middle_size);
@@ -280,7 +271,7 @@ inline void newir_run_program_ad_func(
   // if require_any_grad is False, don't save any middle vars.
   NewIRRunProgramAPI(
       x, params, out, middles, step_scope, dout, require_any_grad, attrs);
-  if (require_any_grad) {
+  if (!is_test && require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
 
     // Set Attributes

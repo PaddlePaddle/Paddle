@@ -153,7 +153,7 @@ class OpGroup {
   //   group.WalkOpNodes(get_reduce_op);
   void WalkOpNodes(
       const std::function<void(const OpNode&)>& VisitOpNode) const {
-    group_.lock()->WalkNodes(
+    group_.lock()->WalkOps(
         [&](::pir::Operation* node) { VisitOpNode(OpNode(node)); });
   }
 

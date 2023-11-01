@@ -39,6 +39,71 @@ class TestCastOpTranscriber(unittest.TestCase):
         assert len(str(mappings)) > 0, "no mapping found"
 
 
+class TestCondWithInplace(unittest.TestCase):
+    def test_op(self):
+        def cond_with_inplace():
+            x = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            y = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            running_variance = paddle.to_tensor([1], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+            if x > y:
+                y = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
+            else:
+                y = paddle.nn.functional.batch_norm(
+                    x, running_mean, running_variance, weight, bias
+                )
+
+        legacy_program = paddle.jit.to_static(
+            cond_with_inplace,
+            input_spec=[],
+            full_graph=True,
+        )
+
+        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        assert l is not None
+
+    def test_nested_op(self):
+        def cond_with_inplace():
+            x = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            y = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            z = paddle.ones(shape=[2, 1, 2, 3], dtype="float32")
+            running_mean = paddle.to_tensor([0], dtype="float32")
+            running_variance = paddle.to_tensor([1], dtype="float32")
+            weight = paddle.to_tensor([2], dtype="float32")
+            bias = paddle.to_tensor([1], dtype="float32")
+            if x > y:
+                if y > z:
+                    z = paddle.nn.functional.batch_norm(
+                        z, running_mean, running_variance, weight, bias
+                    )
+                else:
+                    y = paddle.nn.functional.batch_norm(
+                        x, running_mean, running_variance, weight, bias
+                    )
+            else:
+                if y > z:
+                    z = paddle.nn.functional.batch_norm(
+                        z, running_mean, running_variance, weight, bias
+                    )
+                else:
+                    y = paddle.nn.functional.batch_norm(
+                        x, running_mean, running_variance, weight, bias
+                    )
+
+        legacy_program = paddle.jit.to_static(
+            cond_with_inplace,
+            input_spec=[],
+            full_graph=True,
+        )
+
+        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        assert l is not None
+
+
 class TestElementwiseOpTranscriber(unittest.TestCase):
     def test_elementwise_without_y_grad(self):
         place = core.Place()

@@ -42,10 +42,10 @@ class TestDigammaOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestDigammaOpFp32(TestDigammaOp):
@@ -53,7 +53,7 @@ class TestDigammaOpFp32(TestDigammaOp):
         self.dtype = np.float32
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestDigammaFP16Op(TestDigammaOp):
@@ -87,10 +87,12 @@ class TestDigammaBF16Op(OpTest):
 
     def test_check_output(self):
         # bfloat16 needs to set the parameter place
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ['X'], 'Out')
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ['X'], 'Out', check_pir=True
+        )
 
 
 class TestDigammaAPI(unittest.TestCase):

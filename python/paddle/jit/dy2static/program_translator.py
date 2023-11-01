@@ -15,7 +15,6 @@
 import collections
 import inspect
 import os
-import textwrap
 import threading
 import warnings
 import weakref
@@ -56,7 +55,6 @@ from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
     ast_to_func,
-    ast_to_source_code,
     backend_guard,
     func_to_source_code,
     input_specs_compatible,
@@ -680,8 +678,8 @@ class StaticFunction:
 def raise_error_template(func_str):
     def _raise_error(*args, **kwargs):
         error_template = (
-            "Can't call {func} when enable_fallback=True."
-            "Use paddle.jit.to_static(enable_fallback=False) instead."
+            "Can't call {func} when full_graph=False. "
+            "Use paddle.jit.to_static(full_graph=True) instead."
         )
         raise RuntimeError(error_template.format(func=func_str))
 
@@ -692,8 +690,8 @@ class SymbolicStaticFunction(StaticFunction):
     def __init__(self, function, input_spec=None, **kwargs):
         if input_spec is not None:
             warnings.warn(
-                "\nSymbolic Trace don't support input_spec arguments. It will not produce any effect.\n"
-                "1. You can disable fallback mode by `paddle.jit.to_static(enable_fallback=False)` to switch to AST to static, then you can assign input spec.\n"
+                "full_graph=False don't support input_spec arguments. It will not produce any effect.\n"
+                "You can set full_graph=True, then you can assign input spec.\n"
             )
         super().__init__(function, input_spec, **kwargs)
         self.last_call_input_spec = None
@@ -1762,37 +1760,6 @@ class ProgramTranslator:
         self.enable_to_static = True
 
     def enable(self, enable_to_static):
-        """
-        Enable or disable the converting from imperative to static graph by
-        ProgramTranslator globally.
-
-        Args:
-            enable_to_static (bool): True or False to enable or disable converting to static.
-
-        Returns:
-            None.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> x = paddle.ones([1, 2])
-                >>> x_v = prog_trans.get_output(func, x)
-                >>> print(x_v)
-                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0., 0.]])
-        """
         check_type(
             enable_to_static,
             "enable_to_static",
@@ -1800,274 +1767,6 @@ class ProgramTranslator:
             "ProgramTranslator.enable",
         )
         self.enable_to_static = enable_to_static
-
-    def get_output(self, dygraph_func, *args, **kwargs):
-        """
-        Returns the output dygraph Tensor for dygraph function. The dygraph
-        function will be translated into static graph function so the under
-        beneath numerical result will be calculated by static graph mode.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-            *args (tuple): the input argument of dygraph_func.
-            **kwargs (dict): the input argument of dygraph_func.
-
-        Returns:
-            Tensor or tuple of Tensors: the dygraph Tensor containing digital result.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> x = paddle.ones([1, 2])
-                >>> x_v = prog_trans.get_output(func, x)
-                >>> print(x_v)
-                Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-                [[0., 0.]])
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_output"
-
-        if not self.enable_to_static:
-            # Here calls `warnings.warn` but not `logging_utils.warn` because by default warnings.warn(message)
-            # will show up **only once**.
-            logging_utils.warn(
-                "The ProgramTranslator.get_output doesn't work when setting ProgramTranslator.enable to False. "
-                "We will just return dygraph output. "
-                "Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func(*args, **kwargs)
-        try:
-            function_spec = FunctionSpec(dygraph_func)
-            cache_key = CacheKey.from_func_and_args(
-                function_spec,
-                args,
-                kwargs,
-                getattr(dygraph_func, '__self__', None),
-            )
-            _, partial_program_layer = self._program_cache[cache_key]
-
-            if args and isinstance(args[0], layers.Layer):
-                # Synchronize self.training attribute.
-                partial_program_layer.training = args[0].training
-                args = args[1:]
-            try:
-                return partial_program_layer(args)
-            except BaseException as e:
-                # NOTE:
-                # 1. If e is raised in compile time, e should have been attached to ERROR_DATA before;
-                # 2. If e raised in runtime, e should be attached to ERROR_DATA here.
-                if not hasattr(e, error.ERROR_DATA):
-                    # runtime error
-                    error.attach_error_data(e, in_runtime=True)
-                raise
-        except BaseException as e:
-            error_data = getattr(e, error.ERROR_DATA, None)
-            if error_data:
-                error_data.raise_new_exception()
-            else:
-                logging_utils.warn(
-                    "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
-                )
-                raise e
-
-    def get_func(self, dygraph_func):
-        """
-        Returns a callable function which converts imperative dygraph APIs of
-        the input dygraph_func into declarative net-building APIs, which means
-        it doesn't return immediate digital result as get_output does.
-        Users should handle Program and Executor by themselves.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-
-        Returns:
-            callable: converting imperative dygraph APIs into declarative
-            net-building APIs.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> static_func = prog_trans.get_func(func)
-                >>> print(callable(static_func))
-                True
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_func"
-
-        if not self.enable_to_static:
-            logging_utils.warn(
-                "The ProgramTranslator.get_func doesn't work when setting ProgramTranslator.enable to False. We will "
-                "just return dygraph output. Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func
-
-        static_func = convert_to_static(dygraph_func)
-        return static_func
-
-    def get_program(self, dygraph_func, *args, **kwargs):
-        """
-        Returns the translated static program and input/output Tensors from
-        dygraph function. The users can use the program to run by executor.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-            *args (tuple): the input argument of dygraph_func.
-            **kwargs (dict): the input argument of dygraph_func.
-
-        Returns:
-            tuple of (main_program, startup_program, inputs, outputs) whose
-            types are (Program, Program, list of Tensors, list of Tensors).
-            main_program: the converted main program.
-            startup_program: the converted startup program.
-            inputs: list of input Tensors which need to be fed.
-            outputs: list of output Tensors which users can fetch.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> x = paddle.ones([1, 2])
-                >>> main_prog, start_prog, inputs, outputs = prog_trans.get_program(func, x)
-                >>> print([i.name for i in inputs])
-                >>> # [u'generated_tensor_0'] the feed input Tensor name representing x
-                >>> print([o.name for o in outputs])
-                >>> # [u'_generated_var_4'] the fetch output Tensor name representing x_v
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_program"
-
-        if not self.enable_to_static:
-            logging_utils.warn(
-                "The ProgramTranslator.get_program doesn't work when setting ProgramTranslator.enable to False."
-                "We will just return dygraph output. "
-                "Please call ProgramTranslator.enable(True) if you would like to get static output."
-            )
-            return dygraph_func(*args, **kwargs)
-
-        function_spec = FunctionSpec(dygraph_func)
-        cache_key = CacheKey.from_func_and_args(
-            function_spec, args, kwargs, getattr(dygraph_func, '__self__', None)
-        )
-        concrete_program, partial_program_layer = self._program_cache[cache_key]
-
-        # Note: concrete_program hold all input/output infos include non-Variable
-        input_vars = [
-            var
-            for var in concrete_program.inputs
-            if isinstance(var, framework.Variable)
-        ]
-        output_vars = [
-            var
-            for var in concrete_program.outputs
-            if isinstance(var, framework.Variable)
-        ]
-
-        return (
-            concrete_program.main_program,
-            concrete_program.startup_program,
-            input_vars,
-            output_vars,
-        )
-
-    def get_code(self, dygraph_func):
-        """
-        Returns the translated static function string code from dygraph function.
-
-        Args:
-            dygraph_func (callable): the dygraph function.
-
-        Returns:
-            str: the string code of translated static function.
-
-        Examples:
-            .. code-block:: python
-
-                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
-                >>> import paddle
-                >>> def func(x):
-                ...     if paddle.mean(x) > 0:
-                ...         x_v = x - 1
-                ...     else:
-                ...         x_v = x + 1
-                ...     return x_v
-                ...
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-
-                >>> code = prog_trans.get_code(func)
-                >>> print(type(code))
-                <class 'str'>
-        """
-        assert callable(
-            dygraph_func
-        ), "Input dygraph_func is not a callable in ProgramTranslator.get_code"
-        # Gets AST from dygraph function
-
-        unwrap_func = unwrap(dygraph_func)
-        raw_code = inspect.getsource(unwrap_func)
-        code = textwrap.dedent(raw_code)
-        root = gast.parse(code)
-
-        # Transform AST
-        dygraph_to_static = DygraphToStaticAst()
-        root = dygraph_to_static.get_static_ast(root)
-
-        # Get source_code
-        source_code = ast_to_source_code(root)
-        return source_code
-
-    def get_program_cache(self):
-        """
-        Returns the ProgramCache instance. This method is used by PaddlePaddle
-        developers to manage program cache in ProgramTranslator. Normal users
-        don't have to call this method.
-
-        Returns:
-            ProgramCache: ProgramCache instance of ProgramTranslator.
-
-        Examples:
-            .. code-block:: python
-
-                >>> import paddle
-
-                >>> prog_trans = paddle.jit.dy2static.program_translator.ProgramTranslator()
-                >>> prog_cache = prog_trans.get_program_cache()
-        """
-        return self._program_cache
 
 
 def enable_to_static(enable_to_static_bool):

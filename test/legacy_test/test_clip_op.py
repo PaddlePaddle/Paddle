@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestClipOp(OpTest):
@@ -266,16 +267,11 @@ class TestClipAPI(unittest.TestCase):
     def _executed_api(self, x, min=None, max=None):
         return paddle.clip(x, min, max)
 
+    @test_with_pir_api
     def test_clip(self):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]
         data = np.random.random(data_shape).astype('float32')
-        images = paddle.static.data(
-            name='image', shape=data_shape, dtype='float32'
-        )
-        min = paddle.static.data(name='min', shape=[1], dtype='float32')
-        max = paddle.static.data(name='max', shape=[1], dtype='float32')
-
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
@@ -283,23 +279,31 @@ class TestClipAPI(unittest.TestCase):
         )
         exe = base.Executor(place)
 
-        out_1 = self._executed_api(images, min=min, max=max)
-        out_2 = self._executed_api(images, min=0.2, max=0.9)
-        out_3 = self._executed_api(images, min=0.3)
-        out_4 = self._executed_api(images, max=0.7)
-        out_5 = self._executed_api(images, min=min)
-        out_6 = self._executed_api(images, max=max)
-        out_7 = self._executed_api(images, max=-1.0)
-        out_8 = self._executed_api(images)
-        out_9 = self._executed_api(
-            paddle.cast(images, 'float64'), min=0.2, max=0.9
-        )
-        out_10 = self._executed_api(
-            paddle.cast(images * 10, 'int32'), min=2, max=8
-        )
-        out_11 = self._executed_api(
-            paddle.cast(images * 10, 'int64'), min=2, max=8
-        )
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            images = paddle.static.data(
+                name='image', shape=data_shape, dtype='float32'
+            )
+            min = paddle.static.data(name='min', shape=[1], dtype='float32')
+            max = paddle.static.data(name='max', shape=[1], dtype='float32')
+            out_1 = self._executed_api(images, min=min, max=max)
+            out_2 = self._executed_api(images, min=0.2, max=0.9)
+            out_3 = self._executed_api(images, min=0.3)
+            out_4 = self._executed_api(images, max=0.7)
+            out_5 = self._executed_api(images, min=min)
+            out_6 = self._executed_api(images, max=max)
+            out_7 = self._executed_api(images, max=-1.0)
+            out_8 = self._executed_api(images)
+            out_9 = self._executed_api(
+                paddle.cast(images, 'float64'), min=0.2, max=0.9
+            )
+            out_10 = self._executed_api(
+                paddle.cast(images * 10, 'int32'), min=2, max=8
+            )
+            out_11 = self._executed_api(
+                paddle.cast(images * 10, 'int64'), min=2, max=8
+            )
 
         (
             res1,
@@ -314,7 +318,7 @@ class TestClipAPI(unittest.TestCase):
             res10,
             res11,
         ) = exe.run(
-            base.default_main_program(),
+            main,
             feed={
                 "image": data,
                 "min": np.array([0.2]).astype('float32'),
@@ -430,6 +434,7 @@ class TestClipAPI(unittest.TestCase):
 
 
 class TestClipOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         paddle.enable_static()
         data_shape = [1, 9, 9, 4]
