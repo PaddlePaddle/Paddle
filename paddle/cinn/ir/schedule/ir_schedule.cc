@@ -2109,7 +2109,7 @@ void ScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
         CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
             << "loops is not the same order with tensor!";
       } else {
-        CHECK(iter.As<IntImm>());
+        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
         CHECK_EQ(iter.as_int32(), 0);
       }
     }
