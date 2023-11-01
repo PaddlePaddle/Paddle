@@ -55,7 +55,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   int m = x.numel() / k;
 
   // m > 1: run gemm.
-  if (m > 1 || weight_dtype == "int4" || (arch == 70)) {
+  if (m > 5 || weight_dtype == "int4" || (arch == 70)) {
 /*
 Note(Zhengzekang):
 If using arch = 70, we always dispatch to weightonly Gemm,
@@ -160,6 +160,7 @@ we havenot support sm70 weightonly gemv, because sm70 weight layout is RowMajor.
                                             weight_data,
                                             bias_data,
                                             weight_scale_data,
+                                            m,
                                             n,
                                             k,
                                             "None",
