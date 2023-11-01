@@ -899,10 +899,10 @@ void Conv2dFusionOpTest::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 2.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
-    auto output_1_type = (*this)->result(1).type();
+    auto output_1_type = (*this)->result_type(1);
     if (auto vec_type = output_1_type.dyn_cast<pir::VectorType>()) {
       for (size_t i = 0; i < vec_type.size(); i++) {
         PADDLE_ENFORCE(vec_type[i].isa<paddle::dialect::DenseTensorType>(),

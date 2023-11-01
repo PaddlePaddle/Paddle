@@ -87,10 +87,10 @@ ATTRIBUTE_VECTOR_CHECK_TEMPLATE = """
                    "Type of attribute: {attribute_name} is not right.");
   }}"""
 OUTPUT_TYPE_CHECK_TEMPLATE = """
-  IR_ENFORCE((*this)->result({index}).type().isa<{standard}>(),
+  IR_ENFORCE((*this)->result_type({index}).isa<{standard}>(),
                  "Type validation failed for the {index}th output.");"""
 OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
-  auto output_{index}_type = (*this)->result({index}).type();
+  auto output_{index}_type = (*this)->result_type({index});
   if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
     for (size_t i = 0; i < vec_type.size(); i++) {{
       IR_ENFORCE(vec_type[i].isa<{standard}>(),
@@ -102,12 +102,12 @@ OUTPUT_VECTORTYPE_CHECK_TEMPLATE = """
                    "Type validation failed for the {index}th output.");
   }}"""
 OUTPUT_OPTIONAL_TYPE_CHECK_TEMPLATE = """
-  if (auto output_{index}_type = (*this)->result({index}).type()) {{
+  if (auto output_{index}_type = (*this)->result_type({index})) {{
     IR_ENFORCE(output_{index}_type.isa<{standard}>(),
                    "Type validation failed for the {index}th output.");
   }}"""
 OUTPUT_OPTIONAL_VECTORTYPE_CHECK_TEMPLATE = """
-  if (auto output_{index}_type = (*this)->result({index}).type()) {{
+  if (auto output_{index}_type = (*this)->result_type({index})) {{
     if (auto vec_type = output_{index}_type.dyn_cast<pir::VectorType>()) {{
       for (size_t i = 0; i < vec_type.size(); ++i) {{
         IR_ENFORCE(vec_type[i].isa<{standard}>(),

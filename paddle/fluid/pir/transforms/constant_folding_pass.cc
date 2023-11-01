@@ -112,7 +112,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         std::make_unique<pir::Parameter>(
             reinterpret_cast<void*>(out_tensor.data()),
             out_tensor.numel() * phi::SizeOf(out_tensor.dtype()),
-            op->result(0).type());
+            op->result_type(0));
 
     std::string param_name =
         "@constant_folding_pass@_" + std::to_string(suffix_++);
@@ -124,7 +124,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     program->SetParameter(param_name, std::move(parameter));
     // rewriter.SetInsertionPoint(op);
     auto get_parameter_op =
-        rewriter.Build<pir::GetParameterOp>(param_name, op->result(0).type());
+        rewriter.Build<pir::GetParameterOp>(param_name, op->result_type(0));
 
     rewriter.ReplaceAllUsesWith(op->result(0), get_parameter_op->result(0));
     rewriter.EraseOp(op);
@@ -163,7 +163,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // prepare op outputs
     std::vector<pir::Type> output_types;
     for (uint32_t i = 0; i < op->num_results(); i++) {
-      output_types.push_back(op->result(i).type());
+      output_types.push_back(op->result_type(i));
     }
 
     auto* temp_op =
@@ -172,7 +172,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // TODO(liuyuanle): Support multiple output.
     // for (uint32_t i = 0; i < op->num_results(); i++) {
     PADDLE_ENFORCE_EQ(
-        temp_op->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        temp_op->result_type(0).isa<paddle::dialect::DenseTensorType>(),
         true,
         phi::errors::InvalidArgument(
             "Op's output must be a dense tensor type."));

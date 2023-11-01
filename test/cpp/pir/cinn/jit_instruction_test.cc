@@ -112,7 +112,7 @@ TEST(CinnJitInstruction, Run) {
            cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
       };
 
-      auto out_type = (*it)->result(0).type();
+      auto out_type = (*it)->result_type(0);
 
       std::vector<pir::Value> vec_ins;
 
@@ -133,7 +133,7 @@ TEST(CinnJitInstruction, Run) {
         vec_ins.push_back(value_map.at((*it)->operand_source(i)));
       }
 
-      auto type1 = (*it)->result(0).type();
+      auto type1 = (*it)->result_type(0);
       ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
       ::pir::Operation* op = ::pir::Operation::Create(
           vec_ins, (*it)->attributes(), {type1}, info1);

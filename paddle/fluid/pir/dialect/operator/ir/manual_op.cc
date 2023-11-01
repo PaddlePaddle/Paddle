@@ -92,8 +92,8 @@ void AddNOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
-            (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>() ||
+            (*this)->result_type(0).isa<paddle::dialect::SelectedRowsType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
@@ -265,8 +265,8 @@ void AddN_Op::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
-            (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>() ||
+            (*this)->result_type(0).isa<paddle::dialect::SelectedRowsType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
@@ -389,8 +389,8 @@ void AddNWithKernelOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>() ||
-            (*this)->result(0).type().isa<paddle::dialect::SelectedRowsType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>() ||
+            (*this)->result_type(0).isa<paddle::dialect::SelectedRowsType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
@@ -616,10 +616,10 @@ void FusedGemmEpilogueOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 2.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
-    if (auto output_1_type = (*this)->result(1).type()) {
+    if (auto output_1_type = (*this)->result_type(1)) {
       PADDLE_ENFORCE(output_1_type.isa<paddle::dialect::DenseTensorType>(),
                      phi::errors::PreconditionNotMet(
                          "Type validation failed for the 1th output."));
@@ -1034,7 +1034,7 @@ void SplitGradOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "The size %d of outputs must be equal to 1.", output_size));
     PADDLE_ENFORCE(
-        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        (*this)->result_type(0).isa<paddle::dialect::DenseTensorType>(),
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }

@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
 namespace dialect {
@@ -171,7 +171,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
       std::vector<pir::Type> vec_types;
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
-        vec_types.push_back((*it)->result(i).type());
+        vec_types.push_back((*it)->result_type(i));
       }
 
       ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());

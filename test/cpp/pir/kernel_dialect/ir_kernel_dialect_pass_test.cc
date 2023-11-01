@@ -46,7 +46,7 @@
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/utils.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 PD_DECLARE_KERNEL(full, CPU, ALL_LAYOUT);
 PD_DECLARE_KERNEL(full_int_array, CPU, ALL_LAYOUT);
@@ -134,7 +134,7 @@ TEST(kernel_dialect, cond_op_test) {
       std::vector<int64_t>{1}, true, phi::DataType::BOOL);
 
   auto if_op = builder.Build<paddle::dialect::IfOp>(
-      full_op.out(), std::vector<pir::Type>{full_op.result(0).type()});
+      full_op.out(), std::vector<pir::Type>{full_op.result_type(0)});
 
   pir::Block* true_block = if_op.true_block();
 

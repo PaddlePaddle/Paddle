@@ -37,7 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -499,7 +499,7 @@ phi::KernelKey GetKernelKey(
     return {phi::Backend::CPU,
             phi::DataLayout::ANY,
             TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+                op->result_type(0).dyn_cast<DenseTensorType>().dtype())};
   }
 
   if (op->isa<paddle::dialect::DataOp>()) {
@@ -514,7 +514,7 @@ phi::KernelKey GetKernelKey(
     return {backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+                op->result_type(0).dyn_cast<DenseTensorType>().dtype())};
   }
 
   if (op->isa<paddle::dialect::SeedOp>()) {
@@ -523,7 +523,7 @@ phi::KernelKey GetKernelKey(
     return {backend,
             phi::DataLayout::ANY,
             TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+                op->result_type(0).dyn_cast<DenseTensorType>().dtype())};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
@@ -767,7 +767,7 @@ void HandleForIfOp(
     new_ifop_outputs.push_back(paddle::dialect::AllocatedDenseTensorType::get(
         ctx,
         place,
-        old_ifop.result(i).type().dyn_cast<dialect::DenseTensorType>()));
+        old_ifop->result_type(i).dyn_cast<dialect::DenseTensorType>()));
   }
   auto new_ifop = builder.Build<paddle::dialect::IfOp>(
       new_cond, std::move(new_ifop_outputs));
@@ -987,7 +987,7 @@ void HandleForSpecialOp(
       op_output_types.push_back(paddle::dialect::AllocatedDenseTensorType::get(
           ctx,
           place,
-          op_item->result(i).type().dyn_cast<dialect::DenseTensorType>()));
+          op_item->result_type(i).dyn_cast<dialect::DenseTensorType>()));
     }
   }
 
@@ -1038,7 +1038,7 @@ std::vector<pir::Type> BuildOpOutputType(pir::Operation* op_item,
       out_phi_dtype = output_defs[i].dtype;
     }
 
-    auto result_type = op_item->result(i).type();
+    auto result_type = op_item->result_type(i);
     if (!result_type) {
       op_output_types.push_back(result_type);
     } else if (result_type.isa<dialect::DenseTensorType>() ||
@@ -1337,7 +1337,7 @@ void AddShadowFeed(
         phi::Backend::GPU,
         phi::DataLayout::ANY,
         TransToPhiDataType(
-            op_item->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+            op_item->result_type(0).dyn_cast<DenseTensorType>().dtype())};
     std::unordered_map<std::string, pir::Attribute> attr_map{
         {"op_name", pir::StrAttribute::get(ctx, "pd_op.shadow_feed")},
         {"kernel_name", pir::StrAttribute::get(ctx, "shadow_feed")},
@@ -1346,7 +1346,7 @@ void AddShadowFeed(
     auto out_type = paddle::dialect::AllocatedDenseTensorType::get(
         ctx,
         phi::TransToPhiPlace(shadow_key.backend()),
-        op_item->result(0).type().dyn_cast<dialect::DenseTensorType>());
+        op_item->result_type(0).dyn_cast<dialect::DenseTensorType>());
 
     pir::OpInfo phi_kernel_op_info =
         ctx->GetRegisteredOpInfo(paddle::dialect::PhiKernelOp::name());
@@ -1385,7 +1385,7 @@ std::string GetKernelFnStr(const OpYamlInfoParser* op_info_parser,
 
   if (op_item->isa<paddle::dialect::AddN_Op>() ||
       op_item->isa<paddle::dialect::AddNWithKernelOp>()) {
-    if (op_item->result(0).type().isa<dialect::SelectedRowsType>()) {
+    if (op_item->result_type(0).isa<dialect::SelectedRowsType>()) {
       kernel_fn_str = "add_n_sr";
     }
   }
