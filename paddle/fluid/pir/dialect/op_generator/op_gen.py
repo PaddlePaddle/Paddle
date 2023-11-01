@@ -1018,7 +1018,7 @@ def OpGenerator(
         ):
             op_compat_item = op_compat_item.pop('scalar')
 
-        if op['support_tensor'] != []:
+        if 'support_tensor' in op and op['support_tensor'] != []:
             scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
                 op
             )

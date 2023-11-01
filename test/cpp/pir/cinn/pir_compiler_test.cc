@@ -121,7 +121,7 @@ ProgramInfo BuildSoftmax() {
   //       std::initializer_list<::pir::Operation*>({x.owner()})));
   groups.emplace_back(
       std::make_shared<Group>(std::initializer_list<::pir::Operation*>({
-          max.owner(), broadcast_1.owner(),
+          max.owner(), broadcast_1.owner()
           // sub.owner(),
           // exp.owner(),
           // sum.owner(),
@@ -176,17 +176,21 @@ TEST(PIRCompier, CompileSoftmax) {
        cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
   };
 
-  auto out_type = x.type();
+  std::vector<pir::Type> vec_types;
+  for (size_t i = 0; i < groups[0]->ops.size(); ++i) {
+    vec_types.push_back(groups[0]->ops[i]->result(0).type());
+  }
 
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);
   ::pir::Operation* cinn_op =
-      ::pir::Operation::Create({x}, op_attrs, {out_type}, op_info);
+      ::pir::Operation::Create({x}, op_attrs, vec_types, op_info);
 
   new_program->block()->push_back(cinn_op);
 
   builder.SetInsertionPointToEnd(new_program->block());
-  builder.Build<paddle::dialect::FetchOp>(cinn_op->result(0), "out", 0);
+  builder.Build<paddle::dialect::FetchOp>(
+      cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
   new_program->Print(std::cout);
 
