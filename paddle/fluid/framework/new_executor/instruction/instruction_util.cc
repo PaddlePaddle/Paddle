@@ -31,6 +31,7 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/core/dense_tensor.h"
 #include "paddle/pir/core/block_argument.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
@@ -254,6 +255,25 @@ std::vector<pir::Value> GetOutsideOpInputs(
     }
   }
   return outside_op_inputs;
+}
+
+bool GetCondData(const phi::DenseTensor& cond) {
+  if (paddle::platform::is_cpu_place(cond.place())) {
+    return cond.data<bool>()[0];
+  }
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_xpu_place(cond.place()) is true
+  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+#else
+  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU/XPU but got "
+      "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_XPU option."));
+#endif
+  return cpu_cond->data<bool>()[0];
 }
 
 }  // namespace framework
