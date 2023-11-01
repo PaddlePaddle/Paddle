@@ -109,7 +109,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace {
@@ -730,7 +730,7 @@ bool AnalysisPredictor::PrepareExecutor() {
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
 
-      if (FLAGS_new_ir_apply_inplace_pass) {
+      if (FLAGS_pir_apply_inplace_pass) {
         ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
         pm.AddPass(::pir::CreateInplacePass());
         pm.Run(pir_program_.get());
