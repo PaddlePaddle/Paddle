@@ -15,18 +15,34 @@
 #include "paddle/pir/dialect/shape/ir/shape_dialect.h"
 #include "paddle/pir/dialect/shape/ir/shape_op.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::shape {
 ShapeDialect::ShapeDialect(IrContext *context)
     : Dialect(name(), context, TypeId::get<ShapeDialect>()) {
   initialize();
 }
 
 void ShapeDialect::initialize() {
-  RegisterOps<SymbolicDim, DimOp, TieProductEqualOp>();
+  RegisterOps<SymbolicDimOp,
+              DimOp,
+              TieProductEqualOp,
+              TieShapeOp,
+              FuncOp,
+              TensorDimOp,
+              ShapeOfOp,
+              FromElementsOp,
+              ExtractOp,
+              ConstantOp,
+              IndexCastOp>();
 }
 
-}  // namespace dialect
-}  // namespace pir
+void ShapeDialect::PrintOperation(Operation *op, IrPrinter &printer) const {
+  if (auto func_op = op->dyn_cast<FuncOp>()) {
+    func_op.Print(printer);
+  } else {
+    printer.PrintGeneralOperation(op);
+  }
+}
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::ShapeDialect)
+}  // namespace pir::shape
+
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)

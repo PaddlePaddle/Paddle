@@ -24,7 +24,7 @@
 #include "paddle/pir/core/builtin_attribute_storage.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/core/dialect.h"
-#include "paddle/pir/core/ir_parser.h"
+#include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/utils.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
@@ -100,7 +100,7 @@ TEST(IrParserTest, AddAttribute) {
 
   std::string op_str =
       " (%0) = \"builtin.get_parameter\" () "
-      "{parameter_name:(String)conv2d_0.w_0,test:(tp.char)a} : () -> "
+      "{parameter_name:\"conv2d_0.w_0\",test:(tp.char)a} : () -> "
       "pd_op.tensor<64x3x7x7xf32>";
   std::stringstream ss;
   ss << op_str;

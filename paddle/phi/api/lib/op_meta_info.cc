@@ -121,7 +121,7 @@ void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
 
 void CustomOpKernelContext::EmplaceBackAttrs(
     const std::vector<paddle::any>& attrs) {
-  attrs_ = std::move(attrs);
+  attrs_ = attrs;
 }
 
 const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {

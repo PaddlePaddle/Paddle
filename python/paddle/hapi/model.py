@@ -122,6 +122,7 @@ def init_communicator(
 ):
     if nranks < 2:
         return
+    endpoints_str = ",".join(endpoints)
     other_endpoints = endpoints[:]
     other_endpoints.remove(current_endpoint)
     block = program.global_block()
@@ -153,6 +154,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif core.is_compiled_with_xpu():
@@ -181,6 +183,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
     elif (
@@ -212,6 +215,7 @@ def init_communicator(
                 'nranks': nranks,
                 'rank': rank,
                 'ring_id': 0,
+                'endpoints': endpoints_str,
             },
         )
 
@@ -2395,7 +2399,6 @@ class Model:
                 >>> optim = paddle.optimizer.Adam(learning_rate=0.001, parameters=model.parameters())
                 >>> model.prepare(optim, paddle.nn.CrossEntropyLoss())
                 >>> params_info = model.summary()
-                >>> # doctest: +SKIP
                 >>> print(params_info)
                 ---------------------------------------------------------------------------
                 Layer (type)       Input Shape          Output Shape         Param #
@@ -2420,7 +2423,6 @@ class Model:
                 Estimated Total Size (MB): 0.35
                 ---------------------------------------------------------------------------
                 {'total_params': 61610, 'trainable_params': 61610}
-                >>> # doctest: -SKIP
 
         """
         assert (

@@ -372,7 +372,7 @@ def resnet18(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 18-layer model.
@@ -405,7 +405,7 @@ def resnet34(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 34-layer model.
@@ -438,7 +438,7 @@ def resnet50(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 50-layer model.
@@ -471,7 +471,7 @@ def resnet101(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 101-layer.
@@ -504,7 +504,7 @@ def resnet152(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNet 152-layer model.
@@ -537,7 +537,7 @@ def resnext50_32x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 32x4d model.
@@ -572,7 +572,7 @@ def resnext50_64x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-50 64x4d model.
@@ -607,7 +607,7 @@ def resnext101_32x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 32x4d model.
@@ -644,7 +644,7 @@ def resnext101_64x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-101 64x4d model.
@@ -681,7 +681,7 @@ def resnext152_32x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 32x4d model.
@@ -718,7 +718,7 @@ def resnext152_64x4d(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of ResNeXt-152 64x4d model.
@@ -755,7 +755,7 @@ def wide_resnet50_2(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-50-2 model.
@@ -789,7 +789,7 @@ def wide_resnet101_2(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_ResNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`ResNet <api_paddle_vision_models_ResNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of Wide ResNet-101-2 model.

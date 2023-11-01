@@ -25,37 +25,37 @@ namespace distributed {
 
 bool RToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= in_dist_attr.is_replicated();
-  flag &= out_dist_attr.is_shard();
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call RToSReshardFunction Eval";
   const auto& out_dims_mapping = out_dist_attr.dims_mapping();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   const DenseTensor& in_physical_tensor_cur_rank = in.value();
 
   DenseTensor out_physical_tensor_cur_rank;
 
-  std::map<int64_t, int64_t> split_axis_to_mesh_axis =
+  std::map<int, int64_t> split_axis_to_mesh_axis =
       GetSplitAxisWithDimsMapping(out_dims_mapping);
   std::vector<int64_t> coord_in_mesh = GetCurRankCoordInMesh(out_process_mesh);
 
-  int64_t split_axis = split_axis_to_mesh_axis.begin()->first;
+  int split_axis = split_axis_to_mesh_axis.begin()->first;
   int64_t mesh_axis = split_axis_to_mesh_axis.begin()->second;
 
   int64_t num_of_process = out_process_mesh.shape()[mesh_axis];
@@ -65,7 +65,7 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
           << " process participate in.";
 
   std::vector<int64_t> split_num_vec =
-      BalancedSplit(in.dims()[static_cast<int>(split_axis)], num_of_process);
+      BalancedSplit(in.dims()[split_axis], num_of_process);
   IntArray sections(split_num_vec);
 
   std::vector<DenseTensor> split_out_vec;

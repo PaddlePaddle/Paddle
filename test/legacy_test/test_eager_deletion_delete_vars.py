@@ -110,15 +110,9 @@ class TestExecutor(unittest.TestCase):
             if t._is_initialized():
                 outline_np_vars.append(name)
 
+        print(f'Non-alive persistable vars {outline_p_vars} in {persitables}')
         print(
-            'Non-alive persistable vars {} in {}'.format(
-                outline_p_vars, persitables
-            )
-        )
-        print(
-            'Alive non-persistable vars {} in {}'.format(
-                outline_np_vars, non_persistables
-            )
+            f'Alive non-persistable vars {outline_np_vars} in {non_persistables}'
         )
         self.assertEqual(len(outline_p_vars), 0)
         self.assertEqual(len(outline_np_vars), 0)

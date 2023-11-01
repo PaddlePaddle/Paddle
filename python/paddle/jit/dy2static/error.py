@@ -203,9 +203,7 @@ class ErrorData:
         func_str = None
         for frame in tb:
             searched_name = re.search(
-                r'({module})*{name}'.format(
-                    module=RE_PYMODULE, name=frame.name
-                ),
+                fr'({RE_PYMODULE})*{frame.name}',
                 error_line,
             )
             if searched_name:
@@ -339,9 +337,7 @@ class ErrorData:
                 for suggestion in self.suggestion_dict[keywords]:
                     suggestion_msg = (
                         ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2
-                        + '{}. {}'.format(
-                            str(len(revise_suggestions) - 1), suggestion
-                        )
+                        + f'{str(len(revise_suggestions) - 1)}. {suggestion}'
                     )
                     revise_suggestions.append(suggestion_msg)
         return revise_suggestions if len(revise_suggestions) > 2 else []

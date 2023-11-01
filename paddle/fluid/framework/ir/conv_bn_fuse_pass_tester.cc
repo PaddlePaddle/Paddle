@@ -59,7 +59,7 @@ void TestMain(const std::string& conv_type) {
   auto* in = layers.data("in", {1, 3, 20, 20});
   auto* filters = layers.data("filters", {3, 3, 2, 2}, true);
   auto* bias_0 = layers.data("bias_0", {3}, true);
-  VarDesc* conv_out;
+  VarDesc* conv_out = nullptr;
   if (conv_type == "conv_transpose") {
     conv_out = layers.conv2d_transpose(in, filters, bias_0);
   } else {

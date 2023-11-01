@@ -14,6 +14,7 @@
 
 #include "paddle/pir/core/op_info_impl.h"
 #include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/interface_support.h"
 
 namespace pir {
 OpInfo OpInfoImpl::Create(Dialect *dialect,
@@ -23,7 +24,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                           const std::vector<TypeId> &trait_set,
                           size_t attributes_num,
                           const char *attributes_name[],  // NOLINT
-                          VerifyPtr verify) {
+                          VerifyPtr verify_sig,
+                          VerifyPtr verify_region) {
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
   size_t traits_num = trait_set.size();
@@ -58,7 +60,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                                                     traits_num,
                                                     attributes_num,
                                                     attributes_name,
-                                                    verify));
+                                                    verify_sig,
+                                                    verify_region));
   return op_info;
 }
 void OpInfoImpl::Destroy(OpInfo info) {
@@ -99,25 +102,8 @@ bool OpInfoImpl::HasInterface(TypeId interface_id) const {
 }
 
 void *OpInfoImpl::GetInterfaceImpl(TypeId interface_id) const {
-  if (num_interfaces_ > 0) {
-    const InterfaceValue *p_first_interface =
-        reinterpret_cast<const InterfaceValue *>(
-            reinterpret_cast<const char *>(this) -
-            sizeof(TypeId) * num_traits_ -
-            sizeof(InterfaceValue) * num_interfaces_);
-    size_t left = 0, right = num_interfaces_;
-    while (left < right) {
-      size_t mid = (left + right) / 2;
-      if ((p_first_interface + mid)->type_id() == interface_id) {
-        return (p_first_interface + mid)->model();
-      } else if ((p_first_interface + mid)->type_id() < interface_id) {
-        left = mid + 1;
-      } else {
-        right = mid;
-      }
-    }
-  }
-  return nullptr;
+  return pir::detail::LookUp<OpInfoImpl>(
+      interface_id, num_interfaces_, num_traits_, this);
 }
 
 void OpInfoImpl::Destroy() {
@@ -135,7 +121,7 @@ void OpInfoImpl::Destroy() {
   }
   // (2) free memeory
   VLOG(10) << "Free base_ptr " << reinterpret_cast<void *>(base_ptr);
-  free(base_ptr);
+  delete base_ptr;
 }
 
 }  // namespace pir

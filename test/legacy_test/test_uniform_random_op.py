@@ -16,8 +16,8 @@ import os
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_uint16_to_float
 from op import Operator
+from op_test import OpTest, convert_uint16_to_float
 from test_attribute_var import UnittestBase
 
 import paddle
@@ -69,7 +69,7 @@ class TestUniformRandomOp_attr_tensorlist(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -101,7 +101,7 @@ class TestUniformRandomOp_attr_tensorlist_int32(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -121,7 +121,7 @@ class TestUniformRandomOp_attr_tensor(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -141,7 +141,7 @@ class TestUniformRandomOp_attr_tensor_int32(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -170,7 +170,7 @@ class TestUniformRandomOp(OpTest):
         self.output_hist = output_hist
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def verify_output(self, outs):
         hist, prob = self.output_hist(np.array(outs[0]))
@@ -203,6 +203,7 @@ class TestUniformRandomBF16Op(TestUniformRandomOp):
 
 class TestUniformRandomOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         main_prog = Program()
         start_prog = Program()
         with program_guard(main_prog, start_prog):
@@ -226,6 +227,7 @@ class TestUniformRandomOpError(unittest.TestCase):
                 self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
+        paddle.disable_static()
 
 
 class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
@@ -240,6 +242,9 @@ class TestUniformRandomOpWithDiagInit(TestUniformRandomOp):
             "diag_val": 1.0,
         }
         self.output_hist = output_hist_diag
+
+    def test_check_output(self):
+        self.check_output_customized(self.verify_output, check_pir=False)
 
 
 class TestUniformRandomOpSelectedRows(unittest.TestCase):
@@ -297,6 +302,7 @@ class TestUniformRandomOpSelectedRowsWithDiagInit(
 
 class TestUniformRandomOpApi(unittest.TestCase):
     def test_api(self):
+        paddle.enable_static()
         paddle.seed(10)
         x = paddle.static.data(
             'x', shape=[-1, 16], dtype='float32', lod_level=1
@@ -321,10 +327,12 @@ class TestUniformRandomOpApi(unittest.TestCase):
         exe = base.Executor(place)
         exe.run(base.default_startup_program())
         ret = exe.run(feed={'x': x_tensor}, fetch_list=[y], return_numpy=False)
+        paddle.disable_static()
 
 
 class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
     def test_attr_tensor_API(self):
+        paddle.enable_static()
         startup_program = base.Program()
         train_program = base.Program()
         with base.program_guard(train_program, startup_program):
@@ -338,8 +346,10 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
+        paddle.disable_static()
 
     def test_attr_tensorlist_int32_API(self):
+        paddle.enable_static()
         startup_program = base.Program()
         train_program = base.Program()
         with base.program_guard(train_program, startup_program):
@@ -354,8 +364,10 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
 
             exe.run(startup_program)
             outs = exe.run(train_program, fetch_list=[ret])
+        paddle.disable_static()
 
     def test_attr_tensor_int32_API(self):
+        paddle.enable_static()
         startup_program = base.Program()
         train_program = base.Program()
         with base.program_guard(train_program, startup_program):
@@ -373,10 +385,12 @@ class TestUniformRandomOp_attr_tensor_API(unittest.TestCase):
             outs = exe.run(
                 train_program, feed={'shape_tensor': Shape}, fetch_list=[ret]
             )
+        paddle.disable_static()
 
 
 class TestUniformRandomOp_API_seed(unittest.TestCase):
     def test_attr_tensor_API(self):
+        paddle.enable_static()
         _seed = 10
         gen = paddle.seed(_seed)
         startup_program = base.Program()
@@ -399,6 +413,7 @@ class TestUniformRandomOp_API_seed(unittest.TestCase):
             for i in ret_value.flatten():
                 self.assertGreaterEqual(i, _min)
                 self.assertLess(i, _max)
+        paddle.disable_static()
 
 
 class TestUniformRandomOpSelectedRowsShapeTensor(unittest.TestCase):
@@ -476,6 +491,7 @@ class TestUniformRandomDygraphMode(unittest.TestCase):
 
 class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         main_prog = Program()
         start_prog = Program()
         with program_guard(main_prog, start_prog):
@@ -503,6 +519,7 @@ class TestUniformRandomBatchSizeLikeOpError(unittest.TestCase):
                 random.uniform_random_batch_size_like(x2, 'int32')
 
             self.assertRaises(TypeError, test_dtype)
+        paddle.disable_static()
 
 
 class TestUniformAlias(unittest.TestCase):
@@ -519,6 +536,7 @@ class TestUniformAlias(unittest.TestCase):
 
 class TestUniformOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         main_prog = Program()
         start_prog = Program()
         with program_guard(main_prog, start_prog):
@@ -552,6 +570,7 @@ class TestUniformOpError(unittest.TestCase):
                 self.assertEqual(out.dtype, base.core.VarDesc.VarType.FP64)
 
             test_out_dtype()
+        paddle.disable_static()
 
 
 class TestUniformDygraphMode(unittest.TestCase):

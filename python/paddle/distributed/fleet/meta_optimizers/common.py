@@ -91,13 +91,18 @@ class CollectiveHelper:
     ):
         # if current_endpoint is None, it means just for sync,
         # no group is created.
+        endpoints_str = ",".join(endpoints)
         if current_endpoint:
             nranks = len(endpoints)
             other_endpoints = endpoints[:]
             other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
-            wait_server_ready(other_endpoints)
+            use_new_comm = paddle.get_flags(
+                "FLAGS_dynamic_static_unified_comm"
+            )["FLAGS_dynamic_static_unified_comm"]
+            if not use_new_comm:
+                wait_server_ready(other_endpoints)
 
         def _add_sync_by_allreduce(block):
             sync_var = block.create_var(
@@ -168,6 +173,7 @@ class CollectiveHelper:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )
@@ -192,6 +198,7 @@ class CollectiveHelper:
                     'nranks': nranks,
                     'rank': rank,
                     'ring_id': ring_id,
+                    'endpoints': endpoints_str,
                     OP_ROLE_KEY: OpRole.Forward,
                 },
             )

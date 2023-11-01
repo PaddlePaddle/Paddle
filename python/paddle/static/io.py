@@ -29,7 +29,6 @@ from paddle.base import (
     Variable,
     core,
     default_main_program,
-    program_guard,
     unique_name,
 )
 from paddle.base.executor import Executor, global_scope
@@ -257,14 +256,13 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
 
     # fix the bug that the activation op's output as target will be pruned.
     # will affect the inference performance.
-    # TODO(Superjomn) add an IR pass to remove 1-scale op.
-    with program_guard(program):
-        uniq_fetch_vars = []
-        for i, var in enumerate(fetch_vars):
-            if var.dtype != paddle.bool:
-                var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
-            uniq_fetch_vars.append(var)
-        fetch_vars = uniq_fetch_vars
+    # with program_guard(program):
+    #     uniq_fetch_vars = []
+    #     for i, var in enumerate(fetch_vars):
+    #         if var.dtype != paddle.bool:
+    #             var = paddle.scale(var, 1.0, name=f"save_infer_model/scale_{i}")
+    #         uniq_fetch_vars.append(var)
+    #     fetch_vars = uniq_fetch_vars
 
     # serialize program
     copy_program = program.clone()
@@ -274,6 +272,20 @@ def normalize_program(program, feed_vars, fetch_vars, **kwargs):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
             remove_op_idx.append(i)
+
+        if op.type == "pylayer":
+            sub_blocks_ids = op._blocks_attr_ids("blocks")
+            if len(sub_blocks_ids) > 1:
+                # pylayer op ``blocks`` attr contains forward block id and backward block id
+                backward_block_id = sub_blocks_ids[-1]
+                # remove backward block
+                copy_program.blocks.pop(backward_block_id)
+                # update attrs ``blocks``
+                reserverd_blocks = []
+                for block_id in sub_blocks_ids[:-1]:
+                    reserverd_blocks.append(copy_program.block(block_id))
+                op._update_desc_attr("blocks", reserverd_blocks)
+
     for idx in remove_op_idx[::-1]:
         global_block._remove_op(idx)
     copy_program.desc.flush()
@@ -1304,9 +1316,7 @@ def load_vars(
             var_path = os.path.join(dirname, new_var.name)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -1441,9 +1451,7 @@ def save(program, model_path, protocol=4, **configs):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -1677,9 +1685,7 @@ def load(program, model_path, executor=None, var_list=None):
     for v in parameter_list:
         assert (
             v.name in load_dict
-        ), "Can not find [{}] in model file [{}]".format(
-            v.name, parameter_file_name
-        )
+        ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
         set_var(v, load_dict[v.name])
 
     optimizer_var_list = list(
@@ -1702,9 +1708,7 @@ def load(program, model_path, executor=None, var_list=None):
         for v in optimizer_var_list:
             assert (
                 v.name in load_dict
-            ), "Can not find [{}] in model file [{}]".format(
-                v.name, opt_file_name
-            )
+            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
             set_var(v, load_dict[v.name])
 
 
@@ -1753,9 +1757,7 @@ def set_program_state(program, state_dict):
         var_temp = paddle.base.global_scope().find_var(para.name)
         assert (
             var_temp is not None
-        ), "Variable [ {} ] Not found, Please make sure run startup program".format(
-            para.name
-        )
+        ), f"Variable [ {para.name} ] Not found, Please make sure run startup program"
         if para.name in state_dict:
             # set value from state dict
             orig_para_np = np.array(var_temp.get_tensor())

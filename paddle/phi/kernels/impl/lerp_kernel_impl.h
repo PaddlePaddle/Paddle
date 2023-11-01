@@ -86,12 +86,12 @@ void LerpKernel(const Context& ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("LerpKernel's input x must not empyt."));
+      phi::errors::InvalidArgument("LerpKernel's input x must not empty."));
 
   PADDLE_ENFORCE_GT(
       y.numel(),
       0,
-      phi::errors::InvalidArgument("LerpKernel's input y must not empyt."));
+      phi::errors::InvalidArgument("LerpKernel's input y must not empty."));
 
   int rank = out->dims().size();
   PADDLE_ENFORCE_GE(

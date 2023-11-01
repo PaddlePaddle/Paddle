@@ -452,7 +452,7 @@ endif()
 list(REMOVE_ITEM TEST_OPS test_mkldnn_int8_quantization_strategy
      quant_int8_image_classification_comparison quant_int8_nlp_comparison)
 
-#TODO(wanghaoshuang): Fix this unitest failed on GCC8.
+#TODO(wanghaoshuang): Fix this unittest failed on GCC8.
 list(REMOVE_ITEM TEST_OPS test_auto_pruning)
 list(REMOVE_ITEM TEST_OPS test_filter_pruning)
 

@@ -17,11 +17,12 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 # Situation 1: repeat_times is a list (without tensor)
@@ -47,10 +48,16 @@ class TestTileOpRank1(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 class TestTileOpRank_ZeroDim1(TestTileOpRank1):
@@ -165,7 +172,7 @@ class TestTileOpRank1_tensor_attr(OpTest):
         self.infer_repeat_times = [-1]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -206,7 +213,7 @@ class TestTileOpRank1_tensor(OpTest):
         self.repeat_times = [2]
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(['X'], 'Out')
@@ -235,7 +242,7 @@ class TestTileOpInteger(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 class TestTileFP16OP(OpTest):
@@ -262,10 +269,16 @@ class TestTileFP16OP(OpTest):
         self.repeat_times = [2, 1, 4]
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -293,7 +306,9 @@ class TestTileBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            place, check_cinn=self.check_cinn, check_pir=True
+        )
 
     def init_data(self):
         self.dtype = np.uint16
@@ -302,7 +317,14 @@ class TestTileBF16OP(OpTest):
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', check_prim=True)
+        self.check_grad_with_place(
+            place,
+            ['X'],
+            'Out',
+            check_prim=True,
+            check_pir=True,
+            check_prim_pir=True,
+        )
 
 
 # Situation 5: input x is Bool
@@ -320,7 +342,7 @@ class TestTileOpBoolean(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 # Situation 56: input x is Integer
@@ -340,12 +362,15 @@ class TestTileOpInt64_t(OpTest):
         self.check_cinn = True
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
 
 class TestTileError(unittest.TestCase):
+    @test_with_pir_api
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
             )
@@ -359,8 +384,11 @@ class TestTileError(unittest.TestCase):
 
 
 class TestTileAPIStatic(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             repeat_times = [2, 2]
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="int32")
             out = paddle.tile(x1, repeat_times)
@@ -486,6 +514,7 @@ class TestTileAPI_ZeroDim(unittest.TestCase):
 
 
 class Testfp16TileOp(unittest.TestCase):
+    @test_with_pir_api
     def testfp16(self):
         input_x = (np.random.random([1, 2, 3])).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):

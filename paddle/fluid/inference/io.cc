@@ -62,7 +62,7 @@ void ReadBinaryFile(const std::string& filename, std::string* contents) {
   contents->clear();
   contents->resize(fin.tellg());
   fin.seekg(0, std::ios::beg);
-  fin.read(&(contents->at(0)), contents->size());
+  fin.read(&(contents->at(0)), contents->size());  // NOLINT
   fin.close();
 }
 

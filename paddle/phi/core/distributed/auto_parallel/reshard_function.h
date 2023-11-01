@@ -48,6 +48,7 @@ class ReshardFunction {
   void SetDistProps(DistTensor* tensor,
                     const DDim& dims,
                     const TensorDistAttr& dist_attr);
+  void SetDistProps(DistTensor* tensor, const TensorDistAttr& dist_attr);
   DenseTensor* GetMutableTensor(DistTensor* tensor);
 };
 

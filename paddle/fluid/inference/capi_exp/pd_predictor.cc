@@ -140,7 +140,7 @@ __pd_give PD_Tensor* PD_PredictorGetOutputHandle(
 
 PD_Bool PD_PredictorRun(__pd_keep PD_Predictor* pd_predictor) {
   CHECK_AND_CONVERT_PD_PREDICTOR;
-  return predictor->Run();
+  return predictor->Run();  // NOLINT
 }
 
 void PD_PredictorClearIntermediateTensor(__pd_keep PD_Predictor* pd_predictor) {

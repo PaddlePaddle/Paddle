@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -29,6 +29,7 @@ def call_nonzero(x):
 
 class TestNonZeroAPI(unittest.TestCase):
     def test_nonzero_api_as_tuple(self):
+        paddle.enable_static()
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
@@ -61,6 +62,7 @@ class TestNonZeroAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
     def test_nonzero_api(self):
+        paddle.enable_static()
         data = np.array([[True, False], [False, True]])
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[-1, 2], dtype='float32')
@@ -108,7 +110,7 @@ class TestNonzeroOp(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_shape(self):
         self.shape = [8, 8]
@@ -156,7 +158,7 @@ class TestNonzeroBF16(OpTest):
         self.outputs = self.return_outputs()
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_shape(self):
         self.shape = [12, 9]

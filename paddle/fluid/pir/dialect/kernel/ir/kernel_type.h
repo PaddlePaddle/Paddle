@@ -21,12 +21,12 @@
 namespace paddle {
 namespace dialect {
 
-class AllocatedDenseTensorType : public pir::Type {
+class AllocatedDenseTensorType
+    : public pir::Type::TypeBase<AllocatedDenseTensorType,
+                                 pir::Type,
+                                 AllocatedDenseTensorTypeStorage> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(AllocatedDenseTensorType,
-                               AllocatedDenseTensorTypeStorage);
+  using Base::Base;
 
   static AllocatedDenseTensorType get(pir::IrContext *ctx,
                                       const phi::Place &place,
@@ -51,7 +51,7 @@ class AllocatedDenseTensorType : public pir::Type {
 
   const phi::Place &place() const;
 
-  const pir::Type &dtype() const;
+  pir::Type dtype() const;
 
   const phi::DDim &dims() const;
 
@@ -62,12 +62,12 @@ class AllocatedDenseTensorType : public pir::Type {
   const size_t &offset() const;
 };
 
-class AllocatedSelectedRowsType : public pir::Type {
+class AllocatedSelectedRowsType
+    : public pir::Type::TypeBase<AllocatedSelectedRowsType,
+                                 pir::Type,
+                                 AllocatedSelectedRowsTypeStorage> {
  public:
-  using Type::Type;
-
-  DECLARE_TYPE_UTILITY_FUNCTOR(AllocatedSelectedRowsType,
-                               AllocatedSelectedRowsTypeStorage);
+  using Base::Base;
 
   static AllocatedSelectedRowsType get(pir::IrContext *ctx,
                                        const phi::Place &place,

@@ -79,7 +79,7 @@ def apply_pass():
 class TestRecomputePassTuning(unittest.TestCase):
     def setUp(self):
         self.batch_size = 8
-        self.batch_num = 200
+        self.batch_num = 5
         self.dataset = FakeDataset(
             self.batch_size * self.batch_num,
             vocab_size=50304,

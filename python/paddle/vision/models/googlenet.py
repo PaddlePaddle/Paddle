@@ -237,7 +237,7 @@ def googlenet(pretrained=False, **kwargs):
     Args:
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
             on ImageNet. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`GoogLeNet <api_paddle_vision_GoogLeNet>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`GoogLeNet <api_paddle_vision_models_GoogLeNet>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of GoogLeNet (Inception v1) model.

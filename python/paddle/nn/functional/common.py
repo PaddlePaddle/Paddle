@@ -15,10 +15,15 @@
 import numpy
 
 import paddle
-from paddle import _C_ops
+from paddle import _C_ops, pir
 from paddle.base.layer_helper import LayerHelper
 from paddle.common_ops_import import Variable, default_main_program
-from paddle.framework import core, in_dynamic_mode
+from paddle.framework import (
+    core,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from paddle.tensor.creation import full
 
 from ...base.data_feeder import (
@@ -64,19 +69,19 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     Parameters:
         x(Tensor):              4-D Tensor, input tensor of format [N, C, H, W],
                                   data type can be float32 or float64
-        kernel_sizes(int|list):   The size of convolution kernel, should be [k_h, k_w]
+        kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
                                   or an integer k treated as [k, k].
-        strides(int|list, optional):        The strides, should be [stride_h, stride_w]
+        strides(int|list|tuple, optional):        The strides, should be [stride_h, stride_w]
                                   or an integer stride treated as [sride, stride].
                                   For default, strides will be [1, 1].
-        paddings(int|list, optional):       The paddings of each dimension, should be
+        paddings(int|list|tuple, optional):       The paddings of each dimension, should be
                                   [padding_top, padding_left, padding_bottom, padding_right]
                                   or [padding_h, padding_w] or an integer padding.
                                   If [padding_h, padding_w] was given, it will expanded to
                                   [padding_h, padding_w, padding_h, padding_w]. If an integer
                                   padding was given, [padding, padding, padding, padding] will
                                   be used. For default, paddings will be [0, 0, 0, 0]
-        dilations(int|list, optional):      the dilations of convolution kernel, should be
+        dilations(int|list|tuple, optional):      the dilations of convolution kernel, should be
                                   [dilation_h, dilation_w], or an integer dilation treated as
                                   [dilation, dilation]. For default, it will be [1, 1].
         name(str, optional): The default value is None.
@@ -111,38 +116,42 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
     if isinstance(kernel_sizes, int):
         kernel_sizes = [kernel_sizes, kernel_sizes]
     else:
-        assert isinstance(kernel_sizes, list) and (
+        assert isinstance(kernel_sizes, (list, tuple)) and (
             len(kernel_sizes) == 2
-        ), "kernel_sizes should either be an integer or a list of two integers"
+        ), "kernel_sizes should either be an integer or a list/tuple of two integers"
+        kernel_sizes = list(kernel_sizes)
 
     if isinstance(strides, int):
         strides = [strides, strides]
     else:
-        assert isinstance(strides, list) and (
+        assert isinstance(strides, (list, tuple)) and (
             len(strides) == 2
-        ), "strides should either be an integer or a list of two integers"
+        ), "strides should either be an integer or a list/tuple of two integers"
+        strides = list(strides)
 
     if isinstance(dilations, int):
         dilations = [dilations, dilations]
     else:
-        assert isinstance(dilations, list) and (
+        assert isinstance(dilations, (list, tuple)) and (
             len(dilations) == 2
-        ), "dilations should either be an integer or a list of two integers"
+        ), "dilations should either be an integer or a list/tuple of two integers"
+        dilations = list(dilations)
 
     if isinstance(paddings, int):
         paddings = [paddings] * 4
-    elif isinstance(paddings, list):
+    elif isinstance(paddings, (list, tuple)):
+        paddings = list(paddings)
         if len(paddings) == 2:
             paddings = paddings * 2
         elif len(paddings) == 4:
             pass
         else:
             raise ValueError(
-                "paddings should either be an integer or a list of 2 or 4 integers"
+                "paddings should either be an integer or a list/tuple of 2 or 4 integers"
             )
     else:
         raise ValueError(
-            "Unexpected type of paddings, it should be either an integer or a list"
+            "Unexpected type of paddings, it should be either an integer or a list/tuple"
             "of 2 or 4 integers"
         )
 
@@ -583,8 +592,8 @@ def interpolate(
         elif isinstance(scale, (list, tuple)):
             if len(scale) != len(x.shape) - 2:
                 raise ValueError(
-                    "scale_shape length should be {} for "
-                    "input {}-D tensor.".format(len(x.shape) - 2, len(x.shape))
+                    f"scale_shape length should be {len(x.shape) - 2} for "
+                    f"input {len(x.shape)}-D tensor."
                 )
             for value in scale:
                 if value <= 0:
@@ -894,7 +903,7 @@ def bilinear(x1, x2, weight, bias=None, name=None):
     """
 
     This layer performs bilinear on two inputs.
-    See :ref:`api_nn_Bilinear` for details and output shape.
+    See :ref:`api_paddle_nn_Bilinear` for details and output shape.
 
     Parameters:
         x1 (Tensor): the first input tensor, it's data type should be float32, float64.
@@ -1090,7 +1099,7 @@ def dropout(
             [[0., 0., 6.],
              [0., 0., 0.]])
     """
-    if not isinstance(p, (float, int, Variable)):
+    if not isinstance(p, (float, int, Variable, pir.OpResult)):
         raise TypeError("p argument should be a number or Variable")
 
     if isinstance(p, (int, float)):
@@ -1112,7 +1121,7 @@ def dropout(
             'downgrade_in_infer' if mode == 'downscale_in_infer' else mode
         )  # semantic transfer
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if default_main_program().random_seed != 0:
                 seed = default_main_program().random_seed
 
@@ -1176,7 +1185,7 @@ def dropout(
         dtype = x.dtype
         keep_prob = 1 - p
         if training:
-            if in_dynamic_mode() and p == 1.0:
+            if in_dynamic_or_pir_mode() and p == 1.0:
                 return paddle.scale(x, scale=0.0)
 
             scale_input = (
@@ -1357,9 +1366,7 @@ def dropout2d(x, p=0.5, training=True, data_format='NCHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 4:
         raise ValueError(
-            "dimensions of x should be 4, but received {} != 4".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 4, but received {len(input_shape)} != 4"
         )
 
     if data_format not in ["NCHW", "NHWC"]:
@@ -1415,9 +1422,7 @@ def dropout3d(x, p=0.5, training=True, data_format='NCDHW', name=None):
     input_shape = x.shape
     if len(input_shape) != 5:
         raise ValueError(
-            "dimensions of x should be 5, but received {} != 5".format(
-                len(input_shape)
-            )
+            f"dimensions of x should be 5, but received {len(input_shape)} != 5"
         )
 
     if data_format not in ["NCDHW", "NDHWC"]:
@@ -1635,14 +1640,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         'replicate',
         'constant',
         'circular',
-    ], "mode should be one of constant, reflect, replicate, circular, but got {}.".format(
-        mode
-    )
+    ], f"mode should be one of constant, reflect, replicate, circular, but got {mode}."
 
     data_format = data_format.upper()
     assert data_format in ["NCL", "NCHW", "NCDHW", "NLC", "NHWC", "NDHWC"], (
         "data_format should be in one of [NCL, NCHW, NCDHW, NLC, NHWC, NDHWC], "
-        "but got {}".format(data_format)
+        f"but got {data_format}"
     )
 
     x_dim = len(x.shape)
@@ -1658,6 +1661,12 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
         if in_dynamic_mode():
             out = _C_ops.pad(x, paddings, float(pad_value))
             return out
+
+        if in_pir_mode():
+            if isinstance(pad_value, paddle.pir.OpResult):
+                return _C_ops.pad(x, paddings, pad_value)
+            else:
+                return _C_ops.pad(x, paddings, float(pad_value))
 
         check_variable_and_dtype(
             x,
@@ -1709,7 +1718,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
 
     unsqueezed_dim = []
 
-    if isinstance(pad, Variable):
+    if isinstance(pad, (Variable, pir.OpResult)):
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1753,7 +1762,7 @@ def pad(x, pad, mode='constant', value=0.0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if isinstance(pad, Variable):
             pad = pad.tolist()
         out = _C_ops.pad3d(x, pad, mode, value, data_format)
@@ -1939,6 +1948,13 @@ def linear(x, weight, bias=None, name=None):
     if in_dynamic_mode():
         # TODO(jiabin): using addmm for fast forward route
         return _C_ops.linear(x, weight, bias)
+
+    elif in_pir_mode():
+        out = paddle._pir_ops.matmul(x, weight, False, False)
+        if bias is not None:
+            return paddle._pir_ops.add(out, bias)
+        else:
+            return out
     else:
         helper = LayerHelper('linear', **locals())
         dtype = x.dtype
@@ -2197,19 +2213,15 @@ def class_center_sample(label, num_classes, num_samples, group=None):
         label_size *= dim
     if label_size != -1 and label_size < 1:
         raise ValueError(
-            'Expected label_size > 0 \
-             (got label_size: {})'.format(
-                label_size
-            )
+            f'Expected label_size > 0 \
+             (got label_size: {label_size})'
         )
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError(
-            'Expected label_dims == 1 \
-             (got label_dims: {})'.format(
-                label_dims
-            )
+            f'Expected label_dims == 1 \
+             (got label_dims: {label_dims})'
         )
 
     seed = None
@@ -2280,7 +2292,7 @@ def fold(
 
     Parameters:
         x(Tensor):                3-D Tensor, input tensor of format [N, C, L],
-                                  data type can be float32 or float64
+                                  data type can be float32, float64, complex64 or complex128
         output_sizes(int|list|tuple):       The size of output size, should be [output_size_h, output_size_w]
                                   or an interger o treated as [o, o].
         kernel_sizes(int|list|tuple):   The size of convolution kernel, should be [k_h, k_w]
@@ -2325,7 +2337,9 @@ def fold(
 
     helper = LayerHelper("fold", **locals())
 
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'fold')
+    check_variable_and_dtype(
+        x, 'x', ['float32', 'float64', 'complex64', 'complex128'], 'fold'
+    )
 
     assert len(x.shape) == 3, "input should be the format of [N, C, L]"
 

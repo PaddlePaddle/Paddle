@@ -17,8 +17,8 @@ import unittest
 import gradient_checker
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import OpTest, convert_float_to_uint16
 from op import Operator
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
@@ -42,10 +42,10 @@ class TestScaleOp(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpScaleVariable(OpTest):
@@ -66,10 +66,10 @@ class TestScaleOpScaleVariable(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestScaleOpSelectedRows(unittest.TestCase):
@@ -133,6 +133,8 @@ class TestScaleOpSelectedRows(unittest.TestCase):
 
 class TestScaleRaiseError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
+
         def test_type():
             paddle.scale([10])
 
@@ -148,10 +150,10 @@ class TestScaleFp16Op(TestScaleOp):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out")
+        self.check_grad(["X"], "Out", check_pir=True)
 
 
 @unittest.skipIf(
@@ -170,14 +172,10 @@ class TestScaleBF16Op(OpTest):
         self.outputs = {'Out': convert_float_to_uint16(out)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            numeric_grad_delta=0.8,
-        )
+        self.check_grad(['X'], 'Out', numeric_grad_delta=0.8, check_pir=True)
 
 
 @unittest.skipIf(
@@ -302,6 +300,7 @@ class TestScaleTripleGradCheck(unittest.TestCase):
 
 class TestScaleOpZeroNumelVariable(unittest.TestCase):
     def test_check_zero_numel_cpu(self):
+        paddle.enable_static()
         paddle.set_device('cpu')
         data = paddle.ones([0, 1])
         out = paddle.scale(data, 2)

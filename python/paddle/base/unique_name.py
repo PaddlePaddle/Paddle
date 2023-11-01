@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import collections
+
 from .wrapped_decorator import signature_safe_contextmanager
 
-__all__ = ['generate', 'switch', 'guard']
+__all__ = []
 
 
 class UniqueNameGenerator:
@@ -93,10 +94,11 @@ def generate(key):
 
         .. code-block:: python
 
-            import paddle
-            name1 = paddle.utils.unique_name.generate('fc')
-            name2 = paddle.utils.unique_name.generate('fc')
-            print(name1, name2) # fc_0, fc_1
+            >>> import paddle
+            >>> name1 = paddle.utils.unique_name.generate('fc')
+            >>> name2 = paddle.utils.unique_name.generate('fc')
+            >>> print(name1, name2)
+            fc_0 fc_1
     """
     return generator(key)
 
@@ -120,7 +122,7 @@ def generate(key):
 # NOTE(zhiqiu): use c++ unique_name_generator in dygraph mode,
 # in order to keep name consistency.
 def generate_with_ignorable_key(key):
-    from .framework import in_dygraph_mode, _dygraph_tracer
+    from .framework import _dygraph_tracer, in_dygraph_mode
 
     if in_dygraph_mode():
         return _dygraph_tracer()._generate_unique_name()
@@ -151,18 +153,21 @@ def switch(new_generator=None, new_para_name_checker=None):
 
         .. code-block:: python
 
-            import paddle
-            name1 = paddle.utils.unique_name.generate('fc')
-            name2 = paddle.utils.unique_name.generate('fc')
-            print(name1, name2) # fc_0, fc_1
+            >>> import paddle
+            >>> name1 = paddle.utils.unique_name.generate('fc')
+            >>> name2 = paddle.utils.unique_name.generate('fc')
+            >>> print(name1, name2)
+            fc_0 fc_1
 
-            pre_generator, pre_dygraph_name_checker = paddle.utils.unique_name.switch() # switch to a new anonymous namespace.
-            name2 = paddle.utils.unique_name.generate('fc')
-            print(name2) # fc_0
+            >>> pre_generator, pre_dygraph_name_checker = paddle.utils.unique_name.switch() # switch to a new anonymous namespace.
+            >>> name2 = paddle.utils.unique_name.generate('fc')
+            >>> print(name2)
+            fc_0
 
-            paddle.utils.unique_name.switch(pre_generator, pre_dygraph_name_checker) # switch back to pre_generator.
-            name3 = paddle.utils.unique_name.generate('fc')
-            print(name3) # fc_2, since pre_generator has generated fc_0, fc_1.
+            >>> paddle.utils.unique_name.switch(pre_generator, pre_dygraph_name_checker) # switch back to pre_generator.
+            >>> name3 = paddle.utils.unique_name.generate('fc')
+            >>> print(name3)
+            fc_2
     """
     global generator
     old_generator = generator
@@ -200,18 +205,20 @@ def guard(new_generator=None):
 
         .. code-block:: python
 
-            import paddle
-            with paddle.utils.unique_name.guard():
-                name_1 = paddle.utils.unique_name.generate('fc')
-            with paddle.utils.unique_name.guard():
-                name_2 = paddle.utils.unique_name.generate('fc')
-            print(name_1, name_2) # fc_0, fc_0
+            >>> import paddle
+            >>> with paddle.utils.unique_name.guard():
+            ...     name_1 = paddle.utils.unique_name.generate('fc')
+            >>> with paddle.utils.unique_name.guard():
+            ...     name_2 = paddle.utils.unique_name.generate('fc')
+            >>> print(name_1, name_2)
+            fc_0 fc_0
 
-            with paddle.utils.unique_name.guard('A'):
-                name_1 = paddle.utils.unique_name.generate('fc')
-            with paddle.utils.unique_name.guard('B'):
-                name_2 = paddle.utils.unique_name.generate('fc')
-            print(name_1, name_2) # Afc_0, Bfc_0
+            >>> with paddle.utils.unique_name.guard('A'):
+            ...     name_1 = paddle.utils.unique_name.generate('fc')
+            >>> with paddle.utils.unique_name.guard('B'):
+            ...     name_2 = paddle.utils.unique_name.generate('fc')
+            >>> print(name_1, name_2)
+            Afc_0 Bfc_0
     """
     if isinstance(new_generator, str):
         new_generator = UniqueNameGenerator(new_generator)

@@ -16,11 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle import base
@@ -49,9 +45,9 @@ class TestElementwiseModOp(OpTest):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output()
+            self.check_output(check_pir=True)
         else:
-            self.check_output()
+            self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -106,9 +102,9 @@ class TestElementwiseModOpFloat(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output()
+            self.check_output(check_pir=True)
         else:
-            self.check_output()
+            self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -125,9 +121,9 @@ class TestElementwiseModFP16Op(TestElementwiseModOp):
 
     def test_check_output(self):
         if self.attrs['axis'] == -1:
-            self.check_output()
+            self.check_output(check_pir=True)
         else:
-            self.check_output()
+            self.check_output(check_pir=True)
 
 
 class TestElementwiseModFP16Op_ZeroDim1(TestElementwiseModFP16Op):
@@ -185,7 +181,7 @@ class TestElementwiseModBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.uint16

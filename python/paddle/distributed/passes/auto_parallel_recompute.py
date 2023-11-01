@@ -31,6 +31,7 @@ from ..auto_parallel.static.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
     is_backward_op,
+    is_recompute_exclude_op,
     is_recompute_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_dist_op_desc_original_id,
@@ -80,9 +81,13 @@ class RecomputeState(ProgramStats):
 
             if not is_recompute_op(op):
                 self._checkpoints.extend(op.output_arg_names)
-                continue
+                if not is_recompute_exclude_op(op):
+                    continue
 
             seg_name = op.attr('op_namescope')
+            seg_name = (
+                seg_name if '_exclude_rc' not in seg_name else seg_name[:-11]
+            )
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:
@@ -185,8 +190,8 @@ class RecomputeState(ProgramStats):
             # modify dropout op's desc
             self.ops.insert(op_idx, seed_op)
             cur_op.desc.set_input(seed_tensor_name, [var_unique_name])
-            cur_op._remove_attr("fix_seed")
-            cur_op._remove_attr("seed")
+            cur_op.desc._set_attr("fix_seed", False)
+            cur_op.desc._set_attr("seed", 0)
             cur_op_dist_attr.set_input_dist_attr(
                 seed_var.name, seed_var_dist_attr
             )
@@ -317,6 +322,7 @@ class RecomputePass(PassBase):
             )
 
         # 3. get vars that should be hold in memory
+        # list of var_names
         vars_should_be_hold = []
         for segment in segments:
             vars_should_be_hold.extend(
@@ -416,10 +422,6 @@ class RecomputePass(PassBase):
         # segments ops should be inserted.
         for i in range(len(ops) - 1, loss_op_idx, -1):
             grad_op = ops[i]
-            # remove some attrs of dropout_grad op's desc
-            if grad_op.type == "dropout_grad":
-                grad_op._remove_attr("fix_seed")
-                grad_op._remove_attr("seed")
 
             input_and_output_names = []
             input_and_output_names.extend(grad_op.input_arg_names)

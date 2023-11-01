@@ -86,7 +86,7 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
   lod_tensors->clear();
   other_vars->clear();
 
-  for (auto &op_vars_pair : m) {
+  for (auto const &op_vars_pair : m) {
     for (auto var_name : op_vars_pair.second) {
       auto *var_desc = TryGetLatestVarDesc(
           vars[op_vars_pair.first->GetScopeIdx()].at(var_name));
@@ -247,7 +247,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
         op->GetScope(),
         op->GetScopeIdx(),
         op->GetPlace(),
-        std::move(var_info),
+        var_info,
         gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(
@@ -294,6 +294,10 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
           "conditional_block_op_eager_deletion_pass");
   conditional_block_op_eager_deletion_pass->Apply(graph);
 
+  auto pylayer_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get("pylayer_op_eager_deletion_pass");
+  pylayer_op_eager_deletion_pass->Apply(graph);
+
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
@@ -321,6 +325,7 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kGarbageCollector);
 
 USE_PASS(conditional_block_op_eager_deletion_pass);
+USE_PASS(pylayer_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
 #ifdef PADDLE_WITH_CINN

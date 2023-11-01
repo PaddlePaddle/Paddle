@@ -23,7 +23,6 @@
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_verify.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/remove_nested_block.h"
 #include "paddle/cinn/runtime/cpu/thread_backend.h"
 #include "paddle/cinn/runtime/intrinsic.h"
 #include "paddle/cinn/utils/string.h"
@@ -39,7 +38,7 @@ using cinn::common::float16;
 const char *kCKeywordRestrict = "__restrict__";
 
 void CodeGenC::Compile(const ir::Module &module, const Outputs &outputs) {
-  ir::IrVerify(Expr(module));
+  ir::ir_utils::IrVerify(Expr(module));
 
   if (!outputs.c_header_name.empty()) {
     auto source = Compile(module, OutputKind::CHeader);
@@ -286,31 +285,13 @@ void CodeGenC::Visit(const ir::Select *op) {
 void CodeGenC::Visit(const ir::IfThenElse *op) {
   str_ += "if (";
   IrPrinter::Visit(op->condition);
-  str_ += ") {\n";
+  str_ += ") ";
 
-  if (!op->true_case.As<ir::Block>()) IncIndent();
-  DoIndent();
   IrPrinter::Visit(op->true_case);
-  if (!op->true_case.As<ir::Block>()) str_ += ";";
-  str_ += "\n";
-
-  if (!op->true_case.As<ir::Block>()) DecIndent();
-
-  DoIndent();
-  str_ += "}";
 
   if (op->false_case.defined()) {
-    str_ += " else {\n";
-
-    if (!op->true_case.As<ir::Block>()) IncIndent();
-    DoIndent();
+    str_ += " else ";
     IrPrinter::Visit(op->false_case);
-    if (!op->false_case.As<ir::Block>()) str_ += ";";
-    str_ += "\n";
-    if (!op->true_case.As<ir::Block>()) DecIndent();
-
-    DoIndent();
-    str_ += "}";
   }
 }
 void CodeGenC::Visit(const ir::Block *op) {
@@ -645,7 +626,7 @@ void CodeGenC::Visit(const ir::_LoweredFunc_ *op) {
 
   Expr func_body = ir::Block::Make(new_body);
 
-  optim::RemoveNestedBlock(&func_body);
+  optim::SimplifyBlocks(&func_body);
 
   IrPrinter::Visit(func_body);
 }

@@ -175,7 +175,7 @@ class TestTensor(unittest.TestCase):
         lod_tensor.set_recursive_sequence_lengths([[2, 2]])
 
         lod_v = np.array(lod_tensor)
-        self.assertTrue(np.alltrue(array == lod_v))
+        self.assertTrue(np.all(array == lod_v))
 
         lod = lod_tensor.recursive_sequence_lengths()
         self.assertEqual(2, lod[0][0])

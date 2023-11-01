@@ -27,7 +27,7 @@ using string::PrettyLogDetail;
 void FuseFCActOneDNNPass::ApplyImpl(Graph *graph) const {
   auto act_types = GetSupportedActivations();
 
-  for (auto act_type : act_types) FuseFCAct(graph, act_type);
+  for (auto const &act_type : act_types) FuseFCAct(graph, act_type);
 }
 
 void FuseFCActOneDNNPass::FuseFCAct(Graph *graph,

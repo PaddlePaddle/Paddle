@@ -204,7 +204,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of VGG 11-layer model.
@@ -241,7 +241,7 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of VGG 13-layer model.
@@ -278,7 +278,7 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of VGG 16-layer model.
@@ -315,7 +315,7 @@ def vgg19(pretrained=False, batch_norm=False, **kwargs):
         pretrained (bool, optional): Whether to load pre-trained weights. If True, returns a model pre-trained
                             on ImageNet. Default: False.
         batch_norm (bool, optional): If True, returns a model with batch_norm layer. Default: False.
-        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_VGG>`.
+        **kwargs (optional): Additional keyword arguments. For details, please refer to :ref:`VGG <api_paddle_vision_models_VGG>`.
 
     Returns:
         :ref:`api_paddle_nn_Layer`. An instance of VGG 19-layer model.

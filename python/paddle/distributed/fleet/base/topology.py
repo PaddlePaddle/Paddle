@@ -55,6 +55,7 @@ class ParallelMode:
     TENSOR_PARALLEL = 1
     PIPELINE_PARALLEL = 2
     SHARDING_PARALLEL = 3
+    SEGMENT_PARALLEL = 4
 
 
 class CommunicateTopology:
@@ -188,16 +189,27 @@ class HybridCommunicateGroup:
         self._sep_parallel_id = self._get_sep_parallel_id()
         self.stage_id = self._get_pipe_parallel_id()
 
-        assert self._check_vaild_topo(), (
-            "Here is an unreasonable topogy setting. world_size: {}, but"
-            "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
-                self.nranks,
-                self._mp_degree,
-                self._sharding_degree,
-                self._pp_degree,
-                self._dp_degree,
-                self._sep_degree,
-            )
+        assert (
+            self._check_vaild_topo()
+        ), "mp_num: {}, sharding_num: {}, pp_num: {}, dp_num: {}, sep_num: {}".format(
+            self.nranks,
+            self._mp_degree,
+            self._sharding_degree,
+            self._pp_degree,
+            self._dp_degree,
+        )
+
+        # create comm group for pipe parallel
+        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
+        # NOTE(shenliang03): In pipeline parallel, we use batch_isend_irecv.
+        # if batch_isend_irecv is the first collective operation, all ranks of
+        # the pipeline group must participate in this call. In order to avoid
+        # this situation, we perform a collective communication in advance and
+        # create a communicator.
+        paddle.distributed.all_reduce(
+            paddle.zeros([1], dtype="int32"),
+            op=paddle.distributed.ReduceOp.SUM,
+            group=self._pp_comm_group,
         )
 
         # create comm group for data parallel
@@ -205,9 +217,6 @@ class HybridCommunicateGroup:
 
         # create comm group for model parallel
         self._mp_group, self._mp_comm_group = self._set_comm_group("model")
-
-        # create comm group for pipe parallel
-        self._pp_group, self._pp_comm_group = self._set_comm_group("pipe")
 
         # create comm group for sharding parallel
         self._sharding_group, self._sharding_comm_group = self._set_comm_group(
@@ -238,6 +247,11 @@ class HybridCommunicateGroup:
             self._pp_mp_group, self._pp_mp_comm_group = self.create_fuse_group(
                 ["pipe", "model"]
             )
+
+        (
+            self.sharding_check_group,
+            self.sharding_check_comm_group,
+        ) = self._set_check_group("sharding")
 
         # create p2p group
         self.is_first_stage = self.stage_id == 0
@@ -277,24 +291,41 @@ class HybridCommunicateGroup:
         _HYBRID_PARALLEL_GROUP = self
 
     def get_parallel_mode(self):
-        # there are four modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel
+        # there are five modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel / SepParalel
         # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
-        # TODO modify 3 others parallel to support sharding
+
+        # pp -> mp -> sep -> sharding -> dp
         if (
-            self._mp_degree == 1
-            and self._pp_degree == 1
-            and self._dp_degree == 1
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sep_degree == 1
+            and self._sharding_degree == 1
+            and self._dp_degree > 1
+        ):
+            return ParallelMode.DATA_PARALLEL
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sep_degree == 1
             and self._sharding_degree > 1
         ):
+            # sharding may coexist with dp
             return ParallelMode.SHARDING_PARALLEL
-        elif self._mp_degree == 1 and self._pp_degree == 1:
-            return ParallelMode.DATA_PARALLEL
-        elif self._mp_degree > 1 and self._pp_degree == 1:
+        elif (
+            self._pp_degree == 1
+            and self._mp_degree == 1
+            and self._sep_degree > 1
+        ):
+            # sep may coexist with dp and sharding
+            return ParallelMode.SEGMENT_PARALLEL
+        elif self._pp_degree == 1 and self._mp_degree > 1:
+            # tp may coexist with sep、dp and sharding
             # initialize the seed
             return ParallelMode.TENSOR_PARALLEL
         elif self._pp_degree > 1:
+            # pp may coexist with mp、sep、dp and sharding
             return ParallelMode.PIPELINE_PARALLEL
 
     def _check_vaild_topo(self):

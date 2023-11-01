@@ -63,8 +63,6 @@ def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
         attrs={'ring_id': ring_id, 'reduce_type': int(reduce_type)},
     )
 
-    return None
-
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):

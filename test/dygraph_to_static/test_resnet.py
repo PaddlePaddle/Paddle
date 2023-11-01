@@ -19,7 +19,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -143,9 +143,7 @@ class ResNet(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -388,7 +386,7 @@ class ResNetHelper:
         return out
 
 
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.resnet_helper = ResNetHelper()
 
@@ -412,20 +410,16 @@ class TestResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @test_with_new_ir
+    @test_pir_only
     def test_resnet_new_ir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -433,9 +427,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet(self):
@@ -445,9 +437,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
 
@@ -460,9 +450,7 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-02,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_in_static_mode_mkldnn(self):

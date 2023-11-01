@@ -19,8 +19,8 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
 #include "paddle/phi/core/kernel_registry.h"
@@ -79,11 +79,11 @@ class Operation1 : public pir::Op<Operation1> {
   static const char *name() { return "test.Operation1"; }
   static constexpr uint32_t attributes_num = 2;
   static const char *attributes_name[attributes_num];  // NOLINT
-  void Verify();
+  void VerifySig();
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
 
-void Operation1::Verify() {
+void Operation1::VerifySig() {
   auto &attributes = this->attributes();
   if (attributes.count("op2_attr1") == 0 ||
       (!attributes.at("op2_attr1").isa<pir::StrAttribute>())) {
@@ -244,7 +244,7 @@ class RedundantTransposeFusePattern
 
   std::vector<int> GetPerm(const std::vector<int> &perm1,
                            const std::vector<int> &perm2) const {
-    int n = perm1.size();
+    int n = static_cast<int>(perm1.size());
     std::vector<int> axis(n), axis1(n), axis2(n);
     std::iota(axis.begin(), axis.end(), 0);
     for (int i = 0; i < n; ++i) {
@@ -390,7 +390,7 @@ class Conv2dFusionOpTest : public pir::Op<Conv2dFusionOpTest,
                     pir::OpResult bias_,
                     pir::OpResult residual_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value input() { return operand_source(0); }
   pir::Value filter() { return operand_source(1); }
   pir::Value bias() { return operand_source(2); }
@@ -493,7 +493,7 @@ OpInfoTuple Conv2dFusionOpTest::GetOpInfo() {
                      "exhaustive_search",
                      "channels",
                      "user_workspace_size"},
-                    {"ConvFusionKernel"},
+                    "ConvFusionKernel",
                     {"input",
                      "filter",
                      "bias",
@@ -583,7 +583,7 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   VLOG(4) << "Builder construction inputs";
   std::vector<pir::OpResult> argument_inputs = {
       input_, filter_, bias_, residual_};
-  argument.AddOperands(argument_inputs.begin(), argument_inputs.end());
+  argument.AddInputs(argument_inputs.begin(), argument_inputs.end());
 
   VLOG(4) << "Builder construction attributes";
   std::vector<pir::Attribute> vec_strides;
@@ -767,7 +767,7 @@ void Conv2dFusionOpTest::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void Conv2dFusionOpTest::Verify() {
+void Conv2dFusionOpTest::VerifySig() {
   VLOG(4)
       << "Start Verifying inputs, outputs and attributes for: Conv2dFusionOp.";
   VLOG(4) << "Verifying inputs:";
@@ -1044,7 +1044,7 @@ class TestPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:
@@ -1111,9 +1111,12 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 // TODO(wilber): Add a normal test.
 TEST(pattern_rewrite, Patterns) {
   pir::IrContext *ctx = pir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
   test_dialect->RegisterOp<paddle::dialect::Conv2dFusionOpTest>();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
@@ -1122,7 +1125,7 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  //   pm.AddPass(ir::CreateConstantFoldingPass());
+  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateReorderBlockOpsPass());
   pm.EnablePassTiming();

@@ -20,7 +20,7 @@ import paddle
 from paddle import _C_ops
 
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import in_dygraph_mode
+from ..base.framework import in_dynamic_or_pir_mode, in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core
 from .creation import _complex_to_real_dtype, assign
@@ -103,7 +103,7 @@ def shape(input):
             >>> print(res)
             [array([  3, 100, 100], dtype=int32)]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.shape(input)
         out.stop_gradient = True
         return out
@@ -233,16 +233,30 @@ def is_integer(x):
             >>> print(paddle.is_integer(x))
             True
     """
-    if not isinstance(x, (paddle.Tensor, paddle.static.Variable)):
+    if not isinstance(
+        x, (paddle.Tensor, paddle.static.Variable, paddle.pir.OpResult)
+    ):
         raise TypeError(f"Expected Tensor, but received type of x: {type(x)}")
     dtype = x.dtype
-    is_int_dtype = (
-        dtype == core.VarDesc.VarType.UINT8
-        or dtype == core.VarDesc.VarType.INT8
-        or dtype == core.VarDesc.VarType.INT16
-        or dtype == core.VarDesc.VarType.INT32
-        or dtype == core.VarDesc.VarType.INT64
-    )
+
+    is_int_dtype = False
+    if not in_pir_mode():
+        is_int_dtype = (
+            dtype == core.VarDesc.VarType.UINT8
+            or dtype == core.VarDesc.VarType.INT8
+            or dtype == core.VarDesc.VarType.INT16
+            or dtype == core.VarDesc.VarType.INT32
+            or dtype == core.VarDesc.VarType.INT64
+        )
+    else:
+        is_int_dtype = (
+            dtype == core.DataType.INT8
+            or dtype == core.DataType.INT8
+            or dtype == core.DataType.INT16
+            or dtype == core.DataType.INT32
+            or dtype == core.DataType.INT64
+        )
+
     return is_int_dtype
 
 
@@ -282,7 +296,7 @@ def real(x, name=None):
             [[1., 2., 3.],
              [4., 5., 6.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
@@ -330,7 +344,7 @@ def imag(x, name=None):
             [[6., 5., 4.],
              [3., 2., 1.]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.imag(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')

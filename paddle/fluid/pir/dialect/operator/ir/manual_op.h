@@ -12,18 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef GET_MANUAL_OP_LIST
-#undef GET_MANUAL_OP_LIST
-paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
-
-#else
-
 #pragma once
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
+#include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/inplace.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
@@ -36,7 +31,10 @@ paddle::dialect::AddNOp, paddle::dialect::SplitGradOp, paddle::dialect::IfOp
 namespace paddle {
 namespace dialect {
 
-class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
+class AddNOp : public pir::Op<AddNOp,
+                              paddle::dialect::OpYamlInfoInterface,
+                              paddle::dialect::InferMetaInterface,
+                              paddle::dialect::VjpInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n"; }
@@ -45,12 +43,18 @@ class AddNOp : public pir::Op<AddNOp, OpYamlInfoInterface, InferMetaInterface> {
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs);
+                    pir::Value inputs);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
+  static std::vector<std::vector<pir::OpResult>> Vjp(
+      pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
+      const std::vector<std::vector<pir::Value>> &out_grads,
+      const std::vector<std::vector<bool>> &stop_gradients);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
@@ -65,9 +69,9 @@ class AddN_Op : public pir::Op<AddN_Op,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs_);
+                    pir::Value inputs_);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
 
@@ -85,9 +89,9 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult inputs_);
+                    pir::Value inputs_);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
 
@@ -107,11 +111,11 @@ class FusedGemmEpilogueOp
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
-                    pir::OpResult y_,
-                    pir::OpResult bias_,
+                    pir::Value x_,
+                    pir::Value y_,
+                    pir::Value bias_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::Value y() { return operand_source(1); }
   pir::Value bias() { return operand_source(2); }
@@ -134,12 +138,12 @@ class FusedGemmEpilogueGradOp
 
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
-                    pir::OpResult y_,
-                    pir::OpResult reserve_space_,
-                    pir::OpResult out_grad_,
+                    pir::Value x_,
+                    pir::Value y_,
+                    pir::Value reserve_space_,
+                    pir::Value out_grad_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::Value y() { return operand_source(1); }
   pir::Value reserve_space() { return operand_source(2); }
@@ -160,35 +164,18 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult x_,
+                    pir::Value x_,
                     float axis = 0);
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult out_grad_,
-                    pir::OpResult axis_);
+                    pir::Value out_grad_,
+                    pir::Value axis_);
 
-  void Verify();
+  void VerifySig();
   pir::Value out_grad() { return operand_source(0); }
   pir::Value axis() { return operand_source(1); }
   pir::OpResult x_grad() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
-};
-
-class IfOp : public pir::Op<IfOp> {
- public:
-  using Op::Op;
-  static const char *name() { return "pd_op.if"; }
-  static constexpr const char **attributes_name = nullptr;
-  static constexpr uint32_t attributes_num = 0;
-  static void Build(pir::Builder &builder,             // NOLINT
-                    pir::OperationArgument &argument,  // NOLINT
-                    pir::OpResult cond,
-                    std::vector<pir::Type> &&output_types);
-  pir::Value cond() { return operand_source(0); }
-  pir::Block *true_block();
-  pir::Block *false_block();
-  void Print(pir::IrPrinter &printer);  // NOLINT
-  void Verify();
 };
 
 }  // namespace dialect
@@ -200,5 +187,3 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
-IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::IfOp)
-#endif

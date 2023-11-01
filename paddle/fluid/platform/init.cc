@@ -63,11 +63,7 @@ limitations under the License. */
 #endif
 
 PHI_DECLARE_int32(paddle_num_threads);
-PADDLE_DEFINE_EXPORTED_int32(
-    multiple_of_cupti_buffer_size,
-    1,
-    "Multiple of the CUPTI device buffer size. If the timestamps have "
-    "been dropped when you are profiling, try increasing this value.");
+PHI_DECLARE_int32(multiple_of_cupti_buffer_size);
 
 namespace paddle {
 namespace framework {
@@ -146,7 +142,7 @@ void LoadCustomDevice(const std::string &library_dir) {
   LOG(INFO) << "Try loading custom device libs from: [" << library_dir << "]";
   std::vector<std::string> libs = phi::ListAllLibraries(library_dir);
   for (const auto &lib_path : libs) {
-    auto dso_handle = dlopen(lib_path.c_str(), RTLD_NOW);
+    auto dso_handle = dlopen(lib_path.c_str(), RTLD_LAZY);
     PADDLE_ENFORCE_NOT_NULL(
         dso_handle,
         platform::errors::InvalidArgument(

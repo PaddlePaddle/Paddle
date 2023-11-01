@@ -74,7 +74,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     std::vector<std::string> fetch_var_names;
     auto block = temp_program->block();
     for (auto it = block->begin(); it != block->end(); ++it) {
-      if ((*it)->name() == "pd_op.fetch") {
+      if ((*it)->isa<paddle::dialect::FetchOp>()) {
         size_t index = (*it)
                            ->attributes()
                            .at("col")
@@ -96,12 +96,13 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     // Execute program
     exe_config_.create_local_scope = false;
-    paddle::framework::InterpreterCore core(
-        phi::CPUPlace{},
-        fetch_var_names,
-        paddle::dialect::PdOpLowerToKernelPass(temp_program.get()),
-        &scope_,
-        exe_config_);
+    auto kernel_program =
+        paddle::dialect::PdOpLowerToKernelPass(temp_program.get());
+    paddle::framework::InterpreterCore core(phi::CPUPlace{},
+                                            fetch_var_names,
+                                            kernel_program->block(),
+                                            &scope_,
+                                            exe_config_);
 
     paddle::framework::FetchList fetch_list = core.Run({});
 
@@ -136,7 +137,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     pir::Builder builder = pir::Builder(ir_context(), program->block());
 
     // prepare op inputs
-    std::vector<pir::OpResult> op_inputs;
+    std::vector<pir::Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
       PADDLE_ENFORCE_EQ(
           op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>(),
@@ -191,8 +192,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
 class ConstantFoldingPass : public pir::Pass {
  public:
-  // TODO(liuyuanle): Naming convention for pass.
-  ConstantFoldingPass() : pir::Pass("ConstantFoldingPass", 1) {}
+  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
@@ -209,7 +209,7 @@ class ConstantFoldingPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation* op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:

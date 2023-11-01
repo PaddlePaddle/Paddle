@@ -45,7 +45,7 @@ from .xavier import XavierInitializer  # noqa: F401
 from .kaiming import MSRAInitializer  # noqa: F401
 from .assign import NumpyArrayInitializer  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'Bilinear',
     'Constant',
     'KaimingUniform',

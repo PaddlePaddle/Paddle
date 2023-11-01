@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace memory {
@@ -23,7 +24,7 @@ enum class AllocatorStrategy { kNaiveBestFit, kAutoGrowth, kThreadLocal };
 extern AllocatorStrategy GetAllocatorStrategy();
 
 // Do nothing, just make sure linker do not prune this file.
-extern void UseAllocatorStrategyGFlag();
+TEST_API void UseAllocatorStrategyGFlag();
 
 }  // namespace allocation
 }  // namespace memory

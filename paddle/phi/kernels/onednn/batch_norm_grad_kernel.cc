@@ -21,8 +21,8 @@
   template void phi::BatchNormGradFunctor<dtype, ::phi::backend##Context>( \
       const ::phi::backend##Context& dev_ctx,                              \
       const DenseTensor& x,                                                \
-      const DenseTensor& scale,                                            \
-      const DenseTensor& bias,                                             \
+      const paddle::optional<DenseTensor>& scale,                          \
+      const paddle::optional<DenseTensor>& bias,                           \
       const paddle::optional<DenseTensor>& mean,                           \
       const paddle::optional<DenseTensor>& variance,                       \
       const DenseTensor& saved_mean,                                       \
@@ -45,8 +45,8 @@ namespace phi {
 template <typename T, typename Context>
 void BatchNormGradFunctor(const Context& dev_ctx,
                           const DenseTensor& x,
-                          const DenseTensor& scale,
-                          const DenseTensor& bias,
+                          const paddle::optional<DenseTensor>& scale,
+                          const paddle::optional<DenseTensor>& bias,
                           const paddle::optional<DenseTensor>& mean,
                           const paddle::optional<DenseTensor>& variance,
                           const DenseTensor& saved_mean,
@@ -63,8 +63,10 @@ void BatchNormGradFunctor(const Context& dev_ctx,
                           DenseTensor* x_grad,
                           DenseTensor* scale_grad,
                           DenseTensor* bias_grad) {
+  auto Scale = scale.get_ptr();
+  auto Bias = bias.get_ptr();
   funcs::BatchNormOneDNNHandler<T> handler(
-      dev_ctx.GetEngine(), dev_ctx.GetPlace(), epsilon, &x, &scale, &y_grad);
+      dev_ctx.GetEngine(), dev_ctx.GetPlace(), epsilon, &x, Scale, &y_grad);
 
   T* diff_scale_data = dev_ctx.template Alloc<T>(scale_grad);
   T* diff_shift_data = dev_ctx.template Alloc<T>(bias_grad);
@@ -73,7 +75,7 @@ void BatchNormGradFunctor(const Context& dev_ctx,
   auto mean_memory = handler.AcquireMeanMemory(&saved_mean);
   auto variance_memory = handler.AcquireVarianceMemory(&saved_variance);
   auto diff_dst_memory = handler.AcquireDiffDstMemory(&y_grad);
-  auto scaleshift_mems = handler.AcquireScaleShiftMemory(&scale, &bias);
+  auto scaleshift_mems = handler.AcquireScaleShiftMemory(Scale, Bias);
   auto diff_src_memory = handler.AcquireDiffSrcMemory(x_grad);
   auto diff_scaleshift_mems =
       handler.AcquireDiffScaleShiftMemory(diff_scale_data, diff_shift_data);
@@ -100,8 +102,8 @@ void BatchNormGradFunctor(const Context& dev_ctx,
 template <typename T, typename Context>
 void BatchNormGradKernel(const Context& dev_ctx,
                          const DenseTensor& x,
-                         const DenseTensor& scale,
-                         const DenseTensor& bias,
+                         const paddle::optional<DenseTensor>& scale,
+                         const paddle::optional<DenseTensor>& bias,
                          const paddle::optional<DenseTensor>& mean,
                          const paddle::optional<DenseTensor>& variance,
                          const DenseTensor& saved_mean,

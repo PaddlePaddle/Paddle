@@ -301,7 +301,7 @@ class LinearNetWithMultiStaticFunc(paddle.nn.Layer):
 def train(layer, input_size=784, label_size=1):
     # create optimizer
     sgd = paddle.optimizer.SGD(
-        learning_rate=0.01, parameter_list=layer.parameters()
+        learning_rate=0.01, parameters=layer.parameters()
     )
     # create data loader
     train_loader = base.io.DataLoader.from_generator(capacity=5)
@@ -316,7 +316,7 @@ def train(layer, input_size=784, label_size=1):
         cost = layer(img)
 
         loss = paddle.nn.functional.cross_entropy(
-            cost, label, reduction='none', use_softmax=False
+            cost, label, reduction='none', use_softmax=True
         )
         avg_loss = paddle.mean(loss)
 

@@ -69,14 +69,14 @@ class AddOp : public pir::Op<AddOp> {
   static const char *name() { return "test.add"; }
   static constexpr const char **attributes_name = nullptr;
   static constexpr uint32_t attributes_num = 0;
-  void Verify();
+  void VerifySig();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
                     pir::OpResult l_operand,
                     pir::OpResult r_operand,
                     pir::Type sum_type);
 };
-void AddOp::Verify() {
+void AddOp::VerifySig() {
   if (num_operands() != 2) {
     throw("The size of inputs must be equal to 2.");
   }
@@ -89,8 +89,8 @@ void AddOp::Build(pir::Builder &,
                   pir::OpResult l_operand,
                   pir::OpResult r_operand,
                   pir::Type sum_type) {
-  argument.AddOperand(l_operand);
-  argument.AddOperand(r_operand);
+  argument.AddInput(l_operand);
+  argument.AddInput(r_operand);
   argument.AddOutput(sum_type);
 }
 IR_DECLARE_EXPLICIT_TYPE_ID(AddOp)
@@ -142,7 +142,7 @@ class TestPass : public pir::Pass {
   }
 
   bool CanApplyOn(pir::Operation *op) const override {
-    return op->name() == "builtin.module" && op->num_regions() > 0;
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

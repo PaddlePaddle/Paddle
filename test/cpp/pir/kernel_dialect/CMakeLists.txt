@@ -6,7 +6,6 @@ cc_test_old(
   pd_op_to_kernel_pass
   program_translator
   pd_kernel_dialect
-  phi_kernel_adaptor
   pd_trait
   pir
   phi

@@ -19,9 +19,9 @@
 #include <sstream>
 
 #include "paddle/cinn/common/graph_utils.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/poly/naive_scheduler.h"
 #include "paddle/cinn/poly/poly_scheduler.h"
 #include "paddle/cinn/utils/string.h"

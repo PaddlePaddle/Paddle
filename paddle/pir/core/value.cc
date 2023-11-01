@@ -17,6 +17,8 @@
 #include <cstddef>
 
 #include "paddle/pir/core/enforce.h"
+#include "paddle/pir/core/op_operand.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/value_impl.h"
 
@@ -25,62 +27,9 @@
              "impl_ pointer is null when call func:" #func_name \
              " , in class: " #class_name ".")
 
-#define CHECK_OPOPEREND_NULL_IMPL(func_name) \
-  CHECK_NULL_IMPL(OpOpernad, func_name)
-
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 
-#define CHECK_OPRESULT_NULL_IMPL(func_name) CHECK_NULL_IMPL(OpResult, func_name)
 namespace pir {
-
-// Operand
-OpOperand::OpOperand(const detail::OpOperandImpl *impl)
-    : impl_(const_cast<detail::OpOperandImpl *>(impl)) {}
-
-OpOperand &OpOperand::operator=(const OpOperand &rhs) {
-  if (this == &rhs) return *this;
-  impl_ = rhs.impl_;
-  return *this;
-}
-
-OpOperand &OpOperand::operator=(const detail::OpOperandImpl *impl) {
-  if (this->impl_ == impl) return *this;
-  impl_ = const_cast<detail::OpOperandImpl *>(impl);
-  return *this;
-}
-OpOperand::operator bool() const { return impl_ && impl_->source(); }
-
-OpOperand OpOperand::next_use() const {
-  CHECK_OPOPEREND_NULL_IMPL(next_use);
-  return impl_->next_use();
-}
-
-Value OpOperand::source() const {
-  CHECK_OPOPEREND_NULL_IMPL(source);
-  return impl_->source();
-}
-
-Type OpOperand::type() const { return source().type(); }
-
-void OpOperand::set_source(Value value) {
-  CHECK_OPOPEREND_NULL_IMPL(set_source);
-  impl_->set_source(value);
-}
-
-Operation *OpOperand::owner() const {
-  CHECK_OPOPEREND_NULL_IMPL(owner);
-  return impl_->owner();
-}
-
-void OpOperand::RemoveFromUdChain() {
-  CHECK_OPOPEREND_NULL_IMPL(RemoveFromUdChain);
-  return impl_->RemoveFromUdChain();
-}
-
-// Value
-Value::Value(const detail::ValueImpl *impl)
-    : impl_(const_cast<detail::ValueImpl *>(impl)) {}
-
 bool Value::operator==(const Value &other) const {
   return impl_ == other.impl_;
 }
@@ -91,21 +40,15 @@ bool Value::operator!=(const Value &other) const {
 
 bool Value::operator!() const { return impl_ == nullptr; }
 
+bool Value::operator<(const Value &other) const { return impl_ < other.impl_; }
+
 Value::operator bool() const { return impl_; }
 
-pir::Type Value::type() const {
-  CHECK_VALUE_NULL_IMPL(type);
-  return impl_->type();
-}
+pir::Type Value::type() const { return impl_ ? impl_->type() : nullptr; }
 
 void Value::set_type(pir::Type type) {
   CHECK_VALUE_NULL_IMPL(set_type);
   impl_->set_type(type);
-}
-
-Operation *Value::GetDefiningOp() const {
-  if (auto result = dyn_cast<OpResult>()) return result.owner();
-  return nullptr;
 }
 
 std::string Value::PrintUdChain() {
@@ -113,15 +56,12 @@ std::string Value::PrintUdChain() {
   return impl()->PrintUdChain();
 }
 
-Value::UseIterator Value::use_begin() const {
-  return pir::OpOperand(first_use());
-}
+Value::UseIterator Value::use_begin() const { return OpOperand(first_use()); }
 
 Value::UseIterator Value::use_end() const { return Value::UseIterator(); }
 
 OpOperand Value::first_use() const {
-  CHECK_VALUE_NULL_IMPL(first_use);
-  return impl_->first_use();
+  return impl_ ? impl_->first_use() : nullptr;
 }
 
 bool Value::use_empty() const { return !first_use(); }
@@ -153,148 +93,4 @@ void Value::ReplaceAllUsesWith(Value new_value) const {
   }
 }
 
-// OpResult
-bool OpResult::classof(Value value) {
-  return value && pir::isa<detail::OpResultImpl>(value.impl());
-}
-
-Operation *OpResult::owner() const {
-  CHECK_OPRESULT_NULL_IMPL(owner);
-  return impl()->owner();
-}
-
-uint32_t OpResult::GetResultIndex() const {
-  CHECK_OPRESULT_NULL_IMPL(GetResultIndex);
-  return impl()->GetResultIndex();
-}
-
-detail::OpResultImpl *OpResult::impl() const {
-  return reinterpret_cast<detail::OpResultImpl *>(impl_);
-}
-
-bool OpResult::operator==(const OpResult &other) const {
-  return impl_ == other.impl_;
-}
-
-detail::ValueImpl *OpResult::value_impl() const {
-  IR_ENFORCE(impl_, "Can't use value_impl() interface while value is null.");
-  return impl_;
-}
-
-uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
-  uint32_t max_inline_index =
-      pir::detail::OpResultImpl::GetMaxInlineResultIndex();
-  return index <= max_inline_index ? index : max_inline_index;
-}
-
-// details
-namespace detail {
-pir::Operation *OpOperandImpl::owner() const { return owner_; }
-
-pir::detail::OpOperandImpl *OpOperandImpl::next_use() { return next_use_; }
-
-pir::Value OpOperandImpl::source() const { return source_; }
-
-void OpOperandImpl::set_source(Value source) {
-  RemoveFromUdChain();
-  if (!source) {
-    return;
-  }
-  source_ = source;
-  InsertToUdChain();
-}
-
-OpOperandImpl::OpOperandImpl(pir::Value source, pir::Operation *owner)
-    : source_(source), owner_(owner) {
-  if (!source) {
-    return;
-  }
-  InsertToUdChain();
-}
-
-void OpOperandImpl::InsertToUdChain() {
-  prev_use_addr_ = source_.impl()->first_use_addr();
-  next_use_ = source_.impl()->first_use();
-  if (next_use_) {
-    next_use_->prev_use_addr_ = &next_use_;
-  }
-  source_.impl()->set_first_use(this);
-}
-
-void OpOperandImpl::RemoveFromUdChain() {
-  if (!source_) return;
-  if (!prev_use_addr_) return;
-  if (prev_use_addr_ == source_.impl()->first_use_addr()) {
-    /// NOTE: In ValueImpl, first_use_offseted_by_index_ use lower three bits
-    /// storage index information, so need to be updated using the set_first_use
-    /// method here.
-    source_.impl()->set_first_use(next_use_);
-  } else {
-    *prev_use_addr_ = next_use_;
-  }
-  if (next_use_) {
-    next_use_->prev_use_addr_ = prev_use_addr_;
-  }
-  next_use_ = nullptr;
-  prev_use_addr_ = nullptr;
-  source_ = nullptr;
-}
-
-OpOperandImpl::~OpOperandImpl() { RemoveFromUdChain(); }
-
-uint32_t ValueImpl::index() const {
-  uint32_t index =
-      reinterpret_cast<uintptr_t>(first_use_offseted_by_index_) & 0x07;
-  if (index < 6) return index;
-  return reinterpret_cast<OpOutlineResultImpl *>(const_cast<ValueImpl *>(this))
-      ->GetResultIndex();
-}
-
-std::string ValueImpl::PrintUdChain() {
-  std::stringstream result;
-  result << "Value[" << this << "] -> ";
-  OpOperandImpl *tmp = first_use();
-  if (tmp) {
-    result << "OpOperand[" << reinterpret_cast<void *>(tmp) << "] -> ";
-    while (tmp->next_use() != nullptr) {
-      result << "OpOperand[" << reinterpret_cast<void *>(tmp->next_use())
-             << "] -> ";
-      tmp = tmp->next_use();
-    }
-  }
-  result << "nullptr";
-  return result.str();
-}
-
-uint32_t OpResultImpl::GetResultIndex() const {
-  if (const auto *outline_result = pir::dyn_cast<OpOutlineResultImpl>(this)) {
-    return outline_result->GetResultIndex();
-  }
-  return pir::dyn_cast<OpInlineResultImpl>(this)->GetResultIndex();
-}
-
-OpResultImpl::~OpResultImpl() { assert(use_empty()); }
-
-pir::Operation *OpResultImpl::owner() const {
-  // For inline result, pointer offset index to obtain the address of op.
-  if (const auto *result = pir::dyn_cast<OpInlineResultImpl>(this)) {
-    result += result->GetResultIndex() + 1;
-    return reinterpret_cast<Operation *>(
-        const_cast<OpInlineResultImpl *>(result));
-  }
-  // For outline result, pointer offset outline_index to obtain the address of
-  // maximum inline result.
-  const OpOutlineResultImpl *outline_result =
-      (const OpOutlineResultImpl *)(this);
-  outline_result +=
-      (outline_result->outline_index_ - GetMaxInlineResultIndex());
-  // The offset of the maximum inline result distance op is
-  // GetMaxInlineResultIndex.
-  const auto *inline_result =
-      reinterpret_cast<const OpInlineResultImpl *>(outline_result);
-  inline_result += (GetMaxInlineResultIndex() + 1);
-  return reinterpret_cast<Operation *>(
-      const_cast<OpInlineResultImpl *>(inline_result));
-}
-}  // namespace detail
 }  // namespace pir

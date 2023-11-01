@@ -1,3 +1,4 @@
+remove_definitions(-DPADDLE_DLL_EXPORT)
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")
@@ -137,6 +138,7 @@ if(WITH_TESTING)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
   add_subdirectory(sequence)
+  add_subdirectory(sot)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)

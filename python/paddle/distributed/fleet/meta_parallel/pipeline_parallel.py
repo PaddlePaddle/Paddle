@@ -24,6 +24,7 @@ from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_mp_parameters,
+    broadcast_sep_parameters,
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
@@ -138,6 +139,7 @@ class PipelineParallel(MetaParallelBase):
         super().__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+        self.use_sep_parallel = self._hcg.get_sep_parallel_world_size() > 1
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
@@ -161,7 +163,13 @@ class PipelineParallel(MetaParallelBase):
         self.stage_id = self._hcg.get_stage_id()
         self.global_rank = self._hcg.get_global_rank()
         self.pp_group = self._hcg.get_pipe_parallel_group()
+
         self.dp_group = self._hcg.get_data_parallel_group()
+
+        # fused sep and dp
+        if self.use_sep_parallel:
+            self.dp_group = self._hcg.get_dp_sep_parallel_group()
+
         self.sharding_group = self._hcg.get_sharding_parallel_group()
 
         self._virtual_pp_world_size = None
@@ -242,14 +250,16 @@ class PipelineParallel(MetaParallelBase):
         self._compute_loss = True
 
         logger.info(
-            "Pipeline Info -- num_stages: {}, stage_id: {}".format(
-                self.num_stages, self.stage_id
-            )
+            f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
         )
 
         if self.use_model_parallel:
             logger.info("start broadcast mp parameters")
             broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self.use_sep_parallel:
+            logger.info("start broadcast sep parameters")
+            broadcast_sep_parameters(self._layers, self._hcg)
 
         if self.use_sharding_parallel:
             logger.info("start broadcast sharding parameters")

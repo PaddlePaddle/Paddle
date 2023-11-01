@@ -92,7 +92,7 @@ class XPUDeviceGuard {
   int prev_id_{-1};
 };
 
-enum XPUVersion { XPU1, XPU2 };
+enum XPUVersion { XPU1, XPU2, XPU3 };
 XPUVersion get_xpu_version(int dev_id);
 
 int get_xpu_max_ptr_size(int dev_id);
