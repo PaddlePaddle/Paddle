@@ -877,8 +877,8 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
         if (op_with_kernel->Info().infer_meta_) {
-          op_with_kernel->Info().infer_meta_(
-              instr_node.InnerInferMetaContext());
+          op_with_kernel->Info().infer_meta_(const_cast<phi::InferMetaContext*>(
+              instr_node.InnerInferMetaContext()));
         } else {
           op_with_kernel->Info().infer_shape_(
               instr_node.InnerInferShapeContext().get());
