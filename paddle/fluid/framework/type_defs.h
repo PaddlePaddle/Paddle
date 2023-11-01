@@ -103,7 +103,7 @@ using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
-using InferMetaFN = std::function<void(const phi::InferMetaContext*)>;
+using InferMetaFN = std::function<void(phi::InferMetaContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
 using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;
