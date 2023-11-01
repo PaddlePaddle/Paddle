@@ -17,10 +17,7 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -318,14 +315,13 @@ def train_dygraph(place):
     return train(place)
 
 
-@test_and_compare_with_new_ir(True)
+@compare_legacy_with_pir
 def train_static(place):
     paddle.jit.enable_to_static(True)
     return train(place)
 
 
-@dy2static_unittest
-class TestPtb(unittest.TestCase):
+class TestPtb(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)

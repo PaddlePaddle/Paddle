@@ -26,7 +26,7 @@ from typing import Any, Callable
 
 from ...infer_meta import InferMetaCache, LayerInferMetaCache, MetaInfo
 from ...profiler import EventGuard, event_register
-from ...symbolic.statement_ir import Symbol
+from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
     ENV_SHOW_TRACKERS,
@@ -426,6 +426,7 @@ class FunctionGraph:
     def call_layer(
         self,
         layer: PaddleLayerVariable,
+        weak_ref: bool,
         *args: VariableBase,
         **kwargs: VariableBase,
     ):
@@ -442,7 +443,7 @@ class FunctionGraph:
 
         def compute_fn(layer, inputs, outputs, stacks):
             self.sir_ctx.call_LAYER(
-                layer.value,
+                Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,

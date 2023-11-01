@@ -31,6 +31,7 @@ from ..auto_parallel.static.utils import (
     get_loss_op,
     insert_dependencies_for_two_ops,
     is_backward_op,
+    is_recompute_exclude_op,
     is_recompute_op,
     naive_set_dist_op_attr_for_program_by_mesh_and_mapping,
     set_dist_op_desc_original_id,
@@ -80,9 +81,13 @@ class RecomputeState(ProgramStats):
 
             if not is_recompute_op(op):
                 self._checkpoints.extend(op.output_arg_names)
-                continue
+                if not is_recompute_exclude_op(op):
+                    continue
 
             seg_name = op.attr('op_namescope')
+            seg_name = (
+                seg_name if '_exclude_rc' not in seg_name else seg_name[:-11]
+            )
             if seg_name not in self.seg_op_deps:
                 self.seg_op_deps[seg_name] = [i]
             else:
@@ -317,6 +322,7 @@ class RecomputePass(PassBase):
             )
 
         # 3. get vars that should be hold in memory
+        # list of var_names
         vars_should_be_hold = []
         for segment in segments:
             vars_should_be_hold.extend(
