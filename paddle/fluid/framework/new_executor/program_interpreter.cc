@@ -878,7 +878,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
         if (op_with_kernel->Info().infer_meta_) {
           op_with_kernel->Info().infer_shape_(
-              instr_node.InnerInferMetaContext())
+              instr_node.InnerInferMetaContext());
         } else {
           op_with_kernel->Info().infer_shape_(
               instr_node.InnerInferShapeContext().get());
