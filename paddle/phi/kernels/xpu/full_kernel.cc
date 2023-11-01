@@ -64,12 +64,19 @@ void FullLikeKernel(const Context& dev_ctx,
 
   auto common_type_value = static_cast<CommonType>(value);
 
-  PADDLE_ENFORCE_EQ(
-      (common_type_value >=
+  bool is_out_range = true;
+  if (std::isinf(value) || std::isnan(value)) {
+    is_out_range = false;
+  }
+  if ((common_type_value >=
        static_cast<CommonType>(std::numeric_limits<T>::lowest())) &&
-          (common_type_value <=
-           static_cast<CommonType>(std::numeric_limits<T>::max())),
-      true,
+      (common_type_value <=
+       static_cast<CommonType>(std::numeric_limits<T>::max()))) {
+    is_out_range = false;
+  }
+  PADDLE_ENFORCE_EQ(
+      is_out_range,
+      false,
       phi::errors::InvalidArgument(
           "The filled value is out of range for target type, "
           "current kernel type is %s, the range should between %f "
@@ -78,13 +85,6 @@ void FullLikeKernel(const Context& dev_ctx,
           static_cast<CommonType>(std::numeric_limits<T>::lowest()),
           static_cast<CommonType>(std::numeric_limits<T>::max()),
           static_cast<float>(value)));
-
-  PADDLE_ENFORCE_EQ(std::isnan(value),
-                    false,
-                    phi::errors::InvalidArgument("The filled value is NaN."));
-  PADDLE_ENFORCE_EQ(std::isinf(value),
-                    false,
-                    phi::errors::InvalidArgument("The filled value is Inf."));
 
   auto out_data = reinterpret_cast<XPUInTDType*>(out->data<T>());
   if (out->numel() > 0) {
