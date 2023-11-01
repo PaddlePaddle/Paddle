@@ -1831,6 +1831,26 @@
   outputs :
     out : Out
 
+- op : lp_pool2d
+  # backward : pool2d_grad, pool2d_double_grad
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out}
+  attrs :
+    {kernel_size : ksize}
+  int_array:
+    kernel_size :
+      data_type : int
+      support_tensor : true
+  get_expected_kernel_type :
+    pool2d : GetPoolExpectedKernelType
+    # pool2d_grad : GetPoolExpectedKernelType
+    # pool2d_double_grad : GetPoolDoubleGradExpectedKernelType
+  extra :
+    attrs : [bool use_mkldnn = false, bool use_quantizer = false,
+              str mkldnn_data_type = "float32", bool is_test = false]
+
 - op : lrn
   backward : lrn_grad
   extra :
