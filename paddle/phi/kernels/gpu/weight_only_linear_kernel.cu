@@ -54,8 +54,8 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   int k = w_dims[1];
   int m = x.numel() / k;
 
-  // m > 1: run gemm.
-  if (m > 5 || weight_dtype == "int4" || (arch == 70)) {
+  // m > 3: run gemm.
+  if (m > 3 || weight_dtype == "int4" || (arch == 70)) {
 /*
 Note(Zhengzekang):
 If using arch = 70, we always dispatch to weightonly Gemm,
