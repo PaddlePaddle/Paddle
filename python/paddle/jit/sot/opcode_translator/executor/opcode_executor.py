@@ -1530,7 +1530,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 if _var not in self.stack:
                     store_var_info[_var] = name
             return self._graph._restore_origin_opcode(
-                self.stack, store_var_info, instr_idx
+                list(self.stack), store_var_info, instr_idx
             )
         else:
             store_vars = list(self.stack)

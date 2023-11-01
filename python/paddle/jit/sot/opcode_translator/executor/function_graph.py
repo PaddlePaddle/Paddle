@@ -242,7 +242,7 @@ class FunctionGraph:
 
             return make_guard(guards)
 
-    def _restore_origin_opcode(self, restore_vars, store_var_info, instr_idx):
+    def _restore_origin_opcode(self, stack_vars, store_var_info, instr_idx):
         class VariableLoader:
             def __init__(self, store_var_info, pycode_gen):
                 self._store_var_info = store_var_info
@@ -261,11 +261,12 @@ class FunctionGraph:
                 self._pycode_gen.gen_load(self._store_var_info[var])
 
         origin_instr = get_instructions(self.pycode_gen._origin_code)
-        self.pycode_gen.extend_instrs(iter(origin_instr[0 : instr_idx + 1]))
+        self.pycode_gen.extend_instrs(iter(origin_instr[0:instr_idx]))
+        self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("__start_compile_saved_orig_")
 
-        for var in restore_vars[::-1]:
+        for var in stack_vars[::-1]:
             store_var_info[var] = name_gen.next()
             self.pycode_gen.gen_store_fast(store_var_info[var])
 
