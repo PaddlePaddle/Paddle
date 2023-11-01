@@ -1135,6 +1135,7 @@ std::vector<pir::Value> BuildOpInputList(
       }
     }
 
+    // 1.backend transfer
     bool check_place_transfer =
         (op_item->isa<::pir::SetParameterOp>()) ||
         (kernel.IsValid() && (!UnchangeOutputOps.count(op_item->name())));
@@ -1310,21 +1311,30 @@ std::vector<pir::Value> BuildOpInputList(
     }
     vec_inputs.push_back(new_in);
 
-    // std::string var_name = GetValue2VarName(cur_in)
-    // auto fake_tensors = GetFakeTensorList(cur_in);
-    // phi::KernelKey kernel_dtype_for_var = pir::GetKernelKeyforVar(op_item,
-    // var_name, fake_tensors, kernel_key);
+    // 2. dtype transfer
+    std::string var_name = op_info_parser->InputNames()[i];
+    VLOG(0) << "trans input: " << var_name;
+    auto fake_tensors = GetFakeTensorList(new_in);
+    const phi::KernelKey expected_kernel_key = kernel_key;
 
-    // bool check_dtype_transfer =
-    // NeedTransformDataType(expected_kernel_key.dtype(), kernel_dtype_for_var);
-    // if (need_trans_dtype) {
-    //   VLOG(4) << "trans input: " << var_name << "'s dtype from " <<
-    //   expected_kernel_key.dtype() << " to " << kernel_dtype_for_var;
+    if (!fake_tensors.empty()) {
+      auto kernel_dtype_for_var = pir::GetKernelTypeforVar(
+          op_item, var_name, (*fake_tensors[0]).dtype(), &expected_kernel_key);
 
-    //   std::string new_var_name;
-    //   pir::AddDtypeTransferOp(place, op_item, kernel_op, block, ctx,
-    //   map_op_pair, map_value_pair);
-    // }
+      // bool check_dtype_transfer =
+      //     pir::NeedTransformDataType(expected_kernel_key.dtype(),
+      //     expected_kernel_key.dtype());
+      // if (check_dtype_transfer) {
+      //   VLOG(4) << "trans input: " << var_name << "'s dtype from " <<
+      //   expected_kernel_key.dtype() << " to " << kernel_dtype_for_var;
+
+      //   auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
+      //   new_in = pir::AddDtypeTransferOp(
+      //       new_in, block, kernel_key, out_place, kernel_dtype_for_var,
+      //       expected_kernel_key.dtype());
+      //   vec_inputs.push_back(new_in);
+      // }
+    }
   }
   return vec_inputs;
 }

@@ -738,7 +738,9 @@ class TestComplexElementwiseAddOp(OpTest):
         self.x = np.random.random(self.shape).astype(
             self.dtype
         ) + 1j * np.random.random(self.shape).astype(self.dtype)
-        self.y = np.random.random(self.shape).astype(self.dtype)
+        self.y = np.random.random(self.shape).astype(
+            self.dtype
+        ) + 1j * np.random.random(self.shape).astype(self.dtype)
         self.out = self.x + self.y
 
     def test_check_output(self):

@@ -18,8 +18,7 @@ phi::DataType {op_name}::GetKernelTypeForVar(
     const phi::DataType& tensor_dtype,
     const phi::DataType& expected_kernel_dtype) {{
   VLOG(4) << "Get KernelType for Var of op: {op_name}";
-  {data_transform_check}
-  {complex_promote_check}
+  {data_transform_check}{complex_promote_check}
   return expected_kernel_dtype;
 }}
 """
@@ -43,7 +42,7 @@ OP_SUPPORT_TRANSFORM_CHECK_TEMPLATE = """
 
 OP_COMPLEX_PROMOTE_CHECK_TEMPLATE = """
   // deal complex_promote
-  if (framework::IsComplexType(expected_kernel_type.dtype())) {{
+  if (framework::IsComplexType(expected_kernel_dtype)) {{
     // only promote inputs’s types when contains complex input
     return tensor_dtype;
   }}
@@ -81,7 +80,8 @@ def get_data_transform_check_str(op_data_transform_map):
 def get_complex_promote_check_str(op_compat_item):
     complex_promote_check_str = ""
     if (
-        "complex_promote" in op_compat_item
+        op_compat_item is not None
+        and "complex_promote" in op_compat_item
         and op_compat_item["complex_promote"] is not None
     ):
         complex_promote_check_str = OP_COMPLEX_PROMOTE_CHECK_TEMPLATE
@@ -91,17 +91,10 @@ def get_complex_promote_check_str(op_compat_item):
 def gen_kernel_type_for_var_str(
     op_class_name, op_data_transform_map, op_kernel_map, op_compat_item
 ):
-    if op_data_transform_map is None:
-        return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(
-            op_name=op_class_name,
-            complex_promote_check="",
-            data_transform_check="",
-        )
-
+    complex_promote_check_str = get_complex_promote_check_str(op_compat_item)
     data_transform_check_str = get_data_transform_check_str(
         op_data_transform_map
     )
-    complex_promote_check_str = get_complex_promote_check_str(op_compat_item)
 
     return OP_GET_KERNEL_TYPE_FOR_VAR_TEMPLATE.format(
         op_name=op_class_name,

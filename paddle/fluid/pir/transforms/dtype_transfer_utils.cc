@@ -12,15 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
-#include "paddle/fluid/framework/data_transform.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
+#include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/op_result.h"
+
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
 #include "paddle/pir/core/op_info.h"
 #include "paddle/pir/core/operation.h"
-#include "paddle/pir/core/operation_utils.h"
-#include "paddle/pir/core/type.h"
 
 namespace pir {
 phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key) {
@@ -38,10 +42,11 @@ bool NeedTransformDataType(const phi::DataType& l, const phi::DataType& r) {
          l != r;
 }
 
-const phi::DataType GetKernelTypeforVar(pir::Operation* op,
-                                        const std::string& var_name,
-                                        const phi::DataType& tensor_dtype,
-                                        phi::KernelKey* expected_kernel_key) {
+const phi::DataType GetKernelTypeforVar(
+    pir::Operation* op,
+    const std::string& var_name,
+    const phi::DataType& tensor_dtype,
+    const phi::KernelKey* expected_kernel_key) {
   auto phi_kernel = GetKernel(op, *expected_kernel_key);
 
   bool has_infer_varkernel_fn =
@@ -61,131 +66,76 @@ const phi::DataType GetKernelTypeforVar(pir::Operation* op,
       get_kernel_type_for_var_interface->get_kernel_type_for_var_(
           var_name, tensor_dtype, (*expected_kernel_key).dtype());
 
-  //   AttributeMap pir_attrs = op->attributes();
-  //   phi::AttributeMap infer_attrs{};
-
-  //   phi::GetKernelTypeForVarContext infer_varkernel_context =
-  //       BuildGetKernelTypeForVarContext(expected_kernel_key,
-  //                                         pir_attrs,
-  //                                         &infer_attrs,
-  //                                         has_infer_varkernel_fn);
-  //     if (has_infer_varkernel_fn) {
-  //       VLOG(2) << "use infer_varkernel_fn to get kernel key for var";
-  //       infer_varkernel_context.SetVarName(const_cast<std::string*>(&var_name));
-  //       infer_varkernel_context.SetDenseTensor(const_cast<phi::DenseTensor*>(tensor_in));
-  //       kernel_type_for_var =
-  //           phi_kernel->get_kerneltype_forvar_fn_(&infer_varkernel_context);
-  //     }
   return kernel_dtype_for_var;
 }
 
-void AddDtypeTransferOp(
-    const phi::Place& place,
-    pir::Operation* op_item,
-    pir::Operation* kernel_op,
-    pir::Block* block,
-    pir::IrContext* ctx,
-    std::unordered_map<pir::Operation*, pir::Operation*>* map_op_pair,
-    std::unordered_map<pir::Value, pir::Value>* map_value_pair) {
-  //   phi::KernelKey dtype_transfer_key{
-  //         phi::Backend::GPU,
-  //         phi::DataLayout::ANY,
-  //         expected_kernel_key};
-  //   std::unordered_map<std::string, pir::Attribute> attr_map{
-  //     {"op_name", pir::StrAttribute::get(ctx, "pd_op.transfer_dtype")},
-  //     {"kernel_name", pir::StrAttribute::get(ctx, "transfer_dtype")},
-  //     {"kernel_key", dialect::KernelAttribute::get(ctx, shadow_key)}};
+pir::Type BuildDtypeTransferOutputType(pir::Type type,
+                                       const phi::Place& place,
+                                       phi::DataType data_dtype,
+                                       pir::IrContext* ctx) {
+  if (type.isa<paddle::dialect::DenseTensorType>()) {
+    auto dense_tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+
+    auto out_dtype = paddle::dialect::TransToIrDataType(data_dtype, ctx);
+    return paddle::dialect::AllocatedDenseTensorType::get(
+        ctx,
+        place,
+        out_dtype,
+        dense_tensor_type.dims(),
+        dense_tensor_type.data_layout(),
+        dense_tensor_type.lod(),
+        dense_tensor_type.offset());
+
+  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+    auto selected_rows_type =
+        type.dyn_cast<paddle::dialect::SelectedRowsType>();
+    auto out_dtype = paddle::dialect::TransToIrDataType(data_dtype, ctx);
+    return paddle::dialect::AllocatedSelectedRowsType::get(
+        ctx,
+        place,
+        out_dtype,
+        selected_rows_type.dims(),
+        selected_rows_type.data_layout(),
+        selected_rows_type.lod(),
+        selected_rows_type.offset());
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "BuildOutputType only support DenseTensorType and SelectedRowsType"));
+  }
+}
+
+pir::OpResult AddDtypeTransferOp(pir::Value in,
+                                 pir::Block* block,
+                                 const phi::KernelKey& kernel_key,
+                                 const phi::Place& out_place,
+                                 const phi::DataType& src_dtype,
+                                 const phi::DataType& dst_dtype) {
+  pir::IrContext* ctx = pir::IrContext::Instance();
 
   pir::OpInfo phi_kernel_op_info =
       ctx->GetRegisteredOpInfo(paddle::dialect::PhiKernelOp::name());
-  //   pir::Operation* dtype_transfer_kernel_op =
-  //       pir::Operation::Create({kernel_op->result(0)},
-  //                              attr_map,
-  //                              {expected_kernel_key.dtype()},
-  //                              phi_kernel_op_info);
+  auto copy_kernel_key = kernel_key;
+  copy_kernel_key.set_dtype(dst_dtype);
+  std::unordered_map<std::string, pir::Attribute> op_attribute{
+      {"op_name", pir::StrAttribute::get(ctx, "pd_op.cast")},
+      {"kernel_name", pir::StrAttribute::get(ctx, "cast")},
+      {"kernel_key",
+       paddle::dialect::KernelAttribute::get(ctx, copy_kernel_key)},
+      {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, src_dtype)}};
 
-  //   block->push_back(dtype_transfer_op);
+  pir::Type output_types =
+      BuildDtypeTransferOutputType(in.type(), out_place, dst_dtype, ctx);
 
-  //   (*map_op_pair)[op_item] = op;
-  //   if (op_item->num_results() > 0) {
-  //     for (size_t i = 0; i < shadow_op->num_results(); ++i) {
-  //       (*map_value_pair)[op_item->result(i)] =
-  //       dtype_transfer_kernel_op->result(i);
-  //     }
-  //   }
+  pir::Operation* op = pir::Operation::Create(
+      {in}, op_attribute, {output_types}, phi_kernel_op_info);
+
+  auto in_op = in.dyn_cast<pir::OpResult>().owner();
+  if (in_op && in_op->HasAttribute(kAttrIsPersisable)) {
+    op->set_attribute(kAttrIsPersisable, in_op->attribute(kAttrIsPersisable));
+  }
+  block->push_back(op);
+  pir::OpResult new_in = op->result(0);
+  return new_in;
 }
-
-// std::shared_ptr<Operation> TransferDtype(const std::string& var_name,
-//                                             std::string* new_var_name,
-//                                             phi::DataType in_dtype,
-//                                             phi::DataType out_dtype,
-//                                             framework::VariableScope*
-//                                             var_scope, framework::Scope*
-//                                             local_scope) {
-//   // 1. Generate new_var_name and Initialize it
-//   *new_var_name = var_name + "_dtype_" +
-//                   std::to_string(static_cast<int>(in_dtype)) + "_" +
-//                   std::to_string(static_cast<int>(out_dtype));
-//   if (var_scope->HasVar(*new_var_name) &&
-//       IsTensorOfVarInitialized(local_scope->FindVar(*new_var_name))) {
-//     // already has same var
-//     VLOG(4) << "Use cached variable: " << *new_var_name;
-//     return nullptr;
-//   }
-
-//   auto* ptr = local_scope->Var(*new_var_name);
-//   auto var_type = local_scope->FindVar(var_name)->Type();
-//   InitializeVariable(ptr, static_cast<proto::VarType::Type>(var_type));
-//   VLOG(3) << "Create Variable " << *new_var_name
-//           << " locally, which pointer is " << ptr << "Variable Type "
-//           << var_type;
-//   var_scope->MutableDataTransferAddedVars().emplace_back(*new_var_name,
-//                                                          var_type);
-//   var_scope->AddVar(*new_var_name, nullptr);
-
-//   // 2. Construct VariableNameMap
-//   VariableNameMap in_name_map = {{"X", {var_name}}};
-//   VariableNameMap out_name_map = {{"Out", {*new_var_name}}};
-//   AttributeMap attr_map;
-//   attr_map["in_dtype"] = static_cast<int>(in_dtype);
-//   attr_map["out_dtype"] = static_cast<int>(out_dtype);
-//   // NOTE(Aurelius84): In whice case use_mkldnn = true?
-//   attr_map["use_mkldnn"] = false;
-
-//   // 3. Create transfer_dtype_op
-//   std::string op_type("transfer_dtype");
-//   auto& op_info = OpInfoMap::Instance().Get(op_type);
-//   auto op = std::shared_ptr<OperatorBase>(
-//       op_info.Creator()(op_type, in_name_map, out_name_map, attr_map));
-
-//   VLOG(3) << string::Sprintf("Insert %s with %s(%s) -> %s(%s).",
-//                              op_type,
-//                              var_name,
-//                              DataTypeToString(in_dtype),
-//                              *new_var_name,
-//                              DataTypeToString(out_dtype));
-//   return op;
-// }
-
-// phi::GetKernelTypeForVarContext BuildGetKernelTypeForVarContext(
-//     const phi::KernelKey &kernel_key,
-//     const AttributeMap &pir_attrs,
-//     phi::AttributeMap *phi_attrs,
-//     bool has_infer_varkernel_fn) {
-
-//   if (has_infer_varkernel_fn) {
-//     for (auto &attr : pir_attrs) {
-//       if(attr.second->second.isa<StrAttribute>()) {
-//           (*phi_attrs)[attr.first] = PADDLE_GET_CONST(std::string,
-//           attr.second);
-//       }
-//       else{
-//           VLOG(6) << "GetKernelTypeForVarContext currently only use "
-//                      "std::string. You add other type if need.";
-//       }
-//     }
-//   }
-//   return phi::GetKernelTypeForVarContext(&kernel_key, phi_attrs);
-// }
 
 }  // namespace pir
