@@ -198,11 +198,25 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 
     LOG(INFO) << "with_dynamic_shape";
     for (int i = 0; i < numInputs; ++i) {
-      if (optim_input_shape().count(m_IOTensorNames[i])) {
-        const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
-        nvinfer1::Dims4 inputDims = {
-            batch_size, dims_vec[1], dims_vec[2], dims_vec[3]};
-        context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
+      const std::string &tensorName = m_IOTensorNames[i];
+      // 检查optim_input_shape映射中是否有一个元素的键值是tensorName
+      if (optim_input_shape().count(tensorName)) {
+        const auto &opt_dims = optim_input_shape().at(m_IOTensorNames[i]);
+        nvinfer1::Dims4 optDims = {
+            batch_size, opt_dims[1], opt_dims[2], opt_dims[3]};
+        context->setInputShape(m_IOTensorNames[i].c_str(), optDims);
+      } else if (max_input_shape().count(tensorName)) {
+        const auto &max_dims = max_input_shape().at(m_IOTensorNames[i]);
+        nvinfer1::Dims4 maxDims = {
+            batch_size, max_dims[1], max_dims[2], max_dims[3]};
+        context->setInputShape(m_IOTensorNames[i].c_str(), maxDims);
+      } else if (min_input_shape().count(tensorName)) {
+        const auto &min_dims = min_input_shape().at(m_IOTensorNames[i]);
+        nvinfer1::Dims4 minDims = {
+            batch_size, min_dims[1], min_dims[2], min_dims[3]};
+        context->setInputShape(m_IOTensorNames[i].c_str(), minDims);
+      } else {
+        LOG(INFO) << "None of the three shape is found in optim_input_shape.";
       }
     }
   }
