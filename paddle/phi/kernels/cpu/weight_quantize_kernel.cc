@@ -81,7 +81,7 @@ void WeightQuantizeKernel(const Context& dev_ctx,
                           DenseTensor* out,
                           DenseTensor* scale) {
   dev_ctx.template Alloc<int8_t>(out);
-  dev_ctx.template Alloc<float>(scale);
+  dev_ctx.template Alloc<T>(scale);
   if (algo == "weight_only_int8" || algo == "llm.int8") {
     quant_compute<Context, T, int8_t, 8>(dev_ctx, x, out, scale, algo);
   } else if (algo == "weight_only_int4") {
