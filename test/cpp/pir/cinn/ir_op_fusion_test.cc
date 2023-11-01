@@ -58,7 +58,7 @@ TEST(IROpFusionPass, demo) {
 
   ASSERT_EQ(res.size(), 1u);
 
-  ASSERT_EQ(res[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 TEST(IROpFusionPass, ElementWise_Fusion_0) {
@@ -87,7 +87,7 @@ TEST(IROpFusionPass, ElementWise_Fusion_0) {
 
   ASSERT_EQ(res.size(), 1u);
 
-  ASSERT_EQ(res[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 // Real test 0
@@ -122,7 +122,7 @@ TEST(IROpFusionPass, Broadcast_Test_0) {
 
   ASSERT_EQ(res.size(), 1u);
 
-  ASSERT_EQ(res[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(res[0]->ops.size(), program.block()->size());
 }
 
 // Real test 1
@@ -155,8 +155,8 @@ TEST(IROpFusionPass, Broadcast_Test_1) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
-  ASSERT_EQ(new_group[0]->nodes.size(), 2u);
-  ASSERT_EQ(new_group[1]->nodes.size(), 3u);
+  ASSERT_EQ(new_group[0]->ops.size(), 2u);
+  ASSERT_EQ(new_group[1]->ops.size(), 3u);
 }
 
 // FIXME(Aurelius84): Real test 2
@@ -214,7 +214,6 @@ TEST(IROpFusionPass, reduce_test_0) {
   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
   builder.Build<cinn::dialect::ReduceSumOp>(c, axes, true).result(0);
 
-  program.Print(std::cout);
   auto res =
       cinn::dialect::ir::OpFusionPassInternal(std::vector<pir::Operation*>(
           program.block()->begin(), program.block()->end()));
@@ -223,7 +222,7 @@ TEST(IROpFusionPass, reduce_test_0) {
 
   ASSERT_EQ(new_group.size(), 1u);
 
-  ASSERT_EQ(new_group[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 // Real reduce 1
@@ -254,8 +253,8 @@ TEST(IROpFusionPass, reduce_test_1) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
-  ASSERT_EQ(new_group[0]->nodes.size(), 2u);
-  ASSERT_EQ(new_group[1]->nodes.size(), 2u);
+  ASSERT_EQ(new_group[0]->ops.size(), 2u);
+  ASSERT_EQ(new_group[1]->ops.size(), 2u);
 }
 
 // Real reduce 2
@@ -288,8 +287,8 @@ TEST(IROpFusionPass, reduce_test_2) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 2u);
-  ASSERT_EQ(new_group[0]->nodes.size(), 3u);
-  ASSERT_EQ(new_group[1]->nodes.size(), 3u);
+  ASSERT_EQ(new_group[0]->ops.size(), 3u);
+  ASSERT_EQ(new_group[1]->ops.size(), 3u);
 }
 
 // Real reduce 3
@@ -326,7 +325,7 @@ TEST(IROpFusionPass, reduce_test_3) {
   auto new_group = cinn::dialect::ir::GeneralFusionMergePassInternal(res);
 
   ASSERT_EQ(new_group.size(), 1u);
-  ASSERT_EQ(new_group[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 // FIXME(Aurelius84): Real reduce 4
@@ -401,7 +400,7 @@ TEST(IROpFusionPass, reduce_test_5) {
 
   ASSERT_EQ(new_group.size(), 1u);
 
-  ASSERT_EQ(new_group[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 TEST(IROpFusionPass, layer_norm) {
@@ -477,7 +476,7 @@ TEST(IROpFusionPass, layer_norm) {
 
   ASSERT_EQ(new_group.size(), 1u);
 
-  ASSERT_EQ(new_group[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }
 
 TEST(IROpFusionPass, softmax) {
@@ -525,5 +524,5 @@ TEST(IROpFusionPass, softmax) {
 
   ASSERT_EQ(new_group.size(), 1u);
 
-  ASSERT_EQ(new_group[0]->nodes.size(), program.block()->size());
+  ASSERT_EQ(new_group[0]->ops.size(), program.block()->size());
 }

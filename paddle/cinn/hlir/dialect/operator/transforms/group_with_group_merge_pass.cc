@@ -1363,8 +1363,8 @@ class GeneralFusionMergePassHelper {
         fused_group->group_id = consumer->group_id;
       }
 
-      for (auto* op : consumer->nodes) {
-        fused_group->nodes.push_back(op);
+      for (auto* op : consumer->ops) {
+        fused_group->ops.push_back(op);
       }
       // set op pattern kind
       fused_group->op_pattern_kind =
@@ -1584,9 +1584,9 @@ class GeneralFusionMergePassHelper {
       // input nodes
       fused_group->input_ops = producer->input_ops;
 
-      fused_group->nodes = producer->nodes;
-      for (size_t i = 0; i < consumer->nodes.size(); ++i) {
-        fused_group->nodes.push_back(consumer->nodes[i]);
+      fused_group->ops = producer->ops;
+      for (size_t i = 0; i < consumer->ops.size(); ++i) {
+        fused_group->ops.push_back(consumer->ops[i]);
       }
 
       // internal nodes
