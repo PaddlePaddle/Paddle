@@ -995,6 +995,8 @@ function run_sot_test() {
     # Install PaddleSOT
     cd $PADDLE_ROOT/test/sot/
 
+    set +e
+
     # Run unittest
     failed_tests=()
 
@@ -1018,8 +1020,10 @@ function run_sot_test() {
         for failed_test in "${failed_tests[@]}"; do
             echo "$failed_test"
         done
+        set -e
         exit 1
     fi
+    set -e
 }
 
 function get_precision_ut_mac() {
