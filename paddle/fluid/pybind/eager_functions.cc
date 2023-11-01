@@ -1020,6 +1020,17 @@ void run_custom_op_kernel(
           dist_attr);
       tensor.set_impl(dist_t);
     }
+    std::vector<Tensor>* input_all = ctx.AllMutableInput();
+    for (size_t i = 0; i < input_all->size(); ++i) {
+      auto& tensor = input_all->at(i);
+      phi::distributed::TensorDistAttr dist_attr =
+          phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
+      dist_attr.set_process_mesh(current_process_mesh);
+      auto dist_t = std::make_shared<phi::distributed::DistTensor>(
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
+          dist_attr);
+      tensor.set_impl(dist_t);
+    }
   }
 #endif
 }
