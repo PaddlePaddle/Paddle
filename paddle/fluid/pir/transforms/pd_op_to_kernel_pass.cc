@@ -1159,7 +1159,8 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
-        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
+        VLOG(6) << "Infer kernel backend from input " << i << " of op "
+                << op_item->name();
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&

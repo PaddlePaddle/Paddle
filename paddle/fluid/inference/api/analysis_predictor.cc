@@ -105,6 +105,7 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/phi/core/flags.h"
 #include "paddle/pir/pass/pass_manager.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
