@@ -67,8 +67,15 @@ class FoldExpandToConstantPattern
 
     // Result patterns
     pir::drr::ResultPattern res = pat.ResultPattern();
+    const auto &new_perm_attr =
+        res.Attr([](const pir::drr::MatchContext &match_ctx) -> phi::IntArray {
+          auto shape =
+              match_ctx.Attr<std::vector<int64_t>>("expand_shape_value");
+
+          return phi::IntArray(shape);
+        });
     const auto &full2 = res.Op("pd_op.full",
-                               {{"shape", pat.Attr("expand_shape_value")},
+                               {{"shape", new_perm_attr},
                                 {"value", pat.Attr("value_1")},
                                 {"dtype", pat.Attr("dtype_1")},
                                 {"place", pat.Attr("place_1")}});

@@ -183,7 +183,6 @@ __all__ = [
     'log_softmax',
     'glu',
     'gumbel_softmax',
-    'diag_embed',
     'sequence_mask',
     'dropout',
     'dropout2d',

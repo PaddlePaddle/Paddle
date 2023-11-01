@@ -558,8 +558,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                          this->shape_dict_);
       } else {
         VLOG(3) << "Before assign node " << node->id()
-                << " into horizontal link reducer " << greducer->id()
-                << ", ir is:\n"
+                << " into horizontal link reducer, ir is:\n"
                 << ir_sch.GetModule().GetExprs().at(0);
         // if node is horizontal with reduce or node is reduce, loop assign
         //

@@ -32,7 +32,7 @@
 #include "paddle/pir/pass/pass_registry.h"
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
@@ -43,7 +43,7 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 // The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
-using CompatibleInfo = cinn::hlir::framework::newir::CompatibleInfo;
+using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
 // OpTransInfo contains informations used to detect subgraphs
 // supported by the CINN compiler.

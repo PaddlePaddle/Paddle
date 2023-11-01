@@ -18,10 +18,10 @@ import unittest
 from time import time
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
 )
 from predictor_utils import PredictorTools
 
@@ -130,8 +130,7 @@ class MNIST(paddle.nn.Layer):
         return x
 
 
-@dy2static_unittest
-class TestMNIST(unittest.TestCase):
+class TestMNIST(Dy2StTestBase):
     def setUp(self):
         self.epoch_num = 1
         self.batch_size = 64
@@ -158,14 +157,14 @@ class TestMNISTWithToStatic(TestMNIST):
     still works if model is trained in dygraph mode.
     """
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 
     def train_dygraph(self):
         return self.train(to_static=False)
 
-    @ast_only_test
+    @test_ast_only
     def test_mnist_to_static(self):
         dygraph_loss = self.train_dygraph()
         static_loss = self.train_static()
@@ -199,7 +198,7 @@ class TestMNISTWithToStatic(TestMNIST):
             base.default_startup_program().random_seed = SEED
             mnist = MNIST()
             if to_static:
-                mnist = paddle.jit.to_static(mnist)
+                mnist = paddle.jit.to_static(mnist, full_graph=True)
             adam = Adam(learning_rate=0.001, parameters=mnist.parameters())
 
             for epoch in range(self.epoch_num):
