@@ -67,10 +67,10 @@
   args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
   output : Tensor(out)
   infer_meta :
-    func : ArangeInferMeta
+    func : ArangeTensorInferMeta
     param : [start, end, step]
   kernel :
-    func : arange
+    func : arange_tensor
     param : [start, end, step]
     data_type : dtype
     backend : place
@@ -717,6 +717,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
   backward : maximum_grad

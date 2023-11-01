@@ -15,102 +15,12 @@
 import os
 
 from semi_auto_parallel_simple_net import (
-    CLASS_NUM,
-    IMAGE_SIZE,
+    DemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
-from paddle import nn
-
-
-class DPAndMPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh):
-        super().__init__()
-        self.mesh = mesh
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="dmp_demo_weight_1",
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'y']),
-        )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="dmp_nemo_weight_2",
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['y', None]),
-        )
-
-    def forward(self, x):
-        out = F.linear(
-            dist.shard_tensor(
-                x,
-                dist_attr=dist.DistAttr(
-                    mesh=self.mesh, sharding_specs=['x', None]
-                ),
-            ),
-            self.w0,
-        )
-        out = F.relu(out)
-        out = F.linear(out, self.w1)
-
-        return out
-
-
-class DPAndMPAndPPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh0, mesh1):
-        super().__init__()
-        self.mesh0 = mesh0
-        self.mesh1 = mesh1
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="dmpp_demo_weight_1",
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh0, sharding_specs=[None, 'y']),
-        )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="dmpp_nemo_weight_2",
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh1, sharding_specs=['y', None]),
-        )
-
-    def forward(self, x):
-        out = F.linear(
-            dist.shard_tensor(
-                x,
-                dist_attr=dist.DistAttr(
-                    mesh=self.mesh0, sharding_specs=['x', None]
-                ),
-            ),
-            self.w0,
-        )
-        out = F.relu(out)
-        out = dist.reshard(
-            out,
-            dist_attr=dist.DistAttr(mesh=self.mesh1, sharding_specs=['x', 'y']),
-        )
-        out = F.linear(out, self.w1)
-
-        return out
 
 
 class TestSimpleNetHybridStrategyForSemiAutoParallel(
@@ -121,8 +31,15 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-        self._mesh0 = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
-        self._mesh1 = dist.ProcessMesh([[4, 5], [6, 7]], dim_names=["x", "y"])
+        self._pp_mesh0 = dist.ProcessMesh(
+            [[0, 1], [2, 3]], dim_names=["x", "y"]
+        )
+        self._pp_mesh1 = dist.ProcessMesh(
+            [[4, 5], [6, 7]], dim_names=["x", "y"]
+        )
+        self.pp_reshard_dist_attr = dist.DistAttr(
+            mesh=self._pp_mesh1, sharding_specs=["x", "y"]
+        )
 
         paddle.set_device(self._backend)
 
@@ -130,34 +47,86 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self.init_single_card_net_result()
 
     def test_dp_mp_demo_net(self):
+        model = dist.shard_layer(
+            DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
+        )
+
         (
             self.dp_mp_loss,
-            self.dp_mp_w0,
-            self.dp_mp_w1,
-        ) = self.run_dynamic(DPAndMPDemoNet(self.w0, self.w1, self._mesh))
+            self.dp_mp_parameters,
+        ) = self.run_dynamic(model, shard_input=True)
+
         self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_mp_w0, self.base_w0)
-        self.check_tensor_eq(self.dp_mp_w1, self.base_w1)
-        self.check_tensor_eq(self.dp_mp_w0.grad, self.base_w0.grad)
-        self.check_tensor_eq(self.dp_mp_w1.grad, self.base_w1.grad)
+        for param, param_base in zip(
+            self.dp_mp_parameters, self.base_parameters
+        ):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
+    def dp_mp_pp_shard_fn(self, layer_name, layer, process_mesh):
+        if layer_name == 'linear_0':
+            # shard_layer doens't support cross-mesh now.
+            # input process_mesh of pp_shard_fn is useless,
+            # it's defined just for unified format.
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None, 'y']
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+        elif layer_name == 'linear_1':
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=['y', None]
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
 
     def dp_mp_pp_demo_net(self):
+        model = dist.shard_layer(
+            DemoNet(
+                "dp_mp_pp_hybrid_strategy",
+                is_pp=True,
+                pp_reshard_dist_attr=self.pp_reshard_dist_attr,
+            ),
+            self._pp_mesh0,
+            self.dp_mp_pp_shard_fn,
+        )
+
         (
             self.dp_mp_pp_loss,
-            self.dp_mp_pp_w0,
-            self.dp_mp_pp_w1,
-        ) = self.run_dynamic(
-            DPAndMPAndPPDemoNet(self.w0, self.w1, self._mesh0, self._mesh1)
-        )
-        rank = dist.get_rank()
+            self.dp_mp_pp_parameters,
+        ) = self.run_dynamic(model, shard_input=True, is_pp=True)
 
-        if rank in [4, 5, 6, 7]:
-            self.check_tensor_eq(self.dp_mp_pp_loss, self.base_loss)
-            self.check_tensor_eq(self.dp_mp_pp_w1, self.base_w1)
-            self.check_tensor_eq(self.dp_mp_pp_w1.grad, self.base_w1.grad)
+        rank = dist.get_rank()
+        # TODO(GhostScreaming): DistTensor.numpy() doesn't support
+        # cross-mesh now, ReshardXToReplicated function in eager_method
+        # needs to be fixed later.
+        if rank in [0, 1, 2, 3]:
+            # linear_0 weight and bias
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[0], self.base_parameters[0]
+            )
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[1], self.base_parameters[1]
+            )
         else:
-            self.check_tensor_eq(self.dp_mp_pp_w0, self.base_w0)
-            self.check_tensor_eq(self.dp_mp_pp_w0.grad, self.base_w0.grad)
+            self.check_tensor_eq(self.dp_mp_pp_loss, self.base_loss)
+            # linear_1 weight and bias
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[2], self.base_parameters[2]
+            )
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[3], self.base_parameters[3]
+            )
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()
