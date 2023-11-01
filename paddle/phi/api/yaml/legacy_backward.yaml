@@ -86,7 +86,7 @@
   kernel :
     func : batch_norm_double_grad
     data_type : x
-  optional : out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
+  optional : scale, out_mean, out_variance, grad_x_grad, grad_scale_grad, grad_bias_grad
   inplace : (grad_out -> grad_out_grad)
 
 - backward_op : batch_norm_grad
@@ -99,7 +99,7 @@
   kernel :
     func : batch_norm_grad
     data_type : out_grad
-  optional : mean_out, variance_out, reserve_space
+  optional : scale, bias, mean_out, variance_out, reserve_space
   composite: batch_norm_grad(x, scale, bias, mean_out, variance_out, saved_mean, saved_variance, reserve_space, out_grad, momentum, epsilon, data_layout, is_test, use_global_stats, trainable_statistics)
   backward : batch_norm_double_grad
 
@@ -193,6 +193,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : divide_grad
   composite : divide_grad(x, y, out, out_grad, axis, x_grad, y_grad)
@@ -226,6 +227,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   composite : elementwise_pow_grad(x, y, out_grad, x_grad, y_grad)
   kernel :
     func : elementwise_pow_grad
@@ -363,6 +365,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param: [x, y]
+    spmd_rule: ElementwiseBinaryGradInferSpmd
   kernel :
     func : maximum_grad
   composite : maximum_grad(x, y, out_grad, axis, x_grad, y_grad)
@@ -380,6 +383,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param: [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : mean_grad
   backward : mean_double_grad
@@ -438,6 +442,7 @@
   infer_meta :
     func : GeneralBinaryGradInferMeta
     param : [x, y]
+    spmd_rule : ElementwiseBinaryGradInferSpmd
   kernel :
     func : multiply_grad
   composite: multiply_grad(x, y, out_grad, axis, x_grad, y_grad)
@@ -702,6 +707,7 @@
   infer_meta :
     func : UnchangedInferMeta
     param : [x]
+    spmd_rule : ReductionGradInferSpmd
   kernel :
     func : sum_grad
   composite : sum_grad(x, out_grad, axis, keepdim, reduce_all, x_grad)

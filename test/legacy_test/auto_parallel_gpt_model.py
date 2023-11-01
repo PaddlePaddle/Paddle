@@ -266,7 +266,9 @@ class MultiHeadAttention(nn.Layer):
         if self.use_new_recompute and self.recompute_granularity == "core_attn":
             out, weights = auto.recompute(self.core_attn)(q, k, v, attn_mask)
         else:
-            out, weights = self.core_attn(q, k, v, attn_mask)
+            out, weights = auto.exclude_ops_in_recompute(self.core_attn)(
+                q, k, v, attn_mask
+            )
 
         # project to output
         out = self.out_proj(out)
