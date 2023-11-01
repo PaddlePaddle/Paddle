@@ -534,10 +534,14 @@ function(cc_test TARGET_NAME)
       # explicitly by __declspec(dllexport), however, there are serveral
       # symbols not exported, and link error occurs.
       # so, the tests are not built against dynamic libraries now.
-      cc_test(
+      cc_test_old(
         ${TARGET_NAME}
-        SRCS ${cc_test_SRCS}
-        DEPS ${cc_test_DEPS} ARGS ${cc_test_ARGS})
+        SRCS
+        ${cc_test_SRCS}
+        DEPS
+        ${cc_test_DEPS}
+        ARGS
+        ${cc_test_ARGS})
     else()
       list(LENGTH cc_test_SRCS len)
       # message("cc_test_SRCS ${cc_test_SRCS}")
