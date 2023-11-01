@@ -93,6 +93,10 @@ class TRTNHWCConvertTest(unittest.TestCase):
             self.temp_dir.name, 'inference_pass', 'nhwc_converter', ''
         )
         self.model_prefix = self.path + 'infer_model'
+        self.set_args()
+
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Float32
 
     def create_model(self):
         image = static.data(
@@ -115,7 +119,7 @@ class TRTNHWCConvertTest(unittest.TestCase):
             workspace_size=1 << 30,
             max_batch_size=1,
             min_subgraph_size=3,
-            precision_mode=inference.PrecisionType.Half,
+            precision_mode=self.precision_mode,
             use_static=False,
             use_calib_mode=False,
         )
@@ -148,6 +152,9 @@ class TRTNHWCConvertTest(unittest.TestCase):
 
 
 class TRTNHWCConvertAMPTest(TRTNHWCConvertTest):
+    def set_args(self):
+        self.precision_mode = inference.PrecisionType.Half
+
     def create_model(self):
         train_prog = paddle.static.Program()
         with paddle.static.program_guard(train_prog):
