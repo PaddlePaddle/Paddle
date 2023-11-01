@@ -17,12 +17,12 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core, in_dynamic_or_pir_mode
+from paddle.framework import core
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place
+from ...base.framework import _current_expected_place, in_pir_mode
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
@@ -2806,7 +2806,7 @@ def cross_entropy(
         label = label.astype(input.dtype)
         label_dims = len(list(label.shape))
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         if not soft_label:
             valid_label = (
                 paddle.cast(label != ignore_index, dtype=label.dtype) * label
@@ -2889,7 +2889,7 @@ def cross_entropy(
             # 2. else
             #     numerator: loss's weighted sum
             #     denominator: cal the sum of weight where the sample's class_index!=ignore_index
-            is_ignore = paddle.equal(label, ignore_index)
+            is_ignore = label == ignore_index
             mask = ~is_ignore
             if paddle.count_nonzero(is_ignore) > 0:  # ignore label
                 out_sum = _C_ops.sum(out, [], None, False)
@@ -2899,23 +2899,21 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = _C_ops.sum(mask, [], None, False)
-                    ret = out_sum / (count + paddle.equal(count, 0.0))
+                    ret = out_sum / (count + (count == 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = _C_ops.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = _C_ops.sum(weight_ignored, [], None, False)
-                    ret = out_sum / (weight_sum + paddle.equal(weight_sum, 0.0))
+                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
                 return ret
             elif weight is not None:
                 out_sum = _C_ops.sum(out, [], None, False)
                 total_weight = _C_ops.sum(
                     weight_gather_reshape, [], None, False
                 )
-                return out_sum / (
-                    total_weight + paddle.equal(total_weight, 0.0)
-                )
+                return out_sum / (total_weight + (total_weight == 0.0))
             else:
                 return _C_ops.mean_all(out)
 
@@ -2937,24 +2935,31 @@ def cross_entropy(
             ['uint8', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
             'softmax_cross_entropy',
         )
-        attrs = {
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': True,
-            'axis': axis,
-            'use_softmax': use_softmax,
-        }
-        helper = LayerHelper('softmax_with_cross_entropy', **locals())
-        softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        if in_pir_mode():
+            softmax, out = _C_ops.cross_entropy_with_softmax(
+                input, label, soft_label, use_softmax, True, ignore_index, axis
+            )
+        else:
+            attrs = {
+                'soft_label': soft_label,
+                'ignore_index': ignore_index,
+                'numeric_stable_mode': True,
+                'axis': axis,
+                'use_softmax': use_softmax,
+            }
+            helper = LayerHelper('softmax_with_cross_entropy', **locals())
+            softmax = helper.create_variable_for_type_inference(
+                dtype=input.dtype
+            )
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-        outputs = {'Softmax': softmax, 'Loss': out}
-        helper.append_op(
-            type='softmax_with_cross_entropy',
-            inputs={'Logits': input, 'Label': label},
-            outputs=outputs,
-            attrs=attrs,
-        )
+            outputs = {'Softmax': softmax, 'Loss': out}
+            helper.append_op(
+                type='softmax_with_cross_entropy',
+                inputs={'Logits': input, 'Label': label},
+                outputs=outputs,
+                attrs=attrs,
+            )
 
         if weight is not None:
             check_variable_and_dtype(
@@ -3038,19 +3043,21 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = paddle.sum(mask, name=name)
-                    ret = out_sum / (count + (count == 0.0))
+                    ret = out_sum / (count + paddle.equal(count, 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = paddle.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = paddle.sum(weight_ignored, name=name)
-                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                    ret = out_sum / (weight_sum + paddle.equal(weight_sum, 0.0))
                 return ret
             elif weight is not None:
                 out_sum = paddle.sum(out, name=name)
                 total_weight = paddle.sum(weight_gather_reshape)
-                return out_sum / (total_weight + (total_weight == 0.0))
+                return out_sum / (
+                    total_weight + paddle.equal(total_weight, 0.0)
+                )
             else:
                 return paddle.mean(out, name=name)
 

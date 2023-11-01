@@ -544,6 +544,7 @@ class CrossEntropyLoss(unittest.TestCase):
             self.assertIsNotNone(static_ret)
         paddle.disable_static()
 
+        breakpoint()
         np.testing.assert_allclose(static_ret[0], expected, rtol=1e-05)
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
