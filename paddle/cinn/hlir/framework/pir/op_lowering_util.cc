@@ -810,18 +810,12 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
 }
 
 std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
-  VLOG(3) << "GetReducerDimAttr from " << reduce_op->name();
-  auto* source_op = reduce_op->operand_source(/*dim_idx=*/1)
-                        .dyn_cast<::pir::OpResult>()
-                        .owner();
-  CHECK(source_op->isa<paddle::dialect::FullIntArrayOp>());
+  auto attr = reduce_op->attributes().at("dim");
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
   std::vector<int> dim;
-  auto dim_attr = source_op->attributes()
-                      .at("value")
-                      .dyn_cast<::pir::ArrayAttribute>()
-                      .AsVector();
-  for (auto& attr : dim_attr) {
-    dim.push_back(attr.dyn_cast<::pir::Int64Attribute>().data());
+  for (auto vec_element : attr_vec) {
+    dim.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
   return dim;
 }
