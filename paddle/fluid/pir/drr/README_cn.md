@@ -8,22 +8,21 @@ PASS是对IR进行优化的关键组件，而DAG-to-DAG的变换是最常见的P
 
 常量折叠指的是：操作数包含常量的Op通常可以折叠为结果常数值。常量折叠是最常见的退化版本的DAG-to-DAG 类型的变换。为了方便理解，这里举一个使用DRR接口实现常量折叠的简单示例：
 ~~~ c++
-// 1. 首先继承DrrPatternBase的特化模版类
 class RemoveRedundentCastPattern
     : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-	// 2. 在这个类中重写operator()重载函数
-	void operator()(pir::drr::DrrPatternContext *ctx) const override {
-		// 3. 使用Op、Tensor和Attribute声明出一个包含两个连续castOp的SourcePattern
-	    auto pat = ctx->SourcePattern();
-	    pat.Tensor("tmp") = pat.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
-	    pat.Tensor("ret") = pat.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
+  // 2. 在这个类中重写operator()重载函数
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // 3. 使用Op、Tensor和Attribute声明出一个包含两个连续castOp的SourcePattern
+    auto pat = ctx->SourcePattern();
+    pat.Tensor("tmp") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
+    pat.Tensor("ret") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
 
-		// 4. 声明出ResultPattern
-	    auto res = pat.ResultPattern();
-	    res.Tensor("ret") = res.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
+    // 4. 声明出ResultPattern
+    auto res = pat.ResultPattern();
+    res.Tensor("ret") = res.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 };
 ~~~

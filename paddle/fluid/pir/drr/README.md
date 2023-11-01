@@ -11,19 +11,20 @@ Constant folding refers to the fact that Ops containing constants in operands ca
 // 1. First, inherit the specialization template class of DrPatternBase
 class RemoveRedundentCastPattern
     : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-    // 2. Overwritten operator () overload function in this class
-	void operator()(pir::drr::DrrPatternContext *ctx) const override {
-		// 3. Declare a SourcePattern containing two consecutive castOps using Op, Tensor, and Attribute
-	    auto pat = ctx->SourcePattern();
-	    pat.Tensor("tmp") = pat.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
-	    pat.Tensor("ret") = pat.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
+  // 2. Overwritten operator () overload function in this class
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // 3. Declare a SourcePattern containing two consecutive castOps using Op,
+    // Tensor, and Attribute
+    auto pat = ctx->SourcePattern();
+    pat.Tensor("tmp") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
+    pat.Tensor("ret") = pat.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
 
-		// 4. Declare a ResultPattern
-	    auto res = pat.ResultPattern();
-	    res.Tensor("ret") = res.Op(
-	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
+    // 4. Declare a ResultPattern
+    auto res = pat.ResultPattern();
+    res.Tensor("ret") = res.Op(
+        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
   }
 };
 ~~~
