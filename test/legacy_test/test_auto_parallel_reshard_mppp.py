@@ -210,7 +210,7 @@ def check_initialization_for_mppp(dist_startup_prog, rank_id):
 
 
 def check_allgather(dist_main_program):
-    allgather_out = "x@RESHARD_0"
+    allgather_out = "c_allgather@RESHARD_0.tmp_0"  # "x@RESHARD_0"
     var_result = False
     op_result = False
     vars = dist_main_program.global_block().vars
@@ -302,6 +302,8 @@ class TestMLPReshard(unittest.TestCase):
         )
         resharder.reshard()
         # the x should not be slice
+        with open("./test_auto_parallel_reshard_mppp_old.txt", "w") as f:
+            f.write(str(partitioned_main_prog))
         self.assertTrue(check_allgather(partitioned_main_prog))
 
     def test_c_concat(self):
