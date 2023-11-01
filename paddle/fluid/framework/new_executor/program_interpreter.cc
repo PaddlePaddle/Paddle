@@ -501,7 +501,6 @@ void ProgramInterpreter::ProfileOperator(
           sout << "\n  " << line;
         }
       }
-      std::cout << sout.str() << std::endl;
       std::rethrow_exception(std::current_exception());
     }
   }
