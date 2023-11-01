@@ -31,5 +31,9 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
                                  const DistMetaTensor& out,
                                  int axis);
 
+SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
+                              const DistMetaTensor& out_grad,
+                              int axis);
+
 }  // namespace distributed
 }  // namespace phi

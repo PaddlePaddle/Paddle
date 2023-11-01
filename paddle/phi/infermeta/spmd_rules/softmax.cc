@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
+#include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
-
 namespace phi {
 namespace distributed {
 
@@ -148,6 +148,49 @@ SpmdInfo SoftmaxInferSpmdReverse(const DistMetaTensor& x,
           << "Input dims_mapping: [" << str_join(x_dims_mapping) << "]\n\n";
 
   return {{x_dist_attr}, {out_dist_attr_dst}};
+}
+
+SpmdInfo SoftmaxGradInferSpmd(const DistMetaTensor& out,
+                              const DistMetaTensor& out_grad,
+                              int axis) {
+  axis = axis < 0 ? out.dims().size() + axis : axis;
+  PADDLE_ENFORCE_LT(
+      axis,
+      out_grad.dist_attr().dims_mapping().size(),
+      phi::errors::InvalidArgument("The Softmax axis [%d] is greater than the "
+                                   "out_grad's rank [%d]",
+                                   axis,
+                                   out_grad.dist_attr().dims_mapping().size()));
+
+  // Sharding on softmax_axis is not supported now, the axis should be
+  // resharded as replicated.
+  auto out_dims_mapping = out.dist_attr().dims_mapping();
+  if (out_dims_mapping[axis] >= 0) {
+    out_dims_mapping[axis] = -1;
+    VLOG(6) << "SoftmaxGradInferSpmd: The out's softmax_axis is reshard "
+               "to be replicated: "
+            << "original dims_mapping["
+            << str_join(out.dist_attr().dims_mapping()) << "], "
+            << "resharded dims_mapping[" << str_join(out_dims_mapping) << "].";
+  }
+  auto out_grad_dims_mapping = out_grad.dist_attr().dims_mapping();
+  if (out_grad_dims_mapping[axis] >= 0) {
+    out_grad_dims_mapping[axis] = -1;
+    VLOG(6) << "SoftmaxGradInferSpmd: The out_grad's softmax_axis is reshard "
+               "to be replicated: "
+            << "original dims_mapping["
+            << str_join(out_grad.dist_attr().dims_mapping()) << "], "
+            << "resharded dims_mapping[" << str_join(out_grad_dims_mapping)
+            << "].";
+  }
+
+  auto out_dist_attr = CopyTensorDistAttrForOutput(out.dist_attr());
+  out_dist_attr.set_dims_mapping(out_dims_mapping);
+  auto out_grad_dist_attr = CopyTensorDistAttrForOutput(out_grad.dist_attr());
+  out_grad_dist_attr.set_dims_mapping(out_grad_dims_mapping);
+  return ElementwiseBinaryInferSpmd(
+      DistMetaTensor(out.dims(), out_dist_attr),
+      DistMetaTensor(out_grad.dims(), out_grad_dist_attr));
 }
 
 }  // namespace distributed
