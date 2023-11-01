@@ -398,9 +398,7 @@ def try_load_model_vars(
             )
         else:
             logger.info(
-                "load feed vars from files: {}.".format(
-                    feed_config.feeded_vars_filelist
-                )
+                f"load feed vars from files: {feed_config.feeded_vars_filelist}."
             )
             feed_vars = [
                 inference_program.global_block().var(
@@ -455,9 +453,7 @@ def check_saved_vars_try_dump(
         v for v in dump_prog.list_vars() if io_utils.is_persistable(v)
     ]
     logger.info(
-        "persistable vars in dump program: {}".format(
-            [v.name for v in saved_params]
-        )
+        f"persistable vars in dump program: {[v.name for v in saved_params]}"
     )
 
     check_not_expected_ops(dump_prog)

@@ -434,8 +434,7 @@ class ChainDataset(IterableDataset):
 
     def __iter__(self):
         for dataset in self.datasets:
-            for sample in dataset:
-                yield sample
+            yield from dataset
 
 
 class Subset(Dataset):

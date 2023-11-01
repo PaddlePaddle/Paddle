@@ -212,9 +212,7 @@ class DistributedStrategy:
                     setattr(self._program_config, key, config[key])
                 else:
                     raise ValueError(
-                        "DistributeTranspilerConfig doesn't have key: {}".format(
-                            key
-                        )
+                        f"DistributeTranspilerConfig doesn't have key: {key}"
                     )
         else:
             raise TypeError(

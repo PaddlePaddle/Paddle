@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/primitive/type/lazy_tensor.h"
 #include "paddle/fluid/primitive/utils/utils.h"
 
@@ -21,10 +22,18 @@ void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
   x->set_impl(x_tmp.impl());
 }
 
+template <>
+void by_pass<LazyTensor>(const paddle::Tensor& x, paddle::Tensor* real_out) {
+  pir::Value x_res = std::static_pointer_cast<LazyTensor>(x.impl())->value();
+  auto op_res = paddle::dialect::assign(x_res);
+  Tensor out(std::make_shared<LazyTensor>(op_res));
+  set_output<LazyTensor>(out, real_out);
+}
+
 /**
- * @brief set output with no grads in new ir.
+ * @brief set output with empty grads in pir.
  *
- *  In new ir, we use None type to express
+ *  In pir, we use None type to express
  *  that value is not available.
  *  Some outputs in vjp are marked as unnecessary
  *  by stop_gradient with True. Therefore the
@@ -32,14 +41,13 @@ void set_output<LazyTensor>(const paddle::Tensor& x_tmp, paddle::Tensor* x) {
  *  be set with None.
  *
  */
-void SetOutputWithNoGrads(
-    const std::vector<std::vector<Tensor>>& outputs,
-    const std::vector<std::vector<bool>>& stop_gradients) {
+void SetEmptyGrad(const std::vector<std::vector<Tensor>>& outputs,
+                  const std::vector<std::vector<bool>>& stop_gradients) {
   for (size_t i = 0; i < outputs.size(); ++i) {
     for (size_t j = 0; j < outputs[i].size(); ++j) {
       if (stop_gradients[i][j]) {
         std::static_pointer_cast<primitive::LazyTensor>(outputs[i][j].impl())
-            ->set_empty_type();
+            ->set_empty();
       }
     }
   }
@@ -48,7 +56,7 @@ void SetOutputWithNoGrads(
 std::vector<std::vector<Tensor>> ConstructVjpResultByStopGradients(
     const std::vector<std::vector<Tensor>>& outputs,
     const std::vector<std::vector<bool>>& stop_gradients) {
-  SetOutputWithNoGrads(outputs, stop_gradients);
+  SetEmptyGrad(outputs, stop_gradients);
   std::vector<std::vector<Tensor>> vjp_results(outputs.size());
   for (size_t i = 0; i < outputs.size(); ++i) {
     vjp_results[i].reserve(outputs[i].size());

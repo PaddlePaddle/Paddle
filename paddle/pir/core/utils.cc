@@ -16,7 +16,8 @@
 
 namespace pir {
 std::size_t hash_combine(std::size_t lhs, std::size_t rhs) {
-  return lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  lhs ^= rhs + 0x9e3779b9 + (lhs << 6) + (lhs >> 2);
+  return lhs;
 }
 
 void *aligned_malloc(size_t size, size_t alignment) {
@@ -31,7 +32,7 @@ void *aligned_malloc(size_t size, size_t alignment) {
 #elif defined(_WIN32)
   return _aligned_malloc(size, alignment);
 #else
-  void *mem = malloc(size + alignment);
+  void *mem = malloc(size + alignment);  // NOLINT
   if (mem == nullptr) {
     return nullptr;
   }
@@ -50,7 +51,7 @@ void aligned_free(void *mem_ptr) {
   _aligned_free(mem_ptr);
 #else
   if (mem_ptr) {
-    free(*(reinterpret_cast<void **>(mem_ptr) - 1));
+    free(*(reinterpret_cast<void **>(mem_ptr) - 1));  // NOLINT
   }
 #endif
 }

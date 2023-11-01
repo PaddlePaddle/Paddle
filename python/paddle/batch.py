@@ -67,7 +67,7 @@ def batch(reader, batch_size, drop_last=False):
     if batch_size <= 0:
         raise ValueError(
             "batch_size should be a positive integer value, "
-            "but got batch_size={}".format(batch_size)
+            f"but got batch_size={batch_size}"
         )
 
     return batch_reader

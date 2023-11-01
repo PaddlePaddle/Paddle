@@ -18,6 +18,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
@@ -174,7 +175,7 @@ def infer(args, attn_model=False):
         return outputs.numpy()
 
 
-class TestSeq2seq(unittest.TestCase):
+class TestSeq2seq(Dy2StTestBase):
     def setUp(self):
         self.args = Seq2SeqModelHyperParams
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -211,9 +212,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
             result,
-            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
-                dygraph_loss, static_loss
-            ),
+            msg=f"\ndygraph_loss = {dygraph_loss} \nstatic_loss = {static_loss}",
         )
 
     def _test_predict(self, attn_model=False):
@@ -222,9 +221,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(pred_static, pred_dygraph)
         self.assertTrue(
             result,
-            msg="\npred_dygraph = {} \npred_static = {}".format(
-                pred_dygraph, pred_static
-            ),
+            msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
     def test_base_model(self):

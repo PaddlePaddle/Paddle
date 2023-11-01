@@ -18,7 +18,7 @@ import unittest
 
 import astor
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 from ifelse_simple_func import (
     dyfunc_with_if_else_early_return1,
     dyfunc_with_if_else_early_return2,
@@ -81,12 +81,12 @@ class StaticCode1:
         def true_fn_0():
             nonlocal x_v
             x_v = x_v - 1
-            return
+            return  # noqa: PLR1711
 
         def false_fn_0():
             nonlocal x_v
             x_v = x_v + 1
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5,
@@ -113,13 +113,13 @@ class StaticCode1:
             )
             __return_0 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = loss
-            return
+            return  # noqa: PLR1711
 
         def false_fn_1():
             nonlocal __return_0, __return_1, __return_value_0, loss
             __return_1 = _jst.create_bool_as_type(label is not None, True)
             __return_value_0 = x_v
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             label is not None,
@@ -152,12 +152,12 @@ class StaticCode2:
         def true_fn_2():
             nonlocal x_v
             x_v = x_v - 1
-            return
+            return  # noqa: PLR1711
 
         def false_fn_2():
             nonlocal x_v
             x_v = x_v + 1
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             paddle.mean(x_v)[0] > 5,
@@ -184,13 +184,13 @@ class StaticCode2:
             )
             __return_2 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = loss
-            return
+            return  # noqa: PLR1711
 
         def false_fn_3():
             nonlocal __return_2, __return_3, __return_value_1, loss
             __return_3 = _jst.create_bool_as_type(label is not None, True)
             __return_value_1 = x_v
-            return
+            return  # noqa: PLR1711
 
         _jst.IfElse(
             label is not None,
@@ -205,19 +205,19 @@ class StaticCode2:
 
 
 class NetWithError(paddle.nn.Layer):
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, x):
         linear = paddle.nn.Linear(32, 64)
         y = linear(x)
         return y
 
 
-class TestEnableDeclarative(unittest.TestCase):
+class TestEnableDeclarative(Dy2StTestBase):
     def setUp(self):
         self.x = np.random.randn(30, 10, 32).astype('float32')
         self.weight = np.random.randn(32, 64).astype('float32')
 
-    @ast_only_test
+    @test_ast_only
     def test_raise_error(self):
         with base.dygraph.guard():
             paddle.jit.enable_to_static(True)
@@ -262,13 +262,13 @@ class SwitchModeNet(paddle.nn.Layer):
         return True
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def switch_mode_function():
     return True
 
 
-class TestFunctionTrainEvalMode(unittest.TestCase):
-    @ast_only_test
+class TestFunctionTrainEvalMode(Dy2StTestBase):
+    @test_ast_only
     def test_switch_mode(self):
         paddle.disable_static()
         switch_mode_function.eval()
@@ -297,7 +297,7 @@ class TestFunctionTrainEvalMode(unittest.TestCase):
             net.foo.train()
 
 
-class TestIfElseEarlyReturn(unittest.TestCase):
+class TestIfElseEarlyReturn(Dy2StTestBase):
     def test_ifelse_early_return1(self):
         answer = np.zeros([2, 2]) + 1
         static_func = paddle.jit.to_static(dyfunc_with_if_else_early_return1)
@@ -311,7 +311,7 @@ class TestIfElseEarlyReturn(unittest.TestCase):
         np.testing.assert_allclose(answer, out[0].numpy(), rtol=1e-05)
 
 
-class TestRemoveCommentInDy2St(unittest.TestCase):
+class TestRemoveCommentInDy2St(Dy2StTestBase):
     def func_with_comment(self):
         # Comment1
         x = paddle.to_tensor([1, 2, 3])
@@ -352,7 +352,7 @@ class Net2:
         return func1(data)
 
 
-class TestParameterRecorder(unittest.TestCase):
+class TestParameterRecorder(Dy2StTestBase):
     def test_recorder(self):
         """function calls nn.Layer case."""
         net = Net()

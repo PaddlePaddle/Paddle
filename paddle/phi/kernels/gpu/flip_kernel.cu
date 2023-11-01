@@ -40,7 +40,12 @@ __global__ void FlipCudaKernel(const T* in_data,
   int64_t cur_indices = idx;
   int64_t rem = 0;
   int64_t dst_offset = 0;
-  for (int i = 0; i < rank; ++i) {
+
+#pragma unroll
+  for (int i = 0; i < DDim::kMaxRank; ++i) {
+    if (i >= rank) {
+      break;
+    }
     int64_t temp = cur_indices;
     cur_indices = cur_indices / stride[i];
     rem = temp - cur_indices * stride[i];

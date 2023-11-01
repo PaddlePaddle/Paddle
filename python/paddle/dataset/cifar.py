@@ -63,8 +63,7 @@ def reader_creator(filename, sub_name, cycle=False):
 
                 for name in names:
                     batch = pickle.load(f.extractfile(name), encoding='bytes')
-                    for item in read_batch(batch):
-                        yield item
+                    yield from read_batch(batch)
 
             if not cycle:
                 break

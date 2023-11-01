@@ -123,6 +123,23 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         np.testing.assert_allclose(x.numpy(), np_data)
 
+    def test_inplace_with_stride(self):
+        v = paddle.randn((3, 1))
+        v.stop_gradient = False
+        vv = v * 1
+
+        zero = paddle.randn((3, 3, 5))
+        zero.stop_gradient = False
+
+        zero1 = zero * 1
+        zero1[paddle.to_tensor([0, 1])] = vv
+
+        loss = zero1.sum()
+        loss.backward()
+
+        expected_v_grad = np.ones((3, 1)) * 10.0
+        np.testing.assert_equal(v.grad.numpy(), expected_v_grad)
+
 
 class TestSetitemInStatic(unittest.TestCase):
     def setUp(self):

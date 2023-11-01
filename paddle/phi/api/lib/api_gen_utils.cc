@@ -536,16 +536,34 @@ phi::distributed::DistMetaTensor MakeDistMetaTensor(
   return phi::distributed::DistMetaTensor(tensor);
 }
 
+std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+    const std::vector<const phi::TensorBase*>& tensors) {
+  std::vector<phi::distributed::DistMetaTensor> meta_tensors;
+  meta_tensors.reserve(tensors.size());
+  for (const auto* t : tensors) {
+    meta_tensors.emplace_back(*t);
+  }
+  return meta_tensors;
+}
+
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
-    // TODO(chenweihang): now all dist case are nullptr
     if (out->impl() == nullptr) {
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
                                                                    dist_attr);
       out->set_impl(dist_t);
     }
     return static_cast<phi::distributed::DistTensor*>(out->impl().get());
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+  if (out) {
+    return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
+                                                          dist_attr);
   }
   return nullptr;
 }
@@ -557,11 +575,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
     if (tmp) {
       // TODO(GhostScreaming): now all dist case are nullptr
       if (tmp->impl() == nullptr) {
-        phi::DenseTensor dense_t;
-        // TODO(GhostScreaming): polish code, dist_attr is null now
-        phi::distributed::TensorDistAttr dist_attr;
-        auto dist_t =
-            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
+        auto dist_t = std::make_shared<phi::distributed::DistTensor>();
         tmp->set_impl(dist_t);
       }
       result.emplace_back(
@@ -578,11 +592,7 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistOutput(
   out->reserve(out_size);
   std::vector<phi::distributed::DistTensor*> results(out_size);
   for (size_t i = 0; i < out_size; ++i) {
-    phi::DenseTensor dense_t;
-    // TODO(GhostScreaming): polish code, dist_attr is null now
-    phi::distributed::TensorDistAttr dist_attr;
-    auto dist_t =
-        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr);
+    auto dist_t = std::make_shared<phi::distributed::DistTensor>();
     results[i] = dist_t.get();
     out->emplace_back();
     out->back().set_impl(dist_t);
@@ -611,6 +621,17 @@ std::vector<phi::distributed::DistTensor*> SetKernelDistInplaceOptionalOutput(
     }
   }
   return results;
+}
+void SetReplicatedDistAttrForOutput(
+    phi::distributed::DistTensor* out,
+    const phi::distributed::ProcessMesh& process_mesh) {
+  if (out) {
+    // For inplace output, we also need to set replicated dist attr
+    auto dist_attr =
+        phi::distributed::TensorDistAttr(phi::vectorize(out->dims()));
+    dist_attr.set_process_mesh(process_mesh);
+    out->unsafe_set_dist_attr(dist_attr);
+  }
 }
 
 }  // namespace experimental

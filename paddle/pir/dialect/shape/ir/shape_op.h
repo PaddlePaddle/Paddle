@@ -14,17 +14,19 @@
 
 #pragma once
 
+#include <optional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_type_interfaces.h"
+#include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::shape {
 
-class IR_API SymbolicDim : public Op<SymbolicDim> {
+class IR_API SymbolicDimOp : public Op<SymbolicDimOp> {
  public:
   using Op::Op;
-  static const char *name() { return "shape.SymbolicDim"; }
+  static const char *name() { return "shape.symbolic_dim"; }
 
   static constexpr uint32_t attributes_num = 6;
   static const char *attributes_name[attributes_num];
@@ -33,32 +35,45 @@ class IR_API SymbolicDim : public Op<SymbolicDim> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &sym_name,
                     int64_t value = ShapedTypeInterface::kDynamic,
-                    bool knownNonNegative = false,
-                    bool knownNegativeOne = false,
-                    bool knownNonSizeOne = false,
-                    bool knownNonSizeZero = false);
-  const std::string getSymName();
-  int64_t getValue();
-  bool getKnownNonNegative();
-  bool getKnownNegativeOne();
-  bool getKnownNonSizeOne();
-  bool getKnownNonSizeZero();
+                    bool known_non_negative = false,
+                    bool known_negative_one = false,
+                    bool known_non_size_one = false,
+                    bool known_non_size_zero = false);
 
-  void updateSymName(std::string attrValue);
-  void updateValue(int64_t attrValue);
-  void updateKnownNonNegative(bool attrValue);
-  void updateKnownNegativeOne(bool attrValue);
-  void updateKnownNonSizeOne(bool attrValue);
-  void updateKnownNonSizeZero(bool attrValue);
+  const std::string GetSymName();
+  int64_t GetDimSize();
 
+  bool GetKnownNonNegative();
+  bool GetKnownNegativeOne();
+  bool GetKnownNonSizeOne();
+  bool GetKnownNonSizeZero();
+
+  void SetSymName(const std::string &attr_value);
+  void SetDimSize(int64_t attr_value);
+
+  // Sets `known_non_negative` to the value of `flag`
+  void UpdateKnownNonNegative(bool flag);
+
+  // Sets `known_negative_one` to the value of `flag`
+  void UpdateKnownNegativeOne(bool flag);
+
+  // Sets `known_non_size_one` to the value of `flag`
+  void UpdateKnownNonSizeOne(bool flag);
+
+  // Sets `known_non_size_zero` to the value of `flag`
+  void UpdateKnownNonSizeZero(bool flag);
+
+  // Returns true if this SymbolicDimOp is not known at compile-time.
   bool IsDynamic();
-  bool Merge(SymbolicDim other);
 
-  static const std::string getSymbolicDimAttrName() {
+  // Try to merge two SymbolicDimOp.
+  bool Merge(SymbolicDimOp other);
+
+  static const std::string GetSymbolicDimAttrName() {
     return "kSymbolicDimAttr";
   }
 
-  void Verify() {}
+  void VerifySig() {}
 };
 
 class IR_API DimOp : public Op<DimOp> {
@@ -73,10 +88,10 @@ class IR_API DimOp : public Op<DimOp> {
                     OperationArgument &argument,  // NOLINT
                     const std::string &name);
 
-  const std::string getName();
-  void setName(std::string attrValue);
-  pir::OpResult out() { return result(0); }
-  void Verify() {}
+  const std::string GetName();
+  void SetName(std::string attrValue);
+  OpResult out() { return result(0); }
+  void VerifySig() {}
 };
 
 class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
@@ -91,14 +106,14 @@ class IR_API TieProductEqualOp : public Op<TieProductEqualOp> {
                     OperationArgument &argument,  // NOLINT
                     int64_t lhs_len,
                     int64_t rhs_len,
-                    const std::vector<pir::OpResult> &inputs);
+                    const std::vector<Value> &inputs);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const std::vector<pir::OpResult> &lhs,
-                    const std::vector<pir::OpResult> &rhs);
-  std::vector<pir::Value> getLhs();
-  std::vector<pir::Value> getRhs();
-  void Verify() {}
+                    const std::vector<Value> &lhs,
+                    const std::vector<Value> &rhs);
+  std::vector<Value> lhs();
+  std::vector<Value> rhs();
+  void VerifySig() {}
 };
 
 class IR_API TieShapeOp : public Op<TieShapeOp> {
@@ -111,16 +126,15 @@ class IR_API TieShapeOp : public Op<TieShapeOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input);
+                    pir::Value input);
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &input,
-                    const std::vector<pir::OpResult> &dims);
-
-  pir::Value getValue();
-  std::vector<pir::Value> getShapeDimIndexes();
-  void Verify() {}
+                    Value input,
+                    const std::vector<Value> &dims);
+  Value input() { return operand_source(0); }
+  std::vector<Value> dims();
+  void VerifySig() {}
 };
 
 class IR_API FuncOp : public Op<FuncOp> {
@@ -133,11 +147,12 @@ class IR_API FuncOp : public Op<FuncOp> {
 
   static void Build(Builder &builder,              // NOLINT
                     OperationArgument &argument);  // NOLINT
-  pir::Block *block();
-  void Verify() {}
+  void Print(IrPrinter &printer);                  // NOLINT
+  Block *block();
+  void VerifySig() {}
 };
 
-class IR_API TensorDimOp : public Op<TensorDimOp> {
+class IR_API TensorDimOp : public Op<TensorDimOp, OneResultTrait> {
  public:
   using Op::Op;
   static const char *name() { return "shape.tensor_dim"; }
@@ -147,24 +162,112 @@ class IR_API TensorDimOp : public Op<TensorDimOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
-                    const pir::OpResult &index);
+                    Value source,
+                    Value index);
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    const pir::OpResult &source,
+                    Value source,
                     int64_t index);
-  pir::Value getIndex();
-  pir::Value getSource();
-  pir::OpResult out() { return result(0); }
-  void Verify() {}
+
+  Value source() { return operand_source(0); }
+  Value index() { return operand_source(1); }
+  OpResult out() { return result(0); }
+  void VerifySig() {}
+  std::optional<int64_t> GetConstantIndex();
 };
 
-}  // namespace dialect
-}  // namespace pir
+class IR_API ShapeOfOp : public Op<ShapeOfOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.shape_of"; }
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::DimOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp);
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp);
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value input);
+
+  Value input() { return operand_source(0); }
+  OpResult out() { return result(0); }
+  void VerifySig() {}
+};
+
+class IR_API FromElementsOp : public Op<FromElementsOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.from_elements"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    const std::vector<Value> &elements);
+
+  std::vector<Value> elements();
+  OpResult out() { return result(0); }
+  void VerifySig() {}
+};
+
+class IR_API ExtractOp : public Op<ExtractOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.extract"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Value tensor,
+                    std::vector<Value> indices);
+
+  Value tensor() { return operand_source(0); }
+  std::vector<Value> indices();
+  OpResult out() { return result(0); }
+  void VerifySig() {}
+};
+
+// Specialization of `constant` op that returns an integer of index type.
+class IR_API ConstantIndexOp : public ConstantOp {
+ public:
+  using ConstantOp::ConstantOp;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    int64_t value);
+};
+
+// Cast between index and integer types.
+class IR_API IndexCastOp : public Op<IndexCastOp> {
+ public:
+  using Op::Op;
+  static const char *name() { return "shape.index_cast"; }
+
+  static constexpr const char **attributes_name = nullptr;
+  static constexpr uint32_t attributes_num = 0;
+
+  static void Build(Builder &builder,             // NOLINT
+                    OperationArgument &argument,  // NOLINT
+                    Type out,
+                    Value in);
+
+  Value in() { return operand_source(0); }
+  OpResult out() { return result(0); }
+  void VerifySig() {}
+};
+
+}  // namespace pir::shape
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::DimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieProductEqualOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TieShapeOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FuncOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::TensorDimOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeOfOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ExtractOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ConstantIndexOp);
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::IndexCastOp);

@@ -16,6 +16,7 @@ import unittest
 
 import numpy as np
 from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -324,7 +325,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
     """
 
     def testcase1(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             ref1 = paddle.static.data(
                 name='ref1',
                 shape=[10, 9, 8, 1, 3],
@@ -343,7 +344,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             ref2 = paddle.static.data(
                 name='ref2',
                 shape=[10, 9, 8, 1, 3],
@@ -364,7 +365,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
 
     def testcase3(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             shape3 = [10, 9, 8, 1, 3]
             index3 = paddle.static.data(
                 name='index3',
@@ -379,7 +380,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             shape4 = [10, 9, 8, 1, 3]
             index4 = paddle.static.data(
                 name='index4',
@@ -450,7 +451,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 class TestScatterNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 try:
                     ref5 = paddle.static.data(
                         name='ref5', shape=[-1, 3, 4, 5], dtype='float32'
@@ -471,7 +472,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 ref6 = paddle.static.data(
                     name='ref6',
                     shape=[10, 9, 8, 1, 3],
@@ -491,7 +492,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise3(self):
         def check_raise_is_test():
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 try:
                     shape = [3, 4, 5]
                     index7 = paddle.static.data(

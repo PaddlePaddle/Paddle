@@ -247,6 +247,169 @@ def fc(
     )
 
 
+@static_only
+def quant_linear(
+    x,
+    w,
+    size,
+    scale_in,
+    scale_weight,
+    num_flatten_dims=1,
+    bias_attr=None,
+    activation=None,
+    quant_round_type=1,
+    quant_max_bound=127.0,
+    quant_min_bound=-127.0,
+    name=None,
+):
+    r"""
+
+    Quant linear layer can take a tensor as its input and a tensor as the weight tensor.
+    The quant linear layer multiplies the input tensor with the weight to produce
+    an output tensor with shape :math:`[batch\_size, *, size]` , where :math:`*`
+    means any number of additional dimensions. If :attr:`bias_attr` is not False, a 1-D bias tensor will
+    be created and added to the output. If :attr:`activation` is not None,
+    it will be applied to the output as well. Besides, the input tensor will be quantize to
+    the tensor with int8 type, the parameter w must be a tensor with int8 type and the computation will also
+    be with the int8 type.
+
+    For a single input tensor :math:`X` , the equation is:
+
+    .. math::
+
+        Out = Act({XW + b})
+
+    where:
+
+    * :math:`X`: The input tensor.
+    * :math:`W`: The weight matrix.
+    * :math:`b`: The bias created by this layer (if needed).
+    * :math:`Act`: The activation function.
+    * :math:`Out`: The output tensor.
+
+    Args:
+        x (Tensor): A tensor. The number of dimensions
+            of the tensor is at least 2. The data type should be float16, bfloat16, float32 or float64.
+        w (Tensor): A tensor. The data type should be int8.
+        size (int): The number of the output unit in this layer, which also means the feature
+            size of output tensor.
+        scale_in (float): The quantization scale for input.
+        scale_weight (list[float]): The quantization scale for weights.
+        num_flatten_dims (int, optional): The quant linear layer can accept an input tensor with more than
+            two dimensions. If this happens, the multi-dimensional tensor will first be flattened
+            into a 2-D matrix. The parameter :attr:`num_flatten_dims` determines how the input
+            tensor is flattened: the first :math:`num\_flatten\_dims` (inclusive, index starts from 1)
+            dimensions will be flatten to form the first dimension of the final matrix (height of
+            the matrix), and the rest :math:`rank(x) - num\_flatten\_dims` dimensions are
+            flattened to form the second dimension of the final matrix (width of the matrix).
+            For example, assuming that :attr:`x` is a 5-dimensional tensor with a shape
+            :math:`[2, 3, 4, 5, 6]` , and :attr:`num_flatten_dims` = 3.
+            Then, the flattened matrix will have a shape :math:`[2 * 3 * 4, 5 * 6] = [24, 30]` .
+            Default: 1.
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
+            If it is set to False, no bias will be added to the output.
+            If it is set to None or one kind of ParamAttr, a bias parameter will
+            be created according to ParamAttr. For detailed information, please refer
+            to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
+            initialized to zero.
+        activation (str, optional): Activation to be applied to the output of
+            this layer. Only "relu" is supported. For more information,
+            please refer to :ref:`api_guide_activations_en` . Default: None.
+        quant_round_type (int, optional): The round type of float to int. 0 means rounding to nearest ties to even and 1 means rounding to nearest ties away from zero. Default: 1.
+        quant_max_bound (float, optional): The max bound of float type to int type. Defualt: 127.0.
+        quant_min_bound (float, optional): The min bound of float type to int type. Defualt: -127.0.
+        name (str, optional): The default value is None. Normally there is no need for user to set
+            it. For more information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, its shape is :math:`[batch\_size, *, size]` , and the data type is same with input.
+
+    """
+
+    def quant_linear_base(
+        input,
+        weight,
+        size,
+        scale_in,
+        scale_weight,
+        num_flatten_dims=1,
+        bias_attr=None,
+        act=None,
+        quant_round_type=1,
+        quant_max_bound=127.0,
+        quant_min_bound=-127.0,
+        name=None,
+    ):
+        helper = LayerHelper("quant_linear", **locals())
+        check_type(input, 'input', Variable, 'quant_linear')
+        dtype = helper.input_dtype()
+        check_dtype(
+            dtype,
+            'input',
+            ['float16', 'float32', 'float64'],
+            'quant_linear',
+        )
+
+        input_shape = input.shape
+        if num_flatten_dims == -1:
+            num_flatten_dims = len(input_shape) - 1
+
+        check_type(weight, "weight", Variable, 'quant_linear')
+        check_dtype(
+            weight.dtype,
+            'weight',
+            ['int8'],
+            'quant_linear',
+        )
+        check_type(scale_weight, "scale_weight", list, 'quant_linear')
+        if len(scale_weight) != size:
+            raise AttributeError(
+                "The length of scale_weight must be the same with the param size."
+            )
+
+        inputs_of_quant_linear = {"x": input, "w": weight}
+        if bias_attr is not False:
+            bias_shape = [size]
+            bias = helper.create_parameter(
+                attr=bias_attr, shape=bias_shape, dtype=dtype, is_bias=True
+            )
+            inputs_of_quant_linear["bias"] = bias
+
+        out = helper.create_variable_for_type_inference(dtype)
+        attrs_of_quant_linear = {
+            "in_num_col_dims": num_flatten_dims,
+            "activation_type": act,
+            "scale_in": scale_in,
+            "scale_weights": scale_weight,
+            "quant_round_type": quant_round_type,
+            "quant_max_bound": quant_max_bound,
+            "quant_min_bound": quant_min_bound,
+        }
+
+        helper.append_op(
+            type="quant_linear",
+            inputs=inputs_of_quant_linear,
+            outputs={"out": out},
+            attrs=attrs_of_quant_linear,
+        )
+        return out
+
+    return quant_linear_base(
+        input=x,
+        weight=w,
+        size=size,
+        scale_in=scale_in,
+        scale_weight=scale_weight,
+        num_flatten_dims=num_flatten_dims,
+        bias_attr=bias_attr,
+        act=activation,
+        quant_round_type=quant_round_type,
+        quant_max_bound=quant_max_bound,
+        quant_min_bound=quant_min_bound,
+        name=name,
+    )
+
+
 def instance_norm(
     input, epsilon=1e-05, param_attr=None, bias_attr=None, name=None
 ):
@@ -284,17 +447,17 @@ def instance_norm(
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
-             Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+            Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If the bias_attr is set to False, instance_norm will not create bias_attr.
-         Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If the bias_attr is set to False, instance_norm will not create bias_attr.
+            Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -901,8 +1064,7 @@ def conv2d(
     )
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
@@ -931,7 +1093,7 @@ def conv2d(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1020,8 +1182,8 @@ def conv2d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return Normal(0.0, std)
@@ -1246,9 +1408,7 @@ def conv3d(
         num_filter_channels = num_channels
     elif groups <= 0:
         raise ValueError(
-            "the groups of conv3d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d should be greater than 0. Received groups: {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1325,8 +1485,8 @@ def conv3d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
@@ -1503,7 +1663,7 @@ def conv2d_transpose(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
             The default value is None, which means that the default bias parameter attribute is used.
-            For detailed information, please refer to :ref:`paramattr`.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
             The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
@@ -1554,8 +1714,7 @@ def conv2d_transpose(
     ), "param_attr should not be False in conv2d_transpose."
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
 
     if num_filters == 0:
@@ -1712,7 +1871,7 @@ def conv2d_transpose(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2075,9 +2234,7 @@ def conv3d_transpose(
     if num_filters % groups != 0:
         raise ValueError(
             "Attr(num_filters) must be divisible by groups,"
-            "Received: Attr(num_filters) is {}, the groups is {}".format(
-                num_filters, groups
-            )
+            f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2303,8 +2460,8 @@ def deformable_conv(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return paddle.nn.initializer.normal.Normal(0.0, std)
@@ -2566,10 +2723,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_base_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
@@ -2646,19 +2803,19 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2672,9 +2829,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
@@ -2697,14 +2854,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-         Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -3010,7 +3167,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -3324,9 +3481,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Tensor {} is not found in forward inputs and outputs'.format(
-                        v.name
-                    )
+                    f'Tensor {v.name} is not found in forward inputs and outputs'
                 )
             backward_skip_vars.add(v.name)
 

@@ -135,7 +135,7 @@ TensorDistAttr CopyTensorDistAttrForOutput(
   TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
-  new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
+  // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
   new_dist_attr.clean_partial_status();  // in partial-stage I, partial is allow
                                          // to propagate
@@ -155,6 +155,39 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
     }
   }
   return partial_on_dims;
+}
+
+TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr);
+  std::vector<int64_t> dims_mapping(dist_attr.dims_mapping().size(), -1);
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis) {
+  std::vector<int64_t> dims_mapping;
+  for (int64_t i = 0, n = static_cast<int64_t>(axes.size()); i < n; i++) {
+    std::string axis = axes.substr(i, 1);
+    if (axis == "1") {
+      dims_mapping.emplace_back(-1);
+    } else {
+      auto iter = axis_to_dim_map.find(axis);
+      if (iter == axis_to_dim_map.end()) {
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(-1);
+        } else {
+          phi::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
+      }
+    }
+  }
+  return dims_mapping;
 }
 
 }  // namespace distributed

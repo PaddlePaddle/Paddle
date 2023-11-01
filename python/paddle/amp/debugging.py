@@ -68,8 +68,13 @@ def check_layer_numerics(func):
     Args:
         func (callable): The function to be decorated.
 
-    Examples:
+    Returns:
+        callable: The decorated function.
 
+    Raises:
+        None.
+
+    Example:
         ..  code-block:: python
 
             >>> import paddle
@@ -81,26 +86,28 @@ def check_layer_numerics(func):
             ...     @paddle.amp.debugging.check_layer_numerics
             ...     def forward(self, x):
             ...         # return 1/x * self._w + self._b   open it you will see the error log
-            ...         return x * self._w + self._b
+            ...         return x @ self._w + self._b
+            ...
             >>> dtype = 'float32'
-            >>> x = paddle.rand([10, 2, 3], dtype=dtype)
+            >>> x = paddle.rand([10, 2, 2], dtype=dtype)
             >>> model = MyLayer(dtype)
             >>> x[0] = float(0)
             >>> loss = model(x)
             >>> adam = paddle.optimizer.Adam(parameters=model.parameters())
             >>> loss.backward()
             >>> adam.step()
+
             >>> # error log
             >>> # [PRECISION] [ERROR] in [device=gpu:0, op=divide, tensor=, dtype=fp32], numel=40, num_nan=0, num_inf=4, num_zero=0, max=inf, min=1.048930e+00, mean=inf
             >>> # Traceback (most recent call last):
-            >>> #  File "tmp.py", line 16, in <module>
-            >>> #    loss = model(x)
-            >>> #  File "/paddle/nn/layer/layers.py", line 1254, in __call__
-            >>> #    return self.forward(*inputs, **kwargs)
-            >>> #  File "/paddle/amp/debugging.py", line 116, in wrapper
-            >>> #    out_data = func(self, *modified_args, **kwargs)
-            >>> #  File "test.py", line 10, in forward
-            >>> #    return 1/x *  self._w+ self._b
+            >>> #   File "tmp.py", line 16, in <module>
+            >>> #     loss = model(x)
+            >>> #   File "/paddle/nn/layer/layers.py", line 1254, in __call__
+            >>> #     return self.forward(*inputs, **kwargs)
+            >>> #   File "/paddle/amp/debugging.py", line 116, in wrapper
+            >>> #     out_data = func(self, *modified_args, **kwargs)
+            >>> #   File "test.py", line 10, in forward
+            >>> #     return 1/x *  self._w+ self._b
             >>> # RuntimeError: (PreconditionNotMet) There are NAN or INF (num_nan=0, num_inf=4, num_zero=0) in [device=gpu:0, op=divide, tensor=, dtype=fp32].
     """
 
@@ -170,24 +177,24 @@ class TensorCheckerConfig:
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-            paddle.amp.debugging.enable_tensor_checker(checker_config)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-            res = paddle.pow(x, y)
-            paddle.autograd.backward(res, retain_graph=True)
-            paddle.amp.debugging.disable_tensor_checker()
+            >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            >>> res = paddle.pow(x, y)
+            >>> paddle.autograd.backward(res, retain_graph=True)
+            >>> paddle.amp.debugging.disable_tensor_checker()
 
-            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> # [PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            #Traceback (most recent call last):
-            #    res = paddle.pow(x, y)
-            #  File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #    return _C_ops.elementwise_pow(x, y)
+            >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            >>> # Traceback (most recent call last):
+            >>> #     res = paddle.pow(x, y)
+            >>> #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            >>> #     return _C_ops.elementwise_pow(x, y)
 
     """
 
@@ -351,15 +358,15 @@ def check_numerics(
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            checker_config = paddle.amp.debugging.TensorCheckerConfig(
-                enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(
+            ...     enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
 
-            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32')
-            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-            res = paddle.pow(x, y)
-            paddle.amp.debugging.check_numerics(res, "pow", "res")
+            >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32')
+            >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            >>> res = paddle.pow(x, y)
+            >>> paddle.amp.debugging.check_numerics(res, "pow", "res")
 
     """
     stack_height_limit = -1
@@ -459,25 +466,26 @@ def enable_operator_stats_collection():
     Examples:
 
         ..  code-block:: python
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
 
-            import paddle
+            >>> conv = paddle.nn.Conv2D(3, 2, 3)
+            >>> x = paddle.rand([10, 3, 32, 32])
 
-            conv = paddle.nn.Conv2D(3, 2, 3)
-            x = paddle.rand([10, 3, 32, 32])
-
-            paddle.amp.debugging.enable_operator_stats_collection()
-            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-            with paddle.amp.auto_cast(enable=True, level='O2'):
-                out = conv(x)
-            # Print to the standard output.
-            paddle.amp.debugging.disable_operator_stats_collection()
-            # <------------------------------------------------------- op list -------------------------------------------------------->
-            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-            #   conv2d                                  |  1                |  0                |  0                |  0
-            #   elementwise_add                         |  1                |  0                |  0                |  0
-            #   reshape2                                |  1                |  0                |  0                |  0
-            #   transfer_dtype                          |  0                |  0                |  3                |  0
-            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            >>> paddle.amp.debugging.enable_operator_stats_collection()
+            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> with paddle.amp.auto_cast(enable=True, level='O2'):
+            ...     out = conv(x)
+            >>> # Print to the standard output.
+            >>> paddle.amp.debugging.disable_operator_stats_collection()
+            >>> # <------------------------------------------------------- op list -------------------------------------------------------->
+            >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   conv2d                                  |  1                |  0                |  0                |  0
+            >>> #   elementwise_add                         |  0                |  0                |  1                |  0
+            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     # Clear the previous stats.
@@ -498,24 +506,24 @@ def disable_operator_stats_collection():
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            conv = paddle.nn.Conv2D(3, 2, 3)
-            x = paddle.rand([10, 3, 32, 32])
+            >>> conv = paddle.nn.Conv2D(3, 2, 3)
+            >>> x = paddle.rand([10, 3, 32, 32])
 
-            paddle.amp.debugging.enable_operator_stats_collection()
-            # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-            with paddle.amp.auto_cast(enable=True, level='O2'):
-                out = conv(x)
-            # Print to the standard output.
-            paddle.amp.debugging.disable_operator_stats_collection()
-            # <------------------------------------------------------- op list -------------------------------------------------------->
-            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-            #   conv2d                                  |  1                |  0                |  0                |  0
-            #   elementwise_add                         |  1                |  0                |  0                |  0
-            #   reshape2                                |  1                |  0                |  0                |  0
-            #   transfer_dtype                          |  0                |  0                |  3                |  0
-            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            >>> paddle.amp.debugging.enable_operator_stats_collection()
+            >>> # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            >>> with paddle.amp.auto_cast(enable=True, level='O2'):
+            ...     out = conv(x)
+            >>> # Print to the standard output.
+            >>> paddle.amp.debugging.disable_operator_stats_collection()
+            >>> # <------------------------------------------------------- op list -------------------------------------------------------->
+            >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   conv2d                                  |  1                |  0                |  0                |  0
+            >>> #   elementwise_add                         |  0                |  0                |  1                |  0
+            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     if not _get_operator_stats_flag():
@@ -539,23 +547,23 @@ def collect_operator_stats():
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            conv = paddle.nn.Conv2D(3, 2, 3)
-            x = paddle.rand([10, 3, 32, 32])
+            >>> conv = paddle.nn.Conv2D(3, 2, 3)
+            >>> x = paddle.rand([10, 3, 32, 32])
 
-            with paddle.amp.debugging.collect_operator_stats():
-                # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
-                with paddle.amp.auto_cast(enable=True, level='O2'):
-                    out = conv(x)
-            # Print to the standard output.
-            # <------------------------------------------------------- op list -------------------------------------------------------->
-            # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
-            #   conv2d                                  |  1                |  0                |  0                |  0
-            #   elementwise_add                         |  1                |  0                |  0                |  0
-            #   reshape2                                |  1                |  0                |  0                |  0
-            #   transfer_dtype                          |  0                |  0                |  3                |  0
-            # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
+            >>> with paddle.amp.debugging.collect_operator_stats():
+            ...     # AMP list including conv2d, elementwise_add, reshape2, cast (transfer_dtype)
+            ...     with paddle.amp.auto_cast(enable=True, level='O2'):
+            ...         out = conv(x)
+            >>> # Print to the standard output.
+            >>> # <------------------------------------------------------- op list -------------------------------------------------------->
+            >>> # <--------------- Op Name ---------------- | -- FP16 Calls --- | -- BF16 Calls --- | --- FP32 Calls--- | -- Other Calls -->
+            >>> #   conv2d                                  |  1                |  0                |  0                |  0
+            >>> #   elementwise_add                         |  0                |  0                |  1                |  0
+            >>> #   reshape2                                |  0                |  0                |  1                |  0
+            >>> #   transfer_dtype                          |  1                |  0                |  2                |  0
+            >>> # <----------------------------------------------------- op count: 4 ------------------------------------------------------>
 
     """
     enable_operator_stats_collection()
@@ -584,35 +592,33 @@ def compare_accuracy(
 
         ..  code-block:: python
 
-            import paddle
-            from paddle.base import core
-            try:
-                import xlsxwriter as xlw
-            except ImportError:
-                import subprocess
-
-                subprocess.check_call(
-                    ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
-                )
-                import xlsxwriter as xlw
-
-            if core.is_compiled_with_cuda():
-                paddle.set_flags(
-                    {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
-                )
-                path = "workerlog_log_dir"
-                paddle.base.core.set_nan_inf_debug_path(path)
-                x = paddle.to_tensor(
-                    [2, 3, 4, 0], dtype="float32"
-                )
-                y = paddle.to_tensor(
-                    [1, 5, 2, 0], dtype="float32"
-                )
-                z1 = x + y
-                out_excel = "compary_accuracy_out_excel.csv"
-                paddle.amp.debugging.compare_accuracy(
-                    path, path, out_excel, loss_scale=1, dump_all_tensors=False
-                )
+            >>> import paddle
+            >>> from paddle.base import core
+            >>> try:
+            ...     import xlsxwriter as xlw
+            ... except ImportError:
+            ...     import subprocess
+            ...     subprocess.check_call(
+            ...         ['python', '-m', 'pip', 'install', 'xlsxwriter==3.0.9']
+            ...     )
+            ...     import xlsxwriter as xlw
+            ...     if core.is_compiled_with_cuda():
+            ...         paddle.set_flags(
+            ...             {"FLAGS_check_nan_inf": 1, "FLAGS_check_nan_inf_level": 3}
+            ...         )
+            ...         path = "workerlog_log_dir"
+            ...         paddle.base.core.set_nan_inf_debug_path(path)
+            ...         x = paddle.to_tensor(
+            ...             [2, 3, 4, 0], dtype="float32"
+            ...         )
+            ...         y = paddle.to_tensor(
+            ...             [1, 5, 2, 0], dtype="float32"
+            ...         )
+            ...         z1 = x + y
+            ...         out_excel = "compary_accuracy_out_excel.csv"
+            ...         paddle.amp.debugging.compare_accuracy(
+            ...             path, path, out_excel, loss_scale=1, dump_all_tensors=False
+            ...         )
     """
     assert dump_all_tensors is False, "It is currently not supported."
     paddle.amp.accuracy_compare.compare_accuracy(
@@ -639,24 +645,24 @@ def enable_tensor_checker(checker_config):
 
         ..  code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
-            paddle.amp.debugging.enable_tensor_checker(checker_config)
+            >>> checker_config = paddle.amp.debugging.TensorCheckerConfig(enable=True, debug_mode=paddle.amp.debugging.DebugMode.CHECK_NAN_INF)
+            >>> paddle.amp.debugging.enable_tensor_checker(checker_config)
 
-            x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
-            y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
-            res = paddle.pow(x, y)
-            paddle.autograd.backward(res, retain_graph=True)
-            paddle.amp.debugging.disable_tensor_checker()
-            #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> x = paddle.to_tensor([1, 0, 3], place=paddle.CPUPlace(), dtype='float32', stop_gradient=False)
+            >>> y = paddle.to_tensor([0.2, 0, 0.5], place=paddle.CPUPlace(), dtype='float32')
+            >>> res = paddle.pow(x, y)
+            >>> paddle.autograd.backward(res, retain_graph=True)
+            >>> paddle.amp.debugging.disable_tensor_checker()
+            >>> #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
-            # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
-            # Traceback (most recent call last):
-            #   File "tp.py", line 8, in <module>
-            #     res = paddle.pow(x, y)
-            #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            #     return _C_ops.elementwise_pow(x, y)
+            >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
+            >>> # Traceback (most recent call last):
+            >>> #   File "tp.py", line 8, in <module>
+            >>> #     res = paddle.pow(x, y)
+            >>> #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            >>> #     return _C_ops.elementwise_pow(x, y)
 
     """
     if checker_config.update_and_check_step_id():
@@ -687,13 +693,13 @@ def disable_tensor_checker():
             >>> res = paddle.pow(x, y)
             >>> paddle.autograd.backward(res, retain_graph=True)
             >>> paddle.amp.debugging.disable_tensor_checker()
-            >>> #[PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
+            >>> # [PRECISION] [ERROR] in [device=cpu, op=elementwise_pow_grad, tensor=, dtype=fp32], numel=3, num_nan=1, num_inf=0, num_zero=0, max=2.886751e-01, min=2.000000e-01, mean=-nan
 
             >>> # when DebugMode.CHECK_NAN_INF_AND_ABORT and stack_height_limit = 1
             >>> # Traceback (most recent call last):
-            >>> #     res = paddle.pow(x, y)
-            >>> #   File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
-            >>> #     return _C_ops.elementwise_pow(x, y)
+            >>> #      res = paddle.pow(x, y)
+            >>> #    File "/usr/local/lib/python3.8/dist-packages/paddle/tensor/math.py", line 447, in pow
+            >>> #      return _C_ops.elementwise_pow(x, y)
 
     """
     paddle.set_flags({"FLAGS_check_nan_inf": 0})

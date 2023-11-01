@@ -50,11 +50,11 @@ static void GetBroadcastFromDims(const int x_ndim,
         x_bd_dims[i] == y_bd_dims[i] || x_bd_dims[i] <= 1 || y_bd_dims[i] <= 1,
         true,
         phi::errors::InvalidArgument(
-            "Input(X) and Input(Y) has error dim."
-            "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s],"
-            "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1,"
-            "But received X_broadcast's shape[%s] = [%s]"
-            "received Y_broadcast's shape[%s] = [%s]",
+            "Input(X) and Input(Y) has error dim. "
+            "X_broadcast's shape[%s] must be equal to Y_broadcast's shape[%s], "
+            "or X_broadcast's shape[%s] <= 1, or Y_broadcast's shape[%s] <= 1, "
+            "but received X_broadcast's shape[%s] = [%s]"
+            "received Y_broadcast's shape[%s] = [%s].",
             i,
             i,
             i,
@@ -125,9 +125,9 @@ void MatMulFunctionImplWithBlas(
         M,
         N,
         phi::errors::InvalidArgument(
-            "X's numbers must be equal to Y's numbers,"
-            "when X/Y's dims =1. But received X has [%d] elements,"
-            "received Y has [%d] elements",
+            "X's numbers must be equal to Y's numbers, "
+            "when X/Y's dims =1. But received X has [%d] elements, "
+            "received Y has [%d] elements.",
             M,
             N));
     VLOG(3) << "MatMul's case 1";
@@ -152,9 +152,9 @@ void MatMulFunctionImplWithBlas(
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 1],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 1,
                                        N,
                                        y_ndim - 1,
@@ -163,9 +163,9 @@ void MatMulFunctionImplWithBlas(
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 2],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 2,
                                        N,
                                        y_ndim - 2,
@@ -309,9 +309,9 @@ void MatMulFunctionImplWithBlas(
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 1,
                                      K,
                                      y_ndim - 1,
@@ -320,9 +320,9 @@ void MatMulFunctionImplWithBlas(
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 2],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 2,
                                      K,
                                      y_ndim - 2,
@@ -543,9 +543,9 @@ void MatMulFunctionImplWithCublasLt(
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 1],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 1,
                                        N,
                                        y_ndim - 1,
@@ -554,9 +554,9 @@ void MatMulFunctionImplWithCublasLt(
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 2],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 2,
                                        N,
                                        y_ndim - 2,
@@ -710,9 +710,9 @@ void MatMulFunctionImplWithCublasLt(
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 1,
                                      K,
                                      y_ndim - 1,
@@ -721,9 +721,9 @@ void MatMulFunctionImplWithCublasLt(
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 2],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 2,
                                      K,
                                      y_ndim - 2,
@@ -1050,9 +1050,9 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 1],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 1,
                                        N,
                                        y_ndim - 1,
@@ -1064,9 +1064,9 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
       PADDLE_ENFORCE_EQ(
           y_dims[y_ndim - 2],
           N,
-          phi::errors::InvalidArgument("Input(Y) has error dim."
-                                       "Y'dims[%d] must be equal to %d"
-                                       "But received Y'dims[%d] is %d",
+          phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                       "Y'dims[%d] must be equal to %d, "
+                                       "but received Y'dims[%d] is %d.",
                                        y_ndim - 2,
                                        N,
                                        y_ndim - 2,
@@ -1225,9 +1225,9 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 1],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 1,
                                      K,
                                      y_ndim - 1,
@@ -1236,9 +1236,9 @@ bool inline MatMulInt8Function(const phi::GPUContext& ctx,
     PADDLE_ENFORCE_EQ(
         y_dims[y_ndim - 2],
         K,
-        phi::errors::InvalidArgument("Input(Y) has error dim."
-                                     "Y'dims[%d] must be equal to %d"
-                                     "But received Y'dims[%d] is %d",
+        phi::errors::InvalidArgument("Input(Y) has error dim. "
+                                     "Y'dims[%d] must be equal to %d, "
+                                     "but received Y'dims[%d] is %d.",
                                      y_ndim - 2,
                                      K,
                                      y_ndim - 2,
@@ -1446,6 +1446,10 @@ MatmulJudgeDtypeKernel(const Context& ctx,
   DenseTensor out_tmp;
   MatMulFunction<Context, float>(
       ctx, x_tmp, y_tmp, x_dims, y_dims, &out_tmp, transpose_x, transpose_y);
+  if (x.dtype() == phi::DataType::INT8) {
+    phi::CastKernel<float>(ctx, out_tmp, phi::DataType::INT32, out);
+    return;
+  }
   phi::CastKernel<float>(ctx, out_tmp, x.dtype(), out);
 }
 

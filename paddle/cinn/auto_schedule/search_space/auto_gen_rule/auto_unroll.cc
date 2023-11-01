@@ -18,10 +18,10 @@
 
 #include <cstdlib>
 
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 
 namespace cinn {
 namespace auto_schedule {
@@ -56,7 +56,7 @@ bool AutoUnroll::MeetCondition(const ir::ScheduleBlock* schedule_block) const {
     return false;
   };
 
-  auto find_target_exprs = ir::CollectIRNodesWithoutTensor(
+  auto find_target_exprs = ir::ir_utils::CollectIRNodesWithoutTensor(
       schedule_block->body,
       [&has_reduce_iter, &has_nonserial_loop](const Expr* x) {
         return has_reduce_iter(x) || has_nonserial_loop(x);

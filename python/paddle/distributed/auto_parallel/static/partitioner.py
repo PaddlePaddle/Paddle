@@ -140,14 +140,10 @@ class Partitioner:
             output_vars = op.desc.output_arg_names()
             assert (
                 len(output_vars) == 1
-            ), "initializer should output only ONE variable, but got [{}]".format(
-                str(op.desc)
-            )
+            ), f"initializer should output only ONE variable, but got [{str(op.desc)}]"
             assert (
                 temp_varname_map[output_vars[0]] in var2shape
-            ), "try to initialize [{}] which is not a persistable var".format(
-                output_vars[0]
-            )
+            ), f"try to initialize [{output_vars[0]}] which is not a persistable var"
             new_op_desc = target_block.desc.append_op()
             new_op_desc.copy_from(op.desc)
             new_op_desc._rename_output(
@@ -393,9 +389,7 @@ def _get_dist_shape(var, dist_attr):
 
     assert len(var_shape) == len(
         mapping
-    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
-        var_shape, mapping
-    )
+    ), f"variable shape [{var_shape}] and dim_mapping [{mapping}] is NOT match !"
     new_shape = []
     for idx in range(len(var_shape)):
         if var_shape[idx] == -1 or mapping[idx] == -1:

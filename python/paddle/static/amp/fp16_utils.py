@@ -492,9 +492,7 @@ def get_promote_dtype(op, amp_dtype, block):
         # for ipu, all inputs must be converted to fp16
         if not core.is_compiled_with_ipu() and _keep_fp32_input(op, in_name):
             _logger.debug(
-                "---- Input {} {} should be kept fp32 ----".format(
-                    in_name, op.input(in_name)
-                )
+                f"---- Input {in_name} {op.input(in_name)} should be kept fp32 ----"
             )
             continue
         # if this op has inputs

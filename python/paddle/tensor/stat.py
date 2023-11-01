@@ -253,7 +253,7 @@ def numel(x, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.numel(x)
     else:
         if not isinstance(x, Variable):

@@ -28,18 +28,15 @@ class OpResultImpl;
 ///
 class IR_API OpResult : public Value {
  public:
-  OpResult() = default;
+  OpResult(std::nullptr_t ptr = nullptr) : Value(ptr){};  // NOLINT
   Operation *owner() const;
-  uint32_t GetResultIndex() const;
+  // Return the result index of this op result.
+  uint32_t index() const;
   bool operator==(const OpResult &other) const;
-  // OpResult(const detail::OpResultImpl *impl);  // NOLINT
-
-  // This func will remove in next pr.
-  OpResult(const detail::ValueImpl *impl) : Value(impl) {}  // NOLINT
 
  private:
   friend Operation;
-  static uint32_t GetValidInlineIndex(uint32_t index);
+  OpResult(detail::OpResultImpl *impl);  // NOLINT
   // Access classof annd dyn_cast_from.
   friend Value;
   static bool classof(Value value);

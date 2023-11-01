@@ -52,7 +52,7 @@ repos:
             )$
 # For Python files
 -   repo: https://github.com/psf/black.git
-    rev: 23.9.1
+    rev: 23.3.0
     hooks:
     -   id: black
         files: (.*\.(py|pyi|bzl)|BUILD|.*\.BUILD|WORKSPACE)$
@@ -94,9 +94,9 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
-            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
         # Exclude third-party libraries

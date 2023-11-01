@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import _ir_ops, nn
+from paddle import _pir_ops, nn
 from paddle.autograd.ir_backward import grad
 
 paddle.enable_static()
@@ -28,11 +28,11 @@ class Net(nn.Layer):
         super().__init__()
 
     def forward(self, x, y):
-        z1 = _ir_ops.add(x, y)
-        z2 = _ir_ops.multiply(x, y)
-        z3 = _ir_ops.subtract(z1, z2)
-        z4 = _ir_ops.scale(z3, -1, 0, True)
-        res = _ir_ops.divide(z3, z4)
+        z1 = _pir_ops.add(x, y)
+        z2 = _pir_ops.multiply(x, y)
+        z3 = _pir_ops.subtract(z1, z2)
+        z4 = _pir_ops.scale(z3, -1, 0, True)
+        res = _pir_ops.divide(z3, z4)
         return res
 
 
@@ -54,10 +54,10 @@ class CompareNet(nn.Layer):
         super().__init__()
 
     def forward(self, x, y):
-        z1 = _ir_ops.less_equal(x, y)
-        z2 = _ir_ops.greater_equal(x, y)
-        z3 = _ir_ops.less_than(x, y)
-        z4 = _ir_ops.greater_than(x, y)
+        z1 = _pir_ops.less_equal(x, y)
+        z2 = _pir_ops.greater_equal(x, y)
+        z3 = _pir_ops.less_than(x, y)
+        z4 = _pir_ops.greater_than(x, y)
         return z1, z2, z3, z4
 
 

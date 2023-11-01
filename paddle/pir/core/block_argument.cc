@@ -29,12 +29,12 @@ namespace detail {
 class BlockArgumentImpl : public ValueImpl {
  public:
   static bool classof(const ValueImpl &value) {
-    return value.kind() == BLOCK_ARGUMENT_INDEX;
+    return value.kind() == BLOCK_ARG_IDX;
   }
 
  private:
   BlockArgumentImpl(Type type, Block *owner, uint32_t index)
-      : ValueImpl(type, BLOCK_ARGUMENT_INDEX), owner_(owner), index_(index) {}
+      : ValueImpl(type, BLOCK_ARG_IDX), owner_(owner), index_(index) {}
 
   ~BlockArgumentImpl();
   // access construction and owner
@@ -73,9 +73,9 @@ BlockArgument BlockArgument::Create(Type type, Block *owner, uint32_t index) {
 /// Destroy the argument.
 void BlockArgument::Destroy() {
   if (impl_) {
-    LOG(WARNING) << "Destroying a null block argument.";
-  } else {
     delete IMPL_;
+  } else {
+    LOG(WARNING) << "Destroying a null block argument.";
   }
 }
 

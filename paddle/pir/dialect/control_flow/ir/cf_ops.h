@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-
+#include <functional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
 
@@ -27,8 +27,8 @@ class IR_API YieldOp : public Op<YieldOp> {
 
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
-                    std::vector<OpResult> &&inputs);
-  void Verify() {}
+                    const std::vector<Value> &Value);
+  void VerifySig() {}
 };
 }  // namespace pir
 

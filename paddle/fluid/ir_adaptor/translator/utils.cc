@@ -18,10 +18,23 @@
 
 #include "paddle/fluid/ir_adaptor/translator/op_translator.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/utils.h"
+
+namespace paddle {
+namespace dialect {
+bool HaveOpToMultiKernelsMap(std::string op_name) {
+  return op_to_multi_kernels_map.find(op_name) != op_to_multi_kernels_map.end();
+}
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name) {
+  return op_to_multi_kernels_map[op_name];
+}
+}  // namespace dialect
+}  // namespace paddle
 
 namespace paddle {
 namespace translator {
@@ -29,7 +42,7 @@ namespace translator {
 pir::Operation* InsertSliceOperationForTarget(
     pir::IrContext* ctx,
     TranslationContext* param_map,
-    pir::Program* program,
+    pir::Block* block,
     const VariableDefiningInfo& defining_info,
     const std::string& arg_name) {
   std::string slice_op_name(pir::SliceOp::name());
@@ -44,9 +57,9 @@ pir::Operation* InsertSliceOperationForTarget(
                              op_attribute_map,
                              {src_vec_type[defining_info.idx_in_vector]},
                              op_info);
-  program->block()->push_back(operation);
+  block->push_back(operation);
   pir::OpResult target_op_result = operation->result(0);
-  (*param_map)[arg_name] = VariableDefiningInfo(target_op_result);
+  param_map->PushValue(arg_name, VariableDefiningInfo(target_op_result));
   return operation;
 }
 

@@ -125,7 +125,6 @@ class GeoPsProgramBuilder(PsProgramBuilder):  # 仅 CPU 模式
         add_listen_and_serv_pass.apply(
             [self.attrs['_main_server']], [None], self.pass_ctx
         )
-        return
 
 
 class NuPsProgramBuilder(PsProgramBuilder):
@@ -173,8 +172,6 @@ class NuPsProgramBuilder(PsProgramBuilder):
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
-
-        return
 
 
 class CpuSyncPsProgramBuilder(PsProgramBuilder):
@@ -225,8 +222,6 @@ class CpuSyncPsProgramBuilder(PsProgramBuilder):
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
-
-        return
 
 
 class CpuAsyncPsProgramBuilder(CpuSyncPsProgramBuilder):
@@ -296,8 +291,6 @@ class GpuPsProgramBuilder(PsProgramBuilder):
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
 
-        return
-
 
 class HeterAsyncPsProgramBuilder(PsProgramBuilder):
     def __init__(self, pass_ctx):
@@ -354,8 +347,6 @@ class HeterAsyncPsProgramBuilder(PsProgramBuilder):
 
         if self.launch_barrier and self.launch_barrier_flag:
             wait_server_ready(self.server_endpoints)
-
-        return
 
     def _build_programs(self):
         if self.attrs['is_worker'] or self.attrs['is_heter_worker']:
@@ -457,8 +448,6 @@ class FlPsProgramBuilder(HeterAsyncPsProgramBuilder):
                     'section_program'
                 ],
             )
-
-        return
 
     def _build_pserver_programs(self):
         self.loss.block.program = self.attrs['_main_server']

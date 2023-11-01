@@ -25,9 +25,9 @@ const char *ModuleOp::attributes_name[attributes_num] = {"program"};  // NOLINT
 void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
   VLOG(4) << "Builder construction stop gradient for OpResults.";
   bool stop_gradient = true;
-  for (auto &input : argument.inputs) {
-    if (input.Value::impl() == nullptr) continue;
-
+  for (auto value : argument.inputs) {
+    auto input = value.dyn_cast<OpResult>();
+    if (!input) continue;
     auto *defining_op = input.owner();
     bool input_stop_gradient = true;
     if (defining_op->HasAttribute(kStopGradientAttrName)) {
@@ -35,7 +35,7 @@ void PassStopGradientsDefaultly(OperationArgument &argument) {  // NOLINT
                        .dyn_cast<pir::ArrayAttribute>()
                        .AsVector();
       input_stop_gradient =
-          attrs[input.GetResultIndex()].dyn_cast<pir::BoolAttribute>().data();
+          attrs[input.index()].dyn_cast<pir::BoolAttribute>().data();
     }
     if (!input_stop_gradient) {
       stop_gradient = false;
@@ -68,7 +68,7 @@ Block *ModuleOp::block() {
 ModuleOp ModuleOp::Create(IrContext *context, Program *pointer) {
   pir::OpInfo info = context->GetRegisteredOpInfo(name());
   OperationArgument argument(info);
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
   argument.AddAttribute("program", PointerAttribute::get(context, pointer));
   Operation *op = Operation::Create(std::move(argument));
   op->region(0).emplace_back();
@@ -82,7 +82,7 @@ void ModuleOp::Destroy() {
   }
 }
 
-void ModuleOp::Verify() const {
+void ModuleOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: ModuleOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -118,7 +118,7 @@ void GetParameterOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void GetParameterOp::Verify() const {
+void GetParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: GetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 0u, "The size of inputs must be equal to 0.");
@@ -138,13 +138,13 @@ const char *SetParameterOp::attributes_name[attributes_num] = {  // NOLINT
 
 void SetParameterOp::Build(Builder &builder,             // NOLINT
                            OperationArgument &argument,  // NOLINT
-                           OpResult parameter,
+                           Value parameter,
                            const std::string &name) {
-  argument.AddOperand(parameter);
+  argument.AddInput(parameter);
   argument.AddAttribute(attributes_name[0],
                         pir::StrAttribute::get(builder.ir_context(), name));
 }
-void SetParameterOp::Verify() const {
+void SetParameterOp::VerifySig() const {
   VLOG(4) << "Verifying inputs, outputs and attributes for: SetParameterOp.";
   // Verify inputs:
   IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
@@ -159,24 +159,46 @@ void SetParameterOp::Verify() const {
   IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
 }
 
+const char *ShadowOutputOp::attributes_name[attributes_num] = {  // NOLINT
+    "output_name"};
+
+void ShadowOutputOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           Value parameter,
+                           const std::string &name) {
+  argument.AddInput(parameter);
+  argument.AddAttribute(attributes_name[0],
+                        pir::StrAttribute::get(builder.ir_context(), name));
+}
+void ShadowOutputOp::VerifySig() const {
+  VLOG(4) << "Verifying inputs, outputs and attributes for: ShadowOutputOp.";
+  // Verify inputs:
+  IR_ENFORCE(num_operands() == 1, "The size of outputs must be equal to 1.");
+
+  // Verify attributes:
+  auto &attributes = this->attributes();
+  auto iter = attributes.find("output_name");
+  IR_ENFORCE(iter != attributes.end() && iter->second.isa<StrAttribute>(),
+             "Type of attribute: output_name is not right.");
+
+  // Verify outputs:
+  IR_ENFORCE(num_results() == 0u, "The size of outputs must be equal to 0.");
+}
+
 void CombineOp::Build(Builder &builder,
                       OperationArgument &argument,
-                      const std::vector<pir::OpResult> &inputs) {
+                      const std::vector<Value> &inputs) {
   argument.inputs = inputs;
-  if (inputs.size() == 0) {
-    argument.output_types.emplace_back(pir::Type());
-  } else {
-    std::vector<pir::Type> inputs_type(inputs.size());
-    for (size_t idx = 0; idx < inputs.size(); ++idx) {
-      inputs_type[idx] = inputs[idx].type();
-    }
-    argument.output_types.emplace_back(
-        pir::VectorType::get(builder.ir_context(), inputs_type));
+  std::vector<pir::Type> inputs_type(inputs.size());
+  for (size_t idx = 0; idx < inputs.size(); ++idx) {
+    inputs_type[idx] = inputs[idx].type();
   }
+  argument.output_types.emplace_back(
+      pir::VectorType::get(builder.ir_context(), inputs_type));
   PassStopGradientsDefaultly(argument);
 }
 
-void CombineOp::Verify() const {
+void CombineOp::VerifySig() const {
   // outputs.size() == 1
   IR_ENFORCE(num_results() == 1u, "The size of outputs must be equal to 1.");
 
@@ -209,7 +231,7 @@ const char *SliceOp::attributes_name[attributes_num] = {"index"};  // NOLINT
 
 void SliceOp::Build(Builder &builder,
                     OperationArgument &argument,
-                    const pir::OpResult &input,
+                    Value input,
                     int index) {
   argument.inputs = {input};
   argument.output_types.emplace_back(input.type()
@@ -221,8 +243,7 @@ void SliceOp::Build(Builder &builder,
 void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
   std::vector<pir::Attribute> outs_stop_gradient(
       1, pir::BoolAttribute::get(pir::IrContext::Instance(), true));
-  auto &input = argument.inputs[0];
-  if (input.Value::impl() != nullptr) {
+  if (auto input = argument.inputs[0].dyn_cast<pir::OpResult>()) {
     auto *defining_op = input.owner();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE(defining_op->HasAttribute(kStopGradientAttrName),
@@ -239,7 +260,7 @@ void SliceOp::PassStopGradients(OperationArgument &argument, int index) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SliceOp::Verify() const {
+void SliceOp::VerifySig() const {
   // inputs.size() == 1
   auto input_size = num_operands();
   IR_ENFORCE(
@@ -286,7 +307,7 @@ void SliceOp::Verify() const {
 
 void SplitOp::Build(Builder &builder,
                     OperationArgument &argument,
-                    const pir::OpResult &input) {
+                    Value input) {
   argument.inputs = {input};
   for (size_t idx = 0; idx < input.type().dyn_cast<pir::VectorType>().size();
        ++idx) {
@@ -299,8 +320,7 @@ void SplitOp::Build(Builder &builder,
 
 void SplitOp::PassStopGradients(OperationArgument &argument) {
   std::vector<bool> defaut_stop_gradients(argument.output_types.size(), true);
-  auto &input = argument.inputs[0];
-  if (input.Value::impl() != nullptr) {
+  if (auto input = argument.inputs[0].dyn_cast<OpResult>()) {
     auto *defining_op = input.owner();
     if (defining_op && defining_op->isa<CombineOp>()) {
       IR_ENFORCE(argument.output_types.size(),
@@ -312,15 +332,14 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       for (uint32_t i = 0; i < defining_op->num_operands(); ++i) {
         auto value = defining_op->operand_source(i);
         if (!value) continue;
-        auto *oprand_defining_op = value.GetDefiningOp();
+        auto *oprand_defining_op = value.dyn_cast<OpResult>().owner();
         if (oprand_defining_op->HasAttribute(kStopGradientAttrName)) {
           auto attrs = oprand_defining_op->attribute(kStopGradientAttrName)
                            .dyn_cast<pir::ArrayAttribute>()
                            .AsVector();
-          defaut_stop_gradients[i] =
-              attrs[value.dyn_cast<OpResult>().GetResultIndex()]
-                  .dyn_cast<pir::BoolAttribute>()
-                  .data();
+          defaut_stop_gradients[i] = attrs[value.dyn_cast<OpResult>().index()]
+                                         .dyn_cast<pir::BoolAttribute>()
+                                         .data();
         }
       }
     } else if (defining_op &&
@@ -345,7 +364,7 @@ void SplitOp::PassStopGradients(OperationArgument &argument) {
       pir::ArrayAttribute::get(pir::IrContext::Instance(), outs_stop_gradient));
 }
 
-void SplitOp::Verify() const {
+void SplitOp::VerifySig() const {
   // inputs.size() == 1
   IR_ENFORCE(num_operands() == 1u, "The size of inputs must be equal to 1.");
 
@@ -361,16 +380,7 @@ void SplitOp::Verify() const {
              input_type.size());
 
   // for all i in outputs.size(): outputs[i].type == inputs[0][i].type
-  for (size_t i = 0; i < output_num; ++i) {
-    auto type = (*this)->result(i).type();
-    IR_ENFORCE(input_type[i] == type,
-               "The type %s of inputs[0][%d] must be "
-               "equal to type %s of outputs[%d].",
-               input_type[i],
-               i,
-               type,
-               i);
-  }
+  // TODO(@xiongkun) consult zhangbo to check what to do with null type.
 }
 
 const char *ConstantOp::attributes_name[attributes_num] = {"value"};  // NOLINT
@@ -383,7 +393,7 @@ void ConstantOp::Build(Builder &builder,
   argument.output_types.push_back(output_type);
 }
 
-void ConstantOp::Verify() const {
+void ConstantOp::VerifySig() const {
   IR_ENFORCE(num_operands() == 0, "The size of inputs must be equal to 0.");
   IR_ENFORCE(num_results() == 1, "The size of outputs must be equal to 1.");
   IR_ENFORCE(attributes().count("value") > 0, "must has value attribute");
@@ -396,6 +406,7 @@ Attribute ConstantOp::value() const { return attributes().at("value"); }
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::ModuleOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::GetParameterOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SetParameterOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::ShadowOutputOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::CombineOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SliceOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(pir::SplitOp)

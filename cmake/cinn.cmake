@@ -269,7 +269,8 @@ if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
   set(core_includes
-      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h")
+      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h;paddle/utils/test_macros.h"
+  )
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}

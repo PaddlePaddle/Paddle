@@ -75,7 +75,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   GraphCompiler gc_disable(context_disable);
   // disable with_buffer_handle_instruction_inserted: only 1 instruction
   auto runtime_program_disable =
-      gc_disable.Build(&context_disable).runtime_program;
+      gc_disable.Build(&context_disable).RuntimeProgram();
   ASSERT_EQ(runtime_program_disable->size(), 1);
   const auto& computation_instr_disable =
       runtime_program_disable->GetRunInstructions().front();
@@ -87,7 +87,7 @@ TEST(GraphCompilerTest, TestInsertBufferHandlers) {
   context_enable.with_buffer_handle_instruction_inserted = true;
   GraphCompiler gc_enable(context_enable);
   auto runtime_program_enable =
-      gc_enable.Build(&context_enable).runtime_program;
+      gc_enable.Build(&context_enable).RuntimeProgram();
   const auto& instructions = runtime_program_enable->GetRunInstructions();
   ASSERT_EQ(instructions.size(), 3);
 
@@ -254,7 +254,7 @@ TEST(GraphCompilerTest, TestLowering) {
   GraphCompiler gc(context);
   CompilationResult result = gc.Lowering();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 TEST(GraphCompilerTest, TestCodegenAndJit) {
@@ -274,7 +274,7 @@ TEST(GraphCompilerTest, TestCodegenAndJit) {
   GraphCompiler gc(context);
   CompilationResult result = gc.CodegenAndJit();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 TEST(GraphCompilerTest, TestBuildInstruction) {
@@ -294,7 +294,7 @@ TEST(GraphCompilerTest, TestBuildInstruction) {
   GraphCompiler gc(context);
   CompilationResult result = gc.BuildInstruction();
 
-  ASSERT_EQ(result.status, CompilationStatus::SUCCESS);
+  ASSERT_EQ(result.Status(), CompilationStatus::SUCCESS);
 }
 
 #endif

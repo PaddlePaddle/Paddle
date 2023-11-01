@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .framework import dygraph_only
 from paddle import _legacy_C_ops
+
+from .framework import dygraph_only
 
 
 @dygraph_only

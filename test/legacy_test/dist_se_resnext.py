@@ -47,9 +47,7 @@ class SE_ResNeXt:
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
         if layers == 50:
             cardinality = 32
             reduction_ratio = 16

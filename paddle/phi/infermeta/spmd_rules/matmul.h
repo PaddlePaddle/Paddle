@@ -33,5 +33,13 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
                                 bool trans_x,
                                 bool trans_y);
 
+// TODO(chenweihang): This rule is currently incomplete, and we should
+// polish this rule after fixed Matmul infermeta's existing bug
+SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
+                             const DistMetaTensor& y,
+                             const DistMetaTensor& out_grad,
+                             bool trans_x,
+                             bool trans_y);
+
 }  // namespace distributed
 }  // namespace phi

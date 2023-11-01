@@ -94,6 +94,7 @@ def train_mlp(
     opt_group=False,
     save_model=False,
     test_minimize=False,
+    scale_fn_test=False,
 ):
     if sharding_stage != "dp":
         group = paddle.distributed.new_group([0, 1], backend="nccl")
@@ -104,6 +105,9 @@ def train_mlp(
     else:
         optimizer = optimizer_setting(model=model, use_pure_fp16=use_pure_fp16)
 
+    if scale_fn_test:
+        assert sharding_stage == 2
+
     if sharding_stage == 2:
         optimizer = GroupShardedOptimizerStage2(
             params=optimizer._parameter_list, optim=optimizer, group=group
@@ -112,6 +116,13 @@ def train_mlp(
         model = GroupShardedStage2(
             model, optimizer, group=group, buffer_max_size=2**21
         )
+        if scale_fn_test:
+            param = model.parameters()[0]
+            grad = paddle.rand(param.shape, dtype=param.dtype)
+            model._get_scaled_grad_fn(param)(grad)
+            param.grad = grad
+            model._get_scaled_grad_fn(param)(None)
+            return
     else:
         model = paddle.DataParallel(model)
 
@@ -178,6 +189,7 @@ def test_dp_stage2():
     mlp5 = MLP()
     mlp6 = MLP()
     mlp7 = MLP()
+    mlp8 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
     mlp3.set_state_dict(state_dict)
@@ -185,6 +197,7 @@ def test_dp_stage2():
     mlp5.set_state_dict(state_dict)
     mlp6.set_state_dict(state_dict)
     mlp7.set_state_dict(state_dict)
+    mlp8.set_state_dict(state_dict)
 
     # DP VS stage2
     dp_params = train_mlp(
@@ -241,7 +254,8 @@ def test_dp_stage2():
 
     # check optimizer.minimize() error
     train_mlp(mlp7, sharding_stage=2, test_minimize=True)
-    return
+
+    train_mlp(mlp8, sharding_stage=2, scale_fn_test=True)
 
 
 if __name__ == '__main__':

@@ -19,8 +19,8 @@
 #include "paddle/cinn/backends/llvm/llvm_intrin_rule.h"
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/intrinsic_ops.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/registry.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn {
 namespace optim {

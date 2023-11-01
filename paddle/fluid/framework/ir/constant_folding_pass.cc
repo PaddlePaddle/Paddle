@@ -64,7 +64,11 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       platform::errors::Fatal(
           "scope must not be null when applying constant folding."));
 
-  std::vector<std::string> blacklist{"feed", "matrix_multiply", "save"};
+  std::vector<std::string> blacklist{"feed",
+                                     "matrix_multiply",
+                                     "save",
+                                     "quantize_linear",
+                                     "dequantize_linear"};
   int folded_op_num = 0;
 
   auto op_node_sorted = framework::ir::TopologyVarientSort(
@@ -81,9 +85,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
     std::unordered_map<std::string, int> map;
     for (auto in_node : op_node->inputs) {
       map[in_node->Name()] = 0;
-      if (!in_node->Var()->Persistable()) {
-        input_persis = false;
-      } else if (!in_node->inputs.empty()) {
+      if (!in_node->Var()->Persistable() || !in_node->inputs.empty()) {
         input_persis = false;
       }
     }
@@ -91,7 +93,7 @@ void ConstantFoldingPass::ApplyImpl(ir::Graph *graph) const {
       map[out_node->Name()] = 0;
     }
     // Forbid other node in graph having the same name with nodes in map
-    for (auto iter : map) {
+    for (auto const &iter : map) {
       for (auto node : graph->Nodes()) {
         if (node->IsVar() && node->Name() == iter.first) {
           map[node->Name()]++;

@@ -17,10 +17,11 @@ import numpy as np
 import paddle
 from paddle import _C_ops
 from paddle.common_ops_import import VarDesc
+from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
 from ..base.data_feeder import check_dtype, check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..framework import LayerHelper, in_dynamic_mode
+from ..framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
 from .creation import full
 from .manipulation import cast
 from .math import _get_reduce_axis
@@ -81,7 +82,7 @@ def transpose(x, perm, name=None):
             [3, 2, 4]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.transpose(x, perm)
     else:
         check_variable_and_dtype(
@@ -107,10 +108,8 @@ def transpose(x, perm, name=None):
             raise ValueError(
                 "Input(perm) is the permutation of dimensions of Input(x), "
                 "its length should be equal to dimensions of Input(x), "
-                "but received dimension of Input(x) is {}, "
-                "the length of Input(perm) is {}.".format(
-                    len(x.shape), len(perm)
-                )
+                f"but received dimension of Input(x) is {len(x.shape)}, "
+                f"the length of Input(perm) is {len(perm)}."
             )
         for idx, dim in enumerate(perm):
             if dim >= len(x.shape):
@@ -130,6 +129,16 @@ def transpose(x, perm, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+@inplace_apis_in_dygraph_only
+def transpose_(x, perm, name=None):
+    r"""
+    Inplace version of ``transpose`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_transpose`.
+    """
+    if in_dynamic_mode():
+        return _C_ops.transpose_(x, perm)
 
 
 def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
@@ -225,7 +234,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
             [10, 3, 5, 5]
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.matmul(x, y, transpose_x, transpose_y)
     else:
         attrs = {
@@ -373,7 +382,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
                 "The dim of frobenius norm op should be None or two elements list!"
             )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if dim is None:
                 return _C_ops.frobenius_norm(input, [], keepdim, True)
             return _C_ops.frobenius_norm(input, dim, keepdim, False)
@@ -594,9 +603,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         else:
             raise ValueError(
-                "unspport p for p-order vector norm. except float, found {}".format(
-                    p
-                )
+                f"unspport p for p-order vector norm. except float, found {p}"
             )
     # calculate matrix norm, where axis is list with two integers
     elif isinstance(axis, list) and len(axis) == 2:
@@ -616,9 +623,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
     else:
         raise ValueError(
-            "except axis type int or list (length of list <=2), found {}".format(
-                axis
-            )
+            f"except axis type int or list (length of list <=2), found {axis}"
         )
 
 
@@ -1138,7 +1143,7 @@ def dot(x, y, name=None):
             [32, 64])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dot(x, y)
     else:
         op_type = 'dot'
@@ -1255,7 +1260,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if fweights.min() < 0:
             raise ValueError(
                 "The value of Input(fweights) cannot be negtive, but received "
-                "min of Input(fweights) is {}.".format(fweights.min())
+                f"min of Input(fweights) is {fweights.min()}."
             )
         if not paddle.all(fweights == paddle.round(fweights.astype('float64'))):
             raise ValueError("Input(fweights) must be integer ")
@@ -1280,7 +1285,7 @@ def cov(x, rowvar=True, ddof=True, fweights=None, aweights=None, name=None):
         if aweights.min() < 0:
             raise ValueError(
                 "The value of Input(aweights) cannot be negtive, but received "
-                "min of Input(aweights) is {}.".format(aweights.min())
+                f"min of Input(aweights) is {aweights.min()}."
             )
         if w is not None:
             w = w * aw
@@ -1370,7 +1375,7 @@ def t(input, name=None):
             "length of Input(input) is %s. Perhaps you can use paddle."
             "tensor.transpose() instead." % len(input.shape)
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if len(input.shape) <= 1:
             return input
         # 2-D tensor
@@ -1397,6 +1402,27 @@ def t(input, name=None):
                 outputs={'Out': [out], 'XShape': [input_shape]},
                 attrs={'axis': [1, 0]},
             )
+        return out
+
+
+@inplace_apis_in_dygraph_only
+def t_(input, name=None):
+    r"""
+    Inplace version of ``t`` API, the output Tensor will be inplaced with input ``input``.
+    Please refer to :ref:`api_paddle_t`.
+    """
+    if len(input.shape) > 2:
+        raise ValueError(
+            "Input(input) only support N-D (N<=2) tensor, but received "
+            "length of Input(input) is %s. Perhaps you can use paddle."
+            "tensor.transpose() instead." % len(input.shape)
+        )
+    if in_dynamic_mode():
+        if len(input.shape) <= 1:
+            return input
+        # 2-D tensor
+        perm = [1, 0]
+        out = _C_ops.transpose_(input, perm)
         return out
 
 
@@ -1513,7 +1539,7 @@ def cholesky(x, upper=False, name=None):
              [1.06467664, 0.17859250, 0.        ],
              [1.30602181, 0.08326444, 0.22790681]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky(x, upper)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
@@ -1834,9 +1860,7 @@ def mv(x, vec, name=None):
             vec_shape = list(vec.shape)
             if len(x_shape) != 2:
                 raise ValueError(
-                    "x should be 2-dimensional. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"x should be 2-dimensional. But received x's dimention: {x_shape}"
                 )
             if len(vec_shape) != 1:
                 raise ValueError(
@@ -1934,14 +1958,12 @@ def slogdet(x, name=None):
 
             >>> import paddle
             >>> paddle.seed(2023)
-            >>> x =  paddle.randn([3,3,3])
+            >>> x = paddle.randn([3, 3, 3])
             >>> A = paddle.linalg.slogdet(x)
             >>> print(A)
-            >>> # doctest: +SKIP
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [[-1.        ,  1.        ,  1.        ],
              [ 0.25681755, -0.25061053, -0.10809582]])
-            >>> # doctest: -SKIP
 
     """
     if in_dynamic_mode():
@@ -2192,8 +2214,8 @@ def pca_lowrank(x, q=None, center=True, niter=2, name=None):
         q = min(6, m, n)
     elif not (q >= 0 and q <= min(m, n)):
         raise ValueError(
-            'q(={}) must be non-negative integer'
-            ' and not greater than min(m, n)={}'.format(q, min(m, n))
+            f'q(={q}) must be non-negative integer'
+            f' and not greater than min(m, n)={min(m, n)}'
         )
     if not (niter >= 0):
         raise ValueError(f'niter(={niter}) must be non-negative integer')
@@ -2557,9 +2579,9 @@ def eig(x, name=None):
     Performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
 
     Note:
-        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
-        - If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
-        - If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.
+        - If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`api_paddle_linalg_eigh` instead, which is much faster.
+        - If only eigenvalues is needed, please use :ref:`api_paddle_linalg_eigvals` instead.
+        - If the matrix is of any shape, please use :ref:`api_paddle_linalg_svd`.
         - This API is only supported on CPU device.
         - The output datatype is always complex for both real and complex input.
 
@@ -2597,7 +2619,7 @@ def eig(x, name=None):
               (-0.21026138961315155+0j)])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eig(x)
     else:
         check_variable_and_dtype(
@@ -2668,7 +2690,7 @@ def eigvals(x, name=None):
             )
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigvals(x)
     else:
         check_variable_and_dtype(
@@ -2777,10 +2799,12 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        - out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64.
-            The eigenvalues of eigh op.
-        - out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,
-            complex64 and complex128. The eigenvectors of eigh op.
+        2-element tuple containing
+
+        - out_value(Tensor): A Tensor with shape :math:`[*, N]` and data type of float32 and float64.
+          The eigenvalues of eigh op.
+        - out_vector(Tensor): A Tensor with shape :math:`[*, N, N]` and data type of float32, float64,
+          complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
@@ -3259,7 +3283,7 @@ def cholesky_solve(x, y, upper=False, name=None):
              [-7.        ],
              [ 9.50000000]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_solve(x, y, upper)
     else:
         helper = LayerHelper("cholesky_solve", **locals())
@@ -3669,8 +3693,8 @@ def cdist(
     )
     assert x_shape[-1] == y_shape[-1], (
         "The x and y must have same last dimension, "
-        "But received Input x's last dimension is {}, "
-        "Input y's last dimension is {}.\n".format(x_shape[-1], y_shape[-1])
+        f"But received Input x's last dimension is {x_shape[-1]}, "
+        f"Input y's last dimension is {y_shape[-1]}.\n"
     )
     assert p >= 0, (
         "The p must be greater than or equal to 0, "

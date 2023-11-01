@@ -35,11 +35,9 @@ class IR_API OpOperand {
 
   OpOperand(const OpOperand &other) = default;
 
-  OpOperand(const detail::OpOperandImpl *impl);  // NOLINT
+  OpOperand(detail::OpOperandImpl *impl) : impl_(impl) {}  // NOLINT
 
   OpOperand &operator=(const OpOperand &rhs);
-
-  OpOperand &operator=(const detail::OpOperandImpl *impl);
 
   bool operator==(const OpOperand &other) const { return impl_ == other.impl_; }
 

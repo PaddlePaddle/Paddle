@@ -16,122 +16,131 @@
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/enforce.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::shape {
 
-const char *SymbolicDim::attributes_name[attributes_num] = {"knownNegativeOne",
-                                                            "knownNonNegative",
-                                                            "knownNonSizeOne",
-                                                            "knownNonSizeZero",
-                                                            "sym_name",
-                                                            "value"};  // NOLINT
+const char *SymbolicDimOp::attributes_name[attributes_num] = {
+    "known_negative_one",   // value = -1
+    "known_non_negative",   // value >= 0
+    "known_non_size_one",   // value != 1
+    "known_non_size_zero",  // value != 0
+    "sym_name",
+    "value"};  // NOLINT
 
-void SymbolicDim::Build(Builder &builder,
-                        OperationArgument &argument,
-                        const std::string &sym_name,
-                        int64_t value,
-                        bool knownNonNegative,
-                        bool knownNegativeOne,
-                        bool knownNonSizeOne,
-                        bool knownNonSizeZero) {
-  pir::Attribute attr_sym_name =
-      pir::StrAttribute::get(pir::IrContext::Instance(), sym_name);
+void SymbolicDimOp::Build(Builder &builder,
+                          OperationArgument &argument,
+                          const std::string &sym_name,
+                          int64_t value,
+                          bool known_non_negative,
+                          bool known_negative_one,
+                          bool known_non_size_one,
+                          bool known_non_size_zero) {
+  IrContext *ctx = IrContext::Instance();
+  auto attr_sym_name = StrAttribute::get(ctx, sym_name);
+  auto attr_value = Int64Attribute::get(ctx, value);
+  auto attr_known_none_negative = BoolAttribute::get(ctx, known_non_negative);
+  auto attr_known_negative_one = BoolAttribute::get(ctx, known_negative_one);
+  auto attr_known_non_size_one = BoolAttribute::get(ctx, known_non_size_one);
+  auto attr_known_non_size_zero = BoolAttribute::get(ctx, known_non_size_zero);
+
   argument.AddAttribute("sym_name", attr_sym_name);
-  pir::Attribute attr_value =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), value);
   argument.AddAttribute("value", attr_value);
-  pir::Attribute attr_knownNonNegative =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), knownNonNegative);
-  argument.AddAttribute("knownNonNegative", attr_knownNonNegative);
-  pir::Attribute attr_knownNegativeOne =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), knownNegativeOne);
-  argument.AddAttribute("knownNegativeOne", attr_knownNegativeOne);
-  pir::Attribute attr_knownNonSizeOne =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), knownNonSizeOne);
-  argument.AddAttribute("knownNonSizeOne", attr_knownNonSizeOne);
-  pir::Attribute attr_knownNonSizeZero =
-      pir::BoolAttribute::get(pir::IrContext::Instance(), knownNonSizeZero);
-  argument.AddAttribute("knownNonSizeZero", attr_knownNonSizeZero);
+  argument.AddAttribute("known_non_negative", attr_known_none_negative);
+  argument.AddAttribute("known_negative_one", attr_known_negative_one);
+  argument.AddAttribute("known_non_size_one", attr_known_non_size_one);
+  argument.AddAttribute("known_non_size_zero", attr_known_non_size_zero);
 }
 
-const std::string SymbolicDim::getSymName() {
-  return attribute<pir::StrAttribute>("sym_name").AsString();
-}
-int64_t SymbolicDim::getValue() {
-  return attribute<pir::Int64Attribute>("value").data();
-}
-bool SymbolicDim::getKnownNonNegative() {
-  return attribute<pir::BoolAttribute>("knownNonNegative").data();
-}
-bool SymbolicDim::getKnownNegativeOne() {
-  return attribute<pir::BoolAttribute>("knownNegativeOne").data();
-}
-bool SymbolicDim::getKnownNonSizeOne() {
-  return attribute<pir::BoolAttribute>("knownNonSizeOne").data();
-}
-bool SymbolicDim::getKnownNonSizeZero() {
-  return attribute<pir::BoolAttribute>("knownNonSizeZero").data();
+const std::string SymbolicDimOp::GetSymName() {
+  return attribute<StrAttribute>("sym_name").AsString();
 }
 
-void SymbolicDim::updateSymName(std::string attrValue) {
-  operation()->set_attribute(
-      "sym_name",
-      pir::StrAttribute::get(pir::IrContext::Instance(), attrValue));
-}
-void SymbolicDim::updateValue(int64_t attrValue) {
-  operation()->set_attribute(
-      "value", pir::Int64Attribute::get(pir::IrContext::Instance(), attrValue));
+int64_t SymbolicDimOp::GetDimSize() {
+  return attribute<Int64Attribute>("value").data();
 }
 
-void SymbolicDim::updateKnownNonNegative(bool attrValue) {
-  operation()->set_attribute(
-      "knownNonNegative",
-      pir::BoolAttribute::get(pir::IrContext::Instance(), attrValue));
-}
-void SymbolicDim::updateKnownNegativeOne(bool attrValue) {
-  operation()->set_attribute(
-      "knownNegativeOne",
-      pir::BoolAttribute::get(pir::IrContext::Instance(), attrValue));
-}
-void SymbolicDim::updateKnownNonSizeOne(bool attrValue) {
-  operation()->set_attribute(
-      "knownNonSizeOne",
-      pir::BoolAttribute::get(pir::IrContext::Instance(), attrValue));
-}
-void SymbolicDim::updateKnownNonSizeZero(bool attrValue) {
-  operation()->set_attribute(
-      "knownNonSizeZero",
-      pir::BoolAttribute::get(pir::IrContext::Instance(), attrValue));
+bool SymbolicDimOp::GetKnownNonNegative() {
+  return attribute<BoolAttribute>("known_non_negative").data();
 }
 
-bool SymbolicDim::IsDynamic() {
-  return getValue() == ShapedTypeInterface::kDynamic;
+bool SymbolicDimOp::GetKnownNegativeOne() {
+  return attribute<BoolAttribute>("known_negative_one").data();
 }
 
-bool SymbolicDim::Merge(SymbolicDim other) {
-  if (!IsDynamic() && !other.IsDynamic() && getValue() != other.getValue())
+bool SymbolicDimOp::GetKnownNonSizeOne() {
+  return attribute<BoolAttribute>("known_non_size_one").data();
+}
+
+bool SymbolicDimOp::GetKnownNonSizeZero() {
+  return attribute<BoolAttribute>("known_non_size_zero").data();
+}
+
+void SymbolicDimOp::SetSymName(const std::string &attr_value) {
+  operation()->set_attribute(
+      "sym_name", StrAttribute::get(IrContext::Instance(), attr_value));
+}
+
+void SymbolicDimOp::SetDimSize(int64_t attr_value) {
+  operation()->set_attribute(
+      "value", Int64Attribute::get(IrContext::Instance(), attr_value));
+}
+
+void SymbolicDimOp::UpdateKnownNonNegative(bool flag) {
+  operation()->set_attribute("known_non_negative",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+
+void SymbolicDimOp::UpdateKnownNegativeOne(bool flag) {
+  operation()->set_attribute("known_negative_one",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+
+void SymbolicDimOp::UpdateKnownNonSizeOne(bool flag) {
+  operation()->set_attribute("known_non_size_one",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+
+void SymbolicDimOp::UpdateKnownNonSizeZero(bool flag) {
+  operation()->set_attribute("known_non_size_zero",
+                             BoolAttribute::get(IrContext::Instance(), flag));
+}
+
+bool SymbolicDimOp::IsDynamic() {
+  return GetDimSize() == ShapedTypeInterface::kDynamic;
+}
+
+bool SymbolicDimOp::Merge(SymbolicDimOp other) {
+  VLOG(4) << "Try to merge two SymbolicDimOp.";
+
+  if (!IsDynamic() && !other.IsDynamic() && GetDimSize() != other.GetDimSize())
     return false;
-  if (IsDynamic() && !other.IsDynamic()) updateValue(other.getValue());
-  if (!IsDynamic() && other.IsDynamic()) other.updateValue(getValue());
 
-  bool knownNonNegativeFlag =
-      getKnownNonNegative() || other.getKnownNonNegative();
-  bool knownNegativeOneFlag =
-      getKnownNegativeOne() || other.getKnownNegativeOne();
-  bool knownNonSizeOneFlag = getKnownNonSizeOne() ||
-                             other.getKnownNonSizeOne() || knownNegativeOneFlag;
-  bool knownNonSizeZeroFlag = getKnownNonSizeZero() ||
-                              other.getKnownNonSizeZero() ||
-                              knownNegativeOneFlag;
+  if (IsDynamic() && !other.IsDynamic()) SetDimSize(other.GetDimSize());
+  if (!IsDynamic() && other.IsDynamic()) other.SetDimSize(GetDimSize());
 
-  if (knownNonNegativeFlag && knownNegativeOneFlag) return false;
+  // eiter value >= 0
+  bool known_non_negative_flag =
+      GetKnownNonNegative() || other.GetKnownNonNegative();
 
-  updateKnownNonSizeZero(knownNonSizeZeroFlag);
-  updateKnownNonSizeOne(knownNonSizeOneFlag);
-  updateKnownNegativeOne(knownNegativeOneFlag);
-  updateKnownNonNegative(knownNonNegativeFlag);
+  // eiter value == -1
+  bool known_negative_one_flag =
+      GetKnownNegativeOne() || other.GetKnownNegativeOne();
 
+  if (known_non_negative_flag && known_negative_one_flag) return false;
+
+  bool known_non_size_one_flag = GetKnownNonSizeOne() ||
+                                 other.GetKnownNonSizeOne() ||
+                                 known_negative_one_flag;
+
+  bool known_non_size_zero_flag = GetKnownNonSizeZero() ||
+                                  other.GetKnownNonSizeZero() ||
+                                  known_negative_one_flag;
+
+  UpdateKnownNonSizeZero(known_non_size_zero_flag);
+  UpdateKnownNonSizeOne(known_non_size_one_flag);
+  UpdateKnownNegativeOne(known_negative_one_flag);
+  UpdateKnownNonNegative(known_non_negative_flag);
   return true;
 }
 
@@ -140,20 +149,18 @@ const char *DimOp::attributes_name[attributes_num] = {"name"};  // NOLINT
 void DimOp::Build(Builder &builder,
                   OperationArgument &argument,
                   const std::string &name) {
-  pir::Attribute attr_name =
-      pir::StrAttribute::get(pir::IrContext::Instance(), name);
+  Attribute attr_name = StrAttribute::get(IrContext::Instance(), name);
   argument.AddAttribute("name", attr_name);
-  argument.output_types.emplace_back(
-      pir::IndexType::get(pir::IrContext::Instance()));
+  argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
 }
 
-const std::string DimOp::getName() {
-  return attribute<pir::StrAttribute>("name").AsString();
+const std::string DimOp::GetName() {
+  return attribute<StrAttribute>("name").AsString();
 }
 
-void DimOp::setName(std::string attrName) {
+void DimOp::SetName(std::string attrName) {
   operation()->set_attribute(
-      "name", pir::StrAttribute::get(pir::IrContext::Instance(), attrName));
+      "name", StrAttribute::get(IrContext::Instance(), attrName));
 }
 
 const char *TieProductEqualOp::attributes_name[attributes_num] = {
@@ -163,43 +170,42 @@ void TieProductEqualOp::Build(Builder &builder,
                               OperationArgument &argument,
                               int64_t lhs_len,
                               int64_t rhs_len,
-                              const std::vector<pir::OpResult> &inputs) {
-  pir::Attribute attr_lhs_len =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), lhs_len);
+                              const std::vector<Value> &inputs) {
+  Attribute attr_lhs_len = Int64Attribute::get(IrContext::Instance(), lhs_len);
   argument.AddAttribute("lhs_len", attr_lhs_len);
-  pir::Attribute attr_rhs_len =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), rhs_len);
+  Attribute attr_rhs_len = Int64Attribute::get(IrContext::Instance(), rhs_len);
   argument.AddAttribute("rhs_len", attr_rhs_len);
-  argument.inputs = inputs;
+  argument.AddInputs(inputs);
 }
 
 void TieProductEqualOp::Build(Builder &builder,
                               OperationArgument &argument,
-                              const std::vector<pir::OpResult> &lhs,
-                              const std::vector<pir::OpResult> &rhs) {
-  pir::Attribute attr_lhs_len =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), lhs.size());
+                              const std::vector<Value> &lhs,
+                              const std::vector<Value> &rhs) {
+  Attribute attr_lhs_len =
+      Int64Attribute::get(IrContext::Instance(), lhs.size());
   argument.AddAttribute("lhs_len", attr_lhs_len);
-  pir::Attribute attr_rhs_len =
-      pir::Int64Attribute::get(pir::IrContext::Instance(), rhs.size());
+  Attribute attr_rhs_len =
+      Int64Attribute::get(IrContext::Instance(), rhs.size());
   argument.AddAttribute("rhs_len", attr_rhs_len);
 
-  argument.inputs = lhs;
-  argument.inputs.insert(argument.inputs.end(), rhs.begin(), rhs.end());
+  argument.AddInputs(lhs);
+  argument.AddInputs(rhs);
 }
 
-std::vector<pir::Value> TieProductEqualOp::getLhs() {
-  int64_t lhs_len = attribute<pir::Int64Attribute>("lhs_len").data();
-  std::vector<pir::Value> res;
+std::vector<Value> TieProductEqualOp::lhs() {
+  int64_t lhs_len = attribute<Int64Attribute>("lhs_len").data();
+  std::vector<Value> res;
   for (uint32_t idx = 0; idx < lhs_len; idx++) {
     res.push_back(operand_source(idx));
   }
   return res;
 }
-std::vector<pir::Value> TieProductEqualOp::getRhs() {
-  int64_t lhs_len = attribute<pir::Int64Attribute>("lhs_len").data();
-  int64_t rhs_len = attribute<pir::Int64Attribute>("rhs_len").data();
-  std::vector<pir::Value> res;
+
+std::vector<Value> TieProductEqualOp::rhs() {
+  int64_t lhs_len = attribute<Int64Attribute>("lhs_len").data();
+  int64_t rhs_len = attribute<Int64Attribute>("rhs_len").data();
+  std::vector<Value> res;
   for (uint32_t idx = 0; idx < rhs_len; idx++) {
     res.push_back(operand_source(lhs_len + idx));
   }
@@ -207,27 +213,24 @@ std::vector<pir::Value> TieProductEqualOp::getRhs() {
 }
 
 const char *TieShapeOp::attributes_name[attributes_num] = {
-    SymbolicDim::getSymbolicDimAttrName().c_str()};  // NOLINT
+    SymbolicDimOp::GetSymbolicDimAttrName().c_str()};  // NOLINT
 
 void TieShapeOp::Build(Builder &builder,
                        OperationArgument &argument,
-                       const pir::OpResult &input) {
-  argument.inputs = {input};
+                       Value input) {
+  argument.AddInput(input);
 }
+
 void TieShapeOp::Build(Builder &builder,             // NOLINT
                        OperationArgument &argument,  // NOLINT
-                       const pir::OpResult &input,
-                       const std::vector<pir::OpResult> &dims) {
-  argument.inputs = {input};
-  for (auto &dim : dims) {
-    argument.inputs.push_back(dim);
-  }
+                       Value input,
+                       const std::vector<Value> &dims) {
+  argument.AddInput(input);
+  argument.AddInputs(dims);
 }
 
-pir::Value TieShapeOp::getValue() { return operand_source(0); }
-
-std::vector<pir::Value> TieShapeOp::getShapeDimIndexes() {
-  std::vector<pir::Value> res;
+std::vector<Value> TieShapeOp::dims() {
+  std::vector<Value> res;
   for (uint32_t i = 1; i < num_operands(); i++) {
     res.push_back(operand_source(i));
   }
@@ -235,48 +238,114 @@ std::vector<pir::Value> TieShapeOp::getShapeDimIndexes() {
 }
 
 void FuncOp::Build(Builder &builder, OperationArgument &argument) {
-  argument.num_regions = 1;
+  argument.AddRegion(nullptr);
 }
 
-pir::Block *FuncOp::block() {
-  pir::Region &region = (*this)->region(0);
+Block *FuncOp::block() {
+  Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
   return region.front();
 }
 
-void TensorDimOp::Build(Builder &builder,
-                        OperationArgument &argument,
-                        const pir::OpResult &source,
-                        const pir::OpResult &index) {
-  argument.inputs = {source, index};
-  argument.output_types.emplace_back(
-      pir::IndexType::get(pir::IrContext::Instance()));
+void FuncOp::Print(IrPrinter &printer) {
+  auto &os = printer.os;
+  os << " shape.func () ";
+  os << "{";
+  for (auto item : *block()) {
+    os << "\n  ";
+    printer.PrintOperation(item);
+  }
+  os << "\n }";
 }
 
 void TensorDimOp::Build(Builder &builder,
                         OperationArgument &argument,
-                        const pir::OpResult &source,
+                        Value source,
+                        Value index) {
+  argument.AddInputs({source, index});
+  argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
+}
+
+void TensorDimOp::Build(Builder &builder,
+                        OperationArgument &argument,
+                        Value source,
                         int64_t index) {
-  pir::OpResult indexValue =
+  OpResult index_value =
       builder
-          .Build<pir::ConstantOp>(
-              pir::Int64Attribute::get(pir::IrContext::Instance(), 2),
-              pir::IndexType::get(pir::IrContext::Instance()))
+          .Build<ConstantOp>(Int64Attribute::get(IrContext::Instance(), index),
+                             IndexType::get(IrContext::Instance()))
           ->result(0);
-  argument.inputs = {source, indexValue};
-  argument.output_types.emplace_back(
-      pir::IndexType::get(pir::IrContext::Instance()));
+  argument.AddInputs({source, index_value});
+  argument.output_types.emplace_back(IndexType::get(IrContext::Instance()));
 }
 
-pir::Value TensorDimOp::getSource() { return operand_source(0); }
+std::optional<int64_t> TensorDimOp::GetConstantIndex() {
+  auto op = index().dyn_cast<OpResult>().owner();
+  int64_t index =
+      op->dyn_cast<ConstantOp>().value().dyn_cast<pir::Int64Attribute>().data();
+  return index;
+}
 
-pir::Value TensorDimOp::getIndex() { return operand_source(1); }
-}  // namespace dialect
-}  // namespace pir
+void ShapeOfOp::Build(Builder &builder,             // NOLINT
+                      OperationArgument &argument,  // NOLINT
+                      Value input) {
+  argument.AddInput(input);
+}
 
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::SymbolicDim)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::DimOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieProductEqualOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TieShapeOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::FuncOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(pir::dialect::TensorDimOp)
+void FromElementsOp::Build(Builder &builder,             // NOLINT
+                           OperationArgument &argument,  // NOLINT
+                           const std::vector<Value> &elements) {
+  argument.AddInputs(elements);
+}
+
+std::vector<Value> FromElementsOp::elements() {
+  std::vector<pir::Value> elements;
+  for (uint32_t idx = 0; idx < num_operands(); idx++) {
+    elements.push_back(operand_source(static_cast<int>(idx)));
+  }
+  return elements;
+}
+
+void ExtractOp::Build(Builder &builder,             // NOLINT
+                      OperationArgument &argument,  // NOLINT
+                      Value tensor,
+                      std::vector<Value> indices) {
+  argument.AddInput(tensor);
+  argument.AddInputs(indices);
+}
+
+std::vector<Value> ExtractOp::indices() {
+  std::vector<pir::Value> indices;
+  for (uint32_t idx = 1; idx < num_operands(); idx++) {
+    indices.push_back(operand_source(static_cast<int>(idx)));
+  }
+  return indices;
+}
+
+void ConstantIndexOp::Build(Builder &builder,
+                            OperationArgument &argument,
+                            int64_t value) {
+  ConstantOp::Build(
+      builder, argument, builder.index_attr(value), builder.index_type());
+}
+
+void IndexCastOp::Build(Builder &builder,             // NOLINT
+                        OperationArgument &argument,  // NOLINT
+                        Type out,
+                        Value in) {
+  argument.AddInput(in);
+}
+
+}  // namespace pir::shape
+
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::SymbolicDimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::DimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::TieProductEqualOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::TieShapeOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::FuncOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::TensorDimOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ShapeOfOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::FromElementsOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ExtractOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::ConstantIndexOp);
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::shape::IndexCastOp);

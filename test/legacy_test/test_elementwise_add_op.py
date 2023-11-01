@@ -56,8 +56,7 @@ class TestElementwiseAddOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.check_output(
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def test_check_grad_normal(self):
@@ -69,7 +68,8 @@ class TestElementwiseAddOp(OpTest):
             'Out',
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def test_check_grad_ingore_x(self):
@@ -82,7 +82,8 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set("X"),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def test_check_grad_ingore_y(self):
@@ -95,7 +96,8 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set('Y'),
             check_dygraph=self.check_dygraph(),
             check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def init_input_output(self):
@@ -151,8 +153,7 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             place,
             atol=1e-3,
             check_dygraph=self.check_dygraph(),
-            check_prim=self.check_prim,
-            check_new_ir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
         )
 
     def test_check_grad_normal(self):
@@ -167,7 +168,8 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -178,7 +180,8 @@ class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -212,7 +215,7 @@ class TestBF16ElementwiseAddOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
@@ -221,7 +224,8 @@ class TestBF16ElementwiseAddOp(OpTest):
             ['X', 'Y'],
             'Out',
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -232,7 +236,8 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -243,7 +248,8 @@ class TestBF16ElementwiseAddOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def if_enable_cinn(self):
@@ -738,27 +744,16 @@ class TestComplexElementwiseAddOp(OpTest):
         self.out = self.x + self.y
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_pir=False)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=False)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=False)
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
@@ -777,7 +772,11 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
-        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            a = 1.5
+            b = paddle.full([4, 5, 6], True, dtype='bool')
+            c = a + b
+            self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
         paddle.disable_static()

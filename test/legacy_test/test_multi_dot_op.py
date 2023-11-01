@@ -318,9 +318,7 @@ class APITestMultiDot(unittest.TestCase):
             expected_result,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='two value is            {}\n{}, check diff!'.format(
-                np_res, expected_result
-            ),
+            err_msg=f'two value is            {np_res}\n{expected_result}, check diff!',
         )
 
     def test_dygraph_without_out(self):

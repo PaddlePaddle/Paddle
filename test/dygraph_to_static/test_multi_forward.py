@@ -14,6 +14,8 @@
 
 import unittest
 
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+
 import paddle
 
 
@@ -31,7 +33,8 @@ class MyLayer(paddle.nn.Layer):
         return self.linear(x)
 
 
-class TestBackward(unittest.TestCase):
+class TestBackward(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_order_0(self):
         """
         loss = 1 * w * 1 + 2 * w * 2
@@ -46,6 +49,7 @@ class TestBackward(unittest.TestCase):
         loss.backward()
         self.assertEqual(model.linear.weight.grad, 5)
 
+    @test_legacy_and_pir
     def test_order_1(self):
         """
         loss = 2 * w * 2  + 1 * w * 1

@@ -137,9 +137,7 @@ class TestStaticDataLoader(unittest.TestCase):
             for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
-                    assert len(d) == len(places), "{} != {}".format(
-                        len(d), len(places)
-                    )
+                    assert len(d) == len(places), f"{len(d)} != {len(places)}"
                     for i, item in enumerate(d):
                         image = item['image']
                         label = item['label']
@@ -298,9 +296,7 @@ class TestStaticDataLoaderWithBatchedDataset(TestStaticDataLoader):
             for _ in range(EPOCH_NUM):
                 step = 0
                 for d in dataloader:
-                    assert len(d) == len(places), "{} != {}".format(
-                        len(d), len(places)
-                    )
+                    assert len(d) == len(places), f"{len(d)} != {len(places)}"
                     for i, item in enumerate(d):
                         image = item['image']
                         label = item['label']
