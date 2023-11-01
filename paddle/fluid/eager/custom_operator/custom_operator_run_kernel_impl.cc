@@ -17,7 +17,6 @@
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/pybind/eager_utils.h"
 #include "paddle/phi/api/include/tensor.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
