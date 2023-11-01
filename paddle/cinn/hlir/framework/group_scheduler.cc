@@ -618,6 +618,9 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
   return os;
 }
 
+// TODO(BiynXu): After implementing auxiliary data structures such as IntegerSet
+// and MultiDimIntegerSet, re implement this function to simplify these ugly
+// codes.
 void GroupScheduler::AllocateStorage() {
   if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
