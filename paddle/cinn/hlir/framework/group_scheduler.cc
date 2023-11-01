@@ -608,6 +608,16 @@ void GroupScheduler::BindCudaAxis() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
+struct Range {
+  int min;
+  int max;
+};
+
+std::ostream& operator<<(std::ostream& os, const Range& x) {
+  os << "(" << x.min << ", " << x.max << ")";
+  return os;
+}
+
 void GroupScheduler::AllocateStorage() {
   if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
@@ -686,11 +696,6 @@ void GroupScheduler::AllocateStorage() {
     kCudaThread,
     kSerial,
     kCudaThreadAndSerial,
-  };
-
-  struct Range {
-    int min;
-    int max;
   };
 
   // function to calculate the range of the specified CUDA axis in a indice
@@ -862,44 +867,32 @@ void GroupScheduler::AllocateStorage() {
         store_indice_value, ir::ForType::GPUThread, store_block_name);
     auto load_thread_coefficient_and_range = GetCoefficientAndRange(
         load_indice_value, ir::ForType::GPUThread, load_block_name);
-    VLOG(6) << "store_indice_value: " << store_indice_value;
-    VLOG(6) << "load_indice_value: " << load_indice_value;
-    VLOG(6) << "store_block_name: " << store_block_name;
-    VLOG(6) << "load_block_name: " << load_block_name;
-    VLOG(6) << "store_thread_overall_range = ("
-            << store_thread_overall_range.min << ", "
-            << store_thread_overall_range.max << ")";
-    VLOG(6) << "load_thread_overall_range = (" << load_thread_overall_range.min
-            << ", " << load_thread_overall_range.max << ")";
-    VLOG(6) << "store_serial_overall_range = ("
-            << store_serial_overall_range.min << ", "
-            << store_serial_overall_range.max << ")";
-    VLOG(6) << "load_serial_overall_range = (" << load_serial_overall_range.min
-            << ", " << load_serial_overall_range.max << ")";
+    VLOG(6) << "store_block_name: " << store_block_name
+            << ", load_block_name: " << load_block_name;
+    VLOG(6) << "store_indice_value: " << store_indice_value
+            << ", load_indice_value: " << load_indice_value;
+    VLOG(6) << "store_thread_overall_range = " << store_thread_overall_range;
+    VLOG(6) << "load_thread_overall_range = " << load_thread_overall_range;
+    VLOG(6) << "store_serial_overall_range = " << store_serial_overall_range;
+    VLOG(6) << "load_serial_overall_range = " << load_serial_overall_range;
     VLOG(6) << "store_thread_coefficient_and_range[0] = <"
-            << store_thread_coefficient_and_range[0].first << ", ("
-            << store_thread_coefficient_and_range[0].second.min << ", "
-            << store_thread_coefficient_and_range[0].second.max << ")>";
+            << store_thread_coefficient_and_range[0].first << ", "
+            << store_thread_coefficient_and_range[0].second << ">";
     VLOG(6) << "load_thread_coefficient_and_range[0] = <"
-            << load_thread_coefficient_and_range[0].first << ", ("
-            << load_thread_coefficient_and_range[0].second.min << ", "
-            << load_thread_coefficient_and_range[0].second.max << ")>";
+            << load_thread_coefficient_and_range[0].first << ", "
+            << load_thread_coefficient_and_range[0].second << ">";
     VLOG(6) << "store_thread_coefficient_and_range[1] = <"
-            << store_thread_coefficient_and_range[1].first << ", ("
-            << store_thread_coefficient_and_range[1].second.min << ", "
-            << store_thread_coefficient_and_range[1].second.max << ")>";
+            << store_thread_coefficient_and_range[1].first << ", "
+            << store_thread_coefficient_and_range[1].second << ">";
     VLOG(6) << "load_thread_coefficient_and_range[1] = <"
-            << load_thread_coefficient_and_range[1].first << ", ("
-            << load_thread_coefficient_and_range[1].second.min << ", "
-            << load_thread_coefficient_and_range[1].second.max << ")>";
+            << load_thread_coefficient_and_range[1].first << ", "
+            << load_thread_coefficient_and_range[1].second << ">";
     VLOG(6) << "store_thread_coefficient_and_range[2] = <"
-            << store_thread_coefficient_and_range[2].first << ", ("
-            << store_thread_coefficient_and_range[2].second.min << ", "
-            << store_thread_coefficient_and_range[2].second.max << ")>";
+            << store_thread_coefficient_and_range[2].first << ", "
+            << store_thread_coefficient_and_range[2].second << ">";
     VLOG(6) << "load_thread_coefficient_and_range[2] = <"
-            << load_thread_coefficient_and_range[2].first << ", ("
-            << load_thread_coefficient_and_range[2].second.min << ", "
-            << load_thread_coefficient_and_range[2].second.max << ")>";
+            << load_thread_coefficient_and_range[2].first << ", "
+            << load_thread_coefficient_and_range[2].second << ">";
     return !(store_thread_overall_range.min <= load_thread_overall_range.min &&
              store_thread_overall_range.max >= load_thread_overall_range.max &&
              store_serial_overall_range.min <= load_serial_overall_range.min &&
@@ -946,44 +939,34 @@ void GroupScheduler::AllocateStorage() {
         store_indice_value, ir::ForType::GPUBlock, store_block_name);
     auto load_block_coefficient_and_range = GetCoefficientAndRange(
         load_indice_value, ir::ForType::GPUBlock, load_block_name);
-    VLOG(6) << "store_indice_value: " << store_indice_value;
-    VLOG(6) << "load_indice_value: " << load_indice_value;
-    VLOG(6) << "store_block_name: " << store_block_name;
-    VLOG(6) << "load_block_name: " << load_block_name;
-    VLOG(6) << "store_block_overall_range = (" << store_block_overall_range.min
-            << ", " << store_block_overall_range.max << ")";
-    VLOG(6) << "load_block_overall_range = (" << load_block_overall_range.min
-            << ", " << load_block_overall_range.max << ")";
-    VLOG(6) << "store_thread_and_serial_overall_range = ("
-            << store_thread_and_serial_overall_range.min << ", "
-            << store_thread_and_serial_overall_range.max << ")";
-    VLOG(6) << "load_thread_and_serial_overall_range = ("
-            << load_thread_and_serial_overall_range.min << ", "
-            << load_thread_and_serial_overall_range.max << ")";
+    VLOG(6) << "store_block_name: " << store_block_name
+            << ", load_block_name: " << load_block_name;
+    VLOG(6) << "store_indice_value: " << store_indice_value
+            << ", load_indice_value: " << load_indice_value;
+    VLOG(6) << "store_block_overall_range = " << store_block_overall_range;
+    VLOG(6) << "load_block_overall_range = " << load_block_overall_range;
+    VLOG(6) << "store_thread_and_serial_overall_range = "
+            << store_thread_and_serial_overall_range;
+    VLOG(6) << "load_thread_and_serial_overall_range = "
+            << load_thread_and_serial_overall_range;
     VLOG(6) << "store_block_coefficient_and_range[0] = <"
-            << store_block_coefficient_and_range[0].first << ", ("
-            << store_block_coefficient_and_range[0].second.min << ", "
-            << store_block_coefficient_and_range[0].second.max << ")>";
+            << store_block_coefficient_and_range[0].first << ", "
+            << store_block_coefficient_and_range[0].second << ">";
     VLOG(6) << "load_block_coefficient_and_range[0] = <"
-            << load_block_coefficient_and_range[0].first << ", ("
-            << load_block_coefficient_and_range[0].second.min << ", "
-            << load_block_coefficient_and_range[0].second.max << ")>";
+            << load_block_coefficient_and_range[0].first << ", "
+            << load_block_coefficient_and_range[0].second << ">";
     VLOG(6) << "store_block_coefficient_and_range[1] = <"
-            << store_block_coefficient_and_range[1].first << ", ("
-            << store_block_coefficient_and_range[1].second.min << ", "
-            << store_block_coefficient_and_range[1].second.max << ")>";
+            << store_block_coefficient_and_range[1].first << ", "
+            << store_block_coefficient_and_range[1].second << ">";
     VLOG(6) << "load_block_coefficient_and_range[1] = <"
-            << load_block_coefficient_and_range[1].first << ", ("
-            << load_block_coefficient_and_range[1].second.min << ", "
-            << load_block_coefficient_and_range[1].second.max << ")>";
+            << load_block_coefficient_and_range[1].first << ", "
+            << load_block_coefficient_and_range[1].second << ">";
     VLOG(6) << "store_block_coefficient_and_range[2] = <"
-            << store_block_coefficient_and_range[2].first << ", ("
-            << store_block_coefficient_and_range[2].second.min << ", "
-            << store_block_coefficient_and_range[2].second.max << ")>";
+            << store_block_coefficient_and_range[2].first << ", "
+            << store_block_coefficient_and_range[2].second << ">";
     VLOG(6) << "load_block_coefficient_and_range[2] = <"
-            << load_block_coefficient_and_range[2].first << ", ("
-            << load_block_coefficient_and_range[2].second.min << ", "
-            << load_block_coefficient_and_range[2].second.max << ")>";
+            << load_block_coefficient_and_range[2].first << ", "
+            << load_block_coefficient_and_range[2].second << ">";
     return !(store_block_overall_range.min <= load_block_overall_range.min &&
              store_block_overall_range.max >= load_block_overall_range.max &&
              store_thread_and_serial_overall_range.min <=
