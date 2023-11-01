@@ -219,24 +219,19 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   // record each job's run time
 #if defined(PADDLE_WITH_CUDA)
   if (FLAGS_auto_parallel_profiler) {
-    std::unordered_map<std::string, int> job_type_to_id;
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
       const std::string& job_type = job->Type();
       double start_time, end_time;
       std::tie(start_time, end_time) =
           interpretercores_[job_idx]->InterpreterRunTime();
-      if (job_type_to_id.count(job_type) == 0) {
-        job_type_to_id[job_type] = 0;
-      } else {
-        job_type_to_id[job_type] += 1;
-      }
+
       // Note(sonder): Used to record the runtime of each job in order to
       // generate a parallel pipeline timeline. Job runtime information can be
       // extracted from the logs using the scripts "profiler_helper_static.py".
       // Do not modify, as it may affect the results of regular expression
       // matching.
-      VLOG(0) << "Profiler Info: Job (" << job_type_to_id[job_type]
+      VLOG(0) << "Profiler Info: Job (" << job->MicroBatchId()
               << "), type = " << job_type
               << ", micro_batch_id = " << job->MicroBatchId()
               << ", job_start_time = " << std::to_string(start_time)

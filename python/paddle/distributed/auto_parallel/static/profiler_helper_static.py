@@ -42,10 +42,37 @@ def process_log_data(log_data, device_id):
         "optimizer": "rail_response",  # RGB: 238, 142, 0
         "default": "thread_state_unknown",  # RGB: 199, 155, 125
     }
+    step = 0
     for match in matches:
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
         if job_type in ["lr"]:
             continue
+
+        if job_type == "forward" and int(micro_batch_id) == 0:
+            if step > 0:
+                event_step_stop = {
+                    "name": "Step " + str(step - 1),
+                    "cat": "Step",
+                    "ph": "E",
+                    "ts": float(job_start_time.strip()) * 1000,
+                    "pid": "Main",
+                    "tid": "Step" + str(device_id),
+                    "cname": color_map["default"],
+                }
+                events.append(event_step_stop)
+
+            event_step_start = {
+                "name": "Step " + str(step),
+                "cat": "Step",
+                "ph": "B",
+                "ts": float(job_start_time.strip()) * 1000,
+                "pid": "Main",
+                "tid": "Step" + str(device_id),
+                "cname": color_map["default"],
+            }
+            events.append(event_step_start)
+
+            step += 1
 
         event_start = {
             "name": job_type[0].upper() + "_" + str(job_id),
@@ -68,6 +95,15 @@ def process_log_data(log_data, device_id):
         events.append(event_start)
         events.append(event_end)
 
+    event_step_end = {
+        "name": "Step " + str(step),
+        "cat": "Step",
+        "ph": "E",
+        "ts": events[-1]["ts"],
+        "pid": "Main",
+        "tid": "Step" + str(device_id),
+        "cname": color_map["default"],
+    }
     return events
 
 
@@ -94,19 +130,29 @@ def main():
         all_events.extend(
             [
                 {
-                    "args": {"name": "GPU"},
+                    "args": {"name": "Step"},
                     "cat": "__metadata",
                     "name": "thread_name",
                     "ph": "M",
                     "pid": "Main",
-                    "tid": i,
+                    "tid": i * 2,
                     "ts": 0,
-                }
+                },
+                {
+                    "args": {"name": f"GPU:{i}"},
+                    "cat": "__metadata",
+                    "name": "thread_name",
+                    "ph": "M",
+                    "pid": "Main",
+                    "tid": i * 2 + 1,
+                    "ts": 0,
+                },
             ]
         )
     json_str = json.dumps({"traceEvents": all_events})
     for i in range(len(args.devices.split(","))):
-        json_str = json_str.replace(f'"GPU{i}"', f'{i}')
+        json_str = json_str.replace(f'"Step{i}"', f'{i * 2}')
+        json_str = json_str.replace(f'"GPU{i}"', f'{i * 2 + 1}')
 
     with open(save_path, "w") as f:
         f.write(json_str)

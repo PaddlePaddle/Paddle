@@ -155,8 +155,6 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   // For log and debug
   std::string GetDepsString() const;
 
-  void AddGpuStreamEvents();
-
   bool is_build_{false};
   bool static_build_{false};
   // Note(sonder): share the op dependency and event analysis procedure.
@@ -220,7 +218,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::vector<HookFunc> hookfuncs_;
 
 #if defined(PADDLE_WITH_CUDA)
-  std::vector<phi::GpuTimer> stream_timers_;
+  phi::GpuTimer calculate_stream_timer_;
 #endif
 };
 
