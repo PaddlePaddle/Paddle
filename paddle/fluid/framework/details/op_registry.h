@@ -318,19 +318,32 @@ struct OpInfoFiller<T, kVarTypeInference> {
   }
 };
 
+template <typename T, typename = void>
+struct InferMetaTrait {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_shape_ = [](InferShapeContext* ctx) {
+      T inference;
+      inference(ctx);
+    };
+  }
+};
+
+template <typename T>
+struct InferMetaTrait<T, decltype(T::infer_meta_)> {
+  static void call(const char* op_type UNUSED, OpInfo* info) {
+    info->infer_meta_ = [](phi::InferMetaContext* ctx) {
+      T inference;
+      inference.infer_meta_(ctx);
+    };
+  }
+};
+
 template <typename T>
 struct OpInfoFiller<T, kShapeInference> {
   void operator()(const char* op_type UNUSED, OpInfo* info) const {
     // Note: if fill InferShapeFN by this Filler, the infershape here
     // will overwrite the op->InferShape func registered in kOperator Filler
-    info->infer_shape_ = [](InferShapeContext* ctx) {
-      T inference;
-      inference(ctx);
-    };
-    info->infer_meta_ = [](phi::InferMetaContext* ctx) {
-      T inference;
-      inference(ctx);
-    };
+    InferMetaTrait<T>::call(op_type, info);
   }
 };
 
