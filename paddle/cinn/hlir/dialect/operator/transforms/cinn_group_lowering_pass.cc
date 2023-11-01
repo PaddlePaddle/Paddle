@@ -159,7 +159,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         };
 
         // Generate jit kernel op input and output
-
         auto vec_ins = GetBlockOutsideInput(group->ops);
 
         std::vector<pir::Value> vec_new_ins;
