@@ -1750,6 +1750,10 @@ class Completer:
                         if out_var.shape == in_var.shape:
                             out_dist_attr.dims_mapping = ref_dims_mapping
                         else:
+                            assert (
+                                len(out_var.shape) == 1
+                                and out_var.shape[0] == 1
+                            )
                             out_dist_attr.dims_mapping = [
                                 -1 for _ in out_var.shape
                             ]
