@@ -147,6 +147,20 @@ void Tensor::copy_(const Tensor &src,
 
     auto meta_dist_input_x = MakeDistMetaTensor(*src.impl());
 
+    auto this_dist_attr =
+              std::static_pointer_cast<phi::distributed::DistTensor>(
+              this->impl())->dist_attr();
+    PADDLE_ENFORCE_EQ((meta_dist_input_x.dist_attr() == this_dist_attr
+                       || this_dist_attr.empty()),
+                      true,
+                      phi::errors::PreconditionNotMet(
+                          "DistAttr is different of dst "
+                          "tensor and args %s, which "
+                          "current tensor holds %s "
+                          "Copy cannot be performed!",
+                          meta_dist_input_x.dist_attr(),
+                          this_dist_attr));
+
     auto dist_out = SetKernelDistOutput(this, meta_dist_input_x.dist_attr());
     auto dense_out = dist_out->unsafe_mutable_value();
     if (!rank_is_in_current_mesh) {

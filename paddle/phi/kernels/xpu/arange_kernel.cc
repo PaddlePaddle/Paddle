@@ -20,11 +20,11 @@ limitations under the License. */
 namespace phi {
 
 template <typename T, typename Context>
-void ArangeKernel(const Context& dev_ctx,
-                  const DenseTensor& start,
-                  const DenseTensor& end,
-                  const DenseTensor& step,
-                  DenseTensor* out) {
+void ArangeTensorKernel(const Context& dev_ctx,
+                        const DenseTensor& start,
+                        const DenseTensor& end,
+                        const DenseTensor& step,
+                        DenseTensor* out) {
   T start_value = GetValue<T, Context>(dev_ctx, start);
   T end_value = GetValue<T, Context>(dev_ctx, end);
   T step_value = GetValue<T, Context>(dev_ctx, step);
@@ -49,8 +49,14 @@ void ArangeKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    arange, XPU, ALL_LAYOUT, phi::ArangeKernel, float, double, int, int64_t) {
+PD_REGISTER_KERNEL(arange_tensor,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ArangeTensorKernel,
+                   float,
+                   double,
+                   int,
+                   int64_t) {
   kernel->InputAt(0).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(1).SetBackend(phi::Backend::ALL_BACKEND);
   kernel->InputAt(2).SetBackend(phi::Backend::ALL_BACKEND);

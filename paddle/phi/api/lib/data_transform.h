@@ -199,7 +199,7 @@ ReshardApiInputToReplicatedKernelInput(
     const phi::distributed::TensorDistAttr& dist_attr);
 
 paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
-ReshardApiInputToReplicatedKernelInput(
+ReshardApiInputToReplicatedKerneg'ilInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<std::vector<Tensor>>& tensors,
     const std::vector<phi::distributed::TensorDistAttr>& dist_attr);
