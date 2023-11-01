@@ -304,7 +304,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  int root_id = opts.source_rank * in_wrapper.size() + opts.source_root;
   platform::RecordEvent record_event(
       "xccl broadcast compute", platform::TracerEventType::Communication, 1);
   return RunFnInXCCLEnv(
@@ -901,7 +900,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const BroadcastOptions& opts) {
-  int root_id = opts.source_rank * in_tensors.size() + opts.source_root;
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
