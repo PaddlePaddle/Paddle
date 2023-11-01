@@ -2074,7 +2074,7 @@ pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
   IR_ENFORCE(op_desc.Input("Start").size() == 1,
-             "[op:%s] Input [Start] should not be null",
+             "[op:%s] Input [Start]'s size should be equal to 1",
              op_desc.Type());
   auto var_desc = op_desc.Block()->FindVarRecursive(op_desc.Input("Start")[0]);
   IR_ENFORCE(var_desc != nullptr,
