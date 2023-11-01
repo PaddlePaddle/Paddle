@@ -84,9 +84,10 @@ WORKDIR pip-20.0.1
 RUN python3.9 setup.py install && \
   python3.8 setup.py install
 
+WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/1f/7f/4da15e07ccd11c84c1ccc8f6e24288d5e76c99441bf80e315b33542db951/pip-23.3.1.tar.gz && tar -zxf pip-23.3.1.tar.gz
 WORKDIR pip-23.3.1
-  python3.10 setup.py install && \
+RUN python3.10 setup.py install && \
   python3.11 setup.py install && \
   python3.12 setup.py install
 
