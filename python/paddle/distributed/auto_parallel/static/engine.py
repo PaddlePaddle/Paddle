@@ -1720,7 +1720,6 @@ class Engine:
                 time.sleep(1)
 
         else:
-            fetch_names.append('layer_norm_2.b_0@GRAD')
             outs = self._executor.run(
                 self.main_program,
                 feed=feed_dict,
