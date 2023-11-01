@@ -34,13 +34,7 @@ void NonZeroKernel(const Context& dev_ctx,
   int* true_num = RAII_GUARD.alloc_l3_or_gm<int32_t>(1);
   int true_num_cpu;
   int ret = xpu::nonzero_count(dev_ctx.x_context(), cond_data, true_num, numel);
-  PADDLE_ENFORCE_EQ(
-      ret,
-      XPU_SUCCESS,
-      phi::errors::External(
-          "XPU nonzero_count kernel return wrong value[%d %s] in WhereIndex",
-          ret,
-          XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "nonzero_count");
 
   memory_utils::Copy(phi::CPUPlace(),
                      static_cast<void*>(&true_num_cpu),
@@ -58,12 +52,7 @@ void NonZeroKernel(const Context& dev_ctx,
   auto condition_shape = phi::vectorize<int>(dims);
   ret = xpu::where(
       dev_ctx.x_context(), cond_data, out_data, condition_shape, true_num_cpu);
-  PADDLE_ENFORCE_EQ(ret,
-                    XPU_SUCCESS,
-                    phi::errors::External(
-                        "XPU masked_select kernel return wrong value[%d %s]",
-                        ret,
-                        XPUAPIErrorMsg[ret]));
+  PADDLE_ENFORCE_XDNN_SUCCESS(ret, "where");
 }
 
 }  // namespace phi
