@@ -328,6 +328,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
   return result;
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
 paddle::Tensor BuildEmptyDistPaddleTensor(
     const phi::distributed::ProcessMesh& process_mesh,
     const phi::DDim& dims,
@@ -349,6 +350,7 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
   empty_tensor.set_impl(dist_t);
   return empty_tensor;
 }
+#endif
 
 void run_custom_op_impl(paddle::OpMetaInfo op_info,
                         paddle::CustomOpKernelContext& ctx) {  // NOLINT
@@ -357,12 +359,13 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
   ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
 
-  bool run_auto_parallel = false;
-  bool rank_is_in_current_mesh = true;
-  phi::distributed::ProcessMesh current_process_mesh;
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
 
 #ifdef PADDLE_WITH_DISTRIBUTE
+  bool run_auto_parallel = false;
+  bool rank_is_in_current_mesh = true;
+  phi::distributed::ProcessMesh current_process_mesh;
+
   std::vector<Tensor> x = *all_inputs;
   const phi::distributed::ProcessMesh* mesh = nullptr;
   for (auto& input : x) {
