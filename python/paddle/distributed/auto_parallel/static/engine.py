@@ -251,10 +251,20 @@ class Engine:
 
         self.history = None
 
-        self.newir_prune_startup_prog = None
-        self.newir_program_initialized = False
+        #
+        if os.getenv("FLAGS_enable_prim_in_distribute"):
+            self.enable_prim_in_distribute = True
+        else:
+            self.enable_prim_in_distribute = False
+        #
+        self.newir_prune_startup_program = None
+        #
         self.newir_program = None
         self.param_mapping = None
+        self.newir_program_initialized = False
+        #
+        self.newir_program_after_decomposed = None
+        self.newir_program_decomposed = False
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -845,17 +855,14 @@ class Engine:
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
 
-                if (
-                    os.environ.get("FLAGS_enable_prim_in_distribute")
-                    is not None
-                ):
-                    self.newir_prune_startup_prog = (
+                if self.enable_prim_in_distribute:
+                    self.newir_prune_startup_program = (
                         paddle.pir.translate_to_new_ir(prune_startup_prog.desc)
                     )
                     with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                        self.newir_prune_startup_prog
+                        self.newir_prune_startup_program
                     ):
-                        self._executor.run(self.newir_prune_startup_prog)
+                        self._executor.run(self.newir_prune_startup_program)
                 else:
                     self._executor.run(prune_startup_prog)
 
@@ -1498,6 +1505,11 @@ class Engine:
         program,
         feed,
     ):
+        if feed is None:
+            raise RuntimeError(
+                "To add data ops for input variable, please specify feed list."
+            )
+
         tmp_program = program.clone()
 
         global_block = tmp_program.global_block()
@@ -1524,17 +1536,30 @@ class Engine:
                 )
         return tmp_program
 
-    def _get_all_ops(self, newir_program):
-        fwd_ops = []
-        bwd_ops = []
-        global_block = newir_program.global_block()
-        for op in global_block.ops:
-            if op.name() not in fwd_ops and op.name() not in bwd_ops:
-                if op.name().endswith("_grad"):
-                    bwd_ops.append(op.name())
-                else:
-                    fwd_ops.append(op.name())
-        return fwd_ops, bwd_ops
+    def _translate_to_newir_program(self, feed_dict=None):
+        if not self.newir_program_initialized:
+            if feed_dict is not None:
+                tmp_program = self._add_data_ops(self.main_program, feed_dict)
+            else:
+                tmp_program = self.main_program.clone()
+
+            (
+                newir_program,
+                param_mapping,
+            ) = paddle.pir.translate_to_new_ir_with_param_map(tmp_program.desc)
+
+            data_ops = []
+            global_block = newir_program.global_block()
+            for op in global_block.ops:
+                if op.name() == "pd_op.data":
+                    data_ops.append(op)
+            insert_point = 0
+            for data_op in data_ops:
+                global_block.move_op(data_op, insert_point)
+
+            self.newir_program = newir_program
+            self.param_mapping = param_mapping
+            self.newir_program_initialized = True
 
     def _get_fwd_op(self, bwd_op, grad_var_to_var_map):
         bwd_op_input_names = bwd_op.get_input_names()
@@ -1546,16 +1571,6 @@ class Engine:
                 return fwd_op
 
         return None
-
-    # def _check_param_mapping(self, param_mapping):
-    #     invalid_param_mapping = {}
-    #     valid_param_mapping = {}
-    #     for VarDesc, Values in param_mapping.items():
-    #         if len(Values) < 0 or len(Values) > 1:
-    #             invalid_param_mapping[VarDesc] = Values
-    #         else:
-    #             valid_param_mapping[VarDesc] = Values
-    #     return valid_param_mapping, invalid_param_mapping
 
     def _get_new_ir_grad_var_to_var_map(
         self, param_mapping, old_ir_grad_var_to_var_map
@@ -1583,74 +1598,93 @@ class Engine:
                 )
         return new_ir_grad_var_to_var_map
 
-    def _decompose_newir_program(self, newir_program, param_mapping):
-        grad_var_to_var = self._dist_contexts[
-            self._mode
-        ]._dist_op_context.grad_var_to_var
-        assert len(grad_var_to_var.keys()) == 1
-        grad_var_to_var_map = grad_var_to_var[1]
-        newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
-            param_mapping, grad_var_to_var_map
-        )
+    def _decompose_newir_program(self):
+        if not self.newir_program_initialized:
+            raise RuntimeError(
+                "To decompose newir program, please translate the main program to newir program first."
+            )
 
-        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
-        ):
-            core._set_prim_backward_enabled(True)
+        if not self.newir_program_decomposed:
+            prev_fwd_prim_state = core._is_fwd_prim_enabled()
+            prev_bwd_prim_state = core._is_bwd_prim_enabled()
             core._set_prim_forward_enabled(True)
-            ops = newir_program.global_block().ops
-            bwd_ops_name = [
-                "pd_op.layer_norm_grad",
-                "pd_op.dropout_grad",
-                "pd_op.reshape_grad",
-                "pd_op.divide_grad",
-                "pd_op.add_grad",
-                "pd_op.gelu_grad",
-                "pd_op.multiply_grad",
-                "pd_op.sum_grad",
-                "pd_op.transpose_grad",
-            ]
-            for op in ops:
-                if op.name() in bwd_ops_name:
-                    fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
-                    assert fwd_op is not None, "fwd_op is None"
+            core._set_prim_backward_enabled(True)
 
-                    (
-                        new_grads,
-                        bwd_has_decomposed,
-                    ) = decomp.decompose_bwd_op_directly(
-                        newir_program.global_block(),
-                        fwd_op,
-                        op,
-                        newir_grad_var_to_var_map,
-                    )
-                    if not bwd_has_decomposed:
-                        fwd_inputs = [x.source() for x in fwd_op.operands()]
+            grad_var_to_var = self._dist_contexts[
+                self._mode
+            ]._dist_op_context.grad_var_to_var
+            assert len(grad_var_to_var.keys()) == 1
+            grad_var_to_var_map = grad_var_to_var[1]
+            newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
+                self.param_mapping, grad_var_to_var_map
+            )
+
+            # todo: using pir::program_clone for deepcopy
+            program = self.newir_program
+            with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+                program
+            ):
+                ops = program.global_block().ops
+                bwd_ops_name = [
+                    "pd_op.layer_norm_grad",
+                    "pd_op.dropout_grad",
+                    "pd_op.reshape_grad",
+                    "pd_op.divide_grad",
+                    "pd_op.add_grad",
+                    "pd_op.gelu_grad",
+                    "pd_op.multiply_grad",
+                    "pd_op.sum_grad",
+                    "pd_op.transpose_grad",
+                ]
+                for op in ops:
+                    if op.name() in bwd_ops_name:
+                        fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
+                        assert fwd_op is not None, "fwd_op is None"
+
                         (
-                            new_fwd_outputs,
-                            fwd_has_decomposed,
-                        ) = decomp.decompose_fwd_op(
-                            newir_program.global_block(),
+                            new_grads,
+                            bwd_has_decomposed,
+                        ) = decomp.decompose_bwd_op_directly(
+                            program.global_block(),
                             fwd_op,
+                            op,
                             newir_grad_var_to_var_map,
                         )
-                        if fwd_has_decomposed:
-                            new_grads = decomp.decompose_bwd_op_after_fwd_op(
-                                newir_program.global_block(),
-                                fwd_op,
-                                op,
-                                newir_grad_var_to_var_map,
-                                fwd_inputs,
+                        if not bwd_has_decomposed:
+                            fwd_inputs = [x.source() for x in fwd_op.operands()]
+                            (
                                 new_fwd_outputs,
+                                fwd_has_decomposed,
+                            ) = decomp.decompose_fwd_op(
+                                program.global_block(),
+                                fwd_op,
+                                newir_grad_var_to_var_map,
                             )
+                            if fwd_has_decomposed:
+                                new_grads = (
+                                    decomp.decompose_bwd_op_after_fwd_op(
+                                        program.global_block(),
+                                        fwd_op,
+                                        op,
+                                        newir_grad_var_to_var_map,
+                                        fwd_inputs,
+                                        new_fwd_outputs,
+                                    )
+                                )
 
-            ops_name = [op.name() for op in newir_program.global_block().ops]
-            for op_name in bwd_ops_name:
-                assert (
-                    op_name not in ops_name
-                ), "op %s is still in newir_program" % (op_name)
+                ops_name = [
+                    op.name() for op in self.newir_program.global_block().ops
+                ]
+                for op_name in bwd_ops_name:
+                    assert (
+                        op_name not in ops_name
+                    ), "op %s is still in newir_program" % (op_name)
 
-        return newir_program
+                self.newir_program_after_decomposed = program
+                self.newir_program_decomposed = True
+
+                core._set_prim_forward_enabled(prev_fwd_prim_state)
+                core._set_prim_backward_enabled(prev_bwd_prim_state)
 
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
@@ -1663,42 +1697,9 @@ class Engine:
         ):
             self._prepare_reader()
 
-        if os.environ.get("FLAGS_enable_prim_in_distribute") is not None:
-            if not self.newir_program_initialized:
-                tmp_program = self._add_data_ops(self.main_program, feed_dict)
-                (
-                    newir_program,
-                    param_mapping,
-                ) = paddle.pir.translate_to_new_ir_with_param_map(
-                    tmp_program.desc
-                )
-
-                data_ops = []
-                global_block = newir_program.global_block()
-                for op in global_block.ops:
-                    if op.name() == "pd_op.data":
-                        data_ops.append(op)
-                insert_point = 0
-                for data_op in data_ops:
-                    global_block.move_op(data_op, insert_point)
-
-                # decomposing
-                # print(
-                #     "before decompose, num ops: ",
-                #     len(newir_program.global_block().ops),
-                # )
-                # newir_program_after_decompose = self._decompose_newir_program(
-                #     newir_program, param_mapping
-                # )
-                # print(
-                #     "after decompose, num ops: ",
-                #     len(newir_program_after_decompose.global_block().ops),
-                # )
-                # self.newir_program = newir_program_after_decompose
-
-                self.newir_program = newir_program
-                self.param_mapping = param_mapping
-                self.newir_program_initialized = True
+        if self.enable_prim_in_distribute:
+            self._translate_to_newir_program(feed_dict)
+            self._decompose_newir_program()
 
             fetch_list = []
             for fetch_name in fetch_names:
@@ -1707,10 +1708,10 @@ class Engine:
                 fetch_list.append(result[0])
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.newir_program,
+                self.newir_program_after_decomposed,
             ):
                 outs = self._executor.run(
-                    self.newir_program,
+                    self.newir_program_after_decomposed,
                     feed=feed_dict,
                     fetch_list=fetch_list,
                     use_program_cache=self._strategy.use_cache,
@@ -1719,6 +1720,7 @@ class Engine:
                 time.sleep(1)
 
         else:
+            fetch_names.append('layer_norm_2.b_0@GRAD')
             outs = self._executor.run(
                 self.main_program,
                 feed=feed_dict,
