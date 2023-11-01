@@ -2,9 +2,33 @@
 ---
 ## 1. 相关背景
 
-PASS是对IR进行优化的关键组件，而DAG-to-DAG的变换是最常见的Pass类型。DAG-to-DAG PatternRewrite类型的PASS的实现主要分为两步：匹配和重写。匹配阶段需要根据Tensor和Op的组织结构在Program中完全匹配到原有子图，在重写阶段将原有子图替换为目标子图，并且原有子图和目标子图需要满足两个子图的输入和输出完全相同。为了降低PASS的开发成本，我们开发了基于声明式重写的DRR ( Declarative Rewrite Rule ) 工具来处理这种PatternRewrite类型的PASS。用户可以通过一套简洁易用的接口对原有子图和目标子图进行模式声明，DRR工具就能自动的在Program中对原图进行匹配，并替换成目标子图。
+PASS是对IR进行优化的关键组件，而DAG-to-DAG的变换是最常见的Pass类型。DAG-to-DAG类型的变换指的是将原图中的一个DAG子图替换成另一个DAG子图的过程，这个过程可以划分为匹配和重写两个步骤。匹配阶段需要根据Tensor和Op的组织结构在Program中完全匹配到原有子图，在重写阶段将原有子图替换为目标子图，并且需要满足目标子图的输入输出是原图的输入输出的子集。
 
-DRR(Declarative Rewrite Rule) PASS API并不是IR，而是对IR的统一封装，目的是让用户集中在对优化逻辑的处理上，而不需要关心对底层IR的处理。DRR主要由以下三大组件构成：
+为了降低PASS的开发成本，让用户集中在对优化逻辑的处理上，而不需要关心底层IR的数据结构，我们开发了基于声明式重写的DRR ( Declarative Rewrite Rule ) 工具来处理这种Pattern Rewrite类型的PASS。用户可以通过一套简洁易用的接口对原有子图和目标子图进行模式声明，DRR工具就能自动的在Program中对原图进行匹配，并替换成目标子图。
+
+常量折叠指的是：操作数包含常量的Op通常可以折叠为结果常数值。常量折叠是最常见的退化版本的DAG-to-DAG 类型的变换。为了方便理解，这里举一个使用DRR接口实现常量折叠的简单示例：
+~~~ c++
+// 1. 首先继承DrrPatternBase的特化模版类
+class RemoveRedundentCastPattern
+    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
+	// 2. 在这个类中重写operator()重载函数
+	void operator()(pir::drr::DrrPatternContext *ctx) const override {
+		// 3. 使用Op、Tensor和Attribute声明出一个包含两个连续castOp的SourcePattern
+	    auto pat = ctx->SourcePattern();
+	    pat.Tensor("tmp") = pat.Op(
+	        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
+	    pat.Tensor("ret") = pat.Op(
+	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
+
+		// 4. 声明出ResultPattern
+	    auto res = pat.ResultPattern();
+	    res.Tensor("ret") = res.Op(
+	        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
+  }
+};
+~~~
+
+由示例代码可见，DRR主要由以下三大组件构成：
 + `Source Pattern`：用于描述在Program中待匹配的模式子图
 + `Result Pattern`：用于描述需要替换为的模式子图
 + `Constrains`：用于指定进行替换的限制条件
@@ -47,28 +71,6 @@ DRR(Declarative Rewrite Rule) PASS API并不是IR，而是对IR的统一封装�
 	</tr>
 </table>
 
-### 1.1 基于声明式接口构建中间DAG子图示例
-DRR API的执行解析过程与静态图模式下编译期通过Python接口组网有些类似。以合并重复cast为例，使用DRR接口实现的代码如下所示：
-~~~ c++
-class RemoveRedundentCastPattern
-    : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-  void operator()(pir::drr::DrrPatternContext *ctx) const override {
-	// 声明 SourcePattern
-    auto pat = ctx->SourcePattern();
-    pat.Tensor("tmp") = pat.Op(
-        "pd_op.cast", {{"dtype", pat.Attr("dtype1")}})(pat.Tensor("arg0"));
-    pat.Tensor("ret") = pat.Op(
-        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
-
-	// 声明 ResultPattern
-    auto res = pat.ResultPattern();
-    res.Tensor("ret") = res.Op(
-        "pd_op.cast", {{"dtype", pat.Attr("dtype2")}})(res.Tensor("arg0"));
-  }
-};
-~~~
-在这个简单的例子中，我们首先继承了DrrPatternBase的特化模版类，然后在这个类中重写了operator()重载函数。在operator() 函数中我们使用Op、Tensor和Attribute声明出了包含两个连续castOp的SourcePattern。很明显SourcePattern是可以进行常量折叠优化的，我们使用一个castOp就能达到SourcePattern想要的达到的效果，即我们声明出的ResultPattern。做完这些我们就完成了一个DAG-to-DAG PatternRewrite类型的PASS的声明。
-
 **注意：DRR仅支持对闭包的 SourcePattern 和 ResultPattern 进行匹配替换，若声明出的子图不闭包可能会出现未知的错误**
 ## 2. 接口列表
 
@@ -80,7 +82,7 @@ class RemoveRedundentCastPattern
 		<th> 参数解释 </th>
 	 </tr>
 	<tr>
-		<td rowspan="2">template &lt;typename DrrPattern&gt; Class DrrPatternBase</td>
+		<td rowspan="2">DrrPatternBase</td>
 		<td> <pre> virtual void operator()(pir::drr::DrrPatternContext* ctx) const </pre></td>
 		<td> 该类是用户进行SourcePattern和ResultPattern声明和重写的入口。用户需要自定义一个类A，并且继承特化的模版类 DrrPatternBase&lt;A&gt;，然后再实现DrrPatternBase中预留的operator()接口即可完成声明 </td>
 		<td> ctx: 当前Pattern所属的上下文</td>
@@ -92,7 +94,7 @@ class RemoveRedundentCastPattern
 		<td> ir_context: 当前Pattern所在的ir上下文 </td>
 	</tr>
 	<tr>
-		<td rowspan="5">Class SourcePattern</td>
+		<td rowspan="5"> SourcePattern</td>
 		<td> <pre> Attribute Attr(const std::string& attr_name) const </pre></td>
 		<td> 在SourcePattern中声明一个名为attr_name的属性 </td>
 		<td> attr_name: 属性的名称，需要满足SourcePattern内唯一 </td>
@@ -116,10 +118,10 @@ class RemoveRedundentCastPattern
 	<tr>
 		<td> <pre>void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
 		<td> 在SourcePattern中声明一个Native约束，用户可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
-		<td> custom_fn: 用户自定义的Native约束函数</td>
+		<td> custom_fn: 用户自定义的约束函数</td>
 	</tr>
 	<tr>
-		<td rowspan="6">Class ResultPattern</td>
+		<td rowspan="6"> ResultPattern</td>
 		<td><pre>Attribute Attr(const std::string& attr_name) const </pre></td>
 		<td> 在 ResultPattern 中声明一个名为 attr_name 的属性 </td>
 		<td> attr_name: 属性的名称，需要满足SourcePattern内唯一 </td>
@@ -149,11 +151,11 @@ class RemoveRedundentCastPattern
 	</tr>
 		<tr>
 		<td> <pre>void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
-		<td> 在SourcePattern中声明一个Native约束，用户可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
-		<td> custom_fn: 用户自定义的Native约束函数 </td>
+		<td> 在SourcePattern中声明一个约束，用户可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
+		<td> custom_fn: 用户自定义的约束函数 </td>
 	</tr>
 	<tr>
-		<td rowspan="2">Class TensorShape</td>
+		<td rowspan="2"> TensorShape</td>
 		<td><pre>explicit TensorShape(const std::string& tensor_name) </pre></td>
 		<td> 抽象出来描述Tensor的shape的类 </td>
 		<td> tensor_name: 被描述的Tensor的name </td>
@@ -164,7 +166,7 @@ class RemoveRedundentCastPattern
 		<td>  无 </td>
 	</tr>
 	<tr>
-		<td rowspan="2">Class TensorDataType</td>
+		<td rowspan="2"> TensorDataType</td>
 		<td><pre>explicit TensorDataType(const std::string& tensor_name)</pre></td>
 		<td> 抽象出来的描述Tensor中元素数据类型的类</td>
 		<td> tensor_name: 被描述的Tensor的name </td>
@@ -175,24 +177,9 @@ class RemoveRedundentCastPattern
 		<td> 无 </td>
 	</tr>
 	<tr>
-		<td rowspan="4">Class DrrPatternContext</td>
+		<td rowspan="1"> DrrPatternContext</td>
 		<td><pre>drr::SourcePattern DrrPatternContext::SourcePattern()</pre> </td>
 		<td> 创建一个SourcePattern对象，并返回 </td>
-		<td> 无 </td>
-	</tr>
-	<tr>
-		<td> <pre>std::shared_ptr&lt;SourcePatternGraph&gt; source_pattern_graph() const</pre></td>
-		<td> 返回PatternContext内部的SourcePatternGraph对象</td>
-		<td> 无 </td>
-	</tr>
-	<tr>
-		<td><pre>std::vector&lt;Constraint&gt; constraints() const</pre></td>
-		<td> 返回PatternContext内部的约束列表 Constrains</td>
-		<td> 无 </td>
-	</tr>
-	<tr>
-		<td><pre>std::shared_ptr&lt;ResultPatternGraph&gt; result_pattern_graph() const</pre></td>
-		<td> 返回PatternContext内部的ResultPatternGraph对象</td>
 		<td> 无 </td>
 	</tr>
 </table>
