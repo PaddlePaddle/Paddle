@@ -1235,10 +1235,13 @@ class TestHardShrink(TestActivation):
     def set_attrs(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestHardShrink_threshold_negative(TestHardShrink):
@@ -1265,6 +1268,7 @@ class TestHardShrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1331,6 +1335,7 @@ class TestHardtanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -1404,10 +1409,13 @@ class TestSoftshrink(TestActivation):
 
         self.attrs = {"lambda": threshold}
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSoftshrink_ZeroDim(TestSoftshrink):
@@ -1427,6 +1435,7 @@ class TestSoftshrinkAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2783,10 +2792,13 @@ class TestBRelu(TestActivation):
         self.convert_input_output()
         self.attrs = {'t_min': t_min, 't_max': t_max}
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 def ref_relu6(x, threshold=6.0):
@@ -2973,13 +2985,15 @@ class TestHardSwish(TestActivation):
             if self.dtype not in [np.complex64, np.complex128]
             else False,
             only_check_prim=self.if_only_check_prim(),
+            check_pir=True,
         )
 
     def test_check_output(self):
         self.check_output(
             check_prim=True
             if self.dtype not in [np.complex64, np.complex128]
-            else False
+            else False,
+            check_pir=True,
         )
 
 
@@ -3008,6 +3022,7 @@ class TestHardswishAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3031,6 +3046,7 @@ class TestHardswishAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4013,10 +4029,13 @@ class TestSoftplus(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSoftplus_Complex64(TestSoftplus):
@@ -4024,7 +4043,7 @@ class TestSoftplus_Complex64(TestSoftplus):
         self.dtype = np.complex64
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.06)
+        self.check_grad(['X'], 'Out', max_relative_error=0.06, check_pir=True)
 
 
 class TestSoftplus_Complex128(TestSoftplus):
@@ -4062,11 +4081,13 @@ class TestSoftplusBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=0.05)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=0.05, check_pir=True
+        )
 
 
 class TestSoftplusAPI(unittest.TestCase):
@@ -4082,6 +4103,7 @@ class TestSoftplusAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4146,10 +4168,13 @@ class TestSoftsign(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestSoftsign_ZeroDim(TestSoftsign):
@@ -4168,6 +4193,7 @@ class TestSoftsignAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4336,6 +4362,14 @@ class TestHardSigmoid(TestActivation):
     def set_attrs(self):
         pass
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
+        self.check_grad(['X'], 'Out', check_pir=True)
+
 
 class TestHardSigmoidFP32(TestHardSigmoid):
     def set_attrs(self):
@@ -4363,6 +4397,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4386,6 +4421,7 @@ class TestHardsigmoidAPI(unittest.TestCase):
             for r in [out1, out2]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
