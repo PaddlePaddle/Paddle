@@ -43,7 +43,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
   int m = x.numel() / k;
 
   // m > 1: run gemm
-  if (m > 1 || weight_dtype == "int4") {
+  if (m > 5 || weight_dtype == "int4") {
 #if defined(PADDLE_WITH_CUTLASS)
     if (weight_dtype == "int8") {
       auto mixed_gemm_runner =
@@ -143,6 +143,7 @@ void WeightOnlyLinearKernel(const Context& dev_ctx,
                                             weight_data,
                                             bias_data,
                                             weight_scale_data,
+                                            m,
                                             n,
                                             k,
                                             "None",
