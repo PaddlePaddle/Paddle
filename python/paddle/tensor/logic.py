@@ -1400,7 +1400,7 @@ def isclose(x, y, rtol=1e-05, atol=1e-08, equal_nan=False, name=None):
             [True, True])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.isclose(x, y, rtol, atol, equal_nan)
     else:
         check_variable_and_dtype(
