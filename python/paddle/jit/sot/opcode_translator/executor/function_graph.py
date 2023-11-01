@@ -270,9 +270,12 @@ class FunctionGraph:
                 jump_idx = origin_instr.index(instr.jump_to)
                 if jump_idx == instr_idx:
                     instr.jump_to = nop
-                # this branch will not exec with guard
-                elif jump_idx > instr_idx:
-                    instr.jump_to = None
+
+        self.pycode_gen.hooks.append(
+            lambda: self.pycode_gen.extend_instrs(
+                iter(origin_instr[instr_idx + 1 :])
+            )
+        )
 
         self.pycode_gen.gen_enable_eval_frame()
 

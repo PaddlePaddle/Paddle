@@ -433,6 +433,7 @@ class PyCodeGen:
         self._f_globals = frame.f_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
+        self.hooks = []
         if self.disable_eval_frame:
             self.gen_disable_eval_frame()
 
@@ -493,6 +494,10 @@ class PyCodeGen:
         Returns:
             CodeType: The generated code object.
         """
+        for hook in self.hooks:
+            hook()
+        self.hooks.clear()
+
         self.insert_prefix_instructions()
         modify_instrs(self._instructions)
         modify_vars(self._instructions, self._code_options)
