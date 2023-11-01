@@ -143,11 +143,12 @@ void Tensor::Assign(const Tensor& other) {
 
 void Tensor::operator=(const Tensor& other) const {  // NOLINT
   // The two tensor must be in the same pattern graph.
-  PADDLE_ENFORCE_EQ(this->pattern_graph_,
-                    other.pattern_graph_,
-                    phi::errors::InvalidArgument(
-                        "Matching failed."
-                        "The two must be in the same pattern graph."));
+  PADDLE_ENFORCE_EQ(
+      this->pattern_graph_,
+      other.pattern_graph_,
+      phi::errors::InvalidArgument("Matching failed."
+                                   "Two Tensors must be in the same pattern "
+                                   "graph to make the '=' judgment."));
   if (other.name_.find(Op::prefix) == 0 &&
       name_.find(Op::prefix) == std::string::npos) {
     other.pattern_graph_->UpdateTmpTensor(other.name_, this->name_);

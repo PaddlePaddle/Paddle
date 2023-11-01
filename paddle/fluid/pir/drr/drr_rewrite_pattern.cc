@@ -292,9 +292,9 @@ bool DrrRewritePattern::MatchFromOutputToInput(
     PADDLE_ENFORCE_EQ(step,
                       source_pattern_graph.CountOfOpCalls(),
                       phi::errors::PreconditionNotMet(
-                          "Matching faile."
+                          "Graph matching failed."
                           "The number of successfully matched Ops and"
-                          "the number of OpCalls in source pattern graph and"
+                          "the number of OpCalls in source pattern graph "
                           "is not equal."));
   } else {
     return matched;
@@ -524,8 +524,8 @@ void DrrRewritePattern::DeleteSourcePatternOp(
         src_match_ctx.operation_map().count(op_call),
         0,
         phi::errors::NotFound("Not found OpCall."
-                              "Only Opcall that exist in match context can be "
-                              "deleted, Not found [%s].",
+                              "Only [%s] that exist in match_context can be "
+                              "deleted.",
                               op_call->name()));
     auto* op = src_match_ctx.operation_map().at(op_call)->get();
     VLOG(6) << "Delete (" << op_call->name() << " @" << op_call << " :@" << op
