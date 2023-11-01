@@ -1540,7 +1540,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                     store_vars.append(_var)
             return self._graph._build_compile_fn_with_name_store([], store_vars)
 
-    def _create_resume_fn(self, index, stack_size=0):
+    def _create_resume_fn(self, index, stack_size):
         """
         Create a resume function and its inputs at the specified index.
 
@@ -1675,11 +1675,12 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
         self._graph.pycode_gen.gen_kw_names(self._call_shape)
-        self._graph.pycode_gen.add_pure_instructions([instr])
+        self._graph.pycode_gen.extend_instrs([instr])
         self.stack.pop_n(pop_n)
         stack_size = len(self.stack) + push_n
 
         resume_fn, _ = self._create_resume_fn(index + 1, stack_size)
+
         if resume_fn:
             self._graph.pycode_gen.gen_load_object(
                 resume_fn, resume_fn.__code__.co_name
@@ -2042,7 +2043,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
         ), f"Stack must have one element, but get {len(self.stack)} elements."
         ret_val = self.stack.pop()
         if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
-            self.new_code = None
+            py_codegen = PyCodeGen(self._frame)
+            self.new_code = py_codegen.replace_null_variable()
         else:
             self._graph.start_compile(ret_val)
             self._graph.pycode_gen.gen_return()

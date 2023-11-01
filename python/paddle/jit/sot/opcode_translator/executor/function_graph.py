@@ -261,7 +261,31 @@ class FunctionGraph:
                 self._pycode_gen.gen_load(self._store_var_info[var])
 
         origin_instr = get_instructions(self.pycode_gen._origin_code)
-        self.pycode_gen.extend_instrs(iter(origin_instr[0:instr_idx]))
+
+        for instr in origin_instr[0:instr_idx]:
+            if (
+                instr.opname == 'LOAD_FAST'
+                and instr.argval in self.pycode_gen._frame.f_locals.keys()
+                and isinstance(
+                    self.pycode_gen._frame.f_locals[instr.argval], NullVariable
+                )
+            ):
+                self.pycode_gen._frame.f_locals[instr.argval].reconstruct(
+                    self.pycode_gen
+                )
+            elif (
+                instr.opname == 'LOAD_GLOBAL'
+                and instr.argval in self.pycode_gen._frame.f_globals.keys()
+                and isinstance(
+                    self.pycode_gen._frame.f_globals[instr.argval], NullVariable
+                )
+            ):
+                self.pycode_gen._frame.f_globals[instr.argval].reconstruct(
+                    self.pycode_gen
+                )
+            else:
+                self.pycode_gen.extend_instrs([instr])
+
         nop = self.pycode_gen._add_instr("NOP")
 
         for instr in origin_instr:

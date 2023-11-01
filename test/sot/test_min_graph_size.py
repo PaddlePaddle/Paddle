@@ -44,18 +44,17 @@ def case_if(x):
 
 
 def case_call(x):
-    y = x.numpy()
-    z = paddle.to_tensor(y)
-    x += z
+    y = paddle.to_tensor(x.numpy())
+    x += y
     return x
 
 
 def case_all(x, vars):
     x = x + 1
-    sot.psdb.breakgraph()
     for y in vars:
         z = paddle.to_tensor(x.numpy())
         x += z
+        x += y
         if x > 5:
             x += y
         else:
