@@ -31,20 +31,22 @@ limitations under the License. */
 namespace phi {
 namespace funcs {
 
-__device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
-                                                     float exponent) {
-  return static_cast<dtype::float16>(pow(static_cast<float>(base), exponent));
-}
-__device__ __forceinline__ dtype::bfloat16 inline_pow(dtype::bfloat16 base,
-                                                      float exponent) {
-  return static_cast<dtype::bfloat16>(pow(static_cast<float>(base), exponent));
-}
-__device__ __forceinline__ float inline_pow(float base, float exponent) {
-  return pow(base, exponent);
-}
-__device__ __forceinline__ double inline_pow(double base, float exponent) {
-  return pow(base, exponent);
-}
+// __device__ __forceinline__ dtype::float16 inline_pow(dtype::float16 base,
+//                                                      float exponent) {
+//   return static_cast<dtype::float16>(pow(static_cast<float>(base),
+//   exponent));
+// }
+// __device__ __forceinline__ dtype::bfloat16 inline_pow(dtype::bfloat16 base,
+//                                                       float exponent) {
+//   return static_cast<dtype::bfloat16>(pow(static_cast<float>(base),
+//   exponent));
+// }
+// __device__ __forceinline__ float inline_pow(float base, float exponent) {
+//   return pow(base, exponent);
+// }
+// __device__ __forceinline__ double inline_pow(double base, float exponent) {
+//   return pow(base, exponent);
+// }
 
 /*
  * \brief Extracting simple operations from pooling.
@@ -99,11 +101,11 @@ class LPPool {
   }
 
   DEVICE inline void compute(const T& x, T* y UNUSED) {
-    intermediate_res += static_cast<MT>(inline_pow(x, norm_type));
+    intermediate_res += static_cast<MT>(powf(x, norm_type));
   }
 
   DEVICE inline void finalize(const T& pool_field UNUSED, T* y) {
-    *y = static_cast<T>(inline_pow(intermediate_res, 1.0 / norm_type));
+    *y = static_cast<T>(powf(intermediate_res, 1.0 / norm_type));
   }
 };
 
