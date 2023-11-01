@@ -91,10 +91,10 @@ class TestCustomReluForSemiAutoParallel:
         dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
         dist_x.stop_gradient = False
 
-        x = paddle.add(x, x)
-        dist_x = paddle.add(dist_x, dist_x)
-        out = custom_ops.custom_relu(x)
-        dist_out = custom_ops.custom_relu(dist_x)
+        y = paddle.add(x, x)
+        dist_y = paddle.add(dist_x, dist_x)
+        out = custom_ops.custom_relu(y)
+        dist_out = custom_ops.custom_relu(dist_y)
         out.stop_gradient = False
         dist_out.stop_gradient = False
 
