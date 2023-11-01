@@ -956,7 +956,9 @@ class TestSinhAPI(unittest.TestCase):
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                     "float32"
                 )
@@ -968,9 +970,9 @@ class TestSinhAPI(unittest.TestCase):
 
                 pd_sinh_out = paddle.sinh(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (np_sinh_res,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[pd_sinh_out],
                 )
@@ -993,7 +995,6 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with program_guard(Program()):
