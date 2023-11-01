@@ -180,9 +180,9 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
 static bool ReduceFuseReduce1(const OpGroupPtr& first,
                               const OpGroupPtr& second) {
   // return false;
-  if (!limit_args(first, second)) {
-    return false;
-  }
+  // if (!limit_args(first, second)) {
+  //   return false;
+  // }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
   first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     if (!reducer_0 && op.kind() == kReduction) {
