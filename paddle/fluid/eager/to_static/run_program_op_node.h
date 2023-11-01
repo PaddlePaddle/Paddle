@@ -413,7 +413,6 @@ inline void NewIRRunProgramAPI(
     std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::Tensor *> &middles,               // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::Tensor *> &dout,                  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -598,7 +597,6 @@ inline void RunProgramAPI(
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::Tensor *> &dout,                  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -632,7 +630,6 @@ inline void RunProgramAPI(
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
   auto output_names = details::GetTensorsName(out);
   auto param_names = details::GetTensorsName(params);
-  auto dout_names = details::GetTensorsName(dout);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream s;
@@ -648,11 +645,6 @@ inline void RunProgramAPI(
     s << std::endl;
     s << "output_names: ";
     for (auto name : output_names) {
-      s << name << " ";
-    }
-    s << std::endl;
-    s << "dout_names: ";
-    for (auto name : dout_names) {
       s << name << " ";
     }
     s << std::endl;
@@ -725,7 +717,6 @@ inline void RunProgramAPI(
 
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
-    skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
     // update interpretercore skip_gc_var
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
 
@@ -781,8 +772,6 @@ inline void RunProgramAPI(
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
         out, *forward_global_block, backward_global_block, global_inner_scope);
-    details::ShareTensorsFromScopeWithPartialBlock(
-        dout, *forward_global_block, backward_global_block, global_inner_scope);
 
     if (!need_grad) {
       VLOG(4) << "don't require any grad, set this scope can reused";
