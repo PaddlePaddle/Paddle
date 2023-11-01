@@ -25,7 +25,7 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
         )
         self._default_envs = {
             "dtype": "float32",
-            "seed": "1024",
+            "seed": "2023",
         }
         self._changeable_envs = {"backend": ["cpu", "gpu"]}
 
