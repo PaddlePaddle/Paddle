@@ -186,7 +186,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
   first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    if (!reducer_0 && op.kind() == kReduction) {
+    if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
       reducer_0.reset(new cinn::dialect::ir::OpNode(op));
     }
   });
@@ -194,7 +194,7 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
 
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_1 = nullptr;
   second.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
-    if (!reducer_1 && op.kind() == kReduction) {
+    if (!reducer_1 && op.kind() == OpPatternKind::kReduction) {
       reducer_1.reset(new cinn::dialect::ir::OpNode(op));
     }
   });

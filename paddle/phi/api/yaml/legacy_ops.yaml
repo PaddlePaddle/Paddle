@@ -67,10 +67,10 @@
   args : (Tensor start, Tensor end, Tensor step, DataType dtype, Place place={})
   output : Tensor(out)
   infer_meta :
-    func : ArangeInferMeta
+    func : ArangeTensorInferMeta
     param : [start, end, step]
   kernel :
-    func : arange
+    func : arange_tensor
     param : [start, end, step]
     data_type : dtype
     backend : place
@@ -122,7 +122,7 @@
     data_type : x
   view : (mean -> mean_out), (variance -> variance_out)
   backward : batch_norm_grad
-  optional : reserve_space
+  optional : scale, bias, reserve_space
 
 - op : c_allgather
   args : (Tensor x, int ring_id, int nranks, bool use_calc_stream)
@@ -214,7 +214,7 @@
   inplace : (x -> out)
 
 - op : c_sync_comm_stream
-  args : (Tensor x)
+  args : (Tensor x, int ring_id)
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
@@ -317,6 +317,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : divide
   inplace: (x -> out)
@@ -348,6 +349,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : elementwise_pow
   backward : elementwise_pow_grad
@@ -415,6 +417,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule: ElementwiseBinaryInferSpmd
   kernel :
     func : equal
   inplace: (x -> out)
@@ -717,6 +720,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : maximum
   backward : maximum_grad
@@ -782,6 +786,7 @@
   output : Tensor
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : multiply {dense, dense -> dense},
            multiply_sr {selected_rows, dense -> selected_rows}
@@ -802,6 +807,7 @@
   output : Tensor(out)
   infer_meta :
     func : CompareInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : not_equal
   inplace: (x -> out)
@@ -904,6 +910,7 @@
     func : RepeatInterleaveInferMeta
   kernel :
     func : repeat_interleave
+    data_type : x
   backward: repeat_interleave_grad
 
 - op : repeat_interleave_with_tensor_index

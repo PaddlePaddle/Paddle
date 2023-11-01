@@ -14,23 +14,36 @@
 
 from __future__ import annotations
 
+import inspect
 from typing import TYPE_CHECKING
 
 import paddle
+from paddle.amp.auto_cast import amp_state
+from paddle.base.data_feeder import convert_dtype
+from paddle.framework import _dygraph_tracer
 
 from ..profiler import EventGuard
 from ..utils import (
     Cache,
-    CodeStatus,
     GraphLogger,
     Singleton,
     StepInfoManager,
+    log,
     log_do,
+    map_if,
 )
 from .interpreter import compile_sir
 
 if TYPE_CHECKING:
     from .symbolic_context import SymbolicTraceContext
+
+
+def trace_back_frames():
+    frame = inspect.currentframe()
+    while frame.f_back is not None:
+        frame = frame.f_back
+        code = frame.f_code
+        paddle.framework.core.sot_set_with_graph(code)
 
 
 def clear_eager_tensor_name(output_tensors):
@@ -49,15 +62,39 @@ class FallbackWrapper:
         self.concrete_program = None
         self.SIR = SIR  # for debug
 
+    def amp_cast_inputs(self, args, kwargs):
+        """Prepare inputs for amp, cast float16 into float32 if needed."""
+        current_amp_state = amp_state()
+        if current_amp_state is None:
+            return args, kwargs
+        # skip if not gpu / xpu / custom place
+        tracer = _dygraph_tracer()
+        if not (
+            tracer._expected_place.is_gpu_place()
+            or tracer._expected_place.is_xpu_place()
+            or tracer._expected_place.is_custom_place()
+        ):
+            return args, kwargs
+        amp_dtype = convert_dtype(current_amp_state["dtype"])
+        log(3, f"[AMP] Cast {amp_dtype} into float32\n")
+        return map_if(
+            (args, kwargs),
+            pred=lambda x: isinstance(x, paddle.Tensor)
+            and convert_dtype(x.dtype) == amp_dtype,
+            true_fn=lambda x: x.cast(paddle.float32),
+            false_fn=lambda x: x,
+        )
+
     def __call__(self, *args, **kwargs):
         with EventGuard(f"FallbackWrapper: {self.SIR.name}"):
             if StepInfoManager().need_back_trace:
-                CodeStatus().trace_back_frames()
+                trace_back_frames()
 
             log_do(
                 2,
                 lambda: print("[FallbackWrapper] start run SIR: \n", self.SIR),
             )
+            args, kwargs = self.amp_cast_inputs(args, kwargs)
             log_do(
                 4,
                 lambda: print(

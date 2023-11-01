@@ -22,6 +22,7 @@ limitations under the License. */
 #include "paddle/fluid/jit/serializer.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/pybind/eval_frame.h"
+#include "paddle/fluid/pybind/eval_frame_tools.h"
 #include "paddle/utils/pybind.h"
 
 namespace py = pybind11;
@@ -70,6 +71,42 @@ void BindEvalFrame(pybind11::module *m) {
         return obj;
       },
       py::arg("callback"));
+
+  m->def(
+      "sot_setup_codes_with_graph",
+      [](const py::object &py_codes) {
+        auto ret = setup_codes_with_graph(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "sot_set_with_graph",
+      [](const py::object &py_codes) {
+        auto ret = set_with_graph(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_no_skip_codes",
+      [](const py::object &py_codes) {
+        auto ret = no_skip_codes(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
+
+  m->def(
+      "eval_frame_skip_file_prefix",
+      [](const py::object &py_codes) {
+        auto ret = skip_file_prefix(py_codes.ptr());
+        auto obj = py::reinterpret_borrow<py::object>(ret);
+        return obj;
+      },
+      py::arg("py_codes"));
 }
 
 }  // namespace pybind

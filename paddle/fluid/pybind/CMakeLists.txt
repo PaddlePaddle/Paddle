@@ -146,6 +146,7 @@ set(PYBIND_SRCS
     xpu_streams_py.cc
     jit.cc
     auto_parallel_py.cc
+    eval_frame_tools.cc
     eval_frame.c)
 
 if(WITH_CUSTOM_DEVICE)

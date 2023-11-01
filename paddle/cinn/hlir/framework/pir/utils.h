@@ -15,22 +15,23 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include "paddle/cinn/backends/compiler.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/common/type.h"
+#include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/utils/type_defs.h"
 #include "paddle/pir/core/operation.h"
 
 namespace cinn {
 namespace hlir {
 namespace framework {
+
 namespace pir {
 
 struct CUDAJITInfo {
   void* fn_ptr;
   std::vector<int> block_dims;
   std::vector<int> grid_dims;
-  backends::Compiler* compiler;
+  void* compiler;
 };
 
 struct CompatibleInfo {
@@ -60,6 +61,12 @@ struct CompatibleInfo {
   static utils::AttributeMap ConvertAttributes(const ::pir::Operation& op);
 
   static common::Type ConvertIRType(::pir::Type type);
+
+  static std::vector<int> ValueShape(const ::pir::Value& value);
+
+  static int ShapeProduct(const std::vector<int>& shape);
+
+  static OpPatternKind OpKind(const ::pir::Operation& op);
 };
 
 }  // namespace pir

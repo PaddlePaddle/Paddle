@@ -30,6 +30,7 @@ from .common import (  # noqa: F401
     layer_norm,
     prelu,
     py_func,
+    quant_linear,
     row_conv,
     sparse_embedding,
     spectral_norm,
@@ -96,4 +97,5 @@ __all__ = [
     'sequence_enumerate',
     'sequence_reverse',
     'prelu',
+    'quant_linear',
 ]

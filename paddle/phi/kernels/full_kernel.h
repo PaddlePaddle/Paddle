@@ -92,7 +92,7 @@ DenseTensor FullLike(const Context& dev_ctx,
 
 template <typename T, typename Context>
 void FullIntArrayKernel(const Context& dev_ctx,
-                        const IntArray& val,
+                        const std::vector<int64_t>& shape,
                         DataType dtype,
                         DenseTensor* out);
 

@@ -206,6 +206,55 @@ PD_MANUAL_OP_LIST = {
 }
 
 
+attr_types_map = {
+    'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
+    'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
+    'Scalar(int)': ['pir::Int32Attribute', 'int'],
+    'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
+    'Scalar(float)': ['pir::FloatAttribute', 'float'],
+    'Scalar(double)': ['pir::DoubleAttribute', 'double'],
+    'Scalar[]': [
+        'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
+        'const std::vector<Scalar>&',
+    ],
+    'int': ['pir::Int32Attribute', 'int'],
+    'int32_t': ['pir::Int32Attribute', 'int32_t'],
+    'int64_t': ['pir::Int64Attribute', 'int64_t'],
+    'long': ['pir::LongAttribute', 'long'],
+    'size_t': ['pir::Size_tAttribute', 'size_t'],
+    'float': ['pir::FloatAttribute', 'float'],
+    'float[]': [
+        'pir::ArrayAttribute<pir::FloatAttribute>',
+        'const std::vector<float>&',
+    ],
+    'double': ['pir::DoubleAttribute', 'double'],
+    'bool': ['pir::BoolAttribute', 'bool'],
+    'bool[]': [
+        'pir::ArrayAttribute<pir::BoolAttribute>',
+        'const std::vector<bool>&',
+    ],
+    'str': ['pir::StrAttribute', 'const std::string&'],
+    'str[]': [
+        'pir::ArrayAttribute<pir::StrAttribute>',
+        'const std::vector<std::string>&',
+    ],
+    'Place': ['paddle::dialect::PlaceAttribute', 'const Place&'],
+    'DataLayout': [
+        'paddle::dialect::DataLayoutAttribute',
+        'DataLayout',
+    ],
+    'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
+    'int64_t[]': [
+        'pir::ArrayAttribute<pir::Int64Attribute>',
+        'const std::vector<int64_t>&',
+    ],
+    'int[]': [
+        'pir::ArrayAttribute<pir::Int32Attribute>',
+        'const std::vector<int>&',
+    ],
+}
+
+
 def to_phi_and_fluid_op_name(op_item):
     # Templat: - op : phi_name (fluid_name)
     names = op_item.split('(')
@@ -251,6 +300,23 @@ class OpCompatParser:
                         return compat
         return None
 
+    def parse_support_tensor(self, op):
+        scalar_item = {}
+        int_array_item = {}
+        for support_tensor_attr in op['support_tensor']:
+            for attr in op['attrs']:
+                if (
+                    attr['typename'] == 'Scalar'
+                    and attr['name'] == support_tensor_attr
+                ):
+                    scalar_item[support_tensor_attr] = {"support_tensor": True}
+                if (
+                    attr['typename'] == 'IntArray'
+                    and attr['name'] == support_tensor_attr
+                ):
+                    scalar_item[support_tensor_attr] = {"support_tensor": True}
+        return scalar_item, int_array_item
+
 
 # =====================================
 # Parse Op Information From Yaml
@@ -287,53 +353,7 @@ class OpInfoParser:
         )
 
         # parse attributes
-        self.attr_types_map = {
-            'IntArray': ['paddle::dialect::IntArrayAttribute', 'IntArray'],
-            'Scalar': ['paddle::dialect::ScalarAttribute', 'Scalar'],
-            'Scalar(int)': ['pir::Int32Attribute', 'int'],
-            'Scalar(int64_t)': ['pir::Int64Attribute', 'int64_t'],
-            'Scalar(float)': ['pir::FloatAttribute', 'float'],
-            'Scalar(dobule)': ['pir::DoubleAttribute', 'dobule'],
-            'Scalar[]': [
-                'pir::ArrayAttribute<paddle::dialect::ScalarAttribute>',
-                'const std::vector<Scalar>&',
-            ],
-            'int': ['pir::Int32Attribute', 'int'],
-            'int32_t': ['pir::Int32Attribute', 'int32_t'],
-            'int64_t': ['pir::Int64Attribute', 'int64_t'],
-            'long': ['pir::LongAttribute', 'long'],
-            'size_t': ['pir::Size_tAttribute', 'size_t'],
-            'float': ['pir::FloatAttribute', 'float'],
-            'float[]': [
-                'pir::ArrayAttribute<pir::FloatAttribute>',
-                'const std::vector<float>&',
-            ],
-            'double': ['pir::DoubleAttribute', 'double'],
-            'bool': ['pir::BoolAttribute', 'bool'],
-            'bool[]': [
-                'pir::ArrayAttribute<pir::BoolAttribute>',
-                'const std::vector<bool>&',
-            ],
-            'str': ['pir::StrAttribute', 'const std::string&'],
-            'str[]': [
-                'pir::ArrayAttribute<pir::StrAttribute>',
-                'const std::vector<std::string>&',
-            ],
-            'Place': ['paddle::dialect::PlaceAttribute', 'const Place&'],
-            'DataLayout': [
-                'paddle::dialect::DataLayoutAttribute',
-                'DataLayout',
-            ],
-            'DataType': ['paddle::dialect::DataTypeAttribute', 'DataType'],
-            'int64_t[]': [
-                'pir::ArrayAttribute<pir::Int64Attribute>',
-                'const std::vector<int64_t>&',
-            ],
-            'int[]': [
-                'pir::ArrayAttribute<pir::Int32Attribute>',
-                'const std::vector<int>&',
-            ],
-        }
+        self.attr_types_map = attr_types_map
         self.attribute_name_list = self.parse_attribute_name_list()
         self.attribute_type_list = self.parse_attribute_type_list()
         self.attribute_build_arg_type_list = (
@@ -930,6 +950,27 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
+def check_need_update_ops(op_yaml_files):
+    need_update_ops = False
+    update_yaml_file = None
+    for yaml_file in op_yaml_files:
+        if yaml_file.find("update_ops.parsed.yaml") != -1:
+            need_update_ops = True
+            update_yaml_file = yaml_file
+            break
+    return need_update_ops, update_yaml_file
+
+
+def update_ops(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_ops = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_op in update_ops:
+            if op_yaml_items[i]['name'] == update_op['name']:
+                op_yaml_items[i] = update_op
+                break
+
+
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,
@@ -947,12 +988,19 @@ def OpGenerator(
 
     # (2) Prepare: Get all op item in all op_yaml_files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
+    need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
     op_yaml_items = []
     for yaml_file in op_yaml_files:
+        if update_yaml_file == yaml_file:
+            continue
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
             op_yaml_items = op_yaml_items + ops
+    # replace old ir ops with pir ops
+    if need_update_ops:
+        update_ops(op_yaml_items, update_yaml_file)
+
     op_info_items = {}
     for op in op_yaml_items:
         op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -969,6 +1017,13 @@ def OpGenerator(
             and 'scalar' in op_compat_item
         ):
             op_compat_item = op_compat_item.pop('scalar')
+
+        if op['support_tensor'] != []:
+            scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
+                op
+            )
+            op_compat_item['scalar'] = scalar_item
+            op_compat_item['int_array'] = int_array_item
 
         op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
@@ -1038,8 +1093,6 @@ def OpGenerator(
             and op_info.op_phi_name[0] not in vjp_interface_black_list
         ):
             op_interfaces += ["paddle::dialect::VjpInterface"]
-        if op_info.op_phi_name[0] in decomp_interface_declare_gen_op_list:
-            op_interfaces += ["paddle::dialect::DecompInterface"]
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
@@ -1053,9 +1106,19 @@ def OpGenerator(
         mutable_attribute_grad_semantics = get_mutable_attribute_grad_semantic(
             op_info, op_info_items
         )
+        op_interfaces_tmp = op_interfaces
+        exclusive_interface_str_tmp = exclusive_interface_str
 
         # If op has inplace info, we will generate inplace op and non-inplace op.
         for op_name in op_info.op_phi_name:
+            if op_name in decomp_interface_declare_gen_op_list:
+                op_interfaces = op_interfaces + [
+                    "paddle::dialect::DecompInterface"
+                ]
+                exclusive_interface_str += "\n  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation* op);"
+            else:
+                op_interfaces = op_interfaces_tmp
+                exclusive_interface_str = exclusive_interface_str_tmp
             if op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:

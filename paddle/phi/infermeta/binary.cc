@@ -1545,6 +1545,8 @@ void GatherInferMeta(const MetaTensor& x,
     if (input_dim.size() == 1) {
       // the index is a 0D tensor and the x is a 1D tensor
       out->set_dims(phi::DDim(phi::Dim<0>()));
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     } else {
       if (axis.FromTensor() || axis_v == 0) {
         // decrease the output dimension
