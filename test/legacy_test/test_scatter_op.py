@@ -598,7 +598,9 @@ class TestScatterAPI(unittest.TestCase):
         self.scatter = paddle.scatter
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[3, 2], dtype="float64"
             )
@@ -614,9 +616,9 @@ class TestScatterAPI(unittest.TestCase):
                 np.float64
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={
                     "input": input_data,
                     "index": index_data,
