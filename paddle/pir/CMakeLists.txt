@@ -19,23 +19,8 @@ function(ir_static_library TARGET_NAME)
   set(ir_targets ${ir_targets} static_${TARGET_NAME})
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
 endfunction()
+file(GLOB_RECURSE PIR_CPP_SOURCES "*.cc")
 
-set(core_srcs CACHE INTERNAL "" FORCE)
-set(pass_srcs CACHE INTERNAL "" FORCE)
-set(pattern_rewrite_srcs CACHE INTERNAL "" FORCE)
-set(transforms_srcs CACHE INTERNAL "" FORCE)
-set(contro_flow_srcs CACHE INTERNAL "" FORCE)
-set(shape_srcs CACHE INTERNAL "" FORCE)
-
-add_subdirectory(core)
-add_subdirectory(pass)
-add_subdirectory(pattern_rewrite)
-add_subdirectory(transforms)
-add_subdirectory(dialect)
-
-set(PIR_SRCS ${core_srcs} ${pass_srcs} ${pattern_rewrite_srcs}
-             ${transforms_srcs} ${contro_flow_srcs} ${shape_srcs})
-set(PIR_DEPS ddim)
 if(WIN32)
   if(WITH_SHARED_IR)
     set(IR_NAME
@@ -73,10 +58,8 @@ set(IR_LIB
     CACHE FILEPATH "IR Library" FORCE)
 
 if(WITH_SHARED_IR)
-  add_library(pir SHARED ${PIR_SRCS})
+  add_library(pir SHARED ${PIR_CPP_SOURCES})
   target_link_libraries(pir ddim)
 else()
-  ir_static_library(pir SRCS ${PIR_SRCS} DEPS ddim)
-  add_library(pir STATIC ${PIR_SRCS})
-  target_link_libraries(pir ddim)
+  ir_static_library(pir SRCS ${PIR_CPP_SOURCES} DEPS ddim)
 endif()
