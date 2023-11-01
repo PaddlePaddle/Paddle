@@ -2327,8 +2327,6 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
                            const std::string& data_format,
                            const std::string& activation,
                            const std::vector<int>& split_channels,
-                           bool exhaustive_search,
-                           int workspace_size_MB,
                            MetaTensor* output,
                            std::vector<MetaTensor*> outputs) {
   // TODO(wilber): mkldnn seems only support nchw.
