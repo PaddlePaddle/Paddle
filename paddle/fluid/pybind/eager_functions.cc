@@ -68,6 +68,7 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/core/flags.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/api/lib/api_gen_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
@@ -544,7 +545,7 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
             "operator by .SetInferShapeFn(PD_INFER_SHAPE(...))"));
 
     VLOG(3) << "Custom Operator: Default InferShape - share ddim.";
-    result.emplace_back({ctx.InputAt(0).dims()});
+    result.push_back({ctx.InputAt(0).dims()});
   } else {  // inplace case
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
@@ -557,8 +558,9 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
             "`.SetInferShapeFn(PD_INFER_SHAPE(...)`)",
             outputs.size(),
             inplace_map.size()));
-    for (auto const& pair : ctx.GetInplaceIndexMap()) {
-      if (detail::IsDuplicableVar(inputs[pair.first])) {
+    auto inplace_index_map = ctx.GetInplaceIndexMap();
+    for (auto const& pair : inplace_index_map) {
+      if (paddle::framework::detail::IsDuplicableVar(inputs[pair.first])) {
         std::vector<phi::DDim> shapes;
         auto duplicable_input_pair = ctx.InputRangeAt(pair.first);
         for (size_t j = duplicable_input_pair.first;
@@ -569,7 +571,7 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
         result.emplace_back(std::move(shapes));
       } else {
         auto duplicable_input_pair = ctx.InputRangeAt(pair.first);
-        result.emplace_back({ctx.InputAt(duplicable_input_pair.first).dims()});
+        result.push_back({ctx.InputAt(duplicable_input_pair.first).dims()});
       }
     }
   }
@@ -633,7 +635,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   size_t output_shape_idx = 0;
   auto inplace_reverse_map = ctx.GetInplaceReverseIndexMap();
   for (size_t i = 0; i < outputs.size(); ++i) {
-    if (detail::IsDuplicableVar(outputs[i])) {
+    if (paddle::framework::detail::IsDuplicableVar(outputs[i])) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(i) != inplace_reverse_map.end(),
           phi::errors::InvalidArgument(
@@ -652,13 +654,13 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
     } else {
       if (inplace_reverse_map.find(i) != inplace_reverse_map.end()) {
         auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
-        result.emplace_back({ctx.InputAt(duplicable_input_pair.first).dims()});
+        result.push_back({ctx.InputAt(duplicable_input_pair.first).dims()});
       } else {
-        result.emplace_back(
-            {phi::make_ddim(output_shapes[output_shape_idx++])});
+        result.push_back({phi::make_ddim(output_shapes[output_shape_idx++])});
       }
     }
   }
+  return result;
 }
 
 static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
@@ -692,7 +694,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
             "operator by `.SetInferDtypeFn(PD_INFER_DTYPE(...))`"));
 
     VLOG(3) << "Custom Operator: InferDtype - share dtype.";
-    result.emplace_back({ctx.InputAt(0).dtype()});
+    result.push_back({ctx.InputAt(0).dtype()});
   } else {  // inplace case
     PADDLE_ENFORCE_EQ(
         inplace_map.size(),
@@ -706,7 +708,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
             outputs.size(),
             inplace_map.size()));
     for (auto const& pair : ctx.GetInplaceIndexMap()) {
-      if (detail::IsDuplicableVar(inputs[pair.first])) {
+      if (paddle::framework::detail::IsDuplicableVar(inputs[pair.first])) {
         std::vector<phi::DataType> shapes;
         auto duplicable_input_pair = ctx.InputRangeAt(pair.first);
         for (size_t j = duplicable_input_pair.first;
@@ -717,7 +719,7 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
         result.emplace_back(std::move(shapes));
       } else {
         auto duplicable_input_pair = ctx.InputRangeAt(pair.first);
-        result.emplace_back({ctx.InputAt(duplicable_input_pair.first).dtype()});
+        result.push_back({ctx.InputAt(duplicable_input_pair.first).dtype()});
       }
     }
   }
@@ -741,9 +743,9 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
       input_dtypes.emplace_back(
           std::move(ctx.InputAt(input_pair.first).dtype()));
     } else {
-      std::vector<std::vector<int64_t>> dtypes;
+      std::vector<phi::DataType> dtypes;
       for (size_t j = input_pair.first; j < input_pair.second; j++) {
-        dtypes.push_back(std::move(ctx.InputAt(j).dtype()));
+        dtypes.emplace_back(ctx.InputAt(j).dtype());
       }
       vec_input_dtypes.emplace_back(std::move(dtypes));
     }
@@ -781,7 +783,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
   size_t output_dtype_idx = 0;
   auto inplace_reverse_map = ctx.GetInplaceReverseIndexMap();
   for (size_t i = 0; i < outputs.size(); ++i) {
-    if (detail::IsDuplicableVar(outputs[i])) {
+    if (paddle::framework::detail::IsDuplicableVar(outputs[i])) {
       PADDLE_ENFORCE(
           inplace_reverse_map.find(i) != inplace_reverse_map.end(),
           phi::errors::InvalidArgument(
@@ -800,20 +802,21 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
     } else {
       if (inplace_reverse_map.find(i) != inplace_reverse_map.end()) {
         auto duplicable_input_pair = ctx.InputRangeAt(inplace_reverse_map[i]);
-        result.emplace_back({ctx.InputAt(duplicable_input_pair.first).dtype()});
+        result.push_back({ctx.InputAt(duplicable_input_pair.first).dtype()});
       } else {
-        result.emplace_back(
-            {phi::make_ddim(output_dtypes[output_dtype_idx++])});
+        result.push_back({output_dtypes[output_dtype_idx++]});
       }
     }
   }
+  return result;
 }
 
-phi::Tensor BuildEmptyDistPhiTensor(const ProcessMesh& process_mesh,
-                                    const phi::DDim& dims,
-                                    phi::DataType dtype) {
-  phi::Tensor empty_tensor;
-  DenseTensorMeta meta;
+paddle::Tensor BuildEmptyDistPaddleTensor(
+    const phi::distributed::ProcessMesh& process_mesh,
+    const phi::DDim& dims,
+    phi::DataType dtype) {
+  paddle::Tensor empty_tensor;
+  phi::DenseTensorMeta meta;
   meta.dims = dims;
   meta.dtype = dtype;
 
@@ -831,14 +834,14 @@ phi::Tensor BuildEmptyDistPhiTensor(const ProcessMesh& process_mesh,
 }
 
 void run_custom_op_kernel(
-    const paddle::CustomOpKernelContext& ctx,
+    paddle::CustomOpKernelContext& ctx,  // NOLINT
     const std::vector<paddle::OpMetaInfo>& vec_map,
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
     const std::unordered_map<std::string, std::string>& inplace_map) {
   bool run_auto_parallel = false;
   bool rank_is_in_current_mesh = true;
-  ProcessMesh current_process_mesh;
+  phi::distributed::ProcessMesh current_process_mesh;
   std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -848,17 +851,16 @@ void run_custom_op_kernel(
     ConvertAllInputsToDistTensor(mesh, x);
   }
 
-  run_auto_parallel = AllInputsAreDistTensor(x);
+  run_auto_parallel = paddle::experimental::AllInputsAreDistTensor(x);
   rank_is_in_current_mesh = true;
   if (run_auto_parallel) {
-    for (size_t i = 0; i < all_inputs.size(); ++i) {
-      PADDLE_ENFORCE_EQ(all_inputs->at(i).initialized() &&
-                            all_inputs->at(i).is_dense_tensor() &&
-                            all_inputs->at(i).is_gpu(),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "The custom op's input tensor must be initialized "
-                            "dense tensor on gpu, in AutoParallel mode."));
+    for (size_t i = 0; i < all_inputs->size(); ++i) {
+      PADDLE_ENFORCE_EQ(
+          all_inputs->at(i).initialized() && all_inputs->at(i).is_gpu(),
+          true,
+          phi::errors::InvalidArgument(
+              "The custom op's input tensor must be initialized "
+              "tensor on gpu, in AutoParallel mode."));
     }
 
     auto mesh =
@@ -872,18 +874,20 @@ void run_custom_op_kernel(
       input_x[i] = x.at(i).impl().get();
     }
 
-    auto meta_dist_input_x = MakeDistMetaTensor(input_x);
+    auto meta_dist_input_x = paddle::experimental::MakeDistMetaTensor(input_x);
     auto spmd_info =
         phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
     current_process_mesh = spmd_info.first[0].process_mesh();
 
     if (rank_is_in_current_mesh) {
-      auto* dev_ctx = static_cast<phi::GPUContext*>(pool.Get(x.at(0).place()));
+      auto* dev_ctx = static_cast<phi::GPUContext*>(
+          phi::DeviceContextPool::Instance().Get(x.at(0).place()));
       auto dist_input_x =
-          ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info.first);
+          paddle::experimental::ReshardApiInputToReplicatedKernelInput(
+              dev_ctx, x, spmd_info.first);
       for (size_t i = 0; i < x.size(); ++i) {
-        *static_cast<phi::DenseTensor*>(all_inputs->at(i).impl().get()) =
-            *(dist_input_x[i]->unsafe_mutable_value());
+        all_inputs->at(i).set_impl(std::make_shared<phi::DenseTensor>(
+            *(dist_input_x[i]->unsafe_mutable_value())));
       }
     } else {
       auto& infer_shape_func =
@@ -928,13 +932,13 @@ void run_custom_op_kernel(
         if (out_dim.size() == 0) {
           ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
         } else if (out_dim.size() == 1) {
-          ctx.EmplaceBackOutput(std::move(BuildEmptyDistPhiTensor(
+          ctx.EmplaceBackOutput(std::move(BuildEmptyDistPaddleTensor(
               current_process_mesh, out_dim[0], out_dtype[0])));
         } else {
           std::vector<Tensor> out_tensors;
-          out_tensors.reverse(out_dim.size());
+          out_tensors.reserve(out_dim.size());
           for (size_t j = 0; j < out_dim.size(); ++j) {
-            out_tensors.emplace_back(BuildEmptyDistPhiTensor(
+            out_tensors.emplace_back(BuildEmptyDistPaddleTensor(
                 current_process_mesh, out_dim[j], out_dtype[j]));
           }
           ctx.EmplaceBackOutputs(out_tensors);
@@ -999,7 +1003,7 @@ void run_custom_op_kernel(
 
   // handle inplace map
   ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
-  VLOG(7) << "Run Kernel of Custom Op: " << op_type;
+  VLOG(7) << "Begin run Kernel of Custom Op";
   (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
   ctx.AssignInplaceOutputs();
 
@@ -1008,11 +1012,12 @@ void run_custom_op_kernel(
     std::vector<Tensor>* output_all = ctx.AllMutableOutput();
     for (size_t i = 0; i < output_all->size(); ++i) {
       auto& tensor = output_all->at(i);
-      auto dist_attr =
+      phi::distributed::TensorDistAttr dist_attr =
           phi::distributed::TensorDistAttr(phi::vectorize(tensor.dims()));
       dist_attr.set_process_mesh(current_process_mesh);
       auto dist_t = std::make_shared<phi::distributed::DistTensor>(
-          tensor.impl(), dist_attr);
+          std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()),
+          dist_attr);
       tensor.set_impl(dist_t);
     }
   }
@@ -1125,8 +1130,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
 
   {
     eager_gil_scoped_release guard;
-
-    run_custom_op_kernel();
+    VLOG(7) << "Run Kernel of Custom Op: " << op_type;
+    run_custom_op_kernel(ctx, vec_map, inputs, outputs, inplace_map);
 
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {

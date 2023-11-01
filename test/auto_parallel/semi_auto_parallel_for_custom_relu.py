@@ -111,13 +111,7 @@ class TestCustomReluForSemiAutoParallel:
         )
 
     def run_test_case(self):
-        if self._backend == "cpu":
-            paddle.set_device("cpu")
-        elif self._backend == "gpu":
-            paddle.set_device("gpu:" + str(dist.get_rank()))
-        else:
-            raise ValueError("Only support cpu or gpu backend.")
-
+        paddle.set_device("gpu:" + str(dist.get_rank()))
         self.test_custom_relu()
 
 

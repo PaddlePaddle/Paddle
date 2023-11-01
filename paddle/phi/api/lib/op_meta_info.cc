@@ -162,7 +162,8 @@ std::vector<Tensor>* CustomOpKernelContext::AllMutableInput() {
   return &inputs_;
 }
 
-paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
+paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(
+    size_t idx) const {
   if (!inputs_.at(idx).is_initialized()) {
     return paddle::none;
   }
@@ -170,7 +171,7 @@ paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
 }
 
 paddle::optional<std::vector<Tensor>>
-CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) const {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     if (!inputs_.at(i).is_initialized()) {
@@ -194,7 +195,7 @@ std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetween(size_t start,
 }
 
 std::vector<Tensor> CustomOpKernelContext::OutputsBetween(size_t start,
-                                                          size_t end) {
+                                                          size_t end) const {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(outputs_.at(i));
@@ -216,12 +217,12 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
 }
 
 const std::vector<std::pair<size_t, size_t>>&
-CustomOpKernelContext::InputRange() {
+CustomOpKernelContext::InputRange() const {
   return input_range_;
 }
 
 const std::vector<std::pair<size_t, size_t>>&
-CustomOpKernelContext::OutputRange() {
+CustomOpKernelContext::OutputRange() const {
   return output_range_;
 }
 
@@ -306,12 +307,13 @@ std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
   return &plain_outputs_;
 }
 
-std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap() {
+std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap()
+    const {
   return inplace_idx_map_;
 }
 
 std::unordered_map<size_t, size_t>
-CustomOpKernelContext::GetInplaceReverseIndexMap() {
+CustomOpKernelContext::GetInplaceReverseIndexMap() const {
   return inplace_reverse_idx_map_;
 }
 ////////////////////// Op Meta Info //////////////////////
