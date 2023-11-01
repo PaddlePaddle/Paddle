@@ -15,56 +15,12 @@
 import os
 
 from semi_auto_parallel_simple_net import (
-    CLASS_NUM,
-    IMAGE_SIZE,
+    DemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
-from paddle import nn
-
-
-class DPAndMPDemoNet(nn.Layer):
-    def __init__(self, np_w0, np_w1, mesh):
-        super().__init__()
-        self.mesh = mesh
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="dmp_demo_weight_1",
-                    initializer=paddle.nn.initializer.Assign(np_w0),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, 'y']),
-        )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="dmp_nemo_weight_2",
-                    initializer=paddle.nn.initializer.Assign(np_w1),
-                ),
-            ),
-            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=['y', None]),
-        )
-
-    def forward(self, x):
-        out = F.linear(
-            dist.shard_tensor(
-                x,
-                dist_attr=dist.DistAttr(
-                    mesh=self.mesh, sharding_specs=['x', None]
-                ),
-            ),
-            self.w0,
-        )
-        out = F.relu(out)
-        out = F.linear(out, self.w1)
-
-        return out
 
 
 class TestSimpleNetHybridStrategyForSemiAutoParallel(
@@ -82,14 +38,21 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self.init_single_card_net_result()
 
     def test_dp_mp_demo_net(self):
+        model = dist.shard_layer(
+            DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
+        )
+
         (
             self.dp_mp_loss,
-            self.dp_mp_w0_grad,
-            self.dp_mp_w1_grad,
-        ) = self.run_dynamic(DPAndMPDemoNet(self.w0, self.w1, self._mesh))
+            self.dp_mp_parameters,
+        ) = self.run_dynamic(model, shard_input=True)
+
         self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_mp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.dp_mp_w1_grad, self.base_w1_grad)
+        for param, param_base in zip(
+            self.dp_mp_parameters, self.base_parameters
+        ):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
         self.test_dp_mp_demo_net()

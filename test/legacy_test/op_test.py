@@ -1367,6 +1367,8 @@ class OpTest(unittest.TestCase):
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                    elif ret_tuple is None:
+                        pass
                     else:
                         raise ValueError(
                             "output of python api should be OpResult or list of OpResult or tuple of OpResult"
@@ -1404,14 +1406,14 @@ class OpTest(unittest.TestCase):
         stored_flag = get_flags(
             [
                 'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
                     "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             new_scope = paddle.static.Scope()
@@ -3345,14 +3347,14 @@ class OpTest(unittest.TestCase):
         stored_flag = get_flags(
             [
                 'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
                     "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             executor = Executor(place)
