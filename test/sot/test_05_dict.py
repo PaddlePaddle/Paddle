@@ -80,6 +80,7 @@ def dict_update_item2(x: int, y: paddle.Tensor):
 def dict_del_item_int(x: int, y: paddle.Tensor):
     z = {1: x, 2: y + 1}
     del z[1]
+    raise RuntimeError("sot ci test")
     return z
 
 

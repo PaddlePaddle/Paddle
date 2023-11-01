@@ -36,6 +36,7 @@ def list_getitem_int(x: int, y: paddle.Tensor):
 @check_no_breakgraph
 def list_getitem_tensor(x: int, y: paddle.Tensor):
     x = [x, y]
+    raise RuntimeError("sot ci test")
     return x[1] + 1
 
 
