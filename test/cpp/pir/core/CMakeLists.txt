@@ -1,13 +1,15 @@
-cc_test_old(
+cc_test(
   type_test
-  SRCS
-  type_test.cc
-  DEPS
-  pir
-  gtest
-  pd_op_dialect)
-cc_test_old(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
-cc_test_old(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
+  SRCS type_test.cc
+  DEPS pir gtest pd_op_dialect)
+cc_test(
+  ir_attribute_test
+  SRCS ir_attribute_test.cc
+  DEPS pir gtest)
+cc_test(
+  ir_value_test
+  SRCS ir_value_test.cc
+  DEPS pir gtest)
 paddle_test(
   ir_op_test
   SRCS
@@ -17,36 +19,28 @@ paddle_test(
   gtest
   test_dialect
   pd_op_dialect)
-cc_test_old(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
-cc_test_old(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
-cc_test_old(
+cc_test(
+  ir_region_test
+  SRCS ir_region_test.cc
+  DEPS pir gtest)
+cc_test(
+  ir_builder_test
+  SRCS ir_builder_test.cc
+  DEPS pir gtest)
+cc_test(
   ir_program_test
-  SRCS
-  ir_program_test.cc
-  DEPS
-  pd_op_dialect
-  pir
-  phi
-  gtest)
+  SRCS ir_program_test.cc
+  DEPS pd_op_dialect pir phi gtest)
 
-cc_test_old(
+cc_test(
   ir_infershape_test
-  SRCS
-  ir_infershape_test.cc
-  DEPS
-  pd_op_dialect
-  pir
-  phi
-  gtest)
+  SRCS ir_infershape_test.cc
+  DEPS pd_op_dialect pir phi gtest)
 
-cc_test_old(
+cc_test(
   scalar_attribute_test
-  SRCS
-  scalar_attribute_test.cc
-  DEPS
-  pd_op_dialect
-  pir
-  gtest)
+  SRCS scalar_attribute_test.cc
+  DEPS pd_op_dialect pir gtest)
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
@@ -73,78 +67,49 @@ file(
 copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
                   ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)
 
-cc_test_old(
+cc_test(
   program_translator_test
-  SRCS
-  program_translator_test.cc
-  DEPS
-  program_translator
-  gtest
-  pd_op_dialect
-  pir)
+  SRCS program_translator_test.cc
+  DEPS program_translator gtest pd_op_dialect pir)
 
-cc_test_old(
+cc_test(
   add_dialect_parser_test
-  SRCS
-  add_dialect_parser_test.cc
-  DEPS
-  gtest
-  pd_op_dialect
-  pir)
+  SRCS add_dialect_parser_test.cc
+  DEPS gtest pd_op_dialect pir)
 
 cc_test(
   ir_parser_test
   SRCS ir_parser_test.cc
   DEPS gtest pd_op_dialect pir)
 
-cc_test_old(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
-cc_test_old(
+cc_test(
+  ir_op_info_test
+  SRCS op_info_test.cc
+  DEPS gtest pir)
+cc_test(
   ir_op_yaml_info_parser_test
-  SRCS
-  op_yaml_info_parser_test.cc
-  DEPS
-  gtest
-  pd_op_dialect
-  pd_interface
-  pir)
+  SRCS op_yaml_info_parser_test.cc
+  DEPS gtest pd_op_dialect pd_interface pir)
 
-cc_test_old(
+cc_test(
   ir_type_converter_test
-  SRCS
-  ir_type_converter_test.cc
-  DEPS
-  gtest
-  program_translator
-  pd_op_dialect
-  pir)
+  SRCS ir_type_converter_test.cc
+  DEPS gtest program_translator pd_op_dialect pir)
 
-cc_test_old(
+cc_test(
   type_interface_test
-  SRCS
-  type_interface_test.cc
-  DEPS
-  pir
-  test_dialect
-  gtest
-  pd_op_dialect)
+  SRCS type_interface_test.cc
+  DEPS pir test_dialect gtest pd_op_dialect)
 
-cc_test_old(
+cc_test(
   block_operand_test
-  SRCS
-  block_operand_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+  SRCS block_operand_test.cc
+  DEPS test_dialect gtest pir)
 
-cc_test_old(
+cc_test(
   block_argument_test
-  SRCS
-  block_argument_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+  SRCS block_argument_test.cc
+  DEPS test_dialect gtest pir)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

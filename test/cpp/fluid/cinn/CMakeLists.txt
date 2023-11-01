@@ -21,7 +21,7 @@ if(WITH_TESTING)
   set(CINN_RUN_ENVIRONMENT
       "OMP_NUM_THREADS=1;runtime_include_dir=${CINN_INCLUDE_DIR}/paddle/cinn/runtime/cuda/"
   )
-  # cc_test_old(
+  # cc_test(
   #   cinn_launch_op_test
   #   SRCS
   #   cinn_launch_op_test.cc

@@ -271,19 +271,14 @@ cc_test_old(
   string_helper
   glog)
 
-cc_test(
-  infershape_utils_test
-  SRCS infershape_utils_test.cc
-  DEPS infershape_utils phi)
+cc_test_old(infershape_utils_test SRCS infershape_utils_test.cc DEPS
+            infershape_utils phi)
 
 if(WITH_TESTING AND TEST selected_rows_utils_test)
   set_tests_properties(selected_rows_utils_test PROPERTIES TIMEOUT 120)
 endif()
 
-cc_test(scope_guard_test SRCS scope_guard_test.cc)
-cc_test(
-  phi_utils_test
-  SRCS phi_utils_test.cc
-  DEPS phi_utils)
+cc_test_old(scope_guard_test SRCS scope_guard_test.cc)
+cc_test_old(phi_utils_test SRCS phi_utils_test.cc DEPS phi_utils)
 
-cc_test(convert_utils_test SRCS convert_utils_test.cc)
+cc_test_old(convert_utils_test SRCS convert_utils_test.cc)
