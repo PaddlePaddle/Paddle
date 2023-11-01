@@ -100,7 +100,9 @@ class TestInverseAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -110,7 +112,7 @@ class TestInverseAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
@@ -167,7 +169,9 @@ class TestInverseSingularAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float64"
             )
@@ -178,7 +182,7 @@ class TestInverseSingularAPI(unittest.TestCase):
             exe = base.Executor(place)
             try:
                 fetches = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
