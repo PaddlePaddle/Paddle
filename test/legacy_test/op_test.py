@@ -1817,7 +1817,7 @@ class OpTest(unittest.TestCase):
         Returns:
             res (tuple(outs, fetch_list, feed_map, program, op_desc)): The results of given grad_op_desc.
         """
-        with static_guard(), scope_guard(Scope()):
+        with static_guard():
             (
                 fwd_outs,
                 fwd_fetch_list,

@@ -409,7 +409,8 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False)
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_prim=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -757,10 +758,18 @@ class TestTanh_Complex64(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
+
 
 class TestTanh_Complex128(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
 
 
 class TestTanh_ZeroDim(TestTanh):
