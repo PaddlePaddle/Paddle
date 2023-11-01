@@ -60,7 +60,6 @@ struct Conv2dXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(act);
   // declare variable node's name
   PATTERN_DECL_NODE(input);
-  PATTERN_DECL_NODE(conv_filter);
   PATTERN_DECL_NODE(conv_out);
   PATTERN_DECL_NODE(ew_bias_add_y);
   PATTERN_DECL_NODE(ew_bias_add_out);
@@ -114,13 +113,10 @@ Conv2dXPUPattern::Conv2dXPUPattern(PDPattern* pattern,
                    ->assert_more([](Node* node) {
                      return node->Var()->GetShape().size() == 4;
                    });
-  auto conv_filter = pattern->NewNode(conv_filter_repr())
-                         ->assert_is_op_input(conv_type_, "Filter")
-                         ->AsInput();
   auto conv_out = pattern->NewNode(conv_out_repr())
                       ->assert_is_op_output(conv_type_, "Output")
                       ->assert_has_n_outputs(1);
-  conv->LinksFrom({input, conv_filter}).LinksTo({conv_out});
+  conv->LinksFrom({input}).LinksTo({conv_out});
   // ew_bias_add op
   PDNode* ew_bias_add = nullptr;
   PDNode* ew_bias_add_y = nullptr;
@@ -362,6 +358,13 @@ class Conv2dXPUFusePass : public FusePassBase {
       std::string pattern_node_name,
       std::string node_name) const;
 
+  void CreateTheReplicatedWeights(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+      const;
+
   void CreateFusionWeightsAndBias(
       ir::Graph* graph,
       Scope* scope,
@@ -406,8 +409,6 @@ class Conv2dXPUFusePass : public FusePassBase {
       std::unordered_map<std::string, std::vector<float>>* var_quant_scales)
       const;
 
-  const std::unordered_set<std::string> support_quant_op_type_{"conv2d",
-                                                               "conv2d_xpu"};
   const std::string name_scope_{"conv2d_xpu_fuse_pass"};
 };
 
@@ -475,6 +476,46 @@ Node* Conv2dXPUFusePass::GetNodeFromNodesMap(
   return node_iter->second;
 }
 
+void Conv2dXPUFusePass::CreateTheReplicatedWeights(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+    const {
+  // Get Node
+  auto* conv = GetNodeFromNodesMap(nodes_map, "conv", "conv");
+  PADDLE_ENFORCE_EQ(
+      conv != nullptr,
+      true,
+      platform::errors::InvalidArgument("conv node ptr can not be null"));
+  auto conv_filter_name = conv->Op()->Input("Filter")[0];
+  std::string replicated_filter_name =
+      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  auto* replicated_filter_var = scope->FindVar(replicated_filter_name);
+  if (replicated_filter_var == nullptr) {
+    auto* filter_tensor =
+        scope->FindVar(conv_filter_name)->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor replicated_filter_tensor;
+    Assign(*filter_tensor, &replicated_filter_tensor);
+
+    VarDesc replicated_filter_desc(replicated_filter_name);
+    replicated_filter_desc.SetPersistable(true);
+    replicated_filter_desc.SetShape(vectorize(replicated_filter_tensor.dims()));
+    replicated_filter_desc.SetDataType(
+        framework::TransToProtoVarType(replicated_filter_tensor.dtype()));
+    auto* block_replicated_filter_desc = block->Var(replicated_filter_name);
+    block_replicated_filter_desc->SetPersistable(
+        replicated_filter_desc.Persistable());
+    block_replicated_filter_desc->SetShape(replicated_filter_desc.GetShape());
+    block_replicated_filter_desc->SetDataType(
+        replicated_filter_desc.GetDataType());
+    auto* replicated_filter_node =
+        graph->CreateVarNode(&replicated_filter_desc);
+    Assign(replicated_filter_tensor,
+           scope->Var(replicated_filter_name)->GetMutable<phi::DenseTensor>());
+  }
+}
+
 void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     ir::Graph* graph,
     Scope* scope,
@@ -493,17 +534,18 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
       conv != nullptr,
       true,
       platform::errors::InvalidArgument("conv node ptr can not be null"));
-  auto* conv_filter = GetNodeFromNodesMap(nodes_map, "conv", "conv_filter");
-  PADDLE_ENFORCE_EQ(conv_filter != nullptr,
-                    true,
-                    platform::errors::InvalidArgument(
-                        "conv_filter node ptr can not be null"));
-
-  // transfilter fp16 --> fp32
+  auto conv_filter_name = conv->Op()->Input("Filter")[0];
+  Node* conv_filter = FindNodeWithName(graph, conv_filter_name);
+  CreateTheReplicatedWeights(graph, scope, block, nodes_map);
+  std::string replicated_filter_name =
+      conv_filter_name + "_copy_" + std::to_string(conv->id());
+  auto* conv_filter_replicated_node =
+      FindNodeWithName(graph, replicated_filter_name);
   auto* filter_t =
-      scope->FindVar(conv_filter->Name())->GetMutable<phi::DenseTensor>();
+      scope->FindVar(replicated_filter_name)->GetMutable<phi::DenseTensor>();
   auto filter_len = filter_t->numel();
   auto filter_dtype = filter_t->dtype();
+  // transfilter fp16 --> fp32
   if (filter_dtype == phi::DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
   }
@@ -682,7 +724,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     PrepareWeight<float, int16_t>(graph,
                                   scope,
                                   block,
-                                  conv_filter,
+                                  conv_filter_replicated_node,
                                   &filter_intx,
                                   &filter_max,
                                   false,
@@ -691,7 +733,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
                                   block,
-                                  conv_filter,
+                                  conv_filter_replicated_node,
                                   &filter_intx,
                                   &filter_max,
                                   false,
@@ -714,7 +756,7 @@ void Conv2dXPUFusePass::CreateFusionWeightsAndBias(
            ones_weight.data(),
            max_ptr_size * sizeof(float));
 
-    std::string scale_max_name = conv_filter->Name() + "_scale_max";
+    std::string scale_max_name = conv_filter_name + "_scale_max";
     VarDesc scale_max_desc(scale_max_name);
     scale_max_desc.SetPersistable(true);
     scale_max_desc.SetShape(vectorize(ones_weight_max_tensor.dims()));
@@ -1016,7 +1058,6 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(act);
     /* Get variable node's name*/
     GET_IR_NODE(input);
-    GET_IR_NODE(conv_filter);
     GET_IR_NODE(conv_out);
     GET_IR_NODE(ew_bias_add_y);
     GET_IR_NODE(ew_bias_add_out);
@@ -1034,11 +1075,8 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(ew_branch_add_out);
     GET_IR_NODE(act_out);
 
-    nodes_map.insert({"conv",
-                      {{"conv", conv},
-                       {"conv_filter", conv_filter},
-                       {"input", input},
-                       {"conv_out", conv_out}}});
+    nodes_map.insert(
+        {"conv", {{"conv", conv}, {"input", input}, {"conv_out", conv_out}}});
     nodes_map.insert({"ew_bias_add",
                       {{"ew_bias_add", ew_bias_add},
                        {"ew_bias_add_y", ew_bias_add_y},
@@ -1072,8 +1110,7 @@ int Conv2dXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
-
-    auto filter_data_type = scope->FindVar(conv_filter->Name())
+    auto filter_data_type = scope->FindVar(conv->Op()->Input("Filter")[0])
                                 ->GetMutable<phi::DenseTensor>()
                                 ->dtype();
     std::string op_weights_precision = "float32";
