@@ -264,12 +264,9 @@ class FunctionGraph:
         self.pycode_gen.extend_instrs(iter(origin_instr[0:instr_idx]))
         nop = self.pycode_gen._add_instr("NOP")
 
-        for i in range(instr_idx):
-            instr = origin_instr[i]
-            if instr.jump_to is not None:
-                jump_idx = origin_instr.index(instr.jump_to)
-                if jump_idx == instr_idx:
-                    instr.jump_to = nop
+        for instr in origin_instr:
+            if instr.jump_to == origin_instr[instr_idx]:
+                instr.jump_to = nop
 
         self.pycode_gen.hooks.append(
             lambda: self.pycode_gen.extend_instrs(
