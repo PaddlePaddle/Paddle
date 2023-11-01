@@ -262,6 +262,18 @@ class FunctionGraph:
 
         origin_instr = get_instructions(self.pycode_gen._origin_code)
         self.pycode_gen.extend_instrs(iter(origin_instr[0:instr_idx]))
+        nop = self.pycode_gen._add_instr("NOP")
+
+        for i in range(instr_idx):
+            instr = origin_instr[i]
+            if instr.jump_to is not None:
+                jump_idx = origin_instr.index(instr.jump_to)
+                if jump_idx == instr_idx:
+                    instr.jump_to = nop
+                # this branch will not exec with guard
+                elif jump_idx > instr_idx:
+                    instr.jump_to = None
+
         self.pycode_gen.gen_enable_eval_frame()
 
         name_gen = NameGenerator("__start_compile_saved_orig_")
