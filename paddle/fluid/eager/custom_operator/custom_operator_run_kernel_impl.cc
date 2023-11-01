@@ -366,22 +366,51 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
 #ifdef PADDLE_WITH_DISTRIBUTE
   std::vector<Tensor> x = *all_inputs;
   const phi::distributed::ProcessMesh* mesh = nullptr;
-  if (paddle::pybind::InputsContainDistTensor(&mesh, x)) {
-    paddle::pybind::ConvertAllInputsToDistTensor(mesh, x);
+  for (auto& input : x) {
+    if (input.is_dist_tensor()) {
+      mesh = &(
+          std::dynamic_pointer_cast<phi::distributed::DistTensor>(input.impl())
+              ->dist_attr()
+              .process_mesh());
+      break;
+    }
+  }
+
+  if (mesh) {
+    for (auto& input : x) {
+      if (input.is_dist_tensor()) {
+        PADDLE_ENFORCE_EQ(
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                input.impl())
+                ->dist_attr()
+                .process_mesh(),
+            *mesh,
+            platform::errors::InvalidArgument(
+                "Input %s has different mesh. However all inputs should "
+                "have the same mesh.",
+                input.name()));
+        return;
+      } else {
+        PADDLE_ENFORCE_EQ(
+            phi::DenseTensor::classof(input.impl().get()),
+            true,
+            platform::errors::InvalidArgument("Failed to convert input %s impl "
+                                              "to phi::distributed::DistTensor "
+                                              "as it's not phi::DenseTensor.",
+                                              input.name()));
+        phi::distributed::TensorDistAttr dist_attr(
+            phi::vectorize(input.impl()->dims()));
+        dist_attr.set_process_mesh(*mesh);
+        auto dense_t = std::static_pointer_cast<phi::DenseTensor>(input.impl());
+        input.set_impl(
+            std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
+      }
+    }
   }
 
   run_auto_parallel = paddle::experimental::AllInputsAreDistTensor(x);
   rank_is_in_current_mesh = true;
   if (run_auto_parallel) {
-    for (size_t i = 0; i < all_inputs->size(); ++i) {
-      PADDLE_ENFORCE_EQ(
-          all_inputs->at(i).initialized() && all_inputs->at(i).is_gpu(),
-          true,
-          phi::errors::InvalidArgument(
-              "The custom op's input tensor must be initialized "
-              "tensor on gpu, in AutoParallel mode."));
-    }
-
     auto mesh =
         std::static_pointer_cast<phi::distributed::DistTensor>(x.at(0).impl())
             ->dist_attr()
@@ -399,8 +428,7 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
     current_process_mesh = spmd_info.first[0].process_mesh();
 
     if (rank_is_in_current_mesh) {
-      auto* dev_ctx = static_cast<phi::GPUContext*>(
-          phi::DeviceContextPool::Instance().Get(x.at(0).place()));
+      auto* dev_ctx = phi::DeviceContextPool::Instance().Get(x.at(0).place());
       auto dist_input_x =
           paddle::experimental::ReshardApiInputToReplicatedKernelInput(
               dev_ctx, x, spmd_info.first);
@@ -443,11 +471,11 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
         PADDLE_ENFORCE_EQ(
             out_dim.size(),
             out_dtype.size(),
-            phi::errors::InvalidArgument(
-                "custome op infer_shape result[%d] and infer_dtype result[%d] "
-                "must have the same output size.",
-                i,
-                i));
+            phi::errors::InvalidArgument("custome op infer_shape result[%d] "
+                                         "and infer_dtype result[%d] "
+                                         "must have the same output size.",
+                                         i,
+                                         i));
         if (out_dim.size() == 0) {
           ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
         } else if (out_dim.size() == 1) {
