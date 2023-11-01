@@ -18,7 +18,6 @@ import logging
 import numbers
 import os
 import random
-import time
 import warnings
 
 import numpy as np
@@ -1500,7 +1499,7 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def _add_data_ops(
+    def _add_feed_ops(
         self,
         program,
         feed,
@@ -1513,22 +1512,30 @@ class Engine:
         tmp_program = program.clone()
 
         global_block = tmp_program.global_block()
-        # prepend data operators
+
+        feed_var_name = "feed"
+        if feed_var_name in global_block.vars:
+            feed_var = global_block.var(feed_var_name)
+        else:
+            feed_var = global_block.create_var(
+                name=feed_var_name,
+                type=core.VarDesc.VarType.FEED_MINIBATCH,
+                persistable=True,
+            )
+
+        # prepend feed operators
         for i, name in enumerate(feed):
             if global_block.has_var(name):
                 out = global_block.var(name)
                 global_block._prepend_op(
-                    type='data',
-                    inputs={},
-                    outputs={'out': out},
+                    type='feed',
+                    inputs={'X': [feed_var]},
+                    outputs={'Out': out},
                     attrs={
-                        'shape': out.shape,
-                        'dtype': out.dtype,
-                        'place': 2,
+                        'col': i,
                         'name': out.name,
                     },
                 )
-                out.stop_gradient = False
             else:
                 warnings.warn(
                     "The variable %s is not found in program. It is not declared or is pruned."
@@ -1539,7 +1546,7 @@ class Engine:
     def _translate_to_newir_program(self, feed_dict=None):
         if not self.newir_program_initialized:
             if feed_dict is not None:
-                tmp_program = self._add_data_ops(self.main_program, feed_dict)
+                tmp_program = self._add_feed_ops(self.main_program, feed_dict)
             else:
                 tmp_program = self.main_program.clone()
 
@@ -1548,15 +1555,7 @@ class Engine:
                 param_mapping,
             ) = paddle.pir.translate_to_new_ir_with_param_map(tmp_program.desc)
 
-            data_ops = []
-            global_block = newir_program.global_block()
-            for op in global_block.ops:
-                if op.name() == "pd_op.data":
-                    data_ops.append(op)
-            insert_point = 0
-            for data_op in data_ops:
-                global_block.move_op(data_op, insert_point)
-
+            self.lr_scheduler = self.main_program.lr_scheduler
             self.newir_program = newir_program
             self.param_mapping = param_mapping
             self.newir_program_initialized = True
@@ -1699,7 +1698,7 @@ class Engine:
 
         if self.enable_prim_in_distribute:
             self._translate_to_newir_program(feed_dict)
-            self._decompose_newir_program()
+            # self._decompose_newir_program()
 
             fetch_list = []
             for fetch_name in fetch_names:
@@ -1708,16 +1707,54 @@ class Engine:
                 fetch_list.append(result[0])
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.newir_program_after_decomposed,
+                self.newir_program,
+                self.newir_prune_startup_program,
             ):
+                if self.lr_scheduler:
+                    from paddle.base.executor import (
+                        _as_lodtensor,
+                        convert_dtype,
+                    )
+                    from paddle.optimizer.lr import LRScheduler
+
+                    assert isinstance(
+                        self.lr_scheduler, LRScheduler
+                    ), "must be LRScheduler"
+                    lr_scheduler = self.lr_scheduler
+                    lr_value = lr_scheduler()
+                    if (
+                        lr_scheduler._var_name
+                        in self.main_program.global_block().vars
+                    ):
+                        lr_var = self.main_program.global_block().vars[
+                            lr_scheduler._var_name
+                        ]
+                        data = np.array([lr_value]).astype(
+                            convert_dtype(lr_var.dtype)
+                        )
+                        tensor = core.get_variable_tensor(
+                            global_scope(), lr_scheduler._var_name
+                        )
+                        # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                        cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                        if core.is_cuda_graph_capturing():
+                            warnings.warn(
+                                "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                                "take any effect! Please set the learning rate manually before each batch!"
+                            )
+                        elif core.is_compiled_with_ipu():
+                            # for ipu, tensor is allocated on cpu
+                            tensor._copy_from(cpu_tensor, tensor._place())
+                        else:
+                            tensor._copy_from(cpu_tensor, self._executor.place)
+
                 outs = self._executor.run(
-                    self.newir_program_after_decomposed,
+                    self.newir_program,
                     feed=feed_dict,
                     fetch_list=fetch_list,
                     use_program_cache=self._strategy.use_cache,
                     return_numpy=self._strategy.return_numpy,
                 )
-                time.sleep(1)
 
         else:
             outs = self._executor.run(

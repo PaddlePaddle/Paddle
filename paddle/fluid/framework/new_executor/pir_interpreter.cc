@@ -126,7 +126,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 
   std::stringstream ss;
   ss << this
-     << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -1447,7 +1447,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << place_ << " "
+    VLOG(4) << place_ << " Before:"
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1469,7 +1469,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << place_ << " "
+      VLOG(4) << place_ << " After:"
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
