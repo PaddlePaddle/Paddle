@@ -31,10 +31,12 @@ void SwishPlugin::terminate() TRT_NOEXCEPT {}
 bool SwishPlugin::supportsFormat(
     nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
-    return type == nvinfer1::DataType::kFLOAT ||
-           type == nvinfer1::DataType::kHALF;
+    return (type == nvinfer1::DataType::kFLOAT ||
+            type == nvinfer1::DataType::kHALF) &&
+           (format == nvinfer1::TensorFormat::kLINEAR);
   }
-  return type == nvinfer1::DataType::kFLOAT;
+  return (type == nvinfer1::DataType::kFLOAT) &&
+         (format == nvinfer1::TensorFormat::kLINEAR);
 }
 
 nvinfer1::Dims SwishPlugin::getOutputDimensions(int index,
