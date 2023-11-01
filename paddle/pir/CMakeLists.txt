@@ -5,18 +5,18 @@ function(ir_static_library TARGET_NAME)
   set(options STATIC static SHARED shared INTERFACE interface)
   set(oneValueArgs "")
   set(multiValueArgs SRCS DEPS)
-  cmake_parse_arguments(ir_library "${options}" "${oneValueArgs}"
+  cmake_parse_arguments(ir_static_library "${options}" "${oneValueArgs}"
                         "${multiValueArgs}" ${ARGN})
   set(OBJ_LIB ir_${TARGET_NAME})
-  add_library(${OBJ_LIB} OBJECT ${ir_library_SRCS})
+  add_library(${OBJ_LIB} OBJECT ${ir_static_library_SRCS})
   cc_library(
-    static_${TARGET_NAME}
+    ${TARGET_NAME}
     SRCS $<TARGET_OBJECTS:${OBJ_LIB}>
-    DEPS ${ir_library_DEPS})
+    DEPS ${ir_static_library_DEPS})
   set_property(GLOBAL APPEND PROPERTY IR_MODULES $<TARGET_OBJECTS:${OBJ_LIB}>)
 
   get_property(ir_targets GLOBAL PROPERTY IR_TARGETS)
-  set(ir_targets ${ir_targets} static_${TARGET_NAME})
+  set(ir_targets ${ir_targets} ${TARGET_NAME})
   set_property(GLOBAL PROPERTY IR_TARGETS "${ir_targets}")
 endfunction()
 file(GLOB_RECURSE PIR_CPP_SOURCES "*.cc")
