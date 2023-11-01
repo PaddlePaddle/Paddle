@@ -1698,7 +1698,7 @@ class Engine:
 
         if self.enable_prim_in_distribute:
             self._translate_to_newir_program(feed_dict)
-            # self._decompose_newir_program()
+            self._decompose_newir_program()
 
             fetch_list = []
             for fetch_name in fetch_names:
@@ -1707,7 +1707,7 @@ class Engine:
                 fetch_list.append(result[0])
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.newir_program,
+                self.newir_program_after_decomposed,
                 self.newir_prune_startup_program,
             ):
                 if self.lr_scheduler:
@@ -1749,7 +1749,7 @@ class Engine:
                             tensor._copy_from(cpu_tensor, self._executor.place)
 
                 outs = self._executor.run(
-                    self.newir_program,
+                    self.newir_program_after_decomposed,
                     feed=feed_dict,
                     fetch_list=fetch_list,
                     use_program_cache=self._strategy.use_cache,
