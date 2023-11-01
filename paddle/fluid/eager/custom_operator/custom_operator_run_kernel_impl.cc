@@ -384,7 +384,7 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
                 ->dist_attr()
                 .process_mesh(),
             *mesh,
-            platform::errors::InvalidArgument(
+            phi::errors::InvalidArgument(
                 "Input %s has different mesh. However all inputs should "
                 "have the same mesh.",
                 input.name()));
@@ -393,10 +393,10 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
         PADDLE_ENFORCE_EQ(
             phi::DenseTensor::classof(input.impl().get()),
             true,
-            platform::errors::InvalidArgument("Failed to convert input %s impl "
-                                              "to phi::distributed::DistTensor "
-                                              "as it's not phi::DenseTensor.",
-                                              input.name()));
+            phi::errors::InvalidArgument("Failed to convert input %s impl "
+                                         "to phi::distributed::DistTensor "
+                                         "as it's not phi::DenseTensor.",
+                                         input.name()));
         phi::distributed::TensorDistAttr dist_attr(
             phi::vectorize(input.impl()->dims()));
         dist_attr.set_process_mesh(*mesh);
