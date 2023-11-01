@@ -4726,7 +4726,11 @@ create_test_act_fp16_class(TestAsinh)
 create_test_act_fp16_class(TestAtanh)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestGelu,
@@ -4793,6 +4797,7 @@ def create_test_act_bf16_class(
     check_prim=False,
     enable_cinn=False,
     check_pir=False,
+    check_prim_pir=False,
     grad_atol=1e-2,
     **kwargs
 ):
@@ -4825,6 +4830,7 @@ def create_test_act_bf16_class(
                 atol=atol,
                 check_prim=check_prim,
                 check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
             )
 
         def test_check_grad(self):
@@ -4837,6 +4843,7 @@ def create_test_act_bf16_class(
                     max_relative_error=grad_atol,
                     check_prim=check_prim,
                     check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
@@ -4879,7 +4886,9 @@ create_test_act_bf16_class(TestAcosh)
 create_test_act_bf16_class(TestAsinh)
 create_test_act_bf16_class(TestAtanh)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
