@@ -39,13 +39,6 @@ class CinnJitInstruction::FnPtrImpl {
       func_args_.push_back(ptr_storage_.data() + i);
     }
 
-    std::cerr << "grid " << cuda_jit_info_.grid_dims[0] << "\t"
-              << cuda_jit_info_.grid_dims[1] << "\t"
-              << cuda_jit_info_.grid_dims[2] << "\t"
-              << cuda_jit_info_.block_dims[0] << "\t"
-              << cuda_jit_info_.block_dims[1] << "\t"
-              << cuda_jit_info_.block_dims[2] << std::endl;
-
     CUDA_DRIVER_CALL(
         cuLaunchKernel(static_cast<CUfunction>(cuda_jit_info_.fn_ptr),
                        cuda_jit_info_.grid_dims[0],

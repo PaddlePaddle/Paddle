@@ -59,10 +59,10 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
 
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
   const float value_one = 1.0;
-  const std::vector<int64_t> shape = {8, 8};
+  const std::vector<int64_t> shape = {128, 128, 768};
   auto x = builder
                .Build<paddle::dialect::FullOp>(
-                   shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
+                   shape, value_one, phi::DataType::FLOAT16, phi::GPUPlace())
                .result(0);
 
   auto max =
@@ -73,7 +73,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   auto sum =
       builder
           .Build<paddle::dialect::SumOp>(
-              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
+              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT16, true)
           .result(0);
   auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum).result(0);
 
@@ -120,11 +120,14 @@ TEST(GroupOp, TestBuild) {
   paddle::framework::InterpreterCore executor(
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-  executor.Run({}, true);
+  for (size_t i = 0; i < 100; ++i) {
+    executor.Run({}, true);
+  }
+
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  std::cerr << out_tensor << std::endl;
+  std::cerr << out_tensor.dims() << std::endl;
 }
 
 // TEST(GroupOp, TestBuildBadCAse) {
