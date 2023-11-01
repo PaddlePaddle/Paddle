@@ -963,13 +963,11 @@ class PartialProgramLayer:
         return input_vars, out_vars, input_var_names
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
-        # Hold forward variables
-        tmp_scope_vec = None
-        inner_scope = self._get_scope(
-            program_id=program_id, use_scope_cache=use_scope_cache
-        )
-        tmp_scope_vec = [inner_scope]
-        return tmp_scope_vec
+        return [
+            self._get_scope(
+                program_id=program_id, use_scope_cache=use_scope_cache
+            )
+        ]
 
     def _create_cuda_graph_vec(self):
         var = core.eager.Tensor(
