@@ -29,7 +29,7 @@ void bilinear_interpolate_gradient(const int height,
                                    const T out_grad_this_bin,
                                    const T count,
                                    T* batch_grad_data) {
-  int x_low, y_low, x_high, y_high;
+  int x_low = 0, y_low = 0, x_high = 0, y_high = 0;
   T w1, w2, w3, w4;
   if (y < -1.0 || y > height || x < -1.0 || x > width) {
     w1 = w2 = w3 = w4 = 0;
@@ -94,7 +94,7 @@ void RoiAlignGradKernel(const Context& dev_ctx,
   DenseTensor roi_batch_id_list = Empty<int>(dev_ctx, {rois_num});
   int* box_batch_id_data = roi_batch_id_list.data<int>();
 
-  int boxes_batch_size;
+  int boxes_batch_size = 0;
   if (boxes_num) {
     boxes_batch_size = static_cast<int>(boxes_num->numel());
     auto* boxes_num_data = boxes_num->data<int>();

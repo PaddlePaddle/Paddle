@@ -521,7 +521,6 @@ set(TEST_OPS_WITH_GC
     test_lod_reset_op
     test_lookup_table_op
     test_mean_op
-    test_pad2d_op
     test_scatter_op
     test_slice_op)
 
@@ -852,7 +851,6 @@ set_tests_properties(
   test_buffer_shared_memory_reuse_pass PROPERTIES LABELS "RUN_TYPE=DIST")
 set_tests_properties(
   test_sync_batch_norm_op
-  test_inplace_abn_op
   test_parallel_executor_seresnext_base_gpu
   test_parallel_executor_seresnext_with_reduce_gpu
   test_parallel_executor_seresnext_with_fuse_all_reduce_gpu
@@ -1279,6 +1277,7 @@ set(STATIC_BUILD_TESTS
     test_adamw_op
     test_arg_min_max_op
     test_assign_pos_op
+    test_batch_norm_op
     test_bucketize_api
     test_bincount_op
     test_c_embedding_op
@@ -1286,6 +1285,7 @@ set(STATIC_BUILD_TESTS
     test_decoupled_py_reader
     test_eig_op
     test_eigh_op
+    test_fake_dequantize_op
     test_fake_quantize_op
     test_fetch_lod_tensor_array
     test_ftrl_op
@@ -1387,6 +1387,17 @@ foreach(IR_OP_TEST ${NEW_IR_OP_TESTS})
     set_tests_properties(
       ${IR_OP_TEST} PROPERTIES ENVIRONMENT
                                "FLAGS_NEW_IR_OPTEST_WHITE_LIST=True")
+  else()
+    message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
+  endif()
+endforeach()
+
+file(STRINGS "${CMAKE_SOURCE_DIR}/test/white_list/new_ir_op_test_no_check_list"
+     NEW_IR_OP_NO_CHECK_TESTS)
+foreach(IR_OP_TEST ${NEW_IR_OP_NO_CHECK_TESTS})
+  if(TEST ${IR_OP_TEST})
+    set_tests_properties(${IR_OP_TEST} PROPERTIES ENVIRONMENT
+                                                  "FLAGS_NEW_IR_NO_CHECK=True")
   else()
     message(STATUS "NewIR OpTest: not found ${IR_OP_TEST} in legacy_test")
   endif()

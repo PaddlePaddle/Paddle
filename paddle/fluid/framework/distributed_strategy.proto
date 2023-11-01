@@ -62,6 +62,8 @@ message MpConfig {
     optional bool mp_skip_c_identity= 6 [default = false ];
     // Support fused_linear_param_grad_add in ColumnParallelLinear. Only works when mp_async_allreduce is true.
     optional bool mp_fused_linear_param_grad_add= 7 [default = false ];
+    // Broadcast mp input data
+    optional bool need_broadcast_data=8 [default = true];
 }
 
 message PpConfig {
@@ -103,6 +105,7 @@ message AMPConfig {
   optional bool use_fp16_guard = 11 [ default = true ];
   optional bool use_optimizer_fp16 = 12
       [ default = false ]; // auto parallel effective only
+  optional bool use_pure_bf16 = 13 [ default = false ];
 }
 
 message LocalSGDConfig {

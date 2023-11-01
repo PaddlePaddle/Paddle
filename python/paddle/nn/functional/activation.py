@@ -61,7 +61,7 @@ def celu(x, alpha=1.0, name=None):
     """
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.celu(x, alpha)
     else:
         check_variable_and_dtype(
@@ -484,7 +484,7 @@ def leaky_relu(x, negative_slope=0.01, name=None):
             [-0.02000000,  0.        ,  1.        ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.leaky_relu(x, negative_slope)
     else:
         check_variable_and_dtype(
@@ -594,7 +594,7 @@ def prelu(x, weight, data_format="NCHW", name=None):
             ), "The weight size should be equal to x input channel in prelu() when weight shape is not [1]."
         mode = 'channel'
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.prelu(x, weight, data_format, mode)
     else:
         check_variable_and_dtype(
@@ -764,13 +764,9 @@ def relu(x, name=None):
             [0., 0., 1.])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.relu(x)
     else:
-        if paddle.framework.in_dynamic_or_pir_mode():
-            # Below code will be removed after we can generate IR api automatically
-            return paddle._pir_ops.relu(x)
-
         check_variable_and_dtype(
             x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'relu'
         )
@@ -817,7 +813,7 @@ def log_sigmoid(x, name=None):
             [-0.31326166, -0.12692805, -0.04858733, -0.01814996])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logsigmoid(x)
     else:
         check_variable_and_dtype(
@@ -946,7 +942,7 @@ def relu6(x, name=None):
             [0.        , 0.30000001, 6.        ])
     """
     threshold = 6.0
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.relu6(x)
 
     check_variable_and_dtype(
@@ -1281,7 +1277,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             \end{cases}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64, complex128.
         beta (float, optional): The value of :math:`\beta` for softplus. Default is 1
         threshold (float, optional): The value of :math:`\varepsilon` for softplus. Default is 20
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
@@ -1306,7 +1302,17 @@ def softplus(x, beta=1, threshold=20, name=None):
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
-            x, 'x', ['float16', 'uint16', 'float32', 'float64'], 'softplus'
+            x,
+            'x',
+            [
+                'float16',
+                'uint16',
+                'float32',
+                'float64',
+                'complex64',
+                'complex128',
+            ],
+            'softplus',
         )
         helper = LayerHelper('softplus', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
@@ -1442,7 +1448,7 @@ def swish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.swish(x)
     else:
         check_variable_and_dtype(
@@ -1677,7 +1683,7 @@ def log_softmax(x, axis=-1, dtype=None, name=None):
     if (dtype is not None) and (not isinstance(dtype, core.VarDesc.VarType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if dtype is not None:
             x = _C_ops.cast(x, dtype)
         return _C_ops.log_softmax(x, axis)

@@ -49,7 +49,8 @@ OpLowererImpl::OpLowererImpl(
 
 std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
                                                   bool apply_op_schedule,
-                                                  bool apply_group_schedule) {
+                                                  bool apply_group_schedule,
+                                                  bool apply_pass) {
   VLOG(3) << "Lowering Group : " << group->group_id
           << " , Op Pattern : " << group->op_pattern_kind;
   group->input_names.clear();
@@ -61,11 +62,13 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
+                        apply_pass,
                         &OpLowererImpl::ElementwiseScheduleDetermineFunction);
     case framework::kReduction:
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
+                        apply_pass,
                         &OpLowererImpl::ReduceScheduleDetermineFunction);
     case framework::kOutFusible:
       LOG(FATAL) << "Group Pattern Kind kOutFusible Is Not Implemented!";
@@ -73,6 +76,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::Lower(const GroupPtr& group,
       return LowerGroup(group,
                         apply_op_schedule,
                         apply_group_schedule,
+                        apply_pass,
                         &OpLowererImpl::NonFusibleScheduleDetermineFunction);
     default:
       LOG(FATAL) << "Group Pattern Kind Is Unknown!";
@@ -96,6 +100,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     const GroupPtr& group,
     bool apply_op_schedule,
     bool apply_group_schedule,
+    bool apply_pass,
     ScheduleDetermineFunction schedule_determine_func) {
   // 1.Do compute, lower and schedule for each op.
   VLOG(3) << "group->fused_sub_groups.size() is : "
@@ -127,8 +132,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   // 3.Do post-processing,
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
-  return PostProcess(
-      group, tensor_map, do_op_schedule, &ir_sch, &group_func_arg_tensors);
+  return PostProcess(group,
+                     tensor_map,
+                     do_op_schedule,
+                     apply_pass,
+                     &ir_sch,
+                     &group_func_arg_tensors);
 }
 
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerCustomCall(
@@ -222,6 +231,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map,
     bool done_op_schedule,
+    bool apply_pass,
     ir::IRSchedule* ir_sch,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
   // 1.Prepare function args
@@ -278,9 +288,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
 #ifdef CINN_WITH_CUDA
-  optim::OptimizeExprGPU(&(func_body));
+  if (apply_pass) {
+    optim::OptimizeExprGPU(&(func_body));
+  }
 #endif
-
   // 2.Prepare temp buffers
   poly::StageMap stages;
   auto temp_buffers =
@@ -294,7 +305,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     func->PrepareBufferCastExprs();
   }
   // 4.Apply low level pass
-  func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+  if (apply_pass) {
+    func = optim::Optimize(Expr(func), target_, false).as_lowered_func_ref();
+  }
   return {func};
 }
 
@@ -545,8 +558,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
                          this->shape_dict_);
       } else {
         VLOG(3) << "Before assign node " << node->id()
-                << " into horizontal link reducer " << greducer->id()
-                << ", ir is:\n"
+                << " into horizontal link reducer, ir is:\n"
                 << ir_sch.GetModule().GetExprs().at(0);
         // if node is horizontal with reduce or node is reduce, loop assign
         //

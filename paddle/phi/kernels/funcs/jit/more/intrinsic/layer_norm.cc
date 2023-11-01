@@ -44,8 +44,8 @@ void LayerNorm(float* x,
     __m256 mean_vec, var_vec;
     __m128 hi, lo;
     __m256 tmp = _mm256_setzero_ps();
-    size_t offset;
-    size_t j;
+    size_t offset = 0;
+    size_t j = 0;
     __m256 reverse_num_vec = _mm256_div_ps(
         _mm256_set1_ps(1.0), _mm256_set1_ps(static_cast<float>(right)));
     __m256 epsilon_vec = _mm256_set1_ps(epsilon);

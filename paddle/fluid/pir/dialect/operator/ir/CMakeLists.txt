@@ -27,8 +27,11 @@ set(fused_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/generator/parsed_ops/fused_backward.parsed.yaml
 )
 
-set(pd_op_forward_yaml_file
+set(pd_op_forward_yaml_file1
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops.yaml)
+
+set(pd_op_forward_yaml_file2
+    ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/update_ops.yaml)
 
 set(pd_op_backward_yaml_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/operator/ir/ops_backward.yaml)
@@ -38,9 +41,10 @@ set(parsed_op_dir
 
 set(op_yaml_file3 ${parsed_op_dir}/ops.parsed.yaml)
 set(op_yaml_file4 ${parsed_op_dir}/ops_backward.parsed.yaml)
+set(op_yaml_file5 ${parsed_op_dir}/update_ops.parsed.yaml)
 
 set(op_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${fused_op_forward_yaml_file},${fused_op_backward_yaml_file},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(op_namespace paddle,dialect)
 set(dialect_name pd_op)
@@ -50,20 +54,17 @@ set(op_header_file_tmp ${op_header_file}.tmp)
 set(op_source_file_tmp ${op_source_file}.tmp)
 
 set(op_vjp_source_file ${PD_DIALECT_BINARY_DIR}/pd_op_vjp.cc)
+set(op_decomp_source_file ${PD_DIALECT_BINARY_DIR}/op_decomp.cc)
 set(op_vjp_source_file_tmp ${op_vjp_source_file}.tmp)
 
-add_custom_command(
-  OUTPUT ${op_yaml_file3} ${op_yaml_file4}
+execute_process(
   COMMAND ${CMAKE_COMMAND} -E make_directory ${parsed_op_dir}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pd_op_forward_yaml_file} --output_path ${op_yaml_file3}
-  COMMENT "Generate pd_ops.parsed.yaml"
+          ${pd_op_forward_yaml_file1} --output_path ${op_yaml_file3}
   COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
-          ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward
-  COMMENT "Generate pd_ops_backward.parsed.yaml"
-  DEPENDS ${op_gen_parsed_yaml_file} ${pd_op_forward_yaml_file}
-          ${pd_op_backward_yaml_file}
-  VERBATIM)
+          ${pd_op_forward_yaml_file2} --output_path ${op_yaml_file5}
+  COMMAND ${PYTHON_EXECUTABLE} ${op_gen_parsed_yaml_file} --op_yaml_path
+          ${pd_op_backward_yaml_file} --output_path ${op_yaml_file4} --backward)
 
 add_custom_command(
   OUTPUT ${op_header_file} ${op_source_file} ${op_vjp_source_file}
@@ -89,10 +90,11 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 set(api_gen_yaml_files
-    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4}
+    ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
 set(api_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/api_gen.py)
@@ -104,7 +106,7 @@ set(api_source_file_tmp ${api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${api_header_file} ${api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${api_gen_yaml_files}
+    ${PYTHON_EXECUTABLE} ${api_gen_file} --op_yaml_files ${op_yaml_files}
     --op_compat_yaml_file ${op_compat_yaml_file} --namespaces ${op_namespace}
     --api_def_h_file ${api_header_file_tmp} --api_def_cc_file
     ${api_source_file_tmp}
@@ -121,6 +123,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 set(python_c_gen_file
@@ -135,10 +138,9 @@ set(python_c_source_file_tmp ${python_c_source_file}.tmp)
 add_custom_command(
   OUTPUT ${python_c_header_file} ${python_c_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --python_c_def_h_file
-    ${python_c_header_file_tmp} --python_c_def_cc_file
+    ${PYTHON_EXECUTABLE} ${python_c_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --python_c_def_h_file ${python_c_header_file_tmp} --python_c_def_cc_file
     ${python_c_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${python_c_header_file_tmp}
           ${python_c_header_file}
@@ -153,6 +155,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
+          ${op_yaml_file5}
   VERBATIM)
 
 add_custom_target(static_op_function_gen ALL DEPENDS ${python_c_header_file}
@@ -166,9 +169,9 @@ set(ops_api_source_file_tmp ${ops_api_source_file}.tmp)
 add_custom_command(
   OUTPUT ${ops_api_source_file}
   COMMAND
-    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files
-    ${api_gen_yaml_files} --op_compat_yaml_file ${op_compat_yaml_file}
-    --namespaces "paddle,pybind" --ops_api_file ${ops_api_source_file_tmp}
+    ${PYTHON_EXECUTABLE} ${ops_api_gen_file} --op_yaml_files ${op_yaml_files}
+    --op_compat_yaml_file ${op_compat_yaml_file} --namespaces "paddle,pybind"
+    --ops_api_file ${ops_api_source_file_tmp}
   COMMAND ${CMAKE_COMMAND} -E copy_if_different ${ops_api_source_file_tmp}
           ${ops_api_source_file}
   COMMENT "copy_if_different ${ops_api_source_file}"
@@ -191,7 +194,7 @@ cc_library(
 cc_library(
   pd_op_dialect_op
   SRCS ${op_source_file} manual_op.cc control_flow_op.cc
-  DEPS pd_op_dialect_core)
+  DEPS pd_op_dialect_core pir_control_flow)
 cc_library(
   api_builder
   SRCS api_builder.cc
@@ -209,6 +212,7 @@ target_include_directories(pd_op_dialect_api INTERFACE ${PD_DIALECT_BINARY_DIR})
 
 cc_library(
   pd_op_dialect
-  SRCS op_dialect.cc manual_op_vjp.cc ${op_vjp_source_file}
+  SRCS op_dialect.cc manual_op_decomp.cc ${op_decomp_source_file}
+       manual_op_vjp.cc ${op_vjp_source_file}
   DEPS pd_op_dialect_api param_to_variable primitive_vjp_experimental
        pd_op_dialect_utils op_yaml_info_parser)

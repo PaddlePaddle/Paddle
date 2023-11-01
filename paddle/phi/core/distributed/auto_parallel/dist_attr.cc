@@ -349,7 +349,8 @@ std::string TensorDistAttr::partial_status_string() const {
 }
 
 bool TensorDistAttr::empty() const {
-  return process_mesh_.empty() || dims_mapping_.empty();
+  // dims_mapping is empty when the tensor is 0-dim, but it is also be valid.
+  return process_mesh_.empty();
 }
 
 std::vector<std::shared_ptr<PlacementStatus>> TensorDistAttr::to_placement()

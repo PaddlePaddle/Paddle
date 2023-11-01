@@ -451,7 +451,7 @@ void Reducer::InitializeGroups(
           .inside_group_index = inside_group_index++,
       };
     }
-    group.variable_indices_ = std::move(variable_indices_);
+    group.variable_indices_ = variable_indices_;
     groups_.emplace_back(std::move(group));
     // Debug Message For Reducer
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();

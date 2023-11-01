@@ -65,6 +65,8 @@ class OpYamlInfoParser {
 
   const std::string& GetOriginOpName() const;
 
+  int GetTensorParamIndexByArgsName(const std::string& args_name) const;
+
  private:
   void parse();
   inline const std::vector<OpInputInfo>& InputInfo() const {

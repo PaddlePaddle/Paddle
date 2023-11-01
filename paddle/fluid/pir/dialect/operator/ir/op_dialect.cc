@@ -126,7 +126,7 @@ pir::Type OperatorDialect::ParseType(pir::IrParser &parser) {  // NOLINT
       break;
     }
     parser.ConsumeToken();
-    parser.lexer->Unget(peek_token_val.size() - 1);
+    parser.lexer->Unget(static_cast<int>(peek_token_val.size() - 1));
     if (parser.PeekToken().token_type_ != DIGIT) {
       break;
     }

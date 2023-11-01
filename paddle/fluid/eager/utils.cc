@@ -28,6 +28,38 @@
 #include "paddle/fluid/framework/variable.h"
 
 namespace egr {
+
+void SetGradOutputDistAttrIter::visit_element(paddle::Tensor* element,
+                                              const GradSlotMeta& meta) {
+  if (element == nullptr) {
+    VLOG(4) << "The input element is nullptr when calling "
+               "SetGradOutputDistAttrIter.";
+    return;
+  }
+  // Here the element is empty or defined DistTensor
+  VLOG(4) << "The input element is set DistTensor impl when calling "
+             "SetGradOutputDistAttrIter.";
+  element->set_impl(std::make_shared<phi::distributed::DistTensor>(
+      phi::DDim(), meta.DistAttr()));
+}
+
+void SetGradOutputDistAttrIter::visit(paddle::Tensor* element) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    visit_element(element, out_meta_[out_indexes_[cur_pos_]][0]);
+  }
+  cur_pos_++;
+}
+
+void SetGradOutputDistAttrIter::visit(
+    const std::vector<paddle::Tensor*>& elements) {
+  if (!out_meta_[out_indexes_[cur_pos_]].empty()) {
+    for (size_t i = 0; i < elements.size(); ++i) {
+      visit_element(elements.at(i), out_meta_[out_indexes_[cur_pos_]][i]);
+    }
+  }
+  cur_pos_++;
+}
+
 /**
  * Implementation of Eager Utils.
  **/
@@ -471,6 +503,26 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
           0.0,
           grad_in_metas[i].GetTensorMeta().dtype,
           grad_in_metas[i].GetPlace());
+      grad.set_impl(tensor_with_zero.impl());
+    }
+  }
+}
+
+void EagerUtils::FillZeroForEmptyOptionalGradOutput(
+    std::vector<paddle::Tensor>* output_grads,
+    const std::vector<GradSlotMeta>& grad_output_metas) {
+  for (size_t i = 0; i < output_grads->size(); i++) {
+    paddle::Tensor& grad = (*output_grads)[i];
+    if (!grad.initialized() && grad_output_metas[i].HasTensorMeta()) {
+      if (grad.defined() && grad.is_selected_rows()) {
+        continue;
+      }
+      auto tensor_with_zero =
+          paddle::experimental::full(  // only create dense tensor.
+              phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+              0.0,
+              grad_output_metas[i].GetTensorMeta().dtype,
+              grad_output_metas[i].GetPlace());
       grad.set_impl(tensor_with_zero.impl());
     }
   }

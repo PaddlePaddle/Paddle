@@ -36,6 +36,7 @@ from ...tensor.creation import create_parameter  # noqa: F401
 from .loss import nce  # noqa: F401
 from .common import prelu  # noqa: F401
 from .common import layer_norm  # noqa: F401
+from .common import quant_linear
 
 
 from .common import embedding  # noqa: F401
@@ -60,7 +61,7 @@ from .sequence_lod import sequence_reverse  # noqa: F401
 from .control_flow import cond
 from .static_pylayer import static_pylayer
 
-__all__ = [  # noqa
+__all__ = [
     'fc',
     'batch_norm',
     'bilinear_tensor_product',
@@ -101,4 +102,5 @@ __all__ = [  # noqa
     'sequence_enumerate',
     'sequence_reverse',
     'prelu',
+    'quant_linear',
 ]

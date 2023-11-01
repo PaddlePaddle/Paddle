@@ -15,6 +15,7 @@
 import os
 import sys
 import atexit
+import platform
 
 # The legacy core need to be removed before "import core",
 # in case of users installing paddlepaddle without -U option
@@ -31,6 +32,8 @@ if os.path.exists(legacy_core):
         os.remove(legacy_core)
     except Exception as e:
         raise e
+
+from . import core
 
 # import all class inside framework into base module
 from . import framework
@@ -138,11 +141,6 @@ def __bootstrap__():
     Returns:
         None
     """
-    import sys
-    import os
-    import platform
-    from . import core
-
     # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
     # unittest is always imported in numpy (maybe some versions not).
     # so is_test is True and p2p is not inited.

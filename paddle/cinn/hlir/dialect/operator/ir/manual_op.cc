@@ -15,16 +15,17 @@
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 
 #include <vector>
+#include "glog/logging.h"
 #include "paddle/pir/core/builtin_type.h"
+#include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 
 namespace cinn {
 namespace dialect {
 
 const char *GroupOp::attributes_name[GroupOp::attributes_num] = {"group_info"};
 
-// TODO(Aurlius84): Need to figure out how to rebuild relation info of ops outer
-// GroupOp
 void GroupOp::Build(pir::Builder &builder,
                     pir::OperationArgument &argument,
                     const std::vector<pir::Type> &output_types) {
@@ -32,18 +33,33 @@ void GroupOp::Build(pir::Builder &builder,
   argument.output_types = output_types;
 }
 
-pir::Block *GroupOp::Block() {
+void GroupOp::Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    std::unique_ptr<pir::Block> &&block) {
+  VLOG(4) << "Start build GroupOp";
+  if (block && !block->empty()) {
+    IR_ENFORCE(block->back()->isa<pir::YieldOp>());
+    auto *op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      argument.AddOutput(op->operand(i).type());
+    }
+  }
+  argument.AddRegion()->push_back(block.release());
+}
+
+pir::Block *GroupOp::block() {
   pir::Region &region = (*this)->region(0);
   if (region.empty()) region.emplace_back();
   return region.front();
 }
 
-std::vector<pir::Operation *> GroupOp::Ops() {
-  auto *block = this->Block();
-  return std::vector<pir::Operation *>(block->begin(), block->end());
+std::vector<pir::Operation *> GroupOp::ops() {
+  auto *inner_block = this->block();
+  return std::vector<pir::Operation *>(inner_block->begin(),
+                                       inner_block->end());
 }
 
-void GroupOp::Verify() {}
+void GroupOp::VerifySig() {}
 
 void GroupOp::Print(pir::IrPrinter &printer) {
   auto &os = printer.os;
@@ -54,7 +70,7 @@ void GroupOp::Print(pir::IrPrinter &printer) {
   os << " -> ";
   printer.PrintOpReturnType(op);
   os << " {";
-  for (auto &sub_op : Ops()) {
+  for (auto &sub_op : ops()) {
     os << "\n";
     printer.PrintOperation(sub_op);
   }

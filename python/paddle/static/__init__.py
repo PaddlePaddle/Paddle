@@ -79,7 +79,7 @@ from .nn.metric import ctr_metric_bundle  # noqa: F401
 from ..base.framework import program_guard  # noqa: F401
 from ..base.framework import Program  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'append_backward',
     'gradients',
     'Executor',

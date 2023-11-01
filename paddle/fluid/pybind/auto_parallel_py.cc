@@ -35,6 +35,7 @@
 
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/common.h"
 #include "paddle/fluid/distributed/auto_parallel/spmd_rules/dist_tensor_spec.h"
+#include "paddle/fluid/eager/api/manual/eager_manual/dygraph_forward_api.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -571,33 +572,7 @@ void BindAutoParallel(py::module *m) {
       "reshard",
       [](py::handle py_tensor, const TensorDistAttr &dist_attr) {
         auto tensor = CastPyArg2Tensor(py_tensor.ptr(), 0);
-        auto dev_ctx = phi::DeviceContextPool::Instance().Get(tensor.place());
-        std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
-        if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
-          auto tensor_in = tensor.impl();
-          if (tensor_in) {
-            phi::distributed::DistTensor *dist_tensor =
-                static_cast<phi::distributed::DistTensor *>(tensor_in.get());
-            if (dist_tensor->dist_attr() != dist_attr) {
-              VLOG(6) << "reshard func, reshard tensor from "
-                      << dist_tensor->dist_attr() << " to " << dist_attr;
-              auto *func = phi::distributed::ChooseProperReshardFunction(
-                  *dist_tensor, dist_attr);
-              dist_out_ptr = func->Eval(dev_ctx, *dist_tensor, dist_attr);
-            } else {
-              dist_out_ptr =
-                  std::static_pointer_cast<phi::distributed::DistTensor>(
-                      tensor_in);
-            }
-          }
-          return paddle::Tensor(dist_out_ptr);
-        } else {
-          PADDLE_THROW(phi::errors::InvalidArgument(
-              "The input tensor of shard function should be "
-              "``phi::distributed::DistTensor``. "
-              "However it's %s",
-              typeid(tensor.impl().get()).name()));
-        }
+        return reshard_ad_function(tensor, dist_attr);
       },
       py::return_value_policy::reference);
 
@@ -645,16 +620,20 @@ static void parse_attrs(PyObject *obj,
                         phi::distributed::InferSpmdContext *ctx,
                         const size_t arg_pos) {
   if (PyBool_Check(first_item)) {
-    auto attrs = CastPyArg2Booleans(obj, infer_spmd_string, arg_pos);
+    auto attrs = CastPyArg2Booleans(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyCheckInteger(first_item)) {
-    auto attrs = CastPyArg2Ints(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Ints(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyLong_Check(first_item)) {
-    auto attrs = CastPyArg2Longs(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Longs(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else if (PyFloat_Check(first_item)) {
-    auto attrs = CastPyArg2Floats(obj, infer_spmd_string, arg_pos);
+    auto attrs =
+        CastPyArg2Floats(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attrs);
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -671,16 +650,20 @@ static void parse_attr(PyObject *obj,
                        phi::distributed::InferSpmdContext *ctx,
                        const size_t arg_pos) {
   if (PyBool_Check(obj)) {
-    auto attr = CastPyArg2Boolean(obj, infer_spmd_string, arg_pos);
+    auto attr = CastPyArg2Boolean(
+        obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyCheckInteger(obj)) {
-    auto attr = CastPyArg2Int(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Int(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyLong_Check(obj)) {
-    auto attr = CastPyArg2Long(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Long(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else if (PyFloat_Check(obj)) {
-    auto attr = CastPyArg2Float(obj, infer_spmd_string, arg_pos);
+    auto attr =
+        CastPyArg2Float(obj, infer_spmd_string, static_cast<ssize_t>(arg_pos));
     ctx->EmplaceBackAttr(attr);
   } else {  // TODO(ljz) support other types
     PADDLE_THROW(platform::errors::InvalidArgument(

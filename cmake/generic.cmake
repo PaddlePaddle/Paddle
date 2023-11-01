@@ -499,12 +499,15 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cudnn_deterministic=true)
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        FLAGS_cpu_deterministic=true
+        FLAGS_init_allocated_mem=true
+        FLAGS_cudnn_deterministic=true
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+    )
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
@@ -726,6 +729,7 @@ function(nv_test TARGET_NAME)
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
@@ -1345,6 +1349,9 @@ function(math_library TARGET)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       list(APPEND math_common_deps cub)
+    elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
+           OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+      list(APPEND math_common_deps cccl)
     else()
       list(APPEND math_common_deps)
     endif()

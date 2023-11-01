@@ -62,7 +62,7 @@ TEST(BuildCinnPassTest, AllOpSupportCinn) {
   CHECK_EQ(origin_program->block()->size(), 1u);
   pir::Operation* group_op = origin_program->block()->front();
   pir::Block* group_block =
-      group_op->dyn_cast<cinn::dialect::GroupOp>().Block();
+      group_op->dyn_cast<cinn::dialect::GroupOp>().block();
   CHECK_EQ(group_block->size(), 6u);
 
   std::vector<std::string> op_names = {
