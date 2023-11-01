@@ -317,22 +317,13 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    bool in_forward_block = forward_global_block.HasVar(name);
-    bool in_backward_block =
-        backward_global_block && backward_global_block->HasVar(name);
+    backward_global_block && backward_global_block->HasVar(name);
+    auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
-        name == paddle::framework::kFakeVarName ||
-        (!in_forward_block && !in_backward_block)) {
+        name == paddle::framework::kFakeVarName || var == nullptr) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
-    auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        paddle::platform::errors::NotFound("The output tensor %s is not in "
-                                           "RunProgram(Grad)Op'"
-                                           "s internal scope.",
-                                           name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
@@ -618,6 +609,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
+  auto need_grad = !is_test && require_any_grad;
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -674,7 +666,7 @@ inline void RunProgramAPI(
   paddle::framework::BlockDesc *backward_global_block = nullptr;
   paddle::framework::ProgramDesc *backward_program = nullptr;
 
-  if (!is_test) {
+  if (need_grad) {
     backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                              attrs.at("backward_global_block"));
     backward_program = backward_global_block->Program();
@@ -725,7 +717,7 @@ inline void RunProgramAPI(
     }
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    if (!is_test) {
+    if (need_grad) {
       skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
               *backward_program);
@@ -792,7 +784,7 @@ inline void RunProgramAPI(
     details::ShareTensorsFromScopeWithPartialBlock(
         dout, *forward_global_block, backward_global_block, global_inner_scope);
 
-    if (is_test || !require_any_grad) {
+    if (!need_grad) {
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
