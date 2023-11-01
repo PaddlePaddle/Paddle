@@ -1403,10 +1403,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
-  SetDeviceId(instr_node->DeviceContext().GetPlace());
+  auto cur_place = instr_node->DeviceContext().GetPlace();
+  SetDeviceId(cur_place);
 
   try {
-    instr_node->WaitEvent(place_);
+    instr_node->WaitEvent(cur_place);
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
@@ -1416,7 +1417,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << place_ << " "
+    VLOG(4) << cur_place << " "
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1438,14 +1439,14 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << place_ << " "
+      VLOG(4) << cur_place << " "
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      memory::LogDeviceMemoryStats(place_, instr_node->Name());
+      memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
-    instr_node->RecordEvent(place_);
+    instr_node->RecordEvent(cur_place);
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =
