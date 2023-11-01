@@ -45,7 +45,7 @@ class TestFillConstantOp(OpTest):
         self.outputs = {'Out': np.full(self.shape, self.value)}
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def init_dtype(self):
         self.dtype = np.float64
@@ -116,7 +116,7 @@ class TestFillConstantBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_new_ir=True)
+        self.check_output_with_place(place, check_pir=True)
 
 
 class TestFillConstantOpWithSelectedRows(unittest.TestCase):
@@ -169,7 +169,7 @@ class TestFillConstantOp1_ShapeTensorList(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestFillConstantOp2_ShapeTensorList(OpTest):
@@ -193,7 +193,7 @@ class TestFillConstantOp2_ShapeTensorList(OpTest):
         self.infer_shape = [-1, -1]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 class TestFillConstantOp3_ShapeTensorList(TestFillConstantOp1_ShapeTensorList):
@@ -227,7 +227,7 @@ class TestFillConstantOp1_ShapeTensor(OpTest):
         self.value = 3.8
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 # Situation 4: value is a tensor
@@ -251,7 +251,7 @@ class TestFillConstantOp1_ValueTensor(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 # Situation 5: value is a tensor
@@ -275,7 +275,7 @@ class TestFillConstantOp2_ValueTensor(OpTest):
         self.dtype = np.int32
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
 
 # Test python API
@@ -568,7 +568,7 @@ class TestFillConstantOp_ValueTensorBf16(OpTest):
     def test_check_output(self):
         # no dynamic graph test for mkldnn
         self.check_output_with_place(
-            core.CPUPlace(), check_dygraph=False, check_new_ir=False
+            core.CPUPlace(), check_dygraph=False, check_pir=False
         )
 
 

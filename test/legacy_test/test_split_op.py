@@ -57,7 +57,7 @@ class TestSplitOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -65,7 +65,7 @@ class TestSplitOp(OpTest):
             ['out0', 'out1', 'out2'],
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -117,7 +117,7 @@ class TestSplitWithNumOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -125,7 +125,7 @@ class TestSplitWithNumOp(OpTest):
             ['out0', 'out1', 'out2'],
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -160,10 +160,10 @@ class TestSplitOp_AxisTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_new_ir=True)
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 # attr(sections) is list containing Tensor
@@ -208,10 +208,10 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_new_ir=True)
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 class TestSplitOp_unk_section(OpTest):
@@ -247,7 +247,7 @@ class TestSplitOp_unk_section(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -255,7 +255,7 @@ class TestSplitOp_unk_section(OpTest):
             ['out0', 'out1', 'out2'],
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -308,7 +308,7 @@ def create_test_bf16(parent):
                 'out2',
                 check_prim=True,
                 check_prim_pir=True,
-                check_new_ir=True,
+                check_pir=True,
             )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")

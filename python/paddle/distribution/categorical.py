@@ -64,14 +64,12 @@ class Categorical(distribution.Distribution):
             >>> cat = Categorical(x)
             >>> cat2 = Categorical(y)
 
-            >>> # doctest: +SKIP
             >>> paddle.seed(1000) # on CPU device
             >>> print(cat.sample([2,3]))
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 5],
             [3, 4, 5]])
 
-            >>> # doctest: -SKIP
             >>> print(cat.entropy())
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.77528250)

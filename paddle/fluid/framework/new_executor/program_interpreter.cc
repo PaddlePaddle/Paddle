@@ -25,6 +25,8 @@
 #include "paddle/fluid/platform/profiler/supplement_tracing.h"
 #include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/sparse_coo_tensor.h"
+#include "paddle/phi/core/sparse_csr_tensor.h"
 #ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -108,8 +110,9 @@ void ProgramInterpreter::RunImpl() {
 
   interpreter::ResetAtomicGuard guard(&deps_, &refs_);
 
-  if ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
-      (sync_op_num_ == 0)) {
+  if (execution_config_.used_for_inference ||
+      ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
+       (sync_op_num_ == 0))) {
     VLOG(4) << "Tracing Instruction List";
     TraceInstructionList(vec_instruction_);
   } else {
@@ -740,7 +743,9 @@ void ProgramInterpreter::Convert(
       paddle::framework::Variable* var = inner_scope->FindVar(
           var_scope_.GetNameById(static_cast<int>(var_id)));
       if (var->IsType<phi::DenseTensor>() || var->IsType<phi::SelectedRows>() ||
-          var->IsType<LoDTensorArray>()) {
+          var->IsType<LoDTensorArray>() ||
+          var->IsType<phi::SparseCooTensor>() ||
+          var->IsType<phi::SparseCsrTensor>()) {
         last_live_ops_[var_id].insert(op_idx);
       } else {
         VLOG(4) << "not clear "
@@ -852,6 +857,10 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                        : var_scope_.GetMutableScope();
   VLOG(4) << "Start run " << place << " " << op->DebugStringEx(local_scope);
+
+  if (op->Type() == "while") {
+    op->SetOutputHooks(hookfuncs_);
+  }
 
   auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
   {
@@ -1012,7 +1021,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
-      interpreter::LogDeviceMemoryStats(place_);
+      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
     }
 
     instr_node.RecordEvent(place_);
@@ -1305,6 +1314,18 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       for (auto& tensor : *tensor_arr) {
         TensorRecordStream(tensor);
       }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()));
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()));
+      TensorRecordStream(
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()));
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
@@ -1331,6 +1352,8 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
     // ignore all persistable var while GC
     if (var_scope.VarDesc(static_cast<int>(var_id)) &&
         var_scope.VarDesc(static_cast<int>(var_id))->Persistable()) {
+      VLOG(4) << "Skip persistable var: "
+              << var_scope_.GetNameById(static_cast<int>(var_id));
       continue;
     }
     if (is_ready) {
@@ -1428,7 +1451,7 @@ bool ProgramInterpreter::HasLocalScope() const {
 // miss. When a model is all KQueueAsync type OPs, all OPs will be distributed
 // to the DeviceThread for execution, and the multithreading scheduling will not
 // have any benefits. Therefore, in the dynamic to static, when the number of
-// KQueueAsync Ops is 0, we choose Trace mode.
+// KQueueSync Ops is 0, we choose Trace mode.
 void ProgramInterpreter::TraceInstructionList(
     const std::vector<Instruction>& vec_instr) {
   unfinished_op_number_ = vec_instr.size();

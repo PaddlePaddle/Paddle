@@ -48,47 +48,47 @@ class PipelineOptimizer:
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
-            import paddle.base.layers as layers
-            import numpy as np
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> import paddle.base.layers as layers
+            >>> import numpy as np
 
-            paddle.enable_static()
-            with base.device_guard("gpu:0"):
-                x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=0)
-                y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=0)
-                data_loader = base.io.DataLoader.from_generator(
-                    feed_list=[x, y],
-                    capacity=64,
-                    use_double_buffer=True,
-                    iterable=False)
+            >>> paddle.enable_static()
+            >>> with base.device_guard("gpu:0"):
+            ...     x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64', lod_level=0)
+            ...     y = paddle.static.data(name='y', shape=[-1, 1], dtype='int64', lod_level=0)
+            ...     data_loader = base.io.DataLoader.from_generator(
+            ...         feed_list=[x, y],
+            ...         capacity=64,
+            ...         use_double_buffer=True,
+            ...         iterable=False)
 
-                emb_x = layers.embedding(input=x, param_attr=base.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
-                emb_y = layers.embedding(input=y, param_attr=base.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
+            ...     emb_x = layers.embedding(input=x, param_attr=base.ParamAttr(name="embx"), size=[10,2], is_sparse=False)
+            ...     emb_y = layers.embedding(input=y, param_attr=base.ParamAttr(name="emby",learning_rate=0.9), size=[10,2], is_sparse=False)
 
-            with base.device_guard("gpu:1"):
-                concat = layers.concat([emb_x, emb_y], axis=1)
-                fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
-                loss = paddle.mean(fc)
-            optimizer = paddle.optimizer.SGD(learning_rate=0.5)
-            optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
-            optimizer.minimize(loss)
+            >>> with base.device_guard("gpu:1"):
+            ...     concat = layers.concat([emb_x, emb_y], axis=1)
+            ...     fc = paddle.static.nn.fc(x=concat, name="fc", size=1, num_flatten_dims=1, bias_attr=False)
+            ...     loss = paddle.mean(fc)
+            >>> optimizer = paddle.optimizer.SGD(learning_rate=0.5)
+            >>> optimizer = paddle.incubate.optimizer.PipelineOptimizer(optimizer)
+            >>> optimizer.minimize(loss)
 
-            def train_reader():
-                for _ in range(4):
-                    x = np.random.random(size=[1]).astype('int64')
-                    y = np.random.random(size=[1]).astype('int64')
-                    yield x, y
-            data_loader.set_sample_generator(train_reader, batch_size=1)
+            >>> def train_reader():
+            ...     for _ in range(4):
+            ...         x = np.random.random(size=[1]).astype('int64')
+            ...         y = np.random.random(size=[1]).astype('int64')
+            ...         yield x, y
+            >>> data_loader.set_sample_generator(train_reader, batch_size=1)
 
-            place = base.CUDAPlace(0)
-            exe = base.Executor(place)
-            exe.run(base.default_startup_program())
-            batch_size = 1
-            data_loader.start()
-            exe.train_from_dataset(
-                    base.default_main_program())
-            data_loader.reset()
+            >>> place = paddle.CUDAPlace(0)
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> batch_size = 1
+            >>> data_loader.start()
+            >>> exe.train_from_dataset(
+            ...         paddle.static.default_main_program())
+            >>> data_loader.reset()
     """
 
     def __init__(self, optimizer, num_microbatches=1, start_cpu_core_id=0):

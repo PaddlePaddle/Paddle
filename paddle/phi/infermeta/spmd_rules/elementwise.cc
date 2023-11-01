@@ -309,6 +309,18 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr}};
 }
 
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out_grad) {
+  return {{out_grad.dist_attr(), out_grad.dist_attr()}, {out_grad.dist_attr()}};
+}
+
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out,
+                                       const DistMetaTensor& out_grad) {
+  return {{out_grad.dist_attr(), out_grad.dist_attr(), out_grad.dist_attr()},
+          {out_grad.dist_attr()}};
+}
+
 SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
                                         const DistMetaTensor& y,
                                         const DistMetaTensor& out_grad,
@@ -376,5 +388,17 @@ SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
           {x_grad_dist_attr, y_grad_dist_attr}};
 }
 
+SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out,
+                                        const DistMetaTensor& out_grad,
+                                        int64_t axis) {
+  // The out's dist_attr is the same with out_grad's dist_attr, reuse
+  // ElementwiseBinaryGradInferSpmd(x, y, out_grad, axis) to infer dist_attrs of
+  // {{x, y, out_grad}, {x_grad, y_grad}}, then insert out's dist_attr into it.
+  SpmdInfo info = ElementwiseBinaryGradInferSpmd(x, y, out_grad, axis);
+  info.first.emplace(info.first.begin() + 2, out_grad.dist_attr());
+  return info;
+}
 }  // namespace distributed
 }  // namespace phi

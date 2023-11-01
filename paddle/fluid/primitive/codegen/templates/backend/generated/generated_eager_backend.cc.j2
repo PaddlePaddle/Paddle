@@ -12,7 +12,8 @@ namespace backend {
 
 {%- macro args(inputs, attrs) -%}  {#- Arguments are variable pass into method -#}
   {{common.sequence('', '', ', ', inputs)}}
-  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between inputs and attrs -#}
+  {%- if attrs|length > 0 -%} {{", "}} {%- endif -%} {#- append comma between 
+  nputs and attrs -#}
   {{common.sequence('', '', ', ', attrs)}}
 {%- endmacro -%}
 

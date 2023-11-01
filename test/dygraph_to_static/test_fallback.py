@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 
@@ -51,7 +51,7 @@ class UnsuppportNet(paddle.nn.Layer):
             return unsupport_func(x - 1)
 
 
-class TestFallback(unittest.TestCase):
+class TestFallback(Dy2StTestBase):
     def setUp(self):
         self.x = paddle.to_tensor([2]).astype('int')
 
@@ -85,7 +85,7 @@ class TestFallback(unittest.TestCase):
             u_net(self.x).numpy(),
         )
 
-    @ast_only_test
+    @test_ast_only
     def test_case_net_error(self):
         s_net = SuppportNet()
         u_net = UnsuppportNet()

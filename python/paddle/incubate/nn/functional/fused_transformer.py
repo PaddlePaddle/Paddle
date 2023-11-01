@@ -56,20 +56,20 @@ def fused_feedforward(
     This operator only supports running on GPU. The function of the operator is consistent with
     the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        residual = x
-        if pre_layer_norm:
-            out = layer_norm1(x)
-        else:
-            out = x
-        out = linear2(dropout1(activation(linear1(src))))
-        if add_residual:
-            out = residual + dropout2(out)
-        else:
-            out = dropout2(out)
-        if not pre_layer_norm:
-            out = layer_norm2(out)
+        >>> residual = x
+        >>> if pre_layer_norm:
+        ...     out = layer_norm1(x)
+        ...  else:
+        ...     out = x
+        >>> out = linear2(dropout1(activation(linear1(src))))
+        >>> if add_residual:
+        ...     out = residual + dropout2(out)
+        ... else:
+        ...     out = dropout2(out)
+        >>> if not pre_layer_norm:
+        ...     out = layer_norm2(out)
 
 
     Args:
@@ -110,16 +110,17 @@ def fused_feedforward(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            x = paddle.randn(shape=(1, 8, 8), dtype="float32")
-            linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
-            linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
-            out = F.fused_feedforward(x, linear1_weight, linear2_weight)
-            print(out.shape)
-            # (1, 8, 8)
+            >>> x = paddle.randn(shape=(1, 8, 8), dtype="float32")
+            >>> linear1_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            >>> linear2_weight = paddle.randn(shape=(8, 8), dtype="float32")
+            >>> out = F.fused_feedforward(x, linear1_weight, linear2_weight)
+            >>> print(out.shape)
+            [1, 8, 8]
     """
     _verify_dropout_rate(dropout1_rate)
     _verify_dropout_rate(dropout2_rate)
@@ -288,9 +289,9 @@ def fused_bias_dropout_residual_layer_norm(
 
     The fused_bias_dropout_residual_layer_norm operator. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        y = layer_norm(residual + dropout(bias + x))
+        >>> y = layer_norm(residual + dropout(bias + x))
 
     Parameters:
         x (Tensor): The input tensor. The shape is `[*, embed\_dim]`.
@@ -323,21 +324,22 @@ def fused_bias_dropout_residual_layer_norm(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # residual: [batch_size, seq_len, embed_dim]
-            residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # linear bias: [embed_dim]
-            bias = paddle.rand(shape=[128], dtype="float32")
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_bias_dropout_residual_layer_norm(
-                x, residual, bias)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # residual: [batch_size, seq_len, embed_dim]
+            >>> residual = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # linear bias: [embed_dim]
+            >>> bias = paddle.rand(shape=[128], dtype="float32")
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_bias_dropout_residual_layer_norm(
+            ...     x, residual, bias)
+            >>> print(output.shape)
+            [2, 4, 128]
 
     """
     seed = None
@@ -493,35 +495,35 @@ def fused_multi_head_attention(
     to information from different representation subspaces. This API only
     support self_attention. The pseudo code is as follows:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        residual = x
-        if pre_layer_norm:
-            out = layer_norm(x)
-        else:
-            out = x
-        # compute q, k, v
-        out = matmul(out, qkv_weight) + qkv_bias
-        out = transpose(out, perm=[2, 0, 3, 1, 4])
-        # extract q, k and v from out
-        q = out[0:1,::] * (head_dim ** -0.5)
-        k = out[1:2,::]
-        v = out[2:3,::]
-        out = matmul(q, k, transpose_y=True)
-        out = out + attn_mask
-        out = softmax(out)
-        out = dropout(out)
-        out = matmul(out, v)
-        # combine heads
-        out = transpose(out, perm=[0, 2, 1, 3])
-        # project to output
-        out = linear(out)
-        if add_residual:
-            out = residual + dropout(out)
-        else:
-            out = dropout(out)
-        if not pre_layer_norm:
-            out = layer_norm(out)
+        >>> residual = x
+        >>> if pre_layer_norm:
+        ...     out = layer_norm(x)
+        ... else:
+        ...     out = x
+        >>> # compute q, k, v
+        >>> out = matmul(out, qkv_weight) + qkv_bias
+        >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
+        >>> # extract q, k and v from out
+        >>> q = out[0:1,::] * (head_dim ** -0.5)
+        >>> k = out[1:2,::]
+        >>> v = out[2:3,::]
+        >>> out = matmul(q, k, transpose_y=True)
+        >>> out = out + attn_mask
+        >>> out = softmax(out)
+        >>> out = dropout(out)
+        >>> out = matmul(out, v)
+        >>> # combine heads
+        >>> out = transpose(out, perm=[0, 2, 1, 3])
+        >>> # project to output
+        >>> out = linear(out)
+        >>> if add_residual:
+        ...     out = residual + dropout(out)
+        ... else:
+        ...     out = dropout(out)
+        >>> if not pre_layer_norm:
+        ...     out = layer_norm(out)
 
 
     Parameters:
@@ -581,30 +583,31 @@ def fused_multi_head_attention(
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
-            # qkv_weight: [3, num_head, head_dim, embed_dim]
-            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            # qkv_bias: [3, num_head, head_dim]
-            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
-            # linear_weight: [embed_dim, embed_dim]
-            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            # linear_bias: [embed_dim]
-            linear_bias = paddle.rand(shape=[128], dtype="float32")
-            # self attention mask: [batch_size, num_heads, seq_len, seq_len]
-            attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # qkv_weight: [3, num_head, head_dim, embed_dim]
+            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            >>> # qkv_bias: [3, num_head, head_dim]
+            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            >>> # linear_weight: [embed_dim, embed_dim]
+            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            >>> # linear_bias: [embed_dim]
+            >>> linear_bias = paddle.rand(shape=[128], dtype="float32")
+            >>> # self attention mask: [batch_size, num_heads, seq_len, seq_len]
+            >>> attn_mask = paddle.rand(shape=(2, 4, 4, 4), dtype="float32")
 
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_multi_head_attention(
-                x, qkv_weight, linear_weight, False,
-                None, None, None, None, 1e-5, qkv_bias,
-                linear_bias, None, attn_mask)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_multi_head_attention(
+            ...     x, qkv_weight, linear_weight, False,
+            ...     None, None, None, None, 1e-5, qkv_bias,
+            ...     linear_bias, None, attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     seed = None
@@ -906,39 +909,39 @@ def fused_multi_transformer(
     This operator only supports running on GPU. The function of the transformer layer is consistent
     with the following pseudo code:
 
-    .. code-block:: python
+    .. code-block:: text
 
-        if pre_layer_norm:
-            out = layer_norm(x)
-            out = qkv_linear(out) + qkv_bias
-        else:
-            out = qkv_linear(x) + qkv_bias
-        out = transpose(out, perm=[2, 0, 3, 1, 4])
-        # extract q, k and v from out.
-        q = out[0:1, ::]
-        k = out[1:2, ::]
-        v = out[2:3, ::]
-        out = q * k^t
-        out = attn_mask + out
-        out = softmax(out)
-        out = dropout(out)
-        out = out * v
-        out = transpose(out, perm=[0, 2, 1, 3])
-        out = linear(out)
-        if pre_layer_norm:
-            out = x + dropout(out + bias)
-        else:
-            out = layer_norm(x + dropout(out + bias))
+        >>> if pre_layer_norm:
+        ...     out = layer_norm(x)
+        ...     out = qkv_linear(out) + qkv_bias
+        ... else:
+        ...     out = qkv_linear(x) + qkv_bias
+        >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
+        >>> # extract q, k and v from out.
+        >>> q = out[0:1, ::]
+        >>> k = out[1:2, ::]
+        >>> v = out[2:3, ::]
+        >>> out = q * k^t
+        >>> out = attn_mask + out
+        >>> out = softmax(out)
+        >>> out = dropout(out)
+        >>> out = out * v
+        >>> out = transpose(out, perm=[0, 2, 1, 3])
+        >>> out = linear(out)
+        >>> if pre_layer_norm:
+        ...     out = x + dropout(out + bias)
+        ... else:
+        ...     out = layer_norm(x + dropout(out + bias))
 
-        residual = out;
-        if pre_layer_norm:
-            out = ffn_layer_norm(out)
-        out = ffn1_linear(out)
-        out = dropout(activation(out + ffn1_bias))
-        out = ffn2_linear(out)
-        out = residual + dropout(out + ffn2_bias)
-        if not pre_layer_norm:
-            out = ffn_layer_norm(out)
+        >>> residual = out;
+        >>> if pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
+        >>> out = ffn1_linear(out)
+        >>> out = dropout(activation(out + ffn1_bias))
+        >>> out = ffn2_linear(out)
+        >>> out = residual + dropout(out + ffn2_bias)
+        >>> if not pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
 
     Args:
         x (Tensor): the input tensor could be 3-D tensor, the input data type could be float16 or float32, the shape is `[batch\_size, sequence\_length, d\_model]`.
@@ -996,48 +999,49 @@ def fused_multi_transformer(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> import paddle.incubate.nn.functional as F
 
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand(shape=(2, 4, 128), dtype="float32")
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand(shape=(2, 4, 128), dtype="float32")
 
-            # ln_scale: [embed_dim], ln_bias: [embed_dim]
-            ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ln_scale: [embed_dim], ln_bias: [embed_dim]
+            >>> ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
-            qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
-            qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
+            >>> # qkv_weight: [3, num_head, head_dim, embed_dim], qkv_bias: [3, num_head, head_dim]
+            >>> qkv_weight = paddle.rand(shape=(3, 4, 32, 128), dtype="float32")
+            >>> qkv_bias = paddle.rand(shape=(3, 4, 32), dtype="float32")
 
-            # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
-            linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
-            linear_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # linear_weight: [embed_dim, embed_dim], linear_bias: [embed_dim]
+            >>> linear_weight = paddle.rand(shape=(128, 128), dtype="float32")
+            >>> linear_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
-            ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
-            ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ffn_ln_scale: [embed_dim], ffn_ln_bias: [embed_dim]
+            >>> ffn_ln_scale = paddle.rand(shape=(128,), dtype="float32")
+            >>> ffn_ln_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
-            ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
-            ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
+            >>> # ffn1_weight: [embed_dim, 4*embed_dim], ffn1_bias: [4*embed_dim]
+            >>> ffn1_weight = paddle.rand(shape=(128, 4*128), dtype="float32")
+            >>> ffn1_bias = paddle.rand(shape=(4*128,), dtype="float32")
 
-            # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
-            ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
-            ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
+            >>> # ffn2_weight: [4*embed_dim, embed_dim], ffn2_bias: [embed_dim]
+            >>> ffn2_weight = paddle.rand(shape=(4*128, 128), dtype="float32")
+            >>> ffn2_bias = paddle.rand(shape=(128,), dtype="float32")
 
-            # self attention mask: [batch_size, 1, seq_len, seq_len]
-            attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
+            >>> # self attention mask: [batch_size, 1, seq_len, seq_len]
+            >>> attn_mask = paddle.rand(shape=(2, 1, 4, 4), dtype="float32")
 
-            # output: [batch_size, seq_len, embed_dim]
-            output = F.fused_multi_transformer(
-                x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
-                [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
-                [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
-                attn_mask=attn_mask)
-            # [2, 4, 128]
-            print(output.shape)
+            >>> # output: [batch_size, seq_len, embed_dim]
+            >>> output = F.fused_multi_transformer(
+            ...     x, [ln_scale], [ln_bias], [qkv_weight], [qkv_bias],
+            ...     [linear_weight], [linear_bias], [ffn_ln_scale], [ffn_ln_bias],
+            ...     [ffn1_weight], [ffn1_bias], [ffn2_weight], [ffn2_bias],
+            ...     attn_mask=attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
     if mode not in ('downscale_in_infer', 'upscale_in_train'):
         raise ValueError(

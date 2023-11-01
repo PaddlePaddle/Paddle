@@ -121,6 +121,7 @@ def parameters_to_vector(parameters, name=None):
         )
     for i, param in enumerate(parameters):
         _inplace_reshape_dygraph(param, origin_shapes[i])
+    out.stop_gradient = False
     return out
 
 

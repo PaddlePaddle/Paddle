@@ -58,10 +58,12 @@ class TestLogitOp(OpTest):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+        )
 
 
 class TestLogitOpFp32(TestLogitOp):
@@ -71,10 +73,12 @@ class TestLogitOpFp32(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+        )
 
 
 class TestLogitOpFp16(TestLogitOp):
@@ -84,10 +88,12 @@ class TestLogitOpFp16(TestLogitOp):
         self.eps = 1e-8
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'], user_defined_grads=[self.x_grad])
+        self.check_grad(
+            ['X'], ['Out'], user_defined_grads=[self.x_grad], check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -115,7 +121,7 @@ class TestLogitOpBf16(OpTest):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
@@ -125,6 +131,7 @@ class TestLogitOpBf16(OpTest):
                 ['X'],
                 ['Out'],
                 user_defined_grads=[self.x_grad],
+                check_pir=True,
             )
 
 

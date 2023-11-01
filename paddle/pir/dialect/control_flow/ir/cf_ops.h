@@ -28,7 +28,7 @@ class IR_API YieldOp : public Op<YieldOp> {
   static void Build(Builder &builder,             // NOLINT
                     OperationArgument &argument,  // NOLINT
                     const std::vector<Value> &Value);
-  void Verify() {}
+  void VerifySig() {}
 };
 }  // namespace pir
 

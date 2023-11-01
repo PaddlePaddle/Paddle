@@ -134,7 +134,7 @@
   backward : angle_grad
 
 - op : argmax
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -143,7 +143,7 @@
     data_type : x
 
 - op : argmin
-  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, int dtype = 3)
+  args : (Tensor x, Scalar(int64_t) axis, bool keepdims = false, bool flatten = false, DataType dtype = DataType::INT64)
   output : Tensor(out)
   infer_meta :
     func : ArgMinMaxInferMeta
@@ -327,6 +327,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_and
     backend : x
@@ -337,6 +338,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bitwise_not
     backend : x
@@ -550,6 +552,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cos
   inplace: (x -> out)
@@ -819,6 +822,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : exp
   inplace : (x -> out)
@@ -1012,10 +1016,10 @@
   backward : frame_grad
 
 - op : full_int_array
-  args : (IntArray value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
+  args : (int64_t[] value, DataType dtype=DataType::FLOAT32, Place place=CPUPlace())
   output: Tensor(out)
   infer_meta :
-    func : CreateIntArrayInferMeta
+    func : CreateVecShapeInferMeta
     param : [value, dtype]
   kernel :
     func : full_int_array
@@ -1306,7 +1310,7 @@
     func : is_empty
 
 - op : isclose
-  args : (Tensor x, Tensor y, Scalar rtol="1e-5", Scalar atol="1e-8",  bool equal_nan=false)
+  args : (Tensor x, Tensor y, Scalar(double) rtol=1e-5, Scalar(double) atol=1e-8,  bool equal_nan=false)
   output : Tensor(out)
   infer_meta :
     func : ValueCompareInferMeta
@@ -2073,6 +2077,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : relu
   inplace : (x -> out)
@@ -2179,6 +2184,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : rsqrt
   inplace : (x -> out)
@@ -2359,6 +2365,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
   backward : silu_grad
@@ -2368,6 +2375,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
   inplace: (x -> out)
@@ -2458,6 +2466,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : square {dense -> dense},
            square_sr {selected_rows -> selected_rows}

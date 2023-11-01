@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
 #include "paddle/cinn/common/context.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
@@ -48,9 +49,9 @@ TEST(FeatureExtractor, SimpleAssign) {
   ir::Tensor B = lang::Compute(
       {M, N}, [&](Var i, Var j) { return A(i, j); }, "B");
 
-  poly::StageMap stages = poly::CreateStages({A, B});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "SimpleAssign", stages, {A, B}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({A, B});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("SimpleAssign", {A, B}, &tensor_group, target);
   ir::Expr ast_expr = funcs[0]->body;
   VLOG(6) << "Expr to test: " << ast_expr;
 
@@ -109,9 +110,9 @@ TEST(FeatureExtractor, MatrixMultiply) {
       [&](Var i, Var j) { return lang::ReduceSum(A(i, k) * B(k, j), {k}); },
       "C");
 
-  poly::StageMap stages = poly::CreateStages({C});
-  std::vector<ir::LoweredFunc> funcs = lang::LowerVec(
-      "MatrixMultiply", stages, {C}, {}, {}, nullptr, target, true);
+  ast_gen_ius::TensorGroup tensor_group({C});
+  std::vector<ir::LoweredFunc> funcs =
+      lang::LowerToAstVec("SimpleAssign", {C}, &tensor_group, target);
 
   std::vector<Expr> vec_ast{funcs[0]->body};
   ir::ModuleExpr mod_expr(vec_ast);

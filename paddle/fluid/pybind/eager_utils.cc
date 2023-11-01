@@ -1583,8 +1583,6 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -2079,9 +2077,9 @@ void DistTensorConverter::convert(Tensor* x) {
     phi::distributed::TensorDistAttr dist_attr(
         phi::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
-    auto dense_t = static_cast<phi::DenseTensor*>(x->impl().get());
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
     x->set_impl(
-        std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
 }
 

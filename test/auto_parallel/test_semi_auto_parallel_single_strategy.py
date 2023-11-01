@@ -19,7 +19,10 @@ import collective.test_communication_api_base as test_base
 
 class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
     def setUp(self):
-        super().setUp(num_of_devices=2, timeout=120)
+        super().setUp(
+            num_of_devices=2,
+            timeout=120,
+        )
         self._default_envs = {
             "dtype": "float32",
             "seed": "2023",
@@ -33,6 +36,79 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_simple_net.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_single_strategy_with_amp(self):
+        self._changeable_envs = {"backend": ["gpu"]}
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_amp.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_single_strategy_with_gradient_merge(self):
+        self._changeable_envs = {"backend": ["gpu"]}
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_gradient_merge.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_recompute(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_recompute.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_single_strategy_with_gradient_hook(self):
+        self._changeable_envs = {"backend": ["gpu"]}
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_gradient_hook.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_clear_gradient(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_clear_gradient.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_several_grad_api(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_grad_api.py",
+                user_defined_envs=envs,
+            )
+
+    def test_simple_net_zero_grads(self):
+        envs_list = test_base.gen_product_envs_list(
+            self._default_envs, self._changeable_envs
+        )
+        for envs in envs_list:
+            self.run_test_case(
+                "semi_auto_parallel_simple_net_zero_grads.py",
                 user_defined_envs=envs,
             )
 

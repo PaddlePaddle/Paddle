@@ -24,6 +24,7 @@ from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
+from .creation import diag_embed  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import fill_constant  # noqa: F401
@@ -331,6 +332,8 @@ from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
 from .math import renorm  # noqa: F401
 from .math import renorm_  # noqa: F401
+from .math import hypot  # noqa: F401
+from .math import hypot_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -468,6 +471,8 @@ tensor_method_func = [
     'multigammaln_',
     'nan_to_num',
     'nan_to_num_',
+    'hypot',
+    'hypot_',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -694,6 +699,7 @@ tensor_method_func = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'diag_embed',
     'atan2',
     'diagflat',
     'multinomial',

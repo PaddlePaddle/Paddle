@@ -12,16 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License
 
 import os
 import random
@@ -36,7 +26,7 @@ from paddle import base
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle.base.dygraph import to_variable
@@ -686,7 +676,7 @@ def train(args, to_static):
         return np.array(loss_data)
 
 
-class TestCycleGANModel(unittest.TestCase):
+class TestCycleGANModel(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
@@ -694,7 +684,7 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

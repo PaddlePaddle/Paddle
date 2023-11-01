@@ -2067,7 +2067,7 @@ def append_backward(
         # not support double grad in control flow sub-block now.
         if not is_in_control_flow:
             if program._appending_grad_times > 1:
-                input_grad_names_set = set([_append_grad_suffix_(loss.name)])
+                input_grad_names_set = {_append_grad_suffix_(loss.name)}
 
         # TODO: support _append_backward_ops_with_checkpoints_ in
         #  sub-block (control flow)
