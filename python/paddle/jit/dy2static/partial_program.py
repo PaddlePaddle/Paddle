@@ -276,10 +276,13 @@ class PartialProgramLayer:
             _scope_cache = self._legacy_scope_cache
         if not use_scope_cache:
             return core.Scope()
-        scope = _scope_cache.get(program_id, None)
-        if scope is None or not scope._can_reused:
-            scope = core.Scope()
-            _scope_cache[program_id] = scope
+        if program_id not in _scope_cache:
+            _scope_cache[program_id] = []
+        for scope in _scope_cache[program_id]:
+            if scope._can_reused:
+                return scope
+        scope = core.Scope()
+        _scope_cache[program_id].append(scope)
         return scope
 
     @LazyInitialized
