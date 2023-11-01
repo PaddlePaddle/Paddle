@@ -1322,7 +1322,7 @@ std::vector<pir::Value> BuildOpInputList(
           op_item, var_name, (*fake_tensors[0]).dtype(), &expected_kernel_key);
 
       bool check_dtype_transfer = pir::NeedTransformDataType(
-          expected_kernel_key.dtype(), expected_kernel_key.dtype());
+          expected_kernel_key.dtype(), kernel_dtype_for_var);
       if (check_dtype_transfer) {
         VLOG(4) << "trans input: " << var_name << "'s dtype from "
                 << expected_kernel_key.dtype() << " to "
