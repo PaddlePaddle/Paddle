@@ -56,6 +56,7 @@ RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
 set_field_default_config(RECOMPUTE, "checkpoints", [])
 set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
+set_field_default_config(RECOMPUTE, "sr", 0)
 set_field_default_config(RECOMPUTE, "refined_ops_patterns", [])  # List[Dict]
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 

@@ -285,28 +285,77 @@ class RecomputePass(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
+    def get_ops_per_device(self, ops, all_ops_process_meshs, sr=0):
+        """
+        Get ops and op_names of each process mesh excluding ops within the first "sr" chunks
+        """
+
+        def reset_recomupte_op(op):
+            if is_recompute_op(op) or is_recompute_exclude_op(op):
+                op._set_attr("op_namescope", "")
+
+        all_process_meshes_count = len(all_ops_process_meshs)
+        ops_of_stages = [[] for _ in range(all_process_meshes_count)]
+        op_names_of_stages = [[] for _ in range(all_process_meshes_count)]
+        pushed_ops_count = 0
+        reset_ops_count = 0
+        chunk_id = 0
+        for op_id, op in enumerate(ops):
+            if chunk_id // all_process_meshes_count < sr:
+                reset_ops_count += 1
+                reset_recomupte_op(op)
+            if (
+                op_id < len(ops) - 1
+                and op.dist_attr.process_mesh
+                != ops[op_id + 1].dist_attr.process_mesh
+            ):
+                chunk_id += 1
+            if chunk_id // all_process_meshes_count < sr:
+                continue
+
+            for id, process_mesh in enumerate(all_ops_process_meshs):
+                if op.dist_attr.process_mesh == process_mesh:
+                    pushed_ops_count += 1
+                    ops_of_stages[id].append(op)
+                    op_names_of_stages[id].append(op.type)
+        assert (
+            len(ops) == reset_ops_count + pushed_ops_count
+        ), "The sum of pushed_ops_count and reset_ops_count must be the same as lenght of ops, but the sum is {} while lenght of ops is {}".format(
+            reset_ops_count + pushed_ops_count, len(ops)
+        )
+        return ops_of_stages, op_names_of_stages
+
     def _apply_single_impl(self, main_program, startup_program, context):
         loss = self.get_attr("loss")
         no_grad_set = self.get_attr("no_grad_set")
         no_recompute_segments = self.get_attr("no_recompute_segments")
         self._dist_context = self.get_attr("dist_context")
+        self._sr = self.get_attr("sr", 0)
         self._refined_ops_patterns = self.get_attr("refined_ops_patterns", [])
 
         # 0. get op_path which is related to loss
         main_block = main_program.global_block()
         op_path = _find_op_path(main_program, loss, no_grad_set)
-        op_path_names = [op.type for op in op_path]
 
-        # mark exclude ops for refined-reompute(mainly linear and flash_attn)
-        pp_stages = len(self._dist_context.process_meshes)
+        # 1. mark exclude ops for refined-reompute according to ops-patterns(mainly linear and flash_attn)
+        # 1.1 get all process_meshs in op_path
+        all_ops_process_meshs = []
+        for op in op_path:
+            if op.dist_attr.process_mesh not in all_ops_process_meshs:
+                all_ops_process_meshs.append(op.dist_attr.process_mesh)
+
+        # 1.2 get ops_devices and op_names_devices
+        ops_devices, op_names_devices = self.get_ops_per_device(
+            op_path, all_ops_process_meshs, self._sr
+        )
         all_ops_len = len(op_path)
-        exclude_ops_ids = []
+        all_exclude_ops_ids = [[] for _ in op_names_devices]
+        # 1.3 find exclude ops for refined-reompute according to ops-patterns
         for refined_ops_pattern in self._refined_ops_patterns:
+            num = refined_ops_pattern['num']
             num = (
-                refined_ops_pattern['num'] * pp_stages
-            )  # 'num == 1' represents to all ops
-            num = num if num >= 0 else all_ops_len
-            pattern_count = 0
+                num if num >= 0 else all_ops_len
+            )  # 'num == -1' represents to all ops
             main_ops = refined_ops_pattern['main_ops']
             pre_ops = refined_ops_pattern['pre_ops']
             suf_ops = refined_ops_pattern['suf_ops']
@@ -315,37 +364,41 @@ class RecomputePass(PassBase):
             pattern_ops = pre_ops + main_ops + suf_ops
             pattern_ops_len = len(pattern_ops)
 
-            for i in range(all_ops_len - pattern_ops_len + 1):
-                if (
-                    op_path_names[i : i + pattern_ops_len] == pattern_ops
-                    and pattern_count < num
-                ):
-                    pattern_count += 1
-                    exclude_ops_ids.extend(
-                        list(
-                            range(
-                                i + main_start_id,
-                                i + main_start_id + main_ops_len,
+            for id, op_names_device in enumerate(op_names_devices):
+                pattern_count = 0
+                ops_len_device = len(op_names_device)
+                for i in range(ops_len_device - pattern_ops_len + 1):
+                    if (
+                        op_names_device[i : i + pattern_ops_len] == pattern_ops
+                        and pattern_count < num
+                    ):
+                        pattern_count += 1
+                        all_exclude_ops_ids[id].extend(
+                            list(
+                                range(
+                                    i + main_start_id,
+                                    i + main_start_id + main_ops_len,
+                                )
                             )
                         )
-                    )
-        logger.debug(
-            f"The excluded ops in recompute segments are:\n{exclude_ops_ids}"
+        logger.info(
+            f"The excluded ops in recompute segments are:\n{all_exclude_ops_ids}"
         )
+        # 1.4 mark exclude ops in exclude_ops_ids
+        for id, exclude_ops_ids in enumerate(all_exclude_ops_ids):
+            for op_id in exclude_ops_ids:
+                if is_recompute_op(ops_devices[id][op_id]):
+                    rc_mark_str = ops_devices[id][op_id].attr("op_namescope")
+                    ops_devices[id][op_id]._set_attr(
+                        "op_namescope", rc_mark_str + "_exclude_rc"
+                    )
 
-        for idx in exclude_ops_ids:
-            if is_recompute_op(op_path[idx]):
-                rc_mark_str = op_path[idx].attr("op_namescope")
-                op_path[idx]._set_attr(
-                    "op_namescope", rc_mark_str + "_exclude_rc"
-                )
-
-        # 1. build recompute state
+        # 2. build recompute state
         rc_state = RecomputeState(main_block, op_path)
         if not rc_state.is_recompute():
             return
 
-        # 2. get the segments to be recomputed
+        # 3. get the segments to be recomputed
         rc_state.modify_forward_desc_for_recompute(self._dist_context)
         rc_state.build_states()
         segments = rc_state.get_recompute_segments(no_recompute_segments)
@@ -369,7 +422,7 @@ class RecomputePass(PassBase):
                 )
             )
 
-        # 3. get vars that should be hold in memory
+        # 4. get vars that should be hold in memory
         # list of var_names
         vars_should_be_hold = []
         for segment in segments:
@@ -389,7 +442,7 @@ class RecomputePass(PassBase):
             set(vars_should_be_hold) | set(rc_state.checkpoints)
         )
 
-        # 4. get the fwd ops desc to be recomputed.
+        # 5. get the fwd ops desc to be recomputed.
         var_name_dict = {}  # varname --> varname.subprog_XXX
         ckpt_ops_dict = {}  # ckpt_op_id --> segment_descs
         buffer_block = main_block.program._create_block()
@@ -460,7 +513,7 @@ class RecomputePass(PassBase):
             ckpt_op = op_path[segment[1] - 1]
             ckpt_ops_dict[ckpt_op.desc.original_id()] = [True, segment_descs]
 
-        # 5. insert recomputed fwd ops into backward parse
+        # 6. insert recomputed fwd ops into backward parse
         ops = main_block.ops
         loss_op = get_loss_op(main_block)
         loss_op_idx = _find_op_index(main_block, loss_op)
