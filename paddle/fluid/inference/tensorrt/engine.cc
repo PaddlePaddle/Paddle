@@ -176,18 +176,26 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
       numInputs++;
     }
   }
-
+#if IS_TRT_VERSION_GE(8500)
   for (int i = 0; i < infer_engine_->getNbIOTensors(); ++i) {
     const auto tensorName = infer_engine_->getIOTensorName(i);
     m_IOTensorNames.emplace_back(tensorName);
   }
+#else
+  for (int i = 0; i < infer_engine_->getNbBindings(); ++i) {
+    const auto tensorName = infer_engine_->getBindingName(i);
+    m_IOTensorNames.emplace_back(tensorName);
+  }
+#endif
 
+#if IS_TRT_VERSION_GE(8500)
   if (with_dynamic_shape()) {
     for (const auto &item : optim_input_shape()) {
       std::string key = item.first;
       std::string value_str = Vec2Str(item.second);
       LOG(INFO) << "optim_input_shape key: " << key << ", value: " << value_str;
     }
+
     LOG(INFO) << "with_dynamic_shape";
     for (int i = 0; i < numInputs; ++i) {
       if (optim_input_shape().count(m_IOTensorNames[i])) {
@@ -198,6 +206,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
       }
     }
   }
+#endif
 
   if (batch_size > params_.max_batch_size) {
     LOG(ERROR) << "=====Error======";
@@ -211,6 +220,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     throw std::runtime_error("Error, not all required dimensions specified.");
   }
 
+#if IS_TRT_VERSION_GE(8500)
   for (size_t j = 0; j < buffers->size(); ++j) {
     bool status =
         context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
@@ -218,6 +228,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
       return false;
     }
   }
+#endif
 
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
@@ -229,7 +240,11 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
+#if IS_TRT_VERSION_GE(8500)
     ret = context->enqueueV3(stream);
+#else
+    ret = context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
   }
   return ret;
 }
