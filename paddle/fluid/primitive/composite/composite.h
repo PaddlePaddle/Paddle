@@ -66,6 +66,7 @@ template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;
+  auto axis_tmp = IntArray({axis});
 
   bool need_cast =
       org_dtype == phi::DataType::FLOAT16 || org_dtype == phi::DataType::UINT16;
@@ -73,12 +74,10 @@ Tensor softmax_decomp(const Tensor& x, const int& axis) {
     x_tmp = cast<T>(x, phi::DataType::FLOAT32);
   }
 
-  auto max_tmp = max<T>(x_tmp, axis, true);
+  auto max_tmp = max<T>(x_tmp, axis_tmp, true);
+  auto molecular = exp<T>(subtract<T>(x_tmp, max_tmp));
 
-  auto molecular = exp<T>(x_tmp - max_tmp);
-
-  auto denominator = sum<T>(molecular, axis, molecular.dtype(), true);
-
+  auto denominator = sum<T>(molecular, axis_tmp, molecular.dtype(), true);
   auto res = divide<T>(molecular, denominator);
 
   if (need_cast) {
