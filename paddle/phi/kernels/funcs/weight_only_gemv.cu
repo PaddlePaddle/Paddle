@@ -319,10 +319,55 @@ __global__ void int8_weight_only_gemv(const T* input,
 #pragma unroll
   for (int i = lane_id * kVecSize; i < k * 2; i += kVecSize * kWarpSize) {
     *(int4*)vec_weight = *(int4*)(weight + i);            // NOLINT
+    #ifdef WEIGHT_ONLY_GEMV_CUDA_DEBUG
+      if(threadIdx.x == 0 && blockIdx.x == 0) {
+        printf("%d-%d weight:%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d \n",
+                threadIdx.x, blockIdx.x, 
+                static_cast<int>(vec_weight[0]),
+                static_cast<int>(vec_weight[1]),
+                static_cast<int>(vec_weight[2]),
+                static_cast<int>(vec_weight[3]),
+                static_cast<int>(vec_weight[4]),
+                static_cast<int>(vec_weight[5]),
+                static_cast<int>(vec_weight[6]),
+                static_cast<int>(vec_weight[7]),
+                static_cast<int>(vec_weight[8]),
+                static_cast<int>(vec_weight[9]),
+                static_cast<int>(vec_weight[10]),
+                static_cast<int>(vec_weight[11]),
+                static_cast<int>(vec_weight[12]),
+                static_cast<int>(vec_weight[13]),
+                static_cast<int>(vec_weight[14]),
+                static_cast<int>(vec_weight[15])); 
+      }
+    #endif
     *(float4*)vec_input =                                 // NOLINT
         *(float4*)(input + i / 128 * 64 + (i % 64));      // NOLINT
     *(float4*)(vec_input + 8) =                           // NOLINT
         *(float4*)(input + i / 128 * 64 + (i % 64) + 8);  // NOLINT
+
+    #ifdef WEIGHT_ONLY_GEMV_CUDA_DEBUG
+      if(threadIdx.x == 0 && blockIdx.x == 0) {
+        printf("%d-%d input:%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f \n",
+                threadIdx.x, blockIdx.x, 
+                static_cast<float>(vec_input[0]),
+                static_cast<float>(vec_input[1]),
+                static_cast<float>(vec_input[2]),
+                static_cast<float>(vec_input[3]),
+                static_cast<float>(vec_input[4]),
+                static_cast<float>(vec_input[5]),
+                static_cast<float>(vec_input[6]),
+                static_cast<float>(vec_input[7]),
+                static_cast<float>(vec_input[8]),
+                static_cast<float>(vec_input[9]),
+                static_cast<float>(vec_input[10]),
+                static_cast<float>(vec_input[11]),
+                static_cast<float>(vec_input[12]),
+                static_cast<float>(vec_input[13]),
+                static_cast<float>(vec_input[14]),
+                static_cast<float>(vec_input[15])); 
+      }
+    #endif
 #pragma unroll
     for (int p = 0; p < kVecSize; p += 4) {
       fast_cvt_4_packed_signed_i8s_to_2_half2s<T>(vec_weight_f16 + p,
@@ -641,10 +686,10 @@ struct WeightOnlyProperties<WeightOnlyGroupWise<GS>>
     static constexpr int kGroupSize = GS;
 };
 
-template <WeightOnlyQuantType QType, typename WeightOnlyFlag, bool Zero, int BlockSize>
+template <WeightOnlyQuantType QType, typename WeightOnlyFlag, bool Zero, int BlockSize, typename T>
 struct WeightOnlyScaleLoader
 {
-    using ElemType = half;
+    using ElemType = T;
     using Details = WeightOnlyKernelDetails<QType>;
     static constexpr bool kIsFineGrained = WeightOnlyProperties<WeightOnlyFlag>::kIsFineGrained;
     static constexpr int kGroupSize = WeightOnlyProperties<WeightOnlyFlag>::kGroupSize;
@@ -714,8 +759,8 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight, const
     using AccType = typename Details::AccessType;
     using CvtSrcType = int8_t;
     using CvtResType = T;
-    using ScaleLoader = WeightOnlyScaleLoader<QType, WeightOnlyFlag, Zero, BlockSize>;
-    extern __shared__ uint8_t shmem[];
+    using ScaleLoader = WeightOnlyScaleLoader<QType, WeightOnlyFlag, Zero, BlockSize, T>;
+    extern __shared__ int8_t shmem[];
     constexpr int Interleave = Details::kInterleave;
     constexpr int WarpSize = 32;
     constexpr int Num = Batch * NPerBlock;
@@ -743,14 +788,38 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight, const
     for (int local_k = tid * Details::kElemsPerThread; local_k < k * Interleave;
          local_k += BlockSize * Details::kElemsPerThread)
     {
-        T weights_f16[Details::kElemsPerThread * NPerBlock];
+        T weights_f16[Details::kElemsPerThread * NPerBlock]; // 16 * 2 = 32
         T scale[NPerBlock], zero[NPerBlock];
 #pragma unroll
         for (int idx = 0; idx < NPerBlock; ++idx)
         {
             // Load quantized weight and scales/zeros
             int8_t weights_quantized[Details::kBytePerThread];
-            *(int4*)weights_quantized = *(int4*)(qweight + idx * Interleave * k / Details::kElemsPerByte + local_k / Details::kElemsPerByte);            // NOLINT
+            *(int4*)weights_quantized = *(int4*)(qweight 
+                                                 + idx * Interleave * k / Details::kElemsPerByte
+                                                 + local_k / Details::kElemsPerByte);            // NOLINT
+            #ifdef WEIGHT_ONLY_GEMV_CUDA_DEBUG
+              if(threadIdx.x == 0 && blockIdx.x == 0 && local_k == 0) {
+                printf("%d-%d weight:%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d-%d \n",
+                        threadIdx.x, blockIdx.x, 
+                        static_cast<int>(weights_quantized[0]),
+                        static_cast<int>(weights_quantized[1]),
+                        static_cast<int>(weights_quantized[2]),
+                        static_cast<int>(weights_quantized[3]),
+                        static_cast<int>(weights_quantized[4]),
+                        static_cast<int>(weights_quantized[5]),
+                        static_cast<int>(weights_quantized[6]),
+                        static_cast<int>(weights_quantized[7]),
+                        static_cast<int>(weights_quantized[8]),
+                        static_cast<int>(weights_quantized[9]),
+                        static_cast<int>(weights_quantized[10]),
+                        static_cast<int>(weights_quantized[11]),
+                        static_cast<int>(weights_quantized[12]),
+                        static_cast<int>(weights_quantized[13]),
+                        static_cast<int>(weights_quantized[14]),
+                        static_cast<int>(weights_quantized[15])); 
+              }
+            #endif
             scale_loader.load(scale[idx], zero[idx], idx);
             T weights_vec[Details::kElemsPerThread];
 #pragma unroll
@@ -760,46 +829,72 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight, const
                 fast_cvt_4_packed_signed_i8s_to_2_half2s<T>(weights_vec + i * Details::kConvertCount,
                     weights_quantized + i * Details::kConvertCount / Details::kElemsPerByte);
             }
+            //TODO(wangbojun) no zero support here
 #pragma unroll
-            for (int i = 0; i < Details::kShuffleContinous; ++i)
-            {
-#pragma unroll
-                for (int j = 0; j < Details::kShuffleStrided; ++j)
-                {
-                    // Dequantize the weights and arrange the shuffled elements back to the correct order in the
-                    // register array
-                    HALF_2_TYPE v = *reinterpret_cast<HALF_2_TYPE*>(weights_vec + i * Details::kShuffleBasicTile
-                        + j * Details::kShuffleContinous * Details::kShuffleBasicTile);
-                    v = __hfma2(v, ConvertDstFunc_2<HALF_2_TYPE>::apply(scale[idx]), ConvertDstFunc_2<HALF_2_TYPE>::apply(zero[idx]));
-                    weights_f16[(i * Details::kShuffleStrided * Details::kShuffleBasicTile
-                                    + j * Details::kShuffleBasicTile + 0)
-                            * NPerBlock
-                        + idx]
-                        = v.x;
-                    weights_f16[(i * Details::kShuffleStrided * Details::kShuffleBasicTile
-                                    + j * Details::kShuffleBasicTile + 1)
-                            * NPerBlock
-                        + idx]
-                        = v.y;
-                }
+            for (int p = 0; p < 16; ++p) {
+              weights_f16[p * NPerBlock + idx]= weights_vec[p / 8 + (p % 8) * 2] * scale[idx];
             }
+// #pragma unroll
+//             for (int i = 0; i < Details::kShuffleContinous; ++i)
+//             {
+// #pragma unroll
+//                 for (int j = 0; j < Details::kShuffleStrided; ++j)
+//                 {
+//                     // Dequantize the weights and arrange the shuffled elements back to the correct order in the
+//                     // register array
+//                     HALF_2_TYPE v = *reinterpret_cast<HALF_2_TYPE*>(weights_vec + i * Details::kShuffleBasicTile
+//                         + j * Details::kShuffleContinous * Details::kShuffleBasicTile);
+//                     v = __hfma2(v, ConvertDstFunc_2<HALF_2_TYPE>::apply(scale[idx]), ConvertDstFunc_2<HALF_2_TYPE>::apply(zero[idx]));
+//                     weights_f16[(i * Details::kShuffleStrided * Details::kShuffleBasicTile
+//                                     + j * Details::kShuffleBasicTile + 0)
+//                             * NPerBlock
+//                         + idx]
+//                         = v.x;
+//                     weights_f16[(i * Details::kShuffleStrided * Details::kShuffleBasicTile
+//                                     + j * Details::kShuffleBasicTile + 1)
+//                             * NPerBlock
+//                         + idx]
+//                         = v.y;
+//                 }
+//             }
         }
 #pragma unroll
         for (int b = 0; b < Batch; ++b)
         {
-            half in_v[Details::kElemsPerThread];
-#pragma unroll
-            for (int idx = 0; idx < Details::kActivationAccessNum; ++idx)
-            {
-                // load activation elements
-              *(float4*)in_v =                                 // NOLINT
-                  *(float4*)(in + b * k + scale_loader.offset() + idx * Details::kActivationElemNumPerAccess);      // NOLINT
-              *(float4*)(in_v + 8) =                           // NOLINT
-                  *(float4*)(in + b * k + scale_loader.offset() + idx * Details::kActivationElemNumPerAccess + 8);  // NOLINT
-
+            T in_v[Details::kElemsPerThread];
+            // load activation elements
+            *(float4*)in_v =                                 // NOLINT
+                *(float4*)(in + b * k + scale_loader.offset());      // NOLINT
+            *(float4*)(in_v + 8) =                           // NOLINT
+                *(float4*)(in + b * k + scale_loader.offset() + 8);  // NOLINT
+   #ifdef WEIGHT_ONLY_GEMV_CUDA_DEBUG
+      if(threadIdx.x == 0 && blockIdx.x == 0) {
+        printf("%d-%d input:%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f-%f \n",
+                threadIdx.x, blockIdx.x, 
+                static_cast<float>(in_v[0]),
+                static_cast<float>(in_v[1]),
+                static_cast<float>(in_v[2]),
+                static_cast<float>(in_v[3]),
+                static_cast<float>(in_v[4]),
+                static_cast<float>(in_v[5]),
+                static_cast<float>(in_v[6]),
+                static_cast<float>(in_v[7]),
+                static_cast<float>(in_v[8]),
+                static_cast<float>(in_v[9]),
+                static_cast<float>(in_v[10]),
+                static_cast<float>(in_v[11]),
+                static_cast<float>(in_v[12]),
+                static_cast<float>(in_v[13]),
+                static_cast<float>(in_v[14]),
+                static_cast<float>(in_v[15])); 
+      }
+    #endif
+// #pragma unroll
+            // for (int idx = 0; idx < Details::kActivationAccessNum; ++idx)
+            // {
                 // load<AccType>(in_v + idx * Details::kActivationElemNumPerAccess,
                 //     in + b * k + scale_loader.offset() + idx * Details::kActivationElemNumPerAccess);
-            }
+            // }
             // Perform vector inner product and accumulate
             if constexpr (NPerBlock == 1)
             {
@@ -820,8 +915,10 @@ __global__ void weight_only_batched_gemv_multi_warp(const int8_t* qweight, const
                     for (int y = 0; y < Details::kElemsPerThread; ++y)
                     {
                         *reinterpret_cast<HALF_2_TYPE*>(accumulator + b * NPerBlock + x * 2)
-                            = HalfMulAdd<HALF_2_TYPE>::apply(*reinterpret_cast<HALF_2_TYPE*>(weights_f16 + y * NPerBlock + x * 2),
-                                ConvertDstFunc_2<HALF_2_TYPE>::apply(in_v[y]), *reinterpret_cast<HALF_2_TYPE*>(accumulator + b * NPerBlock + x * 2));
+                            = HalfMulAdd<HALF_2_TYPE>::apply(
+                                *reinterpret_cast<HALF_2_TYPE*>(weights_f16 + y * NPerBlock + x * 2),
+                                ConvertDstFunc_2<HALF_2_TYPE>::apply(in_v[y]), 
+                                *reinterpret_cast<HALF_2_TYPE*>(accumulator + b * NPerBlock + x * 2));
                     }
                 }
             }
@@ -1140,6 +1237,22 @@ void batched_int8_weight_only_gemv_multi_warp_launcher(const T* input,
 #endif
 }
 
+template <>
+void batched_int8_weight_only_gemv_multi_warp_launcher(const phi::dtype::bfloat16* input,
+                                    const int8_t* weight,
+                                    const phi::dtype::bfloat16* scale_list,
+                                    const phi::dtype::bfloat16* bias,
+                                    phi::dtype::bfloat16* output,
+                                    const int m,
+                                    const int k,
+                                    const int n,
+                                    const bool gelu,
+                                    gpuStream_t stream) {
+  // Environment do not support bf16.
+  assert(false);
+}
+
+
 
 
 template <>
@@ -1198,7 +1311,7 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
         errors::InvalidArgument("Currently, Int8 weightonly GEMV act_method "
                                 "only support `gelu`, `None`. "));
   }
-  if (m == 1){
+  if (m < 1){
   int8_weight_only_gemv_launcher<DataType>(
       reinterpret_cast<const DataType*>(x),
       weight,
@@ -1210,7 +1323,7 @@ void GemvWeightonlyInt8Wrapper(const Context& ctx,
       gelu,
       ctx.stream());
   } else {
-  batched_int8_weight_only_gemv_launcher<DataType>(
+  batched_int8_weight_only_gemv_multi_warp_launcher<DataType>(
       reinterpret_cast<const DataType*>(x),
       weight,
       reinterpret_cast<const DataType*>(weight_scale),
@@ -1276,15 +1389,15 @@ template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
                                         const std::string& act_method,
                                         phi::dtype::bfloat16* output);
 
-template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
-                                        const float* x,
-                                        const int8_t* weight,
-                                        const float* bias,
-                                        const float* weight_scale,
-                                        const int m,
-                                        const int n,
-                                        const int k,
-                                        const std::string& act_method,
-                                        float* output);
+// template void GemvWeightonlyInt8Wrapper(const phi::GPUContext& ctx,
+//                                         const float* x,
+//                                         const int8_t* weight,
+//                                         const float* bias,
+//                                         const float* weight_scale,
+//                                         const int m,
+//                                         const int n,
+//                                         const int k,
+//                                         const std::string& act_method,
+//                                         float* output);
 
 }  // namespace phi
