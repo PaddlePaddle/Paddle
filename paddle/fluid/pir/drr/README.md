@@ -10,11 +10,42 @@ The DRR PASS API is not IR, but a unified encapsulation of IR, with the aim of a
 + `Constrains`：Used to specify restrictions for substitution
 Developers need to specify the pattern subgraph to be matched through `Source Pattern`, specify constraints through `Constrains`, and specify the subgraph to replace with through `Result Pattern` to achieve a complete Pass. Compared to existing Pass development, which requires developers to be familiar with the underlying data structure, developers under the DRR Pass API only need to focus on the following DRR primitives：
 
-| Keywords      | Source Pattern                                                                                                                                                                                      | Result Pattern                                                                                                         | Constrain                                                                                                                                                 |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Op        | **source_pattern.Op**("op_name", {{"attr_name", source_pattern.Attr("attr_var_name")}})  **source_pattern.Op**({"op_name0", "op_name1"}) **source_pattern.Op**([](const string& op_name) -> bool {}) | Create op : **result_pattern.Op**("op_name", {{“attr_name", result_pattern.Attr("attr_var_name")}})                    | Without an API, the OP call relationship is a constraint relationship, which has been determined in the SourcePattern                                                                                               |
-| Tensor    | **source_pattern.Tensor**("name")                                                                                                                                                                 | **result_pattern.Tensor**("name")                                                                                      | **srouce_pattern.RequireXXX**(pat.Tensor("name1").shape(), pat.Tensor("name2").shape())                                                                   |
-| Attribute | **source_pattern.Attr**("attr_var_name")                                                                                                                                                            | **result_pattern.Attr**("attr_var_name")   **result_pattern.Attr**([](MatchContext* match_ctx) { return attr_value; }) | **srouce_pattern.RequireXXX**(pat.Attr("name1"), pat.Attr("name2"))      **srouce_pattern.RequireNativeCall**([](MatchContext* match_ctx) { return false;}) |
+<table>
+	<tr>
+		<th> Keywords </th>
+		<th> Source Pattern </th>
+		<th> Result Pattern </th>
+		<th> Constrain </th>
+	 </tr>
+	 <tr>
+		<td rowspan="3">Op</td>
+		<td> <pre> source_pattern.Op("op_name", {{"attr_name", source_pattern.Attr("attr_var_name")}})</pre></td>
+		<td rowspan="3"><pre> result_pattern.Op("op_name", {{"attr_name", result_pattern.Attr("attr_var_name")}})</pre></td>
+		<td rowspan="3">Without an API, the OP call relationship is a constraint relationship, which has been determined in the SourcePattern </td>
+	</tr>
+	<tr>
+		<td><pre> source_pattern.Op({"op_name0", "op_name1"}) </pre></td>
+	</tr>
+	<tr>
+		<td><pre> source_pattern.Op([](const string& op_name) -> bool {}) </pre></td>
+	</tr>
+	<tr>
+		<td> Tensor </td>
+		<td><pre> source_pattern.Tensor("name") </pre></td>
+		<td> <pre>result_pattern.Tensor("name") </pre></td>
+		<td> <pre>srouce_pattern.RequireXXX(pat.Tensor("name1").shape(), pat.Tensor("name2").shape()) </pre></td>
+	</tr>
+	<tr>
+		<td rowspan="2"> Attribute </td>
+		<td rowspan="2"><pre> source_pattern.Attr("attr_var_name")</pre></td>
+		<td><pre> result_pattern.Attr("attr_var_name")</pre></td>
+		<td><pre>srouce_pattern.RequireXXX(pat.Attr("name1"), pat.Attr("name2"))</pre></td>
+	</tr>
+	<tr>
+		<td><pre> result_pattern.Attr([](MatchContext* match_ctx) { return attr_value; })</pre></td>
+		<td><pre> srouce_pattern.RequireNativeCall([](MatchContext* match_ctx) { return false;})</pre></td>
+	</tr>
+</table>
 
 ### 1.1 Building DAG Example Based on Declarative Interface
 The execution and parsing process of the DRR API is somewhat similar to that of networking through the Python interface during compilation in static graph mode. Taking merging duplicate casts as an example, the code implemented using the DRR interface is as follows:

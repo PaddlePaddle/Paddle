@@ -10,11 +10,42 @@ DRR(Declarative Rewrite Rule) PASS API并不是IR，而是对IR的统一封装�
 + `Constrains`：用于指定进行替换的限制条件
 开发者需通过`Source Pattern`指定待匹配的模式子图、通过`Constrains`指定限制条件、通过`Result Pattern`指定要替换为的子图即可实现一个完整的Pass。相比现有Pass开发需要开发者熟悉底层数据结构，DRR Pass API下开发者只需关注如下DRR原语：
 
-| 句法      | Source Pattern                                                                                                                                                                                      | Result Pattern                                                                                                         | Constrain                                                                                                                                                 |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Op        | **source_pattern.Op**("op_name", {{"attr_name", source_pattern.Attr("attr_var_name")}})  **source_pattern.Op**({"op_name0", "op_name1"}) **source_pattern.Op**([](const string& op_name) -> bool {}) | 创建新 op : **result_pattern.Op**("op_name", {{“attr_name", result_pattern.Attr("attr_var_name")}})                    | 无API，OP调用关系即为约束关系，已在SourcePattern中确定                                                                                                    |
-| Tensor    | **source_pattern.Tensor**("name")                                                                                                                                                                 | **result_pattern.Tensor**("name")                                                                                      | **srouce_pattern.RequireXXX**(pat.Tensor("name1").shape(), pat.Tensor("name2").shape())                                                                   |
-| Attribute | **source_pattern.Attr**("attr_var_name")                                                                                                                                                            | **result_pattern.Attr**("attr_var_name")   **result_pattern.Attr**([](MatchContext* match_ctx) { return attr_value; }) | **srouce_pattern.RequireXXX**(pat.Attr("name1"), pat.Attr("name2"))      **srouce_pattern.RequireNativeCall**([](MatchContext* match_ctx) { return false;}) |
+<table>
+	<tr>
+		<th> 句法 </th>
+		<th> Source Pattern </th>
+		<th> Result Pattern </th>
+		<th> Constrain </th>
+	 </tr>
+	 <tr>
+		<td rowspan="3">Op</td>
+		<td> <pre> source_pattern.Op("op_name", {{"attr_name", source_pattern.Attr("attr_var_name")}})</pre></td>
+		<td rowspan="3"><pre> result_pattern.Op("op_name", {{"attr_name", result_pattern.Attr("attr_var_name")}})</pre></td>
+		<td rowspan="3">无API，OP调用关系即为约束关系，已在SourcePattern中确定 </td>
+	</tr>
+	<tr>
+		<td><pre> source_pattern.Op({"op_name0", "op_name1"}) </pre></td>
+	</tr>
+	<tr>
+		<td><pre> source_pattern.Op([](const string& op_name) -> bool {}) </pre></td>
+	</tr>
+	<tr>
+		<td> Tensor </td>
+		<td><pre> source_pattern.Tensor("name") </pre></td>
+		<td> <pre>result_pattern.Tensor("name") </pre></td>
+		<td> <pre>srouce_pattern.RequireXXX(pat.Tensor("name1").shape(), pat.Tensor("name2").shape()) </pre></td>
+	</tr>
+	<tr>
+		<td rowspan="2"> Attribute </td>
+		<td rowspan="2"><pre> source_pattern.Attr("attr_var_name")</pre></td>
+		<td><pre> result_pattern.Attr("attr_var_name")</pre></td>
+		<td><pre>srouce_pattern.RequireXXX(pat.Attr("name1"), pat.Attr("name2"))</pre></td>
+	</tr>
+	<tr>
+		<td><pre> result_pattern.Attr([](MatchContext* match_ctx) { return attr_value; })</pre></td>
+		<td><pre> srouce_pattern.RequireNativeCall([](MatchContext* match_ctx) { return false;})</pre></td>
+	</tr>
+</table>
 
 ### 1.1 基于声明式接口构建中间DAG子图示例
 DRR API的执行解析过程与静态图模式下编译期通过Python接口组网有些类似。以合并重复cast为例，使用DRR接口实现的代码如下所示：
@@ -49,118 +80,118 @@ class RemoveRedundentCastPattern
 		<th> 参数解释 </th>
 	 </tr>
 	<tr>
-		<td rowspan="2">template &lt;typename DrrPattern&gt; Class DrrPatternBase </td>
-		<td> virtual void operator()(pir::drr::DrrPatternContext* ctx) const </td>
-		<td> 该类是用户进行SourcePattern和ResultPattern声明和重写的入口。用户需要自定义一个类A，并且继承特化的模版类 DrrPatternBase&lt;A&gt;，然后再实现DrrPatternBase中预留的operator()接口即可完成声明。</td>
+		<td rowspan="2">template &lt;typename DrrPattern&gt; Class DrrPatternBase</td>
+		<td> <pre> virtual void operator()(pir::drr::DrrPatternContext* ctx) const </pre></td>
+		<td> 该类是用户进行SourcePattern和ResultPattern声明和重写的入口。用户需要自定义一个类A，并且继承特化的模版类 DrrPatternBase&lt;A&gt;，然后再实现DrrPatternBase中预留的operator()接口即可完成声明 </td>
 		<td> ctx: 当前Pattern所属的上下文</td>
 	</tr>
 	<tr>
-		<td> std::unique_ptr&lt;DrrRewritePattern&gt; Build(
-      pir::IrContext* ir_context, pir::PatternBenefit benefit = 1) const </td>
+		<td> <pre>std::unique_ptr&lt;DrrRewritePattern&gt; Build(
+      pir::IrContext* ir_context, pir::PatternBenefit benefit = 1) const </pre></td>
 		<td> 用户可以通过该接口实现用户自定义Pattern的添加 </td>
 		<td> ir_context: 当前Pattern所在的ir上下文 </td>
 	</tr>
 	<tr>
 		<td rowspan="5">Class SourcePattern</td>
-		<td> Attribute Attr(const std::string& attr_name) const </td>
+		<td> <pre> Attribute Attr(const std::string& attr_name) const </pre></td>
 		<td> 在SourcePattern中声明一个名为attr_name的属性 </td>
 		<td> attr_name: 属性的名称，需要满足SourcePattern内唯一 </td>
 	</tr>
 	<tr>
-		<td> const drr::Tensor& Tensor(const std::string& tensor_name)</td>
+		<td><pre> const drr::Tensor& Tensor(const std::string& tensor_name) </pre></td>
 		<td> 在SourcePattern中声明一个名为tensor_name的tensor</td>
 		<td>  tensor_name: 声明的Tensor的名称，需要满足SourcePattern内唯一 </td>
 	</tr>
 	<tr>
-		<td> const drr::Op& Op(const std::string& op_type, const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {})</td>
+		<td><pre> const drr::Op& Op(const std::string& op_type, const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {})</pre></td>
 		<td> 在SourcePattern中声明一个Op</td>
 		<td> op_type: 声明的op名称，可以通过paddle::dialect::xxOp
 	::name()接口获取，或直接传入Op的名称 <br> attributes : 所创建的op的属性信息 </td>
 	</tr>
 	<tr>
-		<td> void RequireEqual(const TensorShape& first, const TensorShape& second)</td>
+		<td><pre> void RequireEqual(const TensorShape& first, const TensorShape& second)</pre></td>
 		<td> 声明SourcePattern中两个Tensor的TensorShape相同</td>
 		<td> first: 第一个Tensor的TensorShape <br> second : 第二个Tensor的TensorShape</td>
 	</tr>
 	<tr>
-		<td> void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</td>
+		<td> <pre>void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
 		<td> 在SourcePattern中声明一个Native约束，用户可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
 		<td> custom_fn: 用户自定义的Native约束函数</td>
 	</tr>
 	<tr>
 		<td rowspan="6">Class ResultPattern</td>
-		<td>Attribute Attr(const std::string& attr_name) const </td>
+		<td><pre>Attribute Attr(const std::string& attr_name) const </pre></td>
 		<td> 在 ResultPattern 中声明一个名为 attr_name 的属性 </td>
 		<td> attr_name: 属性的名称，需要满足SourcePattern内唯一 </td>
 	</tr>
 	<tr>
-		<td> const drr::Tensor& Tensor(const std::string& tensor_name)</td>
+		<td> <pre>const drr::Tensor& Tensor(const std::string& tensor_name)</pre></td>
 		<td> 在SourcePattern中声明一个名为tensor_name的tensor</td>
 		<td> tensor_name: 声明的Tensor的名称，需要满足SourcePattern内唯一 </td>
 	</tr>
 	<tr>
-		<td> const drr::Op& Op(
+		<td><pre> const drr::Op& Op(
       const std::string& op_type,
-      const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {}) </td>
+      const std::unordered_map&lt;std::string, Attribute&gt;& attributes = {}) </pre></td>
 		<td> 在SourcePattern中声明一个Op </td>
 		<td> op_type: 声明的op名称，可以通过paddle::dialect::xxOp
 	::name()接口获取，或直接传入Op的名称<br> attributes : 所创建的op的属性信息 </td>
 	</tr>
 	<tr>
-		<td> void RequireEqual(const TensorShape& first, const TensorShape& second)</td>
+		<td><pre> void RequireEqual(const TensorShape& first, const TensorShape& second)</pre></td>
 		<td> 声明SourcePattern中两个Tensor的TensorShape相同</td>
 		<td> first:  第一个Tensor的TensorShape <br> second : 第二个Tensor的TensorShape </td>
 	</tr>
 	<tr>
-		<td> void RequireEqual(const TensorDataType& first, const TensorDataType& second)</td>
+		<td><pre> void RequireEqual(const TensorDataType& first, const TensorDataType& second)</pre></td>
 		<td> 声明SourcePattern中两个Tensor的数据类型相同</td>
 		<td> first: 第一个Tensor的DataType <br> second : 第二个Tensor的DataType</td>
 	</tr>
 		<tr>
-		<td> void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</td>
+		<td> <pre>void RequireNativeCall(const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
 		<td> 在SourcePattern中声明一个Native约束，用户可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
 		<td> custom_fn: 用户自定义的Native约束函数 </td>
 	</tr>
 	<tr>
 		<td rowspan="2">Class TensorShape</td>
-		<td>explicit TensorShape(const std::string& tensor_name) </td>
+		<td><pre>explicit TensorShape(const std::string& tensor_name) </pre></td>
 		<td> 抽象出来描述Tensor的shape的类 </td>
 		<td> tensor_name: 被描述的Tensor的name </td>
 	</tr>
 	<tr>
-		<td> const std::string& tensor_name() const</td>
+		<td><pre> const std::string& tensor_name() const</pre></td>
 		<td> 获取tensor的name</td>
 		<td>  无 </td>
 	</tr>
 	<tr>
 		<td rowspan="2">Class TensorDataType</td>
-		<td>explicit TensorDataType(const std::string& tensor_name)</td>
+		<td><pre>explicit TensorDataType(const std::string& tensor_name)</pre></td>
 		<td> 抽象出来的描述Tensor中元素数据类型的类</td>
 		<td> tensor_name: 被描述的Tensor的name </td>
 	</tr>
 	<tr>
-		<td> const std::string& tensor_name() const</td>
+		<td><pre> const std::string& tensor_name() const</pre></td>
 		<td> 获取tensor的name</td>
 		<td> 无 </td>
 	</tr>
 	<tr>
 		<td rowspan="4">Class DrrPatternContext</td>
-		<td>drr::SourcePattern DrrPatternContext::SourcePattern() </td>
+		<td><pre>drr::SourcePattern DrrPatternContext::SourcePattern()</pre> </td>
 		<td> 创建一个SourcePattern对象，并返回 </td>
 		<td> 无 </td>
 	</tr>
 	<tr>
-		<td> std::shared_ptr&lt;SourcePatternGraph&gt; source_pattern_graph() const</td>
+		<td> <pre>std::shared_ptr&lt;SourcePatternGraph&gt; source_pattern_graph() const</pre></td>
 		<td> 返回PatternContext内部的SourcePatternGraph对象</td>
 		<td> 无 </td>
 	</tr>
 	<tr>
-		<td> std::vector&lt;Constraint&gt; constraints() const</td>
+		<td><pre>std::vector&lt;Constraint&gt; constraints() const</pre></td>
 		<td> 返回PatternContext内部的约束列表 Constrains</td>
 		<td> 无 </td>
 	</tr>
 	<tr>
-		<td> std::shared_ptr&lt;ResultPatternGraph&gt; result_pattern_graph() const</td>
+		<td><pre>std::shared_ptr&lt;ResultPatternGraph&gt; result_pattern_graph() const</pre></td>
 		<td> 返回PatternContext内部的ResultPatternGraph对象</td>
 		<td> 无 </td>
 	</tr>
