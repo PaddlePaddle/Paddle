@@ -23,7 +23,7 @@ paddle::dialect::IfOp, paddle::dialect::WhileOp
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/utils.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace paddle {
 namespace dialect {
