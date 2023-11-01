@@ -262,7 +262,9 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
     }
     VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
     IR_ENFORCE(var != nullptr,
-               "Can't find var recursively from current block.");
+               "[op:%s] Input %s should not be null",
+               op_desc.Type(),
+               legacy_input_vars[0]);
 
     if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
       need_inputs_sig.emplace_back("dense");
@@ -473,7 +475,9 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     if (legacy_input_vars.size() == 1) {
       VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
       IR_ENFORCE(var != nullptr,
-                 "Can't find var recursively from current block.");
+                 "[op:%s] Input %s should not be null",
+                 op_desc.Type(),
+                 legacy_input_vars[0]);
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         is_vector = false;
@@ -1760,7 +1764,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       VarDesc* var_desc_x = op_desc.Block()->FindVarRecursive("X");
       IR_ENFORCE(var_desc_x != nullptr,
-                 "[op:%s] Input X should not be null",
+                 "[op:%s] Input [X] should not be null",
                  op_desc.Type());
       std::vector<int64_t> x_shape = var_desc_x->GetShape();
       DenseTensorTypeStorage::Dim dim_x = phi::make_ddim(x_shape);
@@ -1810,7 +1814,7 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
     VarDesc* var_desc_y = op_desc.Block()->FindVarRecursive("Y");
     IR_ENFORCE(var_desc_y != nullptr,
-               "[op:%s] Input Y should not be null",
+               "[op:%s] Input [Y] should not be null",
                op_desc.Type());
     std::vector<int64_t> y_shape = var_desc_y->GetShape();
     DenseTensorTypeStorage::Dim dim_y = phi::make_ddim(y_shape);
@@ -2069,6 +2073,9 @@ struct OneHotTranscriber : public OpTranscriber {
 pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
+  IR_ENFORCE(op_desc.Input("Start").size() == 1,
+             "[op:%s] Input [Start] should not be null",
+             op_desc.Type());
   auto var_desc = op_desc.Block()->FindVarRecursive(op_desc.Input("Start")[0]);
   IR_ENFORCE(var_desc != nullptr,
              "[op:%s] Input %s should not be null",
