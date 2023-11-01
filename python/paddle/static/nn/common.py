@@ -447,17 +447,17 @@ def instance_norm(
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
-             Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+            Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If the bias_attr is set to False, instance_norm will not create bias_attr.
-         Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If the bias_attr is set to False, instance_norm will not create bias_attr.
+            Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -2803,19 +2803,19 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2829,9 +2829,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
@@ -2854,14 +2854,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-         Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
