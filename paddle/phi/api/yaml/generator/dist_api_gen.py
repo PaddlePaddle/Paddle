@@ -81,8 +81,12 @@ AUTO_PARALLEL_COND_TEMPLATE = """
 # 1. InferSPMD
 SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = MakeDistMetaTensor(*{name}.impl());"""
+VECTOR_DIST_META_IN_TEMPLATE = """
+    auto meta_dist_input_{name} = MakeDistMetaTensor({name});"""
 OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*(*{name}).impl()) : phi::distributed::DistMetaTensor();"""
+OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE = """
+    auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*{name}) : std::vector<phi::distributed::DistMetaTensor>(1);"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """
@@ -230,9 +234,21 @@ KERNEL_SELECTION_TEMPLATE = """
 
 # 5. Reshard Input
 SINGLE_INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+      auto dist_input_{arg} = ReshardApiInputToKernelInput(dev_ctx, {arg}, spmd_info.first[idx++]);"""
+VECTOR_INPUT_RESHARD_TEMPLATE = """
+      auto dist_input_{arg}_vec = ReshardApiInputToKernelInput(dev_ctx, {arg},
+                                        std::vector<phi::distributed::TensorDistAttr>(spmd_info.first.begin() + idx,
+                                                                                      spmd_info.first.begin() + idx + size));
+      idx += size;
+      VLOG(4) << "After reshard dist_input_{arg}_vec";"""
 SINGLE_GENERAL_INPUT_RESHARD_TEMPLATE = """
-      auto dist_input_{arg} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg}, spmd_info.first[{idx}]);"""
+      auto dist_input_{arg} = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg}, spmd_info.first[idx++]);"""
+VECTOR_GENERAL_INPUT_RESHARD_TEMPLATE = """
+      auto dist_input_{arg}_vec = ReshardApiInputToReplicatedKernelInput(dev_ctx, {arg},
+                                        std::vector<phi::distributed::TensorDistAttr>(spmd_info.first.begin() + idx,
+                                                                                      spmd_info.first.begin() + idx + size));
+      idx += size;
+      VLOG(4) << "After reshard dist_input_{arg}_vec";"""
 UNSUPPORTED_RESHARD_INPUT_COMMENT_TEMPLATE = """
       // API `{}` does not need to support ReshardInput at this time
 """
@@ -243,11 +259,11 @@ SINGLE_PREPARE_DATA_TEMPLATE = """
       auto input_{arg} = &dist_input_{arg}->value();
 """
 SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
-      auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
+      dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
       auto input_{arg} = &dist_input_{arg}->value();
 """
 VECTOR_PREPARE_DATA_TEMPLATE = """
-      auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      dist_input_{name}_vec = PrepareDataForDistTensor(dist_input_{name}_vec, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
       for (auto tmp : dist_input_{name}_vec) {{
         dense_input_{name}_vec.emplace_back(&tmp->value());
@@ -263,11 +279,11 @@ OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
       paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>((*dist_input_{name})->value()) : paddle::none;
 """
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
-      auto dist_input_{name} = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      dist_input_{name} = PrepareDataForDistTensor(dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
 """
 OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
-      auto dist_input_{name}_vec = PrepareDataForDistTensor({name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
+      dist_input_{name}_vec = PrepareDataForDistTensor(dist_input_{name}_vec, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
       if ({name}) {{
         for (auto tmp : *dist_input_{name}_vec) {{
@@ -747,14 +763,19 @@ class DistForwardAPI(ForwardAPI):
                 elif (
                     self.inputs['input_info'][param]
                     == "const std::vector<Tensor>&"
-                    or self.inputs['input_info'][param]
+                ):
+                    input_decl_code += VECTOR_DIST_META_IN_TEMPLATE.format(
+                        name=param
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
                     == "const paddle::optional<std::vector<Tensor>>&"
                 ):
-                    # TODO(chenweihang): support other input type later,
-                    # now only support single tensor input api
-                    input_decl_code = ""
-                    input_args_code = ""
-                    break
+                    input_decl_code += (
+                        OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE.format(name=param)
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
                 else:
                     raise ValueError(
                         f"{self.api} : Param of infer_spmd error : {self.inputs['input_info'][param]} type is not supported."
@@ -996,6 +1017,7 @@ class DistForwardAPI(ForwardAPI):
                 else input_names
             )
 
+            input_reshard_code = "\n      int idx = 0, size = 0;"
             for i, param in enumerate(kernel_params):
                 if param in input_names:
                     if (
@@ -1015,10 +1037,36 @@ class DistForwardAPI(ForwardAPI):
                                     arg=param, idx=i
                                 )
                             )
-                    else:
-                        raise ValueError(
-                            f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
-                        )
+                    elif (
+                        self.inputs['input_info'][param]
+                        == "const std::vector<Tensor>&"
+                        or self.inputs['input_info'][param]
+                        == "const paddle::optional<std::vector<Tensor>>&"
+                    ):
+                        if (
+                            self.inputs['input_info'][param]
+                            == "const std::vector<Tensor>&"
+                        ):
+                            input_reshard_code += (
+                                f"\n      size = {param}.size();"
+                            )
+                        else:
+                            input_reshard_code += f"\n      size = {param} ? (*{param}).size() : 1;"
+
+                        if self.generate_general_infer_spmd is True:
+                            input_reshard_code += (
+                                VECTOR_GENERAL_INPUT_RESHARD_TEMPLATE.format(
+                                    arg=param
+                                )
+                            )
+                        else:
+                            input_reshard_code += (
+                                VECTOR_INPUT_RESHARD_TEMPLATE.format(arg=param)
+                            )
+                        pass
+                        # raise ValueError(
+                        #     f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
+                        # )
                 else:
                     # do nothing
                     pass

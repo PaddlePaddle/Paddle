@@ -536,6 +536,15 @@ phi::distributed::DistMetaTensor MakeDistMetaTensor(
   return phi::distributed::DistMetaTensor(tensor);
 }
 
+std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+    const std::vector<Tensor>& tensors) {
+  std::vector<phi::distributed::DistMetaTensor> out;
+  for (auto t : tensors) {
+    out.push_back(MakeDistMetaTensor(*t.impl()));
+  }
+  return out;
+}
+
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {

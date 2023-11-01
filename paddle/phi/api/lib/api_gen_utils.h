@@ -139,6 +139,9 @@ void TransStrideLegacy(phi::DeviceContext* dev_ctx,
 phi::distributed::DistMetaTensor MakeDistMetaTensor(
     const phi::TensorBase& tensor);
 
+std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+    const std::vector<Tensor>& tensors);
+
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out,
     const phi::distributed::TensorDistAttr& dist_attr =
