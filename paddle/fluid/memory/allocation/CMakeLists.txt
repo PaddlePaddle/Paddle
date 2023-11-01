@@ -104,10 +104,8 @@ elseif(WITH_ROCM)
     SRCS best_fit_allocator_test.cc best_fit_allocator_test.cu
     DEPS allocator memcpy)
 else()
-  cc_test(
-    best_fit_allocator_test
-    SRCS best_fit_allocator_test.cc
-    DEPS allocator)
+  cc_test_old(best_fit_allocator_test SRCS best_fit_allocator_test.cc DEPS
+              allocator)
 endif()
 
 cc_test(
