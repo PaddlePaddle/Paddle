@@ -200,8 +200,12 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     for (int i = 0; i < numInputs; ++i) {
       if (optim_input_shape().count(m_IOTensorNames[i])) {
         const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
-        nvinfer1::Dims4 inputDims = {
-            dims_vec[0], dims_vec[1], dims_vec[2], dims_vec[3]};
+        nvinfer1::Dims inputDims;
+        inputDims.nbDims = dims_vec.size();
+        inputDims.d[0] = batch_size;
+        for (auto j = 1u; j < dims_vec.size(); ++j) {
+          inputDims.d[j] = dims_vec[j];
+        }
         context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
       }
     }
