@@ -216,7 +216,6 @@ class PartialProgramLayer:
         # program_id -> list(scope)
         self._pir_scope_cache = {}
         self._legacy_scope_cache = {}
-        self._scope_cache = self._legacy_scope_cache
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
