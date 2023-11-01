@@ -302,8 +302,6 @@ class TestMLPReshard(unittest.TestCase):
         )
         resharder.reshard()
         # the x should not be slice
-        with open("./test_auto_parallel_reshard_mppp_old.txt", "w") as f:
-            f.write(str(partitioned_main_prog))
         self.assertTrue(check_allgather(partitioned_main_prog))
 
     def test_c_concat(self):
