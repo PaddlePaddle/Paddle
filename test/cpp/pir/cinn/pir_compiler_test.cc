@@ -119,15 +119,14 @@ ProgramInfo BuildSoftmax() {
   std::vector<GroupPtr> groups;
   //   groups.emplace_back(std::make_shared<Group>(
   //       std::initializer_list<::pir::Operation*>({x.owner()})));
-  groups.emplace_back(
-      std::make_shared<Group>(std::initializer_list<::pir::Operation*>({
-          max.owner(), broadcast_1.owner()
-          // sub.owner(),
-          // exp.owner(),
-          // sum.owner(),
-          // broadcast_2.owner(),
-          // divide.owner()
-      })));
+  groups.emplace_back(std::make_shared<Group>(
+      std::initializer_list<::pir::Operation*>({max.owner(),
+                                                broadcast_1.owner(),
+                                                sub.owner(),
+                                                exp.owner(),
+                                                sum.owner(),
+                                                broadcast_2.owner(),
+                                                divide.owner()})));
 
   // groups[0]->input_values.push_back(x);
   // groups[0]->output_values.push_back(broadcast_1);
@@ -177,9 +176,8 @@ TEST(PIRCompier, CompileSoftmax) {
   };
 
   std::vector<pir::Type> vec_types;
-  for (size_t i = 0; i < groups[0]->ops.size(); ++i) {
-    vec_types.push_back(groups[0]->ops[i]->result(0).type());
-  }
+
+  vec_types.push_back(groups[0]->ops.back()->result(0).type());
 
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);
