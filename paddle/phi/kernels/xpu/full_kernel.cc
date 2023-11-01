@@ -74,6 +74,7 @@ void FullLikeKernel(const Context& dev_ctx,
        static_cast<CommonType>(std::numeric_limits<T>::max()))) {
     is_out_range = false;
   }
+
   PADDLE_ENFORCE_EQ(
       is_out_range,
       false,
