@@ -1508,9 +1508,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 )
             )
 
-    def gen_compute_in_break_with_name_store(
-        self, restore_vars, restore_names, instr_idx
-    ):
+    def gen_compute_in_break_with_name_store(self, restore_names, instr_idx):
         """
         branch 1: if the graph size is too small, just run in dygraph
         branch 2: if the graph is big enough, create compiled_fn
@@ -1518,14 +1516,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
         This api will generator opcodes in different situation, the generated codes
         will do the same thing as origin code.
 
-        restore_vars:
-            vars which has no name but want to be restored (and not in stack)
-            this arg only used in branch 2. (in branch 1, the only thing need
-            to restore is the stack values)
         restore_names:
-            the names used in resume functions, branch 2 will restore these values too,
-            branch 1 also need these names for generating opcode, but they are not needed
-            to be restored
+            the names used in resume functions, branch 2 will restore these values,
+            branch 1 also need these names for generating opcode, but they are not
+            needed to be restored
         instr_idx:
             the index for branch 1 to find the boundary and copy origin opcode
         """
@@ -1539,10 +1533,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 self.stack, store_var_info, instr_idx
             )
         else:
-            store_vars = restore_vars + list(self.stack)
+            store_vars = list(self.stack)
             for name in restore_names:
                 _var = self.get_var(name)
-                if _var not in self.stack and _var not in restore_vars:
+                if _var not in self.stack:
                     store_vars.append(_var)
             return self._graph._build_compile_fn_with_name_store([], store_vars)
 
@@ -1587,7 +1581,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         inputs_names = if_inputs | else_inputs
 
         var_loader = self.gen_compute_in_break_with_name_store(
-            [], inputs_names, self.indexof(instr)
+            inputs_names, self.indexof(instr)
         )
 
         var_loader.load(result)
@@ -1666,7 +1660,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         resume_input_name = analysis_inputs(self._instructions, index + 1)
 
         var_loader = self.gen_compute_in_break_with_name_store(
-            [], resume_input_name, self.indexof(instr)
+            resume_input_name, self.indexof(instr)
         )
 
         # gen graph break call fn opcode
@@ -1792,9 +1786,6 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         TODO: check var is in globals or builtins, only locals considered now
         '''
-        # pop iterator
-        self.stack.pop()
-
         # 0. prepare sub functions
         # 0.1 find the range of loop body
         assert for_iter.jump_to is not None
@@ -1835,7 +1826,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 0.3 create after loop part function, minus 1 for iterator
         after_loop_fn, fn_inputs = self._create_resume_fn(
-            loop_body_end_idx, len(self.stack)
+            loop_body_end_idx, len(self.stack) - 1
         )
 
         total_inputs = OrderedSet(list(fn_inputs) + list(loop_body_inputs[:-1]))
@@ -1847,11 +1838,8 @@ class OpcodeExecutor(OpcodeExecutorBase):
             if name in chain(self._locals, self._cells)
         ]
 
-        # For reconstruct iterator, we need restore the list/tuple hold by iterator
-        # first for which might be the output of compiled_fn,
-        # However, hold of iter has not name, so set it as restore_vars (the 1st arg)
         var_loader = self.gen_compute_in_break_with_name_store(
-            [iterator.get_hold()], ret_names, self.indexof(for_iter)
+            ret_names, self.indexof(for_iter)
         )
 
         # 2. restore vars with origin name
@@ -1869,6 +1857,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         # 4.1 load iterator
         var_loader.load(iterator)
+        self.stack.pop()
 
         # 4.2 gen FOR_ITER and unpack data
         self._graph.pycode_gen.extend_instrs(
@@ -2030,14 +2019,16 @@ class OpcodeExecutor(OpcodeExecutorBase):
 
         try:
             if not isinstance(iterator, SequenceIterVariable):
-                raise BreakGraphError()
+                raise BreakGraphError(
+                    f"Can not simulate iterator of {type(iterator)}."
+                )
 
             backup_iter_idx = iterator.idx
 
             self._inline_call_for_loop(iterator, instr)
             self._lasti = self.indexof(instr.jump_to)
         except BreakGraphError as e:
-            log(3, f"{e}")
+            log(3, f"[FOR_ITER] sim for loop failed for: {e}\n")
             if backup_iter_idx:
                 iterator.idx = backup_iter_idx
             self._graph.remove_global_guarded_variable(iterator)

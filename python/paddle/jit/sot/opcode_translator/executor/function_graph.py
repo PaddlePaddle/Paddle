@@ -584,6 +584,18 @@ class FunctionGraph:
         Args:
             outputs: output variables
         """
+
+        def collect_related_dummy_tensor(var):
+            if isinstance(var.tracker, DummyTracker):
+                if isinstance(var, TensorVariable):
+                    return [var]
+                else:
+                    retval = []
+                    for inp in var.tracker.inputs:
+                        retval.extend(collect_related_dummy_tensor(inp))
+                    return retval
+            return []
+
         output_tensors: OrderedSet[TensorVariable] = OrderedSet()
         # Find Tensor Variables from outputs.
         for output in outputs:
@@ -591,6 +603,9 @@ class FunctionGraph:
                 if isinstance(output, TensorVariable):
                     output_tensors.add(output)
                 else:
+                    for inp in output.tracker.inputs:
+                        for _var in collect_related_dummy_tensor(inp):
+                            output_tensors.add(_var)
                     # Guard output that can not be traced.
                     self.add_global_guarded_variable(output)
         # Find Tensor Variables from side effects Variables.
