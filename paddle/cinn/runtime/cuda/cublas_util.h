@@ -17,9 +17,6 @@
 
 #include "glog/logging.h"
 #include "paddle/cinn/common/type.h"
-#include "paddle/cinn/runtime/flags.h"
-
-DECLARE_bool(gemm_use_half_precision_compute_type);
 
 namespace cinn {
 namespace runtime {
@@ -200,10 +197,6 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                      batchCount);
   } else if (dtype == CUDA_R_16F) {
 #if CUDA_VERSION >= 11000
-    auto compute_type = CUBLAS_COMPUTE_32F;
-    if (FLAGS_gemm_use_half_precision_compute_type == true) {
-      compute_type = CUBLAS_COMPUTE_16F;
-    }
     return cublasGemmStridedBatchedEx(handle,
                                       transa,
                                       transb,
@@ -225,7 +218,7 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       ldc,
                                       strideC,
                                       batchCount,
-                                      compute_type,
+                                      CUBLAS_COMPUTE_32F,
                                       CUBLAS_GEMM_DEFAULT_TENSOR_OP);
 #else
     common::float16 alpha_fp16{alpha};
