@@ -2389,7 +2389,7 @@ class TestRelu(TestActivation):
         self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def if_enable_cinn(self):
         pass

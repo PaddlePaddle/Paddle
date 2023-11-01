@@ -63,11 +63,6 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 }
 
 template <typename T>
-Tensor relu_decomp(const Tensor& x) {
-  return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
-}
-
-template <typename T>
 Tensor softmax_decomp(const Tensor& x, const int& axis) {
   auto org_dtype = x.dtype();
   auto x_tmp = x;

@@ -18,8 +18,8 @@
 
 
 # come into effect in generated file pd_op.h
-decomp_interface_declare_gen_op_list = ['mean', 'relu', 'softmax']
+decomp_interface_declare_gen_op_list = ['mean', 'softmax']
 
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
-decomp_interface_implementation_gen_op_list = ["mean", "relu", "softmax"]
+decomp_interface_implementation_gen_op_list = ["mean", "softmax"]
