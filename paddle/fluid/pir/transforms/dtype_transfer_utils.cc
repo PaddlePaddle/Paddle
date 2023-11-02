@@ -45,10 +45,10 @@ const phi::DataType GetKernelTypeforVar(
     const std::string& var_name,
     const phi::DataType& tensor_dtype,
     const phi::KernelKey* expected_kernel_key) {
-  auto phi_kernel = GetKernel(op, *expected_kernel_key);
+  //   auto phi_kernel = GetKernel(op, *expected_kernel_key);
 
-  bool has_infer_varkernel_fn =
-      phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr;
+  //   bool has_infer_varkernel_fn =
+  //       phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr;
 
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op->name());
