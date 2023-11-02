@@ -530,10 +530,8 @@ int GenericPlugin::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
     const std::map<nvinfer1::DataType, std::pair<phi::DataType, int>> _map{
         {nvinfer1::DataType::kFLOAT, {phi::DataType::FLOAT32, sizeof(float)}},
         {nvinfer1::DataType::kHALF, {phi::DataType::FLOAT16, sizeof(half)}},
-        {nvinfer1::DataType::kINT8, {phi::DataType::INT8, sizeof(int8_t)}},
         {nvinfer1::DataType::kINT32, {phi::DataType::INT32, sizeof(int32_t)}},
         {nvinfer1::DataType::kBOOL, {phi::DataType::BOOL, sizeof(bool)}},
-        {nvinfer1::DataType::kUINT8, {phi::DataType::UINT8, sizeof(uint8_t)}},
     };
     CHECK(_map.count(nv_dtype))
         << "dtype [" << static_cast<int>(nv_dtype) << "] is not supported.";
