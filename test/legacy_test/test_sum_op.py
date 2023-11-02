@@ -28,6 +28,7 @@ import paddle.inference as paddle_infer
 from paddle import base, enable_static
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 def sum_wrapper(X, use_mkldnn=False):
@@ -393,6 +394,7 @@ class TestSumBF16Op(OpTest):
 
 
 class API_Test_Add_n(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with base.program_guard(base.Program(), base.Program()):
             input0 = paddle.tensor.fill_constant(
