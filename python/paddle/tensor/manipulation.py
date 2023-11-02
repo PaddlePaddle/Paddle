@@ -2866,7 +2866,7 @@ def gather(x, index, axis=None, name=None):
     if axis is None:
         axis = 0
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather(x, index, axis)
     else:
         check_variable_and_dtype(
@@ -4461,7 +4461,7 @@ def as_complex(x, name=None):
             [[1j      , (2+3j)  , (4+5j)  ],
              [(6+7j)  , (8+9j)  , (10+11j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_complex(x)
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'as_complex')
@@ -4512,7 +4512,7 @@ def as_real(x, name=None):
              [8. , 9. ],
              [10., 11.]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.as_real(x)
     else:
         check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'as_real')
@@ -4690,7 +4690,7 @@ def moveaxis(x, source, destination, name=None):
     for i in range(len(src_dims)):
         perm[dst_dims[i]] = src_dims[i]
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.transpose(x, perm)
         return out
     else:
@@ -4720,6 +4720,76 @@ def moveaxis(x, source, destination, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+def masked_fill(x, mask, value, name=None):
+    """
+    Fills elements of self tensor with value where mask is True. The shape of mask must be broadcastable with the shape of the underlying tensor.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are float,
+            double, int, int64_t,float16 and bfloat16.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of mask must be bool.
+        value (Scalar or 0-D Tensor): The value used to fill the target tensor.
+            Supported data types are float, double, int, int64_t,float16 and bfloat16.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, True, False]])
+            >>> print(mask)
+            Tensor(shape=[1, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+                   [[True , True , False]])
+            >>> out = paddle.masked_fill(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 2., 1.],
+                    [2., 2., 1.],
+                    [2., 2., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where(mask, x, value)
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def masked_fill_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_fill`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, False, False]])
+            >>> out = paddle.masked_fill_(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 1., 1.],
+                    [2., 1., 1.],
+                    [2., 1., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where_(mask, x, value)
+    return out
 
 
 def non_negative_axis(arr, axis):

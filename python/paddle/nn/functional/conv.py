@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode
+from paddle import _C_ops, _legacy_C_ops, get_flags, in_dynamic_mode, pir
 from paddle.base.framework import _global_flags, in_dynamic_or_pir_mode
 from paddle.device import (
     get_all_custom_device_type,
@@ -463,7 +463,7 @@ def conv1d(
     squeeze_aixs = -3 if channel_last else -2
     x = unsqueeze(x, axis=[squeeze_aixs])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if l_type == 'conv2d':
             out = _C_ops.conv2d(
                 x,
@@ -1241,7 +1241,7 @@ def conv2d_transpose(
                 output_size = convert_to_list(output_size, 2, 'output_size')
         elif isinstance(output_size, int):
             output_size = convert_to_list(output_size, 2, 'output_size')
-        elif isinstance(output_size, Variable):
+        elif isinstance(output_size, (Variable, pir.OpResult)):
             check_dtype(
                 output_size.dtype,
                 'output_size',
@@ -1273,7 +1273,7 @@ def conv2d_transpose(
         op_type = 'depthwise_conv2d_transpose'
         use_cudnn = False
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         op = (
             _C_ops.conv2d_transpose
             if op_type == 'conv2d_transpose'
