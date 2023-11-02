@@ -671,7 +671,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->initialized()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)),
+              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+                  out_tensor->is_dist_tensor(),
               phi::errors::InvalidArgument(
                   "Custom operator's %d-th output is not initialized. "
                   "Please check your implementation again. If you are "

@@ -108,7 +108,7 @@ static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
   VLOG(3) << "Custom Operator: InferShape - get input ddim.";
   for (size_t i = 0; i < ctx.InputRange().size(); ++i) {
     const auto& input_pair = ctx.InputRangeAt(i);
-    if (input_pair.first == input_pair.second) {
+    if (input_pair.first == input_pair.second - 1) {
       input_shapes.emplace_back(
           std::move(ctx.InputAt(input_pair.first).shape()));
     } else {
@@ -256,7 +256,7 @@ static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
   VLOG(3) << "Custom Operator: InferDtype - get input dtype.";
   for (size_t i = 0; i < ctx.InputRange().size(); ++i) {
     const auto& input_pair = ctx.InputRangeAt(i);
-    if (input_pair.first == input_pair.second) {
+    if (input_pair.first == input_pair.second - 1) {
       input_dtypes.emplace_back(
           std::move(ctx.InputAt(input_pair.first).dtype()));
     } else {
@@ -391,7 +391,6 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
                 "Input %s has different mesh. However all inputs should "
                 "have the same mesh.",
                 input.name()));
-        return;
       } else {
         PADDLE_ENFORCE_EQ(
             phi::DenseTensor::classof(input.impl().get()),
@@ -437,7 +436,7 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(x.at(0).place());
       auto dist_input_x =
           paddle::experimental::ReshardApiInputToReplicatedKernelInput(
-              dev_ctx, x, spmd_info.first);
+              dev_ctx, x, spmd_info.first[0]);
       for (size_t i = 0; i < x.size(); ++i) {
         all_inputs->at(i).set_impl(std::make_shared<phi::DenseTensor>(
             *(dist_input_x[i]->unsafe_mutable_value())));
@@ -467,34 +466,49 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
 
       PADDLE_ENFORCE_EQ(
           out_dims.size(),
+          ctx.OutputRange().size(),
+          phi::errors::InvalidArgument(
+              "Custome op infer_shape return size should be %d, but got %d.",
+              ctx.OutputRange().size(),
+              out_dims.size()));
+
+      PADDLE_ENFORCE_EQ(
           out_dtypes.size(),
-          phi::errors::InvalidArgument("custome op infer_shape and infer_dtype "
-                                       "must have the same output size."));
+          ctx.OutputRange().size(),
+          phi::errors::InvalidArgument(
+              "Custome op infer_dtype return size should be %d, but got %d.",
+              ctx.OutputRange().size(),
+              out_dtypes.size()));
 
       for (size_t i = 0; i < out_dims.size(); ++i) {
         const auto& out_dim = out_dims.at(i);
         const auto& out_dtype = out_dtypes.at(i);
+        const auto& pair = ctx.OutputRangeAt(i);
         PADDLE_ENFORCE_EQ(
             out_dim.size(),
-            out_dtype.size(),
-            phi::errors::InvalidArgument("custome op infer_shape result[%d] "
-                                         "and infer_dtype result[%d] "
-                                         "must have the same output size.",
+            pair.second - pair.first,
+            phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
+                                         "size should be %d, but got %d.",
                                          i,
-                                         i));
-        if (out_dim.size() == 0) {
-          ctx.EmplaceBackOutput(std::move(paddle::Tensor()));
-        } else if (out_dim.size() == 1) {
-          ctx.EmplaceBackOutput(std::move(BuildEmptyDistPaddleTensor(
-              current_process_mesh, out_dim[0], out_dtype[0])));
+                                         pair.second - pair.first,
+                                         out_dim.size()));
+        PADDLE_ENFORCE_EQ(
+            out_dtype.size(),
+            pair.second - pair.first,
+            phi::errors::InvalidArgument("custome op infer_shape result[%d]'s "
+                                         "size should be %d, but got %d.",
+                                         i,
+                                         pair.second - pair.first,
+                                         out_dtype.size()));
+
+        if (out_dim.size() == 1) {
+          *(ctx.MutableOutputAt(pair.first)) = BuildEmptyDistPaddleTensor(
+              current_process_mesh, out_dim[0], out_dtype[0]);
         } else {
-          std::vector<Tensor> out_tensors;
-          out_tensors.reserve(out_dim.size());
-          for (size_t j = 0; j < out_dim.size(); ++j) {
-            out_tensors.emplace_back(BuildEmptyDistPaddleTensor(
-                current_process_mesh, out_dim[j], out_dtype[j]));
+          for (size_t j = input_pair.first; j < input_pair.second; j++) {
+            *(ctx.MutableOutputAt(j)) = BuildEmptyDistPaddleTensor(
+                current_process_mesh, out_dim[0], out_dtype[0]);
           }
-          ctx.EmplaceBackOutputs(out_tensors);
         }
       }
       return;
