@@ -961,9 +961,7 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {}.".format(
-                    low
-                )
+                f"If high is None, low must be greater than 0, but received low = {low}."
             )
         high = low
         low = 0
@@ -1149,9 +1147,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
     if high is None:
         if low <= 0:
             raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {}.".format(
-                    low
-                )
+                f"If high is None, low must be greater than 0, but received low = {low}."
             )
         high = low
         low = 0

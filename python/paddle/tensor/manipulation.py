@@ -4722,6 +4722,76 @@ def moveaxis(x, source, destination, name=None):
         return out
 
 
+def masked_fill(x, mask, value, name=None):
+    """
+    Fills elements of self tensor with value where mask is True. The shape of mask must be broadcastable with the shape of the underlying tensor.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are float,
+            double, int, int64_t,float16 and bfloat16.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of mask must be bool.
+        value (Scalar or 0-D Tensor): The value used to fill the target tensor.
+            Supported data types are float, double, int, int64_t,float16 and bfloat16.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, True, False]])
+            >>> print(mask)
+            Tensor(shape=[1, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+                   [[True , True , False]])
+            >>> out = paddle.masked_fill(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 2., 1.],
+                    [2., 2., 1.],
+                    [2., 2., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where(mask, x, value)
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def masked_fill_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_fill`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, False, False]])
+            >>> out = paddle.masked_fill_(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 1., 1.],
+                    [2., 1., 1.],
+                    [2., 1., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where_(mask, x, value)
+    return out
+
+
 def non_negative_axis(arr, axis):
     ndim = len(arr.shape)
     if axis >= 0:
