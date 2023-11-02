@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
@@ -275,7 +276,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
 
-  const phi::InferMetaContext* InnerInferMetaContext() const;
+  const phi::InferMetaContext* InnerCompatInferMetaContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -312,7 +313,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
-  phi::InferMetaContext infermeta_ctx_;
+  paddle::framework::CompatInferMetaContext compat_infermeta_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;

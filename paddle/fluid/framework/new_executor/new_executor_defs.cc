@@ -252,7 +252,7 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   auto op_with_kernel =
       dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
   if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
-    infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+    compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
         infershape_ctx_.get(), op_name);
   }
 }
@@ -267,13 +267,10 @@ void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
 
-  infermeta_ctx_ =
-      paddle::framework::BuildInferMetaContext(infershape_ctx_.get(), op_name);
-
   auto op_with_kernel =
       dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
   if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
-    infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+    compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
         infershape_ctx_.get(), op_name);
   }
 }
@@ -287,8 +284,8 @@ std::shared_ptr<RuntimeInferShapeContext> Instruction::InnerInferShapeContext()
   return infershape_ctx_;
 }
 
-const phi::InferMetaContext* Instruction::InnerInferMetaContext() const {
-  return &infermeta_ctx_;
+const phi::InferMetaContext* Instruction::InnerCompatInferMetaContext() const {
+  return &compat_infermeta_ctx_;
 }
 
 std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
