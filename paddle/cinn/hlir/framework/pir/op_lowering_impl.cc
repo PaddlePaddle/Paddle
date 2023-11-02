@@ -319,7 +319,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       group_func_arg_tensors->push_back(tensor_pair.second);
       // use the underlying tensor name to be consistent with the argument name
       // in the lowered function
-      // group->output_names.push_back(tensor_pair.second->name);
+      group->output_names.push_back(tensor_pair.second->name);
       group_func_args.emplace_back(tensor_pair.second->buffer,
                                    ir::Argument::IO::kOutput);
     }
