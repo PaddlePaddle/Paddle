@@ -42,5 +42,9 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
                        const int64_t micro_batch_num,
                        FetchList* out);
 
+void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
+                  platform::Place dst_place,
+                  phi::DenseTensor* target);
+
 }  // namespace framework
 }  // namespace paddle

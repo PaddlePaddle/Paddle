@@ -15,6 +15,7 @@
 #include <map>
 #include <vector>
 
+#include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/new_executor/feed_fetch_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
@@ -70,10 +71,11 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
   }
 
   for (size_t i = 0; i < feed_tensors.size(); ++i) {
-    int64_t numel_size = feed_tensors[i].dims()[0];
+    auto feed_tensor = feed_tensors[i];
+    int64_t numel_size = feed_tensor.dims()[0];
     PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
                       0,
-                      platform::errors::InvalidArgument(
+                      phi::errors::InvalidArgument(
                           "Split expects feed data (%s)'s dim[0] (%d) is "
                           "diviable by micro_batch_num (%d).",
                           feed_names[i],
@@ -81,12 +83,11 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
                           micro_batch_num));
     int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
     VLOG(4) << "Split feed data:" << feed_names[i] << ", dims:("
-            << feed_tensors[i].dims()
-            << "), micro_batch_num:" << micro_batch_num;
+            << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
     for (int64_t j = 0; j < micro_batch_num; ++j) {
       (*out)[j].resize(i + 1);
       (*out)[j][i].ShareDataWith(
-          feed_tensors[i].Slice(j * split_size, j * split_size + split_size));
+          feed_tensor.Slice(j * split_size, j * split_size + split_size));
     }
   }
 }
@@ -112,7 +113,7 @@ void FetchTensors(const std::vector<std::string>& job_fetch_names,
     auto& src = var->Get<phi::DenseTensor>();
     auto* dst =
         &(PADDLE_GET(phi::DenseTensor, fetch_list->at(micro_batch_id)[col]));
-    TensorCopySync(src, platform::CPUPlace(), dst);
+    TensorCopy(src, platform::CPUPlace(), dst);
   }
 }
 
@@ -142,9 +143,107 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
       tensors_ptr.push_back(
           &PADDLE_GET_CONST(phi::DenseTensor, fetch_list[micro_batch_id][i]));
     }
-    phi::DenseTensor merge_tensor;
-    MergeLoDTensor(&merge_tensor, tensors_ptr, platform::CPUPlace());
-    out->at(i) = std::move(merge_tensor);
+    phi::DenseTensor merged_tensor;
+    MergeTensors(tensors_ptr, platform::CPUPlace(), &merged_tensor);
+    out->at(i) = std::move(merged_tensor);
+  }
+}
+
+void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
+                  platform::Place dst_place,
+                  phi::DenseTensor* target) {
+  PADDLE_ENFORCE_EQ(
+      tensors.empty(),
+      false,
+      phi::errors::InvalidArgument("The tensors to be merged are empty."));
+
+  DDim new_dim = tensors[0]->dims();
+  proto::VarType::Type new_type = proto::VarType::FP32;
+  phi::DataLayout new_layout = tensors[0]->layout();
+  for (auto* t : tensors) {
+    if (t->numel() && t->IsInitialized()) {
+      new_dim = t->dims();
+      new_type = framework::TransToProtoVarType(t->dtype());
+      new_layout = t->layout();
+      break;
+    }
+  }
+
+  auto rank = tensors[0]->dims().size();
+  if (rank == 0) {
+    std::vector<int> init_shape = {1};
+    new_dim = new_dim.reshape(init_shape);
+  }
+
+  for (size_t i = 1; i < tensors.size(); ++i) {
+    auto* t = tensors[i];
+    if (t->numel() && t->IsInitialized()) {
+      PADDLE_ENFORCE_EQ(
+          new_type,
+          framework::TransToProtoVarType(t->dtype()),
+          phi::errors::InvalidArgument(
+              "phi::DenseTensor data type does not match, expected type is %s, "
+              "actual "
+              "type is %s.",
+              DataTypeToString(new_type),
+              DataTypeToString(framework::TransToProtoVarType(t->dtype()))));
+      PADDLE_ENFORCE_EQ(
+          new_layout,
+          t->layout(),
+          phi::errors::InvalidArgument(
+              "phi::DenseTensor layout does not match, expected layout is %s, "
+              "actual layout is %s.",
+              phi::DataLayoutToString(new_layout),
+              phi::DataLayoutToString(t->layout())));
+      if (rank > 0) {
+        auto tensor_dims = t->dims();
+        PADDLE_ENFORCE_EQ(tensor_dims.size(),
+                          new_dim.size(),
+                          phi::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        for (int j = 1; j < t->dims().size(); j++) {
+          PADDLE_ENFORCE_EQ(
+              tensor_dims[j],
+              new_dim[j],
+              phi::errors::InvalidArgument(
+                  "DenseTensor.ddim[%d] should eaqual to %d, but is %d",
+                  j,
+                  new_dim[j],
+                  tensor_dims[j]));
+        }
+        new_dim[0] += t->dims()[0];
+      } else if (rank == 0) {
+        auto tensor_dims = t->dims();
+        PADDLE_ENFORCE_EQ(tensor_dims.size(),
+                          0,
+                          phi::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        PADDLE_ENFORCE_EQ(new_dim.size(),
+                          1,
+                          phi::errors::InvalidArgument(
+                              "dimensions of DenseTensor does not match"));
+        new_dim[0] += 1;
+      }
+    }
+  }
+
+  target->Resize(new_dim);
+  target->set_layout(new_layout);
+  target->mutable_data(dst_place, TransToPhiDataType(new_type));
+
+  int begin = 0;
+  for (auto* src : tensors) {
+    int src_dim = 1;
+    if (src->dims()[0] > 0) {
+      src_dim = src->dims()[0];
+    }
+    int end = static_cast<int>(begin + src_dim);
+    if (end == begin) {
+      continue;
+    }
+    auto dst = target->Slice(begin, end);
+    TensorCopy(*src, dst_place, &dst);
+    begin = end;
   }
 }
 
