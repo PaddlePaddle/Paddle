@@ -27,11 +27,6 @@ from paddle import nn
 from paddle.utils.cpp_extension import get_build_directory, load
 from paddle.utils.cpp_extension.extension_utils import IS_WINDOWS, run_cmd
 
-BATCH_SIZE = 16
-BATCH_NUM = 4
-IMAGE_SIZE = 784
-CLASS_NUM = 10
-
 # Note(Aurelius84): We use `add_test` in Cmake to config how to run unittest in CI.
 # `PYTHONPATH` will be set as `build/python/paddle` that will make no way to find
 # paddle include directory. Because the following path is generated after installing

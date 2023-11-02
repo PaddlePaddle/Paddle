@@ -113,6 +113,7 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
             )
 
     def test_simple_net_custom_relu(self):
+        self._changeable_envs = {"backend": ["gpu"]}
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
