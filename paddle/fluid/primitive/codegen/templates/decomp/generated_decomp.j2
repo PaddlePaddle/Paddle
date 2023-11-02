@@ -60,6 +60,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   for (size_t idx = 0; idx < combine_op_obj_{{item.name}}.inputs().size(); idx++) {
       {{item.name}}.emplace_back(
           std::make_shared<primitive::LazyTensor>(combine_op_obj_{{item.name}}.inputs()[idx]));
+  }
         {% endif %}
       {% endif %}
     {% endfor %}

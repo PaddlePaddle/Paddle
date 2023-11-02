@@ -72,6 +72,15 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
   return std::make_tuple(out, xshape);
 }
 
+template <typename T>
+Tensor add_n_decomp(const std::vector<Tensor>& x) {
+  Tensor res = x[0];
+  for (size_t i = 1; i < x.size(); i++) {
+    res = add<T>(res, x[i]);
+  }
+  return res;
+}
+
 }  // namespace details
 
 }  // namespace primitive
