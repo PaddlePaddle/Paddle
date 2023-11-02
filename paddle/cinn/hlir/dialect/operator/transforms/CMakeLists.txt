@@ -19,4 +19,13 @@ if(NOT CINN_ONLY)
     drr
     cinn_op_dialect
     pd_op_dialect)
+
+  cinn_cc_library(
+    add_broadcast_to_elementwise_pass
+    SRCS
+    add_broadcast_to_elementwise_pass.cc
+    DEPS
+    pir
+    cinn_op_dialect
+    pd_op_dialect)
 endif()
