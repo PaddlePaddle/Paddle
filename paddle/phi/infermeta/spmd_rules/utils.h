@@ -69,6 +69,25 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
 // Repliacated state
 TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
 
+bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);
+
+std::vector<int64_t> GetLocalShape(
+    const std::vector<int64_t> shape,
+    const ProcessMesh& mesh,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
+
+TensorDistAttr FromPlacements(
+    const TensorDistAttr& dist_attr,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
+
+std::vector<ArgDistAttr> ToArgDistAttr(
+    const std::vector<TensorDistAttr>& dist_attrs);
+
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+
+bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
+                    const std::shared_ptr<PlacementStatus>& b);
+
 // Adaptor for variadic arguments
 template <typename Functor>
 struct ArgsIterator {
@@ -130,6 +149,28 @@ struct VariadicSpmdRuleArgumentParser
   SpmdInfo InferForward() { return Fn(inputs, outputs); }
 
   SpmdInfo InferBackward() { return Fn(inputs, outputs); }
+};
+
+using DynamicSpmdFn = SpmdInfo (*)(
+    const std::vector<paddle::variant<const DistMetaTensor*,
+                                      const std::vector<DistMetaTensor>*>>&);
+
+template <DynamicSpmdFn Fn>
+struct ReplicateInferSpmdDynamicHelper
+    : public ArgsIterator<ReplicateInferSpmdDynamicHelper<Fn>> {
+  SpmdInfo Infer() { return Fn(inputs); }
+
+  void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
+  void operator()(const std::vector<DistMetaTensor>& x) {
+    inputs.emplace_back(&x);
+  }
+
+  void operator()(std::vector<DistMetaTensor>&& x) = delete;
+  void operator()(DistMetaTensor&& x) = delete;
+
+  std::vector<paddle::variant<const DistMetaTensor*,
+                              const std::vector<DistMetaTensor>*>>
+      inputs;
 };
 }  // namespace detail
 
