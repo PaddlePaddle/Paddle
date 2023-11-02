@@ -262,7 +262,9 @@ pir::OpInfo OpTranscriber::LoopkUpOpInfo(pir::IrContext* ctx,
     }
     VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
     IR_ENFORCE(var != nullptr,
-               "Can't find var recursively from current block.");
+               "[op:%s] Input %s should not be null",
+               op_desc.Type(),
+               legacy_input_vars[0]);
 
     if (var->GetType() == paddle::framework::proto::VarType::LOD_TENSOR) {
       need_inputs_sig.emplace_back("dense");
@@ -472,6 +474,10 @@ std::vector<pir::Value> OpTranscriber::GenerateOperationInput(
     // Vector<DenseTensor>
     if (legacy_input_vars.size() == 1) {
       VarDesc* var = op_desc.Block()->FindVarRecursive(legacy_input_vars[0]);
+      IR_ENFORCE(var != nullptr,
+                 "[op:%s] Input %s should not be null",
+                 op_desc.Type(),
+                 legacy_input_vars[0]);
       if (var->GetType() ==
           paddle::framework::proto::VarType::LOD_TENSOR_ARRAY) {
         is_vector = false;
@@ -604,6 +610,10 @@ OpTranscriber::GenerateOperationOutput(pir::IrContext* ctx,
           continue;
         }
         VarDesc* var = block->FindVarRecursive(var_name);
+        IR_ENFORCE(var != nullptr,
+                   "[op:%s] Output %s should not be null",
+                   op_desc.Type(),
+                   var_name);
         VLOG(10) << "[output translating]"
                  << "[" << op_desc.Type() << "]" << info.name
                  << " var: " << var_name << " type: " << var->GetType();
@@ -916,9 +926,10 @@ pir::OpResult TranslateDropOutStateIn(pir::IrContext* ctx,
   // `DropoutState` is a tensor
   VarDesc* dropout_state =
       op_desc.Block()->FindVarRecursive(legacy_output_vars[0]);
-  if (dropout_state == nullptr) {
-    IR_THROW("Unexpected: Rnn Op should have a non-empty DropoutState");
-  }
+  IR_ENFORCE(dropout_state != nullptr,
+             "[op:%s] Output %s should not be null",
+             op_desc.Type(),
+             legacy_output_vars[0]);
   auto& type_translator = TypeTranslator::instance();
   pir::Type translated_var_type =
       type_translator[dropout_state->GetType()](ctx, *dropout_state);
@@ -1595,6 +1606,10 @@ struct MulGradOpTranscriber : public OpTranscriber {
 
       VarDesc* var_desc =
           op_desc.Block()->FindVarRecursive(var_name.substr(0, 1));
+      IR_ENFORCE(var_desc != nullptr,
+                 "[op:%s] Input %s should not be null",
+                 op_desc.Type(),
+                 var_name.substr(0, 1));
       std::vector<int64_t> shape = var_desc->GetShape();
       DenseTensorTypeStorage::Dim dim = phi::make_ddim(shape);
 
@@ -1864,8 +1879,15 @@ struct OneHotTranscriber : public OpTranscriber {
 pir::Attribute TranslateDtypeForArange(pir::IrContext* ctx,
                                        const OpDesc& op_desc,
                                        const OpAttributeInfo& attr_info) {
-  auto start_proto_dtype =
-      op_desc.Block()->FindVarRecursive("Start")->GetDataType();
+  IR_ENFORCE(op_desc.Input("Start").size() == 1,
+             "[op:%s] Input [Start]'s size should be equal to 1",
+             op_desc.Type());
+  auto var_desc = op_desc.Block()->FindVarRecursive(op_desc.Input("Start")[0]);
+  IR_ENFORCE(var_desc != nullptr,
+             "[op:%s] Input %s should not be null",
+             op_desc.Type(),
+             op_desc.Input("Start")[0]);
+  auto start_proto_dtype = var_desc->GetDataType();
   auto start_phi_dtype = phi::TransToPhiDataType(start_proto_dtype);
   auto dtype_attr =
       paddle::dialect::DataTypeAttribute::get(ctx, start_phi_dtype);

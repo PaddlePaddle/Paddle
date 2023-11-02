@@ -17,7 +17,7 @@ from paddle import _C_ops
 from ...base.data_feeder import check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...framework import in_dynamic_mode, in_dynamic_or_pir_mode
+from ...framework import in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -89,7 +89,7 @@ def one_hot(x, num_classes, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.one_hot(x, num_classes)
     else:
         check_variable_and_dtype(x, 'input', ['int32', 'int64'], 'one_hot_v2')
