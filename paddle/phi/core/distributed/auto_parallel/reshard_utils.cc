@@ -173,7 +173,7 @@ Place GetDefaultPlace() {
 }
 
 phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input) {
+    const std::shared_ptr<phi::distributed::DistTensor>& input) {
   // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
   // tensor. In such case, we need to get default place.
   auto place = input && input->defined() ? input->place() : GetDefaultPlace();

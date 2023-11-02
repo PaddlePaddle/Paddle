@@ -41,7 +41,7 @@ bool NeedComputationClipForPP(
 Place GetDefaultPlace();
 
 phi::DeviceContext* GetDistTensorDeviceContext(
-    phi::distributed::DistTensor* input);
+    const std::shared_ptr<phi::distributed::DistTensor>& input);
 
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank = -1);
