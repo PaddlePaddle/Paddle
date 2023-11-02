@@ -505,7 +505,7 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
           *(ctx.MutableOutputAt(pair.first)) = BuildEmptyDistPaddleTensor(
               current_process_mesh, out_dim[0], out_dtype[0]);
         } else {
-          for (size_t j = input_pair.first; j < input_pair.second; j++) {
+          for (size_t j = pair.first; j < pair.second; j++) {
             *(ctx.MutableOutputAt(j)) = BuildEmptyDistPaddleTensor(
                 current_process_mesh, out_dim[0], out_dtype[0]);
           }
