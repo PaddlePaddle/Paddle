@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/program_interpreter.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/core/value.h"
@@ -54,7 +54,7 @@ InterpreterCore::InterpreterCore(
     framework::Scope* scope,
     const ExecutionConfig& execution_config) {
   VLOG(4) << "InterpreterCore(): " << this << " on " << place;
-  impl_ = std::make_unique<NewIRInterpreter>(
+  impl_ = std::make_unique<PirInterpreter>(
       place, fetch_var_names, ir_block, scope, execution_config);
 }
 
@@ -120,6 +120,14 @@ const platform::Place& InterpreterCore::GetPlace() const {
 void InterpreterCore::SetOutputHooks(const std::vector<HookFunc>& hookfuncs) {
   impl_->SetOutputHooks(hookfuncs);
 }
+
+void InterpreterCore::Build(
+    const std::vector<std::string>& feed_names,
+    std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
+  impl_->Build(feed_names, op_func_nodes);
+}
+
+bool InterpreterCore::IsStaticBuild() const { return impl_->IsStaticBuild(); }
 
 }  // namespace framework
 }  // namespace paddle

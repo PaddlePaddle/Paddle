@@ -98,7 +98,7 @@ class ProfilerState(Enum):
 
 class ProfilerTarget(Enum):
     r"""
-    ProfilerTarget is used to specify target device for :ref:`profiling <api_paddle_profiler_Profiler>` . Only CPU, GPU and XPU are supported currently.
+    ProfilerTarget is used to specify target device for :ref:`Profiler <api_paddle_profiler_Profiler>` . Only CPU, GPU and XPU are supported currently.
 
     The meaning of each ProfilerState is as following
 
@@ -123,7 +123,7 @@ def make_scheduler(
     skip_first: int = 0,
 ) -> Callable:
     r"""
-    Return a scheduler function, which scheduler the :ref:`state <api_paddle_profiler_ProfilerState>` according to the setting.
+    Return a scheduler function, which scheduler the :ref:`ProfilerState <api_paddle_profiler_ProfilerState>` according to the setting.
     The state transform confirms to:
 
     .. code-block:: text
@@ -249,17 +249,13 @@ def export_chrome_tracing(
             os.makedirs(dir_name, exist_ok=True)
         except Exception:
             raise RuntimeError(
-                "Can not create directory '{}' for saving profiling results.".format(
-                    dir_name
-                )
+                f"Can not create directory '{dir_name}' for saving profiling results."
             )
 
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = "host_{}pid_{}".format(
-                socket.gethostname(), str(os.getpid())
-            )
+            worker_name = f"host_{socket.gethostname()}pid_{str(os.getpid())}"
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.json'.format(
             worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')
@@ -307,17 +303,13 @@ def export_protobuf(
             os.makedirs(dir_name, exist_ok=True)
         except Exception:
             raise RuntimeError(
-                "Can not create directory '{}' for saving profiling results.".format(
-                    dir_name
-                )
+                f"Can not create directory '{dir_name}' for saving profiling results."
             )
 
     def handle_fn(prof):
         nonlocal worker_name
         if not worker_name:
-            worker_name = "host_{}pid_{}".format(
-                socket.gethostname(), str(os.getpid())
-            )
+            worker_name = f"host_{socket.gethostname()}pid_{str(os.getpid())}"
         now = datetime.datetime.now()
         filename = '{}_time_{}.paddle_trace.pb'.format(
             worker_name, now.strftime('%Y_%m_%d_%H_%M_%S_%f')
@@ -501,9 +493,7 @@ class Profiler:
                 if target not in supported_targets:
                     self.targets.remove(target)
                     warn(
-                        "Profiling {} is not supported in current context.".format(
-                            target
-                        )
+                        f"Profiling {target} is not supported in current context."
                     )
         else:
             self.targets = supported_targets

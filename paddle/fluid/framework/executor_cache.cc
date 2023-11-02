@@ -25,7 +25,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(new_ir_apply_inplace_pass);
+PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
 namespace framework {
@@ -47,7 +47,7 @@ static ExecutionStrategy GetExecutionStrategy(const platform::Place &place) {
       execution_strategy.num_threads_ = 2;
       break;
     }
-    case platform::DeviceType::CUDA: {
+    case platform::DeviceType::CUDA: {  // NOLINT
       // NOTE: According experiments, one thread is faster in
       // most model training.
       execution_strategy.num_threads_ = 1;
@@ -324,7 +324,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
   return core;
 }
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_program,
     const platform::Place &place,
     bool is_grad,
@@ -353,10 +353,14 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
   return core;
 }
 
+bool TensorSortHelper(const paddle::Tensor &t1, const paddle::Tensor &t2) {
+  return t1.name() < t2.name();
+}
+
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc *forward_global_block,
     const paddle::framework::BlockDesc *backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string> &output_names,
     const std::vector<paddle::Tensor> &x,
     const std::vector<std::string> &x_names,
     const std::vector<paddle::Tensor> &params,
@@ -398,7 +402,9 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> input_param_names;
-  for (auto &param : params) {
+  auto sorted_params = params;
+  std::sort(sorted_params.begin(), sorted_params.end(), TensorSortHelper);
+  for (auto &param : sorted_params) {
     auto &name = param.name();
     auto p = param.place().GetType();
 
@@ -415,17 +421,19 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
   }
 
   std::set<std::string> set_parameter_names;
-  for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
-    for (const auto &n : op_desc->Inputs()) {
-      const auto &input_var_names = n.second;
-      for (const auto &var_name : input_var_names) {
-        set_parameter_names.insert(var_name);
-      }
-    }
-  }
-
   for (auto &t : output_names) {
     set_parameter_names.insert(t);
+  }
+
+  if (backward_global_block != nullptr) {
+    for (auto op_desc : backward_global_block->Program()->Block(0).AllOps()) {
+      for (const auto &n : op_desc->Inputs()) {
+        const auto &input_var_names = n.second;
+        for (const auto &var_name : input_var_names) {
+          set_parameter_names.insert(var_name);
+        }
+      }
+    }
   }
 
   for (auto &name : set_parameter_names) {
@@ -443,7 +451,6 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     op_desc->SetInput("x", {name});
     op_desc->SetOutput("out", {"@EMPTY@"});
   }
-
   paddle::translator::ProgramTranslator program_translator(&local_program,
                                                            program.get());
 
@@ -451,7 +458,7 @@ std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
 
   auto ir_res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-  if (FLAGS_new_ir_apply_inplace_pass) {
+  if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
     pm.Run(ir_res.get());
@@ -465,7 +472,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor> &out_grad,
     const std::vector<paddle::Tensor *> &x_grad,
     const std::vector<paddle::Tensor *> &params_grad,
-    const paddle::framework::Scope *scope) {
+    const paddle::framework::Scope *scope,
+    const phi::Place &place) {
   auto ir_ctx = ::pir::IrContext::Instance();
   auto program = std::make_unique<::pir::Program>(ir_ctx);
 
@@ -486,9 +494,9 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &var_name : set_parameter_names) {
     if (scope->FindVar(var_name)) {
       auto tensor = scope->FindVar(var_name)->Get<phi::DenseTensor>();
-      phi::AllocationType place(phi::AllocationType::UNDEFINED);
+      phi::AllocationType p = place.GetType();
       if (tensor.initialized()) {
-        place = tensor.place().GetType();
+        p = tensor.place().GetType();
       }
 
       if (var_name == "@EMPTY@") {
@@ -499,7 +507,7 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
       op_desc->SetAttr("shape", std::vector<int64_t>());
       // TODO(phlrain) : using tensor dtype
       op_desc->SetAttr("dtype", 0);
-      op_desc->SetAttr("place", static_cast<int>(place));
+      op_desc->SetAttr("place", static_cast<int>(p));
       op_desc->SetAttr("name", var_name);
       op_desc->SetOutput("out", {var_name});
     }
@@ -513,6 +521,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
   for (auto &t : x_grad) {
     param_grad_names.push_back(t->name());
   }
+
+  std::sort(param_grad_names.begin(), param_grad_names.end());
   for (auto &name : param_grad_names) {
     if (name == "@EMPTY@") {
       continue;
@@ -528,11 +538,14 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
                                                            program.get());
   program_translator.Translate();
 
-  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get());
+  auto res = paddle::dialect::PdOpLowerToKernelPass(program.get(), place);
 
-  if (FLAGS_new_ir_apply_inplace_pass) {
+  if (FLAGS_pir_apply_inplace_pass) {
     ::pir::PassManager pm(::pir::IrContext::Instance(), 3);
     pm.AddPass(::pir::CreateInplacePass());
+    if (VLOG_IS_ON(6)) {
+      pm.EnableIRPrinting();
+    }
     pm.Run(res.get());
   }
 

@@ -134,7 +134,7 @@ def update_state(mask, new, old):
     if not isinstance(old, (tuple, list)):
         return np.where(mask, new, old)
     else:
-        return tuple(map(lambda x, y: np.where(mask, x, y), new, old))
+        return tuple(np.where(mask, x, y) for x, y in zip(new, old))
 
 
 def rnn(
@@ -384,7 +384,7 @@ class LSTM(RNNMixin):
         else:
             raise ValueError(
                 "direction should be forward, backward or bidirectional, "
-                "received direction = {}".format(direction)
+                f"received direction = {direction}"
             )
 
         self.input_size = input_size

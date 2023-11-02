@@ -15,6 +15,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 from test_lac import DynamicGRU
 
 import paddle
@@ -368,10 +369,11 @@ def train(args, to_static):
     return loss_data
 
 
-class TestSentiment(unittest.TestCase):
+class TestSentiment(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
+    @test_legacy_and_pir
     def train_model(self, model_type='cnn_net'):
         self.args.model_type = model_type
         st_out = train(self.args, True)

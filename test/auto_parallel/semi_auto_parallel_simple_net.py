@@ -1,0 +1,221 @@
+# Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+import os
+
+import numpy as np
+
+import paddle
+import paddle.distributed as dist
+import paddle.nn.functional as F
+from paddle import nn
+from paddle.distributed.fleet.utils import recompute
+
+BATCH_SIZE = 16
+BATCH_NUM = 4
+IMAGE_SIZE = 784
+CLASS_NUM = 10
+
+
+def create_numpy_like_random(name):
+    return paddle.ParamAttr(
+        name=name, initializer=paddle.nn.initializer.Uniform(0, 1)
+    )
+
+
+class DemoNet(nn.Layer):
+    def __init__(self, param_prefix="", is_recompute=False):
+        super().__init__()
+        weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
+        weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
+
+        self.is_recompute = is_recompute
+        self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, weight_attr_0)
+        self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, weight_attr_1)
+        self.relu = nn.ReLU()
+
+    def _inner_forward_fn(self, x):
+        out = self.linear_0(x)
+        out = self.relu(out)
+        out = self.linear_1(out)
+        return out
+
+    def forward(self, x):
+        if self.is_recompute:
+            return recompute(self._inner_forward_fn, x)
+        else:
+            return self._inner_forward_fn(x)
+
+
+class PPDemoNet(nn.Layer):
+    def __init__(self, mesh0, mesh1, param_suffix=""):
+        super().__init__()
+        self.replicate_dist_attr0 = dist.DistAttr(
+            mesh=mesh0, sharding_specs=[None, None]
+        )
+        self.replicate_dist_attr1 = dist.DistAttr(
+            mesh=mesh1, sharding_specs=[None, None]
+        )
+        self.w0 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, IMAGE_SIZE],
+                attr=paddle.framework.ParamAttr(
+                    name="pp_demo_weight_0" + param_suffix,
+                    initializer=paddle.nn.initializer.Uniform(0, 1),
+                ),
+            ),
+            dist_attr=self.replicate_dist_attr0,
+        )
+        self.w1 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, CLASS_NUM],
+                attr=paddle.framework.ParamAttr(
+                    name="pp_nemo_weight_1" + param_suffix,
+                    initializer=paddle.nn.initializer.Uniform(0, 1),
+                ),
+            ),
+            dist_attr=self.replicate_dist_attr1,
+        )
+
+    def forward(self, x):
+        out = F.linear(x, self.w0)
+        out = F.relu(out)
+        out = dist.reshard(out, dist_attr=self.replicate_dist_attr1)
+        out = F.linear(out, self.w1)
+        return out
+
+
+class TestSimpleNetForSemiAutoParallel:
+    def __init__(self):
+        self._dtype = os.getenv("dtype")
+        self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
+        self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
+        self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
+
+        paddle.set_device(self._backend)
+
+        self.init_input_data()
+
+        self.init_single_card_net_result()
+
+    def shard_fn(self, layer_name, layer, process_mesh):
+        if layer_name == 'linear0':
+            dist_attr = dist.DistAttr(
+                mesh=process_mesh, sharding_specs=[None, 'x']
+            )
+            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
+        elif layer_name == 'linear1':
+            dist_attr = dist.DistAttr(
+                mesh=process_mesh, sharding_specs=['x', None]
+            )
+            layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
+
+    def init_input_data(self):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        self.image = np.random.random([BATCH_SIZE, IMAGE_SIZE]).astype(
+            'float32'
+        )
+        self.label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
+
+    # TODO(GhostScreaming): support pp backward later.
+    def run_dynamic(self, layer, shard_input=False, is_pp=False):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        # create loss
+        loss_fn = nn.MSELoss()
+
+        # run forward and backward
+        image = paddle.to_tensor(self.image)
+        if shard_input:
+            image = dist.shard_tensor(
+                image,
+                dist_attr=dist.DistAttr(
+                    mesh=self._mesh, sharding_specs=['x', None]
+                ),
+            )
+
+        out = layer(image)
+        label = paddle.to_tensor(self.label)
+        loss = loss_fn(out, label)
+
+        if is_pp:
+            return loss, None, None
+        else:
+            loss.backward()
+            opt = paddle.optimizer.SGD(
+                learning_rate=0.1, parameters=layer.parameters()
+            )
+            opt.step()
+            return loss, layer.parameters()
+
+    def init_single_card_net_result(self):
+        self.base_loss, self.base_parameters = self.run_dynamic(
+            DemoNet("demo_weight")
+        )
+
+    def check_tensor_eq(self, a, b):
+        np1 = a.numpy()
+        np2 = b.numpy()
+        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+
+    def test_dp_demo_net(self):
+        self.dp_loss, self.dp_parameters = self.run_dynamic(
+            DemoNet("dp_demo_weight"),
+            shard_input=True,
+        )
+        self.check_tensor_eq(self.dp_loss, self.base_loss)
+        for param, param_base in zip(self.dp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
+    def test_mp_demo_net(self):
+        mp_layer = dist.shard_layer(
+            DemoNet("mp_demo_weight"), self._mesh, self.shard_fn
+        )
+
+        self.mp_loss, self.mp_parameters = self.run_dynamic(mp_layer)
+        self.check_tensor_eq(self.mp_loss, self.base_loss)
+
+        for param, param_base in zip(self.mp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
+
+    # TODO(GhostScreaming): support pp backward later.
+    def test_pp_demo_net(self):
+        # Send/Recv operators doens't support CPU now.
+        if self._backend != "gpu":
+            return
+        self.pp_loss, _, _ = self.run_dynamic(
+            PPDemoNet(self._pp_mesh0, self._pp_mesh1),
+            is_pp=True,
+        )
+        rank = dist.get_rank()
+        if rank == 1:
+            self.check_tensor_eq(self.pp_loss, self.base_loss)
+        else:
+            pass
+
+    def run_test_case(self):
+        self.test_dp_demo_net()
+        self.test_mp_demo_net()
+        self.test_pp_demo_net()
+
+
+if __name__ == '__main__':
+    TestSimpleNetForSemiAutoParallel().run_test_case()

@@ -12,10 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import decorator
 import contextlib
 
-__all__ = ['wrap_decorator', 'signature_safe_contextmanager']
+import decorator
+
+__all__ = []
 
 
 def wrap_decorator(decorator_func):

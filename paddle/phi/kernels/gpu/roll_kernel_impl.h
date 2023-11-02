@@ -40,7 +40,11 @@ __global__ void RollCudaKernel(const T* input,
   int64_t output_idx = idx;
   int64_t new_dim_idx = 0;
 
-  for (size_t i = 0; i < rank; i++) {
+#pragma unroll
+  for (size_t i = 0; i < DDim::kMaxRank; i++) {
+    if (i >= rank) {
+      break;
+    }
     new_dim_idx = (output_idx / strides[i]) % sizes[i] + shifts[i];
     if (new_dim_idx >= sizes[i]) {
       output_idx += (shifts[i] - sizes[i]) * strides[i];

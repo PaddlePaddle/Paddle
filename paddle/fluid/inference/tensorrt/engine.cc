@@ -225,7 +225,7 @@ void TensorRTEngine::FreezeNetwork() {
 
     if (params_.calibrator) {
       infer_builder_config_->setInt8Calibrator(params_.calibrator);
-    } else {
+    } else if (!params_.use_explicit_quantization) {
       infer_builder_config_->setInt8Calibrator(nullptr);
 
       for (auto &quant_range : quant_dynamic_range_) {
@@ -360,6 +360,20 @@ void TensorRTEngine::FreezeNetwork() {
   if (params_.use_inspector) {
     infer_builder_config_->setProfilingVerbosity(
         nvinfer1::ProfilingVerbosity::kDETAILED);
+  }
+#endif
+
+#if IS_TRT_VERSION_GE(8600)
+  VLOG(4) << "Set the TensorRT optimization level to be "
+          << params_.optimization_level;
+  infer_builder_config_->setBuilderOptimizationLevel(
+      params_.optimization_level);
+#endif
+
+#if IS_TRT_VERSION_GE(8210)
+  if (!trt_ops_run_float_.empty()) {
+    infer_builder_config_->setFlag(
+        nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
   }
 #endif
 

@@ -63,6 +63,13 @@ class StorageHelperBase : public BaseT {
   using InterfaceList =
       typename Filter<TypeInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  static ConcreteT dyn_cast_impl(BaseT type) {
+    if (type && type.abstract_type().type_id() == TypeId::get<ConcreteT>()) {
+      return ConcreteT(type.storage());
+    }
+    return ConcreteT(nullptr);
+  }
+
   ///
   /// \brief Access to the storage instance.
   ///
@@ -88,7 +95,7 @@ class StorageHelperBase : public BaseT {
   /// \brief Returns an interface map for the interfaces registered to this
   /// storage user.
   ///
-  static std::vector<details::InterfaceValue> interface_map() {
+  static std::vector<InterfaceValue> interface_map() {
     return pir::detail::GetInterfaceMap<ConcreteT, InterfaceList>();
   }
 

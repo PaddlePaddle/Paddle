@@ -63,7 +63,7 @@ class TestShardTensorDynamic(unittest.TestCase):
             [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]
         )
 
-    def test_dynamic(self):
+    def test_dynamic_mode_basic(self):
         dist_attr = dist.DistAttr(
             mesh=self.mesh, sharding_specs=[None, None, None]
         )
@@ -71,6 +71,32 @@ class TestShardTensorDynamic(unittest.TestCase):
         input = paddle.rand([4, 1024, 512])
         d_tensor = dist.shard_tensor(input, dist_attr=dist_attr)
         print(dist_attr.dims_mapping)
+
+        self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
+        self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
+        self.assertTrue(d_tensor.dist_attr.is_annotated("process_mesh"))
+        self.assertTrue(d_tensor.dist_attr.is_annotated("dims_mapping"))
+
+    def test_dynamic_mode_property_change(self):
+        dist_attr = dist.DistAttr(
+            mesh=self.mesh, sharding_specs=[None, None, None]
+        )
+
+        x = np.random.random([4, 1024, 512]).astype("float32")
+        input = paddle.to_tensor(
+            x, dtype="float32", place='cpu', stop_gradient=False
+        )
+        d_tensor = dist.shard_tensor(
+            input,
+            dtype="float64",
+            place='gpu:0',
+            stop_gradient=True,
+            dist_attr=dist_attr,
+        )
+
+        self.assertEqual(d_tensor.dtype, paddle.float64)
+        self.assertTrue(d_tensor.place.is_gpu_place())
+        self.assertEqual(d_tensor.stop_gradient, True)
 
         self.assertEqual(d_tensor.dist_attr.process_mesh, self.mesh)
         self.assertEqual(d_tensor.dist_attr.dims_mapping, [-1, -1, -1])
@@ -107,7 +133,7 @@ class TestShardTensorStatic(unittest.TestCase):
 
 class TestShardTensorStaticDy2Static(unittest.TestCase):
     def test_dy2static(self):
-        @paddle.jit.to_static
+        @paddle.jit.to_static(full_graph=True)
         def func():
             mesh = dist.ProcessMesh(
                 [[0, 1, 2, 3], [4, 5, 6, 7]], dim_names=["x", "y"]

@@ -274,7 +274,10 @@ class ForwardAPI(BaseAPI):
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    TransDataBackend(kernel_out_{i}, actual_kernel_backend, kernel_out_{i});
+{code_indent}  }}"""
                     )
 
                 else:
@@ -305,9 +308,7 @@ class ForwardAPI(BaseAPI):
                         )
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -381,6 +382,7 @@ def source_include(header_file_path):
 
 #ifdef PADDLE_WITH_DISTRIBUTE
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 #endif
 
 PD_DECLARE_bool(conv2d_disable_cudnn);
@@ -407,6 +409,9 @@ def declare_extension_api():
     return """
 namespace paddle {
 PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
 }  // namespace paddle
 """
 

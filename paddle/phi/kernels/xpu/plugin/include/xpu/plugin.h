@@ -134,6 +134,17 @@ DLL_EXPORT int bn_act_fusion_infer(Context* ctx,
                                    bool is_nchw,
                                    int act_type);
 
+template <typename T>
+DLL_EXPORT int layer_norm_act_fusion(Context* ctx,
+                                     const T* x,
+                                     T* y,
+                                     int64_t m,
+                                     int64_t n,
+                                     float eps,
+                                     const float* scale,
+                                     const float* bias,
+                                     const Activation_t& act);
+
 }  // namespace plugin
 }  // namespace api
 }  // namespace xpu

@@ -84,6 +84,14 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
   auto& pool = DeviceContextPool::Instance();
   auto* dev_ctx = dynamic_cast<OneDNNContext*>(pool.Get(place));
   auto& cpu_engine = dev_ctx->GetEngine();
+  auto in_dims = vectorize<int64_t>(in.dims());
+
+  auto md_dims = !in_dims.empty() ? in_dims : std::vector<int64_t>{1};
+  const auto src_mem_desc =
+      !in_dims.empty() ? in.mem_desc()
+                       : dnnl::memory::desc(md_dims,
+                                            ToOneDNNDataType(in.dtype()),
+                                            dnnl::memory::format_tag::x);
 
   dnnl::memory::desc out_mem_desc = make_memory_desc(in, out_layout);
 
@@ -100,8 +108,7 @@ void TransDataLayoutFromOneDNN(DataLayout in_layout,
 
     ReorderOneDNNHandler handler(in_tz, in.dtype(), in_type, cpu_engine);
 
-    auto reorder_src_memory_p =
-        handler.AcquireSrcMemory(in.mem_desc(), in_data);
+    auto reorder_src_memory_p = handler.AcquireSrcMemory(src_mem_desc, in_data);
     auto reorder_dst_memory_p =
         handler.AcquireDstMemory(out, out->mem_desc(), place);
     auto reorder_p =

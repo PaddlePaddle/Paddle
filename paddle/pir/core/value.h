@@ -43,6 +43,8 @@ class IR_API Value {
 
   bool operator!() const;
 
+  bool operator<(const Value &other) const;
+
   explicit operator bool() const;
 
   template <typename U>
@@ -59,8 +61,6 @@ class IR_API Value {
 
   void set_type(Type type);
 
-  Operation *GetDefiningOp() const;
-
   std::string PrintUdChain();
 
   ///
@@ -73,6 +73,8 @@ class IR_API Value {
   UseIterator use_end() const;
 
   OpOperand first_use() const;
+
+  void Print(std::ostream &os) const;
 
   bool use_empty() const;
 
@@ -91,7 +93,6 @@ class IR_API Value {
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
-
 }  // namespace pir
 
 namespace std {

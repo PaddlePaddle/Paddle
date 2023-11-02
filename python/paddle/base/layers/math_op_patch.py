@@ -12,13 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import warnings
 import inspect
+import warnings
+
+from paddle.base.dygraph.base import in_to_static_mode
 
 from .. import core
-from ..framework import Variable, unique_name, static_only
+from ..framework import Variable, static_only, unique_name
 from .layer_function_generator import OpProtoHolder
-from paddle.base.dygraph.base import in_to_static_mode
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -236,12 +237,11 @@ def monkey_patch_variable():
         warnings.warn(
             "Variable do not have 'place' interface for static graph mode, try not to use it. None will be returned."
         )
-        return None
 
     def astype(self, dtype):
         """
         **Notes**:
-            **The variable must be a** :ref:`api_base_Tensor`
+            **The variable must be a** :ref:`api_paddle_Tensor`
 
         Cast a variable to a specified data type.
 
@@ -314,9 +314,7 @@ def monkey_patch_variable():
                 var = to_tensor(var)
             else:
                 raise TypeError(
-                    "Required input var should be Variable, but received {}".format(
-                        type(var)
-                    )
+                    f"Required input var should be Variable, but received {type(var)}"
                 )
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
@@ -336,9 +334,7 @@ def monkey_patch_variable():
         """
         if len(self.shape) > 1:
             raise TypeError(
-                "Required input var should be 1-D Variable, but received {}".format(
-                    self.shape
-                )
+                f"Required input var should be 1-D Variable, but received {self.shape}"
             )
         return self
 
@@ -355,13 +351,11 @@ def monkey_patch_variable():
         Returns:
             Variable: self[index]
         """
-        from paddle.jit.dy2static.convert_operators import (
-            _run_paddle_pop,
-        )
+        from paddle.jit.dy2static.convert_operators import _run_paddle_pop
 
         if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
             raise TypeError(
-                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".format(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `pop` method, but received type: {}".format(
                     self.type
                 )
             )
@@ -382,7 +376,7 @@ def monkey_patch_variable():
         return _scalar_op_(var, -1.0, 0.0)
 
     @property
-    def _ndim_(self):
+    def _ndim(self):
         """
         Returns the dimension of current Variable
 
@@ -399,7 +393,7 @@ def monkey_patch_variable():
                 >>> # create a static Variable
                 >>> x = paddle.static.data(name='x', shape=[3, 2, 1])
                 >>> # print the dimension of the Variable
-                >>> print(x.ndim())
+                >>> print(x.ndim)
                 3
         """
         return len(self.shape)
@@ -554,10 +548,9 @@ def monkey_patch_variable():
                 file_name = stack[1]
                 line_num = stack[2]
                 warnings.warn(
-                    "%s:%s\nThe behavior of expression %s has been unified with %s(X, Y, axis=-1) from Paddle 2.0. "
+                    "{}:{}\nThe behavior of expression {} has been unified with {}(X, Y, axis=-1) from Paddle 2.0. "
                     "If your code works well in the older versions but crashes in this version, try to use "
-                    "%s(X, Y, axis=0) instead of %s. This transitional warning will be dropped in the future."
-                    % (
+                    "{}(X, Y, axis=0) instead of {}. This transitional warning will be dropped in the future.".format(
                         file_name,
                         line_num,
                         EXPRESSION_MAP[method_name],
@@ -577,17 +570,15 @@ def monkey_patch_variable():
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
 
-        __impl__.__doc__ = """
-        {0}
+        __impl__.__doc__ = f"""
+        {comment}
         Args:
             self(Variable): left hand variable
             other_var(Variable|float|int): right hand variable
 
         Returns:
             Variable
-        """.format(
-            comment
-        )
+        """
         __impl__.__name__ = method_name
         return __impl__
 
@@ -636,7 +627,7 @@ def monkey_patch_variable():
         ('pop', pop),
         ('dim', dim),
         ('ndimension', ndimension),
-        ('ndim', _ndim_),
+        ('ndim', _ndim),
         (
             '__add__',
             _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_),

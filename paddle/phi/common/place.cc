@@ -43,6 +43,12 @@ const char *AllocationTypeStr(AllocationType type) {
   }
 }
 
+Place::Place(AllocationType type, const std::string &dev_type)
+    : device(0),
+      alloc_type_(type),
+      device_type_id_(phi::CustomRegisteredDeviceMap::Instance()
+                          .GetOrRegisterGlobalDeviceTypeId(dev_type)) {}
+
 std::string Place::DebugString() const {
   std::ostringstream os;
   os << "Place(";

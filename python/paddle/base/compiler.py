@@ -14,17 +14,11 @@
 
 import sys
 import warnings
-from . import framework
-from .framework import cuda_places, cpu_places, xpu_places
-from . import core
 
-__all__ = [
-    'CompiledProgram',
-    'ExecutionStrategy',
-    'BuildStrategy',
-    'IpuCompiledProgram',
-    'IpuStrategy',
-]
+from . import core, framework
+from .framework import cpu_places, cuda_places, xpu_places
+
+__all__ = []
 
 ExecutionStrategy = core.ParallelExecutor.ExecutionStrategy
 BuildStrategy = core.ParallelExecutor.BuildStrategy
@@ -399,10 +393,11 @@ class IpuDynamicPatcher:
         """
         Convert the ConcreteProgram to IPUConcreteProgram.
         """
-        from ..base.dygraph.base import switch_to_static_graph
-        from ..base import backward
-        from ..base.framework import device_guard
         import paddle
+
+        from ..base import backward
+        from ..base.dygraph.base import switch_to_static_graph
+        from ..base.framework import device_guard
 
         inputs = concrete_program.inputs
         outputs = concrete_program.outputs
@@ -508,14 +503,12 @@ class IpuDynamicPatcher:
         Returns:
             None
         """
+        from paddle.jit.dy2static import logging_utils
+        from paddle.jit.dy2static.partial_program import partial_program_from
         from paddle.jit.dy2static.program_translator import (
+            MAX_TRACED_PROGRAM_COUNT,
             CacheKey,
             ProgramCache,
-            MAX_TRACED_PROGRAM_COUNT,
-        )
-        from paddle.jit.dy2static import logging_utils
-        from paddle.jit.dy2static.partial_program import (
-            partial_program_from,
         )
 
         old_getter = ProgramCache.__getitem__
@@ -561,7 +554,7 @@ class IpuDynamicPatcher:
 
             return self._caches[item_id]
 
-        setattr(ProgramCache, '__getitem__', patch_getter)
+        ProgramCache.__getitem__ = patch_getter
         IpuDynamicPatcher.patcher_cache.append(
             [ProgramCache, '__getitem__', old_getter]
         )
@@ -578,7 +571,7 @@ class IpuDynamicPatcher:
             old_step(self, epoch)
             ipu_strategy.set_options({"lr": self.last_lr})
 
-        setattr(LRScheduler, 'step', patch_step)
+        LRScheduler.step = patch_step
         IpuDynamicPatcher.patcher_cache.append([LRScheduler, 'step', old_step])
 
     @staticmethod

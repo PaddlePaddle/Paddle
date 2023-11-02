@@ -69,6 +69,25 @@ std::vector<int64_t> ResoluteOutputPartialDimension(
 // Repliacated state
 TensorDistAttr GetReplicatedDistAttr(const TensorDistAttr& dist_attr);
 
+bool IsDimSharded(const TensorDistAttr& dist_attr, int dim);
+
+std::vector<int64_t> GetLocalShape(
+    const std::vector<int64_t> shape,
+    const ProcessMesh& mesh,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
+
+TensorDistAttr FromPlacements(
+    const TensorDistAttr& dist_attr,
+    const std::vector<std::shared_ptr<PlacementStatus>>& placements);
+
+std::vector<ArgDistAttr> ToArgDistAttr(
+    const std::vector<TensorDistAttr>& dist_attrs);
+
+TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
+
+bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
+                    const std::shared_ptr<PlacementStatus>& b);
+
 // Adaptor for variadic arguments
 template <typename Functor>
 struct ArgsIterator {
@@ -112,6 +131,12 @@ struct VariadicSpmdRuleArgumentParser
     }
   }
 
+  void operator()(const std::vector<DistMetaTensor>& x) {
+    for (auto& t : x) {
+      inputs.emplace_back(&t);
+    }
+  }
+
   // deal with outputs
   void operator()(DistMetaTensor* out) { outputs.emplace_back(out); }
 
@@ -125,6 +150,40 @@ struct VariadicSpmdRuleArgumentParser
 
   SpmdInfo InferBackward() { return Fn(inputs, outputs); }
 };
+
+using DynamicSpmdFn = SpmdInfo (*)(
+    const std::vector<paddle::variant<const DistMetaTensor*,
+                                      const std::vector<DistMetaTensor>*>>&);
+
+template <DynamicSpmdFn Fn>
+struct ReplicateInferSpmdDynamicHelper
+    : public ArgsIterator<ReplicateInferSpmdDynamicHelper<Fn>> {
+  SpmdInfo Infer() { return Fn(inputs); }
+
+  void operator()(const DistMetaTensor& x) { inputs.emplace_back(&x); }
+  void operator()(const std::vector<DistMetaTensor>& x) {
+    inputs.emplace_back(&x);
+  }
+
+  void operator()(std::vector<DistMetaTensor>&& x) = delete;
+  void operator()(DistMetaTensor&& x) = delete;
+
+  std::vector<paddle::variant<const DistMetaTensor*,
+                              const std::vector<DistMetaTensor>*>>
+      inputs;
+};
 }  // namespace detail
+
+// Get dims mapping for the given axes according to sharding information of
+// the annotated axes after inferring forward or backward. The parameter axis
+// stores the axes of the tensor. "1" is a special axis, for the axis "1", set
+// its dims mapping to -1.
+// if unsharded_miss_axis, "-1" is assigend to axes that has no key in
+// axis_to_dim_map.
+std::vector<int64_t> GetDimsMappingForAxes(
+    const std::string& axes,
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis = false);
+
 }  // namespace distributed
 }  // namespace phi

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/core/distributed/xccl_comm_context.h"
 
 #include "glog/logging.h"
 
@@ -21,7 +22,7 @@
 #include "paddle/phi/infermeta/binary.h"
 #include "paddle/phi/kernels/memcpy_kernel.h"
 #ifdef PADDLE_WITH_XPU_XFT
-#include "models/fused_multi_transformer_op.h"
+#include "models/fused_multi_transformer_gpt.h"
 namespace xft = baidu::xpu::xft;
 #endif
 
@@ -55,6 +56,7 @@ void FusedMultiTransformerXpuKernel(
     const paddle::optional<DenseTensor>& seq_lengths,
     const paddle::optional<DenseTensor>& src_mask,
     const paddle::optional<DenseTensor>& gather_index,
+    const DenseTensor& max_buffer,
     bool pre_layer_norm,
     int rotary_emb_dims,
     float epsilon,
@@ -95,6 +97,17 @@ void FusedMultiTransformerXpuKernel(
                     phi::errors::PreconditionNotMet(
                         "Only support trans_qkvw == true at now."));
 
+  void* bkcl_context = nullptr;
+  if (ring_id >= 0) {
+#if defined(PADDLE_WITH_XPU_BKCL)
+    bkcl_context =
+        paddle::platform::BKCLCommContext::Instance().Get(ring_id)->comm();
+#else
+    VLOG(3) << "ring id : " << ring_id
+            << ", but no built with PADDLE_WITH_XPU_BKCL.\n";
+#endif
+  }
+
   const auto x_dims = xx.dims();
   int seq_len = x_dims[1];
   const auto qkv_w_dims = qkvw[0]->dims();
@@ -122,6 +135,17 @@ void FusedMultiTransformerXpuKernel(
             seq_len));
   }
 
+  xpu::ctx_guard RAII_GUARD(ctx.x_context());
+  int layers = qkvw.size();
+
+  int max_ptr_size = ctx.x_context()->max_ptr_size();
+  float* xft_out_max_buf = RAII_GUARD.alloc<float>(max_ptr_size);
+  int64_t per_tensor_max_buf_len = max_ptr_size * layers;
+  float* cache_k_per_tensor_max_buf =
+      const_cast<float*>(max_buffer.data<float>());
+  float* cache_v_per_tensor_max_buf =
+      cache_k_per_tensor_max_buf + per_tensor_max_buf_len;
+
   XPUTypeT* x_data = reinterpret_cast<XPUTypeT*>(const_cast<T*>(xx.data<T>()));
   XPUTypeT* src_mask_data = reinterpret_cast<XPUTypeT*>(
       const_cast<T*>(src_mask.get_ptr()->data<T>()));
@@ -130,23 +154,17 @@ void FusedMultiTransformerXpuKernel(
   auto out_dims = out->dims();
   auto xft_x = xft::xftTensor<XPUTypeT, 3>(
       x_data, std::array<int64_t, 3>{x_dims[0], x_dims[1], x_dims[2]});
-  // TODO(mayang02): xft support mask.dtype = float16
-  xpu::ctx_guard RAII_GUARD(ctx.x_context());
-  float* src_mask_fp32_data =
-      RAII_GUARD.alloc<float>(src_mask.get_ptr()->numel());
-  int r = xpu::cast<XPUTypeT, float>(ctx.x_context(),
-                                     src_mask_data,
-                                     src_mask_fp32_data,
-                                     src_mask.get_ptr()->numel());
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::cast");
+  int r = 0;
   auto xft_src_mask =
-      xft::xftTensor<float, 4>(src_mask_fp32_data,
-                               std::array<int64_t, 4>{src_mask_dims[0],
-                                                      src_mask_dims[1],
-                                                      src_mask_dims[2],
-                                                      src_mask_dims[3]});
+      xft::xftTensor<XPUTypeT, 4>(src_mask_data,
+                                  std::array<int64_t, 4>{src_mask_dims[0],
+                                                         src_mask_dims[1],
+                                                         src_mask_dims[2],
+                                                         src_mask_dims[3]});
   auto xft_out = xft::xftTensor<XPUTypeT, 3>(
-      out_data, std::array<int64_t, 3>{out_dims[0], out_dims[1], out_dims[2]});
+      out_data,
+      xft_out_max_buf,
+      std::array<int64_t, 3>{out_dims[0], out_dims[1], out_dims[2]});
 
   typedef int16_t TW;
   std::vector<xft::xftVec<float>> xft_ln_scale;
@@ -161,8 +179,10 @@ void FusedMultiTransformerXpuKernel(
   std::vector<xft::xftVec<float>> xft_ffn1_bias;
   std::vector<xft::xftMat<TW>> xft_ffn2_w;
   std::vector<xft::xftVec<float>> xft_ffn2_bias;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> xft_cache_kv;
-  std::vector<xft::xftTensor<XPUTypeT, 5>> xft_cache_kv_out;
+  std::vector<xft::xftTensor<XPUTypeT, 5>> xft_pre_cache;
+  std::vector<xft::xftTensor<XPUTypeT, 4>> xft_cache_k;
+  std::vector<xft::xftTensor<XPUTypeT, 4>> xft_cache_v;
+  xft::xftTensor<float, 4> xft_rotary_pos_emb;
 
   // Create a temporary Tensor to store the gather output of cache_kv
   auto gather_index_t = gather_index.get_ptr();
@@ -176,10 +196,11 @@ void FusedMultiTransformerXpuKernel(
                          Scalar(gather_axis),
                          &cache_kv_gather_meta);
     cache_kv_gather_dims = cache_kv_gather_meta.dims();
-    ctx.template Alloc<T>(&cache_kv_gather_tensor);
+    if (cache_kv_gather_dims != cache_kv_dims) {
+      ctx.template Alloc<T>(&cache_kv_gather_tensor);
+    }
   }
 
-  int layers = qkvw.size();
   for (int i = 0; i < layers; ++i) {
     // step1. layer_norm
     xft_ln_scale.emplace_back(const_cast<float*>(ln_scale[i]->data<float>()),
@@ -229,55 +250,87 @@ void FusedMultiTransformerXpuKernel(
         std::array<int64_t, 2>{ffn2w_dims[0], ffn2w_dims[1]});
     xft_ffn2_bias.emplace_back(const_cast<float*>(ffn2_bias[i]->data<float>()),
                                std::array<int64_t, 1>{ffn2_bias[i]->dims()[0]});
-    // cache kv in
+    // cache_kv_data => cache_kv_gather_tensor => cache_kv_out
     auto cache_kv_data = reinterpret_cast<XPUTypeT*>(
         const_cast<T*>(cache_kv.get_ptr()->at(i)->data<T>()));
     if (gather_index_t) {
       const auto& index_type = gather_index_t->dtype();
-      if (index_type == DataType::INT32) {
-        r = xpu::gather<XPUTypeT, int32_t>(
+      if (cache_kv_gather_dims != cache_kv_dims) {
+        if (index_type == DataType::INT32) {
+          r = xpu::gather<XPUTypeT, int32_t>(
+              ctx.x_context(),
+              cache_kv_data,
+              gather_index_t->data<int32_t>(),
+              reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
+              phi::vectorize<int32_t>(cache_kv_dims),
+              gather_index_t->dims().size() == 0 ? 1
+                                                 : gather_index_t->dims()[0],
+              gather_axis);
+        } else {
+          r = xpu::gather<XPUTypeT, int64_t>(
+              ctx.x_context(),
+              cache_kv_data,
+              gather_index_t->data<int64_t>(),
+              reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
+              phi::vectorize<int32_t>(cache_kv_dims),
+              gather_index_t->dims().size() == 0 ? 1
+                                                 : gather_index_t->dims()[0],
+              gather_axis);
+        }
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather");
+        cache_kv_out[i]->ResizeAndAllocate(cache_kv_gather_dims);
+        r = xpu::copy<XPUTypeT>(
             ctx.x_context(),
-            cache_kv_data,
-            gather_index_t->data<int32_t>(),
             reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-            phi::vectorize<int32_t>(cache_kv_dims),
-            gather_index_t->dims().size() == 0 ? 1 : gather_index_t->dims()[0],
-            gather_axis);
-      } else {
-        r = xpu::gather<XPUTypeT, int64_t>(
-            ctx.x_context(),
-            cache_kv_data,
-            gather_index_t->data<int64_t>(),
-            reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-            phi::vectorize<int32_t>(cache_kv_dims),
-            gather_index_t->dims().size() == 0 ? 1 : gather_index_t->dims()[0],
-            gather_axis);
+            reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
+            cache_kv_out[i]->numel());
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::copy");
+      } else {  // inplace gather
+        if (index_type == DataType::INT32) {
+          r = xpu::gather<XPUTypeT, int32_t>(
+              ctx.x_context(),
+              cache_kv_data,
+              gather_index_t->data<int32_t>(),
+              cache_kv_data,
+              phi::vectorize<int64_t>(cache_kv_dims),
+              gather_index_t->dims().size() == 0 ? 1
+                                                 : gather_index_t->dims()[0],
+              gather_axis);
+        } else {
+          r = xpu::gather<XPUTypeT, int64_t>(
+              ctx.x_context(),
+              cache_kv_data,
+              gather_index_t->data<int64_t>(),
+              cache_kv_data,
+              phi::vectorize<int64_t>(cache_kv_dims),
+              gather_index_t->dims().size() == 0 ? 1
+                                                 : gather_index_t->dims()[0],
+              gather_axis);
+        }
+        PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather_inplace");
       }
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::gather");
-      cache_kv_out[i]->ResizeAndAllocate(cache_kv_gather_dims);
-      r = xpu::copy<XPUTypeT>(
-          ctx.x_context(),
-          reinterpret_cast<XPUTypeT*>(cache_kv_gather_tensor.data<T>()),
-          reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i])),
-          cache_kv_out[i]->numel());
-      PADDLE_ENFORCE_XDNN_SUCCESS(r, "xpu::copy");
     }
-    cache_kv_data = reinterpret_cast<XPUTypeT*>(
-        const_cast<T*>(cache_kv.get_ptr()->at(i)->data<T>()));
-    xft_cache_kv.emplace_back(cache_kv_data,
-                              std::array<int64_t, 5>{cache_kv_gather_dims[0],
-                                                     cache_kv_gather_dims[1],
-                                                     cache_kv_gather_dims[2],
-                                                     cache_kv_gather_dims[3],
-                                                     cache_kv_gather_dims[4]});
-    // cache kv out direct use cache_kv_data
-    xft_cache_kv_out.emplace_back(
-        cache_kv_data,
-        std::array<int64_t, 5>{cache_kv_gather_dims[0],
-                               cache_kv_gather_dims[1],
-                               cache_kv_gather_dims[2],
-                               cache_kv_gather_dims[3],
-                               cache_kv_gather_dims[4]});
+
+    XPUTypeT* curr_cache_kv_ptr =
+        reinterpret_cast<XPUTypeT*>(ctx.template Alloc<T>(cache_kv_out[i]));
+    int64_t half_len = cache_kv_gather_dims[1] * cache_kv_gather_dims[2] *
+                       cache_kv_gather_dims[3] * cache_kv_gather_dims[4];
+    float* curr_cache_k_max = cache_k_per_tensor_max_buf + i * max_ptr_size;
+    float* curr_cache_v_max = cache_v_per_tensor_max_buf + i * max_ptr_size;
+
+    // [LBHD] or [BHLD]
+    xft_cache_k.emplace_back(curr_cache_kv_ptr,
+                             curr_cache_k_max,
+                             std::array<int64_t, 4>{cache_kv_gather_dims[1],
+                                                    cache_kv_gather_dims[2],
+                                                    cache_kv_gather_dims[3],
+                                                    cache_kv_gather_dims[4]});
+    xft_cache_v.emplace_back(curr_cache_kv_ptr + half_len,
+                             curr_cache_v_max,
+                             std::array<int64_t, 4>{cache_kv_gather_dims[1],
+                                                    cache_kv_gather_dims[2],
+                                                    cache_kv_gather_dims[3],
+                                                    cache_kv_gather_dims[4]});
   }
   xft::NlpParam param;
   param.num_layer = layers;
@@ -285,27 +338,33 @@ void FusedMultiTransformerXpuKernel(
   param.size_per_head = dim_head;
   param.hidden_act = act_method;
   param.is_fuse_qkv = true;
-  r = xft::fused_multi_transformer<XPUTypeT, TW, int16_t>(ctx.x_context(),
-                                                          xft_x,
-                                                          xft_cache_kv,
-                                                          xft_src_mask,
-                                                          xft_ln_scale,
-                                                          xft_ln_bias,
-                                                          xft_qkvw,
-                                                          xft_qkv_bias,
-                                                          xft_out_linear_w,
-                                                          xft_out_linear_bias,
-                                                          xft_ffn_ln_scale,
-                                                          xft_ffn_ln_bias,
-                                                          xft_ffn1_w,
-                                                          xft_ffn1_bias,
-                                                          xft_ffn2_w,
-                                                          xft_ffn2_bias,
-                                                          param,
-                                                          time_step_value,
-                                                          &xft_out,
-                                                          xft_cache_kv_out);
-  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer");
+  std::string attn_layout = "LBHD";
+  r = xft::fused_multi_transformer_gpt<XPUTypeT, TW, int16_t>(
+      ctx.x_context(),
+      xft_x,
+      xft_pre_cache,
+      xft_src_mask,
+      xft_rotary_pos_emb,
+      xft_ln_scale,
+      xft_ln_bias,
+      xft_qkvw,
+      xft_qkv_bias,
+      xft_out_linear_w,
+      xft_out_linear_bias,
+      xft_ffn_ln_scale,
+      xft_ffn_ln_bias,
+      xft_ffn1_w,
+      xft_ffn1_bias,
+      xft_ffn2_w,
+      xft_ffn2_bias,
+      &xft_out,
+      xft_cache_k,
+      xft_cache_v,
+      param,
+      time_step_value,
+      bkcl_context,
+      attn_layout);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "xft::fused_multi_transformer_gpt");
 #else
   LOG(FATAL) << "fused_multi_transformer_xpu is not supported since it's not "
                 "compiled with XPU_XFT";

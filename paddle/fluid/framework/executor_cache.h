@@ -243,7 +243,7 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
     std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,
@@ -253,7 +253,7 @@ std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
 std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string>& output_names,
     const std::vector<paddle::Tensor>& x,
     const std::vector<std::string>& x_names,
     const std::vector<paddle::Tensor>& params,
@@ -264,7 +264,8 @@ std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
     const std::vector<paddle::Tensor*>& params_grad,
-    const paddle::framework::Scope* scope);
+    const paddle::framework::Scope* scope,
+    const phi::Place& place);
 
 }  // namespace framework
 }  // namespace paddle

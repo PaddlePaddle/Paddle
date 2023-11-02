@@ -28,6 +28,7 @@ class Value;
 
 namespace paddle {
 namespace framework {
+class ValueExecutionInfo;
 
 using SchedulingPriority = int64_t;
 
@@ -139,13 +140,12 @@ class InstructionBase {
 
   virtual ::pir::Operation* Operation() const = 0;
 
-  void InitInputsOutputsIds(
-      ::pir::Operation* op,
-      Scope* inner_scope,
-      const std::unordered_map<::pir::Value, std::string>& value_2_var_name,
-      const std::map<std::string, int>& var_name_2_id,
-      const std::unordered_map<const paddle::framework::Variable*, std::string>&
-          variable_2_var_name);
+  void InitInputsOutputsIds(::pir::Operation* op,
+                            const ValueExecutionInfo& value_exec_info);
+
+  // if scope is not null, also show dimensions of arguments
+  virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
+                                    ValueExecutionInfo* value_exe_info) const;
 
  protected:
   size_t id_;

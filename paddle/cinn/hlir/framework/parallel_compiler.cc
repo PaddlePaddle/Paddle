@@ -80,8 +80,13 @@ void ParallelCompiler::SplitTask() {
   CHECK(context_->lowered_funcs.empty() ||
         context_->graph->fusion_groups.size() ==
             context_->lowered_funcs.size());
-  for (int i = 0; i < context_->graph->fusion_groups.size(); ++i) {
-    tasks_.emplace_back(i, this, context_);
+  int device_id = 0;
+#ifdef CINN_WITH_CUDA
+  CUDA_CALL(cudaGetDevice(&device_id));
+#endif
+  for (int group_id = 0; group_id < context_->graph->fusion_groups.size();
+       ++group_id) {
+    tasks_.emplace_back(device_id, group_id, this, context_);
   }
 }
 
@@ -126,11 +131,20 @@ void ParallelCompiler::RunTask() {
 }
 
 void ParallelCompiler::LaunchTask() {
+  int device_id = 0;
+#ifdef CINN_WITH_CUDA
+  CUDA_CALL(cudaGetDevice(&device_id));
+#endif
+  int num_threads = FLAGS_cinn_parallel_compile_thread;
+#if defined(PADDLE_WITH_DISTRIBUTE)
+  if (device_id > 0) {
+    num_threads = 1;
+  }
+#endif
   // multi thread compilation
   std::vector<std::thread> threads;
-  VLOG(4) << "Compile with " << FLAGS_cinn_parallel_compile_thread
-          << " threads";
-  for (int idx = 1; idx < FLAGS_cinn_parallel_compile_thread; ++idx) {
+  VLOG(4) << "Compile with " << num_threads << " threads";
+  for (int idx = 1; idx < num_threads; ++idx) {
     threads.emplace_back(&ParallelCompiler::RunTask, this);
   }
 
@@ -208,7 +222,7 @@ void ParallelCompiler::Task::Lowering() {
     pcompiler->result_.SetLoweredFuncs(group_id, lowered_funcs);
   }
   backends::CompilationInfoDumper::DumpLoweredFuncByGroupIndex(
-      pcompiler->result_.LoweredFuncs(group_id).front(), group_id);
+      pcompiler->result_.LoweredFuncs(group_id).front(), group_id, device_id);
 }
 
 void ParallelCompiler::Task::CodegenAndJit() {
@@ -239,8 +253,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
     }
     CHECK(!cuda_c.empty()) << "Compile CUDA C code failed from device module:\n"
                            << dmodule;
-    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(cuda_c,
-                                                                group_id);
+    backends::CompilationInfoDumper::DumpSourceCodeByGroupIndex(
+        cuda_c, group_id, device_id);
     pcompiler->result_.SetSourceCode(group_id, cuda_c);
 
     cinn::backends::SourceCodePrint::GetInstance()->write(cuda_c);
@@ -249,7 +263,8 @@ void ParallelCompiler::Task::CodegenAndJit() {
     backends::nvrtc::Compiler compiler;
     auto ptx = compiler(cuda_c);
     CHECK(!ptx.empty()) << "Compile PTX failed from source code:\n" << cuda_c;
-    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(ptx, group_id);
+    backends::CompilationInfoDumper::DumpPtxCodeByGroupIndex(
+        ptx, group_id, device_id);
     pcompiler->result_.SetSourcePtx(group_id, ptx);
     // load cumodule
     cumodule = std::make_unique<CUDAModule>(ptx,
@@ -260,7 +275,7 @@ void ParallelCompiler::Task::CodegenAndJit() {
     // register kernel
     backends::RuntimeSymbols symbols;
     for (auto& fn : dmodule.functions()) {
-      auto cufunc = cumodule->GetFunction(0, fn->name);
+      auto cufunc = cumodule->GetFunction(device_id, fn->name);
       CHECK(cufunc);
       symbols.RegisterVar(fn->name + "_ptr_", reinterpret_cast<void*>(cufunc));
     }
@@ -291,7 +306,8 @@ void ParallelCompiler::Task::BuildInstruction() {
   instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), group->GetFuncName());
 
   instr->Finalize();
-  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(instr, group_id);
+  backends::CompilationInfoDumper::DumpInstructionByGroupIndex(
+      instr, group_id, device_id);
   pcompiler->result_.SetInstruction(group_id, std::move(instr));
 }
 

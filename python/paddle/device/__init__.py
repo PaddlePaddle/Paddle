@@ -19,13 +19,17 @@ import ctypes
 import paddle
 from paddle.base import core
 from paddle.base import framework
-from paddle.base.framework import is_compiled_with_cinn  # noqa: F401
-from paddle.base.framework import is_compiled_with_cuda  # noqa: F401
-from paddle.base.framework import is_compiled_with_rocm  # noqa: F401
-from . import cuda
-from . import xpu
+from paddle.base.framework import (
+    is_compiled_with_cinn,
+    is_compiled_with_cuda,
+    is_compiled_with_rocm,
+)
+from . import (  # noqa: F401
+    cuda,
+    xpu,
+)
 
-__all__ = [  # noqa
+__all__ = [
     'get_cudnn_version',
     'set_device',
     'get_device',
@@ -253,6 +257,9 @@ def set_device(device):
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
             where ``x`` is the index of the GPUs, XPUs or NPUs.
+
+    Returns:
+        Place,the Place to set.
 
     Examples:
 

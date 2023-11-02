@@ -22,6 +22,7 @@
 #include "paddle/phi/kernels/reduce_sum_grad_kernel.h"
 
 #include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/kernels/elementwise_multiply_kernel.h"
 #include "paddle/phi/kernels/funcs/broadcast_function.h"
 #include "paddle/phi/kernels/funcs/compare_functors.h"
 #include "paddle/phi/kernels/funcs/elementwise_functor.h"
@@ -115,10 +116,7 @@ void ReduceMinGradKernel(const Context& dev_ctx,
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
 
   // 2. dx = dout * 1
-  std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
-  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
   delete equal_out;
 }
 
@@ -201,10 +199,7 @@ void ReduceMaxGradKernel(const Context& dev_ctx,
       dev_ctx, equal_inputs, &equal_outputs, funcs::EqualFunctor<T>(), 0);
 
   // 2. dx = dout * 1
-  std::vector<const phi::DenseTensor*> mul_inputs = {&new_out_grad, equal_out};
-  std::vector<phi::DenseTensor*> mul_outputs = {x_grad};
-  funcs::BroadcastKernel<T>(
-      dev_ctx, mul_inputs, &mul_outputs, funcs::MultiplyFunctor<T>(), 0);
+  phi::MultiplyKernel<T, Context>(dev_ctx, new_out_grad, *equal_out, x_grad);
   delete equal_out;
 }
 
@@ -245,7 +240,7 @@ void ReduceKernel(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   out->Resize(x.dims());
   dev_ctx.template Alloc<T>(out);
@@ -375,6 +370,8 @@ PD_REGISTER_KERNEL(sum_grad,
                    double,
                    phi::dtype::float16,
                    phi::dtype::bfloat16,
+                   int8_t,
+                   uint8_t,
                    int16_t,
                    int,
                    int64_t,

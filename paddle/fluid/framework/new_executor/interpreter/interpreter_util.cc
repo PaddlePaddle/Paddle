@@ -19,10 +19,12 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpreter/static_build.h"
+#include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
 #include "paddle/fluid/memory/stats.h"
 #include "paddle/fluid/operators/controlflow/conditional_block_op_helper.h"
 #include "paddle/fluid/operators/controlflow/pylayer_op_helper.h"
@@ -32,7 +34,6 @@
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
-#include "paddle/fluid/pir/phi_kernel_adaptor/phi_kernel_util.h"
 #include "paddle/fluid/platform/flags.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/kernel_context.h"
@@ -45,10 +46,6 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_log_memory_stats,
-    false,
-    "Log memory stats after each op runs, just used for debug.");
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
@@ -228,7 +225,9 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
   return type == proto::VarType::LOD_TENSOR ||
          type == proto::VarType::SELECTED_ROWS ||
-         type == proto::VarType::LOD_TENSOR_ARRAY;
+         type == proto::VarType::LOD_TENSOR_ARRAY ||
+         type == proto::VarType::SPARSE_COO ||
+         type == proto::VarType::SPARSE_CSR;
 }
 
 std::unordered_map<const paddle::framework::OperatorBase*,
@@ -527,11 +526,13 @@ platform::DeviceContext* ConstructDeviceContext(const OperatorBase* op,
   return default_dev_ctx;
 }
 
-void HandleOperatorBase(const platform::Place& place,
-                        std::shared_ptr<OperatorBase> op,
-                        OpFuncNode* op_func_node,
-                        Scope* scope,
-                        bool static_build) {
+void HandleOperatorBase(
+    const platform::Place& place,
+    std::shared_ptr<OperatorBase> op,
+    OpFuncNode* op_func_node,
+    Scope* scope,
+    bool static_build,
+    std::vector<std::shared_ptr<OperatorBase>> following_ops) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
   // input, output is prepared. set the other attributes.
@@ -542,7 +543,8 @@ void HandleOperatorBase(const platform::Place& place,
     if (OperatorBasesMustRunInStaticBuild.count(op->Type())) {
       op->Run(*scope, place);
     }
-    FakeInitializeOutputsForOperatorBase(*op, place, scope);
+
+    FakeInitializeOutputsForOperatorBase(*op, place, scope, following_ops);
   } else {
     op->Run(*scope, place);  // Run without data transformer.
   }
@@ -596,6 +598,11 @@ void BuildOpFuncList(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
+    if (execution_config.used_for_inference) {
+      if (op_type == "feed" || op_type == "fetch") {
+        continue;
+      }
+    }
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
@@ -617,8 +624,6 @@ void BuildOpFuncList(const platform::Place& place,
         "pylayer",
         "pylayer_grad"
         "recurrent_grad",
-        "rnn_memory_helper",
-        "rnn_memory_helper_grad",
         "while",
         "while_grad"};
     bool allow_var_not_in_program = ops_with_var_not_in_program.count(op_type);
@@ -690,8 +695,15 @@ void BuildOpFuncList(const platform::Place& place,
       if (dynamic_cast<framework::OperatorWithKernel*>(op) == nullptr) {
         VLOG(4) << "HandleOperatorBase";
         // op is not a operatorwithkernel, so direcly run OperatorBase::Run()
-        HandleOperatorBase(
-            place, ops[i], &op_func_node, local_scope, static_build);
+
+        std::vector<std::shared_ptr<OperatorBase>> following_ops(
+            ops.begin() + static_cast<int>(i) + 1, ops.end());
+        HandleOperatorBase(place,
+                           ops[i],
+                           &op_func_node,
+                           local_scope,
+                           static_build,
+                           following_ops);
         vec_func_list->emplace_back(op_func_node);
       } else {
         VLOG(4) << "OP is not null";
@@ -886,7 +898,7 @@ void BuildOpFuncList(const platform::Place& place,
             // avoid overwriting valid data
             if (static_build && original_tensor->initialized()) {
               const phi::Place& target_place = transformed_tensor->place();
-              platform::DeviceContext* dev_ctx_for_copy;
+              platform::DeviceContext* dev_ctx_for_copy = nullptr;
               if (target_place.GetType() != AllocationType::CPU) {
                 dev_ctx_for_copy = pool.Get(target_place);
               } else {
@@ -926,7 +938,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
-      throw std::move(ex);
+      throw ex;
     } catch (platform::EOFException&) {
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
@@ -975,7 +987,7 @@ void BuildOpFuncList(const platform::Place& place,
       // gc---------------------------------------------
       auto iter = unused_var_map.find(op);
       if (iter == unused_var_map.end()) {
-        interpreter::LogDeviceMemoryStats(place);
+        memory::LogDeviceMemoryStats(place, op_type);
         continue;
       }
 
@@ -994,11 +1006,38 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           garbages->emplace_back(
               var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        } else if (var->IsType<phi::SelectedRows>()) {
+          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                     ->mutable_value()
+                                     ->MoveMemoryHolder());
+          var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *tensor_arr) {
+            garbages->emplace_back(t.MoveMemoryHolder());
+          }
+        } else if (var->IsType<phi::SparseCooTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_indices()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
+        } else if (var->IsType<phi::SparseCsrTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_cols()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_crows()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
         }
       }
       delete garbages;  // free mem
 
-      interpreter::LogDeviceMemoryStats(place);
+      memory::LogDeviceMemoryStats(place, op_type);
     }
   }
 
@@ -1014,99 +1053,36 @@ void BuildOpFuncList(const platform::Place& place,
     if (var->IsType<phi::DenseTensor>()) {
       garbages->emplace_back(
           var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                 ->mutable_value()
+                                 ->MoveMemoryHolder());
+      var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& t : *tensor_arr) {
+        garbages->emplace_back(t.MoveMemoryHolder());
+      }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_indices()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_cols()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_crows()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
     }
   }
   delete garbages;
-}
-
-void BuildOpFuncList(
-    const platform::Place& place,
-    pir::Block* block,
-    std::vector<OpFuncNode>* vec_func_list,
-    framework::Scope* scope,
-    framework::Scope* local_scope,
-    const std::unordered_map<pir::Value, std::string>& value_2_name_map,
-    const ExecutionConfig& execution_config) {
-  vec_func_list->reserve(block->size());
-  pir::IrContext* ctx = pir::IrContext::Instance();
-
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-
-  for (auto op : *block) {
-    OpFuncNode op_func_node;
-    auto attr_map = op->attributes();
-
-    auto op_name =
-        attr_map.at("op_name").dyn_cast<pir::StrAttribute>().AsString();
-    op_func_node.phi_op_name_ = op_name;
-
-    if (GetSpecialOpNames().count(op_name)) {
-      VLOG(6) << "skip process " << op_name;
-      continue;
-    }
-
-    pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
-
-    auto impl =
-        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
-
-    op_func_node.infer_meta_interface_ =
-        op_info.GetInterfaceImpl<paddle::dialect::InferMetaInterface>();
-
-    VLOG(6) << "op name" << op_func_node.phi_op_name_;
-    dialect::OpYamlInfoParser op_yaml_info_parser(impl->get_op_info_());
-    if (op_func_node.infer_meta_interface_) {
-      pir::BuildPhiContext<
-          phi::InferMetaContext,
-          phi::MetaTensor,
-          phi::MetaTensor,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          paddle::small_vector<phi::MetaTensor, phi::kInputSmallVectorSize>,
-          false>(op,
-                 value_2_name_map,
-                 scope,
-                 local_scope,
-                 op_yaml_info_parser,
-                 &(op_func_node.infer_meta_context_));
-    }
-
-    auto kernel_name =
-        attr_map.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-    auto kernel_key = attr_map.at("kernel_key")
-                          .dyn_cast<paddle::dialect::KernelAttribute>()
-                          .data();
-
-    VLOG(6) << "finish process infer meta context";
-    auto t1 = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-        kernel_name, kernel_key);
-    op_func_node.phi_kernel_ = new phi::Kernel(t1.kernel);
-
-    PADDLE_ENFORCE_EQ(op_func_node.phi_kernel_->IsValid(),
-                      true,
-                      "not found kernel for [%s]",
-                      kernel_name);
-
-    pir::BuildPhiContext<phi::KernelContext,
-                         const phi::TensorBase*,
-                         phi::TensorBase*,
-                         paddle::small_vector<const phi::TensorBase*>,
-                         paddle::small_vector<phi::TensorBase*>,
-                         true>(op,
-                               value_2_name_map,
-                               scope,
-                               local_scope,
-                               op_yaml_info_parser,
-                               &(op_func_node.kernel_context_));
-
-    VLOG(6) << "finish process kernel context";
-    op_func_node.kernel_context_.SetDeviceContext(
-        phi::DeviceContextPool::Instance().Get(
-            phi::TransToPhiPlace(kernel_key.backend())));
-    op_func_node.dev_ctx_ = phi::DeviceContextPool::Instance().Get(
-        phi::TransToPhiPlace(kernel_key.backend()));
-
-    vec_func_list->emplace_back(op_func_node);
-  }
 }
 
 void BuildVariableScope(const framework::BlockDesc& block,
@@ -1153,21 +1129,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
               << ptr << " type is " << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
-  }
-}
-
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
   }
 }
 
@@ -1220,7 +1181,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.set_parameter",
       "builtin.get_parameter",
       "pd_op.data",
-      "pd_op.shadow_output",
+      "builtin.shadow_output",
   };
 }
 
@@ -1246,54 +1207,100 @@ const paddle::framework::Variable* GetVariableByName(
   return nullptr;
 }
 
+std::vector<std::string> GetOriginInputNames(std::string op_name) {
+  std::vector<std::string> ret;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_());
+    ret = yaml_parser.InputNames();
+  }
+  return ret;
+}
+
+std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+  std::vector<std::string> ret;
+  pir::IrContext* ctx = pir::IrContext::Instance();
+  pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
+  if (op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()) {
+    paddle::dialect::OpYamlInfoParser yaml_parser(
+        op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
+            ->get_op_info_());
+    ret = yaml_parser.OutputNames();
+  }
+  return ret;
+}
+
 void PrintValuesAndVariables(
     const pir::Block& block,
-    const std::unordered_map<pir::Value, std::string>* value_2_var_name,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>*
+    const std::unordered_map<pir::Value, std::string>& value_2_var_name,
+    const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name) {
-  std::stringstream ss;
   for (const auto& op : block) {
+    std::stringstream ss;
     VLOG(6) << "-----------------------------";
     op->Print(ss);
     VLOG(6) << ss.str();
+
+    std::string op_name = op->name();
+    if (op->attributes().count("op_name")) {
+      op_name = op->attributes()
+                    .at("op_name")
+                    .dyn_cast<pir::StrAttribute>()
+                    .AsString();
+    }
+    std::vector<std::string> origin_input_names = GetOriginInputNames(op_name);
+    std::vector<std::string> origin_output_names =
+        GetOriginOutputNames(op_name);
 
     // 1. output string
     std::string ret_value_str = "Value   : (";
     std::string ret_variable_str = "Variable: (";
     if (!op->results().empty()) {
-      for (auto& out_value : op->results()) {
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(out_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", out_value.impl()));
-        auto& var_name = (*value_2_var_name).at(out_value);
-        const paddle::framework::Variable* out_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << out_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << out_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+      for (size_t i = 0; i < op->num_results(); ++i) {
+        pir::Value out_value = op->result(i);
+        if (value_2_var_name.count(out_value)) {
+          // get Variable by Value
+          auto& var_name = value_2_var_name.at(out_value);
+          const paddle::framework::Variable* out_variable =
+              GetVariableByName(var_name, variable_2_var_name);
+
+          // get origin name
+          std::string origin_name;
+          if (!origin_output_names.empty())
+            origin_name = origin_output_names[i];
+          else
+            origin_name = var_name;
+
+          // process info
+          ss.str("");
+          ss << out_value.impl();
+          ret_value_str +=
+              (std::string(origin_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (out_variable) {
+            ss << out_variable;
+            ret_variable_str += (origin_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (origin_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+          ret_variable_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ") = ";
     ret_variable_str += ") = ";
 
     // 2. op name
-    std::string op_name;
-    if (op->attributes().find("op_name") != op->attributes().end()) {
-      op_name = op->attributes()
-                    .at("op_name")
-                    .dyn_cast<::pir::StrAttribute>()
-                    .AsString();
-    } else {
-      op_name = op->name();
-    }
     ret_value_str += op_name;
     ret_variable_str += op_name;
 
@@ -1301,26 +1308,43 @@ void PrintValuesAndVariables(
     ret_value_str += "(";
     ret_variable_str += "(";
     if (!op->operands().empty()) {
-      for (auto& input : op->operands()) {
-        ::pir::Value in_value = input.source();
-        PADDLE_ENFORCE(
-            (*value_2_var_name).count(in_value) > 0,
-            platform::errors::PreconditionNotMet(
-                "var(%s) should exist in var_name_2_id_", in_value.impl()));
-        auto& var_name = (*value_2_var_name).at(in_value);
-        const paddle::framework::Variable* in_variable =
-            GetVariableByName(var_name, *variable_2_var_name);
-        ss.str("");
-        ss << in_value.impl();
-        ret_value_str +=
-            (std::string(var_name.length(), ' ') + "[" + ss.str() + "], ");
-        ss.str("");
-        ss << in_variable;
-        ret_variable_str += (var_name + "[" + ss.str() + "], ");
+      for (size_t i = 0; i < op->num_operands(); ++i) {
+        ::pir::Value in_value = op->operand(i).source();
+        if (value_2_var_name.count(in_value)) {
+          // get Variable by Value
+          auto& var_name = value_2_var_name.at(in_value);
+          const paddle::framework::Variable* in_variable =
+              GetVariableByName(var_name, variable_2_var_name);
+
+          // get origin name
+          std::string origin_name;
+          if (!origin_input_names.empty())
+            origin_name = origin_input_names[i];
+          else
+            origin_name = var_name;
+
+          // process info
+          ss.str("");
+          ss << in_value.impl();
+          ret_value_str +=
+              (std::string(origin_name.length(), ' ') + "[" + ss.str() + "]");
+          ss.str("");
+          if (in_variable) {
+            ss << in_variable;
+            ret_variable_str += (origin_name + "[" + ss.str() + "]");
+          } else {
+            ret_variable_str += (origin_name + "[NULL]");
+          }
+        } else {
+          ret_value_str += "NULL";
+          ret_variable_str += "NULL";
+        }
+        ret_value_str += ", ";
+        ret_variable_str += ", ";
       }
-      ret_value_str = ret_value_str.substr(0, ret_value_str.size() - 2);
+      ret_value_str = ret_value_str.substr(0, ret_value_str.length() - 2);
       ret_variable_str =
-          ret_variable_str.substr(0, ret_variable_str.size() - 2);
+          ret_variable_str.substr(0, ret_variable_str.length() - 2);
     }
     ret_value_str += ")";
     ret_variable_str += ")";

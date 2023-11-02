@@ -13,22 +13,24 @@
 # limitations under the License.
 
 import copy
+
 import numpy as np
+
 import paddle
 
+from . import core, unique_name
 from .framework import (
     Variable,
+    _current_expected_place,
     default_main_program,
     default_startup_program,
     in_dygraph_mode,
-    _current_expected_place,
+    in_pir_mode,
 )
-from . import unique_name
+from .initializer import _global_bias_initializer, _global_weight_initializer
 from .param_attr import ParamAttr, WeightNormParamAttr
-from . import core
-from .initializer import _global_weight_initializer, _global_bias_initializer
 
-__all__ = ['LayerHelperBase']
+__all__ = []
 
 
 class LayerHelperBase:
@@ -289,12 +291,12 @@ class LayerHelperBase:
         g_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=g_param_shape,
-            **g_param_attr._to_kwargs(with_initializer=False)
+            **g_param_attr._to_kwargs(with_initializer=False),
         )
         v_param = self.startup_program.global_block().create_parameter(
             dtype=dtype,
             shape=v_param_shape,
-            **v_param_attr._to_kwargs(with_initializer=True)
+            **v_param_attr._to_kwargs(with_initializer=True),
         )
         __norm_except_dim(
             x=v_param,
@@ -352,7 +354,7 @@ class LayerHelperBase:
         for i, size in enumerate(shape):
             assert size > 0, (
                 "Expected every dim's size to be larger than 0, "
-                "but the size of the {}-th dim is {}".format(i, size)
+                f"but the size of the {i}-th dim is {size}"
             )
         # set global dtype
         if not dtype:
@@ -428,20 +430,20 @@ class LayerHelperBase:
                 shape=shape,
                 type=type,
                 stop_gradient=stop_gradient,
-                **attr._to_kwargs(with_initializer=True)
+                **attr._to_kwargs(with_initializer=True),
             )
         else:
-            if paddle.ir.core._use_new_ir_api():
-                return paddle.ir.core.create_parameter(
+            if in_pir_mode():
+                return paddle.pir.core.create_parameter(
                     dtype=dtype,
                     shape=shape,
-                    **attr._to_kwargs(with_initializer=True)
+                    **attr._to_kwargs(with_initializer=True),
                 )
             self.startup_program.global_block().create_parameter(
                 dtype=dtype,
                 shape=shape,
                 type=type,
-                **attr._to_kwargs(with_initializer=True)
+                **attr._to_kwargs(with_initializer=True),
             )
             return self.main_program.global_block().create_parameter(
                 dtype=dtype, shape=shape, type=type, **attr._to_kwargs()

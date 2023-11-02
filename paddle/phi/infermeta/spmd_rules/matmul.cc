@@ -278,22 +278,35 @@ SpmdInfo MatmulInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr_src}};
 }
 
+static bool DistAttrsAreBasicallyEqual(
+    const phi::distributed::TensorDistAttr& in_dist_attr,
+    const phi::distributed::TensorDistAttr& out_dist_attr) {
+  return (in_dist_attr.process_mesh() == out_dist_attr.process_mesh() &&
+          in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping() &&
+          in_dist_attr.partial_status() == out_dist_attr.partial_status());
+}
+
 SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
                              const DistMetaTensor& y,
                              const DistMetaTensor& out_grad,
                              bool trans_x,
                              bool trans_y) {
-  auto confirm_dist_attr_same_fn = [&](const TensorDistAttr& x_dist_attr,
+  auto get_attr = [](const ArgDistAttr& attr) -> const TensorDistAttr& {
+    return paddle::get<TensorDistAttr>(attr);
+  };
+
+  auto confirm_dist_attr_same_fn = [&](const ArgDistAttr& x_dist_attr,
                                        const DistMetaTensor& y,
                                        const char* debug_msg) {
+    const auto& x_single_dist_attr = get_attr(x_dist_attr);
     PADDLE_ENFORCE_EQ(
-        x_dist_attr,
-        y.dist_attr(),
+        DistAttrsAreBasicallyEqual(x_single_dist_attr, y.dist_attr()),
+        true,
         phi::errors::Unavailable("The matmul grad infer spmd `%s` verify "
                                  "error: left dist attr is %s, "
                                  "right dist attr is %s.",
                                  debug_msg,
-                                 x_dist_attr,
+                                 x_single_dist_attr,
                                  y.dist_attr()));
   };
 
@@ -305,8 +318,8 @@ SpmdInfo MatmulGradInferSpmd(const DistMetaTensor& x,
   // so it cannot be handled correctly in the backward for the time being
   // For this case, we uniformly transition the input to the Replicated state.
   auto fwd_spmd_info = MatmulInferSpmd(x, y, trans_x, trans_y);
-  if (x.dist_attr() != fwd_spmd_info.first[0] ||
-      y.dist_attr() != fwd_spmd_info.first[1]) {
+  if (x.dist_attr() != get_attr(fwd_spmd_info.first[0]) ||
+      y.dist_attr() != get_attr(fwd_spmd_info.first[1])) {
     auto x_r_dist_attr = GetReplicatedDistAttr(x.dist_attr());
     auto y_r_dist_attr = GetReplicatedDistAttr(y.dist_attr());
     return {{x_r_dist_attr,

@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 
 paddle.enable_static()
 
@@ -33,7 +33,7 @@ def get_ir_program():
         y_s = paddle.matmul(x_s, x_s)
         y_s = paddle.add(x_s, y_s)
         y_s = paddle.tanh(y_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -41,7 +41,7 @@ class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
         ):
             out = paddle.mean(tanh_out)
@@ -60,7 +60,7 @@ class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
         ):
             out1 = paddle.mean(tanh_out)
@@ -80,14 +80,14 @@ class TestBuildOp2(unittest.TestCase):
 class TestBuildOp3(unittest.TestCase):
     def test_insertion_point(self):
         newir_program = get_ir_program()
-        with paddle.new_ir_utils.IrGuard():
+        with paddle.pir_utils.IrGuard():
             add_op = newir_program.global_block().ops[-2]
             tanh_op = newir_program.global_block().ops[-1]
             add_out = add_op.result(0)
             tanh_operand = tanh_op.operands()[0]
 
-            with paddle.ir.core.program_guard(newir_program):
-                ir.set_insertion_point(tanh_op)
+            with paddle.pir.core.program_guard(newir_program):
+                pir.set_insertion_point(tanh_op)
                 full_out = paddle.tensor.fill_constant(
                     shape=[4, 4], dtype="float", value=2
                 )
@@ -106,7 +106,7 @@ class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
         ):
             out = paddle.concat([tanh_out, tanh_out], 0)
@@ -125,7 +125,7 @@ class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
         newir_program = get_ir_program()
         tanh_out = newir_program.global_block().ops[-1].result(0)
-        with paddle.new_ir_utils.IrGuard(), paddle.ir.core.program_guard(
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
         ):
             out = paddle.split(tanh_out, [2, 2], 0)

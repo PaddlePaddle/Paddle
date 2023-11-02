@@ -154,7 +154,7 @@ static void ConstructFwdAndBwdMap(
                 << "'s No." << j << " attrs: " << attrs_names[j]
                 << " related to No." << i
                 << " grad_attrs: " << grad_attrs_names[i];
-        in_out_map[op_type][1][4][j] = i;
+        in_out_map[op_type][1][4][j] = i;  // NOLINT
       }
     }
   }
@@ -190,12 +190,12 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto it : fwd_outs) {  // NOLINT
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto it : fwd_ins) {  // NOLINT
     // NOTE(HongyuJia): returned tensor maybe un-defined tensor when inputs
     // optional<Tensor>
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
@@ -406,12 +406,12 @@ RunCustomOpDoubleGradNode::operator()(
     }
   }
 
-  for (auto it : fwd_outs) {
+  for (auto it : fwd_outs) {  // NOLINT
     VLOG(7) << "Insert fwd_outs to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }
 
-  for (auto it : fwd_ins) {
+  for (auto it : fwd_ins) {  // NOLINT
     VLOG(7) << "Insert fwd_ins to grad_inputs: " << it.first;
     tmp_ins[it.first] = RunCustomOpDoubleGradNode::Recover(&(it.second));
   }

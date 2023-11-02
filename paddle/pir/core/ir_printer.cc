@@ -87,7 +87,15 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
   }
 
   if (auto s = attr.dyn_cast<StrAttribute>()) {
-    os << "(String)" << s.AsString();
+    std::string s_val = s.AsString();
+    std::string replacement = "\\\"";
+    std::string search = "\"";
+    size_t found = s_val.find(search);
+    while (found != std::string::npos) {
+      s_val.replace(found, search.length(), replacement);
+      found = s_val.find(search, found + replacement.length());
+    }
+    os << "\"" << s_val << "\"";
   } else if (auto b = attr.dyn_cast<BoolAttribute>()) {
     if (b.data()) {
       os << "true";
@@ -102,12 +110,13 @@ void BasicIrPrinter::PrintAttribute(Attribute attr) {
     os << "(Int32)" << i.data();
   } else if (auto i = attr.dyn_cast<Int64Attribute>()) {
     os << "(Int64)" << i.data();
+  } else if (auto i = attr.dyn_cast<IndexAttribute>()) {
+    os << "(Index)" << i.data();
   } else if (auto p = attr.dyn_cast<PointerAttribute>()) {
     os << "(Pointer)" << p.data();
   } else if (auto arr = attr.dyn_cast<ArrayAttribute>()) {
     const auto& vec = arr.AsVector();
-    os << "(Array)"
-       << "[";
+    os << "[";
     PrintInterleave(
         vec.begin(),
         vec.end(),
@@ -197,11 +206,17 @@ void IrPrinter::PrintValue(Value v) {
     os << ret->second;
     return;
   }
-
-  std::string new_name = "%" + std::to_string(cur_var_number_);
-  cur_var_number_++;
-  aliases_[key] = new_name;
-  os << new_name;
+  if (v.isa<OpResult>()) {
+    std::string new_name = "%" + std::to_string(cur_result_number_);
+    cur_result_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  } else {
+    std::string new_name = "%arg" + std::to_string(cur_block_argument_number_);
+    cur_block_argument_number_++;
+    aliases_[key] = new_name;
+    os << new_name;
+  }
 }
 
 void IrPrinter::PrintOpResult(Operation* op) {
@@ -307,6 +322,11 @@ void Program::Print(std::ostream& os) const {
 void Operation::Print(std::ostream& os) {
   IrPrinter printer(os);
   printer.PrintOperation(this);
+}
+
+void Value::Print(std::ostream& os) const {
+  IrPrinter printer(os);
+  printer.PrintValue(*this);
 }
 
 void Type::Print(std::ostream& os) const {

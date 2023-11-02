@@ -23,36 +23,46 @@ import paddle.distributed as dist
 class TestMatmulApiForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
-        self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
+        self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+
+    def check_tensor_eq(self, a, b):
+        np1 = a.numpy()
+        np2 = b.numpy()
+        np.testing.assert_allclose(np1, np2, rtol=1e-04, verbose=True)
 
     def test_body(
         self, x_shape, y_shape, x_specs, y_specs, trans_x=False, trans_y=False
     ):
-        x = paddle.randn(x_shape, self._dtype)
-        y = paddle.randn(y_shape, self._dtype)
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        x_np = np.random.random(size=x_shape).astype(self._dtype)
+        y_np = np.random.random(size=y_shape).astype(self._dtype)
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
         x.stop_gradient = False
         y.stop_gradient = False
 
         x_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=x_specs)
         y_dist_attr = dist.DistAttr(mesh=self._mesh, sharding_specs=y_specs)
 
-        dist_x = dist.shard_tensor(x, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y, dist_attr=y_dist_attr)
+        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
+        dist_y = dist.shard_tensor(y_np, dist_attr=y_dist_attr)
         dist_x.stop_gradient = False
         dist_y.stop_gradient = False
 
+        out = paddle.matmul(x, y, transpose_x=trans_x, transpose_y=trans_y)
         dist_out = paddle.matmul(
             dist_x, dist_y, transpose_x=trans_x, transpose_y=trans_y
         )
-        # verify global shape
-        out_shape = [64, 48]
-        np.testing.assert_equal(dist_out.shape, out_shape, verbose=True)
+        self.check_tensor_eq(out, dist_out)
 
+        out.backward()
         dist_out.backward()
-        np.testing.assert_equal(dist_x.grad.shape, x_shape, verbose=True)
-        np.testing.assert_equal(dist_y.grad.shape, y_shape, verbose=True)
+        self.check_tensor_eq(x.grad, dist_x.grad)
+        self.check_tensor_eq(y.grad, dist_y.grad)
 
         return dist_out, dist_x.grad, dist_y.grad
 

@@ -1046,16 +1046,12 @@ class TestListIndex(unittest.TestCase):
                 np.testing.assert_array_equal(
                     array2,
                     setitem_pp[0],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array2, setitem_pp[0]
-                    ),
+                    err_msg=f'\n numpy:{array2},\n paddle:{setitem_pp[0]}',
                 )
                 np.testing.assert_array_equal(
                     array3,
                     setitem_pp[1],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array3, setitem_pp[1]
-                    ),
+                    err_msg=f'\n numpy:{array3},\n paddle:{setitem_pp[1]}',
                 )
             array = array[0]
             index1 = index1[0]
@@ -1122,31 +1118,23 @@ class TestListIndex(unittest.TestCase):
                 np.testing.assert_array_equal(
                     array2,
                     setitem_pp[0],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array2, setitem_pp[0]
-                    ),
+                    err_msg=f'\n numpy:{array2},\n paddle:{setitem_pp[0]}',
                 )
                 np.testing.assert_array_equal(
                     array3,
                     setitem_pp[1],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array3, setitem_pp[1]
-                    ),
+                    err_msg=f'\n numpy:{array3},\n paddle:{setitem_pp[1]}',
                 )
 
                 np.testing.assert_array_equal(
                     y_np1,
                     setitem_pp[2],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        y_np1, setitem_pp[2]
-                    ),
+                    err_msg=f'\n numpy:{y_np1},\n paddle:{setitem_pp[2]}',
                 )
                 np.testing.assert_array_equal(
                     y_np2,
                     setitem_pp[3],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        y_np2, setitem_pp[3]
-                    ),
+                    err_msg=f'\n numpy:{y_np2},\n paddle:{setitem_pp[3]}',
                 )
             array = array[0]
             index1 = index1[0]
@@ -1205,9 +1193,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 tensor1.numpy(),
                 array1,
-                err_msg='\n numpy:{},\n paddle:{}'.format(
-                    array1, tensor1.numpy()
-                ),
+                err_msg=f'\n numpy:{array1},\n paddle:{tensor1.numpy()}',
             )
             # 1 dim setitem
             array2 = array.copy()
@@ -1219,9 +1205,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 tensor2.numpy(),
                 array2,
-                err_msg='\n numpy:{},\n paddle:{}'.format(
-                    array2, tensor2.numpy()
-                ),
+                err_msg=f'\n numpy:{array2},\n paddle:{tensor2.numpy()}',
             )
 
             array = array[0]

@@ -14,6 +14,8 @@
 
 #include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
 
+#include "glog/logging.h"
+
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
@@ -25,26 +27,26 @@ namespace distributed {
 
 bool RToPReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= in_dist_attr.is_replicated();
-  flag &= out_dist_attr.is_partial();
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_partial());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                const DistTensor& in,
                                const TensorDistAttr& out_dist_attr,
                                DistTensor* out) {
+  VLOG(3) << "Call RToPReshardFunction Eval";
   const auto& out_process_mesh = out_dist_attr.process_mesh();
   int64_t local_rank = GetCurRankCoordInMesh(out_process_mesh)[0];
   IntArray shape(in.dims().Get(), in.dims().size());
@@ -54,20 +56,8 @@ void RToPReshardFunction::Eval(phi::DeviceContext* dev_ctx,
     RESHARD_FUNCTOR(dev_ctx, Full, in.dtype(), shape, 0, GetMutableTensor(out));
   } else {
     // assign the input value to output
-    if (phi::CPUContext::classof(dev_ctx)) {
-      Assign(static_cast<const CPUContext&>(*dev_ctx),
-             in.value(),
-             GetMutableTensor(out));
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    } else if (phi::GPUContext::classof(dev_ctx)) {
-      Assign(static_cast<const GPUContext&>(*dev_ctx),
-             in.value(),
-             GetMutableTensor(out));
-#endif
-    } else {
-      PADDLE_THROW(phi::errors::Unimplemented(
-          "The assign in reshard only supported on CPU and GPU for now."));
-    }
+    RESHARD_FUNCTOR_WITHOUT_DTYPE(
+        dev_ctx, Assign, in.value(), GetMutableTensor(out));
   }
   SetDistProps(out, in.dims(), out_dist_attr);
 }

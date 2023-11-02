@@ -277,6 +277,12 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
       // Set DistAttr
+      // Forward input DistTensor could be uninitialized.
+      PADDLE_ENFORCE_NE(
+          dist_tensor->dist_attr().empty(),
+          true,
+          phi::errors::InvalidArgument(
+              "The forward input DistTensor's dist attr is empty."));
       meta.SetDistAttr(dist_tensor->dist_attr());
       SetIsRunAutoParallel(true);
     } else {
@@ -602,6 +608,10 @@ std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
   }
 
   return next_nodes;
+}
+
+uintptr_t GradNodeBase::GetPtr() const {
+  return reinterpret_cast<uintptr_t>(this);
 }
 
 }  // namespace egr

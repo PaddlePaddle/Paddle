@@ -311,8 +311,9 @@ class CrossEntropyLoss(Layer):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
-            # hard labels
+            >>> # hard labels
             >>> import paddle
             >>> paddle.seed(2023)
             >>> N=100
@@ -330,9 +331,9 @@ class CrossEntropyLoss(Layer):
             5.33697682)
 
         .. code-block:: python
+            :name: code-example2
 
-            # soft labels
-            # case1: soft labels without label_smoothing
+            >>> # soft labels
             >>> import paddle
             >>> paddle.seed(2023)
             >>> axis = -1
@@ -342,6 +343,7 @@ class CrossEntropyLoss(Layer):
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
+            >>> # case1: soft labels without label_smoothing
             >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
@@ -353,7 +355,7 @@ class CrossEntropyLoss(Layer):
 
 
 
-            # case2: soft labels with label_smoothing
+            >>> # case2: soft labels with label_smoothing
             >>> import paddle
             >>> paddle.seed(2023)
             >>> axis = -1
@@ -364,14 +366,23 @@ class CrossEntropyLoss(Layer):
             >>> reduction='mean'
             >>> weight = None
             >>> logits = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
-            >>> labels /= paddle.sum(labels, axis=axis, keepdim=True)
+            >>> interger_labels = paddle.randint(low=0, high=C, shape=[N], dtype='int64')
+            >>> one_hot_labels = paddle.nn.functional.one_hot(interger_labels, C).astype('float32')
+
             >>> cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
             ...     weight=weight, reduction=reduction, label_smoothing=label_smoothing)
-            >>> dy_ret = cross_entropy_loss(logits, labels)
-            >>> print(dy_ret)
+
+            >>> # integer labels
+            >>> interger_label_dy_ret = cross_entropy_loss(logits, interger_labels)
+            >>> print(interger_label_dy_ret)
             Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            1.13879701)
+            1.10520368)
+
+            >>> # one_hot labels
+            >>> one_hot_label_dy_ret = cross_entropy_loss(logits, one_hot_labels)
+            >>> print(one_hot_label_dy_ret)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            1.10520368)
 
     """
 
@@ -606,7 +617,7 @@ class MSELoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MSELoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.reduction = reduction
 
@@ -1998,7 +2009,7 @@ class MultiMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiMarginLoss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.p = p
         self.margin = margin

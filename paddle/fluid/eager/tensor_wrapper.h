@@ -69,15 +69,16 @@ class TensorWrapper {
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta()));
       } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
-        // Only Copy Meta
+        // Copy Global dims, DistAttr and DenseTensorMeta
         phi::distributed::DistTensor* dist_tensor =
             static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
-        intermidiate_tensor_.set_impl(
+        auto no_buffer_dist_tensor =
             std::make_shared<phi::distributed::DistTensor>(
-                phi::DenseTensor(std::make_shared<phi::Allocation>(
-                                     nullptr, 0, tensor.place()),
-                                 dist_tensor->value().meta()),
-                dist_tensor->dist_attr()));
+                dist_tensor->dims(), dist_tensor->dist_attr());
+        *no_buffer_dist_tensor->unsafe_mutable_value() = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dist_tensor->value().meta());
+        intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));

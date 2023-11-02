@@ -446,9 +446,7 @@ class DataLoader:
             self.dataset_kind = _DatasetKind.ITER
             if shuffle:
                 raise ValueError(
-                    "IterableDataset not support shuffle, but got shuffle={}".format(
-                        shuffle
-                    )
+                    f"IterableDataset not support shuffle, but got shuffle={shuffle}"
                 )
             if batch_sampler is not None:
                 raise ValueError(

@@ -121,6 +121,7 @@ def start_local_trainers(
             "PADDLE_CURRENT_ENDPOINT": "%s" % t.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "FLAGS_dynamic_static_unified_comm": "0",
         }
 
         proc_env["FLAGS_allocator_strategy"] = allocator_strategy

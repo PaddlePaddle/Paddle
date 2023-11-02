@@ -37,8 +37,8 @@ constexpr size_t xmmasM384 = 24;
 constexpr size_t packedMaskSize128 = xmmasM128 * threadsPerCta128;
 constexpr size_t packedMaskSize256 = xmmasM256 * threadsPerCta256;
 constexpr size_t packedMaskSize384 = xmmasM384 * threadsPerCta384;
-char const* EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE{"1"};
-char const* EMB_LAYER_NORM_VAR_SEQLEN_NAME{
+char const* PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE{"1"};
+char const* PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_NAME{
     "PromptTuningEmbLayerNormVarlenPluginDynamic"};
 // Static class fields initialization
 nvinfer1::PluginFieldCollection
@@ -254,10 +254,10 @@ bool TrtPromptTuningEmbLayerNormVarSeqlenPluginBase::supportsFormatCombination(
   }
 }
 
-void checkConfigurationInputs(nvinfer1::DynamicPluginTensorDesc const* inputs,
-                              int32_t nbInputs,
-                              nvinfer1::DynamicPluginTensorDesc const* outputs,
-                              int32_t nbOutputs) noexcept {
+void check_tensors(nvinfer1::DynamicPluginTensorDesc const* inputs,
+                   int32_t nbInputs,
+                   nvinfer1::DynamicPluginTensorDesc const* outputs,
+                   int32_t nbOutputs) noexcept {
   // Validate input arguments
   assert(nbOutputs == 5);
   assert(inputs[0].desc.dims.nbDims == 1);
@@ -279,7 +279,7 @@ void TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace::configurePlugin(
     int32_t nbOutputs) noexcept {
   TRANSFORMER_DEBUG_MSG(
       "TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace configurePlugin");
-  checkConfigurationInputs(inputs, nbInputs, outputs, nbOutputs);
+  check_tensors(inputs, nbInputs, outputs, nbOutputs);
   assert(static_cast<size_t>(outputs[0].desc.dims.d[1]) ==
          static_cast<size_t>(mLd));
   int32_t const B = inputs[0].desc.dims.d[0] - 1;
@@ -376,12 +376,12 @@ TrtPromptTuningEmbLayerNormVarSeqlenPluginBase::getOutputDataType(
 // IPluginV2 Methods
 char const* TrtPromptTuningEmbLayerNormVarSeqlenPluginBase::getPluginType()
     const noexcept {
-  return EMB_LAYER_NORM_VAR_SEQLEN_NAME;
+  return PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_NAME;
 }
 
 char const* TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace::getPluginVersion()
     const noexcept {
-  return EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE;
+  return PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE;
 }
 
 int32_t TrtPromptTuningEmbLayerNormVarSeqlenPluginBase::getNbOutputs()
@@ -464,13 +464,13 @@ TrtPromptTuningEmbLayerNormVarSeqlenPluginBaseCreator::
 char const*
 TrtPromptTuningEmbLayerNormVarSeqlenPluginBaseCreator::getPluginName()
     const noexcept {
-  return EMB_LAYER_NORM_VAR_SEQLEN_NAME;
+  return PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_NAME;
 }
 
 char const*
 TrtPromptTuningEmbLayerNormVarSeqlenPluginHFaceCreator::getPluginVersion()
     const noexcept {
-  return EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE;
+  return PTUNING_EMB_LAYER_NORM_VAR_SEQLEN_VERSION_HFACE;
 }
 
 nvinfer1::PluginFieldCollection const*
@@ -479,7 +479,7 @@ TrtPromptTuningEmbLayerNormVarSeqlenPluginBaseCreator::
   return &mFC;
 }
 
-bool initializeFields(nvinfer1::PluginFieldCollection const* fc,
+bool InitializeFields(nvinfer1::PluginFieldCollection const* fc,
                       nvinfer1::Weights* beta,
                       nvinfer1::Weights* gamma,
                       std::vector<nvinfer1::Weights>* IdsEmb) {
@@ -522,11 +522,11 @@ bool initializeFields(nvinfer1::PluginFieldCollection const* fc,
 nvinfer1::IPluginV2*
 TrtPromptTuningEmbLayerNormVarSeqlenPluginHFaceCreator::createPlugin(
     char const* name, nvinfer1::PluginFieldCollection const* fc) noexcept {
-  TRANSFORMER_DEBUG_MSG("EmbLayerNormVarSeqlenHFace createPlugin");
+  TRANSFORMER_DEBUG_MSG("PromptTuningEmbLayerNormVarSeqlenHFace createPlugin");
   nvinfer1::Weights beta;
   nvinfer1::Weights gamma;
   std::vector<nvinfer1::Weights> IdsEmb;
-  bool output_fp16 = initializeFields(fc, &beta, &gamma, &IdsEmb);
+  bool output_fp16 = InitializeFields(fc, &beta, &gamma, &IdsEmb);
   TRANSFORMER_DEBUG_MSG("Building the Plugin...");
   TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace* p =
       new TrtPromptTuningEmbLayerNormVarSeqlenPluginHFace(

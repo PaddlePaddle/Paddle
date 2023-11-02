@@ -20,17 +20,18 @@ namespace pir {
 OpInfo OpInfoImpl::Create(Dialect *dialect,
                           TypeId op_id,
                           const char *op_name,
-                          std::vector<details::InterfaceValue> &&interface_map,
+                          std::vector<InterfaceValue> &&interface_map,
                           const std::vector<TypeId> &trait_set,
                           size_t attributes_num,
                           const char *attributes_name[],  // NOLINT
-                          VerifyPtr verify) {
+                          VerifyPtr verify_sig,
+                          VerifyPtr verify_region) {
   // (1) Malloc memory for interfaces, traits, opinfo_impl.
   size_t interfaces_num = interface_map.size();
   size_t traits_num = trait_set.size();
   VLOG(6) << "Create OpInfoImpl with: " << interfaces_num << " interfaces, "
           << traits_num << " traits, " << attributes_num << " attributes.";
-  size_t base_size = sizeof(details::InterfaceValue) * interfaces_num +
+  size_t base_size = sizeof(InterfaceValue) * interfaces_num +
                      sizeof(TypeId) * traits_num + sizeof(OpInfoImpl);
   char *base_ptr = static_cast<char *>(::operator new(base_size));
   VLOG(6) << "Malloc " << base_size << " Bytes at "
@@ -38,10 +39,10 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
   if (interfaces_num > 0) {
     std::sort(interface_map.begin(), interface_map.end());
     for (size_t index = 0; index < interfaces_num; ++index) {
-      new (base_ptr + index * sizeof(details::InterfaceValue))
-          details::InterfaceValue(std::move(interface_map[index]));
+      new (base_ptr + index * sizeof(InterfaceValue))
+          InterfaceValue(std::move(interface_map[index]));
     }
-    base_ptr += interfaces_num * sizeof(details::InterfaceValue);
+    base_ptr += interfaces_num * sizeof(InterfaceValue);
   }
   if (traits_num > 0) {
     auto p_first_trait = reinterpret_cast<TypeId *>(base_ptr);
@@ -59,7 +60,8 @@ OpInfo OpInfoImpl::Create(Dialect *dialect,
                                                     traits_num,
                                                     attributes_num,
                                                     attributes_name,
-                                                    verify));
+                                                    verify_sig,
+                                                    verify_region));
   return op_info;
 }
 void OpInfoImpl::Destroy(OpInfo info) {
@@ -87,14 +89,14 @@ bool OpInfoImpl::HasTrait(TypeId trait_id) const {
 
 bool OpInfoImpl::HasInterface(TypeId interface_id) const {
   if (num_interfaces_ > 0) {
-    const details::InterfaceValue *p_first_interface =
-        reinterpret_cast<const details::InterfaceValue *>(
+    const InterfaceValue *p_first_interface =
+        reinterpret_cast<const InterfaceValue *>(
             reinterpret_cast<const char *>(this) -
             sizeof(pir::TypeId) * num_traits_ -
-            sizeof(details::InterfaceValue) * num_interfaces_);
+            sizeof(InterfaceValue) * num_interfaces_);
     return std::binary_search(p_first_interface,
                               p_first_interface + num_interfaces_,
-                              details::InterfaceValue(interface_id));
+                              InterfaceValue(interface_id));
   }
   return false;
 }
@@ -109,10 +111,10 @@ void OpInfoImpl::Destroy() {
   // (1) free interfaces
   char *base_ptr = reinterpret_cast<char *>(this) -
                    sizeof(pir::TypeId) * num_traits_ -
-                   sizeof(details::InterfaceValue) * num_interfaces_;
+                   sizeof(InterfaceValue) * num_interfaces_;
   if (num_interfaces_ > 0) {
-    details::InterfaceValue *p_interface_val =
-        reinterpret_cast<details::InterfaceValue *>(base_ptr);
+    InterfaceValue *p_interface_val =
+        reinterpret_cast<InterfaceValue *>(base_ptr);
     for (size_t i = 0; i < num_interfaces_; i++) {
       (p_interface_val + i)->~InterfaceValue();
     }

@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor_ref_array.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/utils/test_macros.h"
 #ifdef PADDLE_WITH_CUDA
 #include <cudnn.h>
 #if defined(PADDLE_WITH_NCCL)
@@ -95,7 +96,7 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
-const char *ToTypeName(int var_id);
+TEST_API const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
 int TypeIndexToVarTraitId(const std::type_index &type);
 

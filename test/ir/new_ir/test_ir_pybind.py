@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle import ir
+from paddle import pir
 
 paddle.enable_static()
 
@@ -32,7 +32,7 @@ def get_ir_program():
         y_s = paddle.matmul(x_s, x_s)
         z_s = paddle.add(y_s, y_s)
         k_s = paddle.tanh(z_s)
-    newir_program = ir.translate_to_new_ir(main_program.desc)
+    newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
 
@@ -52,7 +52,7 @@ class TestPybind(unittest.TestCase):
         ops = block.ops
         self.assertEqual(
             len(ops), 4
-        )  # ir program add "builtin.get_parameter" by default, so size is 4
+        )  # pir program add "builtin.get_parameter" by default, so size is 4
         block.remove_op(ops[3])
         self.assertEqual(len(block.ops), 3)
 
@@ -103,6 +103,11 @@ class TestPybind(unittest.TestCase):
         )
         # test value == opresult
         self.assertEqual(add_op.operands_source()[0], matmul_op.results()[0])
+        # test opresult print
+        self.assertTrue(
+            'dtype=pd_op.tensor<4x4xf32>'
+            in add_op.operands_source()[0].__str__()
+        )
         # test opresult == value
         self.assertEqual(
             add_op.operands()[0].source(), add_op.operands_source()[0]
@@ -110,10 +115,13 @@ class TestPybind(unittest.TestCase):
         # test opresult == opresult
         self.assertEqual(add_op.operands()[0].source(), matmul_op.results()[0])
 
+        # test opresult print
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(), "pd_op.add"
         )
-
+        self.assertTrue(
+            'pd_op.tensor<4x4xf32>' in tanh_op.operands()[0].source().__str__()
+        )
         add_op.replace_all_uses_with(matmul_op.results())
         self.assertEqual(
             tanh_op.operands()[0].source().get_defining_op().name(),
@@ -121,6 +129,11 @@ class TestPybind(unittest.TestCase):
         )
 
         self.assertEqual(add_op.result(0).use_empty(), True)
+
+        self.assertEqual(add_op.result(0).initialized(), True)
+
+        uninit_op_result = paddle.pir.OpResult()
+        self.assertEqual(uninit_op_result.initialized(), False)
 
     def test_type(self):
         newir_program = get_ir_program()
@@ -151,7 +164,7 @@ class TestPybind(unittest.TestCase):
                 shape=[4, 4], dtype="float32", value=2
             )
 
-        newir_program = ir.translate_to_new_ir(main_program.desc)
+        newir_program = pir.translate_to_new_ir(main_program.desc)
         print(newir_program)
         conv_attr = newir_program.global_block().ops[3].attrs()
         full_attr = newir_program.global_block().ops[8].attrs()

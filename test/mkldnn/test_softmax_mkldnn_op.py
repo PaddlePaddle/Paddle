@@ -27,7 +27,10 @@ from test_softmax_op import (
     TestSoftmaxOp_ZeroDim1,
 )
 
+import paddle
 from paddle.base import core
+
+paddle.enable_static()
 
 
 def stable_softmax(x):

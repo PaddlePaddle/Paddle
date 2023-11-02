@@ -19,11 +19,10 @@
 namespace test {
 class TestDialect : public pir::Dialect {
  public:
-  explicit TestDialect(pir::IrContext *context)
-      : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
-    initialize();
-  }
+  explicit TestDialect(pir::IrContext *context);
   static const char *name() { return "test"; }
+  void PrintOperation(pir::Operation *op,
+                      pir::IrPrinter &printer) const override;
 
  private:
   void initialize();

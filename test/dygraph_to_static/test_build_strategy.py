@@ -15,14 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test, dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 from test_resnet import ResNetHelper
 
 import paddle
 
 
-@dy2static_unittest
-class TestResnetWithPass(unittest.TestCase):
+class TestResnetWithPass(Dy2StTestBase):
     def setUp(self):
         self.build_strategy = paddle.static.BuildStrategy()
         self.build_strategy.fuse_elewise_add_act_ops = True
@@ -53,20 +52,16 @@ class TestResnetWithPass(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
 
-    @ast_only_test
+    @test_ast_only
     def test_resnet(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
@@ -74,13 +69,11 @@ class TestResnetWithPass(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
 
-    @ast_only_test
+    @test_ast_only
     def test_in_static_mode_mkldnn(self):
         paddle.base.set_flags({'FLAGS_use_mkldnn': True})
         try:
@@ -90,7 +83,7 @@ class TestResnetWithPass(unittest.TestCase):
             paddle.base.set_flags({'FLAGS_use_mkldnn': False})
 
 
-class TestError(unittest.TestCase):
+class TestError(Dy2StTestBase):
     def test_type_error(self):
         def foo(x):
             out = x + 1

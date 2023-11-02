@@ -286,6 +286,8 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
           comm->comm(),
           stream));
     }
+
+    // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
 
     // step 5, obtain sum_exp_logits

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import functools
+import inspect
 
 from paddle.base.framework import Variable
 from paddle.common_ops_import import LayerHelper
@@ -73,9 +74,19 @@ class StaticPyLayer:
         )
 
     # NOTE: only support position args and Variables Now
-    def apply(self, *args):
+    def apply(self, *args, **kwargs):
+        # rearrange `position-args + keyword-args` into `position-args`
+        dyfunc_sig = inspect.signature(self.dyfunc_self.forward)
+        bound_args = dyfunc_sig.bind(self.dyfunc_self, *args, **kwargs)
+        bound_args.apply_defaults()
+        input_args = [
+            item
+            for i, item in enumerate(bound_args.arguments.values())
+            if i > 0
+        ]  # index 0 indicate `dyfunc_self` which shouldn't be put into `input_args`
+
         return static_pylayer(
             forward_fn=self.forward_fn_with_ctx,
-            inputs=list(args),
+            inputs=input_args,
             backward_fn=self.backward_fn_with_ctx,
         )
