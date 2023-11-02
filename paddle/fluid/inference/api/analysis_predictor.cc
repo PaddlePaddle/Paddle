@@ -588,7 +588,7 @@ bool AnalysisPredictor::PrepareScope(
 #ifdef PADDLE_WITH_XPU
   // Set "XPU_PADDLE_L3_SIZE" to "0" to avoid malloc l3 cache when xpu_context
   // init.
-  setenv("XPU_PADDLE_L3_SIZE", "0", 0);
+  setenv("XPU_PADDLE_L3_SIZE", "0", 1);
 #endif
   if (parent_scope) {
     PADDLE_ENFORCE_NOT_NULL(

@@ -109,7 +109,8 @@ void InferXPUContext::SetL3Info(size_t l3_size,
         xpu_free(l3_ptr_);
       }
       if (l3_size > 0) {
-        xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
+        int ret = xpu_malloc(&l3_ptr_, l3_size, XPU_MEM_L3);
+        VLOG(3) << "xpu malloc l3 ret: " << ret;
         if (l3_ptr_ != nullptr) {
           VLOG(3) << "remalloc l3(" << l3_size << ") success.";
           l3_size_ = l3_size;
