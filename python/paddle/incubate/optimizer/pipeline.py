@@ -575,6 +575,8 @@ class PipelineOptimizer:
                 or op.type == 'fill_constant'
                 or op.type == 'elementwise_max'
                 or op.type == 'elementwise_div'
+                or op.type == 'stack'
+                or op.type == 'reduce_sum'
             ):
                 device = f"{self._device}:all"
             op._set_attr(self._op_device_key, device)
