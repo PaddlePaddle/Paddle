@@ -3809,24 +3809,6 @@ def reshape(x, shape, name=None):
         return attrs_shape
 
     if in_dynamic_mode():
-        check_variable_and_dtype(
-            x,
-            'x',
-            [
-                'float16',
-                'float32',
-                'float64',
-                'int16',
-                'int32',
-                'int64',
-                'bool',
-                'uint16',
-            ],
-            'reshape',
-        )
-        check_type(
-            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'reshape'
-        )
         if isinstance(shape, (list, tuple)):
             new_shape = []
             for ele in shape:
