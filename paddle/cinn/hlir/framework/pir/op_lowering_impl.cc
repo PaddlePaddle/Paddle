@@ -275,15 +275,12 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
     ir::IRSchedule* ir_sch,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
   // 1.Prepare function args
-  // group->input_names.clear();
+  group->input_names.clear();
   std::vector<ir::Argument> group_func_args;
   std::unordered_set<std::string> arg_name_set;
-  // for (auto& arg_tensor : *group_func_arg_tensors) {
-  for (auto& val : group->input_values) {
-    assert(tensor_map.count(val));
-    auto arg_tensor = tensor_map.at(val);
+  for (auto& arg_tensor : *group_func_arg_tensors) {
     // input data name.
-    // group->input_names.push_back(arg_tensor->name);
+    group->input_names.push_back(arg_tensor->name);
     // input args
     group_func_args.emplace_back(arg_tensor->buffer, ir::Argument::IO::kInput);
     arg_name_set.insert(arg_tensor->buffer->name);
