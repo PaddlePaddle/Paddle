@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/custom_operator/custom_operator_run_kernel_impl.h"
+#include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
