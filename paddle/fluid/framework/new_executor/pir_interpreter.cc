@@ -1104,7 +1104,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     if (need_fetch) {
       for (auto& var_name : fetch_var_names_) {
         auto* var = inner_scope->FindVar(var_name);
-        VLOG(0) << "fetch " << var_name << "[" << var << "]";
+        VLOG(4) << "fetch " << var_name << "[" << var << "]";
         fetch_res.push_back(var->Get<phi::DenseTensor>());
       }
     }
@@ -1195,7 +1195,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     if (need_fetch) {
       for (auto& var_name : fetch_var_names_) {
         auto* var = inner_scope->FindVar(var_name);
-        VLOG(0) << "fetch " << var_name << "[" << var << "]";
+        VLOG(4) << "fetch " << var_name << "[" << var << "]";
         fetch_res.push_back(var->Get<phi::DenseTensor>());
       }
     }

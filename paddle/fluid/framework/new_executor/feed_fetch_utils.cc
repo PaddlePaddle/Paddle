@@ -71,7 +71,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
   }
 
   for (size_t i = 0; i < feed_tensors.size(); ++i) {
-    auto feed_tensor = feed_tensors[i];
+    auto& feed_tensor = feed_tensors[i];
     int64_t numel_size = feed_tensor.dims()[0];
     PADDLE_ENFORCE_EQ(numel_size % micro_batch_num,
                       0,
@@ -150,7 +150,7 @@ void MergeFetchTensors(const FetchUnmergedList& fetch_list,
 }
 
 void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
-                  platform::Place dst_place,
+                  const platform::Place dst_place,
                   phi::DenseTensor* target) {
   PADDLE_ENFORCE_EQ(
       tensors.empty(),

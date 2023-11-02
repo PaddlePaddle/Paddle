@@ -54,7 +54,7 @@ class Job final {
     skip_gc_vars_ = skip_gc_vars;
   }
 
-  void SetFetchVarName(std::string fetch_var_name) {
+  void SetFetchVarName(const std::string& fetch_var_name) {
     fetch_var_names_.push_back(fetch_var_name);
   }
 
