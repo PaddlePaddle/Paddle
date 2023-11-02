@@ -718,6 +718,8 @@ class TestScatterWithLargeDataAPI(unittest.TestCase):
             gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
             return gpu_value
 
+        paddle.disable_static()
+
     def result_equal_or_not(self):
         dygraph_result = self.test_dygraph()
         static_result = self.test_static_graph()
