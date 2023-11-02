@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #include "paddle/pir/pass/pass.h"

@@ -63,7 +63,6 @@ class AutoInline : public AutoGenRule {
   std::vector<SearchState> ApplyOnBlock(SearchState state,
                                         const std::string& block_name) override;
 
- private:
   void Apply(ir::IRSchedule* ir_schedule, ir::Expr& block_expr);  // NOLINT
 
  private:
