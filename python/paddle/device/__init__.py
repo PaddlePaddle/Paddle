@@ -72,12 +72,14 @@ def is_compiled_with_custom_device(device_type):
 
             >>> import paddle
             >>> support_npu = paddle.device.is_compiled_with_custom_device("npu")
+
     """
     return core.is_compiled_with_custom_device(device_type)
 
 
 def is_compiled_with_ipu():
     """
+
     Whether paddle was built with WITH_IPU=ON to support Graphcore IPU.
 
     Returns (bool): `True` if IPU is supported, otherwise `False`.
@@ -87,12 +89,14 @@ def is_compiled_with_ipu():
 
             >>> import paddle
             >>> support_ipu = paddle.is_compiled_with_ipu()
+
     """
     return core.is_compiled_with_ipu()
 
 
 def IPUPlace():
     """
+
     Return a Graphcore IPU Place
 
     Examples:
@@ -103,12 +107,14 @@ def IPUPlace():
             >>> import paddle
             >>> paddle.device.set_device('ipu')
             >>> place = paddle.device.IPUPlace()
+
     """
     return core.IPUPlace()
 
 
 def is_compiled_with_xpu():
     """
+
     Whether paddle was built with WITH_XPU=ON to support Baidu Kunlun
 
     Returns (bool): whether paddle was built with WITH_XPU=ON
@@ -118,12 +124,14 @@ def is_compiled_with_xpu():
 
             >>> import paddle
             >>> support_xpu = paddle.device.is_compiled_with_xpu()
+
     """
     return core.is_compiled_with_xpu()
 
 
 def XPUPlace(dev_id):
     """
+
     Return a Baidu Kunlun Place
 
     Args:
@@ -137,12 +145,14 @@ def XPUPlace(dev_id):
             >>> import paddle
             >>> paddle.device.set_device('xpu')
             >>> place = paddle.device.XPUPlace(0)
+
     """
     return core.XPUPlace(dev_id)
 
 
 def get_cudnn_version():
     """
+
     This function return the version of cudnn. the retuen value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
 
@@ -251,11 +261,12 @@ def _convert_to_place(device):
 
 def set_device(device):
     """
+
     Paddle supports running calculations on various types of devices, including CPU, GPU, XPU, NPU and IPU.
     They are represented by string identifiers. This function can specify the global device
     which the OP will run.
 
-    Parameters:
+    Args:
         device(str): This parameter determines the specific running device.
             It can be ``cpu``, ``gpu``, ``xpu``, ``npu``, ``gpu:x``, ``xpu:x``, ``npu:x`` and ``ipu``,
             where ``x`` is the index of the GPUs, XPUs or NPUs.
@@ -273,6 +284,7 @@ def set_device(device):
             >>> x1 = paddle.ones(name='x1', shape=[1, 2], dtype='int32')
             >>> x2 = paddle.zeros(name='x2', shape=[1, 2], dtype='int32')
             >>> data = paddle.stack([x1,x2], axis=1)
+
     """
     place = _convert_to_place(device)
     framework._set_expected_place(place)
@@ -281,6 +293,7 @@ def set_device(device):
 
 def get_device():
     """
+
     This function can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
     set, it will return a string which is 'gpu:x' when cuda is avaliable or it
@@ -320,6 +333,7 @@ def get_device():
 
 def get_all_device_type():
     """
+
     Get all available device types.
 
     Returns:
@@ -342,12 +356,14 @@ def get_all_device_type():
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
             >>> # Output: ['cpu', 'gpu', 'CustomCPU', 'CustomGPU']
+
     """
     return core.get_all_device_type()
 
 
 def get_all_custom_device_type():
     """
+
     Get all available custom device types.
 
     Returns:
@@ -364,12 +380,14 @@ def get_all_custom_device_type():
 
             >>> # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
             >>> # Output: ['CustomCPU', 'CustomGPU']
+
     """
     return core.get_all_custom_device_type()
 
 
 def get_available_device():
     """
+
     Get all available devices.
 
     Returns:
@@ -392,12 +410,14 @@ def get_available_device():
 
             >>> # Case 4: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
             >>> # Output: ['cpu', 'gpu:0', 'gpu:1', 'CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+
     """
     return core.get_available_device()
 
 
 def get_available_custom_device():
     """
+
     Get all available custom devices.
 
     Returns:
@@ -414,12 +434,14 @@ def get_available_custom_device():
 
             >>> # Case 2: paddlepaddle-gpu package installed, and custom deivce 'CustomCPU' and 'CustomGPU' is registerd.
             >>> # Output: ['CustomCPU', 'CustomGPU:0', 'CustomGPU:1']
+
     """
     return core.get_available_custom_device()
 
 
 class Event:
     '''
+
     A device event wrapper around StreamBase.
 
     Args:
@@ -429,8 +451,10 @@ class Event:
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
         interprocess (bool): if True, the event can be shared between processes, default is False
+
     Returns:
         Event: The event.
+
     Examples:
         .. code-block:: python
 
@@ -442,6 +466,7 @@ class Event:
             >>> e2 = paddle.device.Event('custom_cpu')
             >>> e3 = paddle.device.Event('custom_cpu:0')
             >>> e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+
     '''
 
     def __init__(
@@ -481,12 +506,16 @@ class Event:
 
     def record(self, stream=None):
         '''
+
         Records the event in a given stream.
-        Parameters:
+
+        Args:
             stream(Stream, optional): The given stream. By default, stream is None,
             event will be recorded in current_stream.
+
         Returns:
             None.
+
         Examples:
             .. code-block:: python
 
@@ -499,6 +528,7 @@ class Event:
 
                 >>> s = paddle.device.Stream()
                 >>> e.record(s)
+
         '''
         if stream is None:
             stream = current_stream(self.device)
@@ -507,9 +537,12 @@ class Event:
 
     def query(self):
         '''
+
         Checks if all work currently captured by event has completed.
+
         Returns:
             bool: Whether all work currently captured by event has completed.
+
         Examples:
             .. code-block:: python
 
@@ -520,15 +553,19 @@ class Event:
                 >>> e = paddle.device.Event()
                 >>> e.record()
                 >>> e.query()
+
         '''
         return self.event_base.query()
 
     def elapsed_time(self, end_event):
         '''
+
         Returns the time elapsed in milliseconds after the event was
         recorded and before the end_event was recorded.
+
         Returns:
             int: The time.
+
         Examples:
             .. code-block:: python
 
@@ -542,16 +579,20 @@ class Event:
                 >>> e2 = paddle.device.Event()
                 >>> e2.record()
                 >>> e1.elapsed_time(e2)
+
         '''
         return 0
 
     def synchronize(self):
         '''
+
         Waits for the event to complete.
         Waits until the completion of all work currently captured in this event.
         This prevents the CPU thread from proceeding until the event completes.
+
         Returns:
             None.
+
         Examples:
             .. code-block:: python
 
@@ -562,6 +603,7 @@ class Event:
                 >>> e = paddle.device.Event()
                 >>> e.record()
                 >>> e.synchronize()
+
         '''
         self.event_base.synchronize()
 
@@ -747,9 +789,12 @@ class Stream:
 
     def synchronize(self):
         '''
+
         Wait for all the kernels in this stream to complete.
+
         Returns:
             None.
+
         Examples:
             .. code-block:: python
 
@@ -759,6 +804,7 @@ class Stream:
                 >>> paddle.set_device('custom_cpu')
                 >>> s = paddle.device.Stream()
                 >>> s.synchronize()
+
         '''
         self.stream_base.synchronize()
 
@@ -785,13 +831,16 @@ class Stream:
 
 def current_stream(device=None):
     '''
+
     Return the current stream by the device.
-    Parameters:
+    Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
             where ``x`` is the index of the GPUs, CustomDevicecs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+
     Returns:
         Stream: The stream to the device.
+
     Examples:
         .. code-block:: python
 
@@ -803,6 +852,7 @@ def current_stream(device=None):
             >>> s2 = paddle.device.current_stream("custom_cpu:0")
             >>> place = paddle.CustomPlace('custom_cpu', 0)
             >>> s3 = paddle.device.current_stream(place)
+
     '''
     if device is None:
         place = paddle.framework._current_expected_place()
@@ -831,11 +881,14 @@ def current_stream(device=None):
 
 def set_stream(stream):
     '''
+
     Set the current stream.
-    Parameters:
+    Args:
         stream(Stream): The selected stream.
+
     Returns:
         Stream: The previous stream.
+
     Examples:
         .. code-block:: python
 
@@ -845,6 +898,7 @@ def set_stream(stream):
             >>> paddle.set_device('custom_cpu')
             >>> s = paddle.device.Stream()
             >>> paddle.device.set_stream(s)
+
     '''
 
     prev_stream = current_stream(stream.stream_base.place)
@@ -871,13 +925,17 @@ def set_stream(stream):
 
 class stream_guard:
     '''
+
     Notes:
         This API only supports dynamic graph mode currently.
     A context manager that specifies the current stream context by the given stream.
-    Parameters:
+
+    Args:
         stream(Stream, optional): the selected stream. If stream is None, just yield.
+
     Returns:
         None.
+
     Examples:
         .. code-block:: python
 
@@ -892,6 +950,7 @@ class stream_guard:
             >>> with paddle.device.stream_guard(s):
             ...     s.wait_stream(paddle.device.default_stream())
             ...     data4 = data1 + data3
+
     '''
 
     def __init__(self, stream=None):
@@ -926,13 +985,15 @@ class stream_guard:
 
 def synchronize(device=None):
     """
+
     Wait for the compute on the given device to finish.
-    Parameters:
+
+    Args:
         device(str|paddle.CUDAPlace(n)|paddle.XPUPlace(n)|paddle.CustomPlace(n)): The device which want to wait for.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``xpu``, ``xpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.XPUPlace(n) or paddle.CustomPlace(n).
-    Examples:
 
+    Examples:
         .. code-block:: python
 
             >>> # doctest: +REQUIRES(env:CUSTOM_DEVICE)
@@ -943,6 +1004,7 @@ def synchronize(device=None):
             >>> paddle.device.synchronize("custom_cpu:0")
             >>> place = paddle.CustomPlace('custom_cpu', 0)
             >>> paddle.device.synchronize(place)
+            
     """
 
     if device is None:
