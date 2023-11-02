@@ -48,14 +48,14 @@ MAIN_DIST_BRANCH_TEMPLATE = """
     // 1. InferSpmd (Infer DistAttr of Inputs&Outputs){}
     // 2. Create API Output & Prepare Dist and Dense Output{}
     // 3. Infer DistTensor's Global Shape{}\n
-    if (rank_is_in_current_mesh){{
+    if (rank_is_in_current_mesh) {{
       // 4. Select Kernel{}
       // 5. Reshard Input{}\n
       // 6. PrepareData (DataTransform & Prepare Dense Input){}
       // 7. Infer Local DenseTensor Meta{}
       // 8. DenseTensor Kernel Call{}
-      // 9. Reshard Partial Output to Replicated (Temporary){}\n
     }}\n
+    // 9. Reshard Partial Output to Replicated (Temporary){}\n
     // 10. Set Output Dist Attr For Default Impl{}\n
     // 11. Return
     {}
@@ -233,7 +233,7 @@ KERNEL_SELECTION_TEMPLATE = """
           "{}", {{kernel_backend, kernel_layout, kernel_data_type}});
       const auto& kernel = kernel_result.kernel;
       VLOG(6) << "{} kernel: " << kernel;
-      auto* dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
+      dev_ctx = GetDeviceContextByBackend(kernel_result.has_fallback_cpu ? Backend::CPU : kernel_backend);
 """
 
 # 5. Reshard Input
@@ -360,9 +360,11 @@ SUFFIX_VECTOR_TENSOR_NAME = "_vec"
 
 # 9. Reshard Partial Output to Replicated
 RESHARD_P2R_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
+    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out);
+    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out);"""
 RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE = """
-      ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{});"""
+    dev_ctx = phi::distributed::GetDistTensorDeviceContext(dist_out_{idx});
+    ReshardOutputPartialAxisToReplicated(dev_ctx, dist_out_{idx});"""
 UNSUPPORTED_RESHARD_OUTPUT_COMMENT_TEMPLATE = """
       // API `{}` does not need to support ReshardOutput now."""
 
@@ -813,6 +815,7 @@ class DistForwardAPI(ForwardAPI):
         output_num = len(self.outputs['types'])
         return_type = self.get_return_type_with_intermediate(self.inplace_flag)
         output_creation_code = ""
+        output_creation_code += "\n    phi::DeviceContext* dev_ctx = nullptr;"
         if output_num == 1:
             # api output generate
             if self.need_to_generate_code_for_inplace_impl(0):
@@ -1399,7 +1402,9 @@ class DistForwardAPI(ForwardAPI):
                 for i, out_type in enumerate(self.outputs['types']):
                     if out_type == 'Tensor':
                         reshard_p2r_code += (
-                            RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE.format(i)
+                            RESHARD_P2R_MULTI_SINGLE_OUTPUT_TEMPLATE.format(
+                                idx=i
+                            )
                         )
                     else:
                         self.vector_output_size_assertion_check()
