@@ -73,7 +73,7 @@ add_custom_command(
           ${op_compat_yaml_file}
           ${op_yaml_file3}
           ${op_yaml_file4}
-          pd_op_dialect_op
+          dialect
   VERBATIM)
 
 if(WITH_CINN AND NOT CINN_ONLY)
@@ -88,7 +88,7 @@ if(WITH_CINN AND NOT CINN_ONLY)
             ${cinn_op_creator_file}
     COMMENT "copy_if_different ${cinn_op_creator_file}"
     DEPENDS ${op_creator_gen_file} ${op_compat_yaml_file}
-            ${cinn_op_yaml_source_file} pd_op_dialect_op cinn_op_dialect
+            ${cinn_op_yaml_source_file} dialect cinn_op_dialect
     VERBATIM)
   set(CINN_SOURCE_FILE ${cinn_op_creator_file})
 
@@ -99,4 +99,4 @@ endif()
 cc_library(
   drr
   SRCS ${DRR_SRCS} ${op_creator_file} ${CINN_SOURCE_FILE}
-  DEPS pd_op_dialect ${CINN_DEPS} pir)
+  DEPS dialect ${CINN_DEPS} pir)

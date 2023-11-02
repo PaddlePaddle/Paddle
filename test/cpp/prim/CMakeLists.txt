@@ -35,7 +35,7 @@ if(NOT WIN32)
   cc_test(
     test_vjp_new_ir
     SRCS test_vjp.cc
-    DEPS pir_adaptor pd_op_dialect pir)
+    DEPS pir_adaptor dialect pir)
 endif()
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

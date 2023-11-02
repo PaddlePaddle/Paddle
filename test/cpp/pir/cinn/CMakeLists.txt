@@ -15,7 +15,7 @@ if(WITH_TESTING AND WITH_CINN)
     drr
     gtest
     pd_to_cinn_pass
-    pd_op_dialect
+    dialect
     cinn_op_dialect
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
@@ -28,7 +28,7 @@ if(WITH_TESTING AND WITH_CINN)
     drr
     gtest
     pd_to_cinn_pass
-    pd_op_dialect
+    dialect
     cinn_op_dialect
     add_broadcast_to_elementwise_pass
     pir)
@@ -40,7 +40,7 @@ if(WITH_TESTING AND WITH_CINN)
     ir_op_fusion_test.cc
     DEPS
     op_with_group_merge_pass
-    pd_op_dialect
+    dialect
     cinn_op_dialect
     pir
     gtest

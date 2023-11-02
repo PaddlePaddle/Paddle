@@ -4,7 +4,7 @@ cc_test_old(
   if_op_test.cc
   DEPS
   pir
-  pd_op_dialect
+  dialect
   gtest)
 
 cc_test_old(
@@ -13,5 +13,5 @@ cc_test_old(
   while_op_test.cc
   DEPS
   pir
-  pd_op_dialect
+  dialect
   gtest)
