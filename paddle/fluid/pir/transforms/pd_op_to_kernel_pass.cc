@@ -520,10 +520,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
