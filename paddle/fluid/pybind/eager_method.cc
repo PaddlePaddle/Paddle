@@ -1482,8 +1482,6 @@ static PyObject* tensor__getitem_dygraph(TensorObject* self,
                                                         &trans_back_dim,
                                                         &pos_of_new_dim,
                                                         &rank_of_new_dim);
-  VLOG(4) << "pos_of_new_dim: " << pos_of_new_dim
-          << " rank_of_new_dim: " << rank_of_new_dim;
 
   if (transed_index.size() == 1 &&
       transed_index[0].dtype() == phi::DataType::BOOL) {

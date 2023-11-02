@@ -752,8 +752,19 @@ def monkey_patch_tensor():
 
         return False
 
+    def pre_deal_index(item):
+        # since in pybind there is no effiency way to transfer Py_Tuple/Py_List/Py_Range to Tensor
+        # we call this function in python level.
+        item = list(item) if isinstance(item, tuple) else [item]
+        for i, slice_item in enumerate(item):
+            if isinstance(slice_item, (list, np.ndarray, tuple)):
+                item[i] = paddle.to_tensor(slice_item)
+            elif isinstance(slice_item, range):
+                item[i] = paddle.to_tensor(list(item))
+        return tuple(item)
+
     def __getitem__(self, item):
-        return self._getitem_dygraph(item)
+        return self._getitem_dygraph(pre_deal_index(item))
 
         if contain_tensor_or_list(item):
             # 1. Call _getitem_impl_ when item contains tensor.
