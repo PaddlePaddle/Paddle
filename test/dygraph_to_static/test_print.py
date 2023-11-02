@@ -15,10 +15,7 @@
 import unittest
 
 import numpy
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -87,8 +84,7 @@ def dyfunc_print_with_kwargs(x):
     print("Tensor", x_t, end='\n\n', sep=': ')
 
 
-@dy2static_unittest
-class TestPrintBase(unittest.TestCase):
+class TestPrintBase(Dy2StTestBase):
     def setUp(self):
         self.input = numpy.ones(5).astype("int32")
         self.place = (
@@ -110,7 +106,7 @@ class TestPrintBase(unittest.TestCase):
     def get_dygraph_output(self):
         self._run(to_static=False)
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         self._run(to_static=True)
 

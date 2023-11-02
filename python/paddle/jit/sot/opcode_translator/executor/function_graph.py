@@ -26,9 +26,10 @@ from typing import Any, Callable
 
 from ...infer_meta import InferMetaCache, LayerInferMetaCache, MetaInfo
 from ...profiler import EventGuard, event_register
-from ...symbolic.statement_ir import Symbol
+from ...symbolic.statement_ir import Reference, Symbol
 from ...symbolic.symbolic_context import SymbolicTraceContext
 from ...utils import (
+    ENV_SHOW_TRACKERS,
     NameGenerator,
     OrderedSet,
     inner_error_default_handler,
@@ -37,7 +38,6 @@ from ...utils import (
     log,
     log_do,
     map_if,
-    show_trackers,
     tmp_name_guard,
 )
 from .guard import Guard, StringifyExpression, make_guard
@@ -245,11 +245,15 @@ class FunctionGraph:
         class VariableLoader:
             def __init__(self, index_for_load, pycode_gen):
                 self._index_for_load = index_for_load
-                self._pycode_gen = pycode_gen
+                self._pycode_gen: PyCodeGen = pycode_gen
 
-            def load(self, var):
+            def load(self, var, allow_push_null=True):
                 if isinstance(var, NullVariable):
-                    var.reconstruct(self._pycode_gen)
+                    if allow_push_null:
+                        var.reconstruct(self._pycode_gen)
+                    else:
+                        # Avoid passing NULL as a parameter to the resume function
+                        self._pycode_gen.gen_load_null_variable()
                     return
                 self._pycode_gen.gen_load_fast(self._index_for_load[var.id])
 
@@ -337,7 +341,7 @@ class FunctionGraph:
         self.restore_side_effects(self.side_effects.proxy_variables)
         self.pycode_gen.gen_enable_eval_frame()
 
-        tracker_output_path = show_trackers()
+        tracker_output_path = ENV_SHOW_TRACKERS.get()
         if tracker_output_path:
             from .tracker_viewer import view_tracker
 
@@ -422,6 +426,7 @@ class FunctionGraph:
     def call_layer(
         self,
         layer: PaddleLayerVariable,
+        weak_ref: bool,
         *args: VariableBase,
         **kwargs: VariableBase,
     ):
@@ -438,7 +443,7 @@ class FunctionGraph:
 
         def compute_fn(layer, inputs, outputs, stacks):
             self.sir_ctx.call_LAYER(
-                layer.value,
+                Reference(layer.value, weak_ref),
                 inputs=inputs,
                 outputs=outputs,
                 stacks=stacks,

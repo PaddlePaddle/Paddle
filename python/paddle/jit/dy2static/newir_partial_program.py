@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -27,7 +26,7 @@ from paddle.base import core, framework, program_guard
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import _apply_pass
+from paddle.base.framework import _apply_pass, get_flags
 from paddle.framework import use_pir_api
 from paddle.optimizer.lr import LRScheduler
 from paddle.pir import OpResult, fake_op_result, is_fake_op_result
@@ -235,7 +234,6 @@ class PartialProgramLayer:
             self._create_scope_vec(
                 program_id=self.program_id, use_scope_cache=True
             ),
-            self._double_grads,
             self._cuda_graph_vec,
             *attrs,
         )
@@ -276,11 +274,6 @@ class PartialProgramLayer:
                 return scope
         else:
             return core.Scope()
-
-    @LazyInitialized
-    def _double_grads(self):
-        # TODO: check the affects.
-        return None
 
     # whole
     @switch_to_static_graph
@@ -653,7 +646,9 @@ class PartialProgramLayer:
             program, targets = self._hooker.before_append_backward(
                 program, targets
             )
-            self._outputs = NestSequence(targets, need_check=True)
+            self._outputs = NestSequence(
+                self._outputs.restore(targets), need_check=True
+            )
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -693,7 +688,9 @@ class PartialProgramLayer:
                 ) = self._hooker.after_append_backward(
                     program, targets, forward_end_idx
                 )
-                self._outputs = NestSequence(targets, need_check=True)
+                self._outputs = NestSequence(
+                    self._outputs.restore(targets), need_check=True
+                )
 
             # TODO: add later
             # self.prepare_gradient_aggregation(
@@ -862,7 +859,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -876,7 +875,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,

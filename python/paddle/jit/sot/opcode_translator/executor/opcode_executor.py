@@ -30,6 +30,7 @@ import opcode
 from ...profiler import EventGuard, event_register
 from ...psdb import NO_BREAKGRAPH_CODES
 from ...utils import (
+    ENV_MIN_GRAPH_SIZE,
     BreakGraphError,
     FallbackError,
     InnerError,
@@ -37,7 +38,6 @@ from ...utils import (
     SotUndefinedVar,
     log,
     log_do,
-    min_graph_size,
 )
 from ..custom_code import CustomCode
 from ..instruction_utils import (
@@ -1460,6 +1460,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
     def cleanup(self):
         self._graph.pycode_gen = None
         Dispatcher.graph = None
+        self.call_stack[:] = []
 
     @event_register("OpcodeExecutor: _prepare_virtual_env", event_level=2)
     def _prepare_virtual_env(self):
@@ -1570,8 +1571,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 if_fn, if_fn.__code__.co_name
             )
             insert_index = len(self._graph.pycode_gen._instructions) - 1
-            for stack_arg in self.stack:
-                var_loader.load(stack_arg)
+            for i, stack_arg in enumerate(self.stack):
+                var_loader.load(
+                    stack_arg, allow_push_null=i >= len(self.stack) - 1
+                )
             for name in if_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1587,8 +1590,10 @@ class OpcodeExecutor(OpcodeExecutorBase):
                 else_fn, else_fn.__code__.co_name
             )
             jump_to = self._graph.pycode_gen._instructions[-1]
-            for stack_arg in self.stack:
-                var_loader.load(stack_arg)
+            for i, stack_arg in enumerate(self.stack):
+                var_loader.load(
+                    stack_arg, allow_push_null=i >= len(self.stack) - 1
+                )
             for name in else_inputs:
                 var_loader.load(self.get_var(name))
             self._graph.pycode_gen.gen_call_function(
@@ -1658,16 +1663,9 @@ class OpcodeExecutor(OpcodeExecutorBase):
         pop_n = push_n - stack_effect
 
         for i, stack_arg in enumerate(self.stack):
-            # Avoid passing NULL as a parameter to the resume function
-            if (
-                isinstance(stack_arg, NullVariable)
-                and i < len(self.stack) - pop_n
-            ):
-                self._graph.pycode_gen.gen_load_object(
-                    NullVariable(), f'null_var_{i}', push_null=False
-                )
-            else:
-                var_loader.load(stack_arg)
+            var_loader.load(
+                stack_arg, allow_push_null=i >= len(self.stack) - pop_n
+            )
 
         # gen call resume fn opcode
         # NOTE(SigureMo): In Python 3.11，we need generate KW_NAMES if the call shape is not None.
@@ -1704,7 +1702,7 @@ class OpcodeExecutor(OpcodeExecutorBase):
         # stopped by RETURN_VALUE and has sir len is enough => disable_eval_frame
         simulate_complete = bool(self.stop_state == "Return")
         if simulate_complete:
-            if self._graph.sir_ctx.TOS.graph_size() < min_graph_size():
+            if self._graph.sir_ctx.TOS.graph_size() < ENV_MIN_GRAPH_SIZE.get():
                 raise FallbackError(
                     "Fallback after simulate for reasons.",
                     disable_eval_frame=True,

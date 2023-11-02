@@ -58,7 +58,7 @@ class TestCholeskyOp(OpTest):
         self.outputs = {"Out": output_data}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         places = [base.CPUPlace()]

@@ -16,7 +16,7 @@
 from paddle import _C_ops
 from paddle.base import core
 from paddle.common_ops_import import default_main_program
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def fused_dropout_add(
@@ -84,7 +84,7 @@ def fused_dropout_add(
             "mode argument should be 'downscale_in_infer' or 'upscale_in_train'"
         )
     seed = None
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if default_main_program().random_seed != 0:
             seed = default_main_program().random_seed
         out, seed_offset = _C_ops.fused_dropout_add(
