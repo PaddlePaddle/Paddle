@@ -212,16 +212,9 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   }
 #endif
 
-  if (batch_size > params_.max_batch_size) {
-    LOG(ERROR) << "=====Error======";
-    LOG(ERROR) << "The batch size is larger than the model expects!";
-    LOG(ERROR) << "Model max batch size is: " << params_.max_batch_size;
-    LOG(ERROR) << "Batch size provided to call to runInference:" << batch_size;
-    return false;  // batchSize超过模型限制
-  }
-
   if (!context->allInputDimensionsSpecified()) {
-    throw std::runtime_error("Error, not all required dimensions specified.");
+    LOG(ERROR) << "Not all input dimensions are specified for dynamic shape.";
+    return false;
   }
 
 #if IS_TRT_VERSION_GE(8500)
