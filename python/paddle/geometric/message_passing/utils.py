@@ -17,7 +17,6 @@ import numpy as np
 import paddle
 from paddle.base.data_feeder import check_dtype, convert_dtype
 from paddle.base.framework import Variable
-from paddle.framework import in_pir_mode
 
 
 def convert_out_size_to_list(out_size):
@@ -25,8 +24,6 @@ def convert_out_size_to_list(out_size):
     Convert out_size(int, np.int32, np.int64, Variable) to list
     in imperative mode.
     """
-    if in_pir_mode():
-        return convert_out_size_to_list(out_size)
     if out_size is None:
         out_size = [0]
     elif isinstance(out_size, (int, np.int32, np.int64)):

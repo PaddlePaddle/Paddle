@@ -22,7 +22,7 @@ from paddle.base.data_feeder import (
 )
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_or_pir_mode
+from paddle.framework import in_dynamic_mode, in_pir_mode
 from paddle.utils import deprecated
 
 from .utils import convert_out_size_to_list, get_out_size_tensor_inputs
@@ -134,49 +134,60 @@ def graph_send_recv(
         )
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
             x, src_index, dst_index, pool_type.upper(), out_size
         )
-
-    check_variable_and_dtype(
-        x, "X", ("float32", "float64", "int32", "int64"), "graph_send_recv"
-    )
-    check_variable_and_dtype(
-        src_index, "Src_index", ("int32", "int64"), "graph_send_recv"
-    )
-    check_variable_and_dtype(
-        dst_index, "Dst_index", ("int32", "int64"), "graph_send_recv"
-    )
-    if out_size:
-        check_type(
-            out_size,
-            'out_size',
-            (int, np.int32, np.int64, Variable),
-            'graph_send_recv',
+    elif in_pir_mode():
+        out_size = convert_out_size_to_list(out_size)
+        return _C_ops.send_u_recv(
+            x, src_index, dst_index, pool_type.upper(), out_size
         )
-    if isinstance(out_size, Variable):
-        check_dtype(
-            out_size.dtype, 'out_size', ['int32', 'int64'], 'graph_send_recv'
+    else:
+        check_variable_and_dtype(
+            x, "X", ("float32", "float64", "int32", "int64"), "graph_send_recv"
+        )
+        check_variable_and_dtype(
+            src_index, "Src_index", ("int32", "int64"), "graph_send_recv"
+        )
+        check_variable_and_dtype(
+            dst_index, "Dst_index", ("int32", "int64"), "graph_send_recv"
+        )
+        if out_size:
+            check_type(
+                out_size,
+                'out_size',
+                (int, np.int32, np.int64, Variable),
+                'graph_send_recv',
+            )
+        if isinstance(out_size, Variable):
+            check_dtype(
+                out_size.dtype,
+                'out_size',
+                ['int32', 'int64'],
+                'graph_send_recv',
+            )
+
+        helper = LayerHelper("graph_send_recv", **locals())
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+        dst_count = helper.create_variable_for_type_inference(
+            dtype="int32", stop_gradient=True
         )
 
-    helper = LayerHelper("graph_send_recv", **locals())
-    out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    dst_count = helper.create_variable_for_type_inference(
-        dtype="int32", stop_gradient=True
-    )
+        inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
+        attrs = {"reduce_op": pool_type.upper()}
+        get_out_size_tensor_inputs(
+            inputs=inputs,
+            attrs=attrs,
+            out_size=out_size,
+            op_type='graph_send_recv',
+        )
 
-    inputs = {"X": x, "Src_index": src_index, "Dst_index": dst_index}
-    attrs = {"reduce_op": pool_type.upper()}
-    get_out_size_tensor_inputs(
-        inputs=inputs, attrs=attrs, out_size=out_size, op_type='graph_send_recv'
-    )
-
-    helper.append_op(
-        type="graph_send_recv",
-        inputs=inputs,
-        outputs={"Out": out, "Dst_count": dst_count},
-        attrs=attrs,
-    )
+        helper.append_op(
+            type="graph_send_recv",
+            inputs=inputs,
+            outputs={"Out": out, "Dst_count": dst_count},
+            attrs=attrs,
+        )
     return out
