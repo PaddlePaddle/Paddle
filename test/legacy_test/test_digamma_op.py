@@ -97,7 +97,6 @@ class TestDigammaBF16Op(OpTest):
 
 
 class TestDigammaAPI(unittest.TestCase):
-    @test_with_pir_api
     def setUp(self):
         # switch to static
         paddle.enable_static()
@@ -108,6 +107,7 @@ class TestDigammaAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [8, 3, 32, 32]
 
+    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
