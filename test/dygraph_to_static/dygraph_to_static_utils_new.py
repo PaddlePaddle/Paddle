@@ -45,7 +45,7 @@ class MyTest2(MyTest):
 """
 
 logger = logging.getLogger("Dygraph to static utils")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class ToStaticMode(Flag):
