@@ -5943,7 +5943,7 @@ def angle(x, name=None):
              [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
