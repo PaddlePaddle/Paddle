@@ -577,7 +577,7 @@ def monkey_patch_tensor():
                 * (Union[str, paddle.dtype] dtype, bool blocking)\n \
                 * (paddle.Tensor other, bool blocking) "
             )
-        valid_keys = set(["device", "dtype", "blocking", "other"])
+        valid_keys = {"device", "dtype", "blocking", "other"}
         valid_dtypes = [
             "bfloat16",
             "float16",
