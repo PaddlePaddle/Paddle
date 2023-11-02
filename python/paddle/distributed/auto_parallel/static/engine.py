@@ -1482,13 +1482,13 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
-            outs = self._executor.run(
-                self.main_program,
-                feed=feed_dict,
-                fetch_list=fetch_names,
-                use_program_cache=self._strategy.use_cache,
-                return_numpy=self._strategy.return_numpy,
-            )
+        outs = self._executor.run(
+            self.main_program,
+            feed=feed_dict,
+            fetch_list=fetch_names,
+            use_program_cache=self._strategy.use_cache,
+            return_numpy=self._strategy.return_numpy,
+        )
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
