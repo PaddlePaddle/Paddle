@@ -2,34 +2,31 @@
 ---
 ## 1. 相关背景
 
-PASS是对IR进行优化的关键组件，而DAG-to-DAG的变换（将原图中的一个DAG子图替换成另一个DAG子图）是最常见的Pass类型。DAG-to-DAG的变换可以划分为匹配和重写两个步骤：匹配是根据已知子图在Program中完全匹配到对应的目标子图，重写是将匹配到的图结构替换为新的子图。
+PASS 是对 IR 进行优化的关键组件，而 DAG-to-DAG 的变换（将原图中的一个 DAG 子图替换成另一个 DAG 子图）是最常见的Pass类型。DAG-to-DAG 的变换可以划分为匹配和重写两个步骤：匹配是根据已知子图在 Program 中完全匹配到对应的目标子图，重写是将匹配到的图结构替换为新的子图。
 
-DRR ( Declarative Rewrite Rule ) 是来处理这种DAG-to-DAG类型的一套PASS组件。DRR 能降低PASS的开发成本，让开发者集中在对优化逻辑的处理上，而不需要关心底层IR的数据结构。开发者通过一套简洁易用的接口对目标子图和需要替换成的新子图进行模式声明后，DRR 就能自动的在 Program 中对原图进行匹配，并替换成新子图。
+DRR ( Declarative Rewrite Rule ) 是来处理这种 DAG-to-DAG 类型的一套 PASS 组件。DRR 能降低 PASS 的开发成本，让开发者集中在对优化逻辑的处理上，而不需要关心底层 IR 的数据结构。开发者通过一套简洁易用的接口对目标子图和需要替换成的新子图进行模式声明后，DRR 就能自动的在 Program 中对原图进行匹配，并替换成新子图。
 
 以消除冗余 CastOp 的 PASS 为例，使用 DRR 的代码开发示例如下：
 ~~~ c++
-// 1. 继承DrrPatternBase的特化模板类
+// 1. 继承 DrrPatternBase 的特化模板类
 class RemoveRedundentCastPattern
     : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
-  // 2. 重载operator()
+  // 2. 重载 operator()
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // 3. 使用Op、Tensor和Attribute定义一个包含两个连续CastOp的SourcePattern
+    // 3. 使用 Op、Tensor 和 Attribute 定义一个包含两个连续 CastOp 的 SourcePattern
     auto pat = ctx->SourcePattern();
 
-    // arg0是第一个CastOp的输入Tensor的ID
-    //
-
-    pat.Tensor("tmp") =                          // CastOp输出Tensor命名为"tmp"
-        pat.Op(paddle::dialect::CastOp::name(),  // 传入CastOp的name
-               {{"dtype", pat.Attr("dtype1")}})  // CastOp的"dtype"属性的对应的全局唯一ID为"dtype1"
-               (pat.Tensor("arg0"));             // CastOp输入Tensor为"arg0"
+    pat.Tensor("tmp") =                          // CastOp 输出 Tensor 命名为"tmp"
+        pat.Op(paddle::dialect::CastOp::name(),  // 传入 CastOp 的 name
+               {{"dtype", pat.Attr("dtype1")}})  // CastOp 的"dtype"属性的对应的全局唯一ID为"dtype1"
+               (pat.Tensor("arg0"));             // CastOp 输入 Tensor 为"arg0"
     pat.Tensor("ret") =
         pat.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
-    // 4. 定义Constrain
+    // 4. 定义 Constrain
     pat.RequireEqual(pat("tmp").dtype(), pat.Tensor("ret").dtype());
 
-    // 5. 定义ResultPattern
+    // 5. 定义 ResultPattern
     auto res = pat.ResultPattern();
     res.Tensor("ret") =
         res.Op(paddle::dialect::CastOp::name(),
@@ -38,15 +35,15 @@ class RemoveRedundentCastPattern
 };
 ~~~
 
-DRR PASS包含以下三个部分：
-+ `SourcePattern`：用于描述在Program中待匹配的目标子图
+DRR PASS 包含以下三个部分：
++ `SourcePattern`：用于描述在 Program 中待匹配的目标子图
 + `Constrains`：用于指定`SourcePattern`匹配的限制条件（非必需）
 + `ResultPattern`：用于描述需要替换为的模式子图
-开发者只需要定义出`SourcePattern`, `Constrains`和`ResultPattern`即可实现一个完整的PASS。
+开发者只需要定义出`SourcePattern`, `Constrains`和`ResultPattern`即可实现一个完整的 PASS。
 
 **注意：**
-**1. DRR仅支持对闭包（除Pattern输入输出Tensor以外，所有的内部Tensor不能被Pattern外部Op使用）的 SourcePattern 和 ResultPattern 进行匹配替换，若定义的Pattern在Program中不闭包则匹配失败**
-**2. ResultPattern的输入输出需要满足是SourcePattern的输入输出的子集**
+1. **DRR 仅支持对闭包（除 Pattern 输入输出 Tensor 以外，所有的内部 Tensor 不能被 Pattern 外部 Op 使用）的 SourcePattern 和 ResultPattern 进行匹配替换，若定义的 Pattern 在 Program 中不闭包则匹配失败**
+2. **ResultPattern 的输入输出需要满足是 SourcePattern 的输入输出的子集**
 ## 2. 接口列表
 
 <table>
@@ -60,48 +57,48 @@ DRR PASS包含以下三个部分：
 		<td rowspan="1">DrrPatternBase</td>
 		<td> <pre> virtual void operator()(
         pir::drr::DrrPatternContext* ctx) const </pre></td>
-		<td> 实现DRR PASS的入口函数 </td>
-		<td> ctx: 创建Patten所需要的Context参数</td>
+		<td> 实现 DRR PASS 的入口函数 </td>
+		<td> ctx: 创建 Patten 所需要的 Context 参数</td>
 	</tr>
 	<tr>
 		<td rowspan="6"> SourcePattern</td>
 		<td><pre> const drr::Op& Op(
     const std::string& op_type,
     const std::unordered_map&lt;std::string, Attribute&gt;& attributes)</pre></td>
-		<td> 在SourcePattern中定义一个Op</td>
-		<td> op_type: 定义的op名称，可以通过paddle::dialect::xxOp
-	::name()接口获取 <br> attributes : 所创建的Op的属性信息 </td>
+		<td> 在 SourcePattern 中定义一个 Op</td>
+		<td> op_type: 定义的 Op 名称，可以通过 paddle::dialect::xxOp
+	::name() 接口获取 <br> attributes : 所创建的 Op 的属性信息 </td>
 	</tr>
 	<tr>
 		<td><pre> const drr::Tensor& Tensor(
         const std::string& tensor_name) </pre></td>
-		<td> 在SourcePattern中定义一个名为tensor_name的tensor</td>
-		<td>  tensor_name: 定义的Tensor的名称，需要满足SourcePattern内唯一 </td>
+		<td> 在 SourcePattern 中定义一个名为 tensor_name 的 tensor</td>
+		<td>  tensor_name: 定义的 Tensor 的名称，需要满足 SourcePattern 内唯一 </td>
 	</tr>
 	<tr>
 		<td> <pre> Attribute Attr(
         const std::string& attr_name) const </pre></td>
-		<td> 在SourcePattern中定义一个名为attr_name的属性 </td>
-		<td> attr_name: 属性的名称，需要满足SourcePattern内唯一 </td>
+		<td> 在 SourcePattern 中定义一个名为 attr_name 的属性 </td>
+		<td> attr_name: 属性的名称，需要满足 SourcePattern 内唯一 </td>
 	</tr>
 	<tr>
 		<td><pre> void RequireEqual(
         const TensorShape& first,
         const TensorShape& second)</pre></td>
-		<td> 要求SourcePattern中两个Tensor的TensorShape相同</td>
-		<td> first: 第一个TensorShape <br> second : 第二个TensorShape</td>
+		<td> 要求 SourcePattern 中两个 Tensor 的 TensorShape 相同</td>
+		<td> first: 第一个 TensorShape <br> second : 第二个 TensorShape</td>
 	</tr>
 		<tr>
 		<td><pre> void RequireEqual(
         const TensorDataType& first,
         const TensorDataType& second)</pre></td>
-		<td> 要求SourcePattern中两个Tensor的数据类型相同</td>
-		<td> first: 第一个Tensor的DataType <br> second : 第二个Tensor的DataType</td>
+		<td> 要求 SourcePattern 中两个 Tensor 的数据类型相同</td>
+		<td> first: 第一个 Tensor 的 DataType <br> second : 第二个 Tensor 的 DataType</td>
 	</tr>
 	<tr>
 		<td> <pre>void RequireNativeCall(
         const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
-		<td> 在SourcePattern中定义一个约束，可以利用此接口和lamda表达式实现对SourcePattern的自定义约束</td>
+		<td> 在 SourcePattern 中定义一个约束，可以利用此接口和 lamda 表达式实现对 SourcePattern 的自定义约束</td>
 		<td> custom_fn: 自定义的约束函数</td>
 	</tr>
 	<tr>
@@ -110,60 +107,60 @@ DRR PASS包含以下三个部分：
     const std::string& op_type,
     const std::unordered_map&lt;std::string, Attribute&gt;&  attributes) </pre></td>
 		<td> 在ResultPattern中定义一个Op </td>
-		<td> op_type: 定义的op名称，可以通过paddle::dialect::xxOp
-	::name()接口获取<br> attributes : 所创建的Op的属性信息 </td>
+		<td> op_type: 定义的 Op 名称，可以通过 paddle::dialect::xxOp
+	::name() 接口获取<br> attributes : 所创建的 Op 的属性信息 </td>
 	</tr>
 	<tr>
 		<td> <pre>const drr::Tensor& Tensor(
         const std::string& tensor_name)</pre></td>
-		<td> 在ResultPattern中定义一个名为tensor_name的tensor</td>
-		<td> tensor_name: 定义的Tensor的名称，需要满足ResultPattern内唯一 </td>
+		<td> 在 ResultPattern 中定义一个名为 tensor_name 的 tensor</td>
+		<td> tensor_name: 定义的 Tensor 的名称，需要满足 ResultPattern 内唯一 </td>
 	</tr>
 	<tr>
 		<td><pre>Attribute Attr(
         const std::string& attr_name) const </pre></td>
 		<td> 在 ResultPattern 中定义一个名为 attr_name 的属性 </td>
-		<td> attr_name: 属性的名称，需要满足ResultPattern内唯一 </td>
+		<td> attr_name: 属性的名称，需要满足 ResultPattern 内唯一 </td>
 	</tr>
 <tr>
 		<td><pre>using AttrComputeFunc = std::function&lt;std::any(const MatchContext&)&gt;;
 Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
-		<td> 通过自定义的计算逻辑AttrComputeFunc，创建出一个Attribute</td>
+		<td> 通过自定义的计算逻辑 AttrComputeFunc，创建出一个 Attribute</td>
 		<td>attr_compute_func: 自定义的计算逻辑</td>
 	</tr>
 	<tr>
 		<td> <pre>drr::Tensor& NoneTensor()</pre></td>
-		<td> 当一个 Op的输入Tensor 是一个可选项并且不需要时，需要使用 NoneTensor 来占位</td>
+		<td> 当一个 Op 的输入 Tensor 是一个可选项并且不需要时，需要使用 NoneTensor 来占位</td>
 		<td> / </td>
 	</tr>
 	<tr>
 		<td rowspan="2"> TensorShape</td>
 		<td><pre>explicit TensorShape(
         const std::string& tensor_name) </pre></td>
-		<td> 抽象出来描述Tensor的shape的类 </td>
-		<td> tensor_name: 被描述的Tensor的name </td>
+		<td> 抽象出来描述 Tensor 的 shape 的类 </td>
+		<td> tensor_name: 被描述的 Tensor 的 name </td>
 	</tr>
 	<tr>
 		<td><pre> const std::string& tensor_name() const</pre></td>
-		<td> 获取tensor的name</td>
+		<td> 获取 tensor 的 name</td>
 		<td>  / </td>
 	</tr>
 	<tr>
 		<td rowspan="2"> TensorDataType</td>
 		<td><pre>explicit TensorDataType(
         const std::string& tensor_name)</pre></td>
-		<td> 抽象出来的描述Tensor中元素数据类型的类</td>
-		<td> tensor_name: 被描述的Tensor的name </td>
+		<td> 抽象出来的描述 Tensor 中元素数据类型的类</td>
+		<td> tensor_name: 被描述的 Tensor 的 name </td>
 	</tr>
 	<tr>
 		<td><pre> const std::string& tensor_name() const</pre></td>
-		<td> 获取tensor的name</td>
+		<td> 获取 Tensor 的 name</td>
 		<td> / </td>
 	</tr>
 	<tr>
 		<td rowspan="1"> DrrPatternContext</td>
 		<td><pre>drr::SourcePattern DrrPatternContext::SourcePattern()</pre> </td>
-		<td> 创建一个SourcePattern对象，并返回 </td>
+		<td> 创建一个 SourcePattern 对象，并返回 </td>
 		<td> / </td>
 	</tr>
 </table>
@@ -174,7 +171,7 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // 声明Source Pattern
+    // 声明 Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
@@ -184,9 +181,9 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // 声明Result Pattern
+    // 声明 Result Pattern
     pir::drr::ResultPattern res = pat.ResultPattern();
-    // 声明Constrain
+    // 声明 Constrain
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
@@ -208,7 +205,7 @@ class FoldExpandToConstantPattern
     : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // 声明Source Pattern
+    // 声明 Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
@@ -223,7 +220,7 @@ class FoldExpandToConstantPattern
     const auto &expand = pat.Op(paddle::dialect::ExpandOp::name());
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
-    // 声明Result Pattern      Constrains: 本Pass无额外约束规则
+    // 声明 Result Pattern      Constrains: 本 Pass 无额外约束规则
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},
