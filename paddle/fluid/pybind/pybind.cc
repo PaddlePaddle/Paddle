@@ -2047,7 +2047,10 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
       .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);

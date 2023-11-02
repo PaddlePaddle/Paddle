@@ -39,12 +39,13 @@ class Plan final {
   ~Plan() = default;
 
   const std::vector<std::shared_ptr<Job>>& JobList() const;
+  const std::vector<std::string> JobTypes() const;
 
   const ProgramDesc* Program(const std::string& job_type) const;
   std::shared_ptr<::pir::Program> IrProgram(const std::string& job_type) const;
 
-  void UpdateIrProgram(const std::string& job_type,
-                       std::shared_ptr<::pir::Program> ir_prog);
+  void SetIrProgram(const std::string& job_type,
+                    std::shared_ptr<::pir::Program> ir_prog);
 
   int64_t MicroBatchNum() const;
 

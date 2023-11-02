@@ -21,6 +21,8 @@ from functools import lru_cache
 
 import numpy as np
 
+from paddle import pir
+
 from ..pir import OpResult, translate_to_new_ir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
@@ -1008,6 +1010,12 @@ class _ExecutorCache:
             plan = apply_pass(
                 new_program, new_program, pass_name, standalone_opt
             )
+
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm = pir.PassManager()
+                pm.add_pass('')
+                pm.run(ir_program)
         else:
             default_job = core.Job("default")
             if get_flags("FLAGS_enable_new_ir_in_executor")[

@@ -107,7 +107,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
-      plan_.UpdateIrProgram("job_" + std::to_string(job_idx), shared_program);
+      plan_.SetIrProgram("job_" + std::to_string(job_idx), shared_program);
 
       if (FLAGS_pir_apply_inplace_pass) {
         pir::PassManager pm(pir::IrContext::Instance(), 3);
