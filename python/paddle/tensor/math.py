@@ -6828,7 +6828,7 @@ def polygamma(x, n, name=None):
     if n == 0:
         return digamma(x)
     else:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.polygamma(x, n)
         else:
             check_variable_and_dtype(
@@ -6864,7 +6864,7 @@ def polygamma_(x, n, name=None):
     if n == 0:
         return digamma_(x)
     else:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.polygamma_(x, n)
 
 
