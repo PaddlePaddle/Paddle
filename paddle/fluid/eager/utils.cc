@@ -16,7 +16,6 @@
 #include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/api/utils/hook_utils.h"
-#include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/tensor_wrapper.h"
 
 #include "paddle/phi/api/all.h"
@@ -655,29 +654,22 @@ std::string EagerUtils::TensorStr(const paddle::Tensor& t) {
   std::string tensor_info_str = "";
   if (t.defined()) {
     if (t.is_dist_tensor()) {
-      const char* DIST_TENSOR_INFO_TEMPLATE =
-          "Type: %s, Dtype: %s, Place: %s, Is_defined: %s, Is_initialized: %s, "
-          "Shape: %s, DistAttr: %s";
       auto dist_t =
           std::static_pointer_cast<phi::distributed::DistTensor>(t.impl());
       if (t.initialized()) {
         tensor_info_str += paddle::string::Sprintf(
-            DIST_TENSOR_INFO_TEMPLATE,
+            TENSOR_INFO_TEMPLATE,
             t.impl()->type_info().name(),
             t.dtype(),
             t.place().DebugString(),
-            dist_t->defined(),
-            dist_t->initialized(),
             paddle::string::Sprintf(
                 "%s, Local Shape: %s", t.dims(), dist_t->local_dims()),
             dist_t->dist_attr());
       } else {
-        tensor_info_str += paddle::string::Sprintf(DIST_TENSOR_INFO_TEMPLATE,
+        tensor_info_str += paddle::string::Sprintf(TENSOR_INFO_TEMPLATE,
                                                    t.impl()->type_info().name(),
                                                    "Unknown",
                                                    "Unknown",
-                                                   dist_t->defined(),
-                                                   dist_t->initialized(),
                                                    t.dims(),
                                                    dist_t->dist_attr());
       }

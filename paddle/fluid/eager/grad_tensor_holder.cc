@@ -111,19 +111,8 @@ void GradTensorHolder::add(size_t slot_id,
                            const paddle::Tensor& t,
                            bool create_graph) {
   if (!t.initialized()) {
-    if (t.defined() && t.is_dist_tensor() &&
-        phi::distributed::NeedComputationClipForPP(t.impl())) {
-      // Pipeline parallel still needs to construct GradNode graph
-      // to make DistTensor's global shape and DistAttr information flow.
-      // Skip grad accumulation will cause GradTensor disconnect to next
-      // GradNode.
-      VLOG(3) << "Do accumulate for uninitialized Tensor " << t.name()
-              << " as it's DistTensor and it needs computation clip for "
-                 "pipeline parallel.";
-    } else {
-      VLOG(3) << "No need to do accumulate for uninitialized t.";
-      return;
-    }
+    VLOG(3) << "No need to do accumulate for uninitialized t.";
+    return;
   }  // TODO(jiabin): Remove this when we fix all kernel.
 
   PADDLE_ENFORCE(slot_id < buffer_.size(),

@@ -105,16 +105,9 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   }
 
   if (!fwd_out.initialized()) {
-    if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
-        phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
-      VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
-              << " and needs computation clip for pipeline parallel."
-              << " Still SetGradInMeta for it.";
-    } else {
-      VLOG(7)
-          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
-      return;
-    }
+    VLOG(7)
+        << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+    return;
   }
 
   const phi::DenseTensor* dense_tensor = nullptr;
@@ -190,16 +183,9 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
     }
 
     if (!fwd_out_tensor.initialized()) {
-      if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
-          !phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
-        VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
-                << " and needs computation clip for pipeline parallel."
-                << " Still SetGradInMeta for it.";
-      } else {
-        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
-                   "Tensor";
-        return;
-      }
+      VLOG(7)
+          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+      return;
     }
 
     // Record TensorMeta
