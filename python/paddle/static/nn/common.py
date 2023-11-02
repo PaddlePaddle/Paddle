@@ -2064,9 +2064,7 @@ def conv3d_transpose(
     groups = 1 if groups is None else groups
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(

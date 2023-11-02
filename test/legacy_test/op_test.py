@@ -95,9 +95,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         shape, dtype = spec
                     else:
                         raise ValueError(
-                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                                index
-                            )
+                            f"Value of in_specs[{index}] should contains two elements: [shape, dtype]"
                         )
                     input_t.append(
                         paddle.static.data(
