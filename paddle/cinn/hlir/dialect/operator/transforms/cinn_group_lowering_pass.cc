@@ -135,13 +135,16 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
+      std::cerr << "before op fusion\n";
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
 
+      std::cerr << "after op fusion\n";
       // fusion merge
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
+      std::cerr << "after group fusion\n";
       PADDLE_ENFORCE_EQ(group_list.size(),
                         1u,
                         phi::errors::Unimplemented(

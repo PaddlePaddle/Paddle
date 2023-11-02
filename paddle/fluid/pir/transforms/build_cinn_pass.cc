@@ -140,10 +140,8 @@ bool IsSupportCinn(pir::Operation* op) {
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
-  std::cerr << "op_name " << op_name << std::endl;
-
   if (op_name == "subtract" || op_name == "divide" ||
-      op_name == "broadcast_to") {
+      op_name == "broadcast_to" || op_name == "multiply") {
     return true;
   }
 
@@ -302,8 +300,9 @@ class CinnSubgraphDetector {
   CinnSubgraphDetector(pir::Block* block, const OpClassifier& classifier)
       : block_(block), op_classifier_(classifier) {
     sort_ops_ = InverselyTopologicalSort(block_);
-    for (size_t i = 0; i < sort_ops_.size(); ++i) {
-      op2id_[sort_ops_[i]] = i;
+    size_t index = 0;
+    for (auto* op : *block) {
+      op2id_[op] = index++;
     }
   }
 
@@ -316,7 +315,18 @@ class CinnSubgraphDetector {
       if (!subgraph->substitute) {
         continue;
       }
-      groups.push_back(subgraph->ops);
+
+      // sort group ops
+      std::vector<pir::Operation*> tmp_ops(subgraph->ops.begin(),
+                                           subgraph->ops.end());
+      auto& op2id = op2id_;
+      std::sort(tmp_ops.begin(),
+                tmp_ops.end(),
+                [&op2id](pir::Operation* a, pir::Operation* b) {
+                  return op2id.at(a) > op2id.at(b);
+                });
+
+      groups.push_back(tmp_ops);
     }
 
     return groups;
@@ -447,14 +457,6 @@ class CinnSubgraphDetector {
       candidate->substitute = false;
 
       // merge nodes
-      std::cerr << "!!!!!!!!!!!" << std::endl;
-      for (size_t i = 0; i < producer->ops.size(); ++i) {
-        std::cerr << "producer " << producer->ops[i]->name() << std::endl;
-      }
-      for (size_t i = 0; i < candidate->ops.size(); ++i) {
-        std::cerr << "consumer  " << candidate->ops[i]->name() << std::endl;
-      }
-      std::cerr << "===========" << std::endl;
       producer->ops.insert(
           producer->ops.end(), candidate->ops.begin(), candidate->ops.end());
       producer->op_set.insert(candidate->op_set.begin(),
@@ -596,28 +598,13 @@ std::vector<pir::Value> AnalysisOutputs(GroupOpsVec& group_ops) {  // NOLINT
     }
   }
 
-  return vec_res;
+  if (vec_res.size() == 0) {
+    for (size_t i = 0; i < group_ops.back()->num_results(); ++i) {
+      vec_res.push_back(group_ops.back()->result(i));
+    }
+  }
 
-  // std::set<pir::Value> inputs;
-  // std::set<pir::Value> outputs;
-  // for (auto* op : group_ops) {
-  //   std::cerr << "group ops " << op->name() << std::endl;
-  //   VLOG(4) << "AnalysisOutputs from " << op->name();
-  //   for (auto& operand : op->operands()) {
-  //     inputs.emplace(operand.source());
-  //   }
-  //   for (auto& result : op->results()) {
-  //     outputs.emplace(result);
-  //   }
-  // }
-  // std::vector<pir::Value> results;
-  // std::set_symmetric_difference(outputs.begin(),
-  //                               outputs.end(),
-  //                               inputs.begin(),
-  //                               inputs.end(),
-  //                               std::back_inserter(results));
-  // VLOG(3) << "Outputs size for GroupOp " << results.size();
-  // return results;
+  return vec_res;
 }
 
 void ReplaceWithGroupOp(pir::Block* block,
@@ -632,33 +619,30 @@ void ReplaceWithGroupOp(pir::Block* block,
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
   for (auto& value : outputs) {
-    std::cerr << "get ouput op"
-              << value.dyn_cast<pir::OpResult>().owner()->name() << std::endl;
     output_types.emplace_back(value.type());
   }
-  std::cerr << "begin to build group op" << std::endl;
   // step 2: Replace the old op with GroupOp.
   auto new_group_op = builder.Build<cinn::dialect::GroupOp>(output_types);
-  std::cerr << "finish build" << std::endl;
   pir::Block* group_block = new_group_op.block();
-  std::cerr << "before move " << std::endl;
+
   for (auto* op : group_ops) {
-    std::cerr << op->name() << std::endl;
     op->MoveTo(group_block, group_block->begin());
   }
-  std::cerr << "after move " << std::endl;
   // step 3: Insert YieldOp for outputs
 
   // step 4: Replace outputs of inner ops
   std::vector<pir::OpResult> group_outs = new_group_op->results();
+  std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
+                                                group_ops.end());
   for (size_t i = 0; i < outputs.size(); ++i) {
-    outputs[i].ReplaceAllUsesWith(group_outs[i]);
+    outputs[i].ReplaceUsesWithIf(group_outs[i],
+                                 [&inner_ops](pir::OpOperand op) {
+                                   return !inner_ops.count(op.owner());
+                                 });
   }
 
   builder.SetInsertionPointToEnd(group_block);
-  std::cerr << "before add yeidl" << std::endl;
   builder.Build<::pir::YieldOp>(outputs);
-  std::cerr << "finish replace" << std::endl;
 }
 
 class BuildCinnPass : public pir::Pass {
