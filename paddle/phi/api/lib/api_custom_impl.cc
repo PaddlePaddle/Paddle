@@ -117,9 +117,13 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         input_x[i] = x[i].impl().get();
       }
 
-      auto meta_dist_input_x = MakeDistMetaTensor(input_x);
-      auto spmd_info =
-          phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
+      // auto meta_dist_input_x = MakeDistMetaTensor(input_x);
+      std::vector<phi::distributed::DistMetaTensor> meta_dist_input_x;
+      for (auto& e : input_x) {
+        meta_dist_input_x.push_back(MakeDistMetaTensor(*e));
+      }
+      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
+          meta_dist_input_x);
 
       auto dist_out = SetKernelDistOutput(&api_output);
       auto dense_out = dist_out->unsafe_mutable_value();
@@ -165,7 +169,14 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
         (*kernel_fn)(*dev_ctx, input_x, dense_out);
       }
-      auto current_process_mesh = spmd_info.first[0].process_mesh();
+      PADDLE_ENFORCE_EQ(
+          paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+              spmd_info.first[0]),
+          true,
+          phi::errors::PreconditionNotMet(
+              "Arg must be a single TensorDistAttr"));
+      auto current_process_mesh =
+          paddle::get<0>(spmd_info.first[0]).process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
       return api_output;
     }

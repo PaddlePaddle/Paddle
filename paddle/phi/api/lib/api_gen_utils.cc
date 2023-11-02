@@ -536,14 +536,14 @@ phi::distributed::DistMetaTensor MakeDistMetaTensor(
   return phi::distributed::DistMetaTensor(tensor);
 }
 
-std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
-    const std::vector<Tensor>& tensors) {
-  std::vector<phi::distributed::DistMetaTensor> out;
-  for (auto t : tensors) {
-    out.push_back(MakeDistMetaTensor(*t.impl()));
-  }
-  return out;
-}
+// std::vector<phi::distributed::DistMetaTensor> MakeDistMetaTensor(
+//     const std::vector<Tensor>& tensors) {
+//   std::vector<phi::distributed::DistMetaTensor> out;
+//   for (auto t : tensors) {
+//     out.push_back(MakeDistMetaTensor(*t.impl()));
+//   }
+//   return out;
+// }
 
 phi::distributed::DistTensor* SetKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
@@ -558,11 +558,33 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+  return SetKernelDistOutput(out, paddle::get<0>(dist_attr));
+}
+
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
   if (out) {
     return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
                                                           dist_attr);
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  if (out) {
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    return std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
   }
   return nullptr;
 }
