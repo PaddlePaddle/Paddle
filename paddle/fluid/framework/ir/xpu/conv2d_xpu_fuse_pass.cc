@@ -503,14 +503,13 @@ void Conv2dXPUFusePass::CreateTheReplicatedWeights(
     replicated_filter_desc.SetShape(vectorize(replicated_filter_tensor.dims()));
     replicated_filter_desc.SetDataType(
         framework::TransToProtoVarType(replicated_filter_tensor.dtype()));
+    graph->CreateVarNode(&replicated_filter_desc);
     auto* block_replicated_filter_desc = block->Var(replicated_filter_name);
     block_replicated_filter_desc->SetPersistable(
         replicated_filter_desc.Persistable());
     block_replicated_filter_desc->SetShape(replicated_filter_desc.GetShape());
     block_replicated_filter_desc->SetDataType(
         replicated_filter_desc.GetDataType());
-    auto* replicated_filter_node =
-        graph->CreateVarNode(&replicated_filter_desc);
     Assign(replicated_filter_tensor,
            scope->Var(replicated_filter_name)->GetMutable<phi::DenseTensor>());
   }
