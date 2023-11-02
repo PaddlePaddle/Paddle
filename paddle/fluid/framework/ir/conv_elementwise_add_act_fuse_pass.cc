@@ -46,7 +46,7 @@ framework::proto::OpDesc PrepareOpDesc(
   desc.SetAttr("activation", activation);
   desc.SetOutput("Output", {output});
   desc.SetAttr("is_test", true);
-  desc.SetAttr("use_cudnn", false);
+  desc.SetAttr("use_cudnn", true);
   // for leaky_relu use
   desc.SetAttr("fuse_alpha", alpha);
   desc.Flush();
@@ -208,7 +208,7 @@ void ConvElementwiseAddActFusePass::ApplyImpl(ir::Graph* graph) const {
         PrepareOpDesc(base_op_desc, bias_name, act_op_type, act_op_out, alpha);
     framework::OpDesc new_op_desc(new_op_proto, nullptr);
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("cudnn", false);
     }
     // Create a new node for the fused op.
     auto* new_conv_op = graph->CreateOpNode(&new_op_desc);
