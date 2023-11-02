@@ -521,7 +521,7 @@ def decompose_bwd_op_after_fwd_op(
         bwd_op (pir.Operation): the backward op to be decomposed.
         grad_var_to_var_map (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
-        fwd_inputs: (tuple(Value)): the output of the forward op,
+        fwd_inputs: (tuple(Value)): the original input of the forward op,
         fwd_outputs_after_decompose (tuple(Value)): the output of the decomposed forward op, if forward op has no vjp rules, forward op shoule be decomposed firstly,
             fwd_outputs_after_decompose means the new output of the decomposed forward op. If forward op has vjp rules, fwd_outputs_after_decompose is None.
     Return:
@@ -538,7 +538,6 @@ def decompose_bwd_op_after_fwd_op(
         )
 
     # prepare forward and backward op's input and outputs infos
-    fwd_outputs = fwd_outputs_after_decompose
     bwd_inputs = [x.source() for x in bwd_op.operands()]
     grad_inputs = bwd_op.results()
     res = []
@@ -547,7 +546,9 @@ def decompose_bwd_op_after_fwd_op(
     grad_outputs = tuple(
         bwd_input
         for bwd_input in bwd_inputs
-        if not (bwd_input in fwd_inputs or bwd_input in fwd_outputs)
+        if not (
+            bwd_input in fwd_inputs or bwd_input in fwd_outputs_after_decompose
+        )
     )
     fwd_outputs_ = tuple(
         grad_var_to_var_map[grad_output] for grad_output in grad_outputs
