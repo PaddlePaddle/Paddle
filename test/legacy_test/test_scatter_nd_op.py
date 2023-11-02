@@ -431,7 +431,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 
 class TestScatterNdOpStaticAPI(unittest.TestCase):
-    def test_static_graph():
+    def test_static_graph(self):
         if not base.core.is_compiled_with_cuda():
             return
 
@@ -440,6 +440,7 @@ class TestScatterNdOpStaticAPI(unittest.TestCase):
         index = np.array([[0, 0, 2], [0, 1, 2]])
         val = np.array([-1, -3])
 
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
