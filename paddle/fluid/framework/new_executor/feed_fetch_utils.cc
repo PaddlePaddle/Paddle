@@ -81,7 +81,7 @@ void SplitFeedTensors(const std::vector<std::string>& feed_names,
                           feed_names[i],
                           numel_size,
                           micro_batch_num));
-    int64_t split_size = (numel_size + micro_batch_num - 1) / micro_batch_num;
+    int64_t split_size = numel_size / micro_batch_num;
     VLOG(4) << "Split feed data:" << feed_names[i] << ", dims:("
             << feed_tensor.dims() << "), micro_batch_num:" << micro_batch_num;
     for (int64_t j = 0; j < micro_batch_num; ++j) {
