@@ -203,3 +203,8 @@ cc_library(
   dialect
   SRCS ${DIALECT_CPP_SOURCES}
   DEPS ${DIALECT_DEPS})
+
+if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+  set_target_properties(dialect PROPERTIES COMPILE_FLAGS
+                                           "-Wno-maybe-uninitialized")
+endif()
