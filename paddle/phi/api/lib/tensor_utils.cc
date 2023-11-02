@@ -120,7 +120,7 @@ PADDLE_API std::shared_ptr<phi::distributed::DistTensor> reshard(
                         "However it's %s",
                         typeid(input.impl().get()).name()));
   auto dev_ctx = phi::distributed::GetDistTensorDeviceContext(
-      static_cast<phi::distributed::DistTensor*>(input.impl().get()));
+      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()));
   auto input_tensor_impl = input.impl();
   std::shared_ptr<phi::distributed::DistTensor> dist_out_ptr = nullptr;
   if (input_tensor_impl) {

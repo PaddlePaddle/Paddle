@@ -109,9 +109,12 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         self.check_prim(net)
 
     def check_prim(self, net):
-        block = net.forward.program_cache.last()[-1][
-            -1
-        ].train_program.global_block()
+        program = net.forward.program_cache.last()[-1][-1].train_program
+        if isinstance(
+            program, paddle.jit.dy2static.newir_partial_program.RunnableProgram
+        ):
+            program = program.program
+        block = program.global_block()
         ops = [op.name() for op in block.ops]
         self.assertTrue('pd_op.tanh_grad' in ops)
         self.assertTrue('pd_op.exp_grad' in ops)
