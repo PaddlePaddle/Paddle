@@ -212,10 +212,6 @@ class PipelineParallel(MetaParallelBase):
             self._dp_comm_overlap or self._sharding_comm_overlap
         )
 
-        assert (
-            self._comm_overlap or not self._release_gradients
-        ), "Cannot use release_gradients without comm_overlap."
-
         if self._enable_timer:
             if not timer.is_timer_initialized():
                 timer.set_timers()
