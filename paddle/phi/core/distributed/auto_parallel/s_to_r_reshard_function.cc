@@ -146,7 +146,6 @@ void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
                                         const TensorDistAttr& out_dist_attr,
                                         DistTensor* out) {
   VLOG(3) << "Call SToRReshardFunctionCrossMesh Eval";
-  const auto& in_dims = in.dims();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
   SameStatusReshardFunction same_status_func;
