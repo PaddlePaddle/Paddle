@@ -137,7 +137,7 @@ class TrtConvertBitwiseAndTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             ver = paddle_infer.get_trt_compile_version()
             trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
-            if trt_version <= 8400:
+            if trt_version <= 7200:
                 return 0, 4
             if self.dims == 4 or self.dims == 1:
                 return 0, 4

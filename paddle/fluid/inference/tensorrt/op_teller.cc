@@ -1755,8 +1755,8 @@ struct SimpleOpTypeSetTeller : public Teller {
     }
 
     if (op_type == "bitwise_and") {
-#if !IS_TRT_VERSION_GE(8400)
-      VLOG(3) << "bitwise_and is not supported when TensorRT < 8.4";
+#if !IS_TRT_VERSION_GE(7200)
+      VLOG(3) << "bitwise_and is not supported when TensorRT < 7.2";
       return false;
 #endif
       if (!with_dynamic_shape) {
