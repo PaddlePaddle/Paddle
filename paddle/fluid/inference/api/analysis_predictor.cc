@@ -64,6 +64,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/generator.h"
 #include "paddle/phi/kernels/funcs/data_type_transform.h"
+#include "paddle/pir/pass/pass.h"
 #include "paddle/utils/string/split.h"
 
 #if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
@@ -105,8 +106,10 @@
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
+#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/pir/pass/pass_manager.h"
+#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
@@ -727,6 +730,12 @@ bool AnalysisPredictor::PrepareExecutor() {
     if (FLAGS_enable_new_ir_in_executor) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
+
+      ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
+      pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
+      pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+      pm.Run(pir_program_.get());
+
       pir_program_ = std::move(
           paddle::dialect::PdOpLowerToKernelPass(pir_program_.get(), place_));
 

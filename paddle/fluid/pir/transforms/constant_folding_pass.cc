@@ -89,7 +89,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
                                      ->attributes()
                                      .at("name")
                                      .dyn_cast<pir::StrAttribute>()
-                                     .AsString();
+                                     .AsString() +
+                                 "@fetch";
       }
     }
 

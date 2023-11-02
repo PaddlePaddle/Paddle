@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/pir/core/builtin_op.h"
 
@@ -39,6 +40,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -73,6 +75,7 @@ USE_PASS(fused_gemm_epilogue_pass);
 USE_PASS(fused_dropout_add_pass);
 USE_PASS(fused_linear_param_grad_add_pass);
 USE_PASS(inplace_pass);
+USE_PASS(replace_fetch_with_shadow_output_pass);
 
 PHI_DECLARE_bool(print_ir);
 
