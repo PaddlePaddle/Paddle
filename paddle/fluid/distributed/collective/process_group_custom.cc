@@ -306,6 +306,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   platform::RecordEvent record_event(
       "xccl broadcast compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      broadcast_info{
+          {"bcast_root", {{opts.source_rank + opts.source_root}}},
+      };
+  std::pair<const char*, std::vector<std::string>> bcast_type;
+  phi::RecordCommInfoSupplement("meta_info ", broadcast_info, bcast_type);
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
@@ -326,6 +332,15 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     bool use_calc_stream) {
   platform::RecordEvent record_event(
       "xccl reduce compute", platform::TracerEventType::Communication, 1);
+  std::pair<const char*, std::vector<std::string>> reduce_type{
+      "Reduce type",
+      {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      reduce_info{
+          {"current rank", {{opts.root_rank}}},
+      };
+  phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -380,6 +395,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       phi::AllocationType::CUSTOM);
   platform::RecordEvent record_event(
       "xccl scatter compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      scatter_info{
+          {"scatter_root_rank", {{opts.root_rank}}},
+      };
+  std::pair<const char*, std::vector<std::string>> scatter_type;
+  phi::RecordCommInfoSupplement("meta_info ", scatter_info, scatter_type);
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -877,8 +898,17 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
+
   platform::RecordEvent record_event(
       "xccl allreduce compute", platform::TracerEventType::Communication, 1);
+
+  std::pair<const char*, std::vector<std::string>> reduce_type{
+      "ALLReduce type",
+      {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      reduce_info;
+  phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
   return Collective(
       in_tensors,
       out_tensors,
@@ -906,6 +936,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
   platform::RecordEvent record_event(
       "xccl broadcast compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      broadcast_info{
+          {"bcast_root",
+           {{opts.source_rank * in_tensors.size() + opts.source_root}}},
+      };
+  std::pair<const char*, std::vector<std::string>> bcast_type;
+  phi::RecordCommInfoSupplement("meta_info ", broadcast_info, bcast_type);
   return Collective(
       in_tensors,
       out_tensors,
@@ -954,6 +991,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
   platform::RecordEvent record_event(
       "xccl send compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      send_info{
+          {"Send_dst_rank", {{dst_rank}}},
+      };
+  std::pair<const char*, std::vector<std::string>> dst_type;
+  phi::RecordCommInfoSupplement("meta_info ", send_info, dst_type);
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& input,
@@ -973,6 +1016,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
   platform::RecordEvent record_event(
       "xccl recv compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      Recv_info{
+          {"recv_src_rank", {{src_rank}}},
+      };
+  std::pair<const char*, std::vector<std::string>> Recv_type;
+  phi::RecordCommInfoSupplement("meta_info ", Recv_info, Recv_type);
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& output,
@@ -1075,6 +1124,16 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
   platform::RecordEvent record_event(
       "xccl reduce compute", platform::TracerEventType::Communication, 1);
+  std::pair<const char*, std::vector<std::string>> reduce_type{
+      "Reduce type",
+      {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      reduce_info{
+          {"reduce_root_rank", {{opts.root_rank}}},
+      };
+  phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
+
   return Collective(
       in_tensors,
       out_tensors,
@@ -1106,6 +1165,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
   platform::RecordEvent record_event(
       "xccl scatter compute", platform::TracerEventType::Communication, 1);
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      scatter_info{
+          {"scatter_root_rank", {{opts.root_rank}}},
+      };
+  std::pair<const char*, std::vector<std::string>> scatter_type;
+  phi::RecordCommInfoSupplement("meta_info ", scatter_info, scatter_type);
   return Collective(
       in_tensors,
       out_tensors,

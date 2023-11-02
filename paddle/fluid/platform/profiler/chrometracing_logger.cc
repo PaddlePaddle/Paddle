@@ -260,7 +260,7 @@ void ChromeTracingLogger::LogHostTraceEventNode(
     "args": {
       "start_time": "%.3f us",
       "end_time": "%.3f us",
-      "dtypes": %s,
+      "types": %s,
       "comm_info": %s
     }
   },

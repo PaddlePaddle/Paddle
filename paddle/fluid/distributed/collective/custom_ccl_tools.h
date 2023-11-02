@@ -38,5 +38,6 @@ using phi::distributed::ReduceOp;
 
 phi::ccl::CCLReduceOp ToXCCLRedType(ReduceOp reduction);
 
+const char* ToXCCLRedString(ReduceOp reduction);
 }  // namespace distributed
 }  // namespace paddle
