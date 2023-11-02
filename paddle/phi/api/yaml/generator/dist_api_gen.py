@@ -83,13 +83,18 @@ SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = MakeDistMetaTensor(*{name}.impl());"""
 VECTOR_DIST_META_IN_TEMPLATE = """
     std::vector<phi::distributed::DistMetaTensor> meta_dist_input_{name};
-    for(auto& e: {name}){{
+    for(auto& e : {name}) {{
         meta_dist_input_{name}.push_back(MakeDistMetaTensor(*e.impl()));
     }}"""
 OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE = """
     auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*(*{name}).impl()) : phi::distributed::DistMetaTensor();"""
 OPTIONAL_VECTOR_DIST_META_IN_TEMPLATE = """
-    auto meta_dist_input_{name} = {name} ? MakeDistMetaTensor(*{name}) : std::vector<phi::distributed::DistMetaTensor>(1);"""
+    std::vector<phi::distributed::DistMetaTensor> meta_dist_input_{name};
+    if ({name}) {{
+        for(auto& e : *{name}) {{
+            meta_dist_input_{name}.push_back(MakeDistMetaTensor(*e.impl()));
+        }}
+    }}"""
 INFER_SPMD_TEMPLATE = """
     auto spmd_info = phi::distributed::{}({});
 """

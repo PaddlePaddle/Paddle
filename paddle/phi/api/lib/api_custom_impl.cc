@@ -117,13 +117,9 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         input_x[i] = x[i].impl().get();
       }
 
-      // auto meta_dist_input_x = MakeDistMetaTensor(input_x);
-      std::vector<phi::distributed::DistMetaTensor> meta_dist_input_x;
-      for (auto& e : input_x) {
-        meta_dist_input_x.push_back(MakeDistMetaTensor(*e));
-      }
-      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
-          meta_dist_input_x);
+      auto meta_dist_input_x = MakeDistMetaTensor(input_x);
+      auto spmd_info =
+          phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
 
       auto dist_out = SetKernelDistOutput(&api_output);
       auto dense_out = dist_out->unsafe_mutable_value();
