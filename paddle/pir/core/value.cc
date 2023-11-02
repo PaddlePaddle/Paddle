@@ -83,6 +83,8 @@ void Value::ReplaceUsesWithIf(
   for (auto it = use_begin(); it != use_end();) {
     if (should_replace(*it)) {
       (it++)->set_source(new_value);
+    } else {
+      it++;
     }
   }
 }

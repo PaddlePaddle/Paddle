@@ -42,10 +42,13 @@ std::vector<pir::Value> GetBlockOutsideInput(
     }
   }
 
+  std::unordered_set<::pir::Value> insert_value;
   for (size_t k = 0; k < op_list.size(); ++k) {
     for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
-      if (!block_inner_output.count(op_list[k]->operand_source(i))) {
+      if (!block_inner_output.count(op_list[k]->operand_source(i)) &&
+          !insert_value.count(op_list[k]->operand_source(i))) {
         vec_res.push_back(op_list[k]->operand_source(i));
+        insert_value.insert(op_list[k]->operand_source(i));
       }
     }
   }
@@ -54,19 +57,42 @@ std::vector<pir::Value> GetBlockOutsideInput(
 }
 
 std::vector<pir::Value> GetBlockOutsideOutput(
-    const std::vector<pir::Operation*> op_list) {
-  std::vector<pir::Value> vec_res;
-  std::unordered_set<::pir::Value> block_inner_output;
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_operands(); ++i) {
-      block_inner_output.insert(op_list[k]->operand_source(i));
+    const std::vector<pir::Operation*> op_list,
+    const std::vector<pir::Operation*> group_all_list) {
+  assert(group_all_list.size() >= 2);
+  assert(group_all_list.back()->isa<pir::YieldOp>());
+
+  auto yeild_op = group_all_list.back()->dyn_cast<pir::YieldOp>();
+
+  std::unordered_set<pir::Value> yeild_inputs;
+  for (size_t i = 0; i < yeild_op.num_operands(); ++i) {
+    yeild_inputs.insert(yeild_op.operand_source(i));
+  }
+
+  std::unordered_set<pir::Operation*> innner_op_set(op_list.begin(),
+                                                    op_list.end());
+  std::unordered_set<pir::Operation*> outside_group_set;
+
+  for (size_t i = 0; i < group_all_list.size(); ++i) {
+    if (!innner_op_set.count(group_all_list[i])) {
+      outside_group_set.insert(group_all_list[i]);
     }
   }
 
-  for (size_t k = 0; k < op_list.size(); ++k) {
-    for (size_t i = 0; i < op_list[k]->num_results(); ++i) {
-      if (!block_inner_output.count(op_list[k]->result(i))) {
-        vec_res.push_back(op_list[k]->result(i));
+  std::vector<pir::Value> vec_res;
+
+  for (auto* op : op_list) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      if (yeild_inputs.count(op->result(i))) {
+        vec_res.push_back(op->result(i));
+      } else {
+        for (auto it = op->result(i).use_begin(); it != op->result(i).use_end();
+             ++it) {
+          if (outside_group_set.count(it->owner())) {
+            vec_res.push_back(op->result(i));
+            break;
+          }
+        }
       }
     }
   }
@@ -109,13 +135,16 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       auto group_op = (*it)->dyn_cast<cinn::dialect::GroupOp>();
 
       // op fusion
+      std::cerr << "before op fusion\n";
       auto op_fusion = cinn::dialect::ir::OpFusionPassInternal(
           GetOpListNotIncludeYield(group_op.ops()));
 
+      std::cerr << "after op fusion\n";
       // fusion merge
       auto group_list =
           cinn::dialect::ir::GeneralFusionMergePassInternal(op_fusion);
 
+      std::cerr << "after group fusion\n";
       PADDLE_ENFORCE_EQ(group_list.size(),
                         1u,
                         phi::errors::Unimplemented(
@@ -140,7 +169,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        auto vec_outs = GetBlockOutsideOutput(group->ops);
+        auto vec_outs = GetBlockOutsideOutput(group->ops, group_op.ops());
 
         std::vector<pir::Type> vec_types;
         for (auto& out : vec_outs) {

@@ -111,7 +111,7 @@ static bool limit_args(const OpGroupPtr& first, const OpGroupPtr& second) {
 }
 
 bool WithoutLastDimInReduce(const phi::DDim& inshape,
-                            const std::vector<int>& axes) {
+                            const std::vector<int64_t>& axes) {
   // if last axis is in reduce.
   if (std::find(axes.begin(), axes.end(), inshape.size() - 1) != axes.end() ||
       std::find(axes.begin(), axes.end(), -1) != axes.end()) {
@@ -132,10 +132,8 @@ bool WithoutLastDimInReduce(const phi::DDim& inshape,
 
 static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   const auto& inshape = op_node.inputs()[0].shape();
-  // const auto& axes = op_node.GetAttr<std::vector<int>>("dim");
-  // const auto& axes = op_node.Op()->attributes().at("dim").dyn_cast<>
-  // TODO(phlrain): get vector from attribute
-  std::vector<int> axes = {1};
+  const auto& axes = op_node.GetAttr<std::vector<int64_t>>("dim");
+
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
     for (int idx = axes.back() + 1; idx < inshape.size(); ++idx) {
@@ -179,11 +177,12 @@ static int GetSharedSize(const cinn::dialect::ir::OpNode& op_node) {
   return 0;
 }
 
-static bool ReduceFuseReduce(const OpGroupPtr& first,
-                             const OpGroupPtr& second) {
-  if (!limit_args(first, second)) {
-    return false;
-  }
+static bool ReduceFuseReduce1(const OpGroupPtr& first,
+                              const OpGroupPtr& second) {
+  // return false;
+  // if (!limit_args(first, second)) {
+  //   return false;
+  // }
   std::unique_ptr<cinn::dialect::ir::OpNode> reducer_0 = nullptr;
   first.WalkOpNodes([&](const cinn::dialect::ir::OpNode& op) {
     if (!reducer_0 && op.kind() == OpPatternKind::kReduction) {
@@ -208,12 +207,8 @@ static bool ReduceFuseReduce(const OpGroupPtr& first,
   const auto& reducer_1_input_shape = reducer_1->inputs()[0].shape();
   const auto& reducer_1_output_shape = reducer_1->outputs()[0].shape();
 
-  // TODO(phlrain): get attribute from op node
-  // auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int>>("dim");
-  // auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int>>("dim");
-
-  std::vector<int> reducer_0_reduce_dim = {0};
-  std::vector<int> reducer_1_reduce_dim = {0};
+  auto reducer_0_reduce_dim = reducer_0->GetAttr<std::vector<int64_t>>("dim");
+  auto reducer_1_reduce_dim = reducer_1->GetAttr<std::vector<int64_t>>("dim");
 
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1

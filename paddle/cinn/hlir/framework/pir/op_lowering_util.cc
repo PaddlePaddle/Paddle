@@ -592,6 +592,16 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
   int lane = 1;
   int index = static_cast<int>(axes.size()) - 1;
 
+  std::cerr << "in shape \n";
+  for (auto& s : inshape) {
+    std::cerr << "s " << s << std::endl;
+  }
+
+  std::cerr << "axis \n";
+  for (auto& a : axes) {
+    std::cerr << "axis " << a << std::endl;
+  }
+
   for (; index >= 0; --index) {
     if (index + 1 < axes.size() && axes[index] != axes[index + 1] - 1) {
       break;
@@ -810,18 +820,22 @@ void LoopAssignReduceWithoutLast(ir::IRSchedule& ir_sch,  // NOLINT
 }
 
 std::vector<int> GetReducerDimAttr(::pir::Operation* reduce_op) {
-  VLOG(3) << "GetReducerDimAttr from " << reduce_op->name();
-  auto* source_op = reduce_op->operand_source(/*dim_idx=*/1)
-                        .dyn_cast<::pir::OpResult>()
-                        .owner();
-  CHECK(source_op->isa<paddle::dialect::FullIntArrayOp>());
+  int rank = reduce_op->operand_source(0)
+                 .type()
+                 .dyn_cast<::pir::DenseTensorType>()
+                 .dims()
+                 .size();
+
+  auto attr = reduce_op->attributes().at("dim");
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
   std::vector<int> dim;
-  auto dim_attr = source_op->attributes()
-                      .at("value")
-                      .dyn_cast<::pir::ArrayAttribute>()
-                      .AsVector();
-  for (auto& attr : dim_attr) {
-    dim.push_back(attr.dyn_cast<::pir::Int64Attribute>().data());
+  for (auto vec_element : attr_vec) {
+    auto axis = vec_element.dyn_cast<::pir::Int64Attribute>().data();
+    if (axis < 0) {
+      axis += rank;
+    }
+    dim.push_back(axis);
   }
   return dim;
 }
