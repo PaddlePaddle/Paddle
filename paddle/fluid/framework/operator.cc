@@ -607,6 +607,25 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+bool RuntimeInferShapeContext::HasRuntimeAttributes() const {
+  bool is_runtime = false;
+  if (phi::DefaultKernelSignatureMap::Instance().Has(op_.Type())) {
+    const auto& attr_names = GetPhiDefaultKernelSignature()->attr_names;
+    for (size_t i = 0; i < attr_names.size(); ++i) {
+      auto& attr_name = attr_names[i];
+      auto* attr_ptr = Attrs().GetAttr(attr_name);
+      bool is_attr_var = attr_ptr != nullptr && HasAttrVar(*attr_ptr);
+      if (!attr_ptr || is_attr_var) {
+        is_runtime = true;
+        break;
+      }
+    }
+  } else {
+    is_runtime = true;
+  }
+  return is_runtime;
+}
+
 std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
     const std::string& out) const {
   auto out_it = ctx_.outputs.find(out);

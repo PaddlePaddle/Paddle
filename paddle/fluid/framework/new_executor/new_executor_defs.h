@@ -296,6 +296,8 @@ class Instruction {
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
+  bool can_use_infermeta_ctx_ = false;
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.

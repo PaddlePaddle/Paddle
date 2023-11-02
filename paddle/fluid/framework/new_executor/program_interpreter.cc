@@ -876,7 +876,7 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        if (op_with_kernel->Info().infer_meta_) {
+        if (instr_node.can_use_infermeta_ctx_) {
           op_with_kernel->Info().infer_meta_(const_cast<phi::InferMetaContext*>(
               instr_node.InnerCompatInferMetaContext()));
         } else {
@@ -884,7 +884,6 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
               instr_node.InnerInferShapeContext().get());
         }
       }
-      infershape_event.End();
       platform::RecordOpInfoSupplement(op->Type(),
                                        op->Attrs(),
                                        *(instr_node.InnerInferShapeContext()),

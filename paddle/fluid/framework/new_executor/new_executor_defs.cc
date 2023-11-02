@@ -252,8 +252,11 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   auto op_with_kernel =
       dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
   if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
-    compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
-        infershape_ctx_.get(), op_name);
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
   }
 }
 
@@ -270,8 +273,11 @@ void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
   auto op_with_kernel =
       dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
   if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
-    compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
-        infershape_ctx_.get(), op_name);
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
   }
 }
 
