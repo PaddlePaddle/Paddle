@@ -56,7 +56,6 @@ class TestReshardSToRCrossMesh:
         input_tensor = dist.shard_tensor(a, dist_attr=dist_attr)
 
         reshard_func = core.SToRReshardFunctionCrossMesh()
-        print(out_dist_attr)
         assert reshard_func.is_suitable(input_tensor, out_dist_attr)
 
         out = reshard_func.eval(dev_ctx, input_tensor, out_dist_attr)
