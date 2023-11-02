@@ -31,6 +31,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -81,24 +82,24 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   return program;
 }
 
-// TEST(GroupOp, TestBuild) {
-//   // Step 1: Construct pir::Program
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgram();
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
+TEST(GroupOp, TestBuild) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgram();
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
 
-//   EXPECT_EQ(program->block()->size(), 2u);
-//   LOG(INFO) << program->block()->size();
-//   std::vector<uint32_t> op_num = {2, 5};
-//   int i = 0;
-//   for (auto* sub_op : *(program->block())) {
-//     EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-//     EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
-//               op_num[i]);
-//     ++i;
-//   }
-// }
+  EXPECT_EQ(program->block()->size(), 2u);
+  LOG(INFO) << program->block()->size();
+  std::vector<uint32_t> op_num = {2, 5};
+  int i = 0;
+  for (auto* sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+              op_num[i]);
+    ++i;
+  }
+}
 
 std::shared_ptr<::pir::Program> BuildGroupProgramByBlock() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -136,24 +137,24 @@ std::shared_ptr<::pir::Program> BuildGroupProgramByBlock() {
   return program;
 }
 
-// TEST(GroupOp, TestBuildByBlock) {
-//   // Step 1: Construct pir::Program
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgramByBlock();
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
+TEST(GroupOp, TestBuildByBlock) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgramByBlock();
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
 
-//   EXPECT_EQ(program->block()->size(), 2u);
-//   LOG(INFO) << program->block()->size();
-//   std::vector<uint32_t> op_num = {2, 5};
-//   int i = 0;
-//   for (auto* sub_op : *(program->block())) {
-//     EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
-//     EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
-//               op_num[i]);
-//     ++i;
-//   }
-// }
+  EXPECT_EQ(program->block()->size(), 2u);
+  LOG(INFO) << program->block()->size();
+  std::vector<uint32_t> op_num = {2, 5};
+  int i = 0;
+  for (auto* sub_op : *(program->block())) {
+    EXPECT_TRUE(sub_op->isa<cinn::dialect::GroupOp>());
+    EXPECT_EQ(sub_op->dyn_cast<cinn::dialect::GroupOp>().ops().size(),
+              op_num[i]);
+    ++i;
+  }
+}
 
 std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -205,46 +206,46 @@ std::shared_ptr<::pir::Program> BuildGroupProgramForLowering() {
   return program;
 }
 
-// TEST(GroupOp, CINNLowering) {
-//   // Step 1: Construct pir::Program
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
+TEST(GroupOp, CINNLowering) {
+  // Step 1: Construct pir::Program
+  std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
 
-//   program->Print(std::cout);
-//   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+  program->Print(std::cout);
+  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
 
-//   paddle::framework::Scope exe_scope;
+  paddle::framework::Scope exe_scope;
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-//   std::set<std::string> out_names;
-//   out_names.insert("out@fetch");
-//   auto local_names = exe_scope.LocalVarNames();
-//   for (size_t i = 0; i < local_names.size(); ++i) {
-//     out_names.insert(local_names[i]);
-//   }
+  std::set<std::string> out_names;
+  out_names.insert("out@fetch");
+  auto local_names = exe_scope.LocalVarNames();
+  for (size_t i = 0; i < local_names.size(); ++i) {
+    out_names.insert(local_names[i]);
+  }
 
-//   executor.SetSkipGcVars(out_names);
-//   executor.Run({}, true);
+  executor.SetSkipGcVars(out_names);
+  executor.Run({}, true);
 
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 3.88455);
-//   bool res1 = simple_cmp(out_tensor.data<float>()[1], 3.88455);
-//   bool res2 = simple_cmp(out_tensor.data<float>()[2], 3.88455);
-//   bool res3 = simple_cmp(out_tensor.data<float>()[3], 3.88455);
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 3.88455);
+  bool res1 = simple_cmp(out_tensor.data<float>()[1], 3.88455);
+  bool res2 = simple_cmp(out_tensor.data<float>()[2], 3.88455);
+  bool res3 = simple_cmp(out_tensor.data<float>()[3], 3.88455);
 
-//   EXPECT_EQ(res0, true);
-//   EXPECT_EQ(res1, true);
-//   EXPECT_EQ(res2, true);
-//   EXPECT_EQ(res3, true);
-// }
+  EXPECT_EQ(res0, true);
+  EXPECT_EQ(res1, true);
+  EXPECT_EQ(res2, true);
+  EXPECT_EQ(res3, true);
+}
 
 std::shared_ptr<::pir::Program> BuildSoftmaxGroupProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
@@ -300,39 +301,4 @@ TEST(GroupOp, CINNLoweringSoftmax) {
   std::cerr << "fin build cinn pass process " << std::endl;
   program->Print(std::cout);
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
-
-  res->Print(std::cout);
-
-  //   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
-
-  //   auto kernel_program =
-  //       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
-
-  //   paddle::framework::Scope exe_scope;
-
-  //   paddle::framework::InterpreterCore executor(
-  //       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
-
-  //   std::set<std::string> out_names;
-  //   out_names.insert("out@fetch");
-  //   auto local_names = exe_scope.LocalVarNames();
-  //   for (size_t i = 0; i < local_names.size(); ++i) {
-  //     out_names.insert(local_names[i]);
-  //   }
-
-  //   executor.SetSkipGcVars(out_names);
-  //   executor.Run({}, true);
-
-  //   auto out_tensor =
-  //       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-  //   bool res0 = simple_cmp(out_tensor.data<float>()[0], 3.88455);
-  //   bool res1 = simple_cmp(out_tensor.data<float>()[1], 3.88455);
-  //   bool res2 = simple_cmp(out_tensor.data<float>()[2], 3.88455);
-  //   bool res3 = simple_cmp(out_tensor.data<float>()[3], 3.88455);
-
-  //   EXPECT_EQ(res0, true);
-  //   EXPECT_EQ(res1, true);
-  //   EXPECT_EQ(res2, true);
-  //   EXPECT_EQ(res3, true);
 }

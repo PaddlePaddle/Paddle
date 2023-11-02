@@ -40,11 +40,11 @@ inline bool limit_args(const std::shared_ptr<ir::Group>& first,
                        const std::shared_ptr<ir::Group>& second) {
   std::unordered_set<const ::pir::Operation*> args;
   for (auto& group : {first, second}) {
-    for (auto node : group->input_nodes) {
-      args.insert(node.first);
+    for (auto iter : group->input_ops) {
+      args.insert(iter.first);
     }
-    for (auto node : group->output_nodes) {
-      args.insert(node);
+    for (auto op : group->output_ops) {
+      args.insert(op);
     }
   }
 
@@ -66,8 +66,8 @@ inline bool is_same_shape(const std::shared_ptr<ir::Group>& first,
     return false;
   }
 
-  auto output_var_0 = GetValueShape((*first->master_nodes.begin())->result(0));
-  auto output_var_1 = GetValueShape((*second->master_nodes.begin())->result(0));
+  auto output_var_0 = GetValueShape((*first->master_ops.begin())->result(0));
+  auto output_var_1 = GetValueShape((*second->master_ops.begin())->result(0));
   return output_var_0 == output_var_1;
 }
 
@@ -77,8 +77,8 @@ inline bool is_same_size(const std::shared_ptr<ir::Group>& first,
     return false;
   }
 
-  auto output_var_0 = GetValueShape((*first->master_nodes.begin())->result(0));
-  auto output_var_1 = GetValueShape((*second->master_nodes.begin())->result(0));
+  auto output_var_0 = GetValueShape((*first->master_ops.begin())->result(0));
+  auto output_var_1 = GetValueShape((*second->master_ops.begin())->result(0));
   if (output_var_0 == output_var_1) {
     return true;
   }
@@ -89,8 +89,8 @@ inline bool is_same_size(const std::shared_ptr<ir::Group>& first,
 }
 
 inline bool is_const_group(const std::shared_ptr<ir::Group>& group) {
-  return group->CollectNodes().size() == 1 &&
-         ConstantOps.count(group->CollectNodes()[0]->name());
+  return group->CollectOps().size() == 1 &&
+         ConstantOps.count(group->CollectOps()[0]->name());
 }
 
 inline bool elementwise_fuse_broadcast(
@@ -105,9 +105,9 @@ inline bool elementwise_fuse_broadcast(
     return true;
   }
   // if first's output is not all in second's input
-  for (auto output : first->output_nodes) {
+  for (auto output : first->output_ops) {
     return true;
-    if (!second->input_nodes.count(output)) {
+    if (!second->input_ops.count(output)) {
       return false;
     }
 
@@ -130,7 +130,7 @@ inline bool honrizontal_elementwise_fuse_reduce(
     const std::shared_ptr<ir::Group>& first,
     const std::shared_ptr<ir::Group>& second) {
   std::shared_ptr<ir::Group> ele_group, reduce_group;
-  if (first->op_pattern_kind == kReduction) {
+  if (first->op_pattern_kind == OpPatternKind::kReduction) {
     ele_group = second;
     reduce_group = first;
   } else {
@@ -143,10 +143,10 @@ inline bool honrizontal_elementwise_fuse_reduce(
   }
 
   auto ele_node_shape =
-      GetValueShape((*ele_group->master_nodes.begin())->result(0));
+      GetValueShape((*ele_group->master_ops.begin())->result(0));
   int32_t size_ele = phi::product(ele_node_shape);
   // TODO(phlrain): seems extrame danger herem, why compare multi Master Node?
-  for (auto* master : reduce_group->master_nodes) {
+  for (auto* master : reduce_group->master_ops) {
     auto master_node_shape = GetValueShape(master->result(0));
     int32_t size_master = phi::product(master_node_shape);
     if (size_ele == size_master) {
@@ -169,9 +169,9 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
 
   // if reduce nodes not in consumers of first group
   std::queue<::pir::Operation*> candidates;
-  std::unordered_set<::pir::Operation*> first_node_set = first->NodeSet();
-  std::unordered_set<::pir::Operation*> second_node_set = second->NodeSet();
-  for (const auto& pair : second->input_nodes) {
+  std::unordered_set<::pir::Operation*> first_node_set = first->OpSet();
+  std::unordered_set<::pir::Operation*> second_node_set = second->OpSet();
+  for (const auto& pair : second->input_ops) {
     if (first_node_set.find(pair.first) != first_node_set.end()) {
       candidates.push(pair.first);
     }
@@ -195,7 +195,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
         visited.insert(consumer);
         candidates.push(consumer);
       }
-      if (second->master_nodes.count(consumer)) {
+      if (second->master_ops.count(consumer)) {
         masters_in_consumers.insert(consumer);
       }
     }
@@ -203,7 +203,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   if (!masters_in_consumers.empty()) {
     bool flag = true;
     auto first_node_shape =
-        GetValueShape((*first->master_nodes.begin())->result(0));
+        GetValueShape((*first->master_ops.begin())->result(0));
     int32_t size_first = phi::product(first_node_shape);
 
     for (::pir::Operation* master : masters_in_consumers) {
@@ -221,8 +221,8 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
 
   // if reduce using block_reduce, can't fuse producer.
   ::pir::Operation* reducer = nullptr;
-  for (auto& node : second->master_nodes) {
-    if (GetOpKind(node->name()) == kReduction) {
+  for (auto& node : second->master_ops) {
+    if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
       reducer = node;
       break;
     }
@@ -240,7 +240,7 @@ inline bool elementwise_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // }
 
   auto input_shape = GetValueShape(reducer->operand_source(0));
-  std::vector<int> reduce_axes = GetVectorAttr<int>(reducer, "dim");
+  auto reduce_axes = GetVectorAttr(reducer, "dim");
 
   // int max_num_threads = helper->target_.max_num_threads();
   int max_num_threads = 1000;
@@ -289,8 +289,8 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     return true;
   }
   ::pir::Operation* reducer = nullptr;
-  for (auto& node : second->master_nodes) {
-    if (GetOpKind(node->name()) == kReduction) {
+  for (auto& node : second->master_ops) {
+    if (GetOpKind(node->name()) == OpPatternKind::kReduction) {
       reducer = node;
       break;
     }
@@ -300,7 +300,7 @@ inline bool broadcast_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   auto input_shape = GetValueShape(reducer->operand_source(0));
   auto input_size = phi::product(input_shape);
 
-  auto output_shape = GetValueShape((*first->master_nodes.begin())->result(0));
+  auto output_shape = GetValueShape((*first->master_ops.begin())->result(0));
   auto output_size = phi::product(output_shape);
 
   if (input_size == output_size) {
@@ -325,10 +325,9 @@ inline bool horizontal_relation(const std::shared_ptr<ir::Group>& first,
                                 const OpPatternKind op_pattern_kind) {
   // merge injective
   auto merge_nodes_set = [](const std::shared_ptr<ir::Group>& group) {
-    std::unordered_set<::pir::Operation*> nodes_set = group->nodes_set;
+    std::unordered_set<::pir::Operation*> nodes_set = group->ops_set;
     for (auto& sub_group : group->fused_sub_groups) {
-      nodes_set.insert(sub_group->nodes_set.begin(),
-                       sub_group->nodes_set.end());
+      nodes_set.insert(sub_group->ops_set.begin(), sub_group->ops_set.end());
     }
     return nodes_set;
   };
@@ -398,14 +397,14 @@ inline bool horizontal_with_injective(
   if (!is_same_size(first, second)) {
     return false;
   }
-  return horizontal_relation(first, second, kInjective);
+  return horizontal_relation(first, second, OpPatternKind::kInjective);
 }
 
 inline bool injective_horizontal_with_reduce(
     const std::shared_ptr<ir::Group>& first,
     const std::shared_ptr<ir::Group>& second) {
   // check injective with injective.
-  if (!horizontal_relation(first, second, kInjective)) {
+  if (!horizontal_relation(first, second, OpPatternKind::kInjective)) {
     return false;
   }
   return elementwise_fuse_reduce(first, second);
@@ -424,8 +423,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
   // each reducer and its consumers with type of Broadcast needs to meet. It is
   // required that each consumer of type Broadcast meet the same shape after
   // broadcast as before reduce.
-  for (auto& node_in_master : first->master_nodes) {
-    if (GetOpKind(node_in_master->name()) != kReduction) {
+  for (auto& node_in_master : first->master_ops) {
+    if (GetOpKind(node_in_master->name()) != OpPatternKind::kReduction) {
       continue;
     }
     ::pir::Operation* reducer = node_in_master;
@@ -480,8 +479,8 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
             visited_set.insert(consumer);
             candidates.push(consumer);
           }
-          if (GetOpKind(consumer->name()) == kBroadcast &&
-              second->NodeSet().find(consumer) != second->NodeSet().end()) {
+          if (GetOpKind(consumer->name()) == OpPatternKind::kBroadcast &&
+              second->OpSet().find(consumer) != second->OpSet().end()) {
             broadcasters.insert(consumer);
           }
         }
@@ -543,8 +542,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
     return false;
   }
   ::pir::Operation* reducer_0 = nullptr;
-  for (auto& reducer : first->master_nodes) {
-    if (GetOpKind(reducer->name()) == kReduction) {
+  for (auto& reducer : first->master_ops) {
+    if (GetOpKind(reducer->name()) == OpPatternKind::kReduction) {
       reducer_0 = reducer;
       break;
     }
@@ -552,8 +551,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   // CHECK(reducer_0) << "Can't find reduce op in group " << first->group_id;
 
   ::pir::Operation* reducer_1 = nullptr;
-  for (auto& reducer : second->master_nodes) {
-    if (GetOpKind(reducer->name()) == kReduction) {
+  for (auto& reducer : second->master_ops) {
+    if (GetOpKind(reducer->name()) == OpPatternKind::kReduction) {
       reducer_1 = reducer;
       break;
     }
@@ -566,13 +565,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
   auto reducer_1_input_shape = GetValueShape(reducer_1->operand_source(0));
   auto reducer_1_output_shape = GetValueShape(reducer_1->result(0));
 
-  // auto reducer_0_reduce_dim =
-  //     absl::get<std::vector<int>>(reducer_0->attrs.attr_store.at("dim"));
-  // auto reducer_1_reduce_dim =
-  //     absl::get<std::vector<int>>(reducer_1->attrs.attr_store.at("dim"));
-  // TODO(phlrain)
-  std::vector<int> reducer_0_reduce_dim = GetVectorAttr<int>(reducer_0, "dim");
-  std::vector<int> reducer_1_reduce_dim = GetVectorAttr<int>(reducer_1, "dim");
+  auto reducer_0_reduce_dim = GetVectorAttr(reducer_0, "dim");
+  auto reducer_1_reduce_dim = GetVectorAttr(reducer_1, "dim");
 
   for (auto& dim : reducer_0_reduce_dim) {
     // if dim = -1, set as shape.size() - 1
@@ -594,8 +588,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
       reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
-      for (auto* master : fusion_group->master_nodes) {
-        if (GetOpKind(master->name()) == kReduction) {
+      for (auto* master : fusion_group->master_ops) {
+        if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
           shared_size += GetSharedSize(master);
         }
       }
@@ -615,8 +609,8 @@ inline bool reduce_fuse_reduce(const std::shared_ptr<ir::Group>& first,
       reducer_0_reduce_dim == reducer_1_reduce_dim) {
     auto shared_size = 0;
     for (auto& fusion_group : {first, second}) {
-      for (auto* master : fusion_group->master_nodes) {
-        if (GetOpKind(master->name()) == kReduction) {
+      for (auto* master : fusion_group->master_ops) {
+        if (GetOpKind(master->name()) == OpPatternKind::kReduction) {
           shared_size += GetSharedSize(master);
         }
       }

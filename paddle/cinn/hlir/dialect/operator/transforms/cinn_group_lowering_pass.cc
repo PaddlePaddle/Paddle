@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
 namespace dialect {
@@ -138,16 +138,12 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         }
 
         auto vec_outs = GetBlockOutsideOutput(
-            group->nodes,
-            group->output_nodes,
+            group->ops,
+            group->output_ops,
             group_op.ops().back()->dyn_cast<pir::YieldOp>());
 
         auto group1 =
-            std::make_shared<cinn::hlir::framework::pir::Group>(group->nodes);
-
-        group1->input_values = vec_ins;
-        group1->output_values = vec_outs;
-
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         std::cerr << "end to build kernel \n";
         compiler_list.push_back(ir_compiler);
@@ -157,7 +153,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         };
 
         // Generate jit kernel op input and output
-
         std::vector<pir::Type> vec_types;
         for (auto& out : vec_outs) {
           vec_types.push_back(out.type());
@@ -166,11 +161,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
-        // for (size_t i = 0; i < vec_outs.size(); ++i) {
-        //   value_map[vec_outs[i]] = cinn_op->result(i);
-        // }
-
-        // auto yield_op = group_op.ops().back()->dyn_cast<pir::YieldOp>();
         for (size_t i = 0; i < group_op.num_results(); ++i) {
           value_map[group_op.result(i)] = cinn_op->result(i);
         }

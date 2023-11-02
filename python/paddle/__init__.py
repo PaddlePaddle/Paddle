@@ -252,6 +252,8 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     unfold,
+    masked_fill,
+    masked_fill_,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -907,6 +909,8 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
     'hypot',
     'hypot_',
 ]

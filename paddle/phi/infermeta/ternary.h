@@ -48,10 +48,10 @@ void AddmmInferMeta(const MetaTensor& input,
                     float alpha,
                     MetaTensor* out);
 
-void ArangeInferMeta(const MetaTensor& start,
-                     const MetaTensor& end,
-                     const MetaTensor& step,
-                     MetaTensor* out);
+void ArangeTensorInferMeta(const MetaTensor& start,
+                           const MetaTensor& end,
+                           const MetaTensor& step,
+                           MetaTensor* out);
 
 void BoxCoderInferMeta(const MetaTensor& prior_box,
                        const MetaTensor& prior_box_var,
@@ -218,5 +218,18 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
                             MetaTensor* scores,
                             MetaTensor* path,
                             MetaConfig config = MetaConfig());
+
+void QuantLinearInferMeta(const MetaTensor& x,
+                          const MetaTensor& w,
+                          const MetaTensor& bias,
+                          int in_num_col_dims,
+                          const std::string& activation_type,
+                          bool padding_weights,
+                          float scale_in,
+                          const std::vector<float>& scale_weights,
+                          int quant_round_type,
+                          float quant_max_bound,
+                          float quant_min_bound,
+                          MetaTensor* y);
 
 }  // namespace phi
