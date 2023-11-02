@@ -586,6 +586,15 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
     return low_precison_var_names
 
 
+def map_block(block, fn):
+    fn(block)
+    for op in block.ops:
+        if not op.has_attr("sub_block"):
+            continue
+        sub_block = op.attr("sub_block")
+        map_block(sub_block, fn)
+
+
 def cast_model_to_fp16(
     program,
     amp_lists=None,
@@ -744,7 +753,7 @@ def cast_model_to_fp16(
                     )
 
     # step 3: insert cast op for op's inputs.
-    for block in program.blocks:
+    def insert_cast_op_for_block(block):
         ops = block.ops
         idx = 0
         while idx < len(ops):
@@ -770,6 +779,9 @@ def cast_model_to_fp16(
                 num_cast_ops += in_var_cast_num
 
             idx += num_cast_ops + 1
+
+    map_block(program.global_block(), insert_cast_op_for_block)
+
     _logger.debug("---- after cast model to fp16 ----")
     _logger.debug(program)
 
