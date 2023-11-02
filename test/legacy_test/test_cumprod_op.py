@@ -206,7 +206,6 @@ class TestCumprodComplex128Op(TestCumprod):
 
 # test api.
 class TestCumprodAPI(unittest.TestCase):
-    @test_with_pir_api
     def init_dtype(self):
         self.dtype = 'float64'
         self.shape = [2, 3, 10, 10]
@@ -220,6 +219,7 @@ class TestCumprodAPI(unittest.TestCase):
             self.place.append(paddle.CUDAPlace(0))
 
     # test static graph api.
+    @test_with_pir_api
     def test_static_api(self):
         paddle.enable_static()
 
