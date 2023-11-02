@@ -1562,13 +1562,16 @@ class Engine:
 
     def _get_fwd_op(self, bwd_op, grad_var_to_var_map):
         bwd_op_input_names = bwd_op.get_input_names()
+        out_grad_name = ["out_grad", "Out_grad", "loss_grad"]
         for idx, input_name in enumerate(bwd_op_input_names):
-            if input_name == "out_grad":
+            if input_name in out_grad_name:
                 out_grad = bwd_op.operand(idx).source()
                 out = grad_var_to_var_map[out_grad]
+                assert (
+                    out is not None
+                ), "can not find the variable of corresponding forward op"
                 fwd_op = out.get_defining_op()
                 return fwd_op
-
         return None
 
     def _get_new_ir_grad_var_to_var_map(
@@ -1597,6 +1600,14 @@ class Engine:
                 )
         return new_ir_grad_var_to_var_map
 
+    def _get_bwd_ops_name(self, newir_program):
+        bwd_ops = []
+        global_block = newir_program.global_block()
+        for op in global_block.ops:
+            if op.name().endswith("_grad") and op.name() not in bwd_ops:
+                bwd_ops.append(op.name())
+        return bwd_ops
+
     def _decompose_newir_program(self):
         if not self.newir_program_initialized:
             raise RuntimeError(
@@ -1624,17 +1635,9 @@ class Engine:
                 program
             ):
                 ops = program.global_block().ops
-                bwd_ops_name = [
-                    "pd_op.layer_norm_grad",
-                    "pd_op.dropout_grad",
-                    "pd_op.reshape_grad",
-                    "pd_op.divide_grad",
-                    "pd_op.add_grad",
-                    "pd_op.gelu_grad",
-                    "pd_op.multiply_grad",
-                    "pd_op.sum_grad",
-                    "pd_op.transpose_grad",
-                ]
+                bwd_ops_name = self._get_bwd_ops_name(program)
+                not_decomposed_bwd_ops_name = []
+
                 for op in ops:
                     if op.name() in bwd_ops_name:
                         fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
@@ -1670,14 +1673,14 @@ class Engine:
                                         new_fwd_outputs,
                                     )
                                 )
-
-                ops_name = [
-                    op.name() for op in self.newir_program.global_block().ops
-                ]
-                for op_name in bwd_ops_name:
-                    assert (
-                        op_name not in ops_name
-                    ), "op %s is still in newir_program" % (op_name)
+                        has_decomposed = (
+                            bwd_has_decomposed or fwd_has_decomposed
+                        )
+                        if (
+                            not has_decomposed
+                            and op.name() not in not_decomposed_bwd_ops_name
+                        ):
+                            not_decomposed_bwd_ops_name.append(op.name())
 
                 self.newir_program_after_decomposed = program
                 self.newir_program_decomposed = True
