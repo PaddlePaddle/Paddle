@@ -37,7 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -520,10 +520,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
