@@ -17,6 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -68,6 +69,7 @@ class TestDiagFlatAPI(unittest.TestCase):
         y = paddle.diagflat(x, offset=-1)
         np.testing.assert_allclose(y.numpy(), self.expected5, rtol=1e-05)
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
         x2 = paddle.static.data(name='input2', shape=[20], dtype='float64')

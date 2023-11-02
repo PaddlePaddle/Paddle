@@ -21,6 +21,7 @@ from op_test import OpTest, paddle_static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiagEmbedOp(OpTest):
@@ -31,7 +32,7 @@ class TestDiagEmbedOp(OpTest):
         self.outputs = {'Out': self.target}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_config(self):
         self.case = np.random.randn(2, 3).astype('float32')
@@ -51,6 +52,7 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 
 
 class TestDiagEmbedAPICase(unittest.TestCase):
+    @test_with_pir_api
     def test_case1(self):
         with paddle_static_guard():
             diag_embed = np.random.randn(2, 3, 4).astype('float32')
