@@ -15,17 +15,17 @@
 import unittest
 
 import numpy as np
-from eager_op_test import (
+from op import Operator
+from op_test import (
     OpTest,
     check_out_dtype,
     paddle_static_guard,
     skip_check_grad_ci,
 )
-from op import Operator
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import Program, core, program_guard
+from paddle.base import Program, core, program_guard
 
 
 class TestLookupTableOp(OpTest):

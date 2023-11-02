@@ -26,7 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/phi/backends/onednn/axpy_handler.h"
 #endif
 
@@ -148,7 +148,8 @@ struct SelectedRowsAddTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2.numel() / in1_height,
@@ -309,7 +310,8 @@ struct SelectedRowsAddToTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,
@@ -436,7 +438,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
                   int64_t input_width,
                   const DeviceContext& context,
                   T* out_data) {
-#ifndef PADDLE_WITH_MKLDNN
+#ifndef PADDLE_WITH_DNNL
   auto blas = phi::funcs::GetBlas<DeviceContext, T>(context);
 #endif
   for (auto* input : inputs) {
@@ -446,7 +448,7 @@ add_sparse_inputs(const std::vector<const phi::SelectedRows*>& inputs,
     auto* input_data = input->value().data<T>();
     auto& input_rows = input->rows();
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     OneDNNContext onednn_context(context.GetPlace());
     funcs::OneDNNAXPYHandler<T> axpy_handler(
         input_width, T(1.f), onednn_context.GetEngine());
@@ -580,7 +582,7 @@ struct MergeAddImpl {
                            in_place,
                            in_data,
                            in_numel * sizeof(T));
-        copied_numel += in_numel;
+        copied_numel += static_cast<int64_t>(in_numel);
       }
     } else {
       std::vector<int64_t> merge_rows(merged_row_set.begin(),
@@ -944,7 +946,8 @@ struct UpdateToTensor<phi::CPUContext, T> {
     auto& in1_value = input1.value();
     auto& in1_rows = input1.rows();
 
-    int64_t in1_row_numel = in1_value.numel() / in1_rows.size();
+    int64_t in1_row_numel =
+        static_cast<int64_t>(in1_value.numel() / in1_rows.size());
     PADDLE_ENFORCE_EQ(
         in1_row_numel,
         input2->numel() / in1_height,

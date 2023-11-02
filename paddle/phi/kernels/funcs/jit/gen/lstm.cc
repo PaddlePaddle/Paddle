@@ -14,7 +14,7 @@
 
 #include "paddle/phi/kernels/funcs/jit/gen/lstm.h"
 
-#include <stddef.h>  // offsetof
+#include <cstddef>  // offsetof
 
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle/phi/kernels/funcs/jit/macro.h"

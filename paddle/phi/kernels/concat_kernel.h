@@ -27,9 +27,10 @@ void ConcatKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
-DenseTensor Concat(const Context& dev_ctx,
-                   const std::vector<const DenseTensor*>& x,
-                   const Scalar& axis) {
+void Concat(const Context& dev_ctx,
+            const std::vector<const DenseTensor*>& x,
+            const Scalar& axis,
+            DenseTensor* dense_out) {
   std::vector<MetaTensor> meta_x;
   meta_x.reserve(x.size());
   std::vector<const MetaTensor*> meta_x_ptr;
@@ -38,10 +39,20 @@ DenseTensor Concat(const Context& dev_ctx,
     meta_x_ptr.push_back(&meta_x.back());
   }
 
-  DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
+  MetaTensor meta_out(dense_out);
   ConcatInferMeta(meta_x_ptr, axis.to<int>(), &meta_out);
-  ConcatKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+
+  if (x[0]->initialized()) {
+    ConcatKernel<T, Context>(dev_ctx, x, axis, dense_out);
+  }
+}
+
+template <typename T, typename Context>
+DenseTensor Concat(const Context& dev_ctx,
+                   const std::vector<const DenseTensor*>& x,
+                   const Scalar& axis) {
+  DenseTensor dense_out;
+  Concat<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
 

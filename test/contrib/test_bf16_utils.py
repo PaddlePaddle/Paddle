@@ -15,8 +15,8 @@ import copy
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static import amp
 
 paddle.enable_static()
@@ -46,10 +46,10 @@ class AMPTest(unittest.TestCase):
 
     def test_amp_lists_2(self):
         # 2. w={'tanh'}, b=None
-        self.fp32_list.remove('tanh')
-        self.bf16_list.add('tanh')
+        self.fp32_list.remove('tan')
+        self.bf16_list.add('tan')
 
-        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'tanh'})
+        self.amp_lists_ = amp.bf16.AutoMixedPrecisionListsBF16({'tan'})
 
     def test_amp_lists_3(self):
         # 3. w={'lstm'}, b=None
@@ -109,13 +109,13 @@ class AMPTest2(unittest.TestCase):
         )
 
     def test_find_op_index(self):
-        block = fluid.default_main_program().global_block()
+        block = base.default_main_program().global_block()
         op_desc = core.OpDesc()
         idx = amp.fp16_utils.find_op_index(block.desc, op_desc)
         assert idx == -1
 
     def test_is_in_fp32_varnames(self):
-        block = fluid.default_main_program().global_block()
+        block = base.default_main_program().global_block()
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
@@ -137,7 +137,7 @@ class AMPTest2(unittest.TestCase):
         assert amp.bf16.amp_utils._is_in_fp32_varnames(op1, amp_lists_2)
 
     def test_find_true_post_op(self):
-        block = fluid.default_main_program().global_block()
+        block = base.default_main_program().global_block()
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')
@@ -152,9 +152,9 @@ class AMPTest2(unittest.TestCase):
         assert res == [op2]
 
     def test_find_true_post_op_with_search_all(self):
-        program = fluid.Program()
+        program = base.Program()
         block = program.current_block()
-        startup_block = fluid.default_startup_program().global_block()
+        startup_block = base.default_startup_program().global_block()
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')

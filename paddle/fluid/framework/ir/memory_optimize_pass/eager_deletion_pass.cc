@@ -66,11 +66,12 @@ static int64_t GetMemorySize(
                     platform::errors::InvalidArgument(
                         "Var(%s) must be phi::DenseTensor.", var_name));
   auto dims = var_desc->GetShape();
-  return SizeOfType(var_desc->GetDataType()) *
-         std::accumulate(dims.begin(),
-                         dims.end(),
-                         static_cast<int64_t>(1),
-                         std::multiplies<int64_t>());
+  return static_cast<int64_t>(
+      SizeOfType(var_desc->GetDataType()) *
+      std::accumulate(dims.begin(),
+                      dims.end(),
+                      static_cast<int64_t>(1),
+                      std::multiplies<int64_t>()));  // NOLINT
 }
 
 // Split all variables in the graph into phi::DenseTensor and
@@ -85,7 +86,7 @@ static void SplitIntoLoDTensorAndNonLoDTensorVars(
   lod_tensors->clear();
   other_vars->clear();
 
-  for (auto &op_vars_pair : m) {
+  for (auto const &op_vars_pair : m) {
     for (auto var_name : op_vars_pair.second) {
       auto *var_desc = TryGetLatestVarDesc(
           vars[op_vars_pair.first->GetScopeIdx()].at(var_name));
@@ -176,8 +177,8 @@ static OpToVarNameSetMap ShrinkGCVars(
               });
 
     int64_t accumulated_size = 0;
-    int64_t size_threshold =
-        static_cast<int64_t>(fraction_of_memory_size * place_to_size[place]);
+    int64_t size_threshold = static_cast<int64_t>(
+        fraction_of_memory_size * place_to_size[place]);  // NOLINT
     for (size_t i = 0; i < gc_vars.size() && accumulated_size < size_threshold;
          ++i) {
       partial_vars[gc_vars[i].op_].insert(gc_vars[i].name_);
@@ -246,7 +247,7 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
         op->GetScope(),
         op->GetScopeIdx(),
         op->GetPlace(),
-        std::move(var_info),
+        var_info,
         gcs.at(places[op->GetScopeIdx()]).get());
 
     auto it = std::find_if(
@@ -293,6 +294,10 @@ void EagerDeletionPass::ApplyImpl(ir::Graph *graph) const {
           "conditional_block_op_eager_deletion_pass");
   conditional_block_op_eager_deletion_pass->Apply(graph);
 
+  auto pylayer_op_eager_deletion_pass =
+      ir::PassRegistry::Instance().Get("pylayer_op_eager_deletion_pass");
+  pylayer_op_eager_deletion_pass->Apply(graph);
+
   auto while_op_eager_deletion_pass =
       ir::PassRegistry::Instance().Get("while_op_eager_deletion_pass");
   while_op_eager_deletion_pass->Apply(graph);
@@ -320,6 +325,7 @@ REGISTER_PASS(eager_deletion_pass, paddle::framework::ir::EagerDeletionPass)
     .RequirePassAttr(paddle::framework::ir::kGarbageCollector);
 
 USE_PASS(conditional_block_op_eager_deletion_pass);
+USE_PASS(pylayer_op_eager_deletion_pass);
 USE_PASS(while_op_eager_deletion_pass);
 USE_PASS(recurrent_op_eager_deletion_pass);
 #ifdef PADDLE_WITH_CINN

@@ -22,7 +22,7 @@
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_check_fusion_accuracy_pass);
+PD_DECLARE_string(cinn_check_fusion_accuracy_pass);
 
 namespace cinn {
 namespace runtime {

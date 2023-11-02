@@ -55,6 +55,11 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
     mp_degree = cur_cfg.get("mp_degree", None)
     hidden_size = tuner_cfg["model_cfg"].get("hidden_size", None)
     vocab_size = tuner_cfg["model_cfg"].get("vocab_size", None)
+    num_attention_heads = tuner_cfg["model_cfg"].get(
+        "num_attention_heads", None
+    )
+    seq_length = tuner_cfg["model_cfg"].get("seq_length", None)
+    use_sequence_paralel = tuner_cfg.get("use_sequence_paralel", False)
 
     if mp_degree is None:
         return False
@@ -65,6 +70,12 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
     if vocab_size and vocab_size % mp_degree != 0:
         return True
 
+    if num_attention_heads and num_attention_heads % mp_degree != 0:
+        return True
+
+    if seq_length and seq_length % mp_degree != 0 and use_sequence_paralel:
+        return True
+
     mp_degree_candidates = tuner_cfg.get("mp_degree", None)
 
     if mp_degree_candidates == "auto":
@@ -73,10 +84,6 @@ def prune_by_mp(tuner_cfg, cur_cfg, history_cfgs=None):
     if mp_degree_candidates:
         if mp_degree not in mp_degree_candidates:
             return True
-
-    # prune default candidates
-    if mp_degree > 8:
-        return True
 
     return False
 
@@ -91,7 +98,7 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     pp_degree = cur_cfg.get("pp_degree", None)
     num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
-    num_nodes = tuner_cfg.get("num_nodes", 1)
+    num_nodes = tuner_cfg.get("nodes", 1)
 
     if pp_degree is None:
         return False
@@ -113,6 +120,50 @@ def prune_by_pp(tuner_cfg, cur_cfg, history_cfgs=None):
 
 
 @register_prune
+def prune_by_vpp(tuner_cfg, cur_cfg, history_cfgs=None):
+    """
+    Prune by vpp (virtual pipeline parallelism), the rules are:
+    1. VPP degree should be evenly divided by number of layers.
+    2. VPP degree should be in the candidates of user defined.
+    """
+    pp_degree = cur_cfg.get("pp_degree", None)
+    vpp_degree = cur_cfg.get("vpp_degree", None)
+    num_layers = tuner_cfg["model_cfg"].get("num_layers", None)
+
+    if pp_degree is None:
+        return False
+
+    if vpp_degree is None:
+        return False
+
+    if num_layers:
+        if num_layers % (pp_degree * vpp_degree) != 0:
+            return True
+        if pp_degree == 1 and vpp_degree != 1:
+            return True
+        if pp_degree <= 2 and vpp_degree != 1:
+            return True
+
+    vpp_degree_candidates = tuner_cfg.get("vpp_degree", None)
+    if vpp_degree_candidates == "auto":
+        vpp_degree_candidates = tuner_cfg["candidates"]["vpp_degree"]
+    if vpp_degree_candidates:
+        if vpp_degree not in vpp_degree_candidates:
+            return True
+
+    cfgs = same_cfgs_beside("vpp_degree", cur_cfg, history_cfgs)
+    if cfgs:
+        for cfg in cfgs:
+            # memory prune
+            if (
+                cfg["vpp_degree"] > vpp_degree
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                return True
+    return False
+
+
+@register_prune
 def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     Prune by mbs (micro batch size), the rules are:
@@ -122,6 +173,8 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     """
     micro_batch_size = cur_cfg.get("micro_batch_size", None)
     global_batch_size = tuner_cfg["model_cfg"].get("global_batch_size", None)
+    if global_batch_size == "auto":
+        global_batch_size = cur_cfg["global_batch_size"]
     if global_batch_size:
         local_batch_size = (
             global_batch_size
@@ -142,6 +195,13 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
     if local_batch_size:
         if local_batch_size % micro_batch_size != 0:
             return True
+        acc_steps = local_batch_size // micro_batch_size
+        vpp_degree = cur_cfg.get("vpp_degree", None)
+        if vpp_degree is not None and vpp_degree > 1:
+            pp_degree = cur_cfg.get("pp_degree", None)
+            if pp_degree is not None:
+                if acc_steps % pp_degree != 0:
+                    return True
 
     if mbs_candidates:
         if micro_batch_size not in mbs_candidates:
@@ -153,6 +213,13 @@ def prune_by_mbs(tuner_cfg, cur_cfg, history_cfgs=None):
             if (
                 cfg["micro_batch_size"] > micro_batch_size
                 and cfg.get("time", -1) > 0
+            ):
+                return True
+
+            # memory prune
+            if (
+                cfg["micro_batch_size"] < micro_batch_size
+                and cfg.get("max_mem_usage") == "OOM"
             ):
                 return True
 
@@ -206,6 +273,13 @@ def prune_by_sharding(tuner_cfg, cur_cfg, history_cfgs):
             ):
                 return True
 
+            # memory prune
+            if (
+                cfg["sharding_stage"] > sharding_stage
+                and cfg.get("max_mem_usage") == "OOM"
+            ):
+                return True
+
     if sharding_degree == 1:
         cfgs = same_cfgs_beside("sharding_stage", cur_cfg, history_cfgs)
         if cfgs:
@@ -243,9 +317,6 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
         if recompute_granularity not in recompute_granularity_candidates:
             return True
 
-    if not use_recompute and recompute_granularity:
-        return True
-
     cfgs = same_cfgs_beside("use_recompute", cur_cfg, history_cfgs)
     if cfgs:
         for cfg in cfgs:
@@ -253,6 +324,13 @@ def prune_by_recompute(tuner_cfg, cur_cfg, history_cfgs):
                 not cfg["use_recompute"]
                 and use_recompute
                 and cfg.get("time", -1) > 0
+            ):
+                return True
+
+            if (
+                cfg["use_recompute"]
+                and not use_recompute
+                and cfg.get("max_mem_usage") == "OOM"
             ):
                 return True
 

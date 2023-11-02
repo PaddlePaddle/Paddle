@@ -22,8 +22,8 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
 
 namespace cinn {
 namespace backends {
@@ -60,14 +60,15 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
  private:
   void Visit(const ir::_LoweredFunc_* op, Expr* expr) override {
     if (op->body.As<ir::Call>()) {
-      host_module_builder.AddFunction(expr->as_lowered_func_ref());
+      host_module_builder.AddFunctionWithoutOptim(expr->as_lowered_func_ref());
     } else {
       if (!op->cuda_axis_info.valid()) {
         expr->as_lowered_func_ref()->cuda_axis_info.set_valid(true);
       }
       auto host_func = CreateHostFunctionGivenDeviceKernel(op);
-      host_module_builder.AddFunction(host_func.as_lowered_func_ref());
-      device_module_builder.AddFunction(
+      host_module_builder.AddFunctionWithoutOptim(
+          host_func.as_lowered_func_ref());
+      device_module_builder.AddFunctionWithoutOptim(
           CreateDeviceFunctionGivenDeviceKernel(*expr).as_lowered_func_ref());
     }
   }
@@ -126,7 +127,7 @@ struct CollectHostFunctionVisitor : public ir::IRMutator<> {
   }
 
   Expr CreateDeviceFunctionGivenDeviceKernel(Expr expr) {
-    auto copied = optim::IRCopy(expr);
+    auto copied = ir::ir_utils::IRCopy(expr);
     auto* lowered_func = copied.as_lowered_func();
     lowered_func->name = GenDeviceKernelName(lowered_func->name);
     return copied;

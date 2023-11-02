@@ -477,7 +477,7 @@ GenerateOpFunctions() {
   return std::make_tuple(op_function_list, bind_function_list);
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char* argv[]) {  // NOLINT
   if (argc != 2) {
     std::cerr << "argc must be 2" << std::endl;
     return -1;
@@ -488,11 +488,11 @@ int main(int argc, char* argv[]) {
   paddle::operators::RegisterCustomDeviceCommonKernel("fake_device");
 #endif
 
+  const std::string str = "\"paddle/fluid/eager/api/generated/fluid_generated/";
   std::vector<std::string> headers{
       "<Python.h>",
       "\"paddle/fluid/platform/enforce.h\"",
-      "\"paddle/fluid/eager/api/generated/fluid_generated/"
-      "dygraph_forward_api.h\"",
+      str + "dygraph_forward_api.h\"",
       "\"paddle/fluid/pybind/eager_utils.h\"",
       "\"paddle/fluid/platform/profiler/event_tracing.h\"",
       "\"paddle/fluid/pybind/exception.h\"",

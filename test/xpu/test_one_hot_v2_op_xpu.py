@@ -23,8 +23,8 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -49,11 +49,9 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -72,11 +70,11 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-            out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
                 self.dtype
             )
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, 0, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod)}
@@ -96,11 +94,9 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -116,11 +112,11 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-            out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+            out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
                 self.dtype
             )
 
-            for i in range(np.product(x.shape)):
+            for i in range(np.prod(x.shape)):
                 out[i, 0, x[i]] = 1.0
 
             self.inputs = {'X': (x, x_lod)}
@@ -135,9 +131,7 @@ class XPUTestOneHotOp(XPUOpTestWrapper):
             x = [np.random.choice([-1, depth]) for i in range(sum(x_lod[0]))]
             x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-            out = np.zeros(shape=(np.product(x.shape), depth)).astype(
-                self.dtype
-            )
+            out = np.zeros(shape=(np.prod(x.shape), depth)).astype(self.dtype)
 
             self.inputs = {'X': (x, x_lod)}
             self.attrs = {'depth': depth, 'allow_out_of_range': True}
@@ -158,22 +152,22 @@ class TestOneHotOpApi(unittest.TestCase):
         label = np.array(
             [np.random.randint(0, depth - 1) for i in range(6)]
         ).reshape([6, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             one_hot_label = paddle.nn.functional.one_hot(
-                x=fluid.dygraph.to_variable(label), num_classes=depth
+                x=base.dygraph.to_variable(label), num_classes=depth
             )
 
     def _run(self, depth):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
         one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
-        place = fluid.XPUPlace(0)
+        place = base.XPUPlace(0)
         label_data = np.array(
             [np.random.randint(0, 10 - 1) for i in range(6)]
         ).reshape([6, 1])
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -185,7 +179,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
 class BadInputTestOnehotV2(unittest.TestCase):
     def test_error(self):
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_bad_x():
                 label = paddle.static.data(

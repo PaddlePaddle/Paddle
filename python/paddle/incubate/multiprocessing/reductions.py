@@ -75,14 +75,14 @@ def _cuda_from_cache(key):
 
 
 def _rebuild_tensor(cls, lodtensor, metadata):
-    if cls == paddle.fluid.framework.EagerParamBase:
-        tensor = paddle.fluid.framework.EagerParamBase(
+    if cls == paddle.base.framework.EagerParamBase:
+        tensor = paddle.base.framework.EagerParamBase(
             lodtensor.shape(), lodtensor._dtype(), **metadata
         )
         tensor.value().get_tensor()._share_data_with(lodtensor)
     else:
         size, stop_gradient = metadata
-        tensor = paddle.fluid.core.eager.Tensor()
+        tensor = paddle.base.core.eager.Tensor()
         if lodtensor._is_initialized():
             tensor.value().get_tensor()._share_data_with(lodtensor)
         else:
@@ -104,7 +104,7 @@ def _reduce_tensor(tensor):
         or tensor.place.is_gpu_place()
         or tensor.place.is_cuda_pinned_place()
     ):
-        if type(tensor) == paddle.fluid.framework.EagerParamBase:
+        if type(tensor) == paddle.base.framework.EagerParamBase:
             metadata = copy.deepcopy(tensor.__dict__)
         else:
             metadata = (tensor.size, tensor.stop_gradient)
@@ -138,7 +138,7 @@ def _rebuild_cuda_tensor(
         # you should manualy maintian the lifecycle of ipc tensor
         shared_cache[(handle, offset_bytes)] = lodtensor
     else:
-        lodtensor = paddle.fluid.core.LoDTensor()
+        lodtensor = paddle.base.core.LoDTensor()
         lodtensor._share_buffer_with(
             cache_tensor, (size, type_idx, dims, lod, device_idx)
         )
@@ -184,8 +184,8 @@ def init_reductions():
         return
 
     ForkingPickler.register(paddle.Tensor, _reduce_tensor)
-    ForkingPickler.register(paddle.fluid.core.eager.Tensor, _reduce_tensor)
+    ForkingPickler.register(paddle.base.core.eager.Tensor, _reduce_tensor)
     ForkingPickler.register(
-        paddle.fluid.framework.EagerParamBase, _reduce_tensor
+        paddle.base.framework.EagerParamBase, _reduce_tensor
     )
-    ForkingPickler.register(paddle.fluid.core.LoDTensor, _reduce_lodtensor)
+    ForkingPickler.register(paddle.base.core.LoDTensor, _reduce_lodtensor)

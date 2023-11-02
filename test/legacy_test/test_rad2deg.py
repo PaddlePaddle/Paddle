@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -33,22 +33,22 @@ class TestRad2degAPI(unittest.TestCase):
         self.out_np = np.rad2deg(self.x_np)
 
     def test_static_graph(self):
-        startup_program = fluid.Program()
-        train_program = fluid.Program()
-        with fluid.program_guard(startup_program, train_program):
+        startup_program = base.Program()
+        train_program = base.Program()
+        with base.program_guard(startup_program, train_program):
             x = paddle.static.data(
                 name='input', dtype=self.x_dtype, shape=self.x_shape
             )
             out = paddle.rad2deg(x)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
             res = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )

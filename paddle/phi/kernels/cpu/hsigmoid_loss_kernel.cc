@@ -45,9 +45,10 @@ void HSigmoidLossKernel(const Context& ctx,
   if (path.get_ptr()) {
     is_custom = true;
   }
-  int64_t code_length = path.get_ptr()
-                            ? path.get_ptr()->dims()[1]
-                            : phi::funcs::FindLastSet(num_classes_st - 1);
+  int64_t code_length =
+      path.get_ptr()
+          ? static_cast<int64_t>(path.get_ptr()->dims()[1])
+          : static_cast<int64_t>(phi::funcs::FindLastSet(num_classes_st - 1));
   int64_t batch_size = x.dims()[0];
   DenseTensor sum;
   pre_out->Resize(phi::make_ddim({batch_size, code_length}));

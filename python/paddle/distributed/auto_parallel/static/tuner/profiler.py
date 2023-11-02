@@ -294,5 +294,6 @@ def profiler(args):
 
 
 if __name__ == "__main__":
+    paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
     args = parse_args()
     profiler(args)

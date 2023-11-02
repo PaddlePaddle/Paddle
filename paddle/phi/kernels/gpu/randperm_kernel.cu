@@ -26,7 +26,6 @@
 namespace cub = hipcub;
 #endif
 
-#include "gflags/gflags.h"
 #include "paddle/phi/backends/gpu/gpu_launch_config.h"
 #include "paddle/phi/common/amp_type_traits.h"
 #include "paddle/phi/common/memory_utils.h"
@@ -34,6 +33,7 @@ namespace cub = hipcub;
 #include "paddle/phi/kernels/empty_kernel.h"
 #include "paddle/phi/kernels/funcs/for_range.h"
 #include "paddle/phi/kernels/randint_kernel.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 

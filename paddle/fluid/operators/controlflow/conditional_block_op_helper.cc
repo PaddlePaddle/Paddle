@@ -47,7 +47,7 @@ static void FindAllConditionalBlockAndConditionalBlockGradOp(
   for (size_t i = 1; i < program.Size(); ++i) {
     auto &block = program.Block(i);
     for (size_t j = 0; j < block.OpSize(); ++j) {
-      auto *op = block.Op(j);
+      auto *op = block.Op(static_cast<int>(j));
       if (op->Type() == "conditional_block") {
         fwd_ops->emplace_back(op);
       } else if (op->Type() == "conditional_block_grad") {

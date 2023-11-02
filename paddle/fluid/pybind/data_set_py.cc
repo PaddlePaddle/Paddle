@@ -39,7 +39,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/data_set_py.h"
 
 namespace py = pybind11;
-namespace pd = paddle::framework;
 
 namespace paddle {
 namespace pybind {
@@ -147,7 +146,7 @@ class IterableDatasetWrapper {
           if (tensors_[i][j]->place() == places_[read_num]) {
             result[read_num].emplace(slots_[j], std::move(*tensors_[i][j]));
           } else {
-            framework::TensorCopy(std::move(*tensors_[i][j]),
+            framework::TensorCopy(*tensors_[i][j],
                                   places_[read_num],
                                   &result[read_num][slots_[j]]);
           }

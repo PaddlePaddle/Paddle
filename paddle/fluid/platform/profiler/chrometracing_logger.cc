@@ -60,7 +60,7 @@ ChromeTracingLogger::ChromeTracingLogger(const char* filename_cstr) {
   StartLog();
 }
 
-ChromeTracingLogger::~ChromeTracingLogger() {
+ChromeTracingLogger::~ChromeTracingLogger() {  // NOLINT
   EndLog();
   output_file_stream_.close();
 }
@@ -450,7 +450,8 @@ void ChromeTracingLogger::HandleTypeMemcpy(
   MemcpyEventInfo memcpy_info = device_node.MemcpyInfo();
   float memory_bandwidth = 0;
   if (device_node.Duration() > 0) {
-    memory_bandwidth = memcpy_info.num_bytes * 1.0 / device_node.Duration();
+    memory_bandwidth =
+        memcpy_info.num_bytes * 1.0 / device_node.Duration();  // NOLINT
   }
   float dur = nsToMsFloat(device_node.Duration());
   std::string dur_display;

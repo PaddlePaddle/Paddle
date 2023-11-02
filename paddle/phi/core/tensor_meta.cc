@@ -13,7 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/phi/core/tensor_meta.h"
-#include "paddle/ir/core/enforce.h"
+#include "paddle/pir/core/enforce.h"
 
 namespace phi {
 
@@ -118,12 +118,20 @@ DDim DenseTensorMeta::calc_strides(const DDim& dims) {
   }
 }
 
-DenseTensorMeta::DenseTensorMeta() { use_gpudnn = true; }
+DenseTensorMeta::DenseTensorMeta() {
+  use_gpudnn = true;
+#ifdef PADDLE_WITH_XPU
+  scale_value = -1.0f;
+#endif
+}
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype, const DDim& dims)
     : dims(dims), dtype(dtype) {
   strides = calc_strides(dims);
   use_gpudnn = true;
+#ifdef PADDLE_WITH_XPU
+  scale_value = -1.0f;
+#endif
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -131,6 +139,9 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
                                  const DDim& strides)
     : dims(dims), dtype(dtype), strides(strides) {
   use_gpudnn = true;
+#ifdef PADDLE_WITH_XPU
+  scale_value = -1.0f;
+#endif
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -140,6 +151,9 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
     : dims(dims), dtype(dtype), layout(layout), offset(offset) {
   strides = calc_strides(dims);
   use_gpudnn = true;
+#ifdef PADDLE_WITH_XPU
+  scale_value = -1.0f;
+#endif
 }
 
 DenseTensorMeta::DenseTensorMeta(DataType dtype,
@@ -150,6 +164,9 @@ DenseTensorMeta::DenseTensorMeta(DataType dtype,
     : dims(dims), dtype(dtype), layout(layout), lod(lod), offset(offset) {
   strides = calc_strides(dims);
   use_gpudnn = true;
+#ifdef PADDLE_WITH_XPU
+  scale_value = -1.0f;
+#endif
 }
 
 DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
@@ -165,6 +182,9 @@ DenseTensorMeta::DenseTensorMeta(const DenseTensorMeta& other) {
   } else {
     strides = other.strides;
   }
+#ifdef PADDLE_WITH_XPU
+  scale_value = other.scale_value;
+#endif
 }
 
 DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
@@ -180,10 +200,14 @@ DenseTensorMeta& DenseTensorMeta::operator=(const DenseTensorMeta& other) {
   } else {
     strides = other.strides;
   }
+#ifdef PADDLE_WITH_XPU
+  scale_value = other.scale_value;
+#endif
   return *this;
 }
 
-DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
+DenseTensorMeta& DenseTensorMeta::operator=(  // NOLINT
+    DenseTensorMeta&& other) {
   is_scalar = other.is_scalar;
   use_gpudnn = other.use_gpudnn;
   dims = std::move(other.dims);
@@ -196,7 +220,9 @@ DenseTensorMeta& DenseTensorMeta::operator=(DenseTensorMeta&& other) {
   } else {
     strides = std::move(other.strides);
   }
-
+#ifdef PADDLE_WITH_XPU
+  scale_value = other.scale_value;
+#endif
   return *this;
 }
 

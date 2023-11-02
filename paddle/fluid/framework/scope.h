@@ -29,6 +29,7 @@ extern "C" {
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -46,9 +47,9 @@ namespace framework {
  * One net can run in different scopes and update different variable in the
  * scope.
  */
-class Scope {
+class TEST_API Scope {
  public:
-  Scope() {}
+  Scope();
   ~Scope();
 
   /// Create a sub-scope. Returns a reference other than a pointer so
@@ -177,7 +178,7 @@ class Scope {
 
 // Generate some debug string about the inherience structure of scope, quite
 // naive.
-std::string GenScopeTreeDebugInfo(Scope*);
+TEST_API std::string GenScopeTreeDebugInfo(Scope*);
 
 }  // namespace framework
 }  // namespace paddle

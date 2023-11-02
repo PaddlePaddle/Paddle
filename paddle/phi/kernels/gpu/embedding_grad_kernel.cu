@@ -15,7 +15,6 @@
 #include "paddle/phi/kernels/embedding_grad_kernel.h"
 #include "paddle/phi/kernels/funcs/embedding_grad.h"
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"
 #include "paddle/phi/backends/gpu/gpu_primitives.h"
@@ -26,8 +25,9 @@
 #include "paddle/phi/core/mixed_vector.h"
 #include "paddle/phi/kernels/funcs/eigen/common.h"
 #include "paddle/phi/kernels/funcs/embedding_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_int64(embedding_deterministic);
+PD_DECLARE_int64(embedding_deterministic);
 
 namespace phi {
 

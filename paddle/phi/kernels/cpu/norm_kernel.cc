@@ -33,10 +33,10 @@ void NormKernel(const Context& ctx,
   auto xdim = x.dims();
   T eps = epsilon;
   if (axis < 0) axis = xdim.size() + axis;
-  int pre, n, post;
+  int pre = 0, n = 0, post = 0;
   funcs::GetPrePostNumel(xdim, axis, &pre, &n, &post);
 
-  DenseTensor* out_norm;
+  DenseTensor* out_norm = nullptr;
   DenseTensor out_norm_tmp;
   if (is_test) {
     auto out_dim = x.dims();

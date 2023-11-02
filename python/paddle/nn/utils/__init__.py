@@ -22,7 +22,7 @@ from .transform_parameters import (
 from .clip_grad_norm_ import clip_grad_norm_  # noqa: F401
 from .clip_grad_value_ import clip_grad_value_  # noqa: F401
 
-__all__ = [  # noqa
+__all__ = [
     'weight_norm',
     'remove_weight_norm',
     'spectral_norm',

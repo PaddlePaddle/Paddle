@@ -17,7 +17,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def round_c_single_element(val):
@@ -225,7 +225,7 @@ class TestFakeQuantizeRangeAbsMaxOp(OpTest):
 class TestMovingAverageAbsMaxScaleOp(OpTest):
     def setUp(self):
         self.op_type = 'moving_average_abs_max_scale'
-        self.attrs = {'moving_rate': float(0.9), 'is_test': False}
+        self.attrs = {'moving_rate': 0.9, 'is_test': False}
 
     def _moving_average_abs_max_scale(self, dtype, input_shape, distribution):
         input_data = distribution(input_shape).astype(dtype)
@@ -312,9 +312,7 @@ class TestFakeQuantizeMovingAverageAbsMaxOp(OpTest):
         self.dtype = dtype
         self.check_output(check_dygraph=False)
         if with_gradient:
-            gradient = [
-                np.ones(input_data.shape) / np.product(input_data.shape)
-            ]
+            gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
             self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_fake_quantize_moving_average_abs_max(self):
@@ -367,7 +365,7 @@ class TestFakeQuantizeDequantizeAbsMaxOp(OpTest):
         }
         self.dtype = dtype
         self.check_output(check_dygraph=False)
-        gradient = [np.ones(input_data.shape) / np.product(input_data.shape)]
+        gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_fake_quantize_dequantize_abs_max(self):
@@ -424,7 +422,7 @@ class TestChannelWiseFakeQuantizeDequantizeAbsMaxOp(OpTest):
         self.dtype = dtype
         self.attrs['quant_axis'] = quant_axis
         self.check_output(check_dygraph=False)
-        gradient = [np.ones(input_data.shape) / np.product(input_data.shape)]
+        gradient = [np.ones(input_data.shape) / np.prod(input_data.shape)]
         self.check_grad(['X'], 'Out', user_defined_grads=gradient)
 
     def test_channel_wise_fake_quant_dequant_abs_max(self):

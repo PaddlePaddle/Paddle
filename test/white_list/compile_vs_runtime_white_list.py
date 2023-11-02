@@ -29,7 +29,6 @@ COMPILE_RUN_OP_WHITE_LIST = [
     'gru',
     'rpn_target_assign',
     'retinanet_target_assign',
-    'filter_by_instag',
     'im2sequence',
     'generate_proposal_labels',
     'detection_map',

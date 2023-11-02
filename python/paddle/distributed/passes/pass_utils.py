@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from collections import OrderedDict
-from typing import List
+from enum import Enum
 
+from paddle.base import core
+from paddle.base.framework import Operator, Parameter, Program, get_flags
 from paddle.distributed.auto_parallel.static.utils import (
+    get_logger,
     is_backward_op,
     is_forward_op,
-    is_lr_sched_op,
     is_optimize_op,
+    use_new_executor,
 )
 from paddle.distributed.fleet.meta_optimizers.common import OpRole
-from paddle.fluid import core
-from paddle.fluid.framework import Parameter, Program
 
 __not_shape_var_type__ = [
     core.VarDesc.VarType.READER,
@@ -32,6 +34,16 @@ __not_shape_var_type__ = [
     core.VarDesc.VarType.FEED_MINIBATCH,
     core.VarDesc.VarType.FETCH_LIST,
 ]
+
+logger = get_logger(logging.INFO)
+
+
+# NOTE: Here stream is just a presentation with different name,
+# it is up to executor to create the exact streams given the name.
+class AutoParallelStreamType(Enum):
+    CALC_STREAM = "default"
+    MP_STREAM = "auto_parallel_mp"
+    SHARDING_STREAM = "auto_parallel_sharding"
 
 
 def list_to_ordered_dict(list_obj, ordered_dict=None):
@@ -190,15 +202,14 @@ class OpInOutInfo:
             return
 
         for slot_name in op.input_names:
-            if slot_name in self._no_need_buffer_slots:
-                continue
-
-            for in_name in op.input(slot_name):
-                self._other_arg_names_set.add(in_name)
+            if slot_name not in self._no_need_buffer_slots:
+                for in_name in op.input(slot_name):
+                    self._other_arg_names_set.add(in_name)
 
         for slot_name in op.output_names:
-            for out_name in op.output(slot_name):
-                self._other_arg_names_set.add(out_name)
+            if slot_name not in self._no_need_buffer_slots:
+                for out_name in op.output(slot_name):
+                    self._other_arg_names_set.add(out_name)
 
         self._is_build = True
 
@@ -209,55 +220,114 @@ class OpInOutInfo:
         )
 
 
-def var_can_be_deleted(var_name, program):
-    var = program.global_block()._find_var_recursive(var_name)
-    if var is None or var.persistable:
-        return False
-
-    return var.type in [
-        core.VarDesc.VarType.LOD_TENSOR,
-        core.VarDesc.VarType.SELECTED_ROWS,
-        core.VarDesc.VarType.LOD_TENSOR_ARRAY,
-    ]
+def var_can_be_deleted(var_name, block):
+    var = block._find_var_recursive(var_name)
+    return var is not None and not var.persistable
 
 
-def get_skip_gc_vars(program_list: List[Program]):
+def prepare_ir_program(cur_prog, next_prog):
+    set_output_names = set()
+    for op in cur_prog.global_block().ops:
+        for arg_name in op.output_arg_names:
+            if var_can_be_deleted(arg_name, cur_prog.global_block()):
+                set_output_names.add(arg_name)
+
+    set_input_names = set()
+    for op in next_prog.global_block().ops:
+        for arg_name in op.input_arg_names:
+            if var_can_be_deleted(arg_name, next_prog.global_block()):
+                set_input_names.add(arg_name)
+
+    shadow_var_names = sorted(set_output_names & set_input_names)
+    for var_name in shadow_var_names:
+        shadow_op_desc = cur_prog.global_block().desc.append_op()
+        shadow_op_desc.set_type("shadow_output")
+        shadow_op_desc.set_input('x', [var_name])
+        shadow_op_desc.set_output('out', ["@EMPTY@"])
+        shadow_op_desc._set_attr("name", var_name)
+        shadow_op = Operator(cur_prog.global_block(), shadow_op_desc)
+        cur_prog.global_block().ops.append(shadow_op)
+
+        data_op_desc = next_prog.global_block().desc._prepend_op()
+        data_op_desc.set_type("data")
+        data_op_desc._set_attr("shape", [])
+        data_op_desc._set_attr("dtype", 0)
+        data_op_desc._set_attr("place", 2)  # GPUPlace
+        data_op_desc._set_attr("name", var_name)
+        data_op_desc.set_output("out", [var_name])
+        data_op = Operator(next_prog.global_block(), data_op_desc)
+        next_prog.global_block().ops.insert(0, data_op)
+
+    cur_prog._sync_with_cpp()
+    next_prog._sync_with_cpp()
+
+
+def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
     """
-    Get `skip_gc_vars` for every sub_program of program_list.
+    Set `skip_gc_vars` for every job in jobs.
 
     A whole_program is split up into sub_programs according to the schedule mode,
     thus a sub_program's vars might be used as the op's input of the later sub_program,
     and these vars cannot be gc after executing current sub_program.
     """
+    assert num_micro_batches >= 1, "num_micro_batches needs to be >= 1"
+    type_to_program = dict(zip(job_types, sub_programs))
 
-    # step1: Get all vars of every sub_program of program_list that are non-persistable and not in op's no_need_buffer.
-    vars_list = [set() for _ in range(len(program_list))]
-    for ip, program in enumerate(program_list):
-        for op in program.global_block().ops:
-            op_info = OpInOutInfo()
-            for in_name in op.input_arg_names:
-                if not var_can_be_deleted(in_name, program):
+    # step1: Get all vars of every sub_program that are non-persistable and not in op's no_need_buffer.
+    type_to_required_vars = {}
+    for type, program in type_to_program.items():
+        type_to_required_vars[type] = set()
+        for block in program.blocks:
+            for op in block.ops:
+                if op.type in [
+                    "c_sync_comm_stream",
+                    "conditional_block",
+                    "nop",
+                    "while",
+                ]:
                     continue
 
-                if not op_info.is_build:
-                    op_info.build_info(op)
+                op_info = OpInOutInfo()
+                op_info.build_info(op)
+                for arg_name in op.input_arg_names + op.output_arg_names:
+                    if var_can_be_deleted(
+                        arg_name, block
+                    ) and op_info.is_needed(arg_name):
+                        type_to_required_vars[type].add(arg_name)
 
-                if op_info.is_needed(in_name):
-                    vars_list[ip].add(in_name)
+    # step2: Set `skip_gc_vars` for each job
+    suffixed_required_vars = [set() for i in range(num_micro_batches)]
+    num_jobs = len(jobs)
+    for job_id in reversed(range(num_jobs)):
+        job = jobs[job_id]
+        job_type = job.type()
+        required_vars = type_to_required_vars[job_type]
+        micro_batch_id = job.micro_batch_id()
+        skip_gc_vars = required_vars & suffixed_required_vars[micro_batch_id]
+        logger.debug(
+            f"Skip gc vars for {job_type}-({micro_batch_id}): {skip_gc_vars}"
+        )
 
-            for out_name in op.output_arg_names:
-                if var_can_be_deleted(out_name, program):
-                    vars_list[ip].add(out_name)
+        if job_type == "backward":
+            assert (
+                len(skip_gc_vars) == 0
+            ), f"When enabling pipeline parallelism stategy, the skip_gc_vars for backward subprogram must be empty, but it is {skip_gc_vars}."
 
-    # step2: get the `skip_gc_vars` that vars of current sub_program might be used in the later sub_program
-    union_set = set()
-    skip_gc_vars = [set()] * len(program_list)
-    for idx, vars_set in reversed(list(enumerate(vars_list))):
-        if idx < len(vars_list) - 1:
-            union_set = union_set.union(vars_list[idx + 1])
-        skip_gc_vars[idx] = vars_set & union_set
+        job.set_skip_gc_vars(skip_gc_vars)
+        suffixed_required_vars[micro_batch_id] |= required_vars
 
-    return skip_gc_vars
+    if get_flags("FLAGS_enable_new_ir_in_executor")[
+        'FLAGS_enable_new_ir_in_executor'
+    ]:
+        for i, type in enumerate(job_types):
+            if i == len(job_types) - 1:
+                break
+            next_type = job_types[i + 1]
+            prepare_ir_program(
+                type_to_program[type], type_to_program[next_type]
+            )
+
+    return type_to_program
 
 
 def _create_param(dst_block, src_var):
@@ -279,7 +349,7 @@ def _create_param(dst_block, src_var):
         stop_gradient=src_var.stop_gradient,
         is_data=src_var.is_data,
         belong_to_optimizer=src_var.belong_to_optimizer,
-        **copied_kwargs
+        **copied_kwargs,
     )
 
 
@@ -338,7 +408,7 @@ def _create_program(src_block, dst_block, src_op, force_create=False):
 
 def _insert_sync_for_fthenb_1f1b(program):
     """
-    This implementation refers to lots of Paddle/python/paddle/fluid/optimizer.py.
+    This implementation refers to lots of Paddle/python/paddle/base/optimizer.py.
     The difference between this function with 'PipelineOptimizer' is that
     'send_v2' op and 'recv_v2' op have been inserted in program by 'reshard'.
     """
@@ -417,69 +487,153 @@ def _insert_sync_for_fthenb_1f1b(program):
                 var = block.var(var_name)
                 block._remove_op(index + offset, sync=False)
                 offset -= 1
-                block._insert_op_without_sync(
-                    index=backward_recv_index,
-                    type="nop",
-                    inputs={'X': [var]},
-                    outputs={'Out': [var]},
-                    attrs={'op_role': OpRole.Backward},
-                )
+                if not use_new_executor():
+                    # NOTE: new executor will make sure gc are right without using nop op.
+                    block._insert_op_without_sync(
+                        index=backward_recv_index,
+                        type="nop",
+                        inputs={'X': [var]},
+                        outputs={'Out': [var]},
+                        attrs={'op_role': OpRole.Backward},
+                    )
         block._sync_with_cpp()
 
 
-def _program_for_fthenb_and_1f1b(program):
+def _overlap_send_recv(program):
+    """
+    This function is used to replace the function '_insert_sync_for_fthenb_1f1b'.
+    The finally target of this function is as follows:
+        1. no need to insert the 'c_sync_calc' and 'c_sync_calc' operators
+        2. 'send_v2' operator uses 'dist_attr.execution_stream' to set stream of its own.
+        3. 'recv_v2' opeator uses 'dist_attr.execution_stream' to set stream of its own.
+    """
+    for block in program.blocks:
+        for op in block.ops:
+            if op.type == 'send_v2':
+                op._set_attr("dynamic_shape", False)
+                op._set_attr("use_calc_stream", True)
+                ring_id = op.attr("ring_id")
+                op.dist_attr.execution_stream = "send_stream_" + str(ring_id)
+                op.dist_attr.stream_priority = 0
+            elif op.type == 'recv_v2':
+                op._set_attr("dynamic_shape", False)
+                op._set_attr("use_calc_stream", True)
+                op.dist_attr.execution_stream = "recv_stream"
+                op.dist_attr.stream_priority = 0
+            else:
+                pass
+
+
+def _program_for_fthenb_and_1f1b(program, enable_send_recv_overlap=False):
     """
     This implementation is for fthenb and 1f1b programs and is called in partial_programs function.
     """
-    _insert_sync_for_fthenb_1f1b(program)
+    if enable_send_recv_overlap:
+        _overlap_send_recv(program)
+    else:
+        _insert_sync_for_fthenb_1f1b(program)
 
-    lr_prog = Program()
     fwd_prog = Program()
     bwd_prog = Program()
     opt_prog = Program()
 
-    for idx, src_block in enumerate(program.blocks):
-        if idx == 0:
-            lr_block = lr_prog.block(0)
-            fwd_block = fwd_prog.block(0)
-            bwd_block = bwd_prog.block(0)
-            opt_block = opt_prog.block(0)
-        else:
-            lr_block = lr_prog._create_block(parent_idx=src_block.parent_idx)
-            fwd_block = fwd_prog._create_block(parent_idx=src_block.parent_idx)
-            bwd_block = bwd_prog._create_block(parent_idx=src_block.parent_idx)
-            opt_block = opt_prog._create_block(parent_idx=src_block.parent_idx)
-            lr_block._set_forward_block_idx(src_block.forward_block_idx)
-            fwd_block._set_forward_block_idx(src_block.forward_block_idx)
-            bwd_block._set_forward_block_idx(src_block.forward_block_idx)
-            opt_block._set_forward_block_idx(src_block.forward_block_idx)
+    def _is_fetch_op(op):
+        return op.type in ["fetch", "fetch_v2"]
 
-        # split the program based on the op_role
+    # split the program based on the op_role
+    def _split_ops(block):
+        fwd_ops = []
+        bwd_ops = []
+        opt_ops = []
         for op in src_block.ops:
-            if is_lr_sched_op(op):
-                _create_program(src_block, lr_block, op)
+            if _is_fetch_op(op):
+                continue
             if is_forward_op(op):
-                _create_program(src_block, fwd_block, op)
+                fwd_ops.append(op)
             elif is_backward_op(op):
-                _create_program(src_block, bwd_block, op)
+                bwd_ops.append(op)
             elif is_optimize_op(op):
-                _create_program(src_block, opt_block, op)
+                opt_ops.append(op)
             else:
                 raise ValueError(
                     "The op role: "
                     + str(op.attr('op_role'))
-                    + " isn't one of LRSched, Forward, Backward or Optimizer."
+                    + " isn't one of Forward, Backward or Optimizer."
                 )
+        return fwd_ops, bwd_ops, opt_ops
 
-    lr_prog._sync_with_cpp()
+    def _add_ops_into_block(src_block, dst_block, ops):
+        for op in ops:
+            _create_program(src_block, dst_block, op)
+
+    for idx, src_block in enumerate(program.blocks):
+        fwd_ops, bwd_ops, opt_ops = _split_ops(src_block)
+        if idx == 0:
+            fwd_block = fwd_prog.block(0)
+            _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            bwd_block = bwd_prog.block(0)
+            _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            opt_block = opt_prog.block(0)
+            _add_ops_into_block(src_block, opt_block, opt_ops)
+        else:
+            if len(fwd_ops):
+                fwd_block = fwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                fwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, fwd_block, fwd_ops)
+
+            if len(bwd_ops):
+                bwd_block = bwd_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                bwd_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, bwd_block, bwd_ops)
+
+            if len(opt_ops):
+                opt_block = opt_prog._create_block(
+                    parent_idx=src_block.parent_idx
+                )
+                opt_block._set_forward_block_idx(src_block.forward_block_idx)
+                _add_ops_into_block(src_block, opt_block, opt_ops)
+
+        for fetch_op in src_block.ops:
+            if fetch_op.type in ["fetch", "fetch_v2"]:
+                in_name = fetch_op.input_arg_names[0]
+                dst_block = None
+                for block in [fwd_block, bwd_block, opt_block]:
+                    if block._find_var_recursive(in_name):
+                        dst_block = block
+                        break
+                if dst_block:
+                    _create_program(src_block, dst_block, fetch_op)
+
     fwd_prog._sync_with_cpp()
     bwd_prog._sync_with_cpp()
     opt_prog._sync_with_cpp()
 
-    lr_prog._rollback()
     fwd_prog._rollback()
     bwd_prog._rollback()
     opt_prog._rollback()
 
     # It MUST return in this order
-    return [lr_prog, fwd_prog, bwd_prog, opt_prog]
+    return [fwd_prog, bwd_prog, opt_prog]
+
+
+def _add_event_dependency(recorder_op, waiter_op):
+    '''
+    Add the extra event dependcy of the two operators.
+    This function mainly aims for the cross-programs in pipeline parallelism,
+    especial for the 'send_v2' 'recv_v2' etc.
+    '''
+    if not recorder_op.dist_attr.force_record_event:
+        recorder_op.dist_attr.force_record_event = True
+    # NOTE(lizhiyu): Here is the copy of 'waiter_op.dist_attr.events_to_wait' not the reference,
+    #                because the type of 'events_to_wait' is 'const vector<string>&' while the type of
+    #                'waiter_wait_list' is python list.
+    waiter_wait_list = waiter_op.dist_attr.events_to_wait
+    if recorder_op.dist_attr.event_to_record not in waiter_wait_list:
+        waiter_wait_list.append(recorder_op.dist_attr.event_to_record)
+        waiter_op.dist_attr.events_to_wait = waiter_wait_list

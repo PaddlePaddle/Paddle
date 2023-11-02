@@ -23,7 +23,7 @@ namespace tensorrt {
 
 class ExprWrapper {
  public:
-  ExprWrapper() {}
+  ExprWrapper() = default;
   ExprWrapper(const nvinfer1::IDimensionExpr* expr,
               nvinfer1::IExprBuilder* expr_builder) {
     this->expr = expr;
@@ -693,6 +693,39 @@ nvinfer1::DimsExprs LookupTableV2InferMeta(
   return output;
 }
 
+nvinfer1::DimsExprs MemoryEfficientAttentionInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  PADDLE_ENFORCE_LE(
+      output_index,
+      2,
+      phi::errors::InvalidArgument("memory_efficient_attention only has three "
+                                   "output, but received asvector: %d.",
+                                   output_index));
+  PADDLE_ENFORCE_EQ(
+      nb_inputs,
+      8,
+      phi::errors::InvalidArgument("memory_efficient_attention has three "
+                                   "input, but received asvector: %d.",
+                                   nb_inputs));
+  if (output_index == 0) {
+    return inputs[0];
+  } else if (output_index == 1) {
+    nvinfer1::DimsExprs output;
+    output.nbDims = 2;
+    output.d[0] = inputs[0].d[0];
+    output.d[1] = inputs[0].d[2];
+    return output;
+  } else {
+    nvinfer1::DimsExprs output;
+    output.nbDims = 1;
+    output.d[0] = expr_builder.constant(2);
+    return output;
+  }
+}
 nvinfer1::DimsExprs Conv2dTransposeInferMeta(
     int output_index,
     const nvinfer1::DimsExprs* inputs,
@@ -772,6 +805,30 @@ nvinfer1::DimsExprs Conv2dTransposeInferMeta(
   return VecExprWrapper2DimsExprs(output_dims_wrap);
 }
 
+nvinfer1::DimsExprs PadInferMeta(
+    int output_index,
+    const nvinfer1::DimsExprs* inputs,
+    int nb_inputs,
+    nvinfer1::IExprBuilder& expr_builder,  // NOLINT
+    const framework::OpDesc& op_desc) {
+  const auto x_dims = inputs[0];
+  auto paddings =
+      PADDLE_GET_CONST(std::vector<int>, op_desc.GetAttr("paddings"));
+
+  nvinfer1::DimsExprs output;
+  output.nbDims = x_dims.nbDims;
+  for (int i = 0; i < x_dims.nbDims; ++i) {
+    output.d[i] = expr_builder.operation(
+
+        nvinfer1::DimensionOperation::kSUM,
+        *expr_builder.operation(nvinfer1::DimensionOperation::kSUM,
+                                *x_dims.d[i],
+                                *expr_builder.constant(paddings[2 * i])),
+        *expr_builder.constant(paddings[2 * i + 1]));
+  }
+  return output;
+}
+
 PD_REGISTER_DYNAMIC_INFER_META_FN(gather_nd, GatherNdInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(yolo_box, YoloBoxInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(instance_norm, InstanceNormInferMeta);
@@ -785,7 +842,9 @@ PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_fusion, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d, Conv2dFusionInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(conv2d_transpose, Conv2dTransposeInferMeta);
 PD_REGISTER_DYNAMIC_INFER_META_FN(p_norm, PNormInferMeta);
-
+PD_REGISTER_DYNAMIC_INFER_META_FN(memory_efficient_attention,
+                                  MemoryEfficientAttentionInferMeta);
+PD_REGISTER_DYNAMIC_INFER_META_FN(pad, PadInferMeta);
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle

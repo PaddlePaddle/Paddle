@@ -22,6 +22,8 @@ if __name__ == "__main__":
 
     empty_files = [os.path.join(pybind_dir, "eager_legacy_op_function.cc")]
     empty_files.append(os.path.join(pybind_dir, "eager_op_function.cc"))
+    empty_files.append(os.path.join(pybind_dir, "static_op_function.cc"))
+    empty_files.append(os.path.join(pybind_dir, "ops_api.cc"))
 
     for path in empty_files:
         if not os.path.exists(path):

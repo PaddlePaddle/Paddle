@@ -30,10 +30,11 @@
 #include "paddle/fluid/string/string_helper.h"
 
 #include "paddle/fluid/ir_adaptor/translator/program_translator.h"
-#include "paddle/ir/core/dialect.h"
-#include "paddle/ir/core/ir_context.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 
+PHI_DECLARE_bool(enable_new_ir_in_executor);
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -167,6 +168,7 @@ class InterpreterCoreInfo {
   struct CacheValue {
     std::shared_ptr<InterpreterCore> core_{nullptr};
     std::set<std::string> skip_eager_delete_vars_;
+    std::unique_ptr<::pir::Program> ir_prog_{nullptr};
   };
 
   bool IsAvailable(bool is_grad) {
@@ -187,26 +189,37 @@ class InterpreterCoreInfoCache {
  public:
   static InterpreterCoreInfoCache& Instance();
 
-  bool Has(int64_t program_id, bool is_grad) {
+  bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
+    if (FLAGS_enable_new_ir_in_executor) {
+      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+    }
     return info_map_.find(program_id) != info_map_.end() &&
            info_map_[program_id].IsAvailable(is_grad);
   }
 
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
+                                              const framework::Scope* scope,
                                               bool is_grad) {
+    if (FLAGS_enable_new_ir_in_executor) {
+      int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
+      program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
+    }
     return info_map_[program_id].GetMutable(is_grad);
   }
 
   void UpdateSkipEagerDeleteVars(int64_t program_id,
+                                 const framework::Scope* scope,
                                  bool is_grad,
                                  const std::set<std::string>& skip_vars) {
-    auto& cached_value = GetMutable(program_id, is_grad);
+    auto& cached_value = GetMutable(program_id, scope, is_grad);
     cached_value.skip_eager_delete_vars_ = std::move(skip_vars);
   }
 
   std::set<std::string>& GetSkipEagerDeleteVars(int64_t program_id,
+                                                const framework::Scope* scope,
                                                 bool is_grad) {
-    auto& cached_value = GetMutable(program_id, is_grad);
+    auto& cached_value = GetMutable(program_id, scope, is_grad);
     return cached_value.skip_eager_delete_vars_;
   }
 
@@ -230,26 +243,29 @@ std::shared_ptr<InterpreterCore> CreateProgramInterpreterCoreInfoToCache(
     int64_t program_id,
     framework::Scope* scope);
 
-std::shared_ptr<InterpreterCore> CreateNewIRInterpreterCoreInfoToCache(
-    std::unique_ptr<::ir::Program> ir_prog,
+std::shared_ptr<InterpreterCore> CreatePirInterpreterCoreInfoToCache(
+    std::unique_ptr<::pir::Program> ir_prog,
     const platform::Place& place,
     bool is_grad,
     int64_t program_id,
     framework::Scope* scope);
 
-std::unique_ptr<::ir::Program> ConstructFowardIrProgram(
+std::unique_ptr<::pir::Program> ConstructFowardIrProgram(
     const paddle::framework::BlockDesc* forward_global_block,
     const paddle::framework::BlockDesc* backward_global_block,
-    const std::vector<std::string> output_names,
+    const std::vector<std::string>& output_names,
     const std::vector<paddle::Tensor>& x,
-    const std::vector<paddle::Tensor>& params);
+    const std::vector<std::string>& x_names,
+    const std::vector<paddle::Tensor>& params,
+    const phi::Place& place);
 
-std::unique_ptr<::ir::Program> ConstructBackwardIrProgram(
+std::unique_ptr<::pir::Program> ConstructBackwardIrProgram(
     const paddle::framework::BlockDesc* backward_global_block,
     const std::vector<paddle::Tensor>& out_grad,
     const std::vector<paddle::Tensor*>& x_grad,
     const std::vector<paddle::Tensor*>& params_grad,
-    const paddle::framework::Scope* scope);
+    const paddle::framework::Scope* scope,
+    const phi::Place& place);
 
 }  // namespace framework
 }  // namespace paddle

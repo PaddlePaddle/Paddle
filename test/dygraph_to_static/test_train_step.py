@@ -17,6 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -49,7 +50,7 @@ class TinyModel(paddle.nn.Layer):
         return self.layer1(data)
 
 
-class TestTrainStepTinyModel(unittest.TestCase):
+class TestTrainStepTinyModel(Dy2StTestBase):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
@@ -76,13 +77,16 @@ class TestTrainStepTinyModel(unittest.TestCase):
             losses.append(loss)
         return losses
 
+    @test_legacy_and_pir
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(
             self.train_step_func, self.steps
         )
         reset_seed()
-        static_func = paddle.jit.to_static(self.train_step_func)
+        static_func = paddle.jit.to_static(
+            self.train_step_func, full_graph=True
+        )
         static_losses = self.get_train_step_losses(static_func, self.steps)
         self.assertEqual(len(dygraph_losses), len(static_losses))
         for dygraph_loss, static_loss in zip(dygraph_losses, static_losses):

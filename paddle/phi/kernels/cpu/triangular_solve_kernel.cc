@@ -37,8 +37,8 @@ void TriangularSolveKernel(const Context& dev_ctx,
   std::vector<int64_t> y_bst_dims_vec;
   std::tie(x_bst_dims_vec, y_bst_dims_vec) =
       funcs::MatrixGetBroadcastDims(x, y);
-  int x_bst_ndim = x_bst_dims_vec.size();
-  int y_bst_ndim = y_bst_dims_vec.size();
+  int x_bst_ndim = static_cast<int>(x_bst_dims_vec.size());
+  int y_bst_ndim = static_cast<int>(y_bst_dims_vec.size());
 
   // Tensor broadcast to 'out' and temp 'x_bst'
   IntArray x_bst_dims(x_bst_dims_vec);
@@ -56,7 +56,7 @@ void TriangularSolveKernel(const Context& dev_ctx,
   int N = static_cast<int>(y_bst_dims_vec[y_bst_ndim - 1]);
   int batch_size = 1;
   for (int i = 0; i < x_bst_ndim - 2; i++) {
-    batch_size *= x_bst_dims_vec[i];
+    batch_size *= static_cast<int>(x_bst_dims_vec[i]);
   }
 
   auto blas = phi::funcs::GetBlas<CPUContext, T>(dev_ctx);

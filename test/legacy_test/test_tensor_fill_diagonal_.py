@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TensorFillDiagonal_Test(unittest.TestCase):
@@ -30,9 +30,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         )
 
         typelist = ['float32', 'float64', 'int32', 'int64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:
@@ -65,9 +65,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         )
 
         typelist = ['float32', 'float64', 'int32', 'int64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:
@@ -97,9 +97,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         )
 
         typelist = ['bool']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:
@@ -138,9 +138,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:
@@ -189,9 +189,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:
@@ -232,9 +232,9 @@ class TensorFillDiagonal_Test(unittest.TestCase):
         ).astype('float32')
 
         typelist = ['float32', 'float64', 'int32', 'int64']
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for idx, p in enumerate(places):
             if idx == 0:

@@ -18,10 +18,13 @@
 #include <sstream>
 
 #include "paddle/cinn/hlir/framework/visualize_helper.h"
+#ifdef CINN_WITH_CUDA
+#include "paddle/cinn/runtime/cuda/cuda_util.h"
+#endif
 #include "paddle/cinn/runtime/flags.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_string(cinn_fusion_groups_graphviz_dir);
+PD_DECLARE_string(cinn_fusion_groups_graphviz_dir);
 
 namespace cinn {
 namespace hlir {
@@ -309,15 +312,20 @@ void Graph::VisualizeGroupedGraph(
   }
 
   // Dump debug info for each group
-  LOG(INFO) << "Dump graph debug info to: "
-            << FLAGS_cinn_fusion_groups_graphviz_dir;
+  VLOG(4) << "Dump graph debug info to: "
+          << FLAGS_cinn_fusion_groups_graphviz_dir;
   const auto& groups = RemoveAccCheckGroups(origin_groups);
   const auto& group_dots = VisualizeGroups(groups, fetch_var_ids);
   for (int idx = 0; idx < groups.size(); ++idx) {
     // Create fusion_group_x folder
+    int device_id = 0;
+#ifdef CINN_WITH_CUDA
+    cudaGetDevice(&device_id);
+#endif
     auto group_path =
-        utils::StringFormat("%s/fusion_group_%d",
+        utils::StringFormat("%s/device_%d/fusion_group_%d",
                             FLAGS_cinn_fusion_groups_graphviz_dir.c_str(),
+                            device_id,
                             idx);
     if (!MakeDirectory(group_path,
                        S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH)) {

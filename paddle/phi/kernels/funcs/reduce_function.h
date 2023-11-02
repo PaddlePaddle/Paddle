@@ -233,7 +233,7 @@ struct OneDimIndexCal {
 };
 
 // reduce config
-template <typename Ty>
+template <typename Ty, typename MPType>
 struct ReduceConfig {
   ReduceConfig(const std::vector<int>& origin_reduce_dims,
                const std::vector<int>& origin_x_dim)
@@ -250,7 +250,7 @@ struct ReduceConfig {
   bool should_reduce_again = false;
   bool reduce_last_dim = false;
   bool vectorize_input = false;
-  Ty* output_data;
+  MPType* tmp_data;
   dim3 block;
   dim3 grid;
 
@@ -288,11 +288,9 @@ struct ReduceConfig {
                      const KPDevice& dev_ctx,
                      phi::DenseTensor* tmp) {
     if (should_reduce_again) {
-      tmp->Resize(phi::make_ddim(
-          {static_cast<int64_t>(left_num * grid.z * grid.y * sizeof(Ty))}));
-      output_data = dev_ctx.Alloc<Ty>(tmp);
-    } else {
-      output_data = y_data;
+      tmp->Resize(
+          phi::make_ddim({static_cast<int64_t>(left_num * grid.z * grid.y)}));
+      tmp_data = dev_ctx.Alloc<MPType>(tmp);
     }
   }
 
@@ -583,7 +581,9 @@ __global__ void ReduceAnyKernel(const Tx* x,
                                 const Calculator reduce_index_calculator,
                                 const Calculator left_index_calculator,
                                 const kps::DimConfig dim,
-                                bool is_mean) {
+                                bool is_mean,
+                                MPType* tmp_data,
+                                bool need_store_tmp = false) {
   int input_idx, left_idx, stride;
   int block_size = 0;
   bool need_store = true;
@@ -686,9 +686,15 @@ __global__ void ReduceAnyKernel(const Tx* x,
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(reduce_num);
     }
-    Ty result = static_cast<Ty>(reduce_var);
-    kps::details::WriteData<Ty>(
-        y + store_offset + i, &result, static_cast<int>(need_store));
+    if (!need_store_tmp) {
+      Ty result = static_cast<Ty>(reduce_var);
+      kps::details::WriteData<Ty>(
+          y + store_offset + i, &result, static_cast<int>(need_store));
+    } else {
+      kps::details::WriteData<MPType>(tmp_data + store_offset + i,
+                                      &reduce_var,
+                                      static_cast<int>(need_store));
+    }
   }
 }
 
@@ -707,7 +713,9 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
                                       int blocking_size,
                                       const kps::DimConfig dim,
                                       int mean_div,
-                                      bool is_mean) {
+                                      bool is_mean,
+                                      MPType* tmp_data,
+                                      bool need_store_tmp = false) {
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
   auto block = ReduceIndexMapping<false>(dim);
@@ -739,9 +747,14 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(mean_div);
     }
-    Ty result = static_cast<Ty>(reduce_var);
-    kps::WriteData<Ty, 1, 1, false>(
-        y + store_offset + idx, &result, block.BlockDimX());
+    if (!need_store_tmp) {
+      Ty result = static_cast<Ty>(reduce_var);
+      kps::WriteData<Ty, 1, 1, false>(
+          y + store_offset + idx, &result, block.BlockDimX());
+    } else {
+      kps::WriteData<MPType, 1, 1, false>(
+          tmp_data + store_offset + idx, &reduce_var, block.BlockDimX());
+    }
   }
 
   if (idx < left_num) {
@@ -763,8 +776,14 @@ __global__ void ReduceHigherDimKernel(const Tx* x,
     if (is_mean) {
       reduce_var = reduce_var / static_cast<MPType>(mean_div);
     }
-    Ty result = static_cast<Ty>(reduce_var);
-    kps::WriteData<Ty, 1, 1, true>(y + store_offset + idx, &result, dim.rem_x);
+    if (!need_store_tmp) {
+      Ty result = static_cast<Ty>(reduce_var);
+      kps::WriteData<Ty, 1, 1, true>(
+          y + store_offset + idx, &result, dim.rem_x);
+    } else {
+      kps::WriteData<MPType, 1, 1, true>(
+          tmp_data + store_offset + idx, &reduce_var, dim.rem_x);
+    }
   }
 }
 
@@ -779,7 +798,7 @@ static void LaunchReduceKernel(const Tx* x_data,
                                const TransformOp& transform,
                                MPType init,
                                KPStream stream,
-                               ReduceConfig<Ty> config,
+                               ReduceConfig<Ty, MPType> config,
                                bool is_mean = false) {
   if (config.reduce_type == kReduceLastDim) {
     int stride_reduce = 1;
@@ -806,7 +825,7 @@ static void LaunchReduceKernel(const Tx* x_data,
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, OneDimIndexCal>
         <<<grid_num, block_num, 0, stream>>>(
             x_data,
-            config.output_data,
+            y_data,
             reducer,
             transform,
             init,
@@ -816,7 +835,9 @@ static void LaunchReduceKernel(const Tx* x_data,
             reduce_index_calculator,
             left_index_calculator,
             dim,
-            is_mean && (!config.should_reduce_again));
+            is_mean && (!config.should_reduce_again),
+            config.tmp_data,
+            config.should_reduce_again);
   } else {
     int reduce_rank = config.reduce_strides.size();
     int left_rank = config.left_strides.size();
@@ -845,7 +866,7 @@ static void LaunchReduceKernel(const Tx* x_data,
     ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp, IndexCalculator>
         <<<grid_num, block_num, 0, stream>>>(
             x_data,
-            config.output_data,
+            y_data,
             reducer,
             transform,
             init,
@@ -855,7 +876,9 @@ static void LaunchReduceKernel(const Tx* x_data,
             reduce_index_calculator,
             left_index_calculator,
             dim,
-            is_mean && (!config.should_reduce_again));
+            is_mean && (!config.should_reduce_again),
+            config.tmp_data,
+            config.should_reduce_again);
   }
 
   if (config.should_reduce_again) {
@@ -879,27 +902,30 @@ static void LaunchReduceKernel(const Tx* x_data,
     auto grid_size = grid;
     auto block_size = block;
 #endif
-    ReduceHigherDimKernel<Ty,
+    ReduceHigherDimKernel<MPType,
                           Ty,
                           MPType,
                           ReduceOp,
-                          kps::IdentityFunctor<Ty, MPType>>
+                          kps::IdentityFunctor<MPType, MPType>>
         <<<grid_size, block_size, 0, stream>>>(
-            config.output_data,
+            config.tmp_data,
             y_data,
             reducer,
-            kps::IdentityFunctor<Ty, MPType>(),
+            kps::IdentityFunctor<MPType, MPType>(),
             init,
             config.grid.y,
             config.left_num,
             config.grid.y,
             dim,
             config.reduce_num,
-            is_mean);
+            is_mean,
+            config.tmp_data,
+            false);
   }
 }
 
 #if !defined(PADDLE_WITH_XPU_KP)
+
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -958,7 +984,6 @@ CubTensorReduceImpl(const Tx* x_data,
   PADDLE_THROW(phi::errors::InvalidArgument(
       "Tx should not be float16 when using cub::DeviceReduce::Reduce()."));
 }
-
 template <typename Tx,
           typename Ty,
           template <typename>
@@ -981,17 +1006,53 @@ template <typename Tx,
           typename Ty,
           template <typename>
           class ReduceOp,
+          typename TransformOp,
+          bool IsMean = false>
+struct CubTensorReduce {
+  static void apply(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+    CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
+        x_data, y_data, transform, reduce_num, dev_ctx, stream);
+  }
+};
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
           typename TransformOp>
+struct CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, true> {
+  static void apply(const Tx* x_data,
+                    Ty* y_data,
+                    const TransformOp& transform,
+                    int reduce_num,
+                    const KPDevice& dev_ctx,
+                    KPStream stream) {
+    using Div = kps::DivideFunctor<Tx>;
+    CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(
+        x_data, y_data, Div(reduce_num), reduce_num, dev_ctx, stream);
+  }
+};
+
+template <typename Tx,
+          typename Ty,
+          template <typename>
+          class ReduceOp,
+          typename TransformOp,
+          bool IsMean = false>
 void ReduceKernel(const KPDevice& dev_ctx,
                   const phi::DenseTensor& x,
                   phi::DenseTensor* y,
                   const TransformOp& transform,
-                  const std::vector<int>& origin_reduce_dims,
-                  bool is_mean = false) {
+                  const std::vector<int>& origin_reduce_dims) {
   PADDLE_ENFORCE_GT(
       x.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 #ifdef PADDLE_WITH_XPU_KP
   auto stream = dev_ctx.x_context()->xpu_stream;
 #else
@@ -1008,7 +1069,8 @@ void ReduceKernel(const KPDevice& dev_ctx,
     return;
   }
 
-  auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
+  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
+  auto config = ReduceConfig<Ty, MPType>(origin_reduce_dims, x_dim);
   config.Run(dev_ctx);
   int numel = x.numel();
   // after config.run()
@@ -1035,23 +1097,12 @@ void ReduceKernel(const KPDevice& dev_ctx,
   bool use_cub_reduce = config.reduce_num == numel && !kIsTxFP16 && !kIsTxBF16;
 #ifndef PADDLE_WITH_XPU_KP
   if (use_cub_reduce) {
-    if (is_mean) {
-      using Div = kps::DivideFunctor<Tx>;
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, Div>(x_data,
-                                                 y_data,
-                                                 Div(config.reduce_num),
-                                                 config.reduce_num,
-                                                 dev_ctx,
-                                                 stream);
-    } else {
-      CubTensorReduceImpl<Tx, Ty, ReduceOp, TransformOp>(
-          x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
-    }
+    CubTensorReduce<Tx, Ty, ReduceOp, TransformOp, IsMean>::apply(
+        x_data, y_data, transform, config.reduce_num, dev_ctx, stream);
     return;
   }
 #endif
 
-  using MPType = typename phi::dtype::MPTypeTrait<Ty>::Type;
   auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
@@ -1081,7 +1132,7 @@ void ReduceKernel(const KPDevice& dev_ctx,
     ReduceHigherDimKernel<Tx, Ty, MPType, ReduceOp<MPType>, TransformOp>
         <<<grid_num, block_num, 0, stream>>>(
             x_data,
-            config.output_data,
+            y_data,
             reducer,
             transform,
             reducer.initial(),
@@ -1090,7 +1141,9 @@ void ReduceKernel(const KPDevice& dev_ctx,
             config.blocking_size,
             dim,
             config.reduce_num,
-            is_mean && (!config.should_reduce_again));
+            IsMean && (!config.should_reduce_again),
+            config.tmp_data,
+            config.should_reduce_again);
 
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
@@ -1106,23 +1159,25 @@ void ReduceKernel(const KPDevice& dev_ctx,
       auto grid_size = grid;
       auto block_size = block;
 #endif
-      ReduceHigherDimKernel<Ty,
+      ReduceHigherDimKernel<MPType,
                             Ty,
                             MPType,
                             ReduceOp<MPType>,
-                            kps::IdentityFunctor<Ty, MPType>>
+                            kps::IdentityFunctor<MPType, MPType>>
           <<<grid_size, block_size, 0, stream>>>(
-              config.output_data,
+              config.tmp_data,
               y_data,
               reducer,
-              kps::IdentityFunctor<Ty, MPType>(config.grid.y),
+              kps::IdentityFunctor<MPType, MPType>(config.grid.y),
               reducer.initial(),
               config.grid.y,
               config.left_num,
               config.grid.y,
               dim2,
               config.reduce_num,
-              is_mean);
+              IsMean,
+              config.tmp_data,
+              false);
     }
     return;
   }
@@ -1138,29 +1193,28 @@ void ReduceKernel(const KPDevice& dev_ctx,
       reducer.initial(),
       stream,
       config,
-      is_mean);
+      IsMean);
 }
 
 template <typename Tx,
           typename Ty,
           template <typename>
           class ReduceOp,
-          typename TransformOp>
+          typename TransformOp,
+          bool IsMean = false>
 void TensorReduceImpl(const phi::GPUContext& dev_ctx,
                       const phi::DenseTensor& x,
                       phi::DenseTensor* y,
                       const TransformOp& transform,
                       const std::vector<int>& origin_reduce_dims,
-                      gpuStream_t stream,
-                      bool is_mean = false) {
+                      gpuStream_t stream) {
   dev_ctx.template Alloc<Ty>(y);
-  ReduceKernel<Tx, Ty, ReduceOp, TransformOp>(
+  ReduceKernel<Tx, Ty, ReduceOp, TransformOp, IsMean>(
       static_cast<const phi::GPUContext&>(dev_ctx),
       x,
       y,
       transform,
-      origin_reduce_dims,
-      is_mean);
+      origin_reduce_dims);
 }
 
 #endif
@@ -1305,7 +1359,7 @@ void ReduceKernelImpl(const Context& dev_ctx,
   PADDLE_ENFORCE_GT(
       input.numel(),
       0,
-      phi::errors::InvalidArgument("Tensor need be reduced must not empyt."));
+      phi::errors::InvalidArgument("Tensor need be reduced must not empty."));
 
   dev_ctx.template Alloc<OutT>(output);
 

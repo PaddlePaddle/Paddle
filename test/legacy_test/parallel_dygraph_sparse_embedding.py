@@ -24,8 +24,8 @@ from legacy_test.test_dist_base import (
 )
 
 import paddle
-from paddle import fluid
-from paddle.fluid.dygraph.base import to_variable
+from paddle import base
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Embedding
 
 
@@ -48,14 +48,14 @@ class SimpleNet(paddle.nn.Layer):
             self.vocab_size,
             self.hidden_size,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(
                     low=-init_scale, high=init_scale
                 )
             ),
         )
         self.softmax_weight = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.hidden_size, self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(
@@ -63,7 +63,7 @@ class SimpleNet(paddle.nn.Layer):
             ),
         )
         self.softmax_bias = self.create_parameter(
-            attr=fluid.ParamAttr(),
+            attr=base.ParamAttr(),
             shape=[self.vocab_size],
             dtype=dtype,
             default_initializer=paddle.nn.initializer.Uniform(

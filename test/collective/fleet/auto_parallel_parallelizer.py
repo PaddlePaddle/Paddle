@@ -17,9 +17,9 @@ import unittest
 import paddle
 import paddle.nn.functional as F
 from paddle import nn, static, utils
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet import auto
-from paddle.fluid import core
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -119,7 +119,7 @@ class TestMLPAutoParallelizer(unittest.TestCase):
             train_program, start_program
         )
 
-        optimizer = paddle.fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.00001,
             beta1=0.9,
             beta2=0.999,

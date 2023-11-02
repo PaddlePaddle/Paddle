@@ -18,8 +18,8 @@ import os
 import warnings
 from functools import reduce
 
+from paddle.base.framework import generate_control_dev_var_name
 from paddle.distributed.io import is_persistable
-from paddle.fluid.framework import generate_control_dev_var_name
 from paddle.framework import core
 
 # logging.basicConfig(
@@ -391,7 +391,7 @@ def get_dense_send_context(
         aggregate = True
         # print("public get_dense_send_context dense_table:", grad_name,
         #      var_numel, origin_varnames)
-        from paddle.fluid.core import CommContext
+        from paddle.base.core import CommContext
 
         dense_ctx = CommContext(
             grad_name,
@@ -427,7 +427,7 @@ def get_dense_send_context(
         aggregate = True
         # print("public get_dense_send_context data_norm table:", grad_name,
         #      var_numel, origin_varnames)
-        from paddle.fluid.core import CommContext
+        from paddle.base.core import CommContext
 
         data_norm_ctx = CommContext(
             grad_name,
@@ -455,7 +455,7 @@ def get_dense_send_context(
             var_numel = reduce(lambda x, y: x * y, var.shape, 1)
             grad_name = origin_varname
             aggregate = True
-            from paddle.fluid.core import CommContext
+            from paddle.base.core import CommContext
 
             dense_ctx = CommContext(
                 grad_name,
@@ -504,7 +504,7 @@ def get_geo_trainer_send_context(attrs):
             )
             var = program.global_block().vars[grad.merged_var.name]
             var_numel = reduce(lambda x, y: x * y, var.shape[1:], 1)
-            from paddle.fluid.core import CommContext
+            from paddle.base.core import CommContext
 
             print(
                 "public get_the_geo_send_context sparse: ", grad_name, var_numel
@@ -544,7 +544,7 @@ def _step_ctx(idx, role_maker):
     endpoints = get_ps_endpoints(role_maker)
     sections = [1] * len(endpoints)
     names = [name] * len(endpoints)
-    from paddle.fluid.core import CommContext
+    from paddle.base.core import CommContext
 
     ctx = CommContext(
         name,
@@ -602,7 +602,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 
             if grad_name in send_ctx:
                 continue
-            from paddle.fluid.core import CommContext
+            from paddle.base.core import CommContext
 
             print(
                 "public get_the_one_send_context sparse: ",
@@ -651,9 +651,7 @@ def get_the_one_send_context(attrs, split_dense_table=False, ep_list=None):
 def find_heter_ops(program, default_device="cpu"):
     if default_device not in DEVICE_LIST:
         raise ValueError(
-            "Given device {} is not in device list {}".format(
-                default_device, DEVICE_LIST
-            )
+            f"Given device {default_device} is not in device list {DEVICE_LIST}"
         )
 
     def _is_heter_op(op, current_heter_device, default_device="cpu"):
@@ -1153,12 +1151,12 @@ def get_communicate_var_info(
     input_var_reshape_name = []
 
     if type == "forward":
-        block_input_var_name = "forward_joint_{}_{}@Heter".format(
-            block_index - 1, block_index
+        block_input_var_name = (
+            f"forward_joint_{block_index - 1}_{block_index}@Heter"
         )
     else:
-        block_input_var_name = "backward_joint_{}_{}@Heter".format(
-            block_index + 1, block_index
+        block_input_var_name = (
+            f"backward_joint_{block_index + 1}_{block_index}@Heter"
         )
 
     entrance_var_list.sort()

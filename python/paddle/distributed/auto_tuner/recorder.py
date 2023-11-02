@@ -19,7 +19,7 @@ from typing import Tuple
 import pandas as pd
 
 
-class History_recorder:
+class HistoryRecorder:
     # NOTE increase extenable ablitity
     def __init__(self) -> None:
         self.history = []
@@ -46,11 +46,33 @@ class History_recorder:
                 else float('inf'),
                 reverse=False,
             )
-        return
 
-    def get_best(self, metric, direction) -> Tuple[dict, bool]:
+    def get_best(self, metric, direction, mode=None) -> Tuple[dict, bool]:
         self.sort_metric(direction=direction, metric_name=metric)
         if len(self.history) == 0:
+            return (self.history[0], True)
+        if mode == "SFT" or mode == "LoRA":
+            best_cfg = self.history[0]
+            if (
+                isinstance(best_cfg["max_mem_usage"], str)
+                or best_cfg["time"] == -1
+            ):
+                return (best_cfg, True)
+            first_few = 1
+            for cfg in self.history:
+                if (
+                    not isinstance(cfg["max_mem_usage"], str)
+                    and cfg["max_mem_usage"] < best_cfg["max_mem_usage"]
+                    and cfg["time"] != -1
+                ):
+                    best_cfg = cfg
+                first_few += 1
+                if first_few >= 5:
+                    break
+            return (best_cfg, False)
+        if isinstance(self.history[0]["max_mem_usage"], str) or (
+            "time" in self.history[0] and self.history[0]["time"] == -1
+        ):
             return (self.history[0], True)
         return (self.history[0], False)
 
@@ -63,7 +85,9 @@ class History_recorder:
         cols = df.columns.tolist()
         cols.insert(0, cols.pop(cols.index('job_id')))
         df = df.reindex(columns=cols)
-        df = df.drop(columns=['time'])
+        # check if 'time' exists
+        if 'time' in df.columns:
+            df = df.drop(columns=['time'])
         # write to csv
         df.to_csv(self.store_path, index=False)
 
@@ -79,3 +103,7 @@ class History_recorder:
                 reader = csv.reader(f)
                 self.history = list(reader)
         return (self.history, err)
+
+    def clean_history(self) -> None:
+        """Clean history."""
+        self.history = []

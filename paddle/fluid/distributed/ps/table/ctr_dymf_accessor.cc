@@ -14,10 +14,9 @@
 
 #include "paddle/fluid/distributed/ps/table/ctr_dymf_accessor.h"
 
-#include <gflags/gflags.h>
-
 #include "glog/logging.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

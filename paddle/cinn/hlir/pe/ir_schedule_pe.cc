@@ -31,13 +31,38 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/optim/ir_simplify.h"
+#include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/isl_utils.h"
 #include "paddle/cinn/utils/string.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
 namespace cinn {
 namespace hlir {
 namespace pe {
+
+void SetReduceAxis(ir::Expr loop, ir::Expr block) {
+  std::string var_name = loop.As<ir::For>()->loop_var->name;
+  std::vector<ir::Var> iter_vars = block.As<ir::ScheduleBlockRealize>()
+                                       ->schedule_block.As<ir::ScheduleBlock>()
+                                       ->iter_vars;
+  std::vector<ir::Expr> iter_values =
+      block.As<ir::ScheduleBlockRealize>()->iter_values;
+  CHECK_EQ(iter_vars.size(), iter_values.size());
+  for (int i = 0; i < iter_values.size(); ++i) {
+    std::set<Expr> contains = ir::ir_utils::CollectIRNodesWithoutTensor(
+        iter_values[i],
+        [&var_name](const Expr *expr) {
+          return expr->As<ir::_Var_>() != nullptr &&
+                 expr->As<ir::_Var_>()->name == var_name;
+        },
+        true);
+    if (!contains.empty()) {
+      iter_vars[i]->is_reduce_axis = true;
+    }
+  }
+}
 
 void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
                            const std::vector<int> &output_shape,
@@ -46,15 +71,15 @@ void IRElementwiseSchedule(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
   if (target == common::DefaultNVGPUTarget()) {
     auto blocks = ir_sch.GetAllBlocks();
-    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), true);
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-    auto loops = ir_sch.GetLoops(blocks[0]);
     auto size = std::accumulate(
         output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
     if (size <= target.max_num_threads()) {
-      ir_sch.Bind(loops[0], "threadIdx.x");
+      ir_sch.Bind(loop, "threadIdx.x");
     } else {
-      auto splited = ir_sch.Split(loops[0], {-1, target.max_num_threads()});
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
@@ -74,15 +99,15 @@ void IRInjectiveSchedule(ir::IRSchedule &ir_sch,  // NOLINT
           << ir_sch.GetModule().GetExprs().at(0);
   if (target == common::DefaultNVGPUTarget()) {
     auto blocks = ir_sch.GetAllBlocks();
-    ir_sch.FlattenLoops(ir_sch.GetLoops(blocks[0]), false);
+    std::vector<ir::Expr> loops = ir_sch.GetLoops(blocks[0]);
+    ir::Expr loop = ir_sch.Fuse(loops);
 
-    auto loops = ir_sch.GetLoops(blocks[0]);
     auto size = std::accumulate(
         output_shape.begin(), output_shape.end(), 1, std::multiplies<int>());
     if (size <= target.max_num_threads()) {
-      ir_sch.Bind(loops[0], "threadIdx.x");
+      ir_sch.Bind(loop, "threadIdx.x");
     } else {
-      auto splited = ir_sch.Split(loops[0], {-1, target.max_num_threads()});
+      auto splited = ir_sch.Split(loop, {-1, target.max_num_threads()});
       ir_sch.Bind(splited[0], "blockIdx.x");
       ir_sch.Bind(splited[1], "threadIdx.x");
     }
@@ -457,9 +482,15 @@ void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
   if (loops_tmp_out.size() == 1) {
     ir_sch.Bind(loops_tmp_out[0], "threadIdx.x");
     ir_sch.Bind(loops_out[0], "threadIdx.x");
+    if (FLAGS_cinn_new_group_scheduler) {
+      SetReduceAxis(loops_tmp_out[0], ir_sch.GetBlock(tmp_out->name));
+    }
   } else {
     ir_sch.Bind(loops_tmp_out[0], "blockIdx.x");
     ir_sch.Bind(loops_tmp_out[1], "threadIdx.x");
+    if (FLAGS_cinn_new_group_scheduler) {
+      SetReduceAxis(loops_tmp_out[1], ir_sch.GetBlock(tmp_out->name));
+    }
 
     if (loops_out.size() == 1) {
       ir_sch.Split(loops_out[0], {-1, 1});
@@ -471,7 +502,11 @@ void IRCudaScheduleBlockReduceInternal(ir::IRSchedule &ir_sch,  // NOLINT
 
   for (auto &tensor : {tmp_out}) {
     auto block = ir_sch.GetBlock(tensor->name);
-    ir_sch.SetBuffer(block, "local", true);
+    if (FLAGS_cinn_new_group_scheduler) {
+      ir_sch.SetBuffer(block, "local");
+    } else {
+      ir_sch.SetBuffer(block, "local", true);
+    }
   }
 
   VLOG(3) << "After IRCudaScheduleBlockReduceInternal : "
@@ -600,6 +635,9 @@ void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
 
     ir_sch.Bind(loops[0], "blockIdx.x");
     ir_sch.Bind(loops[1], "threadIdx.x");
+    if (FLAGS_cinn_new_group_scheduler) {
+      SetReduceAxis(loops[1], ir_sch.GetBlock(tmp_out->name));
+    }
   }
   // out
   {
@@ -614,7 +652,11 @@ void IRCudaScheduleBlockReduce(ir::IRSchedule &ir_sch,  // NOLINT
 
   for (auto &tensor : {reduce_tmp_out, tmp_out}) {
     auto block = ir_sch.GetBlock(tensor->name);
-    ir_sch.SetBuffer(block, "local", true);
+    if (FLAGS_cinn_new_group_scheduler) {
+      ir_sch.SetBuffer(block, "local");
+    } else {
+      ir_sch.SetBuffer(block, "local", true);
+    }
   }
 
   VLOG(3) << "After IRCudaScheduleBlockReduce : "
@@ -633,7 +675,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
     // simplify reshape index
     auto hand_write_simplify = [](std::vector<ir::Expr> loops, ir::Expr block) {
       // check exist select.
-      auto find_select = ir::CollectIRNodesInOrder(
+      auto find_select = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Select>(); });
       if (find_select.size() > 0) {
         return;
@@ -667,14 +709,16 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
         index = index + ir::Expr(schedule_block->iter_vars[idx]) * stride;
       }
 
-      auto exprs = ir::CollectIRNodesInOrder(
+      auto exprs = ir::ir_utils::CollectIRNodesInOrder(
           block, [&](const Expr *x) { return x->As<ir::Load>(); });
       CHECK_EQ(exprs.size(), 1);
       auto load = exprs.front().As<ir::Load>();
       load->indices = {index};
     };
-    hand_write_simplify(ir_sch.GetLoops(reshape->name),
-                        ir_sch.GetBlock(reshape->name));
+    if (!FLAGS_cinn_new_group_scheduler) {
+      hand_write_simplify(ir_sch.GetLoops(reshape->name),
+                          ir_sch.GetBlock(reshape->name));
+    }
     auto block = ir_sch.GetBlock(reshape->name);
     ir_sch.ComputeInline(block);
     VLOG(4) << "After simplify reshape index : "
@@ -709,7 +753,7 @@ void IRCudaScheduleBlockShuffleReduce(ir::IRSchedule &ir_sch,  // NOLINT
       break;
     }
 
-    auto exprs = ir::CollectIRNodesInOrder(
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         block, [&](const Expr *x) { return x->As<ir::Load>(); });
     for (auto expr : exprs) {
       auto load = expr.As<ir::Load>();
@@ -955,10 +999,14 @@ void IRCudaTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
   ir_sch.ComputeInline(reshape_block);
 
   auto internal_block = ir_sch.GetBlock(internal->name);
-  ir_sch.SetBuffer(internal_block, "local", true);
-
   auto tmp_out_block = ir_sch.GetBlock(tmp_out->name);
-  ir_sch.SetBuffer(tmp_out_block, "local", true);
+  if (FLAGS_cinn_new_group_scheduler) {
+    ir_sch.SetBuffer(internal_block, "local");
+    ir_sch.SetBuffer(tmp_out_block, "local");
+  } else {
+    ir_sch.SetBuffer(internal_block, "local", true);
+    ir_sch.SetBuffer(tmp_out_block, "local", true);
+  }
 
   // The current one-dimensional reduce does not make full use of SM.
   // This case is optimized into a two-dimensional.
@@ -978,9 +1026,15 @@ void IRCudaTwoStepReduceSchedule(ir::IRSchedule &ir_sch,  // NOLINT
       ir_sch.Bind(loops[0], "blockIdx.x");
       ir_sch.Bind(loops[1], "threadIdx.y");
       ir_sch.Bind(loops[2], "threadIdx.x");
+      if (FLAGS_cinn_new_group_scheduler && tensor->name == tmp_out->name) {
+        SetReduceAxis(loops[2], ir_sch.GetBlock(tmp_out->name));
+      }
     } else {
       ir_sch.Bind(loops[0], "blockIdx.x");
       ir_sch.Bind(loops[1], "threadIdx.x");
+      if (FLAGS_cinn_new_group_scheduler && tensor->name == tmp_out->name) {
+        SetReduceAxis(loops[1], ir_sch.GetBlock(tmp_out->name));
+      }
     }
   }
   VLOG(3) << "After IRCudaTwoStepReduceSchedule : "

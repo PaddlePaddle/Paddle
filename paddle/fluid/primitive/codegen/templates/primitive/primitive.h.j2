@@ -1,0 +1,29 @@
+{% import "common.j2" as common %}
+// Auto Generated, DO NOT EDIT!
+
+#pragma once
+
+#include "paddle/fluid/primitive/backend/backend.h"
+
+
+namespace paddle {
+namespace primitive {
+
+using Tensor = paddle::Tensor;
+using IntArray = paddle::experimental::IntArray;
+
+{% for api in apis %}
+{%- if api.is_prim and api.name not in backend_black_list and api.name[-1] !=  '_' -%}
+  {%- set input_names = [] -%}
+  {%- for i in api.inputs -%} {%- do input_names.append(i.name) -%} {%- endfor -%}
+  {%- set attr_names = [] -%}
+  {%- for i in api.attrs -%} {%- do attr_names.append(i.name) -%} {% endfor %}
+{{common.sig(api.name, api.inputs, api.outputs | trip_intermediate, api.attrs, False, True)}} {
+    return backend::{{api.name}}<T>({{common.args(input_names, attr_names)}});
+}
+
+{% endif %}
+{% endfor %}
+
+}  // namespace primitive
+}  // namespace paddle

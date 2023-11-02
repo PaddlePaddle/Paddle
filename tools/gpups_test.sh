@@ -12,8 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+function collect_failed_tests() {
+    for file in `ls $tmp_dir`; do
+        exit_code=0
+        grep -q 'The following tests FAILED:' $tmp_dir/$file||exit_code=$?
+        if [ $exit_code -ne 0 ]; then
+            failuretest=''
+        else
+            failuretest=`grep -A 10000 'The following tests FAILED:' $tmp_dir/$file | sed 's/The following tests FAILED://g'|sed '/^$/d'`
+            failed_test_lists="${failed_test_lists}
+            ${failuretest}"
+        fi
+    done
+}
+
 serial_list="^test_conv2d_op$|\
 ^test_conv2d_transpose_op$|\
+^test_dygraph_dataparallel_bf16$|\
+^test_dygraph_sharding_stage1_fp16$|\
+^test_dygraph_sharding_stage1_bf16$|\
+^test_dygraph_sharding_stage2_bf16$|\
+^test_dygraph_sharding_stage3_bf16$|\
 ^test_conv3d_op$"
 
 parallel_list="^init_phi_test$|\
@@ -32,7 +52,6 @@ parallel_list="^init_phi_test$|\
 ^test_conv3d_transpose_op$|\
 ^test_conv_bn_fuse_pass_cc$|\
 ^test_conv_nn_grad$|\
-^test_conv_shift_op$|\
 ^test_conv_transpose_nn_grad$|\
 ^test_convert_call$|\
 ^test_convert_call_generator$|\
@@ -45,6 +64,7 @@ parallel_list="^init_phi_test$|\
 ^test_dist_fleet_ps11$|\
 ^test_dist_fleet_ps12$|\
 ^test_executor_feed_non_tensor$|\
+^test_flash_attention$|\
 ^test_fused_adam_op$|\
 ^test_fused_attention_no_dropout$|\
 ^test_fused_attention_op$|\
@@ -89,16 +109,24 @@ parallel_list="^init_phi_test$|\
 ^test_top_k_v2_op$"
 
 cd ${work_dir}/build
-
+tmp_dir=`mktemp -d`
+tmpfile_rand=`date +%s%N`
+tmpfile=$tmp_dir/$tmpfile_rand"_"$i
 set +e
-ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4
+ctest --output-on-failure -R "($parallel_list)" --timeout 120 -j4 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_1=$?
 
-ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1
+ctest --output-on-failure -R "($serial_list)" --timeout 120 -j1 | tee -a $tmpfile; test ${PIPESTATUS[0]} -eq 0;
 EXIT_CODE_2=$?
 set -e
 
 if [ "${EXIT_CODE_1}" != "0" ] || [ "${EXIT_CODE_2}" != "0" ];then
   echo "Sorry, some tests failed."
+  collect_failed_tests
+  rm -f $tmp_dir/*
+  echo "Summary Failed Tests... "
+  echo "========================================"
+  echo "The following tests FAILED: "
+  echo "${failuretest}" | sort -u
   exit 8
 fi

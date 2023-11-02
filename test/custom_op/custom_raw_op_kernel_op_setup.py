@@ -17,7 +17,7 @@ import os
 from utils import extra_compile_args, paddle_includes
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.utils.cpp_extension import CppExtension, CUDAExtension, setup
 
 if paddle.is_compiled_with_cuda():
@@ -37,7 +37,7 @@ else:
 
 macros = []
 if core.is_compiled_with_mkldnn():
-    macros.append(("PADDLE_WITH_MKLDNN", None))
+    macros.append(("PADDLE_WITH_DNNL", None))
 if core.is_compiled_with_nccl():
     macros.append(("PADDLE_WITH_NCCL", None))
 macros.append(("THRUST_IGNORE_CUB_VERSION_CHECK", None))

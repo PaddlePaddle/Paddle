@@ -17,12 +17,12 @@
 #include <memory>
 
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/ir/dialect/pd_dialect.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 
-std::unique_ptr<::ir::Program> TranslateLegacyProgramToProgram(
+std::unique_ptr<::pir::Program> TranslateLegacyProgramToProgram(
     const ::paddle::framework::ProgramDesc& legacy_program);
 
 }  // namespace paddle

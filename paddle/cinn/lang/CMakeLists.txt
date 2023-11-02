@@ -7,6 +7,8 @@ gather_srcs(
   compute.cc
   placeholder.cc
   lower.cc
+  lower_impl.cc
+  lower_tensor_group.cc
   builtin.cc
   lower_impl.cc
   packed_func.cc)

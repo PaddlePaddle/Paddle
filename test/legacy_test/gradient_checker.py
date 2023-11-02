@@ -19,13 +19,13 @@ from itertools import product
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import _append_grad_suffix_, _as_list
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import _append_grad_suffix_, _as_list
 
 
 def _product(t):
-    return int(np.product(t))
+    return int(np.prod(t))
 
 
 def dtype_to_np_dtype(dtype):
@@ -81,7 +81,7 @@ def var_to_np_array_in_scope(scope, place, name):
 
 
 def make_jacobian(x, y_size, np_dtype):
-    if isinstance(x, fluid.framework.Variable):
+    if isinstance(x, base.framework.Variable):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, Sequence):
         jacobians = list(
@@ -105,7 +105,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         program (Program): the network program.
         x (Variable): the input variables.
         y (list[Variable]): the output variables.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         scope (Scope): the scope used to run program.
         delta: the amount of perturbation we give to the input
 
@@ -116,12 +116,12 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         where "x_size" is the number of elements in x and
         "y_size" is the number of elements in each y_i.
     """
-    if not isinstance(x, fluid.framework.Variable):
+    if not isinstance(x, base.framework.Variable):
         raise TypeError('x is not Variable')
 
     # To compute the jacobian, treat x and y as one-dimensional vectors.
     y = _as_list(y)
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     def run():
         y_res = exe.run(program, scope=scope, fetch_list=y)
@@ -160,7 +160,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         program (Program): a Program with forward pass.
         x (Variable|list[Variable]): a variable or list of variable
         y (Variable): the target variable.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         scope (Scope): the scope used to run program.
 
     Returns:
@@ -170,7 +170,7 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         where "x_size" is the number of elements in x_i and
         "dy_size" is the number of elements in y.
     """
-    if not isinstance(y, fluid.framework.Variable):
+    if not isinstance(y, base.framework.Variable):
         raise TypeError('y is not Variable')
 
     dy_name = _append_grad_suffix_(y.name)
@@ -181,13 +181,13 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         name=dy_name, shape=y.shape, dtype=np_type, persistable=True
     )
     # append backward
-    dx = fluid.gradients(y, x, dy)
+    dx = base.gradients(y, x, dy)
 
     # init dy tensor in scope
     value = np.zeros(y.shape, dtype=np_type)
     dy_t = set_var_in_scope(scope, place, dy_name, value)
 
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     y_size = _product(y.shape)
 
@@ -237,9 +237,9 @@ def grad_check(
         x (Variable|list[Variable]): input variables to the program.
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
-            If None, use fluid.default_main_program().
+            If None, use base.default_main_program().
         eps (float): perturbation for finite differences.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
@@ -265,14 +265,14 @@ def grad_check(
         u.stop_gradient = False
         u.persistable = True
     if place is None:
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
     if program is None:
-        program = fluid.default_main_program()
+        program = base.default_main_program()
 
-    # init variable in strtup program
-    scope = fluid.executor.global_scope()
-    exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
+    # init variable in startup program
+    scope = base.executor.global_scope()
+    exe = base.Executor(place)
+    exe.run(base.default_startup_program())
 
     x_init = _as_list(x_init)
     # init inputs if x_init is not None
@@ -321,11 +321,9 @@ def grad_check(
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
             msg = (
-                'Jacobian mismatch for output {} '
-                'with respect to input {} on {},\n'
-                'numerical:{}\nanalytical:{}\n'.format(
-                    y[y_idx].name, x[x_idx].name, str(place), n, a
-                )
+                f'Jacobian mismatch for output {y[y_idx].name} '
+                f'with respect to input {x[x_idx].name} on {str(place)},\n'
+                f'numerical:{n}\nanalytical:{a}\n'
             )
             return fail_test(msg)
     return True
@@ -352,9 +350,9 @@ def double_grad_check(
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         y_grads (numpy.array|list[numpy.array]|None): the gradients with respect to y.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
-            If None, use fluid.default_main_program().
+            If None, use base.default_main_program().
         eps (float): perturbation for finite differences.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
@@ -374,10 +372,10 @@ def double_grad_check(
         u.persistable = True
 
     if program is None:
-        program = fluid.default_main_program()
+        program = base.default_main_program()
 
     if y_grads is None:
-        scope = fluid.executor.global_scope()
+        scope = base.executor.global_scope()
         y_grads = []
         y_grads_init = []
         for yi in y:
@@ -398,7 +396,7 @@ def double_grad_check(
         ]
 
     # append first order grads
-    target_grads = fluid.gradients(y, x, y_grads)
+    target_grads = base.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -437,9 +435,9 @@ def triple_grad_check(
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         y_grads (numpy.array|list[numpy.array]|None): the gradients with respect to y.
         x_grads_grads (numpy.array|list[numpy.array]|None): the gradients with respect to your input.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
-            If None, use fluid.default_main_program().
+            If None, use base.default_main_program().
         eps (float): perturbation for finite differences.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
@@ -459,10 +457,10 @@ def triple_grad_check(
         u.persistable = True
 
     if program is None:
-        program = fluid.default_main_program()
+        program = base.default_main_program()
 
     if y_grads is None:
-        scope = fluid.executor.global_scope()
+        scope = base.executor.global_scope()
         y_grads = []
         y_grads_init = []
         for yi in y:
@@ -483,10 +481,10 @@ def triple_grad_check(
         ]
 
     # append first order grads
-    target_grads = fluid.gradients(y, x, y_grads)
+    target_grads = base.gradients(y, x, y_grads)
 
     if x_grads_grads is None:
-        scope = fluid.executor.global_scope()
+        scope = base.executor.global_scope()
         x_grads_grads = []
         x_grads_grads_init = []
         for dxi in target_grads:
@@ -511,7 +509,7 @@ def triple_grad_check(
     x_init += y_grads_init
 
     # append second order grads
-    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
+    target_grads_grads = base.gradients(target_grads, x, x_grads_grads)
 
     # filter None in target_grads_grads for Dy/Dx may be None in kernel
     filted = [
@@ -546,16 +544,16 @@ def get_static_double_grad(
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
-            If None, use fluid.default_main_program().
+            If None, use base.default_main_program().
     Returns:
         A list of numpy array that stores second derivative result calculated by static graph.
     """
 
     if program is None:
-        program = fluid.default_main_program()
-    scope = fluid.executor.global_scope()
+        program = base.default_main_program()
+    scope = base.executor.global_scope()
     y_grads = []
     for i in range(len(y)):
         yi = y[i]
@@ -569,7 +567,7 @@ def get_static_double_grad(
         y_grads.append(dy)
 
     # append first order grads
-    dx = fluid.gradients(y, x, y_grads)
+    dx = base.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -591,14 +589,14 @@ def get_static_double_grad(
         u.stop_gradient = False
         u.persistable = True
     if place is None:
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
     if program is None:
-        program = fluid.default_main_program()
+        program = base.default_main_program()
 
-    # init variable in strtup program
-    scope = fluid.executor.global_scope()
-    exe = fluid.Executor(place)
-    exe.run(fluid.default_startup_program())
+    # init variable in startup program
+    scope = base.executor.global_scope()
+    exe = base.Executor(place)
+    exe.run(base.default_startup_program())
 
     x_init = _as_list(x_init)
     # init inputs if x_init is not None
@@ -628,8 +626,8 @@ def get_static_double_grad(
         dys.append(dy)
 
     # append second order backward
-    ddx = fluid.gradients(y, x, dys)
-    exe = fluid.Executor(place)
+    ddx = base.gradients(y, x, dys)
+    exe = base.Executor(place)
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
@@ -650,18 +648,18 @@ def get_eager_double_grad(
         func: A wrapped dygraph function that its logic is equal to static program
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         return_mid_result (bool): A flag that controls the return content.
     Returns:
         If 'return_mid_result' set True.
         the second order derivative and the inputs of second order derivative's calculation
         will be returned for higher order derivative's calculation.
         If 'return_mid_result' set False.
-        A list of numpy array that stores second derivative result calulated by dygraph.
+        A list of numpy array that stores second derivative result calculated by dygraph.
     """
-    if isinstance(place, fluid.CPUPlace):
+    if isinstance(place, base.CPUPlace):
         paddle.set_device("cpu")
-    if isinstance(place, fluid.CUDAPlace):
+    if isinstance(place, base.CUDAPlace):
         paddle.set_device("gpu")
     inputs = []
     dys = []
@@ -684,7 +682,7 @@ def get_eager_double_grad(
     )
     d_inputs = [d_input for d_input in d_inputs if d_input is not None]
 
-    # calcluate second derivative
+    # calculate second derivative
     inputs = inputs + dys
     ddys = []
     if return_mid_result:
@@ -736,7 +734,7 @@ def double_grad_check_for_dygraph(
         x (Variable|list[Variable]): input variables to the program.
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
         raise_exception (bool): whether to raise an exception if
@@ -804,15 +802,15 @@ def get_static_triple_grad(
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for output y.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
-            If None, use fluid.default_main_program().
+            If None, use base.default_main_program().
     Returns:
-        A list of numpy array that stores third derivative result calulated by static graph.
+        A list of numpy array that stores third derivative result calculated by static graph.
     """
     if program is None:
-        program = fluid.default_main_program()
-    scope = fluid.executor.global_scope()
+        program = base.default_main_program()
+    scope = base.executor.global_scope()
     y_grads = []
     for i in range(len(y)):
         yi = y[i]
@@ -826,7 +824,7 @@ def get_static_triple_grad(
         y_grads.append(dy)
 
     # append first order grads
-    dx = fluid.gradients(y, x, y_grads)
+    dx = base.gradients(y, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -855,16 +853,16 @@ def get_eager_triple_grad(
         func: A wrapped dygraph function that its logic is equal to static program
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         dy_init (numpy.array|list[numpy.array]|None): the init value for gradient of output.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         return_mid_result (list[Tensor], list[Tensor]): If set True, the
     Returns:
-        A list of numpy array that stores second derivative result calulated by dygraph
+        A list of numpy array that stores second derivative result calculated by dygraph
     """
     dd_y, dd_x = get_eager_double_grad(
         func, x_init, dy_init, place, return_mid_result=True
     )
 
-    # calcluate third derivative
+    # calculate third derivative
     dddys = []
     for dd_yi in dd_y:
         dd_yi.stop_gradient = False
@@ -899,7 +897,7 @@ def triple_grad_check_for_dygraph(
         x (Variable|list[Variable]): input variables to the program.
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
-        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        place (base.CPUPlace or base.CUDAPlace): the device.
         atol (float): absolute tolerance.
         rtol (float): relative tolerance.
         raise_exception (bool): whether to raise an exception if

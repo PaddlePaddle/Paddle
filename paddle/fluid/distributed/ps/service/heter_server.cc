@@ -18,8 +18,8 @@
 
 namespace paddle {
 namespace distributed {
-// DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
-// DEFINE_string(key_path, "./key.pem", "key.pem path");
+// PD_DEFINE_string(cert_path, "./cert.pem", "cert.pem path");
+// PD_DEFINE_string(key_path, "./key.pem", "key.pem path");
 std::shared_ptr<HeterServer> HeterServer::s_instance_ = nullptr;
 std::mutex HeterServer::mtx_;
 
@@ -37,7 +37,7 @@ void HeterServer::StartHeterService(bool neeed_encrypt) {
   }
   if (server_.Start(endpoint_.c_str(), &options) != 0) {
     VLOG(0) << "HeterServer start fail. Try again.";
-    auto ip_port = paddle::string::Split(endpoint_, ':');
+    auto ip_port = ::paddle::string::Split(endpoint_, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);
@@ -72,7 +72,7 @@ void HeterServer::StartHeterInterService(bool neeed_encrypt) {
   }
   if (server_inter_.Start(endpoint_inter_.c_str(), &options) != 0) {
     VLOG(4) << "switch inter server start fail. Try again.";
-    auto ip_port = paddle::string::Split(endpoint_inter_, ':');
+    auto ip_port = ::paddle::string::Split(endpoint_inter_, ':');
     std::string ip = ip_port[0];
     int port = std::stoi(ip_port[1]);
     std::string int_ip_port = GetIntTypeEndpoint(ip, port);

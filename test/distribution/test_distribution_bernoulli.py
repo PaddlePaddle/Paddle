@@ -27,9 +27,9 @@ from parameterize import (
 from test_distribution import DistributionNumpy
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
 from paddle.distribution import Bernoulli
 from paddle.distribution.kl import kl_divergence
-from paddle.fluid.data_feeder import convert_dtype
 
 np.random.seed(2023)
 paddle.seed(2023)
@@ -132,7 +132,7 @@ class BernoulliNumpy(DistributionNumpy):
 class BernoulliTest(unittest.TestCase):
     def setUp(self):
         paddle.disable_static(self.place)
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             # just for convenience
             self.dtype = self.expected_dtype
 
@@ -229,7 +229,7 @@ class BernoulliTest(unittest.TestCase):
 )
 class BernoulliTestFeature(BernoulliTest):
     def test_mean(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self.rv_paddle.mean,
                 self.rv_np.mean,
@@ -238,7 +238,7 @@ class BernoulliTestFeature(BernoulliTest):
             )
 
     def test_variance(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self.rv_paddle.variance,
                 self.rv_np.variance,
@@ -265,7 +265,7 @@ class BernoulliTestFeature(BernoulliTest):
         ]
     )
     def test_log_prob(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.probs.dtype
             ):
@@ -297,7 +297,7 @@ class BernoulliTestFeature(BernoulliTest):
         ]
     )
     def test_prob(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.probs.dtype
             ):
@@ -331,7 +331,7 @@ class BernoulliTestFeature(BernoulliTest):
         ]
     )
     def test_cdf(self, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             if convert_dtype(value.dtype) == convert_dtype(
                 self.rv_paddle.probs.dtype
             ):
@@ -349,7 +349,7 @@ class BernoulliTestFeature(BernoulliTest):
                     self.rv_paddle.cdf(value)
 
     def test_entropy(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             np.testing.assert_allclose(
                 self.rv_paddle.entropy(),
                 self.rv_np.entropy(),
@@ -358,7 +358,7 @@ class BernoulliTestFeature(BernoulliTest):
             )
 
     def test_kl_divergence(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             other_probs = paddle.to_tensor([0.9], dtype=self.dtype)
 
             rv_paddle_other = Bernoulli(other_probs)
@@ -489,7 +489,7 @@ class BernoulliTestFeature(BernoulliTest):
 )
 class BernoulliTestSample(BernoulliTest):
     def test_sample(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
             sample_paddle = self.rv_paddle.sample(self.shape)
 
@@ -520,7 +520,7 @@ class BernoulliTestSample(BernoulliTest):
     )
     def test_rsample(self, temperature):
         """Compare two samples from `rsample` method, one from scipy `sample` and another from paddle `rsample`."""
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             sample_np = self.rv_np.sample(self.shape)
             rsample_paddle = self.rv_paddle.rsample(self.shape, temperature)
 
@@ -548,7 +548,7 @@ class BernoulliTestSample(BernoulliTest):
                 )
 
     def test_rsample_backpropagation(self):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self.rv_paddle.probs.stop_gradient = False
             rsample_paddle = self.rv_paddle.rsample(self.shape)
             rsample_paddle = paddle.nn.functional.sigmoid(rsample_paddle)
@@ -573,7 +573,7 @@ class BernoulliTestError(unittest.TestCase):
         ]
     )
     def test_bad_init(self, probs, error):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             self.assertRaises(error, Bernoulli, probs)
 
     @parameterize_func(
@@ -585,7 +585,7 @@ class BernoulliTestError(unittest.TestCase):
         ]
     )
     def test_bad_broadcast(self, probs, value):
-        with paddle.fluid.dygraph.guard(self.place):
+        with paddle.base.dygraph.guard(self.place):
             rv = Bernoulli(probs)
             self.assertRaises(ValueError, rv.cdf, value)
             self.assertRaises(ValueError, rv.log_prob, value)

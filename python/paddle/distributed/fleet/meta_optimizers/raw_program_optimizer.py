@@ -14,8 +14,7 @@
 import os
 
 from paddle import static
-from paddle.fluid import core
-from paddle.framework import _global_flags
+from paddle.base import core
 from paddle.framework.ir import apply_build_strategy
 from paddle.utils import unique_name
 
@@ -29,6 +28,14 @@ from .common import (
     is_optimizer_op,
 )
 from .meta_optimizer_base import MetaOptimizerBase
+
+
+def evaluate_flag_apply_pass_to_program(val: str) -> bool:
+    val = val.lower()
+    if val in ('false', 'off', '0'):
+        return False
+    else:
+        return True
 
 
 class RawProgramOptimizer(MetaOptimizerBase):
@@ -153,7 +160,11 @@ class RawProgramOptimizer(MetaOptimizerBase):
         optimize_ops, params_grads = self.inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )
-        if _global_flags()['FLAGS_apply_pass_to_program']:
+        # Not apply pass only when FLAGS_apply_pass_to_program explicitly set to False
+        is_apply_pass_to_program = os.environ.get(
+            'FLAGS_apply_pass_to_program', '1'
+        )
+        if evaluate_flag_apply_pass_to_program(is_apply_pass_to_program):
             pass_attrs = {"use_cuda": True}
             build_strategy = self.user_defined_strategy.build_strategy._copy()
             build_strategy.fuse_all_optimizer_ops = False

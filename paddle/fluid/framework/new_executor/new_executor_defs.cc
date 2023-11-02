@@ -37,7 +37,7 @@ VariableScope::VariableScope(Scope* scope) {
           "You have passed a nullptr to construct VariableScope."));
 }
 
-VariableScope::~VariableScope() {}
+VariableScope::~VariableScope() = default;
 
 Scope* VariableScope::GetMutableScope() const { return scope_; }
 
@@ -92,7 +92,7 @@ void VariableScope::AddVar(const std::string& name,
                            framework::VarDesc* var_desc) {
   if (!HasVar(name)) {
     auto id = VarSize();
-    name2id_[name] = id;
+    name2id_[name] = static_cast<int>(id);
     vec_meta_info_.emplace_back(0, var_desc);
     if (local_scope_ != nullptr) {
       var_list_.push_back(local_scope_->FindVar(name));

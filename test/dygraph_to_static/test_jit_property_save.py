@@ -14,10 +14,12 @@
 
 import unittest
 
+from dygraph_to_static_utils_new import Dy2StTestBase
+
 import paddle
 
 
-class TestPropertySave(unittest.TestCase):
+class TestPropertySave(Dy2StTestBase):
     """test jit property save"""
 
     def setUp(self):
@@ -44,7 +46,7 @@ class TestPropertySave(unittest.TestCase):
             self.a.get_float(1)
 
     def test_set(self):
-        """test propety set."""
+        """test property set."""
         try:
             a = paddle.framework.core.Property()
             a.set_float('float', 10.0)

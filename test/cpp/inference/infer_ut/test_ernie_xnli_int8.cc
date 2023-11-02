@@ -192,7 +192,7 @@ TEST(tensorrt_tester_ernie_xnli, oss_varlen_truth_data_int8) {
 
 int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
 
 #if IS_TRT_VERSION_GE(7200)
   return RUN_ALL_TESTS();

@@ -110,7 +110,7 @@ static void RunKernelFunc(
         // tensor here.
         custom_vec_in.emplace_back(paddle::Tensor());
       }
-      kernel_ctx.EmplaceBackInputs(std::move(custom_vec_in));
+      kernel_ctx.EmplaceBackInputs(custom_vec_in);
     } else {                        // inputs Tensor
       if (ctx.HasInput(in_name)) {  // general Tensor inputs
         auto* x = ctx.Input<phi::DenseTensor>(in_name);
@@ -231,7 +231,7 @@ static void RunKernelFunc(
         custom_t.set_impl(std::make_shared<phi::DenseTensor>(*out));
         custom_vec_out.emplace_back(custom_t);
       }
-      kernel_ctx.EmplaceBackOutputs(std::move(custom_vec_out));
+      kernel_ctx.EmplaceBackOutputs(custom_vec_out);
     } else {
       // handle inplace optional outputs = None case
       if (!ctx.HasOutput(out_name)) {
@@ -270,8 +270,8 @@ static void RunKernelFunc(
 
     FLAGS_tensor_operants_mode = "phi";
     if (paddle::OperantsManager::Instance().phi_operants.get() == nullptr) {
-      paddle::OperantsManager::Instance().phi_operants.reset(
-          new paddle::operants::PhiTensorOperants());
+      paddle::OperantsManager::Instance().phi_operants =
+          std::make_unique<paddle::operants::PhiTensorOperants>();
       VLOG(4) << "Initialize phi tensor operants successfully";
     }
 
@@ -318,7 +318,7 @@ static void RunKernelFunc(
       }
     }
   } catch (platform::EnforceNotMet& exception) {
-    throw std::move(exception);
+    throw exception;
   } catch (std::exception& ex) {
     PADDLE_THROW(platform::errors::External("%s", ex.what()));
   } catch (...) {
@@ -653,8 +653,8 @@ static void RunDefaultInferDtypeFunc(
       if (detail::IsDuplicableVar(pair.first)) {
         size_t size = ctx->InputSize(pair.first);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(pair.first, i);
-          ctx->SetOutputDataType(pair.second, dtype, i);
+          auto dtype = ctx->GetInputDataType(pair.first, static_cast<int>(i));
+          ctx->SetOutputDataType(pair.second, dtype, static_cast<int>(i));
         }
       } else {
         auto dtype = ctx->GetInputDataType(pair.first);
@@ -669,6 +669,7 @@ static void RunInferDtypeFunc(
     const paddle::InferDtypeFunc& func,
     const std::vector<std::string>& inputs,
     const std::vector<std::string>& outputs,
+    const std::vector<std::string>& attrs,
     const std::unordered_map<std::string, std::string>& inplace_map,
     const std::unordered_map<std::string, std::string>& inplace_reverse_map) {
   std::vector<DataType> input_dtypes;
@@ -680,7 +681,7 @@ static void RunInferDtypeFunc(
       std::vector<DataType> vec_custom_dtype;
       if (ctx->HasInput(in_name)) {  // general inputs
         for (size_t i = 0; i < ctx->InputSize(in_name); ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
           vec_custom_dtype.emplace_back(
               paddle::framework::TransToPhiDataType(dtype));
         }
@@ -711,8 +712,51 @@ static void RunInferDtypeFunc(
     }
   }
 
+  std::vector<paddle::any> custom_attrs;
+  for (auto& attr_str : attrs) {
+    auto attr_name_and_type = paddle::ParseAttrStr(attr_str);
+    auto attr_name = attr_name_and_type[0];
+    auto attr_type_str = attr_name_and_type[1];
+    if (attr_type_str == "bool") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(bool, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "int") {
+      custom_attrs.emplace_back(PADDLE_GET_CONST(int, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "float") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(float, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "int64_t") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(int64_t, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::string") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::string, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<int>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<float>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<float>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<int64_t>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<int64_t>, ctx->GetAttr(attr_name)));
+    } else if (attr_type_str == "std::vector<std::string>") {
+      custom_attrs.emplace_back(
+          PADDLE_GET_CONST(std::vector<std::string>, ctx->GetAttr(attr_name)));
+    } else {
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported `%s` type value as custom attribute now. "
+          "Supported data types include `bool`, `int`, `float`, "
+          "`int64_t`, `std::string`, `std::vector<int>`, "
+          "`std::vector<float>`, `std::vector<int64_t>`, "
+          "`std::vector<std::string>`, Please check whether the attribute data "
+          "type and data type string are matched.",
+          attr_type_str));
+    }
+  }
+
   VLOG(3) << "Custom Operator: InferDtype - infer output dtype.";
-  auto output_dtypes = func(input_dtypes, vec_input_dtypes);
+  auto output_dtypes = func(input_dtypes, vec_input_dtypes, custom_attrs);
   if (inplace_map.empty()) {
     PADDLE_ENFORCE_EQ(outputs.size(),
                       output_dtypes.size(),
@@ -755,8 +799,8 @@ static void RunInferDtypeFunc(
       if (ctx->HasOutput(out_name)) {
         size_t size = ctx->InputSize(in_name);
         for (size_t i = 0; i < size; ++i) {
-          auto dtype = ctx->GetInputDataType(in_name, i);
-          ctx->SetOutputDataType(out_name, dtype, i);
+          auto dtype = ctx->GetInputDataType(in_name, static_cast<int>(i));
+          ctx->SetOutputDataType(out_name, dtype, static_cast<int>(i));
         }
       } else {
         PADDLE_ENFORCE(
@@ -872,11 +916,12 @@ static void RegisterOperatorKernel(
   OperatorWithKernel::OpKernelFunc op_kernel_func;
   if (kernel_func) {
     VLOG(3) << "Register custom operator " << name << " with kernel func";
-    op_kernel_func = [kernel_func, inputs, outputs, attrs, inplace_map](
-                         const framework::ExecutionContext& ctx) {
-      VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
-      RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs, inplace_map);
-    };
+    op_kernel_func =
+        [kernel_func, inputs, outputs, attrs, inplace_map](  // NOLINT
+            const framework::ExecutionContext& ctx) {
+          VLOG(3) << "Custom Operator: run custom kernel func in lambda.";
+          RunKernelFunc(ctx, kernel_func, inputs, outputs, attrs, inplace_map);
+        };
   } else {
     VLOG(3) << "Register custom operator " << name
             << " with raw op kernel func";
@@ -902,14 +947,10 @@ static void RegisterOperatorKernel(
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   auto device_types = phi::DeviceManager::GetAllCustomDeviceTypes();
   for (const auto& dev_type : device_types) {
-    for (size_t dev_id = 0;
-         dev_id < phi::DeviceManager::GetDeviceCount(dev_type);
-         dev_id++) {
-      RegisterOperatorKernelWithPlace(name,
-                                      op_kernel_func,
-                                      proto::VarType::RAW,
-                                      platform::CustomPlace(dev_type, dev_id));
-    }
+    RegisterOperatorKernelWithPlace(name,
+                                    op_kernel_func,
+                                    proto::VarType::RAW,
+                                    platform::CustomPlace(dev_type));
   }
 #endif
 }
@@ -985,12 +1026,12 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // InferShape
   if (infer_shape_func == nullptr) {
     // use default InferShape
-    info.infer_shape_ =
-        [op_inputs, op_outputs, op_inplace_map](InferShapeContext* ctx) {
-          RunDefaultInferShapeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
-        };
+    info.infer_shape_ = [op_inputs, op_outputs, op_inplace_map](  // NOLINT
+                            InferShapeContext* ctx) {
+      RunDefaultInferShapeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
+    };
   } else {
-    info.infer_shape_ = [op_inputs,
+    info.infer_shape_ = [op_inputs,  // NOLINT
                          op_outputs,
                          op_attrs,
                          op_inplace_map,
@@ -1009,13 +1050,14 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
   // Infer Dtype
   if (infer_dtype_func == nullptr) {
     // use default InferDtype
-    info.infer_var_type_ =
-        [op_inputs, op_outputs, op_inplace_map](InferVarTypeContext* ctx) {
-          RunDefaultInferDtypeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
-        };
+    info.infer_var_type_ = [op_inputs, op_outputs, op_inplace_map](  // NOLINT
+                               InferVarTypeContext* ctx) {
+      RunDefaultInferDtypeFunc(ctx, op_inputs, op_outputs, op_inplace_map);
+    };
   } else {
-    info.infer_var_type_ = [op_inputs,
+    info.infer_var_type_ = [op_inputs,  // NOLINT
                             op_outputs,
+                            op_attrs,
                             op_inplace_map,
                             op_inplace_reverse_map,
                             infer_dtype_func](InferVarTypeContext* ctx) {
@@ -1023,6 +1065,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                         infer_dtype_func,
                         op_inputs,
                         op_outputs,
+                        op_attrs,
                         op_inplace_map,
                         op_inplace_reverse_map);
     };
@@ -1051,6 +1094,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         OpMetaInfoHelper::GetInplaceReverseMap(cur_grad_op);
     auto& grad_kernel_fn = OpMetaInfoHelper::GetKernelFn(cur_grad_op);
     auto& grad_infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(cur_grad_op);
+    auto& grad_infer_dtype_fn = OpMetaInfoHelper::GetInferDtypeFn(cur_grad_op);
 
     VLOG(3) << "Custom Operator: backward, op name: " << grad_op_name;
     VLOG(3) << "Custom Operator: backward, op inputs: "
@@ -1070,7 +1114,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // GradOpDescMaker
     info.grad_op_maker_ =
-        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+        [grad_op_name,  // NOLINT
+         grad_op_inputs,
+         grad_op_outputs,
+         is_double_grad](
             const OpDesc& fwd_op,
             const std::unordered_set<std::string>& no_grad_set,
             std::unordered_map<std::string, std::string>* grad_to_var,
@@ -1088,7 +1135,10 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // GradOpBaseMaker
     info.dygraph_grad_op_maker_ =
-        [grad_op_name, grad_op_inputs, grad_op_outputs, is_double_grad](
+        [grad_op_name,  // NOLINT
+         grad_op_inputs,
+         grad_op_outputs,
+         is_double_grad](
             const std::string& type,
             const imperative::NameVarBaseMap& var_base_map_in,
             const imperative::NameVarBaseMap& var_base_map_out,
@@ -1128,7 +1178,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
 
     // Grad InferShape
     if (grad_infer_shape_fn == nullptr) {
-      grad_info.infer_shape_ = [grad_op_inputs,
+      grad_info.infer_shape_ = [grad_op_inputs,  // NOLINT
                                 grad_op_outputs,
                                 is_double_grad](InferShapeContext* ctx) {
         // 1. if forward input exists, gradient's shape is same with forward
@@ -1166,7 +1216,7 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
         }
       };
     } else {
-      grad_info.infer_shape_ = [grad_op_inputs,
+      grad_info.infer_shape_ = [grad_op_inputs,  // NOLINT
                                 grad_op_outputs,
                                 grad_op_attrs,
                                 grad_op_inplace_map,
@@ -1180,6 +1230,25 @@ void RegisterOperatorWithMetaInfo(const std::vector<OpMetaInfo>& op_meta_infos,
                           grad_op_inplace_map,
                           grad_op_inplace_reverse_map);
       };
+    }
+
+    // Grad InferDtype
+    if (grad_infer_dtype_fn != nullptr) {
+      grad_info.infer_var_type_ =
+          [grad_op_inputs,  // NOLINT
+           grad_op_outputs,
+           grad_op_attrs,
+           grad_op_inplace_map,
+           grad_op_inplace_reverse_map,
+           grad_infer_dtype_fn](InferVarTypeContext* ctx) {
+            RunInferDtypeFunc(ctx,
+                              grad_infer_dtype_fn,
+                              grad_op_inputs,
+                              grad_op_outputs,
+                              grad_op_attrs,
+                              grad_op_inplace_map,
+                              grad_op_inplace_reverse_map);
+          };
     }
 
     // Kernel func

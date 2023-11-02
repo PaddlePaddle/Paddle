@@ -23,7 +23,6 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using dnnl::reorder;
 
 namespace {
 

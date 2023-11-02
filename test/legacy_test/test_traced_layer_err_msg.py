@@ -20,7 +20,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid, nn
+from paddle import base, nn
 
 
 class SimpleFCLayer(nn.Layer):
@@ -60,17 +60,17 @@ class TestTracedLayerErrMsg(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_trace_err(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
-        with fluid.dygraph.guard():
-            in_x = fluid.dygraph.to_variable(
+        with base.dygraph.guard():
+            in_x = base.dygraph.to_variable(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
 
             with self.assertRaises(AssertionError) as e:
-                dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                     None, [in_x]
                 )
             self.assertEqual(
@@ -80,77 +80,77 @@ class TestTracedLayerErrMsg(unittest.TestCase):
                 str(e.exception),
             )
             with self.assertRaises(TypeError) as e:
-                dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                     self.layer, 3
                 )
             self.assertEqual(
-                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'int'>.".format(
+                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be base.Variable, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
             with self.assertRaises(TypeError) as e:
-                dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+                dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                     self.layer, [True, 1]
                 )
             self.assertEqual(
-                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received <{} 'bool'>.".format(
+                "The type of 'each element of inputs' in paddle.jit.TracedLayer.trace must be base.Variable, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
 
-            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+            dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
             )
 
     def test_set_strategy_err(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
-        with fluid.dygraph.guard():
-            in_x = fluid.dygraph.to_variable(
+        with base.dygraph.guard():
+            in_x = base.dygraph.to_variable(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
-            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+            dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
             )
 
             with self.assertRaises(AssertionError) as e:
-                traced_layer.set_strategy(1, fluid.ExecutionStrategy())
+                traced_layer.set_strategy(1, base.ExecutionStrategy())
             self.assertEqual(
-                "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received <{} 'int'>.".format(
+                "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be base.BuildStrategy, but received <{} 'int'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
 
             with self.assertRaises(AssertionError) as e:
-                traced_layer.set_strategy(fluid.BuildStrategy(), False)
+                traced_layer.set_strategy(base.BuildStrategy(), False)
             self.assertEqual(
-                "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received <{} 'bool'>.".format(
+                "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be base.ExecutionStrategy, but received <{} 'bool'>.".format(
                     self.type_str
                 ),
                 str(e.exception),
             )
 
-            traced_layer.set_strategy(build_strategy=fluid.BuildStrategy())
-            traced_layer.set_strategy(exec_strategy=fluid.ExecutionStrategy())
+            traced_layer.set_strategy(build_strategy=base.BuildStrategy())
+            traced_layer.set_strategy(exec_strategy=base.ExecutionStrategy())
             traced_layer.set_strategy(
-                fluid.BuildStrategy(), fluid.ExecutionStrategy()
+                base.BuildStrategy(), base.ExecutionStrategy()
             )
 
     def test_save_inference_model_err(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
-        with fluid.dygraph.guard():
-            in_x = fluid.dygraph.to_variable(
+        with base.dygraph.guard():
+            in_x = base.dygraph.to_variable(
                 np.random.random((self.batch_size, self.feature_size)).astype(
                     'float32'
                 )
             )
-            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+            dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                 self.layer, [in_x]
             )
 
@@ -207,16 +207,16 @@ class TestTracedLayerErrMsg(unittest.TestCase):
 
     def _train_simple_net(self):
         layer = None
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             layer = SimpleFCLayer(
                 self.feature_size, self.batch_size, self.fc_size
             )
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=1e-3, parameter_list=layer.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=layer.parameters()
             )
 
             for i in range(5):
-                in_x = fluid.dygraph.to_variable(
+                in_x = base.dygraph.to_variable(
                     np.random.random(
                         (self.batch_size, self.feature_size)
                     ).astype('float32')
@@ -230,12 +230,12 @@ class TestTracedLayerErrMsg(unittest.TestCase):
 
 class TestOutVarWithNoneErrMsg(unittest.TestCase):
     def test_linear_net_with_none(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
         model = LinearNetWithNone(100, 16)
         in_x = paddle.to_tensor(np.random.random((4, 100)).astype('float32'))
         with self.assertRaises(TypeError):
-            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+            dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                 model, [in_x]
             )
 
@@ -255,12 +255,12 @@ class TestTracedLayerSaveInferenceModel(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def test_mkdir_when_input_path_non_exist(self):
-        if fluid.framework.in_dygraph_mode():
+        if base.framework.in_dygraph_mode():
             return
         fc_layer = SimpleFCLayer(3, 4, 2)
         input_var = paddle.to_tensor(np.random.random([4, 3]).astype('float32'))
-        with fluid.dygraph.guard():
-            dygraph_out, traced_layer = fluid.dygraph.TracedLayer.trace(
+        with base.dygraph.guard():
+            dygraph_out, traced_layer = base.dygraph.TracedLayer.trace(
                 fc_layer, inputs=[input_var]
             )
             self.assertFalse(os.path.exists(os.path.dirname(self.save_path)))

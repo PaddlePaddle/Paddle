@@ -77,9 +77,15 @@ def op_position_inputs(op):
 
     Examples:
         .. code-block:: python
-            @REGISTER_FN('div_p', 'X', 'Y', 'Z')
-            def div(x, y, out=None):
-                return _simple_binop(LayerHelper('div_p', **locals()))
+
+            >>> from paddle.incubate.autograd.primops import _simple_binop
+            >>> from paddle.base.layer_helper import LayerHelper
+            >>> from paddle.incubate.autograd.primreg import REGISTER_FN
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+            >>> def div(x, y, out=None):
+            ...     return _simple_binop(LayerHelper('div_p', **locals()))
 
     The registered inputs are ['X', 'Y'] for div_p and accordingly this
     function will return inputs in the order of X then Y.
@@ -117,9 +123,15 @@ def op_position_output(op):
 
     Examples:
         .. code-block:: python
-            @REGISTER_FN('div_p', 'X', 'Y', 'Z')
-            def div(x, y, out=None):
-                return _simple_binop(LayerHelper('div_p', **locals()))
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> from paddle.incubate.autograd.primops import _simple_binop
+            >>> from paddle.base.layer_helper import LayerHelper
+            >>> from paddle.incubate.autograd.primreg import REGISTER_FN
+
+            >>> @REGISTER_FN('div_p', 'X', 'Y', 'Z')
+            >>> def div(x, y, out=None):
+            ...     return _simple_binop(LayerHelper('div_p', **locals()))
 
     The registered output is ['Z'] for div_p and accordingly this
     function will return output Z.
@@ -154,9 +166,15 @@ def REGISTER_FN(op_type, *position_argnames):
 
     Examples:
         .. code-block:: python
-        @REGISTER_FN('tanh_p', 'X', 'Y')
-        def tanh(x, out=None):
-            return _simple_unop(LayerHelper('tanh_p', **locals()))
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> from paddle.incubate.autograd.primops import _simple_binop
+            >>> from paddle.base.layer_helper import LayerHelper
+            >>> from paddle.incubate.autograd.primreg import REGISTER_FN
+
+            >>> @REGISTER_FN('tanh_p', 'X', 'Y')
+            >>> def tanh(x, out=None):
+            ...    return _simple_unop(LayerHelper('tanh_p', **locals()))
 
     """
 
@@ -184,10 +202,17 @@ def REGISTER_ORIG2PRIM(op_type):
 
     Examples:
         .. code-block:: python
-            @REGISTER_ORIG2PRIM('tanh')
-            def tanh_orig2prim(op):
-                x, = get_input_var_list(op)
-                return primops.tanh(x)
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> from paddle.base.layer_helper import LayerHelper
+            >>> from paddle.incubate.autograd.utils import get_input_var_list
+            >>> from paddle.incubate.autograd import primops
+            >>> from paddle.incubate.autograd.primreg import REGISTER_ORIG2PRIM
+
+            >>> @REGISTER_ORIG2PRIM('tanh')
+            >>> def tanh_orig2prim(op):
+            ...     x, = get_input_var_list(op)
+            ...     return primops.tanh(x)
 
     """
     if not isinstance(op_type, str):
@@ -217,12 +242,17 @@ def REGISTER_COMPOSITE(op_type):
 
     Examples:
         .. code-block:: python
-            @REGISTER_COMPOSITE('softmax')
-            def softmax_composite(x, axis):
-                molecular = exp(x)
-                denominator = broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
-                res = divide(molecular, denominator)
-                return res
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> import paddle
+            >>> from paddle.incubate.autograd.primreg import REGISTER_COMPOSITE
+
+            >>> @REGISTER_COMPOSITE('softmax')
+            >>> def softmax_composite(x, axis):
+            ...     molecular = paddle.exp(x)
+            ...     denominator = paddle.broadcast_to(sum(molecular, axis=axis, keepdim=True), x.shape)
+            ...     res = paddle.divide(molecular, denominator)
+            ...     return res
 
     """
     if not isinstance(op_type, str):
@@ -252,11 +282,17 @@ def REGISTER_PRIM2ORIG(op_type):
 
     Examples:
         .. code-block:: python
-            @REGISTER_PRIM2ORIG('tanh_p')
-            def tanh_prim2orig(op):
-                x, = get_input_var_list(op)
-                return paddle.tanh(x)
 
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> import paddle
+            >>> from paddle.incubate.autograd.primreg import REGISTER_PRIM2ORIG
+            >>> from paddle.incubate.autograd.utils import get_input_var_list
+
+            >>> @REGISTER_PRIM2ORIG('tanh_p')
+            >>> def tanh_prim2orig(op):
+            ...     x, = get_input_var_list(op)
+            ...     return paddle.tanh(x)
+            ...
     """
     if not isinstance(op_type, str):
         raise TypeError(f'op_type must be str, but got {type(op_type)}.')
@@ -285,9 +321,14 @@ def REGISTER_JVP(op_type):
 
     Examples:
         .. code-block:: python
-            @REGISTER_JVP('add_p')
-            def add_jvp(op, x_dot, y_dot):
-                return primops.add(x_dot, y_dot)
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> from paddle.incubate.autograd import primops
+            >>> from paddle.incubate.autograd.primreg import REGISTER_JVP
+
+            >>> @REGISTER_JVP('add_p')
+            >>> def add_jvp(op, x_dot, y_dot):
+            ...     return primops.add(x_dot, y_dot)
 
     """
     if not isinstance(op_type, str):
@@ -319,9 +360,13 @@ def REGISTER_TRANSPOSE(op_type):
 
     Examples:
         .. code-block:: python
-            @REGISTER_TRANSPOSE('add_p')
-            def add_transpose(op, z_bar):
-                return z_bar, z_bar
+
+            >>> # doctest: +SKIP('Depends on external code.')
+            >>> from paddle.incubate.autograd.primreg import REGISTER_TRANSPOSE
+
+            >>> @REGISTER_TRANSPOSE('add_p')
+            >>> def add_transpose(op, z_bar):
+            ...     return z_bar, z_bar
 
     """
     if not isinstance(op_type, str):

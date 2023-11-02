@@ -19,9 +19,8 @@ from test_imperative_base import new_program_scope
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.optimizer import SGDOptimizer
+from paddle import base
+from paddle.base import core
 
 
 class Policy(paddle.nn.Layer):
@@ -64,25 +63,25 @@ class TestImperativeMnist(unittest.TestCase):
 
             policy = Policy(input_size=4)
 
-            dy_state = fluid.dygraph.base.to_variable(state)
+            dy_state = base.dygraph.base.to_variable(state)
             dy_state.stop_gradient = True
             loss_probs = policy(dy_state)
 
-            dy_mask = fluid.dygraph.base.to_variable(mask)
+            dy_mask = base.dygraph.base.to_variable(mask)
             dy_mask.stop_gradient = True
 
             loss_probs = paddle.log(loss_probs)
             loss_probs = paddle.multiply(loss_probs, dy_mask)
             loss_probs = paddle.sum(loss_probs, axis=-1)
 
-            dy_reward = fluid.dygraph.base.to_variable(reward)
+            dy_reward = base.dygraph.base.to_variable(reward)
             dy_reward.stop_gradient = True
 
             loss_probs = paddle.multiply(dy_reward, loss_probs)
             loss = paddle.sum(loss_probs)
 
-            sgd = SGDOptimizer(
-                learning_rate=1e-3, parameter_list=policy.parameters()
+            sgd = paddle.optimizer.SGD(
+                learning_rate=1e-3, parameters=policy.parameters()
             )
 
             dy_param_init_value = {}
@@ -102,10 +101,10 @@ class TestImperativeMnist(unittest.TestCase):
 
             return dy_out, dy_param_init_value, dy_param_value
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             dy_out, dy_param_init_value, dy_param_value = run_dygraph()
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             (
                 eager_out,
                 eager_param_init_value,
@@ -116,15 +115,15 @@ class TestImperativeMnist(unittest.TestCase):
             paddle.seed(seed)
             paddle.framework.random._manual_program_seed(seed)
 
-            exe = fluid.Executor(
-                fluid.CPUPlace()
+            exe = base.Executor(
+                base.CPUPlace()
                 if not core.is_compiled_with_cuda()
-                else fluid.CUDAPlace(0)
+                else base.CUDAPlace(0)
             )
 
             policy = Policy(input_size=4)
 
-            st_sgd = SGDOptimizer(learning_rate=1e-3)
+            st_sgd = paddle.optimizer.SGD(learning_rate=1e-3)
 
             st_state = paddle.static.data(
                 name='st_state', shape=[-1, 4], dtype='float32'
@@ -154,7 +153,7 @@ class TestImperativeMnist(unittest.TestCase):
                 static_param_name_list.append(param.name)
 
             out = exe.run(
-                fluid.default_startup_program(),
+                base.default_startup_program(),
                 fetch_list=static_param_name_list,
             )
 
@@ -165,7 +164,7 @@ class TestImperativeMnist(unittest.TestCase):
             fetch_list.extend(static_param_name_list)
 
             out = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"st_state": state, "st_reward": reward, "st_mask": mask},
                 fetch_list=fetch_list,
             )

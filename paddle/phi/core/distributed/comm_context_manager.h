@@ -19,11 +19,23 @@
 #include <string>
 #include <unordered_map>
 
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/distributed/comm_context.h"
 #include "paddle/phi/core/macros.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/backends/gpu/forwards.h"
+#endif
+
 namespace phi {
 namespace distributed {
+
+struct P2POption {
+  bool is_p2p_op;
+  int p2p_rank;
+  int num_ranks;
+  int rank;
+};
 
 class Store;
 
@@ -44,15 +56,21 @@ class CommContextManager {
 
   CommContext* Get(const std::string& unique_comm_key) const;
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+  int GetRingId(const ncclComm_t& comm) const;
+#endif
+
   bool Has(const std::string& unique_comm_key) const;
+
+  static void SetDeviceId(int dev_id);
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
   static void CreateNCCLCommContext(const std::shared_ptr<Store>& store,
                                     const std::string& unique_comm_key,
                                     int rank,
-                                    int size);
-
-  static void SetCUDADeviceId(int dev_id);
+                                    int size,
+                                    const std::string& hash_key = "",
+                                    const P2POption* opt = nullptr);
 #endif
 
 #if defined(PADDLE_WITH_GLOO)
@@ -62,12 +80,22 @@ class CommContextManager {
                                     int size);
 #endif
 
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  static void CreateXCCLCommContext(const std::shared_ptr<Store>& store,
+                                    const std::string& unique_comm_key,
+                                    const phi::Place& place,
+                                    int rank,
+                                    int size,
+                                    const std::string& hash_key = "");
+#endif
+
  private:
   DISABLE_COPY_AND_ASSIGN(CommContextManager);
 
   std::unordered_map<std::string, std::unique_ptr<CommContext>>
       id_to_comm_context_;
   std::shared_ptr<Store> store_;
+  static int device_id;
 };
 
 }  // namespace distributed

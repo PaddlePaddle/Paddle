@@ -22,7 +22,7 @@ install.packages("reticulate") # 调用Paddle
 library(reticulate)
 use_python("/opt/python3.7/bin/python")
 
-paddle <- import("paddle.fluid.core")
+paddle <- import("paddle.base.core")
 ```
 
 创建一个AnalysisConfig，用于设置预测引擎的各选项

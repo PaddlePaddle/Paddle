@@ -124,11 +124,7 @@ void CrossEntropyFunctor<DeviceContext, T>::operator()(
 
   int batch_size = prob->dims()[0];
   int class_num = prob->dims()[1];
-#ifdef __HIPCC__
-  constexpr int kMaxBlockDim = 256;
-#else
   constexpr int kMaxBlockDim = 512;
-#endif
 
   if (softLabel) {
     const T* label_data = labels->data<T>();

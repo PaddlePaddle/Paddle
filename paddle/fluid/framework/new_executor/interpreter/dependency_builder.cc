@@ -42,7 +42,7 @@ namespace interpreter {
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   size_t count = 0;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     count += pair.second.size();
   }
   return count;
@@ -50,7 +50,7 @@ size_t CountDownstreamMap(
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   std::ostringstream oss;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     oss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
@@ -144,7 +144,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
 
       auto is_read = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Inputs()) {
+        for (auto const& pair : inst.Inputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -155,7 +155,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       };
 
       auto is_write = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Outputs()) {
+        for (auto const& pair : inst.Outputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -662,6 +662,12 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
       AddDownstreamOp(dep_op, op);
     }
   }
+}
+
+void NewIrDependencyBuilder::ShareDependencyFrom(
+    const NewIrDependencyBuilder& src) {
+  std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
+  is_build_ = true;
 }
 
 }  // namespace interpreter

@@ -114,7 +114,7 @@ def get_program():
         )
         data_holder = [input, label]
         # dataloader
-        dataloader = paddle.fluid.io.DataLoader.from_generator(
+        dataloader = paddle.base.io.DataLoader.from_generator(
             feed_list=data_holder, capacity=4 * batch_size, iterable=False
         )
         dataloader.set_batch_generator(

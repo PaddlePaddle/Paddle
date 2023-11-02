@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle.fluid.framework import IrGraph
+from paddle.base.framework import IrGraph
 from paddle.framework import core
 
 paddle.enable_static()
@@ -87,7 +87,7 @@ class TestGraph(unittest.TestCase):
         train_reader = paddle.batch(
             paddle.dataset.mnist.train(), batch_size=batch_size
         )
-        feeder = paddle.fluid.DataFeeder(feed_list=feeds, place=place)
+        feeder = paddle.base.DataFeeder(feed_list=feeds, place=place)
 
         def _train(binary):
             for _ in range(iters):

@@ -14,8 +14,9 @@
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid.framework import _dygraph_guard
+from paddle import base
+from paddle.base.framework import _dygraph_guard
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 __all__ = ['DyGraphProgramDescTracerTestHelper', 'is_equal_program']
 
@@ -86,7 +87,7 @@ def _is_equal_program(prog1, prog2):
 def load_dygraph_vars_to_scope(model_path, scope, place):
     def load_dict_to_scope(scope, dictionary):
         if scope is None:
-            scope = fluid.global_scope()
+            scope = base.global_scope()
 
         for k, v in dictionary.items():
             dst_t = scope.var(k).get_tensor()
@@ -119,3 +120,27 @@ class DyGraphProgramDescTracerTestHelper:
 
         for v1, v2 in zip(out_dygraph, out_static_graph):
             self.unittest_obj.assertTrue(func(v1.numpy(), v2))
+
+
+@signature_safe_contextmanager
+def dygraph_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if not in_dygraph_outside:
+            paddle.disable_static()
+        yield
+    finally:
+        if not in_dygraph_outside:
+            paddle.enable_static()
+
+
+@signature_safe_contextmanager
+def static_guard():
+    in_dygraph_outside = paddle.base.framework.in_dygraph_mode()
+    try:
+        if in_dygraph_outside:
+            paddle.enable_static()
+        yield
+    finally:
+        if in_dygraph_outside:
+            paddle.disable_static()

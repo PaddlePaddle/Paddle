@@ -12,15 +12,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+
 #include <algorithm>
 #include <iterator>
 
-#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/auto_parallel/utils.h"
 
 namespace phi {
 namespace distributed {
-namespace auto_parallel {
+
+using phi::distributed::auto_parallel::has_duplicates;
+using phi::distributed::auto_parallel::ProcessMeshProto;
+using phi::distributed::auto_parallel::str_join;
 
 ProcessMesh::ProcessMesh(const std::vector<int64_t> &shape,
                          const std::vector<int64_t> &process_ids,
@@ -84,17 +88,17 @@ ProcessMesh ProcessMesh::from_proto(const ProcessMeshProto &proto) {
   ProcessMesh mesh;
 
   mesh.shape_.resize(proto.shape_size());
-  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+  for (int i = 0; i < proto.shape_size(); ++i) {
     mesh.shape_[i] = proto.shape(i);
   }
 
   mesh.process_ids_.resize(proto.process_ids_size());
-  for (int64_t i = 0; i < proto.process_ids_size(); ++i) {
+  for (int i = 0; i < proto.process_ids_size(); ++i) {
     mesh.process_ids_[i] = proto.process_ids(i);
   }
 
   mesh.dim_names_.resize(proto.dim_names_size());
-  for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
+  for (int i = 0; i < proto.dim_names_size(); ++i) {
     mesh.dim_names_[i] = proto.dim_names(i);
   }
 
@@ -129,6 +133,5 @@ bool operator==(const ProcessMesh &lhs, const ProcessMesh &rhs) {
   return true;
 }
 
-}  // namespace auto_parallel
 }  // namespace distributed
 }  // namespace phi

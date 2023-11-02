@@ -15,7 +15,7 @@
 import copy
 from collections import defaultdict
 
-from paddle.fluid import unique_name
+from paddle.base import unique_name
 from paddle.jit.dy2static.utils import (
     FOR_ITER_INDEX_PREFIX,
     FOR_ITER_ITERATOR_PREFIX,
@@ -319,9 +319,7 @@ def _valid_nonlocal_names(return_name_ids, nonlocal_names):
     for name in return_name_ids:
         if name not in nonlocal_names:
             raise ValueError(
-                "Required returned var '{}' must be in 'nonlocal' statement '', but not found.".format(
-                    name
-                )
+                f"Required returned var '{name}' must be in 'nonlocal' statement '', but not found."
             )
         nonlocal_names.remove(name)
 

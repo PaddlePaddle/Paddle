@@ -20,9 +20,9 @@ import numpy as np
 from bert import Bert, BertPretrainingCriterion, create_pretraining_dataset
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core
 from paddle.dataset.common import DATA_HOME, download
-from paddle.fluid import core
 
 SEED = 2023
 BATCH_SIZE = 2
@@ -55,7 +55,7 @@ def train(to_static, enable_prim, enable_cinn):
         paddle.set_device('gpu')
     else:
         paddle.set_device('cpu')
-    fluid.core._set_prim_all_enabled(enable_prim)
+    base.core._set_prim_all_enabled(enable_prim)
 
     np.random.seed(SEED)
     paddle.seed(SEED)
@@ -73,7 +73,7 @@ def train(to_static, enable_prim, enable_cinn):
     bert = Bert(to_static, enable_cinn)
     criterion = BertPretrainingCriterion()
 
-    optimizer = fluid.optimizer.Adam(parameter_list=bert.parameters())
+    optimizer = paddle.optimizer.Adam(parameters=bert.parameters())
 
     losses = []
     for step, batch in enumerate(train_data_loader):

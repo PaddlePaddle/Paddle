@@ -31,12 +31,14 @@ PyReader::PyReader(
 }
 
 void PyReader::ReadNext(paddle::framework::LoDTensorArray* out) {
-  bool success;
+  bool success = false;
   *out = queue_->Pop(&success);
   if (!success) out->clear();
 }
 
-PyReader::~PyReader() { queue_->Close(); }
+PyReader::~PyReader() {  // NOLINT
+  queue_->Close();
+}
 
 void PyReader::Shutdown() { queue_->Close(); }
 

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.nn.functional import interpolate
 
 np.random.seed(123)
@@ -120,12 +120,12 @@ def trilinear_interp_test(
     align_corners=True,
     align_mode=0,
 ):
-    if isinstance(scale, float) or isinstance(scale, int):
+    if isinstance(scale, (float, int)):
         scale_list = []
         for _ in range(len(x.shape) - 2):
             scale_list.append(scale)
         scale = list(map(float, scale_list))
-    elif isinstance(scale, list) or isinstance(scale, tuple):
+    elif isinstance(scale, (list, tuple)):
         scale = list(map(float, scale))
     if SizeTensor is not None:
         if not isinstance(SizeTensor, list) and not isinstance(
@@ -302,7 +302,7 @@ class TestTrilinearInterpOp(OpTest):
             in_w = self.input_shape[3]
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -353,7 +353,7 @@ class TestTrilinearInterpOp(OpTest):
             'data_layout': data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -531,7 +531,7 @@ class TestNearestInterpOpBF16(OpTest):
             in_w = self.input_shape[3]
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -582,7 +582,7 @@ class TestNearestInterpOpBF16(OpTest):
             'data_layout': data_layout,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -672,7 +672,7 @@ class TestTrilinearInterpOpUint8(OpTest):
         ).astype("uint8")
 
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -715,7 +715,7 @@ class TestTrilinearInterpOpUint8(OpTest):
             'align_mode': self.align_mode,
         }
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -849,7 +849,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         if self.scale_by_1Dtensor:
             self.inputs['Scale'] = np.array([self.scale]).astype("float32")
         elif self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     scale_d = scale_h = scale_w = float(self.scale)
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -880,7 +880,7 @@ class TestTrilinearInterpOp_attr_tensor(OpTest):
         self.attrs['out_h'] = self.out_h
         self.attrs['out_w'] = self.out_w
         if self.scale:
-            if isinstance(self.scale, float) or isinstance(self.scale, int):
+            if isinstance(self.scale, (float, int)):
                 if self.scale > 0:
                     self.scale = [self.scale]
             if isinstance(self.scale, list) and len(self.scale) == 1:
@@ -964,7 +964,7 @@ class TestTrilinearInterp_attr_tensor_Case3(TestTrilinearInterpOp_attr_tensor):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestTrilinearInterpOpForFloat16(unittest.TestCase):
     def init_test_case(self):
@@ -1007,7 +1007,7 @@ class TestTrilinearInterpOpForFloat16(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestTrilinearInterpDatalayoutForFloat16(TestTrilinearInterpOpForFloat16):
     def init_test_case(self):

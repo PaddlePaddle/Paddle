@@ -14,14 +14,14 @@
 
 import unittest
 
-from hybrid_parallel_mp_model import TestDistMPTraning
+from hybrid_parallel_mp_model import TestDistMPTraining
 
 import paddle
 from paddle.distributed import fleet
 from paddle.distributed.utils.nccl_utils import check_nccl_version_for_bf16
 
 
-class TestMPFP16(TestDistMPTraning):
+class TestMPFP16(TestDistMPTraining):
     def build_optimizer(self, model):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(1.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(

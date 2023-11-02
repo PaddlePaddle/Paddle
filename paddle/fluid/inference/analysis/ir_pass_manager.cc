@@ -33,7 +33,6 @@
 namespace paddle {
 namespace inference {
 namespace analysis {
-using string::PrettyLog;
 using string::PrettyLogEndl;
 using string::Style;
 
@@ -100,6 +99,9 @@ void IRPassManager::CreatePasses(Argument *argument,
     pass->Set(
         "mixed_black_list",
         new std::unordered_set<std::string>(argument->mixed_black_list()));
+    pass->Set(
+        "mixed_white_list",
+        new std::unordered_set<std::string>(argument->mixed_white_list()));
     pass->Set("enable_gpu_mixed", new bool(argument->enable_gpu_mixed()));
     pass->Set("enable_custom_device_mixed",
               new bool(argument->enable_custom_device_mixed()));
@@ -133,7 +135,7 @@ void IRPassManager::CreatePasses(Argument *argument,
     } else if (pass_name == "cudnn_placement_pass") {
       pass->Set("cudnn_enabled_op_types",
                 new std::unordered_set<std::string>());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     } else if (pass_name == "cpu_quantize_placement_pass") {
       pass->Set("quantize_enabled_op_types",
                 new std::unordered_set<std::string>(
@@ -160,6 +162,10 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("max_batch_size", new int(argument->tensorrt_max_batch_size()));
       pass->Set("min_subgraph_size",
                 new int(argument->tensorrt_min_subgraph_size()));
+      pass->Set("mark_output", new bool(argument->trt_mark_output()));
+      pass->Set(
+          "output_tensor_names",
+          new std::vector<std::string>(argument->trt_output_tensor_names()));
       pass->Set("program",
                 new framework::ProgramDesc *(&argument->main_program()));
       pass->Set("predictor_id", new int(argument->predictor_id()));
@@ -171,6 +177,7 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_cuda_graph",
                 new bool(argument->tensorrt_use_cuda_graph()));
       bool use_static_engine = argument->tensorrt_use_static_engine();
+      bool inspector_serialize = argument->tensorrt_inspector_serialize();
       bool model_from_memory = argument->model_from_memory();
       std::string optim_cache_dir = argument->optim_cache_dir();
       bool int8_valid = !(model_from_memory && optim_cache_dir.empty() &&
@@ -204,7 +211,8 @@ void IRPassManager::CreatePasses(Argument *argument,
                   optim_cache_dir));
         }
         pass->Set("model_opt_cache_dir", new std::string(optim_cache_dir));
-      } else if (use_static_engine || enable_int8 || with_dynamic_shape) {
+      } else if (use_static_engine || enable_int8 || with_dynamic_shape ||
+                 inspector_serialize) {
         std::string model_opt_cache_dir =
             argument->Has("model_dir")
                 ? argument->model_dir()
@@ -216,6 +224,13 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
       pass->Set("use_inspector", new bool(argument->tensorrt_use_inspector()));
+      pass->Set("inspector_serialize",
+                new bool(argument->tensorrt_inspector_serialize()));
+      pass->Set("trt_ops_run_float",
+                new std::unordered_set<std::string>(
+                    argument->tensorrt_ops_run_float()));
+      pass->Set("use_explicit_quantization",
+                new bool(argument->tensorrt_use_explicit_quantization()));
 
       // tuned trt dynamic_shape
       pass->Set("trt_shape_range_info_path",
@@ -227,6 +242,8 @@ void IRPassManager::CreatePasses(Argument *argument,
           new std::vector<std::string>(argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
+      pass->Set("optimization_level",
+                new int(argument->tensorrt_optimization_level()));
 
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
       // not run fp16.
@@ -328,10 +345,10 @@ void IRPassManager::CreatePasses(Argument *argument,
                     argument->nnadapter_model_cache_token()));
     } else if (pass_name == "fc_fuse_pass") {
       pass->Set("use_gpu", new bool(argument->use_gpu()));
-      bool fc_mkldnn_pass = 0;
+      bool fc_mkldnn_pass = false;
       for (const std::string &pass_n : passes) {
         if (pass_n == "fc_mkldnn_pass") {
-          fc_mkldnn_pass = 1;
+          fc_mkldnn_pass = true;
         }
       }
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();

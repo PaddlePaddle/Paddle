@@ -15,8 +15,8 @@
 import paddle
 import paddle.nn.functional as F
 from paddle import _C_ops, in_dynamic_mode
-from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.base.layer_helper import LayerHelper
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 
 g_enable_math = None
 g_enable_flash = None
@@ -45,6 +45,15 @@ def sdp_kernel(enable_math=False, enable_flash=True, enable_mem_efficient=True):
         g_enable_mem_efficient = original_enable_mem_efficient
 
 
+# special for XPU device
+def get_triangle_upper_mask(x):
+    mask = paddle.full_like(x, -1e4)
+    mask.stop_gradient = True
+    mask = paddle.triu(mask, diagonal=1)
+    mask.stop_gradient = True
+    return mask
+
+
 def _math_attention(
     query,
     key,
@@ -65,11 +74,19 @@ def _math_attention(
     product = paddle.matmul(
         x=query * (head_dim**-0.5), y=key, transpose_y=True
     )
-    weights = (
-        paddle.incubate.softmax_mask_fuse_upper_triangle(product)
-        if causal
-        else F.softmax(product)
-    )
+
+    if not causal:
+        weights = F.softmax(product)
+    else:
+        # special for XPU device
+        place = paddle.get_device()
+        if "xpu" in place:
+            # softmax_mask_fuse_upper_triangle is not supported on XPU, use plain implementation
+            mask = get_triangle_upper_mask(product)
+            product = product + mask
+            weights = F.softmax(product)
+        else:
+            weights = paddle.incubate.softmax_mask_fuse_upper_triangle(product)
     if dropout_rate > 0.0:
         weights = F.dropout(
             weights, dropout_rate, training=training, mode="upscale_in_train"
@@ -81,7 +98,7 @@ def _math_attention(
 
 
 def _select_sdp_cuda(head_dim):
-    if head_dim <= 128:
+    if head_dim <= 256:
         return "flash_attn"
     else:
         return "mem_efficient"
@@ -181,13 +198,24 @@ def flash_attention(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((1, 128, 2, 16))
 
-            output = paddle.nn.functional.flash_attention(q, q, q, 0.9, False, False)
-            print(output)
+            >>> output = paddle.nn.functional.flash_attention.flash_attention(q, q, q, 0.9, False, False)
+            >>> print(output)
+            (Tensor(shape=[1, 128, 2, 16], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[[[0.34992966, 0.34456208, 0.45826620, ..., 0.39883569,
+                0.42132431, 0.39157745],
+               [0.76687670, 0.65837246, 0.69117945, ..., 0.82817286,
+                0.76690865, 0.71485823]],
+              ...,
+              [[0.71662450, 0.57275224, 0.57053083, ..., 0.48108247,
+                0.53336465, 0.54540104],
+               [0.59137970, 0.51350880, 0.50449550, ..., 0.38860250,
+                0.40526697, 0.60541755]]]]), None)
+
     """
     head_dim = query.shape[3]
     sdp_func_name = _select_sdp(head_dim)
@@ -202,6 +230,7 @@ def flash_attention(
                 key,
                 value,
                 fixed_seed_offset,
+                None,
                 dropout,
                 causal,
                 return_softmax,
@@ -339,13 +368,13 @@ def flash_attn_unpadded(
     Examples:
         .. code-block:: python
 
-            # required: skiptest
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(2023)
+            >>> q = paddle.rand((2, 128, 8, 16), dtype='float16')
+            >>> cu = paddle.arange(0, 384, 128, dtype='int32')
+            >>> qq = paddle.reshape(q, [256, 8, 16])
+            >>> output = paddle.nn.functional.flash_attention.flash_attn_unpadded(qq, qq, qq, cu, cu, 128, 128, 0.25, 0.0, False, False)
 
-            q = paddle.rand((1, 128, 2, 16), dtype=paddle.float16)
-
-            output = paddle.nn.functional.flash_attn_unpadded(q, q, q, 0.9, False, False)
-            print(output)
     """
     if in_dynamic_mode():
         (
@@ -358,6 +387,7 @@ def flash_attn_unpadded(
             cu_seqlens_q,
             cu_seqlens_k,
             fixed_seed_offset,
+            None,
             max_seqlen_q,
             max_seqlen_k,
             scale,
@@ -408,7 +438,14 @@ def flash_attn_unpadded(
 
 
 def scaled_dot_product_attention(
-    query, key, value, attn_mask=None, dropout_p=0.0, is_causal=False
+    query,
+    key,
+    value,
+    attn_mask=None,
+    dropout_p=0.0,
+    is_causal=False,
+    training=True,
+    name=None,
 ):
     r"""
     The equation is:
@@ -439,9 +476,12 @@ def scaled_dot_product_attention(
                         The dtype can be float61 or bfloat16.
         attn_mask(Tensor,optional): A float mask of the same type as query,
                         key, value that is added to the attention score.
-                        not supported yet.
         dropout_p(float): The dropout ratio.
         is_causal(bool): Whether enable causal mode.
+        training(bool): Whether it is in the training phase.
+        name(str, optional): The default value is None. Normally there is no need for user
+                        to set this property. For more information, please refer to
+                        :ref:`api_guide_Name`.
 
     Returns:
         out(Tensor): The attention tensor.
@@ -450,14 +490,30 @@ def scaled_dot_product_attention(
 
     Examples:
         .. code-block:: python
-            # required: skiptest
-            >>> # xdoctest: +SKIP()
+
+            >>> # doctest: +SKIP('bfloat need V100 compile')
             >>> import paddle
             >>> q = paddle.rand((1, 128, 2, 16), dtype=paddle.bfloat16)
             >>> output = paddle.nn.functional.scaled_dot_product_attention(q, q, q, None, 0.9, False)
             >>> print(output)
-            >>> # xdoctest: -SKIP
+            >>> # doctest: -SKIP
     """
-    assert attn_mask is None, "attn_mask is not supported yet"
-    out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    if attn_mask is None:
+        out, _ = flash_attention(query, key, value, dropout_p, is_causal)
+    else:
+        fixed_seed_offset = (None,)
+        return_softmax = False
+        rng_name = ""
+        out, _ = _C_ops.flash_attn(
+            query,
+            key,
+            value,
+            fixed_seed_offset,
+            attn_mask,
+            dropout_p,
+            is_causal,
+            return_softmax,
+            not training,
+            rng_name,
+        )
     return out

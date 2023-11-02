@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
+from paddle.base import core
 
 TOLERANCE = {
     "float16": {"rtol": 1e-2, "atol": 1e-2},
@@ -51,7 +52,7 @@ class PrimeNet(paddle.nn.Layer):
         return out[0]
 
 
-class TestPrimForward(unittest.TestCase):
+class TestPrimForward(Dy2StTestBase):
     """
     This case only tests prim_forward + to_static + cinn. Thus we need to
     set this flag as False to avoid prim_backward.
@@ -101,6 +102,7 @@ class TestPrimForward(unittest.TestCase):
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
+    @test_ast_only
     def test_cinn_prim_forward(self):
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":
@@ -122,7 +124,7 @@ class TestPrimForward(unittest.TestCase):
             )
 
 
-class TestPrimForwardAndBackward(unittest.TestCase):
+class TestPrimForwardAndBackward(Dy2StTestBase):
     """
     Test PrimeNet with @to_static + prim forward + prim backward + cinn v.s Dygraph
     """
@@ -168,6 +170,7 @@ class TestPrimForwardAndBackward(unittest.TestCase):
         # Ensure that layer_norm is splitted into small ops
         self.assertTrue('layer_norm' not in fwd_ops)
 
+    @test_ast_only
     def test_cinn_prim(self):
         for dtype in self.dtypes:
             if paddle.device.get_device() == "cpu":

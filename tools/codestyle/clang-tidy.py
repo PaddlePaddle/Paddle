@@ -75,21 +75,69 @@ else:
     import queue
 
 
-def find_compilation_database(path):
+def find_compilation_database(path, result="./"):
     """Adjusts the directory until a compilation database is found."""
     result = './'
     while not os.path.isfile(os.path.join(result, path)):
         if os.path.realpath(result) == '/':
-            print('Error: could not find compilation database.')
-            sys.exit(1)
+            print('Warning: could not find compilation database.')
+            return None
         result += '../'
     return os.path.realpath(result)
 
 
 def make_absolute(f, directory):
+    """Convert a relative file path to an absolute file path."""
     if os.path.isabs(f):
         return f
     return os.path.normpath(os.path.join(directory, f))
+
+
+def analysis_gitignore(path, filename=".gitignore"):
+    """Analysis gitignore file and return ignore file list"""
+    with open(path + "/" + filename, "r") as f:
+        lines = f.readlines()
+        ignore_file_list = []
+        for line in lines:
+            # Blank row
+            if line == "\n" or line == "\r\n":
+                continue
+
+            # explanatory note
+            line = line.replace("\n", "").strip()
+            if "#" in line:
+                if not line.startswith("#"):
+                    ignore_file_list.append(
+                        line[: line.index("#")].replace(" ", "")
+                    )
+                continue
+
+            # TODO(gouzil): support more gitignore rules
+            if "*" in line:
+                continue
+
+            ignore_file_list.append(line.replace(" ", ""))
+
+    return ignore_file_list
+
+
+def skip_check_file(database, build_path):
+    """Skip checking some files"""
+    skip_file_list = []
+    skip_file_list.append(".cu")
+    skip_file_list.append(os.path.join(os.getcwd(), build_path))
+    skip_file_list += analysis_gitignore(os.getcwd())
+    res_list = []
+    for entry in database:
+        write_in = True
+        for ignore_file in skip_file_list:
+            if ignore_file in entry["file"]:
+                write_in = False
+                break
+        if write_in:
+            res_list.append(entry)
+
+    return res_list
 
 
 def get_tidy_invocation(
@@ -216,6 +264,7 @@ def run_tidy(args, tmpdir, build_path, queue, lock, failed_files):
 
 
 def main():
+    """Runs clang-tidy over all files in a compilation database."""
     parser = argparse.ArgumentParser(
         description='Runs clang-tidy over all files '
         'in a compilation database. Requires '
@@ -317,9 +366,16 @@ def main():
 
     if args.build_path is not None:
         build_path = args.build_path
+        if not os.path.isfile(os.path.join(build_path, db_path)):
+            print(
+                f'Warning: could not find compilation database in {build_path}, skip clang-tidy check.'
+            )
+            build_path = None
     else:
         # Find our database
         build_path = find_compilation_database(db_path)
+    if build_path is None:
+        sys.exit(0)
 
     try:
         invocation = [args.clang_tidy_binary, '-list-checks']
@@ -339,9 +395,10 @@ def main():
 
     # Load the database and extract all files.
     database = json.load(open(os.path.join(build_path, db_path)))
-    files = [
+    database = skip_check_file(database, build_path)
+    files = {
         make_absolute(entry['file'], entry['directory']) for entry in database
-    ]
+    }
 
     max_task = args.j
     if max_task == 0:

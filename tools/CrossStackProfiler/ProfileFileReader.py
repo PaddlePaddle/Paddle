@@ -26,7 +26,7 @@ from CspFileReader import (
     getLogger,
 )
 
-from paddle.fluid.proto.profiler import profiler_pb2
+from paddle.base.proto.profiler import profiler_pb2
 
 
 class profileFileReader(FileReader):

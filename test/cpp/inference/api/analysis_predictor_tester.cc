@@ -31,7 +31,7 @@
 #include "paddle/phi/backends/cpu/cpu_info.h"
 #include "test/cpp/inference/api/tester_helper.h"
 
-DEFINE_string(dirname, "", "dirname to tests.");
+PD_DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
 
@@ -341,7 +341,7 @@ TEST(AnalysisPredictor, bf16_gpu_pass_strategy) {
   config.SwitchIrOptim(true);
   config.EnableUseGpu(100, 0);
   config.EnableMkldnnBfloat16();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx512_core))
     ASSERT_EQ(config.mkldnn_bfloat16_enabled(), true);
   else
@@ -365,7 +365,7 @@ TEST(AnalysisPredictor, mkldnn_fc_pass_strategy) {
   ASSERT_EQ(passes.size(), (size_t)0);
 }
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(AnalysisPredictor, mkldnn_fc_passes_cpu_pass_strategy) {
   CpuPassStrategy cpuPassStrategy;
   cpuPassStrategy.EnableMKLDNN();
@@ -387,7 +387,7 @@ TEST(AnalysisPredictor, mkldnn_fc_passes_gpu_pass_strategy) {
   config.EnableUseGpu(100, 0);
   config.EnableMKLDNN();
   config.DisableMkldnnFcPasses();
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   ASSERT_TRUE(config.mkldnn_fc_passes_disabled());
 #else
   ASSERT_FALSE(config.mkldnn_fc_passes_disabled());
@@ -662,6 +662,61 @@ TEST(Predictor, Streams) {
 
     CHECK_NE(stream, stream2);
   }
+}
+
+TEST(Tensor, RunWithExternalStream) {
+  Config config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableUseGpu(100, 0);
+  cudaStream_t stream;
+  cudaStreamCreate(&stream);
+  config.SetExecStream(stream);
+  auto predictor = CreatePredictor(config);
+
+  auto w0 = predictor->GetInputHandle("firstw");
+  auto w1 = predictor->GetInputHandle("secondw");
+  auto w2 = predictor->GetInputHandle("thirdw");
+  auto w3 = predictor->GetInputHandle("forthw");
+
+  std::vector<std::vector<int64_t>> input_data(4, {0, 1, 2, 3});
+  std::vector<int64_t*> input_gpu(4, nullptr);
+
+  for (size_t i = 0; i < 4; ++i) {
+    cudaMalloc(reinterpret_cast<void**>(&input_gpu[i]), 4 * sizeof(int64_t));
+    cudaMemcpy(input_gpu[i],
+               input_data[i].data(),
+               4 * sizeof(int64_t),
+               cudaMemcpyHostToDevice);
+  }
+
+  w0->ShareExternalData<int64_t>(input_gpu[0], {4, 1}, PlaceType::kGPU);
+  w1->ShareExternalData<int64_t>(input_gpu[1], {4, 1}, PlaceType::kGPU);
+  w2->ShareExternalData<int64_t>(input_gpu[2], {4, 1}, PlaceType::kGPU);
+  w3->ShareExternalData<int64_t>(input_gpu[3], {4, 1}, PlaceType::kGPU);
+
+  auto out = predictor->GetOutputHandle("fc_1.tmp_2");
+  auto out_shape = out->shape();
+  float* out_data = nullptr;
+  auto out_size =
+      std::accumulate(
+          out_shape.begin(), out_shape.end(), 1, std::multiplies<int>()) *
+      sizeof(float);
+  cudaMalloc(reinterpret_cast<void**>(out_data), out_size * sizeof(float));
+  out->ShareExternalData<float>(out_data, out_shape, PlaceType::kGPU);
+
+  cudaStream_t external_stream;
+  cudaStreamCreate(&external_stream);
+  Config tmp_config(config);
+  tmp_config.SetExecStream(external_stream);
+  predictor->Run();
+  paddle_infer::experimental::InternalUtils::RunWithExternalStream(
+      predictor.get(), external_stream);
+
+  PlaceType place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  predictor->TryShrinkMemory();
 }
 #endif
 

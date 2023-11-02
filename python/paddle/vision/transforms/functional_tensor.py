@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 
-from ...fluid.framework import Variable
+from ...base.framework import Variable
 
 __all__ = []
 
@@ -803,9 +803,7 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
         # We should consider to support this case in future.
         if w <= 0 or h <= 0:
             raise NotImplementedError(
-                "Not support while w<=0 or h<=0, but received w={}, h={}".format(
-                    w, h
-                )
+                f"Not support while w<=0 or h<=0, but received w={w}, h={h}"
             )
         if (w <= h and w == size) or (h <= w and h == size):
             return img

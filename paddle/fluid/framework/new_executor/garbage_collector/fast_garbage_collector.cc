@@ -34,9 +34,10 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
 
   if (var->IsType<phi::DenseTensor>()) {
     Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
-  } else if (var->IsType<
-                 operators::reader::
-                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+  } else if (
+      var->IsType<
+          operators::reader::
+              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<LoDRankTable>()) {
@@ -52,6 +53,23 @@ void InterpreterCoreFastGarbageCollector::Add(Variable* var) {
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder());
     }
+  } else if (var->IsType<phi::SparseCooTensor>()) {
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_indices()
+            ->MoveMemoryHolder());
+    Add(var->GetMutable<phi::SparseCooTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder());
+  } else if (var->IsType<phi::SparseCsrTensor>()) {
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_cols()
+            ->MoveMemoryHolder());
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_crows()
+            ->MoveMemoryHolder());
+    Add(var->GetMutable<phi::SparseCsrTensor>()
+            ->mutable_values()
+            ->MoveMemoryHolder());
   } else if (var->IsType<std::vector<Scope*>>()) {
     // NOTE(@xiongkun03) conditional_op / while_op will create a STEP_SCOPE
     // refer to executor.cc to see what old garbage collector does.
@@ -72,7 +90,7 @@ void InterpreterCoreFastGarbageCollector::Add(Garbage garbage) {
     std::unique_ptr<GarbageQueue> pending_delete_garbages;
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
+      cur_memory_size_ += static_cast<int64_t>(garbage->size());
       garbages_->push_back(std::move(garbage));
 
       if (cur_memory_size_ >= max_memory_size_) {

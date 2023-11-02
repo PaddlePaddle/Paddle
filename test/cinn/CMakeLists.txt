@@ -91,7 +91,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet18.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet18.py
       "${CMAKE_BINARY_DIR}/third_party/ResNet18" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -100,7 +101,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv2.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv2.py
       "${CMAKE_BINARY_DIR}/third_party/MobileNetV2" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -109,7 +111,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_efficientnet.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_efficientnet.py
       "${CMAKE_BINARY_DIR}/third_party/EfficientNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -118,7 +121,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_mobilenetv1.py
       "${CMAKE_BINARY_DIR}/third_party/MobilenetV1" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -127,7 +131,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet50.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_resnet50.py
       "${CMAKE_BINARY_DIR}/third_party/ResNet50" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -136,7 +141,8 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_squeezenet.py
       "${CMAKE_BINARY_DIR}/third_party/SqueezeNet" "${WITH_GPU}"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 
@@ -145,8 +151,9 @@ if(WITH_CUDNN)
     COMMAND
       ${CMAKE_COMMAND} -E env
       PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/test_paddle_model_convertor.py --path
-      "${CMAKE_BINARY_DIR}/third_party/resnet_model"
+      FLAGS_cinn_infer_model_version=1.0 python3
+      ${CMAKE_CURRENT_SOURCE_DIR}/test_paddle_model_convertor.py --path
+      "${CMAKE_BINARY_DIR}/third_party/resnet_model_1"
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
 endif()
 
@@ -264,6 +271,42 @@ if(WITH_GPU)
         ${CMAKE_COMMAND} -E env
         PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/cinn:$ENV{PYTHONPATH}
         python3 ${CMAKE_CURRENT_SOURCE_DIR}/${fusion_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  endforeach()
+
+  file(
+    GLOB CINN_RUNTIME_TEST
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "runtime/test_*.py")
+
+  foreach(runtime_test_name ${EXCLUDE_RUNTIME})
+    list(REMOVE_ITEM CINN_RUNTIME_TEST runtime/${runtime_test_name}.py)
+  endforeach()
+
+  foreach(runtime_test_name ${CINN_RUNTIME_TEST})
+    string(REGEX REPLACE ".py" "" runtime_test_name ${runtime_test_name})
+    add_test(
+      NAME ${runtime_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${runtime_test_name}.py
+      WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+  endforeach()
+
+  file(
+    GLOB CINN_IR_TEST
+    RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+    "ir/test_*.py")
+
+  foreach(ir_test_name ${CINN_IR_TEST})
+    string(REGEX REPLACE ".py" "" ir_test_name ${ir_test_name})
+    add_test(
+      NAME ${ir_test_name}
+      COMMAND
+        ${CMAKE_COMMAND} -E env
+        PYTHONPATH=${CMAKE_BINARY_DIR}:${CMAKE_BINARY_DIR}/python/:$ENV{PYTHONPATH}
+        python3 ${CMAKE_CURRENT_SOURCE_DIR}/${ir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
   endforeach()
 

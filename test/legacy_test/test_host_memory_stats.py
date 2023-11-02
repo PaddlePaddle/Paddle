@@ -15,7 +15,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.set_device('cpu')
 

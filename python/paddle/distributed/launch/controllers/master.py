@@ -193,8 +193,13 @@ class ETCDMaster(Master):
 
         import etcd3
 
+        from ..utils.etcd_client import ETCDClient
+
         host, port = self.endpoint.split(':')
-        self.client = etcd3.client(host=host, port=port)
+        if ctx.is_auto_tuner_mode():
+            self.client = ETCDClient(host=host, port=port)
+        else:
+            self.client = etcd3.client(host=host, port=port)
 
     def sync_peers(self, prefix, key, value, size, rank=-1) -> (list, int):
         '''
@@ -252,14 +257,7 @@ class ETCDMaster(Master):
 
         self.job_prefix = f'/paddle/{job_id}'
         self.heartbeat_prefix = f'{self.job_prefix}/heartbeat'
-        if self.ctx.is_auto_tuner_mode():
-            delete_success = False
-            while not delete_success:
-                try:
-                    self.client.delete_prefix(self.job_prefix)
-                    delete_success = True
-                except:
-                    time.sleep(1)
+        self.client.delete_prefix(self.job_prefix)
         lease = self.client.lease(ttl)
 
         # self.client.delete_prefix(self.job_prefix)

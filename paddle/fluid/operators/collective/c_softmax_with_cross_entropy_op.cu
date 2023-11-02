@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/collective/c_softmax_with_cross_entropy_op.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #include "paddle/fluid/framework/eigen.h"
@@ -25,6 +26,12 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/math.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
 #include "paddle/phi/kernels/funcs/softmax_impl.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 namespace paddle {
 namespace operators {
@@ -136,13 +143,41 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     const int rank = ctx.Attr<int>("rank");
 
     const auto& place = ctx.GetPlace();
-    const auto& comm = platform::NCCLCommContext::Instance().Get(rid, place);
     auto& dev_ctx = ctx.template device_context<phi::GPUContext>();
 
-    // use global calculate stream
-    const auto stream = static_cast<phi::GPUContext*>(
-                            platform::DeviceContextPool::Instance().Get(place))
-                            ->stream();
+    gpuStream_t stream = nullptr;
+    platform::NCCLComm* comm = nullptr;
+    phi::distributed::NCCLCommContext* comm_ctx = nullptr;
+
+    const auto& comm_context_manager =
+        phi::distributed::CommContextManager::GetInstance();
+
+    if (FLAGS_dynamic_static_unified_comm) {
+      PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(rid)),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "You choose to use new communication library by "
+                            "setting environment "
+                            "variable FLAGS_dynamic_static_unified_comm True. "
+                            "But ring_id(%d) is "
+                            "not found in comm_context_manager.",
+                            std::to_string(rid)));
+      comm_ctx = static_cast<phi::distributed::NCCLCommContext*>(
+          comm_context_manager.Get(std::to_string(rid)));
+      PADDLE_ENFORCE_NE(comm_ctx,
+                        nullptr,
+                        platform::errors::Unavailable(
+                            "NCCLCommContext is nullptr, collective op should "
+                            "has ring_id attr."));
+
+      stream = comm_ctx->GetStream();
+      VLOG(3) << "new comm_context_manager has ring_id " << rid;
+    } else {  // old comm_context
+      comm = platform::NCCLCommContext::Instance().Get(rid, place);
+
+      stream = comm->stream();
+      VLOG(3) << "old NCCLCommContext has ring_id " << rid;
+    }
 
     // allocate memory on device.
     softmax->mutable_data<T>(place);
@@ -166,21 +201,27 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     // step 1, obtain logit_max
     phi::DenseTensor logits_max;
     logits_max = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
-    void* logits_max_buff = logits_max.mutable_data<T>(place);
 
     auto eigen_logits_max = phi::funcs::EigenMatrix<T>::From(logits_max);
     Eigen::DSizes<int, 1> along_axis(1);
     eigen_logits_max.device(*dev_ctx.eigen_device()) =
         eigen_logits.maximum(along_axis);
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        logits_max_buff,
-        logits_max_buff,
-        logits_max.numel(),
-        platform::ToNCCLDataType(
-            framework::TransToProtoVarType(logits_max.dtype())),
-        ncclMax,
-        comm->comm(),
-        stream));
+
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&logits_max, logits_max, ncclMax, stream);
+    } else {
+      void* logits_max_buff = logits_max.mutable_data<T>(place);
+
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          logits_max_buff,
+          logits_max_buff,
+          logits_max.numel(),
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(logits_max.dtype())),
+          ncclMax,
+          comm->comm(),
+          stream));
+    }
 
     // step 2, obtain logit - logit_max
     Eigen::DSizes<int, 2> batch_by_one(N, 1);
@@ -230,16 +271,21 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
                                                      nranks);
     }
 
-    void* predict_logits_buff = predicted_logits.mutable_data<T>(place);
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        predict_logits_buff,
-        predict_logits_buff,
-        predicted_logits.numel(),
-        platform::ToNCCLDataType(
-            framework::TransToProtoVarType(predicted_logits.dtype())),
-        ncclSum,
-        comm->comm(),
-        stream));
+    predicted_logits.mutable_data<T>(place);
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&predicted_logits, predicted_logits, ncclSum, stream);
+    } else {
+      void* predict_logits_buff = predicted_logits.data();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          predict_logits_buff,
+          predict_logits_buff,
+          predicted_logits.numel(),
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(predicted_logits.dtype())),
+          ncclSum,
+          comm->comm(),
+          stream));
+    }
 
     // step 4, obtain exp(logit)
     eigen_softmax.device(*dev_ctx.eigen_device()) = eigen_softmax.exp();
@@ -247,22 +293,27 @@ struct CSoftmaxWithCrossEntropyFunctor<phi::GPUContext, T> {
     // step 5, obtain sum_exp_logits
     phi::DenseTensor sum_exp_logits;
     sum_exp_logits = ctx.AllocateTmpTensor<T, phi::GPUContext>({N, 1}, dev_ctx);
-    void* sum_exp_logits_buff = sum_exp_logits.mutable_data<T>(place);
+    sum_exp_logits.mutable_data<T>(place);
 
     auto eigen_sum_exp_logits =
         phi::funcs::EigenMatrix<T>::From(sum_exp_logits);
     eigen_sum_exp_logits.device(*dev_ctx.eigen_device()) =
         eigen_softmax.sum(along_axis);
 
-    PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
-        sum_exp_logits_buff,
-        sum_exp_logits_buff,
-        sum_exp_logits.numel(),
-        platform::ToNCCLDataType(
-            framework::TransToProtoVarType(sum_exp_logits.dtype())),
-        ncclSum,
-        comm->comm(),
-        stream));
+    if (comm_ctx) {
+      comm_ctx->AllReduce(&sum_exp_logits, sum_exp_logits, ncclSum, stream);
+    } else {
+      void* sum_exp_logits_buff = sum_exp_logits.data();
+      PADDLE_ENFORCE_GPU_SUCCESS(platform::dynload::ncclAllReduce(
+          sum_exp_logits_buff,
+          sum_exp_logits_buff,
+          sum_exp_logits.numel(),
+          platform::ToNCCLDataType(
+              framework::TransToProtoVarType(sum_exp_logits.dtype())),
+          ncclSum,
+          comm->comm(),
+          stream));
+    }
 
     if (label_type == framework::proto::VarType::INT32) {
       CaculateLoss<T, int32_t>

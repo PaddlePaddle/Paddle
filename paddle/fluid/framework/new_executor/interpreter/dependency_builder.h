@@ -19,7 +19,7 @@
 
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
-DECLARE_bool(new_executor_sequential_run);
+PD_DECLARE_bool(new_executor_sequential_run);
 
 namespace paddle {
 namespace framework {
@@ -113,6 +113,8 @@ class NewIrDependencyBuilder : public DependencyBuilder {
       std::vector<paddle::framework::InstructionBase*> instructions);
 
   void BuildDownstreamMap();
+
+  void ShareDependencyFrom(const NewIrDependencyBuilder& src);
 
  private:
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned

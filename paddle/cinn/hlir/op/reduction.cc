@@ -29,6 +29,8 @@
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace hlir {
 namespace op {
@@ -58,7 +60,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     const std::string &op_name,
     BlockReduceFunc gpu_reduce_with_last_axis_func,
     BlockReduceFunc gpu_reduce_without_last_axis_func,
-    ReduceFunc cpu_reduce_func) {
+    ReduceFunc common_reduce_func) {
   std::vector<int> reduce_axes;
   auto ndim = inputs[0]->shape.size();
   if (attrs.attr_store.count("dim")) {
@@ -127,7 +129,8 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
             << "The type of input argument " << x->name << " of " << op_name
             << " should be bool, but get " << x->type() << "! Please check.";
 
-        if (target == common::DefaultNVGPUTarget()) {
+        if (!FLAGS_cinn_new_group_scheduler &&
+            target == common::DefaultNVGPUTarget()) {
           if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
             VLOG(3) << "Do Two Step Block Reduce Compute!";
             auto res = gpu_reduce_with_last_axis_func(
@@ -155,7 +158,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
           }
         } else {
           VLOG(3) << "Do Reduce Compute!";
-          auto out = cpu_reduce_func(x, reduce_axes, keep_dim, tensor_name);
+          auto out = common_reduce_func(x, reduce_axes, keep_dim, tensor_name);
           auto stages = CreateStages({out});
 
           std::vector<CINNValue> cinn_values{CINNValue(out), CINNValue(stages)};
@@ -182,6 +185,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
         // support the length-1 for loop yet. So we simplify here. The todo
         // is that remove SimplifyForLoops below and change reduction schedule
         optim::SimplifyForLoops(&temp);
+        optim::SimplifyBlocks(&temp);
         vec_ast.emplace_back(temp);
       } else if (arg_pack[i].is_tensor()) {
         Expr temp = arg_pack[i];
@@ -192,7 +196,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
     ir::ModuleExpr mod_expr(vec_ast);
     ir::IRSchedule ir_sch(mod_expr);
     ir_sch.MergeExprs();
-    if (target.arch == Target::Arch::NVGPU) {
+    if (!FLAGS_cinn_new_group_scheduler && target.arch == Target::Arch::NVGPU) {
       if (!WithoutLastDimInReduce(inputs[0]->shape, reduce_axes)) {
         if (arg_pack.size() == 4) {
           CHECK_EQ(vec_tensor.size(), 2);
@@ -312,7 +316,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                             reduce_op_,                         \
                             gpu_reduce_with_last_axis_func,     \
                             gpu_reduce_without_last_axis_func,  \
-                            cpu_reduce_func)                    \
+                            common_reduce_func)                 \
   std::shared_ptr<OpStrategy> StrategyFor##reduce_op_(          \
       const framework::NodeAttr &attrs,                         \
       const std::vector<ir::Tensor> &inputs,                    \
@@ -327,7 +331,7 @@ std::shared_ptr<OpStrategy> StrategyForReduce(
                              #op_name_,                         \
                              gpu_reduce_with_last_axis_func,    \
                              gpu_reduce_without_last_axis_func, \
-                             cpu_reduce_func);                  \
+                             common_reduce_func);               \
   }
 
 STRATEGY_FOR_REDUCE(reduce_sum,

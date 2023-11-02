@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -45,7 +45,7 @@ def mlp(input_x, input_y, hid_dim=128, label_dim=2):
 
 class TestFleetAMPInit(unittest.TestCase):
     def test_fleet_amp_init(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
         main_program = paddle.static.Program()
@@ -89,7 +89,7 @@ class TestFleetAMPInit(unittest.TestCase):
             )
 
     def test_fleet_amp_meta_optimizer_init(self):
-        if not fluid.core.is_compiled_with_cuda():
+        if not base.core.is_compiled_with_cuda():
             return
 
         main_program = paddle.static.Program()

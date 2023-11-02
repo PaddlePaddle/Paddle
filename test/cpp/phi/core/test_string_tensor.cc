@@ -94,7 +94,7 @@ TEST(pstring, func) {
   CHECK_EQ(copy_nchar_str, "AAAAA");
 
   // Test Move Ctor
-  pstring move_nchar_str(std::move(nchar_str));
+  pstring move_nchar_str(nchar_str);
   CHECK_EQ(move_nchar_str, "AAAAA");
   pstring std_str(std::string("BBBB"));
   CHECK_EQ(std_str, "BBBB");

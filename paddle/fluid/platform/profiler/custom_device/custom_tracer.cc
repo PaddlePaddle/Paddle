@@ -28,11 +28,15 @@ namespace platform {
 
 CustomTracer::CustomTracer(const std::string& dev_type) : dev_type_(dev_type) {
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
+  auto selected_devices = phi::DeviceManager::GetSelectedDeviceList(dev_type_);
+  if (selected_devices.size()) {
+    phi::DeviceManager::SetDevice(dev_type_, selected_devices[0]);
+  }
   phi::DeviceManager::ProfilerInitialize(dev_type_, &collector_, &context_);
 #endif
 }
 
-CustomTracer::~CustomTracer() {
+CustomTracer::~CustomTracer() {  // NOLINT
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   phi::DeviceManager::ProfilerFinalize(dev_type_, &collector_, context_);
 #endif
@@ -105,7 +109,7 @@ void CustomTracer::CollectTraceData(TraceEventCollector* collector) {
   for (auto de : collector_.DeviceEvents()) {
     collector->AddDeviceEvent(std::move(de));
   }
-  for (auto tn : collector_.ThreadNames()) {
+  for (auto const& tn : collector_.ThreadNames()) {
     collector->AddThreadName(tn.first, tn.second);
   }
   collector_.ClearAll();

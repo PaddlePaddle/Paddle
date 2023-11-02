@@ -349,14 +349,14 @@ bool CPUQuantizePass::AreScalesPresentForVarNames(
   bool present = true;
   if (var_quant_scales_->empty()) {
     auto& scales = Get<VarQuantScale>("quant_var_scales");
-    for (auto name : names) {
+    for (auto const& name : names) {
       if (scales.find(name) == scales.end()) {
         present = false;
         LogScaleIsMissingForVarName(name);
       }
     }
   } else {
-    for (auto name : names) {
+    for (auto const& name : names) {
       if (var_quant_scales_->find(name) == var_quant_scales_->end()) {
         present = false;
         LogScaleIsMissingForVarName(name);
@@ -546,16 +546,6 @@ void CPUQuantizePass::QuantizeConv(Graph* graph,
                        "Scale_out");
     } else {
       conv_op->Op()->SetAttr("force_fp32_output", true);
-    }
-
-    // change threshold in bounded ReLu
-    if (conv_op->Op()->GetAttrIfExists<std::string>("fuse_activation") ==
-        "relu6") {
-      float scale_out =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("Scale_out"));
-      float threshold =
-          PADDLE_GET_CONST(float, conv_op->Op()->GetAttr("fuse_alpha"));
-      conv_op->Op()->SetAttr("fuse_alpha", scale_out * threshold);
     }
 
     ++quantize_conv_count;

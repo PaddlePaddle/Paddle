@@ -13,10 +13,10 @@
 # limitations under the License.
 
 from paddle import _C_ops
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_type, check_variable_and_dtype
-from paddle.fluid.framework import Variable, in_dygraph_mode
-from paddle.fluid.layer_helper import LayerHelper
+from paddle.base import core
+from paddle.base.data_feeder import check_type, check_variable_and_dtype
+from paddle.base.framework import Variable, in_dygraph_mode
+from paddle.base.layer_helper import LayerHelper
 
 
 def check_finite_and_unscale(x, scale, name=None, float_status=None):

@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
 from numpy.linalg import multi_dot
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -318,9 +318,7 @@ class APITestMultiDot(unittest.TestCase):
             expected_result,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='two value is            {}\n{}, check diff!'.format(
-                np_res, expected_result
-            ),
+            err_msg=f'two value is            {np_res}\n{expected_result}, check diff!',
         )
 
     def test_dygraph_without_out(self):

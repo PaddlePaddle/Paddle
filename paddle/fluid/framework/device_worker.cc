@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/device_worker.h"
 
+#include <array>
 #include <chrono>
 #include "paddle/fluid/framework/convert_utils.h"
 namespace phi {
@@ -90,7 +91,7 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
                                std::string& out_val,  // NOLINT
                                char separator,
                                bool need_leading_separator) {
-  char buf[MAX_FLOAT_BUFF_SIZE];
+  std::array<char, MAX_FLOAT_BUFF_SIZE> buf;
   auto count = tensor->numel();
   if (start < 0 || end > count) {
     VLOG(3) << "access violation";
@@ -104,8 +105,8 @@ void PrintLodTensorType<float>(phi::DenseTensor* tensor,
         tensor->data<float>()[i] < FLOAT_EPS) {
       out_val += "0";
     } else {
-      sprintf(buf, "%.9f", tensor->data<float>()[i]);  // NOLINT
-      out_val += buf;
+      sprintf(buf.data(), "%.9f", tensor->data<float>()[i]);  // NOLINT
+      out_val += buf.data();
     }
   }
 }
@@ -447,7 +448,7 @@ void DeviceWorker::DumpField(const Scope& scope,
       if (!hit[i]) {
         continue;
       }
-      auto bound = GetTensorBound(tensor, i);
+      auto bound = GetTensorBound(tensor, static_cast<int>(i));
       ars[i] +=
           "\t" + field + ":" + std::to_string(bound.second - bound.first) + ":";
       ars[i] += PrintLodTensor(tensor, bound.first, bound.second);

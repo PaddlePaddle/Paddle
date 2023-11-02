@@ -18,16 +18,15 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn import ClipGradByGlobalNorm
 
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 STEP_NUM = 10
 PRINT_STEP = 2
 
@@ -45,9 +44,9 @@ def prepare_input(batch):
 
 
 def train(args, attn_model=False):
-    with fluid.dygraph.guard(place):
-        fluid.default_startup_program().random_seed = 2020
-        fluid.default_main_program().random_seed = 2020
+    with base.dygraph.guard(place):
+        base.default_startup_program().random_seed = 2020
+        base.default_main_program().random_seed = 2020
 
         if attn_model:
             model = AttentionModel(
@@ -71,9 +70,9 @@ def train(args, attn_model=False):
             )
 
         gloabl_norm_clip = ClipGradByGlobalNorm(args.max_grad_norm)
-        optimizer = fluid.optimizer.SGD(
+        optimizer = paddle.optimizer.SGD(
             args.learning_rate,
-            parameter_list=model.parameters(),
+            parameters=model.parameters(),
             grad_clip=gloabl_norm_clip,
         )
 
@@ -87,7 +86,7 @@ def train(args, attn_model=False):
             batch_start_time = time.time()
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                fluid.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
             ]
             word_count += word_num
             loss = model(input_data_feed)
@@ -132,7 +131,7 @@ def train(args, attn_model=False):
 
 
 def infer(args, attn_model=False):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         if attn_model:
             model = AttentionModel(
                 args.hidden_size,
@@ -168,7 +167,7 @@ def infer(args, attn_model=False):
         for batch_id, batch in enumerate(train_data_iter):
             input_data_feed, word_num = prepare_input(batch)
             input_data_feed = [
-                fluid.dygraph.to_variable(np_inp) for np_inp in input_data_feed
+                base.dygraph.to_variable(np_inp) for np_inp in input_data_feed
             ]
             outputs = model.beam_search(input_data_feed)
             break
@@ -176,7 +175,7 @@ def infer(args, attn_model=False):
         return outputs.numpy()
 
 
-class TestSeq2seq(unittest.TestCase):
+class TestSeq2seq(Dy2StTestBase):
     def setUp(self):
         self.args = Seq2SeqModelHyperParams
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -213,9 +212,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(dygraph_loss, static_loss)
         self.assertTrue(
             result,
-            msg="\ndygraph_loss = {} \nstatic_loss = {}".format(
-                dygraph_loss, static_loss
-            ),
+            msg=f"\ndygraph_loss = {dygraph_loss} \nstatic_loss = {static_loss}",
         )
 
     def _test_predict(self, attn_model=False):
@@ -224,9 +221,7 @@ class TestSeq2seq(unittest.TestCase):
         result = np.allclose(pred_static, pred_dygraph)
         self.assertTrue(
             result,
-            msg="\npred_dygraph = {} \npred_static = {}".format(
-                pred_dygraph, pred_static
-            ),
+            msg=f"\npred_dygraph = {pred_dygraph} \npred_static = {pred_static}",
         )
 
     def test_base_model(self):

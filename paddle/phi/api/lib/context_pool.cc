@@ -26,6 +26,18 @@ limitations under the License. */
 namespace paddle {
 namespace experimental {
 
+void DeviceContextPool::SyncDeviceContext(const Place& place) {
+  if (!phi::DeviceContextPool::IsInitialized()) {
+    phi::memory_utils::InitDevices();
+  }
+  // only when we need the specific DeviceContext, get and cache it
+  auto* dev_ctx = phi::DeviceContextPool::Instance().Get(place);
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    context_map_[place] = dev_ctx;
+  }
+}
+
 DeviceContextPool& DeviceContextPool::Instance() {
   static DeviceContextPool g_device_context_pool;
   return g_device_context_pool;

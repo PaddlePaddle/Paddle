@@ -24,7 +24,8 @@ namespace phi {
 
 template <typename T, typename Context>
 void DataKernel(const Context& ctx,
-                int64_t index,
+                const std::string& name,
+                const phi::IntArray& shape,
                 phi::DataType data_type,
                 DenseTensor* out) {}
 
@@ -42,7 +43,10 @@ PD_REGISTER_KERNEL(shadow_feed,
                    ALL_LAYOUT,
                    phi::ShadowFeedKernel,
                    bool,
+                   uint8_t,
                    float,
+                   int8_t,
+                   int16_t,
                    int32_t,
                    int64_t,
                    double,

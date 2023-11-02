@@ -29,12 +29,15 @@ class StrategyGroupBase:
     Examples:
         .. code-block:: python
 
-            import paddle.distributed as dist
-            from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
+            >>> # doctest: +REQUIRES(env: DISTRIBUTED)
+            >>> import paddle.distributed as dist
+            >>> from paddle.distributed.fleet.base.strategy_group import StrategyGroupBase
 
-            dist.init_parallel_env()
-            strategy_group = dist.fleet.base.strategy_group.StrategyGroupBase([[0, 1], [2, 3]])
-            print(strategy_group.world_size)  # 2
+            >>> dist.init_parallel_env()
+            >>> strategy_group = dist.fleet.base.strategy_group.StrategyGroupBase([[0, 1], [2, 3]])
+            >>> print(strategy_group.world_size)
+            2
+
 
     """
 
@@ -236,6 +239,4 @@ class PPGroup(StrategyGroupBase):
             and self._send_prev_group
             and self._recv_next_group
             and self._recv_prev_group
-        ), "Error occurs while creating p2p group for rank {}.".format(
-            self._rank
-        )
+        ), f"Error occurs while creating p2p group for rank {self._rank}."

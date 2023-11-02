@@ -26,6 +26,8 @@
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
 #include "paddle/phi/core/sparse_csr_tensor.h"
 
@@ -103,12 +105,19 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   }
 
   if (!fwd_out.initialized()) {
-    VLOG(7)
-        << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
-    return;
+    if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
+        phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
+      VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
+              << " and needs computation clip for pipeline parallel."
+              << " Still SetGradInMeta for it.";
+    } else {
+      VLOG(7)
+          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+      return;
+    }
   }
 
-  phi::DenseTensor* dense_tensor = nullptr;
+  const phi::DenseTensor* dense_tensor = nullptr;
   // Record TensorMeta
   if (phi::DenseTensor::classof(fwd_out.impl().get())) {
     // Only Copy Meta
@@ -121,6 +130,12 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
     phi::SparseCsrTensor* csr_tensor =
         static_cast<phi::SparseCsrTensor*>(fwd_out.impl().get());
     dense_tensor = csr_tensor->mutable_non_zero_elements();
+  } else if (phi::distributed::DistTensor::classof(fwd_out.impl().get())) {
+    // TODO(chenweihang): DistTensor contains global and local meta, here
+    // only set the local meta now, we should set global meta later
+    dense_tensor =  // NOLINT
+        &(static_cast<phi::distributed::DistTensor*>(fwd_out.impl().get())
+              ->value());
   } else {
     VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
                "non-DenseTensor argument.";
@@ -175,9 +190,16 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
     }
 
     if (!fwd_out_tensor.initialized()) {
-      VLOG(7)
-          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
-      return;
+      if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
+          !phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
+        VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
+                << " and needs computation clip for pipeline parallel."
+                << " Still SetGradInMeta for it.";
+      } else {
+        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
+                   "Tensor";
+        return;
+      }
     }
 
     // Record TensorMeta
@@ -256,10 +278,35 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
                                           "which is illegal."));
       meta.SetTensorMeta(dense_tensor->meta());
       meta.SetPlace(fwd_in.place());
+    } else if (phi::distributed::DistTensor::classof(fwd_in.impl().get())) {
+      const phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get());
+      const phi::DenseTensor& dense_tensor = dist_tensor->value();
+      PADDLE_ENFORCE_NE(
+          dense_tensor.meta().dtype,
+          phi::DataType::UNDEFINED,
+          paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
+                                          "with phi::DataType::UNDEFINED,"
+                                          "which is illegal."));
+      meta.SetTensorMeta(dense_tensor.meta());
+      meta.SetPlace(fwd_in.place());
+      // Set DistAttr
+      // Forward input DistTensor could be uninitialized.
+      PADDLE_ENFORCE_NE(
+          dist_tensor->dist_attr().empty(),
+          true,
+          phi::errors::InvalidArgument(
+              "The forward input DistTensor's dist attr is empty."));
+      meta.SetDistAttr(dist_tensor->dist_attr());
+      SetIsRunAutoParallel(true);
+    } else {
+      VLOG(7)
+          << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
+             "non-DenseTensor argument.";
     }
   } else {
-    VLOG(7) << "Unable to initialize the DenseTensorMeta of GradSlotMeta with "
-               "non-DenseTensor argument.";
+    VLOG(7) << "Unable to initialize the DenseTensorMeta because the Tensor "
+               "is not initialized.";
   }
 }
 
@@ -367,7 +414,8 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
     // Record TensorMeta
     if (fwd_in_tensor.impl() && fwd_in_tensor.impl().get()) {
       if (phi::DenseTensor::classof(fwd_in_tensor.impl().get())) {
-        // Only Copy Meta
+        // TODO(chenweihang): DistTensor contains global and local meta, here
+        // only set the local meta now, we should set global meta later
         phi::DenseTensor* dense_tensor =
             static_cast<phi::DenseTensor*>(fwd_in_tensor.impl().get());
         PADDLE_ENFORCE_NE(dense_tensor->dtype(),
@@ -523,6 +571,7 @@ void GradNodeBase::HandleComplexGradToRealGrad(
   for (size_t slot_id = 0; slot_id < out_grads->size(); slot_id++) {
     const std::vector<paddle::Tensor>& slot_out_grads = (*out_grads)[slot_id];
     for (size_t rank_id = 0; rank_id < slot_out_grads.size(); rank_id++) {
+      if (bwd_out_meta_[slot_id].size() == 0) continue;
       const GradSlotMeta& slot_meta = bwd_out_meta_[slot_id][rank_id];
 
       PADDLE_ENFORCE(
@@ -573,6 +622,10 @@ std::vector<std::shared_ptr<GradNodeBase>> GradNodeBase::NextFunctions() {
   }
 
   return next_nodes;
+}
+
+uintptr_t GradNodeBase::GetPtr() const {
+  return reinterpret_cast<uintptr_t>(this);
 }
 
 }  // namespace egr

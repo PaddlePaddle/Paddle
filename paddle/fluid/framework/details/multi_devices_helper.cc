@@ -176,7 +176,7 @@ static bool IsDataParallelInferenceGraphImpl(
 }
 
 bool IsDataParallelInferenceGraph(const ir::Graph &graph) {
-  size_t place_num;
+  size_t place_num = 0;
   std::unordered_map<details::OpHandleBase *, size_t> op_to_dev_idx;
   return IsDataParallelInferenceGraphImpl(graph, &op_to_dev_idx, &place_num);
 }
@@ -196,7 +196,7 @@ bool IsDataParallelInferenceGraph(const ir::Graph &graph) {
  */
 std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
     ir::Graph *graph) {
-  size_t place_num;
+  size_t place_num = 0;
   std::unordered_map<details::OpHandleBase *, size_t> op_to_dev_idx;
   if (!IsDataParallelInferenceGraphImpl(*graph, &op_to_dev_idx, &place_num)) {
     return {};
@@ -208,7 +208,7 @@ std::vector<std::unique_ptr<ir::Graph>> TrySeparateToMultipleSingleDeviceGraphs(
 
   std::vector<std::unique_ptr<ir::Graph>> graphs(place_num);
   for (auto &g : graphs) {
-    g.reset(new ir::Graph(ProgramDesc()));
+    g = std::make_unique<ir::Graph>(ProgramDesc());
     g->Set(kGraphVars, new GraphVars(1UL));
     g->Set(kGraphDepVars, new GraphDepVars());
   }

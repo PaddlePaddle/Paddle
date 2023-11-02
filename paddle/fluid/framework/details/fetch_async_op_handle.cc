@@ -37,7 +37,7 @@ FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
       local_exec_scopes_(local_exec_scopes),
       return_merged_(return_merged) {}
 
-FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
+FetchAsyncOpHandle::~FetchAsyncOpHandle() = default;
 
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {
@@ -174,7 +174,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 
   // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
   if (rank == 0) {
-    int src_lodtensor_size = src_lodtensors.size();
+    int src_lodtensor_size = static_cast<int>(src_lodtensors.size());
     new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
   } else {
     bool find_first_dims = false;
@@ -211,7 +211,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     if (rank == 0) {
       end = begin + 1;
     } else {
-      end = begin + src->dims()[0];
+      end = static_cast<int>(begin + src->dims()[0]);
     }
 
     if (end == begin) {

@@ -17,10 +17,11 @@ import random
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 from simnet_dygraph_model import BOW, HingeLoss
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 SEED = 102
 random.seed(SEED)
@@ -127,12 +128,12 @@ def train(conf_dict, to_static):
     paddle.jit.enable_to_static(to_static)
 
     # Get device
-    if fluid.is_compiled_with_cuda():
-        place = fluid.CUDAPlace(0)
+    if base.is_compiled_with_cuda():
+        place = base.CUDAPlace(0)
     else:
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
 
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -141,12 +142,12 @@ def train(conf_dict, to_static):
 
         net = BOW(conf_dict)
         loss = HingeLoss(conf_dict)
-        optimizer = fluid.optimizer.AdamOptimizer(
+        optimizer = paddle.optimizer.Adam(
             learning_rate=0.001,
             beta1=0.9,
             beta2=0.999,
             epsilon=1e-08,
-            parameter_list=net.parameters(),
+            parameters=net.parameters(),
         )
 
         metric = paddle.metric.Auc(name="auc")
@@ -175,10 +176,11 @@ def train(conf_dict, to_static):
     return losses
 
 
-class TestSimnet(unittest.TestCase):
+class TestSimnet(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_dygraph_static_same_loss(self):
-        if fluid.is_compiled_with_cuda():
-            fluid.set_flags({"FLAGS_cudnn_deterministic": True})
+        if base.is_compiled_with_cuda():
+            base.set_flags({"FLAGS_cudnn_deterministic": True})
         conf_dict = create_conf_dict()
         dygraph_loss = train(conf_dict, to_static=False)
         static_loss = train(conf_dict, to_static=True)

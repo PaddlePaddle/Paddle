@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
@@ -27,8 +27,8 @@ paddle.enable_static()
 
 class TestASPHelperPruningBase(unittest.TestCase):
     def setUp(self):
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
 
         def build_model():
             img = paddle.static.data(
@@ -46,7 +46,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
             )
             return img, label, prediction
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
 
     def run_inference_pruning_test(
@@ -55,14 +55,14 @@ class TestASPHelperPruningBase(unittest.TestCase):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         self.__pruning_and_checking(
             exe, place, get_mask_gen_func, get_mask_check_func, False
         )
 
     def run_training_pruning_test(self, get_mask_gen_func, get_mask_check_func):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(
                     input=self.predict,
@@ -72,14 +72,14 @@ class TestASPHelperPruningBase(unittest.TestCase):
                 )
             )
             optimizer = paddle.incubate.asp.decorate(
-                fluid.optimizer.SGD(learning_rate=0.01)
+                paddle.optimizer.SGD(learning_rate=0.01)
             )
             optimizer.minimize(loss, self.startup_program)
 
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         self.__pruning_and_checking(
             exe, place, get_mask_gen_func, get_mask_check_func, True
@@ -95,7 +95,7 @@ class TestASPHelperPruningBase(unittest.TestCase):
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 self.assertTrue(
                     paddle.incubate.asp.check_sparsity(

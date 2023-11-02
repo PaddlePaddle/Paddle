@@ -15,6 +15,8 @@
 #include "paddle/fluid/framework/ir/generate_pass.h"
 
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -46,6 +48,12 @@ class element_visitor {
  private:
   int index_;
 };
+
+template <>
+Attribute element_visitor::operator()(
+    const std::vector<::pir::Value>& attr UNUSED) const {
+  PADDLE_THROW(platform::errors::Unimplemented("Unimplemented operand."));
+}
 
 class operation_visitor {
  public:
@@ -90,7 +98,7 @@ Attribute GetVarAttrValue(const VarDesc* desc,
     } else if (attr.has_element_index()) {
       int element_index = attr.element_index();
       if (attr.element_index() < 0) {
-        element_index += shape.size();
+        element_index += static_cast<int>(shape.size());
       }
       if (element_index >= 0 &&
           static_cast<size_t>(element_index) < shape.size()) {
@@ -278,7 +286,7 @@ GraphPatternDetector::handle_t GetGenerateDelete(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           remove_nodes.erase(iter.second);
         }
         GraphSafeRemoveNodes(graph, remove_nodes);
@@ -416,7 +424,7 @@ GraphPatternDetector::handle_t GetGenerateRewrite(
         for (const std::unique_ptr<PDNode>& pdnode : pattern.nodes()) {
           remove_nodes.emplace(subgraph.at(pdnode.get()));
         }
-        for (auto iter : var_node_maps) {
+        for (auto const& iter : var_node_maps) {
           for (auto& node : iter.second) {
             remove_nodes.erase(node);
           }

@@ -18,8 +18,8 @@ import numbers
 import numpy as np
 
 import paddle
+from paddle.base import framework
 from paddle.distribution.transformed_distribution import TransformedDistribution
-from paddle.fluid import framework
 
 
 class Gumbel(TransformedDistribution):

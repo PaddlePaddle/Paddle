@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.io import (
     ChainDataset,
     ComposeDataset,
@@ -61,7 +61,7 @@ class TestTensorDataset(unittest.TestCase):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
         place = paddle.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             input_np = np.random.random([16, 3, 4]).astype('float32')
             input = paddle.to_tensor(input_np)
             label_np = np.random.random([16, 1]).astype('int32')
@@ -82,8 +82,8 @@ class TestTensorDataset(unittest.TestCase):
                 assert len(label) == 1
                 assert input.shape == [1, 3, 4]
                 assert label.shape == [1, 1]
-                assert isinstance(input, fluid.core.eager.Tensor)
-                assert isinstance(label, fluid.core.eager.Tensor)
+                assert isinstance(input, base.core.eager.Tensor)
+                assert isinstance(label, base.core.eager.Tensor)
                 np.testing.assert_allclose(input.numpy(), input_np[i])
                 np.testing.assert_allclose(label.numpy(), label_np[i])
 
@@ -180,8 +180,8 @@ class TestSubsetDataset(unittest.TestCase):
             assert len(label) == 1
             assert input.shape == [1, 3, 4]
             assert label.shape == [1, 1]
-            assert isinstance(input, fluid.core.eager.Tensor)
-            assert isinstance(label, fluid.core.eager.Tensor)
+            assert isinstance(input, base.core.eager.Tensor)
+            assert isinstance(label, base.core.eager.Tensor)
 
         elements_list = []
         for _, (input, label) in enumerate(dataloader()):
@@ -261,7 +261,7 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
         place = paddle.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             dataset = NumpyMixTensorDataset(16)
             assert len(dataset) == 16
             dataloader = DataLoader(
@@ -277,8 +277,8 @@ class TestNumpyMixTensorDataset(TestTensorDataset):
                 assert len(label) == 1
                 assert input.shape == [1, IMAGE_SIZE]
                 assert label.shape == [1, 1]
-                assert isinstance(input, fluid.core.eager.Tensor)
-                assert isinstance(label, fluid.core.eager.Tensor)
+                assert isinstance(input, base.core.eager.Tensor)
+                assert isinstance(label, base.core.eager.Tensor)
 
 
 class ComplextDataset(Dataset):
@@ -306,7 +306,7 @@ class TestComplextDataset(unittest.TestCase):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
         place = paddle.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             dataset = ComplextDataset(16)
             assert len(dataset) == 16
             dataloader = DataLoader(
@@ -362,7 +362,7 @@ class TestSingleFieldDataset(unittest.TestCase):
         paddle.static.default_startup_program().random_seed = 1
         paddle.static.default_main_program().random_seed = 1
         place = paddle.CPUPlace()
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             self.init_dataset()
             dataloader = DataLoader(
                 self.dataset,
@@ -373,7 +373,7 @@ class TestSingleFieldDataset(unittest.TestCase):
             )
 
             for i, data in enumerate(dataloader()):
-                assert isinstance(data, fluid.core.eager.Tensor)
+                assert isinstance(data, base.core.eager.Tensor)
                 assert data.shape == [2, 2, 3]
 
     def test_main(self):

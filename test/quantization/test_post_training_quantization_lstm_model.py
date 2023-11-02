@@ -22,7 +22,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.dataset.common import download
 from paddle.static.quantization import PostTrainingQuantization
 
@@ -45,11 +45,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
-            print(
-                "Failed to create {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to create {self.int8_model_path} due to {str(e)}")
             sys.exit(-1)
 
     def tearDown(self):
@@ -57,8 +53,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 
@@ -97,7 +93,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     )
                     lod_feat = [feat.shape[0]]
 
-                    minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
+                    minputs = base.create_lod_tensor(feat, [lod_feat], place)
                     yield [minputs]
 
         return reader
@@ -127,7 +123,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                     )
                     lod_feat = [feat.shape[0]]
 
-                    minputs = fluid.create_lod_tensor(feat, [lod_feat], place)
+                    minputs = base.create_lod_tensor(feat, [lod_feat], place)
                     yield minputs, label
 
         return reader
@@ -253,9 +249,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         data_path = os.path.join(data_path, data_name)
 
         print(
-            "Start FP32 inference for {} on {} samples ...".format(
-                model_name, infer_iterations
-            )
+            f"Start FP32 inference for {model_name} on {infer_iterations} samples ..."
         )
         (fp32_latency, fp32_acc) = self.run_program(
             fp32_model_path,
@@ -287,9 +281,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         )
 
         print(
-            "Start INT8 inference for {} on {} samples ...".format(
-                model_name, infer_iterations
-            )
+            f"Start INT8 inference for {model_name} on {infer_iterations} samples ..."
         )
         (int8_latency, int8_acc) = self.run_program(
             self.int8_model_path,

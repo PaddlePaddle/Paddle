@@ -25,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/var_type_inference.h"
 #include "paddle/fluid/operators/ops_extra_info.h"
 #include "paddle/phi/common/complex.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 
 namespace paddle {
@@ -62,7 +64,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                           op_.Type(),
                           idx,
                           op_proto->inputs().size()));
-    return op_proto->inputs()[idx].name();
+    return op_proto->inputs()[static_cast<int>(idx)].name();
   }
 
   std::string GetOutputNameByIdx(size_t idx) const override {
@@ -77,7 +79,7 @@ class CompileTimeInferShapeContext : public InferShapeContext {
             op_.Type(),
             idx,
             op_proto->outputs().size()));
-    return op_proto->outputs()[idx].name();
+    return op_proto->outputs()[static_cast<int>(idx)].name();
   }
 
   void ShareDim(const std::string &in,
@@ -346,14 +348,13 @@ class CompileTimeInferShapeContext : public InferShapeContext {
       const std::vector<std::string> &names) const {
     std::vector<proto::VarType::Type> retv;
     retv.resize(names.size());
-    std::transform(
-        names.begin(),
-        names.end(),
-        retv.begin(),
-        std::bind(
-            std::mem_fn(&CompileTimeInferShapeContext::GetVarType),  // NOLINT
-            this,
-            std::placeholders::_1));
+    std::transform(names.begin(),
+                   names.end(),
+                   retv.begin(),
+                   std::bind(  // NOLINT
+                       std::mem_fn(&CompileTimeInferShapeContext::GetVarType),
+                       this,
+                       std::placeholders::_1));
     return retv;
   }
 
@@ -434,6 +435,9 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
+OpDesc::OpDesc() {}
+
+OpDesc::~OpDesc() = default;
 OpDesc::OpDesc(const OpDesc &other) {
   CopyFrom(other);
   block_ = other.block_;
@@ -513,6 +517,9 @@ OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
 // Explicitly implement the assign operator, Since the added
 // unique_ptr data member does not have the implicit assign operator.
 OpDesc &OpDesc::operator=(const OpDesc &other) {
+  if (this == &other) {
+    return *this;
+  }
   CopyFrom(other);
   block_ = other.block_;
   need_update_ = true;
@@ -523,6 +530,8 @@ proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;
 }
+
+void OpDesc::SetType(const std::string &type) { desc_.set_type(type); }
 
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
@@ -962,7 +971,12 @@ struct SetAttrDescVisitor {
   void operator()(const std::vector<bool> &v) const {
     VectorToRepeated(v, attr_->mutable_bools());
   }
-
+  void operator()(const std::vector<pir::Value> &v) const {
+    // just do nothing.
+  }
+  void operator()(const std::vector<pir::Block *> &v) const {
+    // just do nothing.
+  }
   void operator()(const std::vector<VarDesc *> &v) const {
     std::vector<std::string> var_names;
     for (auto var : v) {
@@ -1119,7 +1133,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }
@@ -1198,7 +1212,7 @@ VarDesc *OpDesc::FindVarRecursive(const std::string &name) {
   PADDLE_THROW(platform::errors::NotFound(
       "Not found Var(%s) from Block(%d) back into global Block.",
       name,
-      block_->ID()));
+      block_->ID()));  // NOLINT
 }
 
 CompileTimeInferShapeContext::CompileTimeInferShapeContext(

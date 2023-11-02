@@ -21,12 +21,20 @@
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/cuda_stream.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/utils.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/utils/data_type.h"
 #include "paddle/phi/kernels/funcs/aligned_vector.h"
 #include "paddle/phi/kernels/funcs/tensor_to_string.h"
 #include "paddle/utils/optional.h"
+
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -47,6 +55,19 @@ template <typename T>
 using MasterT = typename phi::dtype::MPTypeTrait<T>::Type;
 using phi::funcs::FlattenToString;
 using phi::funcs::ToVector;
+
+static void CheckCommContextHasRingId(
+    const distributed::CommContextManager &comm_context_manager, int ring_id) {
+  PADDLE_ENFORCE_EQ(comm_context_manager.Has(std::to_string(ring_id)),
+                    true,
+                    paddle::platform::errors::InvalidArgument(
+                        "You choose to use new communication library by "
+                        "setting environment "
+                        "variable FLAGS_dynamic_static_unified_comm True. "
+                        "But ring_id(%d) is "
+                        "not found in comm_context_manager.",
+                        std::to_string(ring_id)));
+}
 
 template <typename T>
 static void FillZeroWithPtr(T *x, size_t n, gpuStream_t stream) {
@@ -170,11 +191,7 @@ static void MultiTensorL2Norm(const phi::GPUPlace &place,
 
   constexpr int kNumTensor = MaxTensorNumPerLaunch;
   constexpr int kNumChunk = MaxChunkNumPerLaunch;
-#ifdef PADDLE_WITH_HIP
-  constexpr int kBlockDim = 256;
-#else
   constexpr int kBlockDim = 512;
-#endif
 
   int max_chunk_num = -1;
   int vec_size = 8;
@@ -812,11 +829,7 @@ static void MultiTensorUpdateLambParamAndBetaPows(
         phi::errors::InvalidArgument("Beta2Pow should be nullptr."));
   }
 
-#ifdef PADDLE_WITH_HIP
-  const int block_dim = 256;
-#else
   const int block_dim = 512;
-#endif
 
   int vec_size = 8;
   for (int i = 0; i < n; ++i) {
@@ -883,22 +896,66 @@ static void MultiTensorUpdateLambParamAndBetaPows(
 }
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-static bool CreatePreMulScaleOpIfSupported(ncclDataType_t dtype,
-                                           ncclComm_t comm,
-                                           const void *scale,
-                                           ncclRedOp_t *op) {
+static bool CreatePreMulScaleOpIfSupported(
+    ncclDataType_t dtype,
+    ncclComm_t comm,
+    const void *scale,
+    ncclRedOp_t *op,
+    distributed::NCCLCommContext *comm_ctx = nullptr) {
 #if NCCL_VERSION_CODE >= 21100
-  int ver;
-  PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
-  if (ver >= 21100) {
-    VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
-        op, const_cast<void *>(scale), dtype, ncclScalarDevice, comm));
-    return true;
+  if (FLAGS_dynamic_static_unified_comm) {
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx,
+        phi::errors::InvalidArgument(
+            "You choose to use new communication library by "
+            "setting environment "
+            "variable FLAGS_dynamic_static_unified_comm True. "
+            "But parameter of comm_ctx should not be nullptr."));
+    int ver = comm_ctx->GetNcclVersion();
+    if (ver >= 21100) {
+      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
+      comm_ctx->RedOpCreatePreMulSum(
+          op, const_cast<void *>(scale), dtype, ncclScalarDevice);
+      return true;
+    }
+  } else {
+    int ver;
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetVersion(&ver));
+    if (ver >= 21100) {
+      VLOG(10) << "ncclRedOpCreatePreMulSum is supported.";
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpCreatePreMulSum(
+          op, const_cast<void *>(scale), dtype, ncclScalarDevice, comm));
+      return true;
+    }
   }
 #endif
   VLOG(10) << "ncclRedOpCreatePreMulSum is not supported.";
   return false;
+}
+
+static void DestoryOpIfSupported(
+    ncclRedOp_t op,
+    ncclComm_t comm,
+    distributed::NCCLCommContext *comm_ctx = nullptr) {
+#if NCCL_VERSION_CODE >= 21100
+  VLOG(10) << "ncclRedOpDestroy starts";
+
+  if (FLAGS_dynamic_static_unified_comm) {
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx,
+        phi::errors::InvalidArgument(
+            "You choose to use new communication library by "
+            "setting environment "
+            "variable FLAGS_dynamic_static_unified_comm True. "
+            "But parameter of comm_ctx should not be nullptr."));
+    comm_ctx->RedOpDestroy(op);
+  } else {
+    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, comm));
+  }
+  VLOG(10) << "ncclRedOpDestroy ends";
+
+#endif
+  VLOG(10) << "ncclRedOpDestroy is not supported.";
 }
 
 template <typename T1, typename T2>
@@ -930,7 +987,18 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
                                  ncclComm_t comm,
                                  gpuStream_t stream,
                                  const phi::GPUContext &dev_ctx,
+                                 distributed::NCCLCommContext *comm_ctx,
                                  const T *scale = nullptr) {
+  if (FLAGS_dynamic_static_unified_comm) {
+    PADDLE_ENFORCE_NOT_NULL(
+        comm_ctx,
+        phi::errors::InvalidArgument(
+            "You choose to use new communication library by "
+            "setting environment "
+            "variable FLAGS_dynamic_static_unified_comm True. "
+            "But parameter of comm_ctx should not be nullptr."));
+  }
+
   static_assert(
       std::is_same<T, float>::value || std::is_same<T, dtype::float16>::value,
       "T must be either float32 or float16.");
@@ -951,8 +1019,8 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
   ncclRedOp_t op = ncclSum;
   ncclDataType_t dtype =
       std::is_same<T, float>::value ? ncclFloat32 : ncclFloat16;
-  bool should_destroy_op =
-      scale && CreatePreMulScaleOpIfSupported(dtype, comm, scale, &op);
+  bool should_destroy_op = scale && CreatePreMulScaleOpIfSupported(
+                                        dtype, comm, scale, &op, comm_ctx);
   memory_utils::Buffer buffer(dev_ctx.GetPlace());
   if (scale && !should_destroy_op) {
     T *new_sendbuff = buffer.Alloc<T>(numel);
@@ -960,21 +1028,44 @@ static void NCCLSumWithScaleBase(const T *sendbuff,
     sendbuff = new_sendbuff;
   }
 
-  if (UseReduceScatter) {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduceScatter(
-        sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+  if (comm_ctx) {
+    // Here assume comm_ctx->GetNcclComm() have higher priority than comm
+    if (UseReduceScatter) {
+      // TODO(BeingGod): NCCLCommContext::ReduceScatter only accept DenseTensor,
+      // but sendbuff or recvbuff maybe allocated by Buffer.
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclReduceScatter(sendbuff,
+                                          recvbuff,
+                                          recvcount,
+                                          dtype,
+                                          op,
+                                          comm_ctx->GetNcclComm(),
+                                          stream));
+    } else {
+      // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+      // but sendbuff or recvbuff maybe allocated by Buffer.
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          phi::dynload::ncclAllReduce(sendbuff,
+                                      recvbuff,
+                                      recvcount,
+                                      dtype,
+                                      op,
+                                      comm_ctx->GetNcclComm(),
+                                      stream));
+    }
   } else {
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
-        sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+    if (UseReduceScatter) {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclReduceScatter(
+          sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+    } else {
+      PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclAllReduce(
+          sendbuff, recvbuff, recvcount, dtype, op, comm, stream));
+    }
   }
 
-#if NCCL_VERSION_CODE >= 21100
   if (should_destroy_op) {
-    VLOG(10) << "ncclRedOpDestroy starts";
-    PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclRedOpDestroy(op, comm));
-    VLOG(10) << "ncclRedOpDestroy ends";
+    DestoryOpIfSupported(op, comm, comm_ctx);
   }
-#endif
 }
 
 template <typename T>
@@ -985,9 +1076,17 @@ static void NCCLReduceScatterWithScale(const T *sendbuff,
                                        ncclComm_t comm,
                                        gpuStream_t stream,
                                        const phi::GPUContext &dev_ctx,
+                                       distributed::NCCLCommContext *comm_ctx,
                                        const T *scale = nullptr) {
-  NCCLSumWithScaleBase<T, true>(
-      sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
+  NCCLSumWithScaleBase<T, true>(sendbuff,
+                                recvbuff,
+                                recvcount,
+                                nranks,
+                                comm,
+                                stream,
+                                dev_ctx,
+                                comm_ctx,
+                                scale);
 }
 
 template <typename T>
@@ -998,9 +1097,17 @@ static void NCCLAllReduceWithScale(const T *sendbuff,
                                    ncclComm_t comm,
                                    gpuStream_t stream,
                                    const phi::GPUContext &dev_ctx,
+                                   distributed::NCCLCommContext *comm_ctx,
                                    const T *scale = nullptr) {
-  NCCLSumWithScaleBase<T, false>(
-      sendbuff, recvbuff, recvcount, nranks, comm, stream, dev_ctx, scale);
+  NCCLSumWithScaleBase<T, false>(sendbuff,
+                                 recvbuff,
+                                 recvcount,
+                                 nranks,
+                                 comm,
+                                 stream,
+                                 dev_ctx,
+                                 comm_ctx,
+                                 scale);
 }
 
 #endif
@@ -1651,26 +1758,71 @@ void DistributedFusedLambKernel(
   int64_t global_rank = 0, local_rank = 0;
   ncclComm_t global_comm = nullptr, local_comm = nullptr,
              external_comm = nullptr;
-  if (nranks > 1) {
-    auto *nccl_comm_handle =
-        paddle::platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
-    global_comm = nccl_comm_handle->comm();
-    global_rank = nccl_comm_handle->rank();
+  paddle::platform::NCCLComm *nccl_comm_handle = nullptr,
+                             *local_nccl_comm_handle = nullptr;
+  distributed::NCCLCommContext *comm_ctx = nullptr, *local_comm_ctx = nullptr,
+                               *external_comm_ctx = nullptr;
+
+  const auto &comm_context_manager =
+      phi::distributed::CommContextManager::GetInstance();
+
+  if (FLAGS_dynamic_static_unified_comm) {
+    CheckCommContextHasRingId(comm_context_manager, ring_ids[0]);
+
+    comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+        comm_context_manager.Get(std::to_string(ring_ids[0])));
+    PADDLE_ENFORCE_NE(comm_ctx,
+                      nullptr,
+                      paddle::platform::errors::Unavailable(
+                          "NCCLCommContext is nullptr, collective op should "
+                          "has ring_id attr."));
+
+    global_comm = comm_ctx->GetNcclComm();
+    global_rank = comm_ctx->GetRank();
     if (local_shard) {
-      auto *local_nccl_comm_handle =
-          paddle::platform::NCCLCommContext::Instance().Get(ring_ids[1], place);
-      local_comm = local_nccl_comm_handle->comm();
-      local_rank = local_nccl_comm_handle->rank();
+      CheckCommContextHasRingId(comm_context_manager, ring_ids[1]);
+
+      local_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+          comm_context_manager.Get(std::to_string(ring_ids[1])));
+      local_comm = local_comm_ctx->GetNcclComm();
+      local_rank = local_comm_ctx->GetRank();
       if (use_hierarchical_allreduce) {
-        external_comm = paddle::platform::NCCLCommContext::Instance()
-                            .Get(ring_ids[2], place)
-                            ->comm();
+        CheckCommContextHasRingId(comm_context_manager, ring_ids[2]);
+
+        external_comm_ctx = static_cast<phi::distributed::NCCLCommContext *>(
+            comm_context_manager.Get(std::to_string(ring_ids[2])));
+        external_comm = external_comm_ctx->GetNcclComm();
       }
     } else {
       local_comm = global_comm;
       local_rank = global_rank;
     }
+
+    VLOG(3) << "new comm_context_manager has ring_id " << ring_ids[0];
+  } else {
+    if (nranks > 1) {
+      nccl_comm_handle =
+          paddle::platform::NCCLCommContext::Instance().Get(ring_ids[0], place);
+      global_comm = nccl_comm_handle->comm();
+      global_rank = nccl_comm_handle->rank();
+      if (local_shard) {
+        local_nccl_comm_handle =
+            paddle::platform::NCCLCommContext::Instance().Get(ring_ids[1],
+                                                              place);
+        local_comm = local_nccl_comm_handle->comm();
+        local_rank = local_nccl_comm_handle->rank();
+        if (use_hierarchical_allreduce) {
+          external_comm = paddle::platform::NCCLCommContext::Instance()
+                              .Get(ring_ids[2], place)
+                              ->comm();
+        }
+      } else {
+        local_comm = global_comm;
+        local_rank = global_rank;
+      }
+    }
   }
+
   memory_utils::Buffer grad_norm_square_buffer(place);
   auto *fp32_square_grad_norm = grad_norm_square_buffer.Alloc<float>(2);
   memory_utils::Buffer cub_tmp_buffer(place);
@@ -1723,7 +1875,8 @@ void DistributedFusedLambKernel(
               num_devices,
               local_comm,
               stream,
-              dev_ctx);
+              dev_ctx,
+              local_comm_ctx);
           NCCLAllReduceWithScale(
               fp32_sum_grad + local_rank * fp32_numel_each_device,
               fp32_sum_grad + local_rank * fp32_numel_each_device,
@@ -1731,7 +1884,8 @@ void DistributedFusedLambKernel(
               nranks / num_devices,
               external_comm,
               stream,
-              dev_ctx);
+              dev_ctx,
+              external_comm_ctx);
 
           NCCLReduceScatterWithScale(
               fp16_grad_data,
@@ -1740,7 +1894,8 @@ void DistributedFusedLambKernel(
               num_devices,
               local_comm,
               stream,
-              dev_ctx);
+              dev_ctx,
+              local_comm_ctx);
           NCCLAllReduceWithScale(
               fp16_sum_grad + local_rank * fp16_numel_each_device,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -1748,7 +1903,8 @@ void DistributedFusedLambKernel(
               nranks / num_devices,
               external_comm,
               stream,
-              dev_ctx);
+              dev_ctx,
+              external_comm_ctx);
         } else {
           NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
@@ -1756,14 +1912,16 @@ void DistributedFusedLambKernel(
                                  nranks,
                                  global_comm,
                                  stream,
-                                 dev_ctx);
+                                 dev_ctx,
+                                 comm_ctx);
           NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel,
                                  nranks,
                                  global_comm,
                                  stream,
-                                 dev_ctx);
+                                 dev_ctx,
+                                 comm_ctx);
         }
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
         fp16_sum_grad += (local_rank * fp16_numel_each_device);
@@ -1774,14 +1932,16 @@ void DistributedFusedLambKernel(
                                    nranks,
                                    global_comm,
                                    stream,
-                                   dev_ctx);
+                                   dev_ctx,
+                                   comm_ctx);
         NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
                                    fp16_numel_each_device,
                                    nranks,
                                    global_comm,
                                    stream,
-                                   dev_ctx);
+                                   dev_ctx,
+                                   comm_ctx);
       }
       // (2) Calculate the global grad norm
       GetSquareGradNorm(fp32_sum_grad,
@@ -1794,6 +1954,8 @@ void DistributedFusedLambKernel(
       VLOG(1) << "Grad square norm before all reduce: "
               << FlattenToString(fp32_square_grad_norm, 1, place);
       if (num_devices > 1) {
+        // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+        // but fp32_square_grad_norm is allocated by Buffer.
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                         fp32_square_grad_norm,
@@ -1860,6 +2022,7 @@ void DistributedFusedLambKernel(
               local_comm,
               stream,
               dev_ctx,
+              local_comm_ctx,
               fp32_scale);
           NCCLAllReduceWithScale(
               fp32_sum_grad + local_rank * fp32_numel_each_device,
@@ -1868,8 +2031,8 @@ void DistributedFusedLambKernel(
               nranks / num_devices,
               external_comm,
               stream,
-              dev_ctx);
-
+              dev_ctx,
+              external_comm_ctx);
           NCCLReduceScatterWithScale(
               fp16_grad_data,
               fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -1878,6 +2041,7 @@ void DistributedFusedLambKernel(
               local_comm,
               stream,
               dev_ctx,
+              local_comm_ctx,
               fp16_scale);
           NCCLAllReduceWithScale(
               fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -1886,7 +2050,8 @@ void DistributedFusedLambKernel(
               nranks / num_devices,
               external_comm,
               stream,
-              dev_ctx);
+              dev_ctx,
+              external_comm_ctx);
         } else {
           NCCLAllReduceWithScale(fp32_grad_data,
                                  fp32_sum_grad,
@@ -1895,6 +2060,7 @@ void DistributedFusedLambKernel(
                                  global_comm,
                                  stream,
                                  dev_ctx,
+                                 comm_ctx,
                                  fp32_scale);
           NCCLAllReduceWithScale(fp16_grad_data,
                                  fp16_sum_grad,
@@ -1903,6 +2069,7 @@ void DistributedFusedLambKernel(
                                  global_comm,
                                  stream,
                                  dev_ctx,
+                                 comm_ctx,
                                  fp16_scale);
         }
         fp32_sum_grad += (local_rank * fp32_numel_each_device);
@@ -1915,6 +2082,7 @@ void DistributedFusedLambKernel(
                                    global_comm,
                                    stream,
                                    dev_ctx,
+                                   comm_ctx,
                                    fp32_scale);
         NCCLReduceScatterWithScale(fp16_grad_data,
                                    fp16_sum_grad,
@@ -1923,6 +2091,7 @@ void DistributedFusedLambKernel(
                                    global_comm,
                                    stream,
                                    dev_ctx,
+                                   comm_ctx,
                                    fp16_scale);
       }
       VLOG(1) << "FP32 HasNanInf after all reduce: "
@@ -1937,6 +2106,8 @@ void DistributedFusedLambKernel(
                          stream,
                          &cub_tmp_buffer);
       if (num_devices > 1) {
+        // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+        // but fp32_square_grad_norm is allocated by Buffer.
         PADDLE_ENFORCE_GPU_SUCCESS(
             phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                         fp32_square_grad_norm,
@@ -1962,7 +2133,8 @@ void DistributedFusedLambKernel(
             num_devices,
             local_comm,
             stream,
-            dev_ctx);
+            dev_ctx,
+            local_comm_ctx);
         NCCLAllReduceWithScale(
             fp32_sum_grad + local_rank * fp32_numel_each_device,
             fp32_sum_grad + local_rank * fp32_numel_each_device,
@@ -1970,7 +2142,8 @@ void DistributedFusedLambKernel(
             nranks / num_devices,
             external_comm,
             stream,
-            dev_ctx);
+            dev_ctx,
+            external_comm_ctx);
         NCCLReduceScatterWithScale(
             fp16_grad_data,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -1978,7 +2151,8 @@ void DistributedFusedLambKernel(
             num_devices,
             local_comm,
             stream,
-            dev_ctx);
+            dev_ctx,
+            local_comm_ctx);
         NCCLAllReduceWithScale(
             fp16_sum_grad + local_rank * fp16_numel_each_device,
             fp16_sum_grad + local_rank * fp16_numel_each_device,
@@ -1986,7 +2160,8 @@ void DistributedFusedLambKernel(
             nranks / num_devices,
             external_comm,
             stream,
-            dev_ctx);
+            dev_ctx,
+            external_comm_ctx);
       } else {
         NCCLAllReduceWithScale(fp32_grad_data,
                                fp32_sum_grad,
@@ -1994,14 +2169,16 @@ void DistributedFusedLambKernel(
                                nranks,
                                global_comm,
                                stream,
-                               dev_ctx);
+                               dev_ctx,
+                               comm_ctx);
         NCCLAllReduceWithScale(fp16_grad_data,
                                fp16_sum_grad,
                                fp16_numel,
                                nranks,
                                global_comm,
                                stream,
-                               dev_ctx);
+                               dev_ctx,
+                               comm_ctx);
       }
       fp32_sum_grad += (local_rank * fp32_numel_each_device);
       fp16_sum_grad += (local_rank * fp16_numel_each_device);
@@ -2012,14 +2189,16 @@ void DistributedFusedLambKernel(
                                  num_devices,
                                  global_comm,
                                  stream,
-                                 dev_ctx);
+                                 dev_ctx,
+                                 comm_ctx);
       NCCLReduceScatterWithScale(fp16_grad_data,
                                  fp16_sum_grad,
                                  fp16_numel_each_device,
                                  num_devices,
                                  global_comm,
                                  stream,
-                                 dev_ctx);
+                                 dev_ctx,
+                                 comm_ctx);
     }
     CheckHasNanInfGrad(fp32_sum_grad,
                        fp32_numel_each_device,
@@ -2029,6 +2208,8 @@ void DistributedFusedLambKernel(
                        stream,
                        &cub_tmp_buffer);
     if (num_devices > 1) {
+      // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+      // but fp32_square_grad_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::ncclAllReduce(fp32_square_grad_norm,
                                       fp32_square_grad_norm,
@@ -2173,6 +2354,8 @@ void DistributedFusedLambKernel(
           << FlattenToString(trust_ratio_div_square_norm, param_num, place);
   if (num_devices > 1) {
     if (use_master_param_norm) {
+      // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+      // but param_square_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::ncclAllReduce(param_square_norm + fp32_global_param_num,
                                       param_square_norm + fp32_global_param_num,
@@ -2182,6 +2365,8 @@ void DistributedFusedLambKernel(
                                       local_comm,
                                       stream));
     } else {
+      // TODO(BeingGod): NCCLCommContext::AllReduce only accept DenseTensor,
+      // but trust_ratio_div_square_norm is allocated by Buffer.
       PADDLE_ENFORCE_GPU_SUCCESS(
           phi::dynload::ncclAllReduce(trust_ratio_div_square_norm,
                                       trust_ratio_div_square_norm,
@@ -2217,13 +2402,21 @@ void DistributedFusedLambKernel(
         beta2);
     if (num_devices > 1) {
       // ncclAllGather
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllGather(fp32_param_data + fp32_offset,
-                                      fp32_param_data,
-                                      fp32_numel_each_device,
-                                      ncclFloat32,
-                                      local_comm,
-                                      stream));
+      if (local_comm_ctx) {
+        auto send_buf = distributed::GetPartialTensor(
+            *fp32_param_out, fp32_offset, fp32_numel_each_device);
+        auto recv_buf = distributed::GetPartialTensor(
+            *fp32_param_out, 0, fp32_numel_each_device);
+        local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllGather(fp32_param_data + fp32_offset,
+                                        fp32_param_data,
+                                        fp32_numel_each_device,
+                                        ncclFloat32,
+                                        local_comm,
+                                        stream));
+      }
     }
 
     beta1_pow_data = nullptr;
@@ -2247,13 +2440,21 @@ void DistributedFusedLambKernel(
         beta2);
     if (num_devices > 1) {
       // ncclAllGather
-      PADDLE_ENFORCE_GPU_SUCCESS(
-          phi::dynload::ncclAllGather(fp16_param_data + fp16_offset,
-                                      fp16_param_data,
-                                      fp16_numel_each_device,
-                                      ncclFloat16,
-                                      local_comm,
-                                      stream));
+      if (local_comm_ctx) {
+        auto send_buf = distributed::GetPartialTensor(
+            *fp16_param_out, fp16_offset, fp16_numel_each_device);
+        auto recv_buf = distributed::GetPartialTensor(
+            *fp16_param_out, 0, fp16_numel_each_device);
+        local_comm_ctx->AllGather(&recv_buf, send_buf, stream);
+      } else {
+        PADDLE_ENFORCE_GPU_SUCCESS(
+            phi::dynload::ncclAllGather(fp16_param_data + fp16_offset,
+                                        fp16_param_data,
+                                        fp16_numel_each_device,
+                                        ncclFloat16,
+                                        local_comm,
+                                        stream));
+      }
     }
   }
   VLOG(10) << "Update Param done";

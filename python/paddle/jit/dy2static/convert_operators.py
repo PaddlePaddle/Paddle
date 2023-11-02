@@ -15,13 +15,12 @@
 import re
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
-from paddle.fluid.dygraph.base import (
-    _convert_into_variable,
-    in_declarative_mode,
-)
-from paddle.fluid.framework import Variable, core, default_main_program
+from paddle.autograd.py_layer import PyLayerMeta
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
+from paddle.base.framework import Variable, core, default_main_program
 
+from .py_layer import StaticPyLayer
 from .utils import (
     RETURN_NO_VALUE_VAR_NAME,
     Dygraph2StaticException,
@@ -41,23 +40,30 @@ def convert_attr(x, attr):
 
 
 def convert_load(x):
-    if in_declarative_mode() and isinstance(x, paddle.fluid.core.eager.Tensor):
-        """
-        TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
-        """
-        return _convert_into_variable(x)
+    if in_to_static_mode():
+        if isinstance(x, paddle.base.core.eager.Tensor):
+            """
+            TODO:(@xiongkun) may run convert_load in dygraph mode, which should be fixed.
+            """
+            return _convert_into_variable(x)
 
-    # get the new output of the var
-    if in_declarative_mode() and isinstance(x, Variable):
-        cur_block = default_main_program().current_block()
+        # convert dygraph `PyLayer` into StaticPyLayer
+        if isinstance(x, PyLayerMeta):
+            return StaticPyLayer(x)
 
-        from paddle.jit.dy2static.program_translator import ProgramTranslator
+        # get the new output of the var
+        if isinstance(x, Variable):
+            cur_block = default_main_program().current_block()
 
-        new_var = ProgramTranslator.get_instance()._params_map.get(
-            cur_block.program, x.desc.id()
-        )
-        if new_var is not None:
-            return new_var
+            from paddle.jit.dy2static.program_translator import (
+                ProgramTranslator,
+            )
+
+            new_var = ProgramTranslator.get_instance()._inplace_map.get(
+                cur_block.program, x.desc.id()
+            )
+            if new_var is not None:
+                return new_var
 
     return x
 
@@ -381,9 +387,13 @@ def _run_paddle_cond(
     _convert_tensor_arrray_if_necessary(helper, push_pop_names)
     pred = cast_bool_if_necessary(pred)
     init_args = helper.get(return_name_ids)
+    from paddle.jit.dy2static.program_translator import ProgramTranslator
+
+    inplace_map = ProgramTranslator.get_instance()._inplace_map
 
     def new_true_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
@@ -392,21 +402,22 @@ def _run_paddle_cond(
         # IfExpr will return a non-None return value, so we just return ret.
         # We assume normal return has no return value.
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     def new_false_fn():
         # init args may contain mutable python container like [var, 2], we copy then like in while_loop
+        inplace_map_checkpoint = inplace_map.save_checkpoint()
         helper.set(
             return_name_ids,
             paddle.utils.copy_mutable_vars(init_args),
         )
         ret = false_fn()
         if ret is None:
-            return helper.get(return_name_ids)
-        else:
-            return ret
+            ret = helper.get(return_name_ids)
+        inplace_map.restore_checkpoint(inplace_map_checkpoint)
+        return ret
 
     try:
         cond_outs = paddle.static.nn.cond(
@@ -417,15 +428,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                "Your if/else have different return type. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different return type. TODO: add link to modifty. {str(e)}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different number of return value. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
             )
         raise e
     get_args = lambda: helper.get(return_name_ids)
@@ -559,7 +566,7 @@ def convert_zip(*args):
         if isinstance(arg, Variable) and arg.shape[0] == -1:
             raise RuntimeError(
                 "Not support zip(tensor, ...) when tensor.shape[0] == -1, "
-                "but found args[{}].shape[0] == -1 in 'zip'".format(str(i))
+                f"but found args[{str(i)}].shape[0] == -1 in 'zip'"
             )
     return zip(*args)
 
@@ -728,9 +735,7 @@ def convert_var_dtype(var, dtype):
             'bool',
             'int',
             'float',
-        ], "The casted target dtype is {}, which is not supported in type casting.".format(
-            dtype
-        )
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         cast_map = {
             'bool': 'bool',
             'int': 'int32',

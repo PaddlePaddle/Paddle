@@ -184,9 +184,9 @@ fused_bias_dropout_residual_layer_norm_dygraph_function(
                                         p_autograd_LnVariance,
                                         p_autograd_Y);
       // Create GradOpNode
-      auto grad_node =
-          std::shared_ptr<fused_bias_dropout_residual_layer_normGradNodeCompat>(
-              new fused_bias_dropout_residual_layer_normGradNodeCompat(5, 5));
+      auto grad_node = std::shared_ptr<  // NOLINT
+          fused_bias_dropout_residual_layer_normGradNodeCompat>(
+          new fused_bias_dropout_residual_layer_normGradNodeCompat(5, 5));
 
       // Set Attributes
       grad_node->SetAttrMap(std::move(attrs));

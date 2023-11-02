@@ -42,6 +42,10 @@ class ReduceOpConverter : public OpConverter {
         PADDLE_GET_CONST(std::vector<int32_t>, op_desc.GetAttr("dim"));
     bool reduce_all = PADDLE_GET_CONST(bool, op_desc.GetAttr("reduce_all"));
 
+    if (dim.size() == 0) {
+      reduce_all = true;
+    }
+
     nvinfer1::IReduceLayer* layer = nullptr;
     if (reduce_all) {
       uint32_t reduce_dim = 0;

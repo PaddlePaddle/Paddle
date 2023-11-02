@@ -90,6 +90,34 @@ void EmplaceDeviceContexts(
       stream_priority);
 }
 
+#if (defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)) && \
+    (defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL))
+const phi::Allocator* GetAllocator(int device_id, phi::gpuStream_t stream) {
+  return MemoryUtils::Instance().GetAllocator(device_id, stream);
+}
+
+const phi::Allocator* GetHostAllocator() {
+  return MemoryUtils::Instance().GetHostAllocator();
+}
+
+const phi::Allocator* GetZeroAllocator(int device_id) {
+  return MemoryUtils::Instance().GetZeroAllocator(device_id);
+}
+
+const phi::Allocator* GetHostZeroAllocator() {
+  return MemoryUtils::Instance().GetHostZeroAllocator();
+}
+
+const phi::Allocator* GetPinnedAllocator() {
+  return MemoryUtils::Instance().GetPinnedAllocator();
+}
+
+std::shared_ptr<std::remove_pointer<phi::gpuEvent_t>::type> GetCudaEvent(
+    int device_id) {
+  return MemoryUtils::Instance().GetCudaEvent(device_id);
+}
+#endif
+
 }  // namespace memory_utils
 
 }  // namespace phi

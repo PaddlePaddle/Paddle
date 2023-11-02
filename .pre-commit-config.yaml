@@ -66,7 +66,7 @@ repos:
     -   id: flake8
         args: ["--config=.flake8"]
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.0.272
+    rev: v0.0.289
     hooks:
     -   id: ruff
         args: [--fix, --exit-non-zero-on-fix, --no-cache]
@@ -94,9 +94,9 @@ repos:
         description: Check C++ code style using cpplint.py.
         entry: bash ./tools/codestyle/cpplint_pre_commit.hook
         language: system
-        files: \.(c|cc|cxx|cpp|cu|h|hpp|hxx)$
+        files: \.(cc|cxx|cpp|cu|h|hpp|hxx)$
         args:
-            - --extensions=c,cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
+            - --extensions=cc,cxx,cpp,cu,cuh,h,hpp,hxx,kps
             - --filter=-readability/fn_size,-build/include_what_you_use,-build/c++11,-whitespace/parens
             - --quiet
         # Exclude third-party libraries
@@ -160,3 +160,13 @@ repos:
     hooks:
     -   id: cmakelint
         args: [--config=./tools/codestyle/.cmakelintrc]
+
+- repo: local
+  hooks:
+    - id: sort-txt-file
+      name: sort-txt-file
+      description: Sorts each line string in a text file
+      entry: python ./tools/codestyle/sort_txt_file.py
+      language: python
+      files: test/white_list/new_ir_op_test_white_list
+      args: []

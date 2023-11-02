@@ -24,7 +24,7 @@ paddle.enable_static()
 from dist_fleet_sparse_embedding_ctr import fake_ctr_reader
 from test_dist_fleet_base import TestFleetBase
 
-from paddle import fluid
+from paddle import base
 
 
 @unittest.skip(reason="Skip unstable ut, need paddle sync mode fix")
@@ -218,7 +218,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 input=dnn_data,
                 size=[dnn_input_dim, dnn_layer_dims[0]],
                 is_test=inference,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="deep_embedding", initializer=init
                 ),
             )
@@ -231,7 +231,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                     x=dnn_out,
                     size=dim,
                     activation="relu",
-                    weight_attr=fluid.ParamAttr(
+                    weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(value=0.01)
                     ),
                     name='dnn-fc-%d' % i,
@@ -243,7 +243,7 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
                 input=lr_data,
                 size=[lr_input_dim, 1],
                 is_test=inference,
-                param_attr=fluid.ParamAttr(
+                param_attr=base.ParamAttr(
                     name="wide_embedding",
                     initializer=paddle.nn.initializer.Constant(value=0.01),
                 ),
@@ -260,15 +260,15 @@ class TestDistMnistAsync2x2WithGauss(TestFleetBase):
 
         reader = paddle.batch(fake_ctr_reader(), batch_size=4)
         datas, predict = net()
-        exe = fluid.Executor(fluid.CPUPlace())
-        feeder = fluid.DataFeeder(place=fluid.CPUPlace(), feed_list=datas)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        feeder = base.DataFeeder(place=base.CPUPlace(), feed_list=datas)
+        exe.run(base.default_startup_program())
 
         paddle.distributed.io.load_persistables(exe, model_file)
 
         for batch_id, data in enumerate(reader()):
             score = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed=feeder.feed(data),
                 fetch_list=[predict],
             )

@@ -19,16 +19,25 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base import core, unique_name
+from paddle.base.data_feeder import check_dtype
+from paddle.base.framework import (
+    Program,
+    Variable,
+    default_main_program,
+    in_dygraph_mode,
+    name_scope,
+    program_guard,
+    static_only,
+)
+from paddle.base.layers.layer_function_generator import templatedoc
+from paddle.base.param_attr import ParamAttr
+from paddle.base.wrapped_decorator import signature_safe_contextmanager
 from paddle.common_ops_import import (
     LayerHelper,
     check_type,
     check_variable_and_dtype,
 )
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_dtype
-from paddle.fluid.framework import Variable, in_dygraph_mode, static_only
-from paddle.fluid.layers.layer_function_generator import templatedoc
-from paddle.fluid.param_attr import ParamAttr
 from paddle.nn.initializer import Constant, Normal
 
 __all__ = []
@@ -143,37 +152,35 @@ def fc(
     Examples:
         .. code-block:: python
 
-          import paddle
-          paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          # When input is a single tensor
-          x = paddle.static.data(name="x", shape=[1, 2, 2], dtype="float32")
-          # x: [[[0.1 0.2]
-          #      [0.3 0.4]]]
-          out = paddle.static.nn.fc(
-              x=x,
-              size=1,
-              num_flatten_dims=2,
-              weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
-              bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
-          # out: [[[1.15]
-          #        [1.35]]]
+            >>> # When input is a single tensor
+            >>> x = paddle.static.data(name="x", shape=[1, 2, 2], dtype="float32")
+            >>> out = paddle.static.nn.fc(
+            ...     x=x,
+            ...     size=1,
+            ...     num_flatten_dims=2,
+            ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
+            >>> print(out)
+            var fc_0.tmp_1 : LOD_TENSOR.shape(1, 2, 1).dtype(float32).stop_gradient(False)
 
-          # When input is multiple tensors
-          x0 = paddle.static.data(name="x0", shape=[1, 2, 2], dtype="float32")
-          # x0: [[[0.1 0.2]
-          #       [0.3 0.4]]]
-          x1 = paddle.static.data(name="x1", shape=[1, 1, 3], dtype="float32")
-          # x1: [[[0.1 0.2 0.3]]]
-          out = paddle.static.nn.fc(
-              x=[x0, x1],
-              size=2,
-              weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
-              bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
-          # out: [[1.8 1.8]]
+            >>> # When input is multiple tensors
+            >>> x0 = paddle.static.data(name="x0", shape=[1, 2, 2], dtype="float32")
+            >>> x1 = paddle.static.data(name="x1", shape=[1, 1, 3], dtype="float32")
+
+            >>> out = paddle.static.nn.fc(
+            ...     x=[x0, x1],
+            ...     size=2,
+            ...     weight_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=0.5)),
+            ...     bias_attr=paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(value=1.0)))
+            >>> print(out)
+            var fc_1.tmp_3 : LOD_TENSOR.shape(1, 2).dtype(float32).stop_gradient(False)
+
     """
 
-    def fc_fluid(
+    def fc_base(
         input,
         size,
         num_flatten_dims=1,
@@ -229,7 +236,7 @@ def fc(
         # add activation
         return helper.append_activation(pre_activation)
 
-    return fc_fluid(
+    return fc_base(
         input=x,
         size=size,
         num_flatten_dims=num_flatten_dims,
@@ -277,17 +284,17 @@ def instance_norm(
         epsilon(float, Default 1e-05): A value added to the denominator for
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None|bool, optional): The parameter attribute for Parameter `scale`
-             of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
-             Default: None.
+            of instance_norm. If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+            If the Initializer of the param_attr is not set, the parameter is initialized
+            with Xavier. If the param_attr is set to False, instance_norm will not create param_attr.
+            Default: None.
         bias_attr(ParamAttr|None|bool, optional): The parameter attribute for the bias of instance_norm.
-             If it is set to None or one attribute of ParamAttr, instance_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-             If the bias_attr is set to False, instance_norm will not create bias_attr.
-         Default: None.
+            If it is set to None or one attribute of ParamAttr, instance_norm
+            will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+            If the Initializer of the bias_attr is not set, the bias is initialized zero.
+            If the bias_attr is set to False, instance_norm will not create bias_attr.
+            Default: None.
         name(string, Default None): A name for this layer(optional). If set None, the layer
             will be named automatically.
 
@@ -299,11 +306,11 @@ def instance_norm(
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = paddle.static.nn.fc(x, size=200)
-            hidden2 = paddle.static.nn.instance_norm(hidden1)
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            >>> hidden1 = paddle.static.nn.fc(x, size=200)
+            >>> hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
     check_variable_and_dtype(
         input,
@@ -403,18 +410,18 @@ def continuous_value_model(input, cvm, use_cvm=True):
         A Tensor with same type as input.
     Examples:
         .. code-block:: python
-          import paddle.fluid as fluid
-          import paddle
-          input = paddle.static.data(name="input", shape=[64, 1], dtype="int64")
-          label = paddle.static.data(name="label", shape=[64, 1], dtype="int64")
-          w0 = paddle.full(shape=(100, 1), fill_value=2).astype(paddle.float32)
-          embed = paddle.nn.functional.embedding(
-                            input,
-                            w0)
-          ones = paddle.full_like(label, 1, dtype="int64")
-          show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
-          show_clk.stop_gradient = True
-          input_with_cvm = paddle.static.nn.continuous_value_model(embed, show_clk, True)
+
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> input = paddle.static.data(name="input", shape=[64, 1], dtype="int64")
+            >>> label = paddle.static.data(name="label", shape=[64, 1], dtype="int64")
+            >>> w0 = paddle.full(shape=(100, 1), fill_value=2).astype(paddle.float32)
+            >>> embed = paddle.nn.functional.embedding(input, w0)
+            >>> ones = paddle.full_like(label, 1, dtype="int64")
+            >>> show_clk = paddle.cast(paddle.concat([ones, label], axis=1), dtype='float32')
+            >>> show_clk.stop_gradient = True
+            >>> input_with_cvm = paddle.static.nn.continuous_value_model(embed[:, 0], show_clk, True)
     """
     helper = LayerHelper('cvm', **locals())
     out = helper.create_variable(dtype=input.dtype)
@@ -506,11 +513,11 @@ def data_norm(
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.randn(shape=[32,100])
-            hidden2 = paddle.static.nn.data_norm(input=x)
+            >>> x = paddle.randn(shape=[32, 100])
+            >>> hidden2 = paddle.static.nn.data_norm(input=x)
     """
     helper = LayerHelper('data_norm', **locals())
     dtype = helper.input_dtype()
@@ -685,12 +692,13 @@ def group_norm(
     Examples:
        .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
-            x = paddle.static.nn.group_norm(input=data, groups=4)
-            print(x.shape) # [2, 8, 32, 32]
+            >>> data = paddle.static.data(name='data', shape=[2, 8, 32, 32], dtype='float32')
+            >>> x = paddle.static.nn.group_norm(input=data, groups=4)
+            >>> print(x.shape)
+            (2, 8, 32, 32)
     """
     helper = LayerHelper('group_norm', **locals())
     dtype = helper.input_dtype()
@@ -879,12 +887,13 @@ def conv2d(
     Examples:
         .. code-block:: python
 
-          import paddle
-          paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
-          print(conv2d.shape) # [-1, 2, 30, 30]
+            >>> data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+            >>> conv2d = paddle.static.nn.conv2d(input=data, num_filters=2, filter_size=3, act="relu")
+            >>> print(conv2d.shape)
+            (-1, 2, 30, 30)
     """
 
     check_variable_and_dtype(
@@ -892,8 +901,7 @@ def conv2d(
     )
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
     num_channels = input.shape[1]
     if not isinstance(use_cudnn, bool):
@@ -922,7 +930,7 @@ def conv2d(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1011,8 +1019,8 @@ def conv2d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return Normal(0.0, std)
@@ -1028,7 +1036,7 @@ def conv2d(
 
     if (
         core.is_compiled_with_cuda()
-        and paddle.fluid.get_flags("FLAGS_conv2d_disable_cudnn")[
+        and paddle.base.get_flags("FLAGS_conv2d_disable_cudnn")[
             "FLAGS_conv2d_disable_cudnn"
         ]
     ):
@@ -1184,19 +1192,22 @@ def conv3d(
     Examples:
         .. code-block:: python
 
-          import paddle
-          import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-          paddle.enable_static()
-          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
-          res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
-          place = paddle.CPUPlace()
-          exe = paddle.static.Executor(place)
-          exe.run(paddle.static.default_startup_program())
-          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-          output = exe.run(feed={"data": x}, fetch_list=[res])
-          print(output)
+            >>> np.random.seed(1107)
+            >>> paddle.seed(1107)
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+            >>> param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+            >>> res = paddle.static.nn.conv3d(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+            >>> output,  = exe.run(feed={"data": x}, fetch_list=[res])
+            >>> print(output.shape)
+            (1, 2, 10, 30, 30)
     """
 
     l_type = 'conv3d'
@@ -1234,9 +1245,7 @@ def conv3d(
         num_filter_channels = num_channels
     elif groups <= 0:
         raise ValueError(
-            "the groups of conv3d should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d should be greater than 0. Received groups: {groups}"
         )
     else:
         if num_channels % groups != 0:
@@ -1313,8 +1322,8 @@ def conv3d(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
 
         std = (2.0 / filter_elem_num) ** 0.5
@@ -1491,7 +1500,7 @@ def conv2d_transpose(
             is not set, the parameter is initialized with Xavier. Default: None.
         bias_attr (ParamAttr|bool, optional): Specifies the object for the bias parameter attribute.
             The default value is None, which means that the default bias parameter attribute is used.
-            For detailed information, please refer to :ref:`paramattr`.
+            For detailed information, please refer to :ref:`api_paddle_ParamAttr`.
             The default bias initialisation for the conv2d_transpose operator is 0.0.
         use_cudnn(bool, optional): Use cudnn kernel or not, it is valid only when the cudnn
             library is installed. Default: True.
@@ -1527,22 +1536,22 @@ def conv2d_transpose(
         ShapeError: If the size of `output_size` is not equal to that of `stride`.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          import paddle
-          paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
-          conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
-          print(conv2d_transpose.shape) # [-1, 2, 34, 34]
+            >>> data = paddle.static.data(name='data', shape=[None, 3, 32, 32], dtype='float32')
+            >>> conv2d_transpose = paddle.static.nn.conv2d_transpose(input=data, num_filters=2, filter_size=3)
+            >>> print(conv2d_transpose.shape)
+            (-1, 2, 34, 34)
     """
     assert (
         param_attr is not False
     ), "param_attr should not be False in conv2d_transpose."
     if len(input.shape) != 4:
         raise ValueError(
-            "Input size should be 4, "
-            "but received {}".format(len(input.shape))
+            "Input size should be 4, " f"but received {len(input.shape)}"
         )
 
     if num_filters == 0:
@@ -1699,7 +1708,7 @@ def conv2d_transpose(
     elif groups <= 0:
         raise ValueError(
             "the groups of input must be greater than 0, "
-            "but received the groups of input is {}".format(groups)
+            f"but received the groups of input is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -1898,21 +1907,24 @@ def conv3d_transpose(
         variable storing transposed convolution and non-linearity activation result.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          import paddle
-          import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-          paddle.enable_static()
-          data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
-          param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
-          res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
-          place = paddle.CPUPlace()
-          exe = paddle.static.Executor(place)
-          exe.run(paddle.static.default_startup_program())
-          x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
-          output = exe.run(feed={"data": x}, fetch_list=[res])
-          print(output)
+            >>> paddle.seed(1107)
+            >>> np.random.seed(1107)
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name='data', shape=[None, 3, 12, 32, 32], dtype='float32')
+            >>> param_attr = paddle.framework.ParamAttr(name='conv3d.weight', initializer=paddle.nn.initializer.XavierNormal(), learning_rate=0.001)
+            >>> res = paddle.static.nn.conv3d_transpose(input=data, num_filters=2, filter_size=3, act="relu", param_attr=param_attr)
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> x = np.random.rand(1, 3, 12, 32, 32).astype("float32")
+            >>> output = exe.run(feed={"data": x}, fetch_list=[res.mean()])
+            >>> print(output)
+            [array(0.5148856, dtype=float32)]
     """
     assert (
         param_attr is not False
@@ -2052,16 +2064,12 @@ def conv3d_transpose(
     groups = 1 if groups is None else groups
     if groups <= 0:
         raise ValueError(
-            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".format(
-                groups
-            )
+            f"the groups of conv3d_transpose should be greater than 0. Received groups: {groups}"
         )
     if num_filters % groups != 0:
         raise ValueError(
             "Attr(num_filters) must be divisible by groups,"
-            "Received: Attr(num_filters) is {}, the groups is {}".format(
-                num_filters, groups
-            )
+            f"Received: Attr(num_filters) is {num_filters}, the groups is {groups}"
         )
 
     filter_shape = [input_channel, num_filters // groups] + filter_size
@@ -2217,28 +2225,26 @@ def deformable_conv(
     Examples:
         .. code-block:: python
 
-          #deformable conv v2:
+            >>> # deformable conv v2:
+            >>> import paddle
+            >>> paddle.enable_static()
 
-              import paddle
-              paddle.enable_static()
+            >>> C_in, H_in, W_in = 3, 32, 32
+            >>> filter_size, deformable_groups = 3, 1
+            >>> data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+            >>> offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> mask = paddle.static.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> out = paddle.static.nn.common.deformable_conv(input=data, offset=offset, mask=mask,
+            ...                                     num_filters=2, filter_size=filter_size, padding=1, modulated=True)
 
-              C_in, H_in, W_in = 3, 32, 32
-              filter_size, deformable_groups = 3, 1
-              data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-              offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-              mask = paddle.static.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-              out = paddle.static.layers.common.deformable_conv(input=data, offset=offset, mask=mask,
-                                                 num_filters=2, filter_size=filter_size, padding=1, modulated=True)
-
-              #deformable conv v1:
-
-              import paddle
-              C_in, H_in, W_in = 3, 32, 32
-              filter_size, deformable_groups = 3, 1
-              data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-              offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-              out = paddle.static.layers.common.deformable_conv(input=data, offset=offset, mask=None,
-                                                 num_filters=2, filter_size=filter_size, padding=1, modulated=False)
+            >>> # deformable conv v1:
+            >>> import paddle
+            >>> C_in, H_in, W_in = 3, 32, 32
+            >>> filter_size, deformable_groups = 3, 1
+            >>> data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+            >>> offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> out = paddle.static.nn.common.deformable_conv(input=data, offset=offset, mask=None,
+            ...                                     num_filters=2, filter_size=filter_size, padding=1, modulated=False)
     """
 
     check_variable_and_dtype(
@@ -2289,8 +2295,8 @@ def deformable_conv(
         if filter_elem_num <= 0:
             raise ValueError(
                 "Invalid filter number, excepted number is larger than 0, but"
-                " received {}, please check the input shape and "
-                "filter size.".format(filter_elem_num)
+                f" received {filter_elem_num}, please check the input shape and "
+                "filter size."
             )
         std = (2.0 / filter_elem_num) ** 0.5
         return paddle.nn.initializer.normal.Normal(0.0, std)
@@ -2462,30 +2468,28 @@ def deform_conv2d(
     Examples:
         .. code-block:: python
 
-          #deformable conv v2:
+            >>> # deformable conv v2:
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          import paddle
-          paddle.enable_static()
+            >>> C_in, H_in, W_in = 3, 32, 32
+            >>> filter_size, deformable_groups = 3, 1
+            >>> data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+            >>> offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> mask = paddle.static.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> out = paddle.static.nn.deform_conv2d(x=data, offset=offset, mask=mask,
+            ...                                      num_filters=2, filter_size=filter_size, padding=1)
 
-          C_in, H_in, W_in = 3, 32, 32
-          filter_size, deformable_groups = 3, 1
-          data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-          offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          mask = paddle.static.data(name='mask', shape=[None, deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          out = paddle.static.nn.deform_conv2d(x=data, offset=offset, mask=mask,
-                                             num_filters=2, filter_size=filter_size, padding=1)
+            >>> # deformable conv v1:
+            >>> import paddle
+            >>> paddle.enable_static()
 
-          #deformable conv v1:
-
-          import paddle
-          paddle.enable_static()
-
-          C_in, H_in, W_in = 3, 32, 32
-          filter_size, deformable_groups = 3, 1
-          data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
-          offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
-          out = paddle.static.nn.deform_conv2d(x=data, offset=offset, mask=None,
-                                             num_filters=2, filter_size=filter_size, padding=1)
+            >>> C_in, H_in, W_in = 3, 32, 32
+            >>> filter_size, deformable_groups = 3, 1
+            >>> data = paddle.static.data(name='data', shape=[None, C_in, H_in, W_in], dtype='float32')
+            >>> offset = paddle.static.data(name='offset', shape=[None, 2*deformable_groups*filter_size**2, H_in, W_in], dtype='float32')
+            >>> out = paddle.static.nn.deform_conv2d(x=data, offset=offset, mask=None,
+            ...                                      num_filters=2, filter_size=filter_size, padding=1)
     """
 
     if mask is None:
@@ -2554,10 +2558,10 @@ def bilinear_tensor_product(
             :ref:`api_guide_Name` . Usually name is no need to set and None by default.
         param_attr (ParamAttr|None): To specify the weight parameter attribute.
             Default: None, which means the default weight parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
         bias_attr (ParamAttr|None): To specify the bias parameter attribute.
             Default: None, which means the default bias parameter property is
-            used. See usage for details in :ref:`api_fluid_ParamAttr` .
+            used. See usage for details in :ref:`api_paddle_ParamAttr` .
 
     Returns:
         Tensor, A 2-D Tensor of shape [batch_size, size]. Data type is the same as input **x**.
@@ -2565,12 +2569,12 @@ def bilinear_tensor_product(
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
-            y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
-            tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
+            >>> x = paddle.static.data("t1", shape=[-1, 5], dtype="float32")
+            >>> y = paddle.static.data("t2", shape=[-1, 4], dtype="float32")
+            >>> tensor = paddle.static.nn.bilinear_tensor_product(x, y, size=1000)
 
     """
     helper = LayerHelper('bilinear_tensor_product', **locals())
@@ -2634,19 +2638,19 @@ def batch_norm(
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    :math:input is the input features over a mini-batch.
+    :math:`input` is the input features over a mini-batch.
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &//
+        \ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i -
+        \mu_{\\beta})^2 \qquad &//\ mini-batch\ variance \\
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\\\
+        moving\_mean = moving\_mean * momentum + mini-batch\_mean * (1. - momentum) \\
         moving\_var = moving\_var * momentum + mini-batch\_var * (1. - momentum)
 
 
@@ -2660,9 +2664,9 @@ def batch_norm(
 
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}}  \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{
+        \sigma_{\beta}^{2} + \epsilon}}  \\
+        y_i &\gets \gamma \hat{x_i} + \beta
 
     Note:
         if build_strategy.sync_batch_norm=True, the batch_norm in network will use
@@ -2685,14 +2689,14 @@ def batch_norm(
             numerical stability. Default is 1e-5.
         param_attr(ParamAttr|None): The parameter attribute for Parameter `scale`
              of batch_norm. If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
-         If the Initializer of the param_attr is not set, the parameter is initialized
-         with Xavier. Default: None.
+             will create ParamAttr as param_attr, the name of scale can be set in ParamAttr.
+             If the Initializer of the param_attr is not set, the parameter is initialized
+             with Xavier. Default: None.
         bias_attr(ParamAttr|None): The parameter attribute for the bias of batch_norm.
              If it is set to None or one attribute of ParamAttr, batch_norm
-         will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
-         If the Initializer of the bias_attr is not set, the bias is initialized zero.
-         Default: None.
+             will create ParamAttr as bias_attr, the name of bias can be set in ParamAttr.
+             If the Initializer of the bias_attr is not set, the bias is initialized zero.
+             Default: None.
         data_layout (str, optional): Specify the data format of the input, and the data format of the output
              will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
              The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
@@ -2722,16 +2726,16 @@ def batch_norm(
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
-            hidden1 = paddle.static.nn.fc(x=x, size=200)
-            print(hidden1.shape)
-            # [3, 200]
-            hidden2 = paddle.static.nn.batch_norm(input=hidden1)
-            print(hidden2.shape)
-            # [3, 200]
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name='x', shape=[3, 7, 3, 7], dtype='float32')
+            >>> hidden1 = paddle.static.nn.fc(x=x, size=200)
+            >>> print(hidden1.shape)
+            (3, 200)
+            >>> hidden2 = paddle.static.nn.batch_norm(input=hidden1)
+            >>> print(hidden2.shape)
+            (3, 200)
     """
     assert (
         bias_attr is not False
@@ -2875,7 +2879,7 @@ def batch_norm(
                 *attrs_,
             )
 
-        return paddle.fluid.dygraph_utils._append_activation_in_dygraph(
+        return paddle.base.dygraph_utils._append_activation_in_dygraph(
             batch_norm_out, act=act, use_mkldnn=False
         )
 
@@ -2969,13 +2973,13 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name="x", shape=[None,5,10,10], dtype="float32")
-            mode = 'channel'
-            output = paddle.static.nn.prelu(
-                x,mode,param_attr=paddle.ParamAttr(name='alpha'))
+            >>> x = paddle.static.data(name="x", shape=[None, 5, 10, 10], dtype="float32")
+            >>> mode = 'channel'
+            >>> output = paddle.static.nn.prelu(
+            ...     x,mode,param_attr=paddle.ParamAttr(name='alpha'))
 
     """
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
@@ -2998,7 +3002,7 @@ def prelu(x, mode, param_attr=None, data_format="NCHW", name=None):
         if data_format not in true_data_format:
             raise ValueError(
                 "data_format must be one of 'NC', 'NCL', 'NCHW', 'NCDHW', "
-                "'NLC', 'NHWC', 'NDHWC' but receive {}".format(data_format)
+                f"'NLC', 'NHWC', 'NDHWC' but receive {data_format}"
             )
 
         data_format = 'NCHW' if data_format[1] == 'C' else 'NHWC'
@@ -3161,103 +3165,111 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         Tensor|tuple(Tensor)|list[Tensor], The output ``out`` of the forward function ``func``.
 
     Examples:
-
         .. code-block:: python
             :name: code-example1
 
-            # example 1:
-            import paddle
-            import numpy as np
-            paddle.enable_static()
-            # Creates a forward function, Tensor can be input directly without
-            # being converted into numpy array.
-            def tanh(x):
-                return np.tanh(x)
-            # Skip x in backward function and return the gradient of x
-            # Tensor must be actively converted to numpy array, otherwise,
-            # operations such as +/- can't be used.
-            def tanh_grad(y, dy):
-                return np.array(dy) * (1 - np.square(np.array(y)))
-            # Creates a forward function for debugging running networks(print value)
-            def debug_func(x):
-                print(x)
-            def create_tmp_var(name, dtype, shape):
-                return paddle.static.default_main_program().current_block().create_var(
-                    name=name, dtype=dtype, shape=shape)
-            def simple_net(img, label):
-                hidden = img
-                for idx in range(4):
-                    hidden = paddle.static.nn.fc(hidden, size=200)
-                    new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
-                        dtype=hidden.dtype, shape=hidden.shape)
-                    # User-defined forward and backward
-                    hidden = paddle.static.py_func(func=tanh, x=hidden,
-                        out=new_hidden, backward_func=tanh_grad,
-                        skip_vars_in_backward_input=hidden)
-                    # User-defined debug functions that print out the input Tensor
-                    paddle.static.py_func(func=debug_func, x=hidden, out=None)
-                prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
-                ce_loss = paddle.nn.loss.CrossEntropyLoss()
-                return ce_loss(prediction, label)
-            x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
-            y = paddle.static.data(name='y', shape=[1], dtype='int64')
-            res = simple_net(x, y)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
-            input1 = np.random.random(size=[1,4]).astype('float32')
-            input2 = np.random.randint(1, 10, size=[1], dtype='int64')
-            out = exe.run(paddle.static.default_main_program(),
-                          feed={'x':input1, 'y':input2},
-                          fetch_list=[res.name])
-            print(out)
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> np.random.seed(1107)
+            >>> paddle.seed(1107)
+
+            >>> paddle.enable_static()
+            >>> # Creates a forward function, Tensor can be input directly without
+            >>> # being converted into numpy array.
+            >>> def tanh(x):
+            ...     return np.tanh(x)
+
+            >>> # Skip x in backward function and return the gradient of x
+            >>> # Tensor must be actively converted to numpy array, otherwise,
+            >>> # operations such as +/- can't be used.
+            >>> def tanh_grad(y, dy):
+            ...     return np.array(dy) * (1 - np.square(np.array(y)))
+
+            >>> # Creates a forward function for debugging running networks(print value)
+            >>> def debug_func(x):
+            ...     # print(x)
+            ...     pass
+            >>> def create_tmp_var(name, dtype, shape):
+            ...     return paddle.static.default_main_program().current_block().create_var(
+            ...         name=name, dtype=dtype, shape=shape)
+            >>> def simple_net(img, label):
+            ...     hidden = img
+            ...     for idx in range(4):
+            ...         hidden = paddle.static.nn.fc(hidden, size=200)
+            ...         new_hidden = create_tmp_var(name='hidden_{}'.format(idx),
+            ...             dtype=hidden.dtype, shape=hidden.shape)
+            ...         # User-defined forward and backward
+            ...         hidden = paddle.static.py_func(func=tanh, x=hidden,
+            ...             out=new_hidden, backward_func=tanh_grad,
+            ...             skip_vars_in_backward_input=hidden)
+            ...         # User-defined debug functions that print out the input Tensor
+            ...         paddle.static.py_func(func=debug_func, x=hidden, out=None)
+            ...     prediction = paddle.static.nn.fc(hidden, size=10, activation='softmax')
+            ...     ce_loss = paddle.nn.loss.CrossEntropyLoss()
+            ...     return ce_loss(prediction, label)
+            >>> x = paddle.static.data(name='x', shape=[1,4], dtype='float32')
+            >>> y = paddle.static.data(name='y', shape=[1], dtype='int64')
+            >>> res = simple_net(x, y)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+            >>> input1 = np.random.random(size=[1,4]).astype('float32')
+            >>> input2 = np.random.randint(1, 10, size=[1], dtype='int64')
+            >>> out = exe.run(paddle.static.default_main_program(),
+            ...                 feed={'x':input1, 'y':input2},
+            ...                 fetch_list=[res.name])
+            >>> print(out[0].shape)
+            ()
 
         .. code-block:: python
             :name: code-example2
 
-            # example 2:
-            # This example shows how to turn Tensor into numpy array and
-            # use numpy API to register an Python OP
-            import paddle
-            import numpy as np
-            paddle.enable_static()
-            def element_wise_add(x, y):
-                # Tensor must be actively converted to numpy array, otherwise,
-                # numpy.shape can't be used.
-                x = np.array(x)
-                y = np.array(y)
-                if x.shape != y.shape:
-                    raise AssertionError("the shape of inputs must be the same!")
-                result = np.zeros(x.shape, dtype='int32')
-                for i in range(len(x)):
-                    for j in range(len(x[0])):
-                        result[i][j] = x[i][j] + y[i][j]
-                return result
-            def create_tmp_var(name, dtype, shape):
-                return paddle.static.default_main_program().current_block().create_var(
-                            name=name, dtype=dtype, shape=shape)
-            def py_func_demo():
-                start_program = paddle.static.default_startup_program()
-                main_program = paddle.static.default_main_program()
-                # Input of the forward function
-                x = paddle.static.data(name='x', shape=[2,3], dtype='int32')
-                y = paddle.static.data(name='y', shape=[2,3], dtype='int32')
-                # Output of the forward function, name/dtype/shape must be specified
-                output = create_tmp_var('output','int32', [3,1])
-                # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
-                paddle.static.py_func(func=element_wise_add, x=[x,y], out=output)
-                exe=paddle.static.Executor(paddle.CPUPlace())
-                exe.run(start_program)
-                # Feed numpy array to main_program
-                input1 = np.random.randint(1, 10, size=[2,3], dtype='int32')
-                input2 = np.random.randint(1, 10, size=[2,3], dtype='int32')
-                out = exe.run(main_program,
-                            feed={'x':input1, 'y':input2},
-                            fetch_list=[output.name])
-                print("{0} + {1} = {2}".format(input1, input2, out))
-            py_func_demo()
-            # Reference output:
-            # [[5, 9, 9]   + [[7, 8, 4]  =  [array([[12, 17, 13]
-            #  [7, 5, 2]]     [1, 3, 3]]            [8, 8, 5]], dtype=int32)]
+            >>> # This example shows how to turn Tensor into numpy array and
+            >>> # use numpy API to register an Python OP
+            >>> import paddle
+            >>> import numpy as np
+
+            >>> np.random.seed(1107)
+            >>> paddle.seed(1107)
+
+            >>> paddle.enable_static()
+            >>> def element_wise_add(x, y):
+            ...     # Tensor must be actively converted to numpy array, otherwise,
+            ...     # numpy.shape can't be used.
+            ...     x = np.array(x)
+            ...     y = np.array(y)
+            ...     if x.shape != y.shape:
+            ...         raise AssertionError("the shape of inputs must be the same!")
+            ...     result = np.zeros(x.shape, dtype='int32')
+            ...     for i in range(len(x)):
+            ...         for j in range(len(x[0])):
+            ...             result[i][j] = x[i][j] + y[i][j]
+            ...     return result
+            >>> def create_tmp_var(name, dtype, shape):
+            ...     return paddle.static.default_main_program().current_block().create_var(
+            ...                 name=name, dtype=dtype, shape=shape)
+            >>> def py_func_demo():
+            ...     start_program = paddle.static.default_startup_program()
+            ...     main_program = paddle.static.default_main_program()
+            ...     # Input of the forward function
+            ...     x = paddle.static.data(name='x', shape=[2, 3], dtype='int32')
+            ...     y = paddle.static.data(name='y', shape=[2, 3], dtype='int32')
+            ...     # Output of the forward function, name/dtype/shape must be specified
+            ...     output = create_tmp_var('output','int32', [3, 1])
+            ...     # Multiple Tensor should be passed in the form of tuple(Tensor) or list[Tensor]
+            ...     paddle.static.py_func(func=element_wise_add, x=[x, y], out=output)
+            ...     exe=paddle.static.Executor(paddle.CPUPlace())
+            ...     exe.run(start_program)
+            ...     # Feed numpy array to main_program
+            ...     input1 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
+            ...     input2 = np.random.randint(1, 10, size=[2, 3], dtype='int32')
+            ...     out = exe.run(main_program,
+            ...                feed={'x':input1, 'y':input2},
+            ...                fetch_list=[output.name])
+            ...     print("{0} + {1} = {2}".format(input1, input2, out))
+            >>> py_func_demo()
+            >>> # [[1 5 4]   + [[3 7 7]  =  [array([[ 4, 12, 11]
+            >>> #  [9 4 8]]     [2 3 9]]            [11,  7, 17]], dtype=int32)]
     """
     helper = LayerHelper('py_func', **locals())
     check_type(x, 'X', (list, tuple, Variable, type(None)), 'py_func')
@@ -3304,9 +3316,7 @@ def py_func(func, x, out, backward_func=None, skip_vars_in_backward_input=None):
         for v in skip_vars_in_backward_input:
             if v.name not in fwd_in_out:
                 raise ValueError(
-                    'Tensor {} is not found in forward inputs and outputs'.format(
-                        v.name
-                    )
+                    f'Tensor {v.name} is not found in forward inputs and outputs'
                 )
             backward_skip_vars.add(v.name)
 
@@ -3343,17 +3353,18 @@ def row_conv(input, future_context_size, param_attr=None, act=None):
 
     Examples:
 
-      .. code-block:: python
+        .. code-block:: python
 
-        # for LodTensor inputs
-        import paddle
-        paddle.enable_static()
-        x = paddle.static.data(name='x', shape=[9, 16],
-                               dtype='float32', lod_level=1)
-        out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
-        # for Tensor inputs
-        y = paddle.static.data(name='y', shape=[9, 4, 16], dtype='float32')
-        out_y = paddle.static.nn.row_conv(input=y, future_context_size=2)
+            >>> # for LodTensor inputs
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name='x', shape=[9, 16],
+            ...                     dtype='float32', lod_level=1)
+            >>> out_x = paddle.static.nn.row_conv(input=x, future_context_size=2)
+
+            >>> # for Tensor inputs
+            >>> y = paddle.static.data(name='y', shape=[9, 4, 16], dtype='float32')
+            >>> out_y = paddle.static.nn.row_conv(input=y, future_context_size=2)
     """
     helper = LayerHelper('row_conv', **locals())
     check_variable_and_dtype(input, 'input', ['float32'], 'row_conv')
@@ -3434,12 +3445,13 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     Examples:
        .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
-            x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
-            print(x.shape) # [2, 8, 32, 32]
+            >>> paddle.enable_static()
+            >>> weight = paddle.static.data(name='weight', shape=[2, 8, 32, 32], dtype='float32')
+            >>> x = paddle.static.nn.spectral_norm(weight=weight, dim=1, power_iters=2)
+            >>> print(x.shape)
+            (2, 8, 32, 32)
     """
     helper = LayerHelper('spectral_norm', **locals())
     check_variable_and_dtype(
@@ -3575,11 +3587,12 @@ def layer_norm(
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
-            output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
-            print(output.shape)  # [8, 32, 32]
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> x = paddle.static.data(name='x', shape=[8, 32, 32], dtype='float32')
+            >>> output = paddle.static.nn.layer_norm(input=x, begin_norm_axis=1)
+            >>> print(output.shape)
+            (8, 32, 32)
     """
     assert (
         in_dygraph_mode() is not True
@@ -3735,37 +3748,29 @@ def embedding(
     Static Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
-            paddle.enable_static()
+            >>> import paddle
+            >>> import numpy as np
+            >>> paddle.enable_static()
 
-            x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
-            output = paddle.static.nn.embedding(x, (10, 3),
-                        param_attr=paddle.nn.initializer.Constant(value=1.0))
-            m_output=paddle.mean(output)
-            place = paddle.CPUPlace()
-            exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
+            >>> x = paddle.static.data(name="x", shape = [2, 4], dtype=np.int64)
+            >>> output = paddle.static.nn.embedding(x, (10, 3),
+            ...             param_attr=paddle.nn.initializer.Constant(value=1.0))
+            >>> m_output=paddle.mean(output)
+            >>> place = paddle.CPUPlace()
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(paddle.static.default_startup_program())
 
-            x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
-
-            # x is a Numpy.
-            # x.data = [[7, 2, 4, 5], [4, 3, 2, 9]]
-            # x.shape = [2, 4]
-
-            out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
-
-            # out is a Numpy.
-            # out.data = [[1., 1., 1.],
-            #             [1., 1., 1.],
-            #             [1., 1., 1.],
-            #             [1., 1., 1.]],
-            #
-            #            [[1., 1., 1.],
-            #             [1., 1., 1.],
-            #             [1., 1., 1.],
-            #             [0., 0., 0.]]]
-            # out.shape = [2, 4, 3]
+            >>> x = np.array([[7, 2, 4, 5],[4, 3, 2, 9]], dtype=np.int64)
+            >>> out, = exe.run(paddle.static.default_main_program(), feed={'x':x}, fetch_list=[output])
+            >>> print(out)
+            [[[1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]]
+             [[1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]
+              [1. 1. 1.]]]
     """
 
     helper = LayerHelper('embedding', **locals())
@@ -3903,24 +3908,24 @@ def sparse_embedding(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
-            sparse_feature_dim = 1024
-            embedding_size = 64
+            >>> paddle.enable_static()
+            >>> sparse_feature_dim = 1024
+            >>> embedding_size = 64
 
-            # Only when the feature appear more than 10 times or more will be participated in the training.
-            entry = paddle.distributed.CountFilterEntry(10)
+            >>> # Only when the feature appear more than 10 times or more will be participated in the training.
+            >>> entry = paddle.distributed.CountFilterEntry(10)
 
-            input = paddle.static.data(name='ins', shape=[1], dtype='int64')
+            >>> input = paddle.static.data(name='ins', shape=[1], dtype='int64')
 
-            emb = paddle.static.nn.sparse_embedding(
-                input=input,
-                size=[sparse_feature_dim, embedding_size],
-                is_test=False,
-                entry=entry,
-                param_attr=paddle.ParamAttr(name="SparseFeatFactors",
-                initializer=paddle.nn.initializer.Uniform()))
+            >>> emb = paddle.static.nn.sparse_embedding(
+            ...     input=input,
+            ...     size=[sparse_feature_dim, embedding_size],
+            ...     is_test=False,
+            ...     entry=entry,
+            ...     param_attr=paddle.ParamAttr(name="SparseFeatFactors",
+            ...     initializer=paddle.nn.initializer.Uniform()))
 
     """
 
@@ -3999,3 +4004,259 @@ def sparse_embedding(
         },
     )
     return tmp
+
+
+class ExponentialMovingAverage:
+    r"""
+
+    Compute the moving average of parameters with exponential decay.
+    Given a parameter :math:`\\theta`, its exponential moving average (EMA)
+    will be
+
+    ..  math::
+
+        \text{EMA}_0 & = 0
+
+        \text{EMA}_t & = \text{decay} * \text{EMA}_{t-1} + (1 - \text{decay}) * \theta_t
+
+    The average results calculated by **update()** method will be saved in
+    temporary variables which are created and maintained by the object, and can
+    be applied to parameters of current model by calling **apply()** method. And
+    the **restore()** method is used to restore the parameters.
+
+    **Bias correction**. All EMAs are initialized to :math:`0` and hence they will be
+    zero biased, which can be corrected by divided by a factor
+    :math:`(1 - \text{decay}^t)` , i.e., the actual EMAs applied to parameters
+    when calling **apply()** method would be
+
+    ..  math::
+
+        \widehat{\text{EMA}}_t = \frac{\text{EMA}_t}{1 - \text{decay}^t}
+
+    **Decay rate scheduling**. A large decay rate very close to 1 would result
+    in that the averages move very slowly. And a better strategy is to set a
+    relative smaller decay rate in the very beginning. The argument **thres_steps**
+    allows users to pass a Variable to schedule the decay rate, in this case,
+    the actual decay rate becomes
+
+    ..  math::
+
+        \min(\text{decay}, \frac{1 + \text{thres_steps}}{10 + \text{thres_steps}})
+
+    Usually **thres_steps** can be the global training steps.
+
+
+    Args:
+        decay (float, optional): The exponential decay rate, usually close to 1, such as 0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None, optional): If not `None`, schedule the decay rate. Default None.
+        name (str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+
+
+    Examples:
+
+        .. code-block:: python
+
+            >>> import numpy
+            >>> import paddle
+            >>> import paddle.static as static
+            >>> from paddle.static import ExponentialMovingAverage
+
+            >>> paddle.enable_static()
+
+            >>> data = static.data(name='x', shape=[-1, 5], dtype='float32')
+            >>> hidden = static.nn.fc(x=data, size=10)
+            >>> cost = paddle.mean(hidden)
+
+            >>> test_program = static.default_main_program().clone(for_test=True)
+            >>> optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            >>> optimizer.minimize(cost)
+
+            >>> ema = ExponentialMovingAverage(0.999)
+            >>> ema.update()
+
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+
+            >>> for pass_id in range(3):
+            ...     for batch_id in range(6):
+            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         exe.run(program=static.default_main_program(),
+            ...         feed={'x': data},
+            ...         fetch_list=[cost.name])
+
+            ...     # usage 1
+            ...     with ema.apply(exe):
+            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         exe.run(program=test_program,
+            ...             feed={'x': data},
+            ...             fetch_list=[hidden.name])
+
+            ...     # usage 2
+            ...     with ema.apply(exe, need_restore=False):
+            ...         data = numpy.random.random(size=(10, 5)).astype('float32')
+            ...         exe.run(program=test_program,
+            ...             feed={'x': data},
+            ...             fetch_list=[hidden.name])
+            ...     ema.restore(exe)
+
+    """
+
+    def __init__(self, decay=0.999, thres_steps=None, name=None):
+        if in_dygraph_mode():
+            raise Exception(
+                "In dygraph, don't support ExponentialMovingAverage."
+            )
+        self._decay = decay
+        self._thres_steps = thres_steps
+        self._name = name if name is not None else ''
+        self._decay_var = self._get_ema_decay()
+
+        self._step_counter_name = "@EMA_STEP_COUNTER@"
+        self._params_tmps = []
+        for param in default_main_program().global_block().all_parameters():
+            if param.do_model_average:
+                tmp = param.block.create_var(
+                    name=unique_name.generate(
+                        ".".join([self._name + param.name, 'ema_tmp'])
+                    ),
+                    dtype=param.dtype,
+                    persistable=False,
+                    stop_gradient=True,
+                )
+                self._params_tmps.append((param, tmp))
+
+        self._ema_vars = {}
+        for param, tmp in self._params_tmps:
+            with param.block.program._optimized_guard([param, tmp]), name_scope(
+                'moving_average'
+            ):
+                self._ema_vars[param.name] = self._create_ema_vars(param)
+
+        self.apply_program = Program()
+        block = self.apply_program.global_block()
+        with program_guard(main_program=self.apply_program):
+            decay_pow, global_step = self._get_decay_pow(block)
+            for param, tmp in self._params_tmps:
+                param = block._clone_variable(param)
+                tmp = block._clone_variable(tmp)
+                ema = block._clone_variable(self._ema_vars[param.name])
+                paddle.assign(param, output=tmp)
+                # bias correction
+                param_val = paddle.static.nn.cond(
+                    global_step > 0,
+                    lambda: ema / (1.0 - decay_pow),
+                    lambda: ema,
+                )
+                paddle.assign(param_val, output=param)
+        self.restore_program = Program()
+        block = self.restore_program.global_block()
+        with program_guard(main_program=self.restore_program):
+            for param, tmp in self._params_tmps:
+                tmp = block._clone_variable(tmp)
+                param = block._clone_variable(param)
+                paddle.assign(tmp, output=param)
+
+    def _get_ema_decay(self):
+        with default_main_program()._lr_schedule_guard():
+            decay_var = paddle.static.create_global_var(
+                shape=[1],
+                value=self._decay,
+                dtype='float32',
+                persistable=True,
+                name="scheduled_ema_decay_rate",
+            )
+
+            if self._thres_steps is not None:
+                decay_t = (self._thres_steps + 1.0) / (self._thres_steps + 10.0)
+                decay_val = paddle.static.nn.cond(
+                    decay_t < self._decay,
+                    lambda: decay_t,
+                    lambda: np.array([self._decay], dtype=np.float32),
+                )
+                paddle.assign(decay_val, decay_var)
+        return decay_var
+
+    def _get_decay_pow(self, block):
+        global_step = paddle.static.create_global_var(
+            name=self._step_counter_name,
+            shape=[1],
+            value=0,
+            dtype='int64',
+            persistable=True,
+        )
+        global_step = paddle.cast(global_step, "float32")
+        decay_var = block._clone_variable(self._decay_var)
+        decay_pow_acc = paddle.pow(decay_var, global_step)
+        return decay_pow_acc, global_step
+
+    def _create_ema_vars(self, param):
+        param_ema = paddle.static.create_global_var(
+            name=unique_name.generate(self._name + param.name + '_ema'),
+            shape=param.shape,
+            value=0.0,
+            dtype=param.dtype,
+            persistable=True,
+        )
+
+        return param_ema
+
+    def update(self):
+        """
+        Update Exponential Moving Average. Should only call this method in
+        train program.
+        """
+        global_step = paddle.optimizer.lr.autoincreased_step_counter(
+            counter_name=self._step_counter_name
+        )
+        param_master_emas = []
+        for param, tmp in self._params_tmps:
+            with param.block.program._optimized_guard([param, tmp]), name_scope(
+                'moving_average'
+            ):
+                param_ema = self._ema_vars[param.name]
+                if param.name + '.master' in self._ema_vars:
+                    master_ema = self._ema_vars[param.name + '.master']
+                    param_master_emas.append([param_ema, master_ema])
+                else:
+                    ema_t = param_ema * self._decay_var + param * (
+                        1 - self._decay_var
+                    )
+                    paddle.assign(ema_t, output=param_ema)
+
+        # for fp16 params
+        for param_ema, master_ema in param_master_emas:
+            default_main_program().global_block().append_op(
+                type="cast",
+                inputs={"X": master_ema},
+                outputs={"Out": param_ema},
+                attrs={
+                    "in_dtype": master_ema.dtype,
+                    "out_dtype": param_ema.dtype,
+                },
+            )
+
+    @signature_safe_contextmanager
+    def apply(self, executor, need_restore=True):
+        """
+        Apply moving average to parameters for evaluation.
+
+        Args:
+            executor (Executor): The Executor to execute applying.
+            need_restore (bool, optional): Whether to restore parameters after
+                applying. Default True.
+        """
+        executor.run(self.apply_program)
+        try:
+            yield
+        finally:
+            if need_restore:
+                self.restore(executor)
+
+    def restore(self, executor):
+        """Restore parameters.
+
+        Args:
+            executor (Executor): The Executor to execute restoring.
+        """
+        executor.run(self.restore_program)

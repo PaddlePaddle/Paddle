@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
+from paddle.base import core
+from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.common_ops_import import Variable
-from paddle.fluid import core
-from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle.framework import LayerHelper, in_dynamic_mode
 
 __all__ = []
@@ -237,9 +237,7 @@ def dropout(
 
         if isinstance(p, Variable) and not p.shape != [1]:
             raise TypeError(
-                "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                    p.shape
-                )
+                f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
             )
 
         helper = LayerHelper('dropout', **locals())

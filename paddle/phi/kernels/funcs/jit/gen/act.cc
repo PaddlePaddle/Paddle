@@ -41,9 +41,9 @@ const float ALIGN32_BEG exp_float_consts[] ALIGN32_END = {  // NOLINT
     REPEAT_8TIMES(SIGMOID_THRESHOLD_MAX),
     REPEAT_8TIMES(SIGMOID_THRESHOLD_MIN)};
 
-const int ALIGN32_BEG exp_int_0x7f[] ALIGN32_END = {
-    REPEAT_8TIMES(0x7f)};                         // NOLINT
-int ALIGN32_BEG g_tmp_mem[16] ALIGN32_END = {0};  // NOLINT
+const int ALIGN32_BEG exp_int_0x7f[] ALIGN32_END = {  // NOLINT
+    REPEAT_8TIMES(0x7f)};                             // NOLINT
+int ALIGN32_BEG g_tmp_mem[16] ALIGN32_END = {0};      // NOLINT
 
 void VActJitCode::genCode() {
   int offset = 0;

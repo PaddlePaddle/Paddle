@@ -15,7 +15,7 @@ import collections
 import re
 from enum import Enum
 
-from paddle.fluid.core import TracerEventType, TracerMemEventType
+from paddle.base.core import TracerEventType, TracerMemEventType
 from paddle.utils.flops import flops
 
 from .statistic_helper import (
@@ -48,7 +48,7 @@ _CommunicationOpName = ['allreduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
+    SortedKeys is used to specify how to sort items when printing ``paddle.profiler.Profiler.summary`` table.
 
     The meaning of each SortedKeys is as following
 
@@ -276,9 +276,7 @@ def _gen_layer_flops(node, repeat=1):
             flops_n = _format_large_number(node.flops)
             flops_s = _format_large_number(node.flops * 1e9 / node.cpu_time)
             ret.append(
-                "{}{} latency: {}, FLOPs: {}, FLOPS: {}\n".format(
-                    align, name, tm, flops_n, flops_s
-                )
+                f"{align}{name} latency: {tm}, FLOPs: {flops_n}, FLOPS: {flops_s}\n"
             )
 
     for n in node[1:]:

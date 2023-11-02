@@ -31,9 +31,9 @@ Indeed, *data reader* doesn't have to be a function that reads and yields data
 items. It can be any function with no parameter that creates a iterable
 (anything can be used in :code:`for x in iterable`)\:
 
-..  code-block:: python
+.. code-block:: python
 
-    iterable = data_reader()
+    >>> iterable = data_reader()
 
 Element produced from the iterable should be a **single** entry of data,
 **not** a mini batch. That entry of data could be a single item, or a tuple of
@@ -43,23 +43,23 @@ or int).
 
 An example implementation for single item data reader creator:
 
-..  code-block:: python
+.. code-block:: python
 
-    def reader_creator_random_image(width, height):
-        def reader():
-            while True:
-                yield numpy.random.uniform(-1, 1, size=width*height)
-    return reader
+    >>> def reader_creator_random_image(width, height):
+    ...     def reader():
+    ...         while True:
+    ...             yield numpy.random.uniform(-1, 1, size=width*height)
+    ...     return reader
 
 An example implementation for multiple item data reader creator:
 
-..  code-block:: python
+.. code-block:: python
 
-    def reader_creator_random_image_and_label(width, height, label):
-        def reader():
-            while True:
-                yield numpy.random.uniform(-1, 1, size=width*height), label
-    return reader
+    >>> def reader_creator_random_image_and_label(width, height, label):
+    ...     def reader():
+    ...         while True:
+    ...             yield numpy.random.uniform(-1, 1, size=width*height), label
+    ...     return reader
 
 """
 

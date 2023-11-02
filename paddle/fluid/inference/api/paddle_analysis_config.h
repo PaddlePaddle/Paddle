@@ -39,7 +39,7 @@
 // the abstract path of this header file will be changed.
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
 
@@ -690,6 +690,13 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+  /// \brief Whether to get the intermediate output of TensorRT Engine.
+  ///
+  /// \param output_tensor_names The name of the Tensor that needs to be marked
+  ///
+  void MarkTrtEngineOutputs(
+      const std::vector<std::string>& output_tensor_names = {});
+  ///
   /// \brief Turn on the TensorRT memory optimization.
   ///
   /// \param engine_memory_sharing Whether to enable TensorRT memory
@@ -836,9 +843,46 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_dla_enabled() { return trt_use_dla_; }
 
-  void EnableTensorRtInspector();
-
+  ///
+  /// \brief A boolean state telling whether to show TensorRT inspector
+  /// information.
+  ///
+  /// \return bool Whether to show TensorRT inspector information.
+  ///
+  void EnableTensorRtInspector(bool inspector_serialize = false);
   bool tensorrt_inspector_enabled() { return trt_use_inspector_; }
+
+  ///
+  /// \brief A boolean state telling whether to use TensorRT explicit
+  /// quantization.
+  ///
+  /// \return bool Whether to use TensorRT explicit quantization.
+  ///
+  void EnableTensorRtExplicitQuantization();
+  bool tensorrt_explicit_quantization_enabled() {
+    return trt_use_explicit_quantization_;
+  }
+
+  ///
+  /// \brief Set the optimization level of TensorRT
+  /// \param level The optimization level
+  /// The API accepts level in range [0, 5].
+  /// Higher optimization level allows the optimizer to spend more time
+  /// searching for optimization opportunities. The API supports TRT version
+  /// >= 8.6, and takes no effect instead.
+  ///
+  void SetTensorRtOptimizationLevel(int level);
+
+  ///
+  /// \brief An integer telling the TRT optimization level.
+  ///
+  /// \return integer The TRT optimization level.
+  ///
+  int tensorrt_optimization_level() { return trt_optimization_level_; }
+
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
 
   void EnableDlnne(
       int min_subgraph_size = 3,
@@ -1124,6 +1168,14 @@ struct PD_INFER_DECL AnalysisConfig {
   void Exp_DisableMixedPrecisionOps(
       const std::unordered_set<std::string>& black_list);
 
+  ///
+  /// \brief Set a list of operators that do support mixed precision. This
+  /// interface is in the experimental stage and may change in the future. Note
+  /// that the whitelist must be the same as the model conversion whitelist.
+  ///
+  void Exp_EnableMixedPrecisionOps(
+      const std::unordered_set<std::string>& white_list);
+
   void SetApplyOptim(bool value) { apply_optim_ = value; }
 
   void SetSkipLoadParams(bool value) { skip_load_params_ = value; }
@@ -1156,6 +1208,7 @@ struct PD_INFER_DECL AnalysisConfig {
   // Mixed precision related.
   Precision mixed_precision_mode_{Precision::kFloat32};
   std::unordered_set<std::string> mixed_black_list_;
+  std::unordered_set<std::string> mixed_white_list_;
   bool enable_low_precision_io_{false};
 
   // GPU related.
@@ -1204,6 +1257,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool trt_use_cuda_graph_{false};
   bool trt_use_varseqlen_{false};
   bool trt_with_interleaved_{false};
+  bool trt_mark_output_{false};
+  std::vector<std::string> trt_output_tensor_names_{};
   std::string tensorrt_transformer_posid_{""};
   std::string tensorrt_transformer_maskid_{""};
   bool trt_use_dla_{false};
@@ -1217,6 +1272,9 @@ struct PD_INFER_DECL AnalysisConfig {
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};
   bool trt_use_inspector_{false};
+  bool trt_inspector_serialize_{false};
+  bool trt_use_explicit_quantization_{false};
+  int trt_optimization_level_{3};
 
   // In CollectShapeInfo mode, we will collect the shape information of
   // all intermediate tensors in the compute graph and calculate the
@@ -1237,8 +1295,10 @@ struct PD_INFER_DECL AnalysisConfig {
 
   // memory reuse related.
   bool enable_memory_optim_{false};
-  bool trt_engine_memory_sharing_{false};
+  bool trt_engine_memory_sharing_{true};
   int trt_engine_memory_sharing_identifier_{0};
+
+  std::unordered_set<std::string> trt_ops_run_float_;
 
   bool use_mkldnn_{false};
   std::unordered_set<std::string> mkldnn_enabled_op_types_;
@@ -1248,6 +1308,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_ir_optim_{true};
   bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 

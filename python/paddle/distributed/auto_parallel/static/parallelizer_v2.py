@@ -14,6 +14,7 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
@@ -25,7 +26,7 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
+from .utils import get_pp_stage, is_sequential_run, use_new_executor
 
 
 class Parallelizer:
@@ -46,15 +47,15 @@ class Parallelizer:
     def is_test(self):
         return self._mode in ["eval", "predict"]
 
-    def parallel_all(self):
+    def parallel_all(self, parameter_list=None):
         world_process_group = get_world_process_group()
         all_ranks = world_process_group.ranks
         for rank in all_ranks:
             # self._dist_context._backup(serial=True, dist=True)
-            self.parallel(rank)
+            self.parallel(rank, parameter_list)
             # self._dist_context._restore(serial=True, dist=True)
 
-    def parallel(self, rank):
+    def parallel(self, rank, parameter_list=None):
         serial_main_program = self._dist_context.serial_main_program
         serial_startup_program = self._dist_context.serial_startup_program
         serial_optimizer = self._dist_context.serial_optimizer
@@ -62,7 +63,10 @@ class Parallelizer:
             # Generate backward
             serial_loss = self._dist_context.serial_loss
             params_grads = self._generate_backward(
-                serial_main_program, serial_startup_program, serial_loss
+                serial_main_program,
+                serial_startup_program,
+                serial_loss,
+                parameter_list,
             )
             # Apply pre optimization passes
             time0 = time.time()
@@ -113,7 +117,7 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            set_grad_var_shape(dist_main_prog, self._dist_context)
+
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
@@ -211,10 +215,20 @@ class Parallelizer:
         self._dist_context.dist_main_programs[rank] = dist_main_prog
         self._dist_context.dist_startup_programs[rank] = dist_startup_prog
 
-    def _generate_backward(self, main_program, startup_program, loss):
+    def _generate_backward(
+        self, main_program, startup_program, loss, parameter_list=None
+    ):
+        # NOTE(zhaoyinglia):
+        # Guarantee the order of params_grads is same between dynamic mode and static mode
+        # by making parameter_list equal to model.parameters(),
+        # because the order affact the result of ClipGradByGLobalNorm.
+        # If parameter_list is not None, the order of params_grads is same with parameter_list.
+        # If parameter_list is None, params_grads will be as prog.global_block().all_parameters().
         with program_guard(main_program, startup_program):
             params_grads = append_backward(
-                loss, distop_context=self._dist_context.dist_op_context
+                loss,
+                parameter_list=parameter_list,
+                distop_context=self._dist_context.dist_op_context,
             )
         self._completer.complete_backward_annotation(main_program)
         self._dist_context.block_state.parse_backward_blocks(main_program)
@@ -231,6 +245,7 @@ class Parallelizer:
         optimizer = copy.deepcopy(optimizer)
         self._dist_context._serial_optimizer = optimizer
         self._dist_context._serial_optimizer._learning_rate = learning_rate
+        optimizer._sorted = False
 
         with program_guard(main_program, startup_program):
             with unique_name.guard("opt_"):
@@ -340,6 +355,21 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
+        if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
+            if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+                self._logger.warning(
+                    "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
+            allreduce_matmul_grad_overlapping_pass = new_pass(
+                "allreduce_matmul_grad_overlapping", {}
+            )
+            allreduce_matmul_grad_overlapping_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         if self.is_train:
             # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
@@ -353,6 +383,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        if not is_sequential_run():
             # deps for newexe
             config = {}
             config["dist_context"] = self._dist_context
@@ -400,9 +431,27 @@ class Parallelizer:
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
-        if self._strategy.pipeline.enable and use_new_executor():
+        if (
+            self.is_train
+            and self._strategy.pipeline.enable
+            and use_new_executor()
+        ):
+            enable_send_recv_overlap = (
+                self._strategy.pipeline.enable_send_recv_overlap
+            )
+            if (
+                enable_send_recv_overlap
+                and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
+            ):
+                self._logger.warning(
+                    "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
+                "enable_send_recv_overlap": enable_send_recv_overlap,
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),

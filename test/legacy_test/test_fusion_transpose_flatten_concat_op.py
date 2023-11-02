@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 
 @unittest.skipIf(
@@ -54,7 +54,7 @@ class TestFusionTransposeFlattenConcationOp(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, 1e-6)
+        self.check_output_with_place(place, 1e-6, check_dygraph=False)
 
     def init_test_case(self):
         self.shapes = [(3, 4, 17, 17), (3, 8, 7, 7), (3, 12, 5, 5)]

@@ -24,7 +24,7 @@ import parameterized as param
 import utils
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 from paddle.incubate.autograd import primapi, primx
 
 
@@ -260,8 +260,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
             ys_grad = paddle.incubate.autograd.forward_grad(
                 ys, static_xs, static_v
             )
-            sp = paddle.fluid.framework.default_startup_program()
-            mp = paddle.fluid.framework.default_main_program()
+            sp = paddle.base.framework.default_startup_program()
+            mp = paddle.base.framework.default_main_program()
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=ys_grad)
@@ -311,8 +311,8 @@ class TestWithoutProgramGuard(unittest.TestCase):
                 else self.fun(static_xs)
             )
             xs_grad = paddle.incubate.autograd.grad(ys, static_xs, static_v)
-            sp = paddle.fluid.framework.default_startup_program()
-            mp = paddle.fluid.framework.default_main_program()
+            sp = paddle.base.framework.default_startup_program()
+            mp = paddle.base.framework.default_main_program()
             exe = paddle.static.Executor()
             exe.run(sp)
             out = exe.run(mp, feed=feed, fetch_list=xs_grad)

@@ -53,9 +53,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul0_out_var =
       pattern->NewNode(mul0_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul0) eltadd0;
-  decltype(mul0) eltadd0_b_var;
-  decltype(mul0) eltadd0_out_var;
+  decltype(mul0) eltadd0 = nullptr;
+  decltype(mul0) eltadd0_b_var = nullptr;
+  decltype(mul0) eltadd0_out_var = nullptr;
 
   mul0_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
 
@@ -165,9 +165,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul1_out_var =
       pattern->NewNode(mul1_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul1) eltadd1;
-  decltype(mul1) eltadd1_b_var;
-  decltype(mul1) eltadd1_out_var;
+  decltype(mul1) eltadd1 = nullptr;
+  decltype(mul1) eltadd1_b_var = nullptr;
+  decltype(mul1) eltadd1_out_var = nullptr;
 
   mul1_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
   eltadd1 = pattern->NewNode(eltadd1_repr())->assert_is_op("elementwise_add");
@@ -232,9 +232,9 @@ PDNode* MultiHeadMatmulRoformerPattern::operator()() {
   auto* mul2_out_var =
       pattern->NewNode(mul2_out_repr())->assert_is_ops_output(matmul_ops);
 
-  decltype(mul2) eltadd2;
-  decltype(mul2) eltadd2_b_var;
-  decltype(mul2) eltadd2_out_var;
+  decltype(mul2) eltadd2 = nullptr;
+  decltype(mul2) eltadd2_b_var = nullptr;
+  decltype(mul2) eltadd2_out_var = nullptr;
 
   mul2_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
   eltadd2 = pattern->NewNode(eltadd2_repr())->assert_is_op("elementwise_add");
@@ -467,7 +467,8 @@ int MultiHeadMatmulRoformerFusePass::BuildFusion(Graph* graph,
         tmp_combined_w_tensor.mutable_data<float>(platform::CPUPlace());
 
     std::vector<float*> w_vec = {wq_data, wk_data, wv_data};
-    int dims_h = combined_w_dims[0], dims_w = combined_w_dims[2];
+    int dims_h = static_cast<int>(combined_w_dims[0]),
+        dims_w = static_cast<int>(combined_w_dims[2]);
     // Combine the three fc weights together.
     for (int i = 0; i < dims_h; i++) {
       for (int j = 0; j < 3; j++) {

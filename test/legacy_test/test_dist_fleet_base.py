@@ -28,7 +28,7 @@ import unittest
 from contextlib import closing
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 from paddle.distributed.fleet.utils.ps_util import DistributedInfer
@@ -126,18 +126,18 @@ class FleetDistRunnerBase:
             scheduler = paddle.optimizer.lr.ExponentialDecay(
                 learning_rate=LEARNING_RATE, gamma=0.999, verbose=True
             )
-            optimizer = fluid.optimizer.SGD(scheduler, grad_clip=grad_clip)
+            optimizer = paddle.optimizer.SGD(scheduler, grad_clip=grad_clip)
             """
             # learning rate decay method before 2.0
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=fluid.layers.exponential_decay(
+            optimizer = base.optimizer.SGD(
+                learning_rate=base.layers.exponential_decay(
                     learning_rate=LEARNING_RATE,
                     decay_steps=500,
                     decay_rate=0.969,
                     staircase=True))
             """
         else:
-            optimizer = fluid.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
+            optimizer = paddle.optimizer.SGD(LEARNING_RATE, grad_clip=grad_clip)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
@@ -160,10 +160,10 @@ class FleetDistRunnerBase:
         if self._exe is None:
             device_env = os.getenv("DEVICE", 'cpu')
             if device_env == 'cpu':
-                device = fluid.CPUPlace()
+                device = base.CPUPlace()
             elif device_env == 'gpu':
-                device = fluid.CUDAPlace(0)
-            self._exe = fluid.Executor(device)
+                device = base.CUDAPlace(0)
+            self._exe = base.Executor(device)
         return self._exe
 
     def do_dataset_training(self, fleet):
@@ -423,18 +423,14 @@ class TestFleetBase(unittest.TestCase):
         def catlog(logx):
             basename = os.path.basename(logx)
             print(
-                "\n================== Error {} begin =====================".format(
-                    basename
-                )
+                f"\n================== Error {basename} begin ====================="
             )
 
             if not os.path.isfile(logx):
                 raise FileNotFoundError(f"{logx} is not a file")
             os.system(f"cat {logx}")
             print(
-                "================== Error {} end =====================\n".format(
-                    basename
-                )
+                f"================== Error {basename} end =====================\n"
             )
 
         if tr0_ret != 0 or tr1_ret != 0:

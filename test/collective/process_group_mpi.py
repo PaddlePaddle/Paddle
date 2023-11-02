@@ -20,6 +20,8 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
+from paddle.base import core
+from paddle.base.framework import _set_expected_place
 from paddle.distributed.collective import (
     Group,
     _default_group_name,
@@ -27,8 +29,6 @@ from paddle.distributed.collective import (
     _set_group_map_backend,
     _set_group_map_by_name,
 )
-from paddle.fluid import core
-from paddle.fluid.framework import _set_expected_place
 
 ctypes.CDLL("libmpi.so", mode=ctypes.RTLD_GLOBAL)
 

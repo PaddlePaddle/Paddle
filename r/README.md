@@ -32,7 +32,7 @@ library(reticulate)
 library(RcppCNPy)
 
 use_python("/opt/python3.7/bin/python3.7")
-paddle <- import("paddle.fluid.core")
+paddle <- import("paddle.base.core")
 ```
 
 Create an `AnalysisConfig`, which is the configuration of the paddle inference engine.

@@ -55,7 +55,8 @@ class NCEOp : public framework::OperatorWithKernel {
               label_dims,
               label_dims[0]));
     }
-    int num_true_classes = label_dims.size() == 2 ? label_dims[1] : 1;
+    int num_true_classes =
+        static_cast<int>(label_dims.size() == 2 ? label_dims[1] : 1);
     if (ctx->HasInput("Bias")) {
       PADDLE_ENFORCE_EQ(
           ctx->GetInputDim("Weight")[0],

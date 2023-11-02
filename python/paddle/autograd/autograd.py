@@ -15,7 +15,7 @@
 from typing import Optional, Sequence, Tuple, Union
 
 import paddle
-from paddle.fluid import framework
+from paddle.base import framework
 
 
 def as_tensors(xs):
@@ -501,21 +501,23 @@ def jacobian(
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x1 = paddle.randn([3, ])
-            x2 = paddle.randn([3, ])
-            x1.stop_gradient = False
-            x2.stop_gradient = False
+            >>> x1 = paddle.randn([3, ])
+            >>> x2 = paddle.randn([3, ])
+            >>> x1.stop_gradient = False
+            >>> x2.stop_gradient = False
 
-            y = x1 + x2
+            >>> y = x1 + x2
 
-            J = paddle.autograd.jacobian(y, (x1, x2))
-            J_y_x1 = J[0][:] # evaluate result of dy/dx1
-            J_y_x2 = J[1][:] # evaluate result of dy/dx2
+            >>> J = paddle.autograd.jacobian(y, (x1, x2))
+            >>> J_y_x1 = J[0][:] # evaluate result of dy/dx1
+            >>> J_y_x2 = J[1][:] # evaluate result of dy/dx2
 
-            print(J_y_x1.shape) # [3, 3]
-            print(J_y_x2.shape) # [3, 3]
+            >>> print(J_y_x1.shape)
+            [3, 3]
+            >>> print(J_y_x2.shape)
+            [3, 3]
     """
 
     if batch_axis is not None and batch_axis != 0:
@@ -583,25 +585,29 @@ def hessian(
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x1 = paddle.randn([3, ])
-            x2 = paddle.randn([4, ])
-            x1.stop_gradient = False
-            x2.stop_gradient = False
+            >>> x1 = paddle.randn([3, ])
+            >>> x2 = paddle.randn([4, ])
+            >>> x1.stop_gradient = False
+            >>> x2.stop_gradient = False
 
-            y = x1.sum() + x2.sum()
+            >>> y = x1.sum() + x2.sum()
 
-            H = paddle.autograd.hessian(y, (x1, x2))
-            H_y_x1_x1 = H[0][0][:] # evaluate result of ddy/dx1x1
-            H_y_x1_x2 = H[0][1][:] # evaluate result of ddy/dx1x2
-            H_y_x2_x1 = H[1][0][:] # evaluate result of ddy/dx2x1
-            H_y_x2_x2 = H[1][1][:] # evaluate result of ddy/dx2x2
+            >>> H = paddle.autograd.hessian(y, (x1, x2))
+            >>> H_y_x1_x1 = H[0][0][:] # evaluate result of ddy/dx1x1
+            >>> H_y_x1_x2 = H[0][1][:] # evaluate result of ddy/dx1x2
+            >>> H_y_x2_x1 = H[1][0][:] # evaluate result of ddy/dx2x1
+            >>> H_y_x2_x2 = H[1][1][:] # evaluate result of ddy/dx2x2
 
-            print(H_y_x1_x1.shape) # [3, 3]
-            print(H_y_x1_x2.shape) # [3, 4]
-            print(H_y_x2_x1.shape) # [4, 3]
-            print(H_y_x2_x2.shape) # [4, 4]
+            >>> print(H_y_x1_x1.shape)
+            [3, 3]
+            >>> print(H_y_x1_x2.shape)
+            [3, 4]
+            >>> print(H_y_x2_x1.shape)
+            [4, 3]
+            >>> print(H_y_x2_x2.shape)
+            [4, 4]
     """
 
     if batch_axis is None:
@@ -695,7 +701,7 @@ def _grad_for_jacobian(ys, xs, v=None):
         # xs_grad when the xs is a single Tensor.
         xs_grad = paddle.grad(ys, xs, v, create_graph=True, allow_unused=True)
         if (
-            isinstance(xs, paddle.fluid.framework.Variable)
+            isinstance(xs, paddle.base.framework.Variable)
             and isinstance(xs_grad, Sequence)
             and len(xs_grad) > 0
         ):

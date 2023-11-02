@@ -20,7 +20,6 @@ limitations under the License. */
 #include <set>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -32,6 +31,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler/mem_tracing.h"
 #include "paddle/fluid/string/split.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/utils/flags.h"
 
 #ifdef PADDLE_WITH_HIP
 #include "paddle/fluid/platform/dynload/miopen.h"
@@ -52,10 +52,10 @@ PHI_DECLARE_uint64(reallocate_gpu_memory_in_mb);
 PHI_DECLARE_bool(enable_cublas_tensor_op_math);
 PHI_DECLARE_uint64(gpu_memory_limit_mb);
 
-PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
-                            false,
-                            "Whether to print the message of gpu memory usage "
-                            "at exit, mainly used for UT and CI.");
+PHI_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log,
+                         false,
+                         "Whether to print the message of gpu memory usage "
+                         "at exit, mainly used for UT and CI.");
 PADDLE_DEFINE_EXPORTED_bool(enable_gpu_memory_usage_log_mb,
                             true,
                             "Whether to print the message of gpu memory usage "

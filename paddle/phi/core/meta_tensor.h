@@ -23,7 +23,6 @@ limitations under the License. */
 
 namespace phi {
 
-// TODO(chenweihang): add other flags if needed
 struct MetaConfig {
   bool is_runtime{true};
   bool is_run_mkldnn_kernel{false};
@@ -82,9 +81,13 @@ class MetaTensor {
 
   virtual bool is_selected_rows() const;
   virtual bool is_dense() const;
+  virtual bool is_dist() const;
+
   // TODO(YuanRisheng) This API is for compatible with Fluid
   //  and it will be deleted in the future.
   virtual bool is_tensor_array() const;
+
+  virtual bool is_same_tensor(const MetaTensor& meta_tensor) const;
 
   virtual operator unspecified_bool_type() const {
     return tensor_ == nullptr ? 0 : unspecified_bool_true;
@@ -95,7 +98,7 @@ class MetaTensor {
  protected:
   static void unspecified_bool_true() {}
 
- private:
+ protected:
   // Because the lod in compiletime and runtime is different,
   // so `LoD` cannot in public methods
   const LoD& lod() const;

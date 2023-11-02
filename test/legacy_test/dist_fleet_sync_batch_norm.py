@@ -20,9 +20,9 @@ import random
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
+from paddle.base import core
 from paddle.distributed import fleet
-from paddle.fluid import core
 from paddle.static import Executor, Program, program_guard
 
 
@@ -30,7 +30,7 @@ def get_program(args):
     main, startup = Program(), Program()
     main.random_seed = 10
     startup.random_seed = 10
-    with fluid.unique_name.guard():
+    with base.unique_name.guard():
         with program_guard(main, startup):
             data = paddle.static.data(
                 name='input',
@@ -42,14 +42,14 @@ def get_program(args):
                 input=data,
                 num_filters=32,
                 filter_size=1,
-                param_attr=fluid.ParamAttr(name='conv2d_weight'),
+                param_attr=base.ParamAttr(name='conv2d_weight'),
                 bias_attr=False,
                 use_cudnn=args.use_cudnn,
             )
             bn = paddle.static.nn.batch_norm(
                 conv,
-                param_attr=fluid.ParamAttr(name='bn_scale'),
-                bias_attr=fluid.ParamAttr(name='bn_bias'),
+                param_attr=base.ParamAttr(name='bn_scale'),
+                bias_attr=base.ParamAttr(name='bn_bias'),
                 moving_mean_name='bn_moving_mean',
                 moving_variance_name='bn_moving_variance',
                 data_layout=args.layout,
@@ -62,14 +62,14 @@ def get_program(args):
             sigmoid = paddle.nn.functional.sigmoid(bn)
             out = paddle.sum(sigmoid)
             if not args.only_forward:
-                sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                sgd_opt = paddle.optimizer.SGD(learning_rate=0.0)
                 opt = fleet.distributed_optimizer(sgd_opt)
                 opt.minimize(out)
     return main, startup, [out, conv, bn]
 
 
 def train(args):
-    build_strategy = fluid.BuildStrategy()
+    build_strategy = base.BuildStrategy()
     build_strategy.sync_batch_norm = True
     build_strategy.enable_inplace = False
     build_strategy.memory_optimize = False
@@ -86,7 +86,7 @@ def train(args):
     exe.run(startup)
 
     for nm in args.fetch_list:
-        fv = fluid.framework._get_var(str(nm), program=main)
+        fv = base.framework._get_var(str(nm), program=main)
         fv.persistable = True
 
     fetch_list = [v.name for v in outs] + args.fetch_list
@@ -94,13 +94,11 @@ def train(args):
     rank = paddle.distributed.get_rank()
     filepath = os.path.join(
         args.data_dir,
-        'input_{}_{}_{}_{}.npy'.format(
-            rank, args.only_forward, str(args.dtype), args.layout
-        ),
+        f'input_{rank}_{args.only_forward}_{str(args.dtype)}_{args.layout}.npy',
     )
     data = np.load(filepath)
 
-    comp_prog = fluid.compiler.CompiledProgram(
+    comp_prog = base.compiler.CompiledProgram(
         main, build_strategy=build_strategy
     )
     sync_bn_fetches = exe.run(
@@ -110,9 +108,7 @@ def train(args):
     for i in range(0, len(sync_bn_fetches)):
         file_path = os.path.join(
             args.data_dir,
-            'output_{}_{}_{}_{}.npy'.format(
-                rank, args.only_forward, str(args.dtype), i
-            ),
+            f'output_{rank}_{args.only_forward}_{str(args.dtype)}_{i}.npy',
         )
         np.save(file_path, sync_bn_fetches[i])
 

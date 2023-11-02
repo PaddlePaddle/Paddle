@@ -21,17 +21,24 @@ namespace distributed {
 
 class RToSReshardFunction final : public ReshardFunction {
  public:
-  RToSReshardFunction() = default;
-  ~RToSReshardFunction() = default;
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-  bool IsSuitable(
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
 
-  std::shared_ptr<DistTensor> Eval(
-      const DeviceContext& dev_ctx,
-      const DistTensor& in,
-      const std::shared_ptr<TensorDistAttr>& out_dist_attr) override;
+class RToSReshardFunctionCrossMesh final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
 };
 
 }  // namespace distributed

@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.static.amp import fp16_utils
 
 paddle.enable_static()
@@ -24,13 +24,13 @@ paddle.enable_static()
 
 class AMPTest(unittest.TestCase):
     def test_find_op_index(self):
-        block = fluid.default_main_program().global_block()
+        block = base.default_main_program().global_block()
         op_desc = core.OpDesc()
         idx = fp16_utils.find_op_index(block.desc, op_desc)
         assert idx == -1
 
     def test_find_true_post_op(self):
-        block = fluid.default_main_program().global_block()
+        block = base.default_main_program().global_block()
 
         var1 = block.create_var(name="X", shape=[3], dtype='float32')
         var2 = block.create_var(name="Y", shape=[3], dtype='float32')

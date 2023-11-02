@@ -102,7 +102,7 @@ class TestBase(IPUD2STest):
             result.append(loss)
 
         if use_ipu:
-            paddle.fluid.core.IpuBackend.get_instance().weights_to_host()
+            paddle.base.core.IpuBackend.get_instance().weights_to_host()
 
         paddle.save(model.state_dict(), model_path)
         paddle.save(optim.state_dict(), optim_path)

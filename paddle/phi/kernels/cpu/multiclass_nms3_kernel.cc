@@ -27,7 +27,7 @@ template <class T>
 class Point_ {
  public:
   // default constructor
-  Point_() {}
+  Point_() = default;
   Point_(T _x, T _y) {}
   Point_(const Point_& pt UNUSED) {}
 
@@ -61,13 +61,13 @@ void Array2Poly(const T* box,
                 phi::funcs::gpc_polygon* poly) {
   size_t pts_num = box_size / 2;
   (*poly).num_contours = 1;
-  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
+  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour =
-      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
-  (*poly).contour->num_vertices = pts_num;
-  (*poly).contour->vertex =
-      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour->num_vertices = static_cast<int>(pts_num);
+  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = box[2 * i];
     (*poly).contour->vertex[i].y = box[2 * i + 1];
@@ -79,13 +79,13 @@ void PointVec2Poly(const std::vector<Point_<T>>& vec,
                    phi::funcs::gpc_polygon* poly) {
   int pts_num = vec.size();
   (*poly).num_contours = 1;
-  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));
+  (*poly).hole = reinterpret_cast<int*>(malloc(sizeof(int)));  // NOLINT
   (*poly).hole[0] = 0;
-  (*poly).contour =
-      (phi::funcs::gpc_vertex_list*)malloc(sizeof(phi::funcs::gpc_vertex_list));
+  (*poly).contour = (phi::funcs::gpc_vertex_list*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex_list));
   (*poly).contour->num_vertices = pts_num;
-  (*poly).contour->vertex =
-      (phi::funcs::gpc_vertex*)malloc(sizeof(phi::funcs::gpc_vertex) * pts_num);
+  (*poly).contour->vertex = (phi::funcs::gpc_vertex*)malloc(  // NOLINT
+      sizeof(phi::funcs::gpc_vertex) * pts_num);
   for (size_t i = 0; i < pts_num; ++i) {
     (*poly).contour->vertex[i].x = vec[i].x;
     (*poly).contour->vertex[i].y = vec[i].y;
@@ -255,9 +255,9 @@ void SliceOneClass(const Context& ctx,
   T* item_data = ctx.template Alloc<T>(one_class_item);
   const T* items_data = items.data<T>();
   const int64_t num_item = items.dims()[0];
-  const int class_num = items.dims()[1];
+  const int class_num = static_cast<int>(items.dims()[1]);
   if (items.dims().size() == 3) {
-    int item_size = items.dims()[2];
+    int item_size = static_cast<int>(items.dims()[2]);
     for (int i = 0; i < num_item; ++i) {
       std::memcpy(item_data + i * item_size,
                   items_data + i * class_num * item_size + class_id * item_size,
@@ -350,9 +350,10 @@ void MultiClassNMS(const Context& ctx,
 
   int num_det = 0;
 
-  int64_t class_num = scores_size == 3 ? scores.dims()[0] : scores.dims()[1];
+  int class_num =
+      static_cast<int>(scores_size == 3 ? scores.dims()[0] : scores.dims()[1]);
   DenseTensor bbox_slice, score_slice;
-  for (int64_t c = 0; c < class_num; ++c) {
+  for (int c = 0; c < class_num; ++c) {
     if (c == background_label) continue;
     if (scores_size == 3) {
       score_slice = scores.Slice(c, c + 1);
@@ -374,13 +375,13 @@ void MultiClassNMS(const Context& ctx,
     if (scores_size == 2) {
       std::stable_sort((*indices)[c].begin(), (*indices)[c].end());
     }
-    num_det += (*indices)[c].size();
+    num_det += static_cast<int>((*indices)[c].size());
   }
 
   *num_nmsed_out = num_det;
   const T* scores_data = scores.data<T>();
   if (keep_top_k > -1 && num_det > keep_top_k) {
-    const T* sdata;
+    const T* sdata = nullptr;
     std::vector<std::pair<float, std::pair<int, int>>> score_index_pairs;
     for (const auto& it : *indices) {
       int label = it.first;
@@ -440,7 +441,7 @@ void MultiClassOutput(const Context& ctx,
   auto* scores_data = scores.data<T>();
   auto* bboxes_data = bboxes.data<T>();
   auto* odata = out->data<T>();
-  const T* sdata;
+  const T* sdata = nullptr;
   DenseTensor bbox;
   bbox.Resize({scores.dims()[0], box_size});
   int count = 0;
@@ -455,7 +456,7 @@ void MultiClassOutput(const Context& ctx,
 
     for (auto idx : indices) {
       odata[count * out_dim] = label;  // label
-      const T* bdata;
+      const T* bdata = nullptr;
       if (scores_size == 3) {
         bdata = bboxes_data + idx * box_size;
         odata[count * out_dim + 1] = sdata[idx];  // score
@@ -466,7 +467,7 @@ void MultiClassOutput(const Context& ctx,
         bdata = bbox.data<T>() + idx * box_size;
         odata[count * out_dim + 1] = *(scores_data + idx * class_num + label);
         if (oindices != nullptr) {
-          oindices[count] = offset + idx * class_num + label;
+          oindices[count] = offset + idx * class_num + label;  // NOLINT
         }
       }
       // xmin, ymin, xmax, ymax or multi-points coordinates
@@ -505,9 +506,11 @@ void MultiClassNMSKernel(const Context& ctx,
   DenseTensor boxes_slice, scores_slice;
   int n = 0;
   if (has_roisnum) {
-    n = score_size == 3 ? batch_size : rois_num.get_ptr()->numel();
+    n = static_cast<int>(score_size == 3 ? batch_size
+                                         : rois_num.get_ptr()->numel());
   } else {
-    n = score_size == 3 ? batch_size : bboxes.lod().back().size() - 1;
+    n = static_cast<int>(score_size == 3 ? batch_size
+                                         : bboxes.lod().back().size() - 1);
   }
   for (int i = 0; i < n; ++i) {
     std::map<int, std::vector<int>> indices;
@@ -528,8 +531,8 @@ void MultiClassNMSKernel(const Context& ctx,
         batch_starts.push_back(batch_starts.back());
         continue;
       }
-      scores_slice = scores.Slice(boxes_lod[i], boxes_lod[i + 1]);
-      boxes_slice = bboxes.Slice(boxes_lod[i], boxes_lod[i + 1]);
+      scores_slice = scores.Slice(boxes_lod[i], boxes_lod[i + 1]);  // NOLINT
+      boxes_slice = bboxes.Slice(boxes_lod[i], boxes_lod[i + 1]);   // NOLINT
     }
     MultiClassNMS<T, Context>(ctx,
                               scores_slice,
@@ -548,7 +551,7 @@ void MultiClassNMSKernel(const Context& ctx,
     batch_starts.push_back(batch_starts.back() + num_nmsed_out);
   }
 
-  int num_kept = batch_starts.back();
+  int num_kept = static_cast<int>(batch_starts.back());
   if (num_kept == 0) {
     if (return_index) {
       out->Resize({0, out_dim});
@@ -583,15 +586,15 @@ void MultiClassNMSKernel(const Context& ctx,
           boxes_lod = bboxes.lod().back();
         }
         if (boxes_lod[i] == boxes_lod[i + 1]) continue;
-        scores_slice = scores.Slice(boxes_lod[i], boxes_lod[i + 1]);
-        boxes_slice = bboxes.Slice(boxes_lod[i], boxes_lod[i + 1]);
+        scores_slice = scores.Slice(boxes_lod[i], boxes_lod[i + 1]);  // NOLINT
+        boxes_slice = bboxes.Slice(boxes_lod[i], boxes_lod[i + 1]);   // NOLINT
         if (return_index) {
-          offset = boxes_lod[i] * score_dims[1];
+          offset = static_cast<int>(boxes_lod[i] * score_dims[1]);
         }
       }
 
-      int64_t s = batch_starts[i];
-      int64_t e = batch_starts[i + 1];
+      int64_t s = static_cast<int64_t>(batch_starts[i]);
+      int64_t e = static_cast<int64_t>(batch_starts[i + 1]);
       if (e > s) {
         DenseTensor nout = out->Slice(s, e);
         if (return_index) {
@@ -615,7 +618,7 @@ void MultiClassNMSKernel(const Context& ctx,
     ctx.template Alloc<int>(nms_rois_num);
     int* num_data = nms_rois_num->data<int>();
     for (int i = 1; i <= n; i++) {
-      num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];
+      num_data[i - 1] = batch_starts[i] - batch_starts[i - 1];  // NOLINT
     }
     nms_rois_num->Resize({n});
   }

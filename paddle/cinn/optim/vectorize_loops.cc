@@ -25,13 +25,12 @@
 
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/optim/ir_replace.h"
+#include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/optim/ir_simplify.h"
-#include "paddle/cinn/optim/tensor_write_tell.h"
 #include "paddle/cinn/optim/unroll_loops.h"
 #include "paddle/cinn/utils/functional.h"
 
@@ -130,7 +129,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val must appear in the last index
     if (indices.empty() ||
-        ir::CollectIRNodes(indices.back(), find_matched_var_fn).empty()) {
+        ir::ir_utils::CollectIRNodes(indices.back(), find_matched_var_fn)
+            .empty()) {
       VLOG(5) << "Loop var:" << iter_var_->name
               << " is not used in the last index";
       return false;
@@ -138,7 +138,8 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
 
     // the iter val can't appear in mulitple indices
     for (int i = 0; i < indices.size() - 1; ++i) {
-      auto repeat_found = ir::CollectIRNodes(indices[i], find_matched_var_fn);
+      auto repeat_found =
+          ir::ir_utils::CollectIRNodes(indices[i], find_matched_var_fn);
       if (!repeat_found.empty()) {
         VLOG(5) << "Loop var:" << iter_var_->name
                 << " is used at more than last index, current:" << i;
@@ -147,12 +148,12 @@ class TensorVectorizeTeller : public ir::IRMutator<const Expr *> {
     }
 
     // check tensor accessed sequentially by comparing index one by one
-    Expr first_idx = optim::IRCopy(indices.back());
-    optim::IrReplace(&first_idx, Expr(iter_var_), Expr(0));
+    Expr first_idx = ir::ir_utils::IRCopy(indices.back());
+    cinn::ir::ir_utils::IrReplace(&first_idx, Expr(iter_var_), Expr(0));
     const auto &interval = var_intervals_->at(iter_var_->name);
     for (int i = 1; i < interval.r; ++i) {
-      Expr next_idx = optim::IRCopy(indices.back());
-      optim::IrReplace(&next_idx, Expr(iter_var_), Expr(i));
+      Expr next_idx = ir::ir_utils::IRCopy(indices.back());
+      cinn::ir::ir_utils::IrReplace(&next_idx, Expr(iter_var_), Expr(i));
       auto gap = common::AutoSimplify(Expr(next_idx - first_idx));
       if (!gap.As<IntImm>() || gap.as_int32() != i) {
         VLOG(5) << "Tensor:" << tensor->name
@@ -185,7 +186,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   const Var iter_var_;  // the loop var of the vecotrized loop
   const int factor_;    // the factor for vectorize
 
-  TensorWriteTeller write_teller_;
+  std::set<std::string> write_teller_;
   TensorVectorizeTeller vectorized_teller_;
 
   absl::flat_hash_map<std::string, Var> tensor2vectorized_vars_;
@@ -215,7 +216,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
   }
 
   void Visit(Expr *expr) {
-    write_teller_.Collect(expr);
+    write_teller_ = ir::ir_utils::CollectTensorNeedsWrite(expr);
     vectorized_teller_.Collect(expr);
     IRMutator<Expr *>::Visit(expr, expr);
   }
@@ -289,7 +290,7 @@ class CudaVectorizer : public IRMutator<Expr *> {
                   const std::vector<Expr> &indices,
                   bool is_store) {
     auto *node = tensor.As<ir::_Tensor_>();
-    bool is_const = !write_teller_.IsWrite(node->name);
+    bool is_const = !write_teller_.count(node->name);
 
     // generate the corresponding vector type
     Type scalar_type = tensor->type().ElementOf();
@@ -309,7 +310,8 @@ class CudaVectorizer : public IRMutator<Expr *> {
 
     // generate a get_addr expr to get the address of the tensor
     Expr converted_tensor = Load::Make(tensor, indices);
-    optim::IrReplace(&converted_tensor, iter_var_, Expr(int32_t(0)));
+    cinn::ir::ir_utils::IrReplace(
+        &converted_tensor, iter_var_, Expr(int32_t(0)));
     auto get_addr = ir::intrinsics::GetAddr::Make(converted_tensor);
 
     // generate a let expression to cast the tensor into the local vector
@@ -798,7 +800,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
         cuda_vectorizer.Visit(&new_forloop->body);
         // unroll the new forloop to compute each element of the vector
         // iteratively
-        auto copied_loop = optim::IRCopy(_new_forloop);
+        auto copied_loop = ir::ir_utils::IRCopy(_new_forloop);
         copied_loop.As<ir::For>()->set_unrolled();
         optim::UnrollLoop(&copied_loop);
         // add cast exprs of vector type in the front of vectorized forloop,
@@ -881,13 +883,14 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
           Var new_iterator_outer(
               common::UniqName(outer_for->loop_var->name + "_s"));
 
-          Expr inner_for_b = Block::Make({For::Make(new_iterator_inner,
-                                                    inner_for->min,
-                                                    b,
-                                                    ForType::Serial,
-                                                    DeviceAPI::UNK,
-                                                    IRCopy(inner_for->body))});
-          optim::IrReplace(
+          Expr inner_for_b =
+              Block::Make({For::Make(new_iterator_inner,
+                                     inner_for->min,
+                                     b,
+                                     ForType::Serial,
+                                     DeviceAPI::UNK,
+                                     ir::ir_utils::IRCopy(inner_for->body))});
+          cinn::ir::ir_utils::IrReplace(
               &inner_for_b, inner_for->loop_var, Expr(new_iterator_inner));
 
           Expr out_for_b = For::Make(new_iterator_outer,
@@ -897,7 +900,7 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
                                      outer_for->device_api,
                                      inner_for_b,
                                      outer_for->vectorize_info());
-          optim::IrReplace(
+          cinn::ir::ir_utils::IrReplace(
               &out_for_b, outer_for->loop_var, Expr(new_iterator_outer));
           *expr = Block::Make({out_for_a, out_for_b});
           VLOG(2) << *expr;
@@ -959,7 +962,8 @@ struct VectorizeLoops_ : public IRMutator<Expr *> {
       } else {
         new_index = Expr(forloop->loop_var) * factor + Expr(new_iterator);
       }
-      optim::IrReplace(&forloop->body, forloop->loop_var, new_index);
+      cinn::ir::ir_utils::IrReplace(
+          &forloop->body, forloop->loop_var, new_index);
       auto new_forloop = For::Make(new_iterator,
                                    forloop->min,
                                    make_const(factor),

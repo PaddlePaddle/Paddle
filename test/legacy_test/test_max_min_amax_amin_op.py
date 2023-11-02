@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -28,9 +29,9 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         self.init_case()
         self.cal_np_out_and_gradient()
         self.place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
 
     def init_case(self):
@@ -90,20 +91,20 @@ class TestMaxMinAmaxAminAPI(unittest.TestCase):
         return out
 
     # We check the output between paddle API and numpy in static graph.
+    @test_with_pir_api
     def test_static_graph(self):
         def _test_static_graph(func):
-            startup_program = fluid.Program()
-            train_program = fluid.Program()
-            with fluid.program_guard(startup_program, train_program):
+            startup_program = base.Program()
+            train_program = base.Program()
+            with base.program_guard(startup_program, train_program):
                 x = paddle.static.data(
                     name='input', dtype=self.dtype, shape=self.shape
                 )
                 x.stop_gradient = False
                 out = self._choose_paddle_func(func, x)
 
-                exe = fluid.Executor(self.place)
+                exe = base.Executor(self.place)
                 res = exe.run(
-                    fluid.default_main_program(),
                     feed={'input': self.x_np},
                     fetch_list=[out],
                 )

@@ -21,18 +21,18 @@ limitations under the License. */
 #include <string>
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/distributed/ps/service/heter_client.h"
 #include "paddle/fluid/distributed/ps/service/heter_server.h"
+#include "paddle/utils/flags.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace distributed = paddle::distributed;
 
-DEFINE_string(switch_addr_inner, "127.0.0.1:6000", "addr of inner cluster");
-DEFINE_string(switch_addr_heter, "127.0.0.1:6100", "add of inter cluster");
-DEFINE_string(peer_switch_addr, "127.0.0.1:7100", "add of inter cluster");
+PD_DEFINE_string(switch_addr_inner, "127.0.0.1:6000", "addr of inner cluster");
+PD_DEFINE_string(switch_addr_heter, "127.0.0.1:6100", "add of inter cluster");
+PD_DEFINE_string(peer_switch_addr, "127.0.0.1:7100", "add of inter cluster");
 
 void StartSwitchServer(
     std::shared_ptr<distributed::HeterServer>& switch_server_ptr,  // NOLINT
@@ -61,7 +61,7 @@ int main(int argc, char* argv[]) {
   framework::ProgramDesc program;
   exe.Prepare(program, 0);  // solve undefined symbol: tensor_table.cc
 
-  google::ParseCommandLineFlags(&argc, &argv, true);
+  paddle::flags::ParseCommandLineFlags(&argc, &argv);
 
   std::string switch_a_endpoint(FLAGS_switch_addr_inner);
   std::string switch_a_endpoint_inter(FLAGS_switch_addr_heter);

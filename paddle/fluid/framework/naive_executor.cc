@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/naive_executor.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -22,7 +23,7 @@
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/denormal.h"
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #ifdef PADDLE_WITH_TENSORRT
@@ -51,8 +52,28 @@ void NaiveExecutor::Prepare(Scope *scope,
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
 }
 
+void NaiveExecutor::PrepareInterpreterCore(
+    Scope *scope,
+    const ProgramDesc &program_desc,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ = std::make_unique<framework::InterpreterCore>(
+      place_, program_desc.Block(0), scope, execution_config);
+}
+
+void NaiveExecutor::RunInterpreterCore(
+    const std::vector<std::string> &feed_names, bool need_fetch) {
+  platform::ScopedFlushDenormal flush;
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
+#endif
+  interpreter_core_->Run(feed_names, need_fetch);
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePop();
+#endif
+}
+
 void NaiveExecutor::Run() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   platform::AttachPointerHashToMKLDNNKey(this, place_);
   platform::RegisterModelLayout(ops_, place_);
 #endif
@@ -64,10 +85,6 @@ void NaiveExecutor::Run() {
     VLOG(4) << std::this_thread::get_id() << " run "
             << op->DebugStringEx(scope_) << " on scope " << scope_;
     op->SetIsCalledByExecutor(false);
-#ifdef PADDLE_WITH_NVTX
-    platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
-                                platform::NvtxRangeColor::Green);
-#endif
 
     for (auto &func : input_hookfuncs_) {
       func(op.get(), scope_);
@@ -77,7 +94,14 @@ void NaiveExecutor::Run() {
       op->SetOutputHooks(output_hookfuncs_);
     }
 
+#ifdef PADDLE_WITH_NVTX
+    platform::CudaNvtxRangePush(op->Type() + "|" + op->OutputVars(true).front(),
+                                platform::NvtxRangeColor::Green);
+#endif
     op->Run(*scope_, place_);
+#ifdef PADDLE_WITH_NVTX
+    platform::CudaNvtxRangePop();
+#endif
 
     // Update the shared_holder so that only records the max one.
     if (reuse_cache_.count(op.get())) {
@@ -105,9 +129,6 @@ void NaiveExecutor::Run() {
       }
     }
 
-#ifdef PADDLE_WITH_NVTX
-    platform::CudaNvtxRangePop();
-#endif
     for (auto &func : output_hookfuncs_) {
       func(op.get(), scope_);
     }
@@ -190,6 +211,9 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
   output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(output_hookfuncs_);
+  }
 }
 
 void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {
@@ -215,7 +239,7 @@ void NaiveExecutor::MakeReusePlan(
         const auto &reuse_name = reuse_table.at(name);
         auto it =
             std::find(cluster_names.begin(), cluster_names.end(), reuse_name);
-        int idx = it - cluster_names.begin();
+        int idx = static_cast<int>(it - cluster_names.begin());
         auto *var = scope_->FindVar(name);
         auto *reuse_var = scope_->FindVar(reuse_name);
         if (var && reuse_var && var->IsType<phi::DenseTensor>() &&
@@ -236,7 +260,7 @@ void NaiveExecutor::MakeReusePlan(
 }
 
 NaiveExecutor::~NaiveExecutor() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Clear mkl-dnn cache,
   // this is needed to have mkl-dnn unit tests working
   platform::ClearMKLDNNCache(place_, this);

@@ -30,8 +30,6 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/metrics_py.h"
 
-namespace py = pybind11;
-
 #if defined(PADDLE_WITH_PSLIB)
 namespace paddle {
 namespace pybind {

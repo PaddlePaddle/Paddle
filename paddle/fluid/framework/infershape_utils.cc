@@ -171,7 +171,7 @@ int64_t CompatMetaTensor::numel() const {
     return var->Get<phi::DenseTensor>().numel();
   } else {
     auto* var = PADDLE_GET_CONST(VarDesc*, var_);
-    return var->ElementSize();
+    return static_cast<int64_t>(var->ElementSize());
   }
 }
 
@@ -445,19 +445,19 @@ void CompatMetaTensor::share_meta(const MetaTensor& meta_tensor) {
 }
 
 void CompatInferMetaContext::EmplaceBackInput(CompatMetaTensor input) {
-  int index = compat_inputs_.size();
+  int index = static_cast<int>(compat_inputs_.size());
   compat_inputs_.emplace_back(std::move(input));
   input_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 void CompatInferMetaContext::EmplaceBackOutput(CompatMetaTensor output) {
-  int index = compat_outputs_.size();
+  int index = static_cast<int>(compat_outputs_.size());
   compat_outputs_.emplace_back(std::move(output));
   output_range_.emplace_back(std::pair<int, int>(index, index + 1));
 }
 
 void CompatInferMetaContext::EmplaceBackInputs(
     paddle::small_vector<CompatMetaTensor, phi::kInputSmallVectorSize> inputs) {
-  int index = compat_inputs_.size();
+  int index = static_cast<int>(compat_inputs_.size());
   input_range_.emplace_back(std::pair<int, int>(index, index + inputs.size()));
   compat_inputs_.insert(compat_inputs_.end(),
                         std::make_move_iterator(inputs.begin()),
@@ -467,7 +467,7 @@ void CompatInferMetaContext::EmplaceBackInputs(
 void CompatInferMetaContext::EmplaceBackOutputs(
     paddle::small_vector<CompatMetaTensor, phi::kOutputSmallVectorSize>
         outputs) {
-  int index = compat_outputs_.size();
+  int index = static_cast<int>(compat_outputs_.size());
   output_range_.emplace_back(
       std::pair<int, int>(index, index + outputs.size()));
   compat_outputs_.insert(compat_outputs_.end(),
@@ -505,8 +505,7 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<std::vector<const phi::MetaTensor*>>(
-        std::move(result));
+    return paddle::optional<std::vector<const phi::MetaTensor*>>(result);
   }
   return paddle::none;
 }
@@ -637,11 +636,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
               infer_meta_context.EmplaceBackAttr(
-                  std::move(framework::MakePhiScalarFromVar(*var)));
+                  framework::MakePhiScalarFromVar(*var));
             } else {
               phi::Scalar tensor_scalar(-1);
               tensor_scalar.SetFromTensor(true);
-              infer_meta_context.EmplaceBackAttr(std::move(tensor_scalar));
+              infer_meta_context.EmplaceBackAttr(tensor_scalar);
             }
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
@@ -711,11 +710,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
               }
 
               if (num_ele <= 0) {
-                num_ele = tensor_dims.size();
+                num_ele = static_cast<int64_t>(tensor_dims.size());
               }
 
             } else {
-              num_ele = vars.size();
+              num_ele = static_cast<int>(vars.size());
             }
             phi::IntArray tensor_attr(std::vector<int32_t>(num_ele, -1));
             tensor_attr.SetFromTensor(true);

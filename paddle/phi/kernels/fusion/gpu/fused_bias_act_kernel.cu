@@ -221,6 +221,11 @@ void ComputeImpl(const Context &dev_ctx,
       LaunchBiasAct<T, Context, GeluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
           dev_ctx, bias_data, rows, cols, load_func, store_func);
     }
+  } else if (act_method == "relu") {
+    VLOG(8) << "Doing RELU";
+    // for opt model
+    LaunchBiasAct<T, Context, ReluFunctor<T>, LoadFunc, StoreFunc, LoadT>(
+        dev_ctx, bias_data, rows, cols, load_func, store_func);
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Currently Only Support GeGLU, SwiGLU, GeLU"));
@@ -438,14 +443,14 @@ void FusedBiasActKernel(const Context &dev_ctx,
                         const paddle::optional<DenseTensor> &smooth,
                         const std::string &act_method,
                         const std::string &compute_dtype,
-                        int rows,
-                        int cols,
                         float quant_scale,
                         int quant_round_type,
                         float quant_max_bound,
                         float quant_min_bound,
                         DenseTensor *out) {
 #ifndef PADDLE_WITH_HIP
+  int rows = x.dims()[0];
+  int cols = x.dims()[1];
   if (x.dtype() == phi::DataType::INT32) {
     if (compute_dtype == "bf16") {
       DispatchWithDtype<phi::dtype::bfloat16, Context>(

@@ -66,6 +66,8 @@ PD_REGISTER_KERNEL(sum,
                    int16_t,
                    int,
                    int64_t,
+                   uint8_t,
+                   int8_t,
                    complex64,
                    complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
@@ -78,7 +80,7 @@ PD_REGISTER_KERNEL(sum, KPS, ALL_LAYOUT, phi::SumKernel, float) {
 }
 #endif
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
 PD_REGISTER_KERNEL(
     sum, OneDNN, ONEDNN, phi::SumKernel, float, phi::dtype::bfloat16) {}
 #endif

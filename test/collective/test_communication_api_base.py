@@ -12,9 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import itertools
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -22,7 +24,7 @@ import unittest
 
 
 class CommunicationTestDistBase(unittest.TestCase):
-    def setUp(self, save_log_dir=None, num_of_devices=2, timeout=120):
+    def setUp(self, save_log_dir=None, num_of_devices=2, timeout=120, nnode=1):
         self._python_interp = sys.executable
         self._save_log_dir = save_log_dir
         self._log_dir = tempfile.TemporaryDirectory()
@@ -31,13 +33,42 @@ class CommunicationTestDistBase(unittest.TestCase):
         self._timeout = timeout
         self._seeds = [i + 10 for i in range(num_of_devices)]
         self._devices = ','.join(self._device_list)
+        self._nnode = nnode
+        self._port_set = set()
+
+    def _find_free_port(self):
+        def __free_port():
+            with contextlib.closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            ) as s:
+                s.bind(('', 0))
+                return s.getsockname()[1]
+
+        while True:
+            port = __free_port()
+            if port not in self._port_set:
+                self._port_set.add(port)
+                return port
 
     def run_test_case(self, script_file, user_defined_envs=None):
         runtime_envs = os.environ
-        runtime_envs.update(user_defined_envs)
+        if user_defined_envs is not None:
+            runtime_envs.update(user_defined_envs)
         runtime_envs["CUDA_VISIBLE_DEVICES"] = self._devices
-        start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
+        if self._nnode > 1:
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --nnode={self._nnode} --master=127.0.0.1:{self._find_free_port()} --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
+        else:
+            start_command = f"{self._python_interp} -u -m paddle.distributed.launch --log_dir {self._log_dir.name} --devices {self._devices} {script_file}"
         start_command_list = start_command.strip().split()
+
+        if self._nnode > 1:
+            for i in range(1, self._nnode):
+                p = subprocess.Popen(
+                    start_command_list,
+                    env=runtime_envs,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
 
         try:
             self._launcher = subprocess.run(

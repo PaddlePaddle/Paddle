@@ -33,7 +33,7 @@ class TestCloudRoleMaker(unittest.TestCase):
 
     def test_pslib_1(self):
         """Test cases for pslib."""
-        from paddle import fluid
+        from paddle import base
         from paddle.incubate.distributed.fleet.parameter_server.pslib import (
             fleet,
         )
@@ -53,13 +53,13 @@ class TestCloudRoleMaker(unittest.TestCase):
             http_ip_port="127.0.0.1:36003",
         )
         # role_maker.generate_role()
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         # fleet.init(role_maker)
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
-        with fluid.program_guard(train_program, startup_program):
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
+        with base.program_guard(train_program, startup_program):
             show = paddle.static.data(
                 name="show", shape=[-1, 1], dtype="float32", lod_level=1
             )
@@ -70,7 +70,7 @@ class TestCloudRoleMaker(unittest.TestCase):
             label_cast = paddle.cast(label, dtype='float32')
             cost = paddle.nn.functional.log_loss(fc, label_cast)
         try:
-            adam = fluid.optimizer.Adam(learning_rate=0.000005)
+            adam = paddle.optimizer.Adam(learning_rate=0.000005)
             adam = fleet.distributed_optimizer(adam)
             adam.minimize([cost], [scope])
             fleet.run_server()

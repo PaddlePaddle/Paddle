@@ -20,8 +20,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "gflags/gflags.h"
 #include "paddle/fluid/platform/flags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
@@ -38,14 +38,14 @@
 #include "paddle/fluid/platform/device_event.h"
 #include "paddle/phi/backends/device_manager.h"
 
-DECLARE_bool(new_executor_serial_run);
-DECLARE_bool(new_executor_static_build);
-DECLARE_bool(new_executor_use_inplace);
-DECLARE_bool(new_executor_use_local_scope);
+PD_DECLARE_bool(new_executor_serial_run);
+PD_DECLARE_bool(new_executor_static_build);
+PD_DECLARE_bool(new_executor_use_inplace);
+PD_DECLARE_bool(new_executor_use_local_scope);
 
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(benchmark);
-DECLARE_uint64(executor_log_deps_every_microseconds);
+PD_DECLARE_bool(benchmark);
+PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -72,12 +72,6 @@ class InterpreterBaseImpl {
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
 
-  // NOTE(zhangbo): This interface is only used for temporary testing and only
-  // for testing during the iteration process of the new IR access actuator
-  // version. It will be deleted in the future.
-  virtual paddle::framework::FetchList BetaRun(
-      const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
-
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 
   virtual void ShareBuildResultsFrom(const InterpreterBaseImpl& src) = 0;
@@ -100,14 +94,15 @@ class InterpreterBaseImpl {
 
   virtual void SetOutputHooks(const std::vector<HookFunc>& hookfuncs) = 0;
 
-  virtual const interpreter::DependencyBuilder& GetDependencyBuilder()
-      const = 0;
-
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
-  virtual const interpreter::StreamAnalyzer& GetStreamAnalyzer() const = 0;
-
   virtual bool IsSharedResultsBuild() const = 0;
+
+  virtual void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) = 0;
+
+  virtual bool IsStaticBuild() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

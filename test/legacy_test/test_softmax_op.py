@@ -15,12 +15,14 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -67,7 +69,7 @@ class TestSoftmaxOp(OpTest):
         x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
             'axis': self.axis,
@@ -83,9 +85,17 @@ class TestSoftmaxOp(OpTest):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place,
+                atol=1e-5,
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
     def test_check_grad(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
@@ -98,6 +108,8 @@ class TestSoftmaxOp(OpTest):
                     "Out",
                     max_relative_error=0.01,
                     check_dygraph=(not self.use_mkldnn),
+                    check_pir=True,
+                    check_prim_pir=True,
                 )
         else:
             self.check_grad(
@@ -106,6 +118,8 @@ class TestSoftmaxOp(OpTest):
                 max_relative_error=0.01,
                 check_dygraph=(not self.use_mkldnn),
                 check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
             )
 
 
@@ -130,7 +144,7 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = np.array(1.0).astype(self.dtype)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
             'axis': -1,
@@ -143,9 +157,13 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place, atol=1e-5, check_pir=True, check_prim_pir=True
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
 
 @unittest.skipIf(
@@ -155,6 +173,8 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
     def setUp(self):
         self.op_type = "softmax"
         self.python_api = F.softmax
+        self.public_python_api = F.softmax
+        self.prim_op_type = "comp"
         self.use_cudnn = True
         self.use_mkldnn = False
         # explicilty use float32 for ROCm, as MIOpen does not yet support float64
@@ -164,7 +184,7 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         x = np.random.uniform(0.1, 1, []).astype(self.dtype)
         out = np.array(1.0).astype(self.dtype)
 
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
         self.outputs = {'Out': out}
         self.attrs = {
             'axis': -1,
@@ -177,9 +197,17 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.use_cudnn:
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place, atol=1e-5)
+            self.check_output_with_place(
+                place,
+                check_prim=True,
+                atol=1e-5,
+                check_pir=True,
+                check_prim_pir=True,
+            )
         else:
-            self.check_output(check_prim=True)
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
 
 
 class TestSoftmaxOp2(TestSoftmaxOp):
@@ -353,7 +381,13 @@ class TestSoftmaxFP16Op(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place,
+                    atol=1e-3,
+                    check_prim=True,
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
     # FIXME: If the x_shape is [10, 10], gradient failed.
     def test_check_grad(self):
@@ -380,7 +414,13 @@ class TestSoftmaxFP16CUDNNOp(TestSoftmaxOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=1e-3)
+                self.check_output_with_place(
+                    place,
+                    atol=1e-3,
+                    check_prim=True,
+                    check_pir=True,
+                    check_prim_pir=True,
+                )
 
 
 @unittest.skipIf(
@@ -412,7 +452,7 @@ class TestSoftmaxBF16Op(OpTest):
         out = np.apply_along_axis(stable_softmax, self.axis, x)
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(convert_float_to_uint16(x))
+            'X': OpTest.np_dtype_to_base_dtype(convert_float_to_uint16(x))
         }
         self.outputs = {'Out': convert_float_to_uint16(out)}
         self.attrs = {
@@ -427,7 +467,11 @@ class TestSoftmaxBF16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_dygraph=(not self.use_mkldnn), check_prim=True
+            place,
+            check_dygraph=(not self.use_mkldnn),
+            check_prim=True,
+            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
         )
 
     def test_check_grad(self):
@@ -439,6 +483,8 @@ class TestSoftmaxBF16Op(OpTest):
             numeric_grad_delta=0.05,
             check_dygraph=(not self.use_mkldnn),
             check_prim=True,
+            check_pir=(not self.use_mkldnn),
+            check_prim_pir=(not self.use_mkldnn),
         )
 
 
@@ -467,8 +513,9 @@ class TestSoftmaxAPI(unittest.TestCase):
     def executed_api(self):
         self.softmax = F.softmax
 
+    @test_with_pir_api
     def test_static_check(self):
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 x = paddle.static.data('X', self.x_np.shape, 'float32')
                 out1 = self.softmax(x)
@@ -512,7 +559,7 @@ class TestSoftmaxAPI(unittest.TestCase):
         paddle.enable_static()
 
     def test_error(self):
-        with paddle.fluid.framework._static_guard():
+        with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
                 # The input type must be Variable.
                 self.assertRaises(TypeError, self.softmax, 1)
@@ -545,25 +592,25 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
-        with paddle.fluid.framework._static_guard():
-            main_prog = fluid.Program()
-            with fluid.program_guard(main_prog, fluid.Program()):
+        with static_guard():
+            main_prog = base.Program()
+            with base.program_guard(main_prog, base.Program()):
                 x = paddle.rand([])
                 x.stop_gradient = False
                 out = paddle.nn.functional.softmax(x)
-                fluid.backward.append_backward(out)
 
                 # Test compile shape
-                self.assertEqual(x.shape, ())
-                self.assertEqual(out.shape, ())
+                self.assertEqual(tuple(x.shape), ())
+                self.assertEqual(tuple(out.shape), ())
 
-                exe = fluid.Executor()
+                exe = base.Executor()
                 result = exe.run(main_prog, fetch_list=[x, out])
 
                 # Test runtime shape
-                self.assertEqual(result[0].shape, ())
-                self.assertEqual(result[1].shape, ())
+                self.assertEqual(tuple(result[0].shape), ())
+                self.assertEqual(tuple(result[1].shape), ())
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):

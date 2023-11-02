@@ -167,7 +167,7 @@ class OpConverter {
                                         op_desc.Type()));
 
     it->SetEngine(engine);
-    engine->SetScope(scope);
+    engine->SetScope(&scope);
     it->SetBlockDesc(block);
     (*it)(op, scope, test_mode);
 
@@ -301,7 +301,7 @@ class OpConverter {
       nvinfer1::DataType in_dtype = FluidDataType2TRT(var->GetDataType());
       if (engine->precision() == phi::DataType::FLOAT16 &&
           in_dtype == nvinfer1::DataType::kFLOAT &&
-          engine->EnableLowPrecisionIO()) {
+          engine->LowPrecisionIOEnabled()) {
         in_dtype = nvinfer1::DataType::kHALF;
       }
 
@@ -360,7 +360,7 @@ class OpConverter {
       nvinfer1::DataType out_dtype = FluidDataType2TRT(var->GetDataType());
       if (engine->precision() == phi::DataType::FLOAT16 &&
           out_dtype == nvinfer1::DataType::kFLOAT &&
-          engine->EnableLowPrecisionIO()) {
+          engine->LowPrecisionIOEnabled()) {
         out_dtype = nvinfer1::DataType::kHALF;
       }
       engine->DeclareOutput(output, out_dtype);
@@ -369,6 +369,23 @@ class OpConverter {
 
     engine->FreezeNetwork();
     engine->ClearWeights();
+  }
+
+  void SupportFP32MixPrecision(const std::string& output_name,
+                               const std::string& op_type,
+                               nvinfer1::ILayer* layer) {
+    if (engine_->OpIsRunFloat(output_name) || engine_->OpIsRunFloat(op_type)) {
+#if IS_TRT_VERSION_GE(8210)
+      VLOG(3) << op_type << "(output: " << output_name << ")"
+              << " is forced to run in FP32 precision.";
+      layer->resetPrecision();
+      layer->setPrecision(nvinfer1::DataType::kFLOAT);
+#else
+      VLOG(3)
+          << op_type << "(output: " << output_name << ")"
+          << ": Set layer precision needs TensorRT version 8.2.1 and after.";
+#endif
+    }
   }
 
   nvinfer1::ITensor* Cast(nvinfer1::ITensor* input, nvinfer1::DataType dtype) {
@@ -470,7 +487,7 @@ class OpConverter {
       auto shape = newShape->getDimensions();
       shuffle->setReshapeDimensions(shape);
     }
-    if (name != "") {
+    if (!name.empty()) {
       shuffle->setName(name.c_str());
     }
     return shuffle->getOutput(0);
@@ -481,7 +498,7 @@ class OpConverter {
                              const std::string& name = "") {
     auto* shuffle = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *input);
     shuffle->setReshapeDimensions(shape);
-    if (name != "") {
+    if (!name.empty()) {
       shuffle->setName(name.c_str());
     }
     return shuffle->getOutput(0);
@@ -774,11 +791,6 @@ class OpConverter {
   bool test_mode_;
 
  private:
-  // registered op converter map, whose key is the fluid op type, and value is
-  // the pointer position of corresponding OpConverter class.
-  std::unordered_map<std::string, OpConverter*> converters_;
-  // fluid inference scope
-  framework::Scope* scope_{nullptr};
   std::mutex mut_;
 };
 

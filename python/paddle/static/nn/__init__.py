@@ -58,14 +58,16 @@ from .sequence_lod import sequence_enumerate  # noqa: F401
 from .sequence_lod import sequence_reverse  # noqa: F401
 
 from .control_flow import cond
+from .static_pylayer import static_pylayer
 
-__all__ = [  # noqa
+__all__ = [
     'fc',
     'batch_norm',
     'bilinear_tensor_product',
     'embedding',
     'case',
     'cond',
+    'static_pylayer',
     'conv2d',
     'conv2d_transpose',
     'conv3d',

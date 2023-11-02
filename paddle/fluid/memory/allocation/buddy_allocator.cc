@@ -242,7 +242,7 @@ void* BuddyAllocator::SystemAlloc(size_t size) {
 
 BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
     size_t request_bytes) {
-  size_t allocate_bytes = max_chunk_size_;
+  size_t allocate_bytes = max_chunk_size_;  // NOLINT
   size_t index = 0;
 
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
@@ -282,7 +282,7 @@ BuddyAllocator::PoolSet::iterator BuddyAllocator::RefillPool(
 BuddyAllocator::PoolSet::iterator BuddyAllocator::FindExistChunk(size_t size) {
   size_t index = 0;
 
-  while (1) {
+  while (true) {
     auto it = pool_.lower_bound(IndexSizeAddress(index, size, nullptr));
 
     // no match chunk memory

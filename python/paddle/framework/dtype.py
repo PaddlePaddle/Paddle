@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.core import VarDesc
-from ..fluid.core import finfo as core_finfo
-from ..fluid.core import iinfo as core_iinfo
+from ..base.core import VarDesc
+from ..base.core import finfo as core_finfo
+from ..base.core import iinfo as core_iinfo
 
 dtype = VarDesc.VarType
 dtype.__qualname__ = "dtype"

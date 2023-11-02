@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from ..fluid.framework import _apply_pass
+from ..base.framework import _apply_pass
 from . import core
 
 

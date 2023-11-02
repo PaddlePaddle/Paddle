@@ -26,9 +26,7 @@ class BaseConfig:
                 self._config_dict = config_dict
             else:
                 raise ValueError(
-                    "Expected a dictionary. But received: {}".format(
-                        config_dict
-                    )
+                    f"Expected a dictionary. But received: {config_dict}"
                 )
         # Initialize attributes by the default config
         config = constants.get_category_default_config(self._category)
@@ -138,6 +136,12 @@ class DPOptimizationConfig(BaseConfig):
         super().__init__(category, config_dict)
 
 
+class MPOptimizationConfig(BaseConfig):
+    def __init__(self, config_dict=None):
+        category = constants.MP_OPTIMIZATION
+        super().__init__(category, config_dict)
+
+
 class Strategy(BaseConfig):
     """
     The `Strategy` object is used to configure the parallelization and optimization behaviors.
@@ -152,20 +156,21 @@ class Strategy(BaseConfig):
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.distributed.fleet import auto
+            >>> import paddle
+            >>> from paddle.distributed.fleet import auto
 
-            strategy = auto.Strategy()
-            sharding = strategy.sharding
-            self.assertEqual(sharding.enabled, False)
-            self.assertEqual(sharding.stage, 1)
-            self.assertEqual(sharding.degree, 8)
-            sharding.enabled = True
-            sharding.stage = 2
-            sharding.degree = 2
-            self.assertEqual(sharding.enabled, True)
-            self.assertEqual(sharding.stage, 2)
-            self.assertEqual(sharding.degree, 2)
+            >>> strategy = auto.Strategy()
+            >>> sharding = strategy.sharding
+            >>> assert sharding.enable == False
+            >>> assert sharding.stage == 1
+            >>> assert sharding.degree == 8
+
+            >>> sharding.enable = True
+            >>> sharding.stage = 2
+            >>> sharding.degree = 2
+            >>> assert sharding.enable == True
+            >>> assert sharding.stage == 2
+            >>> assert sharding.degree == 2
 
     """
 
@@ -215,3 +220,6 @@ class Strategy(BaseConfig):
 
         config_dict = self._config_dict.get(constants.DP_OPTIMIZATION, None)
         self.dp_optimization = DPOptimizationConfig(config_dict)
+
+        config_dict = self._config_dict.get(constants.MP_OPTIMIZATION, None)
+        self.mp_optimization = MPOptimizationConfig(config_dict)
