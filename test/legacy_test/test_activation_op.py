@@ -3449,8 +3449,9 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -3488,6 +3489,7 @@ class TestLog2_ZeroDim(TestLog2):
 
 
 class TestLog2_Op_Int(unittest.TestCase):
+    @test_with_pir_api
     def test_api_int(self):
         paddle.disable_static()
         for dtype in ['int32', 'int64', 'float16']:
@@ -3498,6 +3500,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
