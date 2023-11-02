@@ -67,7 +67,7 @@ std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
   VLOG(0) << "squeeze_decom in===========";
 
-  auto axis_ = axis.GetData();
+  auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
   Tensor xshape;

@@ -32,7 +32,7 @@ def _build_tensor_tuple(xs):
     return TypeError(f"Type {type(xs)} is not supported.")
 
 
-def _analyse_decomp_results(orig_outs, decomp_outs, op=None):
+def _analyse_decomp_results(orig_outs, decomp_outs, op):
     intermediate_values = op.get_output_intermediate_value()
     assert len(orig_outs) == len(decomp_outs) == len(intermediate_values)
     res = []
@@ -399,7 +399,9 @@ def decompose_fwd_op(
             pir.set_insertion_point(fwd_op)
             if has_sink_decomp_rule:
                 decomp_outs = call_decomp(fwd_op)
-                new_outs = _analyse_decomp_results(orig_outs, decomp_outs)
+                new_outs = _analyse_decomp_results(
+                    orig_outs, decomp_outs, fwd_op
+                )
             else:
                 new_outs = _build_tensor_tuple(decom_rule(*input_args))
 

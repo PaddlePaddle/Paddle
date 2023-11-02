@@ -74,6 +74,28 @@ static std::vector<int64_t> get_squeeze_dims(const Tensor& origin,
   return result;
 }
 
+static std::vector<int64_t> process_dims(const Tensor& origin,
+                                         const std::vector<int64_t>& axis) {
+  auto origin_dims = origin.shape();
+  auto total_shape_size = origin_dims.size();
+  std::vector<int64_t> result;
+  auto axis_size = axis.size();
+  if (axis_size == 0) {
+    for (size_t i = 0; i < total_shape_size; ++i) {
+      result.push_back(i);
+    }
+  } else {
+    for (size_t i = 0; i < axis_size; ++i) {
+      if (axis[i] < 0) {
+        result.push_back(axis[i] + total_shape_size);
+      } else {
+        result.push_back(axis[i]);
+      }
+    }
+  }
+  return result;
+}
+
 // These method don't need to be specified
 static phi::DDim get_reduce_dims_from_out(const phi::DDim& dout_dims,
                                           const phi::DDim& in_dims) {

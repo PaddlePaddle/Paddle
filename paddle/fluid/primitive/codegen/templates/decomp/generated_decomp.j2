@@ -69,7 +69,30 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     {% if attrs %}
       {% for item in attrs %}
       {% do attr_names.append(item.name) %}
+
+
+      {% if item.typename == "IntArray" and item.support_tensor %}
+
+  Tensor {{item.name}}_(std::make_shared<primitive::LazyTensor>(op_obj.{{item.name}}()));
+
+  auto* {{item.name}}_define_op =
+      std::static_pointer_cast<primitive::LazyTensor>({{item.name}}_.impl())
+          ->value()
+          .dyn_cast<pir::OpResult>()
+          .owner();
+  if ({{item.name}}_define_op->name() != "pd_op.full_int_array") {
+    PADDLE_THROW(
+        platform::errors::Unimplemented("We don't support dynamic tensors "
+                                        "attribute {{item.name}} for {{fwd_name}} decomposition "
+                                        "for now. "));
+  }
+  IntArray {{item.name}} = phi::IntArray(
+      paddle::dialect::GetInt64Vector({{item.name}}_define_op->attribute("value")));
+
+      {% else %}
+
   {{item.typename}} {{item.name}} = op->attribute("{{item.name}}").dyn_cast<{{item.mapped_type}}>().data();
+      {% endif %}
       {% endfor %}
     {% endif %}
 
@@ -92,9 +115,14 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     {% endfor %}
   std::tuple<{{common.sequence('', '', ', ', output_types)}}> op_res = paddle::primitive::details::{{fwd_name}}_decomp<primitive::LazyTensor>(
           {{common.args(input_names, attr_names)}});
-  for (size_t i = 0; i < org_res.size(); ++i) {
-      res[i].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<i>(op_res).impl())->value().dyn_cast<pir::OpResult>());
-      }
+  {% for k in range(outputs|length) %}
+    {% if outputs[k].intermediate %}
+  pir::OpResult {{outputs[k].name}};
+  res[{{k}}].push_back({{outputs[k].name}});
+    {% else %}
+  res[{{k}}].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<{{k}}>(op_res).impl())->value().dyn_cast<pir::OpResult>());
+    {% endif %}
+  {% endfor %}
   {% endif %}
 
   return res;

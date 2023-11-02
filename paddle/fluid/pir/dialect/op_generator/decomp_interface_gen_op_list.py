@@ -22,4 +22,4 @@ decomp_interface_declare_gen_op_list = ['mean', 'squeeze']
 
 # come into effect in generated file op_decomp.cc
 # manual decomp interface implementation are located in manual_op_decomp.cc
-decomp_interface_implementation_gen_op_list = ["mean"]
+decomp_interface_implementation_gen_op_list = ["mean", "squeeze"]

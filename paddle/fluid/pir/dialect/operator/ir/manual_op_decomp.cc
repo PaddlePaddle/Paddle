@@ -29,58 +29,61 @@ namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
 
-std::vector<std::vector<pir::OpResult>> SqueezeOp::Decomp(pir::Operation* op) {
-  SqueezeOp op_obj = op->dyn_cast<SqueezeOp>();
-  (void)op_obj;
+// std::vector<std::vector<pir::OpResult>> SqueezeOp::Decomp(pir::Operation* op)
+// {
+//   SqueezeOp op_obj = op->dyn_cast<SqueezeOp>();
+//   (void)op_obj;
 
-  VLOG(4) << "Decomp Prepare inputs of squeeze";
+//   VLOG(4) << "Decomp Prepare inputs of squeeze";
 
-  Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
-  Tensor axis_(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
+//   Tensor x(std::make_shared<primitive::LazyTensor>(op_obj.x()));
+//   Tensor axis_(std::make_shared<primitive::LazyTensor>(op_obj.axis()));
 
-  VLOG(4) << "Decomp prepare attributes of squeeze";
+//   VLOG(4) << "Decomp prepare attributes of squeeze";
 
-  auto* axis_define_op =
-      std::static_pointer_cast<primitive::LazyTensor>(axis_.impl())
-          ->value()
-          .dyn_cast<pir::OpResult>()
-          .owner();
-  if (axis_define_op->name() != "pd_op.full_int_array") {
-    PADDLE_THROW(
-        platform::errors::Unimplemented("We don't support dynamic tensors "
-                                        "attribute axis for max_grad composite "
-                                        "for now. "));
-  }
-  IntArray axis = phi::IntArray(
-      paddle::dialect::GetInt64Vector(axis_define_op->attribute("value")));
+// auto* axis_define_op =
+//     std::static_pointer_cast<primitive::LazyTensor>(axis_.impl())
+//         ->value()
+//         .dyn_cast<pir::OpResult>()
+//         .owner();
+// if (axis_define_op->name() != "pd_op.full_int_array") {
+//   PADDLE_THROW(
+//       platform::errors::Unimplemented("We don't support dynamic tensors "
+//                                       "attribute axis for max_grad composite
+//                                       " "for now. "));
+// }
+// IntArray axis = phi::IntArray(
+//     paddle::dialect::GetInt64Vector(axis_define_op->attribute("value")));
 
-  //   IntArray axis =
-  //   op->attribute("axis").dyn_cast<paddle::dialect::IntArrayAttribute>().data();
+//   //   IntArray axis =
+//   //
+//   op->attribute("axis").dyn_cast<paddle::dialect::IntArrayAttribute>().data();
 
-  VLOG(4) << "Decomp prepare call squeeze's decomp interface";
+//   VLOG(4) << "Decomp prepare call squeeze's decomp interface";
 
-  auto org_res = op->results();
-  std::vector<std::vector<pir::OpResult>> res(org_res.size());
+//   auto org_res = op->results();
+//   std::vector<std::vector<pir::OpResult>> res(org_res.size());
 
-  std::tuple<Tensor, Tensor> op_res =
-      paddle::primitive::details::squeeze_decomp<primitive::LazyTensor>(x,
-                                                                        axis);
-  //   for (size_t i = 0; i < 2; i++) {
-  //       res[i].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<i>(op_res).impl())->value().dyn_cast<pir::OpResult>());
-  //       }
+//   std::tuple<Tensor, Tensor> op_res =
+//       paddle::primitive::details::squeeze_decomp<primitive::LazyTensor>(x,
+//                                                                         axis);
+//   //   for (size_t i = 0; i < 2; i++) {
+//   //
+//   res[i].push_back(std::static_pointer_cast<primitive::LazyTensor>(std::get<i>(op_res).impl())->value().dyn_cast<pir::OpResult>());
+//   //       }
 
-  res[0].push_back(std::static_pointer_cast<primitive::LazyTensor>(
-                       std::get<0>(op_res).impl())
-                       ->value()
-                       .dyn_cast<pir::OpResult>());
-  VLOG(4) << "Finish Decomp call squeeze's decomp interface out 0";
-  pir::OpResult temp;
+//   res[0].push_back(std::static_pointer_cast<primitive::LazyTensor>(
+//                        std::get<0>(op_res).impl())
+//                        ->value()
+//                        .dyn_cast<pir::OpResult>());
+//   VLOG(4) << "Finish Decomp call squeeze's decomp interface out 0";
+//   pir::OpResult temp;
 
-  res[1].push_back(temp);
-  VLOG(4) << "Finish Decomp call squeeze's decomp interface out 1";
+//   res[1].push_back(temp);
+//   VLOG(4) << "Finish Decomp call squeeze's decomp interface out 1";
 
-  return res;
-}
+//   return res;
+// }
 
 }  // namespace dialect
 }  // namespace paddle
