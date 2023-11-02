@@ -62,7 +62,7 @@ class TestSqueezeOp(OpTest):
             check_prim_pir=True,
         )
 
-    def _test_check_grad(self):
+    def test_check_grad(self):
         self.check_grad(
             ["X"],
             "Out",
