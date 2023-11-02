@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 
+#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/framework/custom_operator.h"
 #include "paddle/fluid/framework/custom_operator_utils.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -348,6 +349,7 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
           meta),
       dist_attr);
   empty_tensor.set_impl(dist_t);
+  empty_tensor.set_autograd_meta(std::make_shared<egr::AutogradMeta>());
   return empty_tensor;
 }
 #endif
