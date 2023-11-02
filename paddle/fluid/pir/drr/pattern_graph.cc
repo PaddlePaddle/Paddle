@@ -27,12 +27,12 @@ const drr::OpCall &PatternGraph::AddOpCall(
   owned_op_call_.push_back(op_call);
   for (const auto *input : op_call->inputs()) {
     const auto &tensor_name = input->name();
-    PADDLE_ENFORCE_NE(
-        id2owned_tensor_.count(tensor_name),
-        0,
-        phi::errors::NotFound("Not found tensor."
-                              "Intput tensor [%s] must exist in pattern graph.",
-                              tensor_name));
+    PADDLE_ENFORCE_NE(id2owned_tensor_.count(tensor_name),
+                      0,
+                      phi::errors::NotFound("Not found tensor."
+                                            "The intput tensor [%s] must exist "
+                                            "in pattern graph to be obtained.",
+                                            tensor_name));
     id2owned_tensor_.at(tensor_name)->AddConsumer(op_call.get());
 
     if (input->producer() == nullptr) {
@@ -44,12 +44,12 @@ const drr::OpCall &PatternGraph::AddOpCall(
   }
   for (auto &output : op_call->outputs()) {
     const auto &out_tensor_name = output->name();
-    PADDLE_ENFORCE_NE(
-        id2owned_tensor_.count(out_tensor_name),
-        0,
-        phi::errors::NotFound("Not found tensor."
-                              "Output tensor [%s] must exist in pattern graph.",
-                              out_tensor_name));
+    PADDLE_ENFORCE_NE(id2owned_tensor_.count(out_tensor_name),
+                      0,
+                      phi::errors::NotFound("Not found tensor."
+                                            "The output tensor [%s] must exist "
+                                            "in pattern graph to be obtained.",
+                                            out_tensor_name));
     id2owned_tensor_[output->name()]->set_producer(op_call.get());
   }
   return *owned_op_call_.back();
@@ -170,10 +170,10 @@ void GraphTopo::WalkGraphNodesTopoOrder(
   for (const auto &tensor_name : inputs_tensor) {
     PADDLE_ENFORCE_NE(id2owned_tensor.count(tensor_name),
                       0,
-                      phi::errors::NotFound(
-                          "Not found tensor."
-                          "Drr input tensor [%s] must exists in pattern graph.",
-                          tensor_name));
+                      phi::errors::NotFound("Not found tensor."
+                                            "The input tensor [%s] must exists "
+                                            "in pattern graph to be obtained.",
+                                            tensor_name));
     for (const auto &tensor_comsumer :
          id2owned_tensor.at(tensor_name).get()->consumers()) {
       opcall_dependent[tensor_comsumer].erase(tensor_name);

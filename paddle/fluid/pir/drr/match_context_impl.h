@@ -37,9 +37,10 @@ class MatchContextImpl final {
     PADDLE_ENFORCE_NE(
         tensor_map_.count(tensor_name),
         0,
-        phi::errors::NotFound("Not found tensor."
-                              "Drr tensor [%s] must exist in pattern graph.",
-                              tensor_name));
+        phi::errors::NotFound(
+            "Not found tensor."
+            "The Drr tensor [%s] must exist in pattern graph to be obtained.",
+            tensor_name));
     return *tensor_map_.at(tensor_name);
   }
 
@@ -48,7 +49,8 @@ class MatchContextImpl final {
         operation_map_.count(op_call),
         0,
         phi::errors::NotFound("Not found operation."
-                              "Drr operation [%s] must exist in pattern graph.",
+                              "The Drr operation [%s] must exist in the "
+                              "pattern graph to be obtained.",
                               op_call->name()));
     return *operation_map_.at(op_call);
   }
