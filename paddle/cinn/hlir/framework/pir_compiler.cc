@@ -140,14 +140,14 @@ std::vector<std::unique_ptr<Instruction>> PIRCompiler::BuildInstructions(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
-    auto& fn_name = groups[idx]->fn_name;
+    auto fn_name = groups[idx]->FuncName();
     auto instr =
         std::unique_ptr<Instruction>(new Instruction(target_,
                                                      scope_.get(),
                                                      groups[idx]->input_names,
                                                      groups[idx]->output_names,
                                                      fn_name));
-    VLOG(1) << "Lookup kernel name: " << fn_name;
+    VLOG(4) << "Lookup kernel name: " << fn_name;
     auto* fn_ptr = compiler_->Lookup(fn_name);
     CHECK(fn_ptr);
     instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);
