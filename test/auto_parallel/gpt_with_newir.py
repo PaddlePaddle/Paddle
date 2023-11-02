@@ -26,7 +26,7 @@ from paddle.distributed.fleet import auto
 paddle.enable_static()
 
 
-def apply_pass(use_sharding=False, pipeline_mode=None):
+def apply_pass(use_sharding=False, pipeline_mode=None, fuse_passes_list=None):
     strategy = auto.Strategy()
     strategy.auto_mode = "semi"
     strategy.reinit = True
@@ -56,6 +56,11 @@ def apply_pass(use_sharding=False, pipeline_mode=None):
         pipeline.enable = True
         pipeline.schedule_mode = pipeline_mode
         pipeline.accumulate_steps = 2
+
+    if fuse_passes_list:
+        fused_passes = strategy.fused_passes
+        fused_passes.enable = True
+        fused_passes.fused_passes_list = fuse_passes_list
 
     return strategy
 
@@ -87,10 +92,17 @@ class TestNewIR(unittest.TestCase):
         place = paddle.CUDAPlace(ParallelEnv().dev_id)
         engine._executor = paddle.static.Executor(place)
 
-    def get_engine(self, mode, name, use_sharding=False, pipeline_mode=None):
+    def get_engine(
+        self,
+        mode,
+        name,
+        use_sharding=False,
+        pipeline_mode=None,
+        fuse_passes_list=None,
+    ):
         reset_prog()
 
-        strategy = apply_pass(use_sharding, pipeline_mode)
+        strategy = apply_pass(use_sharding, pipeline_mode, fuse_passes_list)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
         model, loss = generate_model(mode, dropout_prob=0.1)
@@ -123,6 +135,32 @@ class TestNewIR(unittest.TestCase):
 
         self.enable_new_ir(True)
         engine_dp_ir = self.get_engine("dp", name="dp_newir", use_sharding=True)
+        out_dp_ir = engine_dp_ir.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        self.check_results(
+            out_dp_prog.history["loss"][0], out_dp_ir.history["loss"][0]
+        )
+
+    def test_dp_with_fused_linear(self):
+        self.enable_new_ir(False)
+        engine_dp_prog = self.get_engine(
+            "dp",
+            name="dp_prog_fuse_linear",
+            fuse_passes_list=['fuse_gemm_epilogue'],
+        )
+        out_dp_prog = engine_dp_prog.fit(
+            self.dataset, 3, batch_size=self.batch_size, log_freq=1
+        )
+
+        self.enable_new_ir(True)
+        engine_dp_ir = self.get_engine(
+            "dp",
+            name="dp_newir_fuse_linear",
+            use_sharding=True,
+            fuse_passes_list=['fused_gemm_epilogue_pass'],
+        )
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
