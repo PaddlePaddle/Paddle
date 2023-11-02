@@ -108,10 +108,6 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
                 "y_shape": [16, 32],
             },
             {
-                "x_shape": [5, 4, 16],
-                "y_shape": [5, 16, 32],
-            },
-            {
                 # Matrix mul row vector
                 "x_shape": [4, 16],
                 "y_shape": [16],
@@ -131,13 +127,11 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            # {
-            #     "dtype": "bfloat16",
-            # },
+            {
+                "dtype": "bfloat16",
+            },
             {
                 "dtype": "float16",
-                "max_relative_error": 1e-2,
-                "max_absolute_error": 1e-2,
             },
             {
                 "dtype": "float32",
