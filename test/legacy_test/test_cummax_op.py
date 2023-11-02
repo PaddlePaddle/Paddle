@@ -21,6 +21,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def cummax_dim2(arr, axis=None):
@@ -218,6 +219,7 @@ class TestCummaxAPI(unittest.TestCase):
         paddle.enable_static()
         with base.program_guard(base.Program()):
 
+            @test_with_pir_api
             def test_x_type():
                 data = [1, 2, 3]
                 y, indices = paddle.cummax(data, axis=0)
