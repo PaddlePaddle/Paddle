@@ -12,19 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/pir/core/builtin_type.h"
-#include "paddle/pir/core/op_result.h"
+#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h"
 
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
+#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_info.h"
-#include "paddle/pir/core/operation.h"
 
 namespace pir {
 phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key) {
@@ -121,7 +119,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
       {"kernel_name", pir::StrAttribute::get(ctx, "cast")},
       {"kernel_key",
        paddle::dialect::KernelAttribute::get(ctx, copy_kernel_key)},
-      {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, src_dtype)}};
+      {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, dst_dtype)}};
 
   pir::Type output_types =
       BuildDtypeTransferOutputType(in.type(), out_place, dst_dtype, ctx);

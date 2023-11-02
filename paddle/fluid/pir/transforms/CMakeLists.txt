@@ -5,6 +5,8 @@ cc_library(
   SRCS ${FUSION_PASS_SRCS}
   DEPS drr)
 
+cc_library(dtype_transfer_utils SRCS dtype_transfer_utils.cc)
+
 cc_library(
   transform_general_functions
   SRCS transform_general_functions.cc

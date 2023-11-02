@@ -31,7 +31,6 @@
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
@@ -41,6 +40,8 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
 #include "paddle/utils/flags.h"
+
+#include "paddle/fluid/pir/transforms/dtype_transfer_utils.h"
 
 PHI_DECLARE_bool(print_ir);
 namespace paddle {
@@ -1313,30 +1314,29 @@ std::vector<pir::Value> BuildOpInputList(
 
     // 2. dtype transfer
     std::string var_name = op_info_parser->InputNames()[i];
-    VLOG(0) << "trans input: " << var_name;
     auto fake_tensors = GetFakeTensorList(new_in);
-    const phi::KernelKey expected_kernel_key = kernel_key;
 
     if (!fake_tensors.empty()) {
-      auto kernel_dtype_for_var = pir::GetKernelTypeforVar(
+      const phi::KernelKey expected_kernel_key = kernel_key;
+      const phi::DataType kernel_dtype_for_var = pir::GetKernelTypeforVar(
           op_item, var_name, (*fake_tensors[0]).dtype(), &expected_kernel_key);
 
-      bool check_dtype_transfer = pir::NeedTransformDataType(
-          expected_kernel_key.dtype(), kernel_dtype_for_var);
-      if (check_dtype_transfer) {
-        VLOG(4) << "trans input: " << var_name << "'s dtype from "
-                << expected_kernel_key.dtype() << " to "
-                << kernel_dtype_for_var;
+      // bool check_dtype_transfer = pir::NeedTransformDataType(
+      //     expected_kernel_key.dtype(), kernel_dtype_for_var);
+      // if (check_dtype_transfer) {
+      //   VLOG(4) << "trans input: " << var_name << "'s dtype from "
+      //           << expected_kernel_key.dtype() << " to "
+      //           << kernel_dtype_for_var;
 
-        auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
-        new_in = pir::AddDtypeTransferOp(new_in,
-                                         block,
-                                         kernel_key,
-                                         out_place,
-                                         kernel_dtype_for_var,
-                                         expected_kernel_key.dtype());
-        vec_inputs.push_back(new_in);
-      }
+      //   auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
+      //   new_in = pir::AddDtypeTransferOp(new_in,
+      //                                    block,
+      //                                    kernel_key,
+      //                                    out_place,
+      //                                    kernel_dtype_for_var,
+      //                                    expected_kernel_key.dtype());
+      //   vec_inputs.push_back(new_in);
+      // }
     }
   }
   return vec_inputs;

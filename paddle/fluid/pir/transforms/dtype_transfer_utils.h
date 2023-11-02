@@ -14,16 +14,15 @@
 
 #pragma once
 
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/common/place.h"
 #include "paddle/phi/core/kernel_factory.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
-
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_op.h"
-#include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
+#include "paddle/pir/core/type.h"
+#include "paddle/pir/core/value.h"
 
 namespace pir {
 phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key);
@@ -35,6 +34,7 @@ const phi::DataType GetKernelTypeforVar(
     const std::string& var_name,
     const phi::DataType& tensor_dtype,
     const phi::KernelKey* expected_kernel_key);
+
 pir::OpResult AddDtypeTransferOp(pir::Value in,
                                  pir::Block* block,
                                  const phi::KernelKey& kernel_key,
