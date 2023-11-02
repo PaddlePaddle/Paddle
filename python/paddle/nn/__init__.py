@@ -25,6 +25,7 @@ from .decode import BeamSearchDecoder  # noqa: F401
 from .decode import dynamic_decode  # noqa: F401
 from .layer.activation import CELU  # noqa: F401
 from .layer.activation import ELU  # noqa: F401
+from .layer.activation import GLU  # noqa: F401
 from .layer.activation import GELU  # noqa: F401
 from .layer.activation import Tanh  # noqa: F401
 from .layer.activation import Hardshrink  # noqa: F401
@@ -280,6 +281,7 @@ __all__ = [
     'PixelUnshuffle',
     'ChannelShuffle',
     'ELU',
+    'GLU',
     'ReLU6',
     'LayerDict',
     'ZeroPad2D',
