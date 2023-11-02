@@ -426,8 +426,12 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
 
     auto meta_dist_input_x = paddle::experimental::MakeDistMetaTensor(input_x);
     auto spmd_info =
-        phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
-    current_process_mesh = spmd_info.first[0].process_mesh();
+        phi::distributed::VariadicReplicatedInferSpmdDynamic(meta_dist_input_x);
+    current_process_mesh =
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(
+            spmd_info.first[0])
+            ? paddle::get<0>(spmd_info.first[0]).process_mesh()
+            : paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
 
     if (rank_is_in_current_mesh) {
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(x.at(0).place());
