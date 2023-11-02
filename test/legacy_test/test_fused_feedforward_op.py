@@ -448,8 +448,7 @@ class TestFusedFFNOpError(unittest.TestCase):
                 )
                 incubate_f.fused_feedforward(x, linear1_weight, linear2_weight)
 
-            if not paddle.framework.in_pir_mode():
-                self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype)
 
             def test_dropout_rate_type():
                 x = paddle.static.data(

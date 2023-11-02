@@ -18,10 +18,7 @@ from paddle.base import core
 from paddle.base.data_feeder import check_dtype, check_variable_and_dtype
 from paddle.base.framework import default_main_program
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import (
-    in_dynamic_mode,
-    in_dynamic_or_pir_mode,
-)
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
 __all__ = []
 
@@ -187,6 +184,17 @@ def fused_feedforward(
                 ring_id,
             )
         else:
+            dtype = x.dtype
+            check_variable_and_dtype(
+                x, 'x', ['float16', 'float32', 'float64'], 'fused_feedforward'
+            )
+            check_dtype(
+                dtype,
+                'dtype',
+                ['float16', 'float32', 'float64'],
+                'fused_feedforward',
+            )
+
             out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
                 x,
                 None,
