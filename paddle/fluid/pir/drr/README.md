@@ -2,13 +2,13 @@
 ---
 ## 1. Related Background
 
-PASS is a key component for optimizing IR, and the transformation of DAG-to-DAG (replacing one DAG subgraph in the original image with another DAG subgraph) is the most common type of Pass. The transformation of DAG-to-DAG can be divided into two steps: matching and rewriting. Matching refers to the complete matching of a known subgraph to the corresponding target subgraph in the Program, while rewriting refers to replacing the matched graph structure with a new subgraph.
+PASS is a crucial component for optimizing intermediate representations (IR), and the transformation of DAG-to-DAG (Replace a subgraph of the directed acyclic graph (DAG) type in the original graph with another DAG) is the most common type of Pass. The transformation of DAG-to-DAG can be divided into two steps: matching and rewriting. Matching refers to the complete matching of a known subgraph to the corresponding target subgraph in the Program, while rewriting refers to replacing the matched graph with a new subgraph.
 
-DRR (Declarative Rewrite Rule) is a set of PASS components used to handle this type of DAG-to-DAG. DRR can reduce the development cost of PASS, allowing developers to focus on optimizing logic processing without worrying about the underlying IR data structure. After the developer declares the target subgraph and the new subgraph that needs to be replaced with a pattern through a simple and easy-to-use interface, DRR can automatically match the original graph in the Program and replace it with a new subgraph.
+DRR can reduce the development cost of PASS, allowing developers to focus on processing optimization logic without caring about the data structure of the underlying IR. After the developer declares the pattern of the target subgraph and the new subgraph to be replaced through a set of simple and easy-to-use interfaces, DRR can automatically match the original subgraph in the Program and replace it with the new subgraph.
 
-Taking the PASS of eliminating redundant CastOp as an example, the code development example using DRR is as follows:
+Taking PASS to eliminate redundant CastOp as an example, the code example developed using DRR is as follows:
 ~~~ c++
-// 1. Inherit specialized template classes from DrPatternBase
+// 1. Inherit specialized template class from DrPatternBase
 class RemoveRedundentCastPattern
     : public pir::drr::DrrPatternBase<RemoveRedundentCastPattern> {
   // 2. Overload operator()
@@ -17,9 +17,9 @@ class RemoveRedundentCastPattern
     auto pat = ctx->SourcePattern();
 
     pat.Tensor("tmp") =                          // CastOp output Tensor named "tmp"
-        pat.Op(paddle::dialect::CastOp::name(),  // Name passed in to CastOp
-               {{"dtype", pat.Attr("dtype1")}})  // The global unique ID corresponding to the "dtype" attribute of CastOp is "dtype1"
-               (pat.Tensor("arg0"));             // CastOp input Tensor is "arg0 "
+        pat.Op(paddle::dialect::CastOp::name(),  // Pass in the name of the CastOp
+               {{"dtype", pat.Attr("dtype1")}})  // The corresponding globally unique ID of the "dtype" attribute of CastOp is "dtype1"
+               (pat.Tensor("arg0"));             // The input Tensor of CastOp is "arg0"
     pat.Tensor("ret") =
         pat.Op(paddle::dialect::CastOp::name(),
                {{"dtype", pat.Attr("dtype2")}})(pat.Tensor("tmp"));
@@ -35,14 +35,15 @@ class RemoveRedundentCastPattern
 };
 ~~~
 
-DRR PASS consists of the following three parts::
-+ `Source Pattern`：Used to describe the target subgraph to be matched in the Program
-+ `Result Pattern`：Constraints used to specify SourcePattern matching (nonessential)
-+ `Constrains`：Used to describe the pattern subgraph that needs to be replaced with, developers only need to define the SourcePattern, Constrains, and ResultPattern to implement a complete PASS.
+DRR PASS contains the following three parts:
++ `Source Pattern`：used to describe the target subgraph to be matched in Program
++ `Result Pattern`：used to specify constraints for SourcePattern matching(nonessential)
++ `Constrains`：Used to describe the subgraph that needs to be replaced by
+Developers only need to define `SourcePattern`, `Constrains` and `ResultPattern` to implement a complete PASS.
 
 **Note:**
-1. **DRR only supports matching and replacing the SourcePattern and ResultPattern of the closure (except for the Pattern input and output Tensors, all internal Tensors cannot be used by external Ops of the Pattern). If the defined Pattern is not closed in the Program, matching fails**
-2. **The input and output of ResultPattern need to be a subset of the input and output of SourcePattern**
+1. **DRR only supports matching and replacing the closed SourcePattern and ResultPattern (except for the Pattern input and output Tensor, all internal Tensors cannot be used by the Pattern external Op). If the defined Pattern is not closed in the Program, the matching will fail.**
+2. **The input and output of ResultPattern need to be a subset of the input and output of SourcePattern.**
 ## 2. Interface List
 <table>
 	 <tr>
@@ -64,39 +65,38 @@ DRR PASS consists of the following three parts::
     const std::string& op_type,
     const std::unordered_map&lt;std::string, Attribute&gt;& attributes)</pre></td>
 		<td> Define an Op in the SourcePattern</td>
-		<td> op_type: The defined Op name can be obtained through the paddle::dialect::xxOp
-	::name() interface <br> attributes : Attribute information of the created Op </td>
+		<td> op_type: The defined Op name. Can be obtained through paddle::dialect::xxOp::name() interface <br> attributes : Attribute information of the created Op </td>
 	</tr>
 	<tr>
 		<td><pre> const drr::Tensor& Tensor(
         const std::string& tensor_name) </pre></td>
-		<td> Define a Tensor in the SourcePattern_ Tensor of name</td>
+		<td> Define a tensor named tensor_name in SourcePattern</td>
 		<td>  tensor_name: The name of the defined Tensor must be unique within the SourcePattern </td>
 	</tr>
 	<tr>
 		<td> <pre> Attribute Attr(
         const std::string& attr_name) const </pre></td>
-		<td> Define an attr named in the SourcePattern_ Properties of name </td>
-		<td> attr_name: The name of the attribute must be unique within the SourcePattern </td>
+		<td> Define an attribute named attr_name in SourcePattern</td>
+		<td> attr_name: The name of the attribute, which needs to be unique within SourcePattern </td>
 	</tr>
 	<tr>
 		<td><pre> void RequireEqual(
         const TensorShape& first,
         const TensorShape& second)</pre></td>
-		<td> Require the TensorShapes of two Tensors in the SourcePattern to be the same</td>
+		<td> Requires the TensorShape of the two Tensors in SourcePattern to be the same</td>
 		<td> first: first TensorShape <br> second : second TensorShape</td>
 	</tr>
 		<tr>
 		<td><pre> void RequireEqual(
         const TensorDataType& first,
         const TensorDataType& second)</pre></td>
-		<td> Require two Tensors in the SourcePattern to have the same data type</td>
+		<td> The data types of the two Tensors in SourcePattern are required to be the same</td>
 		<td> first: DataType of the first Tensor <br> second : DataType of the second Tensor</td>
 	</tr>
 	<tr>
 		<td> <pre>void RequireNativeCall(
         const std::function&lt;bool(const MatchContext&)&gt;& custom_fn)</pre></td>
-		<td> Define a constraint in SourcePattern, which can be used to implement custom constraints on SourcePattern using this interface and lamda expressions</td>
+		<td> Define a constraint in SourcePattern. You can use this interface and lambda expressions to implement custom constraints on SourcePattern.</td>
 		<td> custom_fn: Customized constraint functions</td>
 	</tr>
 	<tr>
@@ -105,8 +105,7 @@ DRR PASS consists of the following three parts::
     const std::string& op_type,
     const std::unordered_map&lt;std::string, Attribute&gt;&  attributes) </pre></td>
 		<td> Define an Op in ResultPattern </td>
-		<td> op_type: The defined Op name can be obtained through the paddle::dialect::xxOp
-	::name() interface<br> attributes : Attribute information of the created Op </td>
+		<td> op_type: The defined Op name. Can be obtained through paddle::dialect::xxOp::name() interface<br> attributes : Attribute information of the created Op </td>
 	</tr>
 	<tr>
 		<td> <pre>const drr::Tensor& Tensor(
@@ -128,7 +127,7 @@ Attribute Attr(const AttrComputeFunc& attr_compute_func) const</pre></td>
 	</tr>
 	<tr>
 		<td> <pre>drr::Tensor& NoneTensor()</pre></td>
-		<td> When the input Tensor of an Op is optional and not needed, NoneTensior needs to be used to hold the position</td>
+		<td> When the input Tensor of an Op is optional and not needed, NoneTensor needs to be used to occupy the place.</td>
 		<td> / </td>
 	</tr>
 	<tr>
