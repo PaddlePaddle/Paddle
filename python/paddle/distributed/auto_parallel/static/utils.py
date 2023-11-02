@@ -1939,6 +1939,11 @@ def validate_opt(optimizer):
     if optimizer is not None:
         optimizer._parameter_list = None
         optimizer._param_groups = None
+        if optimizer._grad_clip and isinstance(
+            optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm
+        ):
+            optimizer._grad_clip._async_add_n = True
+
     return optimizer
 
 
