@@ -689,6 +689,7 @@ class TestScatterWithLargeDataAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_graph(self):
+        paddle.enable_static()
         if os.name == "nt" or not paddle.is_compiled_with_cuda():
             return
 
