@@ -1267,24 +1267,13 @@ class Executor:
                 cur_feed = feed[feed_target_name]
                 if not isinstance(cur_feed, core.LoDTensor):
                     cur_feed = _as_lodtensor(cur_feed, self.place, var_type)
-                # pir_check_feed_shape_type(
-                #     cur_feed, feed_target_name, var_shape, var_type
-                # )
-                # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
-                core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
-            elif op.name() == 'pd_op.feed':
-                feed_target_name = op.attrs()["name"]
-                ret = op.result(0)
-                cur_feed = feed[feed_target_name]
-                if not isinstance(cur_feed, core.LoDTensor):
-                    cur_feed = _as_lodtensor(cur_feed, self.place, ret.dtype)
-                # pir_check_feed_shape_type(
-                #     cur_feed, feed_target_name, var_shape, var_type
-                # )
+                pir_check_feed_shape_type(
+                    cur_feed, feed_target_name, var_shape, var_type
+                )
                 # the last arg of set_feed_variable has no effect in pir, we pass 0 by default.
                 core.set_feed_variable(scope, cur_feed, feed_target_name, 0)
             else:
-                continue
+                break
 
     def _fetch_data(self, fetch_list, fetch_var_name, scope):
         outs = [
