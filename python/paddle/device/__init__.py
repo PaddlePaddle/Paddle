@@ -833,6 +833,7 @@ def current_stream(device=None):
     '''
 
     Return the current stream by the device.
+    
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
             It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
@@ -883,6 +884,7 @@ def set_stream(stream):
     '''
 
     Set the current stream.
+
     Args:
         stream(Stream): The selected stream.
 
@@ -1004,7 +1006,7 @@ def synchronize(device=None):
             >>> paddle.device.synchronize("custom_cpu:0")
             >>> place = paddle.CustomPlace('custom_cpu', 0)
             >>> paddle.device.synchronize(place)
-            
+
     """
 
     if device is None:
