@@ -62,7 +62,7 @@ def is_compiled_with_custom_device(device_type):
     Whether paddle was built with Paddle_CUSTOM_DEVICE .
 
     Args:
-        std::string, the registered device type, like "npu".
+        device_type (str): the registered device type, like "npu".
 
     Return:
         bool, ``True`` if CustomDevice is supported, otherwise ``False``.
@@ -424,7 +424,7 @@ class Event:
 
     Args:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
             where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
@@ -788,7 +788,7 @@ def current_stream(device=None):
     Return the current stream by the device.
     Parameters:
         device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): The device which want to get stream from.  If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
+            It can be ``gpu``, ``gpu:x``, ``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
             where ``x`` is the index of the GPUs, CustomDevicecs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
     Returns:
         Stream: The stream to the device.
