@@ -65,14 +65,10 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
 template <typename T>
 std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
                                           const IntArray& axis) {
-  VLOG(0) << "squeeze_decom in===========";
-
   auto axis_ = process_dims(x, axis.GetData());
   auto out_shape = get_squeeze_dims(x, axis_);
   Tensor out = reshape<T>(x, out_shape);
   Tensor xshape;
-  VLOG(0) << "squeeze_decom end===========";
-
   return std::make_tuple(out, xshape);
 }
 

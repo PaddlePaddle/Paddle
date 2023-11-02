@@ -193,8 +193,6 @@ def gen(
     process_optional_output_info(apis)
 
     for item in apis:
-        if item["name"] == "squeeze":
-            print(item)
         for attr_item in item["attrs"]:
             if attr_item["typename"] not in attr_types_map.keys():
                 raise TypeError
