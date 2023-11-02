@@ -1308,16 +1308,21 @@ PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
 
 /**
  * Apply inplace pass to new IR FLAG
- * Name: new_ir_apply_inplace_pass
+ * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
  * Note: If Ture, will apply inplace pass to new IR.
  */
-PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
+
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 

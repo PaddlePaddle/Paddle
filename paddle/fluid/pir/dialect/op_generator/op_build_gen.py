@@ -22,6 +22,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReshapeWithXShapeInferMeta',
     'SliceRawInferMeta',
     'StackInferMeta',
+    'Conv2dTransposeInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
@@ -358,12 +359,10 @@ def GenBuildOutputs(
  """
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
   if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = std::move(phi::IntArray({name}_.dyn_cast<pir::OpResult>().owner()
+    {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+                          {name}_.dyn_cast<pir::OpResult>().owner()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attribute("value")
-                          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                          .data()
-                          .GetData()));
+                          .attribute("value"))));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
@@ -378,12 +377,10 @@ def GenBuildOutputs(
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
   if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = {name}_.dyn_cast<pir::OpResult>().owner()
+    {name} = paddle::dialect::GetInt64Vector(
+                    {name}_.dyn_cast<pir::OpResult>().owner()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                    .attribute("value")
-                    .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                    .data()
-                    .GetData();
+                    .attribute("value"));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::vector<int64_t>({name}_size, -1);

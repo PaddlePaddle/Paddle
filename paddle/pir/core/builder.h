@@ -39,6 +39,7 @@ class BoolAttribute;
 class FloatAttribute;
 class DoubleAttribute;
 class Int32Attribute;
+class IndexAttribute;
 class Int64Attribute;
 class ArrayAttribute;
 class PointerAttribute;
@@ -131,6 +132,7 @@ class Builder {
   IR_API FloatAttribute float_attr(float value);
   IR_API DoubleAttribute double_attr(double value);
   IR_API Int32Attribute int32_attr(int32_t value);
+  IR_API IndexAttribute index_attr(int64_t value);
   IR_API Int64Attribute int64_attr(int64_t value);
   IR_API ArrayAttribute array_attr(const std::vector<Attribute> &value);
   IR_API PointerAttribute pointer_attr(void *value);

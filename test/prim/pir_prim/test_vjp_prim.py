@@ -73,8 +73,8 @@ class TestVjpPrim(unittest.TestCase):
             with paddle.pir.core.program_guard(newir_program):
                 grad_outs = call_vjp(
                     divide_op,
-                    [divide_op.operands_source()],
-                    [divide_op.results()],
+                    [[value] for value in divide_op.operands_source()],
+                    [[value] for value in divide_op.results()],
                     out_grads,
                     stop_gradients,
                 )
@@ -121,8 +121,8 @@ class TestVjpPrim(unittest.TestCase):
         with paddle.pir.core.program_guard(newir_program):
             grad_outs = call_vjp(
                 divide_op,
-                [divide_op.operands_source()],
-                [divide_op.results()],
+                [[value] for value in divide_op.operands_source()],
+                [[value] for value in divide_op.results()],
                 out_grads,
                 stop_gradients,
             )
@@ -146,8 +146,8 @@ class TestVjpPrim(unittest.TestCase):
             with paddle.pir.core.program_guard(newir_program):
                 grad_outs = call_vjp(
                     sum_op,
-                    [sum_op.operands_source()],
-                    [sum_op.results()],
+                    [[value] for value in sum_op.operands_source()],
+                    [[value] for value in sum_op.results()],
                     out_grads,
                     stop_gradients,
                 )
@@ -179,8 +179,8 @@ class TestVjpPrim(unittest.TestCase):
         with paddle.pir.core.program_guard(newir_program):
             grad_outs = call_vjp(
                 sum_op,
-                [sum_op.operands_source()],
-                [sum_op.results()],
+                [[value] for value in sum_op.operands_source()],
+                [[value] for value in sum_op.results()],
                 out_grads,
                 stop_gradients,
             )
