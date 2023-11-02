@@ -588,10 +588,11 @@ def process_op_input_and_outputs(op, block, global_block, dtype):
 
 def map_block(block, fn):
     fn(block)
+    program = block.program
     for op in block.ops:
         if not op.has_attr("sub_block"):
             continue
-        sub_block = op.attr("sub_block")
+        sub_block = program.blocks[op.attr("sub_block").id]
         map_block(sub_block, fn)
 
 
