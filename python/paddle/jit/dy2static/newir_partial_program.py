@@ -234,7 +234,6 @@ class PartialProgramLayer:
             self._create_scope_vec(
                 program_id=self.program_id, use_scope_cache=True
             ),
-            self._double_grads,
             self._cuda_graph_vec,
             *attrs,
         )
@@ -275,11 +274,6 @@ class PartialProgramLayer:
                 return scope
         else:
             return core.Scope()
-
-    @LazyInitialized
-    def _double_grads(self):
-        # TODO: check the affects.
-        return None
 
     # whole
     @switch_to_static_graph
@@ -652,7 +646,9 @@ class PartialProgramLayer:
             program, targets = self._hooker.before_append_backward(
                 program, targets
             )
-            self._outputs = NestSequence(targets, need_check=True)
+            self._outputs = NestSequence(
+                self._outputs.restore(targets), need_check=True
+            )
         inputs = list(
             filter(lambda x: isinstance(x, OpResult), self._inputs.tolist())
         )
@@ -692,7 +688,9 @@ class PartialProgramLayer:
                 ) = self._hooker.after_append_backward(
                     program, targets, forward_end_idx
                 )
-                self._outputs = NestSequence(targets, need_check=True)
+                self._outputs = NestSequence(
+                    self._outputs.restore(targets), need_check=True
+                )
 
             # TODO: add later
             # self.prepare_gradient_aggregation(
