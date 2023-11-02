@@ -317,7 +317,6 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    backward_global_block && backward_global_block->HasVar(name);
     auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
         name == paddle::framework::kFakeVarName || var == nullptr) {
