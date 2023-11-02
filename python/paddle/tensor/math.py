@@ -3079,7 +3079,7 @@ def amax(x, axis=None, keepdim=False, name=None):
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.amax(x, axis, keepdim)
 
     else:
@@ -3227,7 +3227,7 @@ def amin(x, axis=None, keepdim=False, name=None):
              [[0.50000000, 0.33333333],
               [0.        , 0.        ]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.amin(x, axis, keepdim)
 
     else:
@@ -4271,7 +4271,7 @@ def cumprod(x, dim=None, dtype=None, name=None):
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = cast(x, dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cumprod(x, dim)
     else:
         check_variable_and_dtype(
@@ -4575,7 +4575,7 @@ def sign(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [ 1.,  0., -1.,  1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sign(x)
     else:
         check_variable_and_dtype(
@@ -4981,7 +4981,7 @@ def digamma(x, name=None):
              [ nan       ,  5.32286835]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.digamma(x)
     else:
         check_variable_and_dtype(
@@ -5337,7 +5337,7 @@ def erfinv(x, name=None):
             [ 0.       , 0.47693631, -inf.     ])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.erfinv(x)
     else:
         check_variable_and_dtype(
@@ -5943,7 +5943,7 @@ def angle(x, name=None):
              [-1.10714877, -0.78539819,  0.        ,  0.78539819]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.angle(x)
     else:
         check_variable_and_dtype(
