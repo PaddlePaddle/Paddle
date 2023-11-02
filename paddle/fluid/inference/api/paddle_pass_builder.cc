@@ -391,6 +391,47 @@ void CpuPassStrategy::EnableMKLDNN() {
 #endif
 }
 
+void CpuPassStrategy::DisableMKLDNN() {
+  std::vector<std::string> mkldnn_passes_to_erase({
+      "mkldnn_placement_pass",
+      "squeeze2_transpose2_onednn_fuse_pass",
+      "depthwise_conv_mkldnn_pass",              //
+      "conv_bn_fuse_pass",                       // Execute BN passes again to
+      "conv_eltwiseadd_bn_fuse_pass",            // preserve correct pass order
+      "conv_affine_channel_mkldnn_fuse_pass",    //
+      "conv_transpose_bn_fuse_pass",             //
+      "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+      "conv_bias_mkldnn_fuse_pass",              //
+      "conv_transpose_bias_mkldnn_fuse_pass",
+      // TODO(baoachun): Need to support 5-dimensional input.
+      // "conv3d_bias_mkldnn_fuse_pass",  //
+      "conv_elementwise_add_mkldnn_fuse_pass",
+      "conv_activation_mkldnn_fuse_pass",           //
+      "scale_matmul_fuse_pass",                     //
+      "reshape_transpose_matmul_mkldnn_fuse_pass",  //
+      "matmul_transpose_reshape_mkldnn_fuse_pass",  //
+      "matmul_elementwise_add_mkldnn_fuse_pass",    //
+      "matmul_activation_mkldnn_fuse_pass",         //
+      // Disabled due to topology-dependent speed-up
+      "fc_mkldnn_pass",
+      "fc_act_mkldnn_fuse_pass",
+      "self_attention_fuse_pass",              //
+      "batch_norm_act_fuse_pass",              //
+      "softplus_activation_onednn_fuse_pass",  //
+      "shuffle_channel_mkldnn_detect_pass",    //
+      "elementwise_act_onednn_fuse_pass",      //
+      "operator_scale_onednn_fuse_pass",       //
+      "operator_unsqueeze2_onednn_fuse_pass",  //
+      "operator_reshape2_onednn_fuse_pass",    //
+  });
+  for (const auto &pass : mkldnn_passes_to_erase) {
+    int idx = static_cast<int>(GetPassIndex(pass));
+    if (idx != -1) {
+      passes_.erase(std::begin(passes_) + idx);
+    }
+  }
+}
+
 void CpuPassStrategy::EnableMkldnnQuantizer() {
 #ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_quantizer_) {

@@ -17,6 +17,7 @@
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/phi/backends/gpu/cuda/cudnn_workspace_helper.h"
 #endif
+#include "paddle/phi/backends/cpu/cpu_info.h"
 
 namespace phi {
 
@@ -679,7 +680,11 @@ PHI_DEFINE_EXPORTED_bool(
  * Example:
  * Note:
  */
-PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
+PHI_DEFINE_EXPORTED_bool(
+    use_mkldnn,
+    phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ? true
+                                                                     : false,
+    "Use MKLDNN to run");
 
 /**
  * Debug related FLAG

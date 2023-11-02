@@ -658,6 +658,11 @@ void AnalysisConfig::EnableMKLDNN() {
   Update();
 }
 
+void AnalysisConfig::DisableMKLDNN() {
+  use_mkldnn_ = false;
+  Update();
+}
+
 void AnalysisConfig::SetMkldnnCacheCapacity(int capacity) {
 #ifdef PADDLE_WITH_DNNL
   mkldnn_cache_capacity_ = capacity;
@@ -985,6 +990,8 @@ void AnalysisConfig::Update() {
       pass_builder()->EnableMKLDNN();
     }
 #endif
+  } else {
+    pass_builder()->DisableMKLDNN();
   }
 
   // Quantization passes must come after all other optimization passes
