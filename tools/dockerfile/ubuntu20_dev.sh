@@ -20,7 +20,7 @@ function base_image(){
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
-    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8431#g' ${dockerfile_name}
+    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8406#g' ${dockerfile_name}
   elif [[ ${ref_CUDA_MAJOR} == "11.7" ]];then
     dockerfile_name="Dockerfile-117"
     sed "s#<baseimg>#nvidia/cuda:11.7.1-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
@@ -29,7 +29,7 @@ function base_image(){
     sed -i "s#<install_gcc>#WORKDIR /usr/bin ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}
     sed -i "s#gcc121#gcc82#g" ${dockerfile_name}
     sed -i "s#gcc-12.1#gcc-8.2#g" ${dockerfile_name}
-    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8431#g' ${dockerfile_name}
+    sed -i 's#RUN bash /build_scripts/install_trt.sh#RUN bash /build_scripts/install_trt.sh trt8424#g' ${dockerfile_name}
   elif [[ ${ref_CUDA_MAJOR} == "11.8" ]];then
     dockerfile_name="Dockerfile-118"
     sed "s#<baseimg>#nvidia/cuda:11.8.0-cudnn8-devel-ubuntu20.04#g" ./Dockerfile.ubuntu20 >${dockerfile_name}
