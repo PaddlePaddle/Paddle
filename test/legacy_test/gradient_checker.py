@@ -353,7 +353,7 @@ def double_grad_check(
 
     x_init = _as_list(x_init)
 
-    target_grads, grad_res, program, scope = get_static_double_grad(
+    grad_res, x, target_grads, program, scope = get_static_double_grad(
         x, y, x_init, y_grads_init, place
     )
 
@@ -425,7 +425,7 @@ def triple_grad_check(
     x_init = _as_list(x_init)
 
     # x <=> [x, dout, ddx]
-    target_grads_grads, grad_res, program, scope = get_static_double_grad(
+    grad_res, x, target_grads_grads, program, scope = get_static_triple_grad(
         x, y, x_init, y_grads_init, place
     )
     grad_check(
@@ -542,7 +542,7 @@ def get_static_double_grad(
     filted_idx, filted_ddx = zip(*filted)
     ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filted_ddx)
 
-    return dx, ddx_res, program, scope
+    return ddx_res, x, filted_dx, program, scope
 
 
 def get_eager_double_grad(
@@ -674,7 +674,7 @@ def double_grad_check_for_dygraph(
     eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    _, static_double_grad, _, _ = get_static_double_grad(
+    static_double_grad, _, _, _, _ = get_static_double_grad(
         x, y, x_init, y_grads_init, place
     )
 
@@ -837,7 +837,7 @@ def triple_grad_check_for_dygraph(
     eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    _, static_triple_grad, _, _ = get_static_triple_grad(
+    static_triple_grad, _, _, _, _ = get_static_triple_grad(
         x, y, x_init, y_grads_init, place
     )
 
