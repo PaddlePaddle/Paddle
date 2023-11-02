@@ -241,7 +241,6 @@ class PartialProgramLayer:
                     self._create_scope_vec(
                         program_id=self.program_id, use_scope_cache=True
                     ),
-                    self._double_grads,
                     self._cuda_graph_vec,
                     *attrs
                 )
@@ -289,11 +288,6 @@ class PartialProgramLayer:
                 return scope
         else:
             return core.Scope()
-
-    @LazyInitialized
-    def _double_grads(self):
-        # TODO: check the affects.
-        return None
 
     # whole
     @switch_to_static_graph
