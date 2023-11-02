@@ -41,3 +41,9 @@ def cost_model_guard(value: bool):
 def strict_mode_guard(value: bool):
     with EnvironmentVariableGuard(ENV_STRICT_MODE, value):
         yield
+
+
+@contextmanager
+def min_graph_size_guard(value: int):
+    with EnvironmentVariableGuard(ENV_MIN_GRAPH_SIZE, value):
+        yield
