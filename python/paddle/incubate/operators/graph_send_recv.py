@@ -23,9 +23,11 @@ from paddle.base.data_feeder import (
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_mode, in_pir_mode
+from paddle.geometric.message_passing.utils import (
+    convert_out_size_to_list,
+    get_out_size_tensor_inputs,
+)
 from paddle.utils import deprecated
-
-from .utils import convert_out_size_to_list, get_out_size_tensor_inputs
 
 
 @deprecated(
