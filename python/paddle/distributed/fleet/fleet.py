@@ -98,14 +98,13 @@ is_non_distributed_check = wrap_decorator(_is_non_distributed_check_)
 
 class Fleet:
     """
-    Unified API for distributed training of PaddlePaddle
+    Unified API for distributed training of PaddlePaddle.
     Please reference the https://github.com/PaddlePaddle/PaddleFleetX for details
-
 
     Returns:
         Fleet: A Fleet instance
 
-
+    Examples:
         .. code-block:: python
             :name: code-example1
 
@@ -121,8 +120,6 @@ class Fleet:
             optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
 
             # do distributed training
-
-
 
         .. code-block:: python
             :name: code-example2
@@ -153,7 +150,6 @@ class Fleet:
             if fleet.is_server():
                 print("this is server")
             fleet.stop_worker()
-
 
     """
 
@@ -190,46 +186,41 @@ class Fleet:
                 is False.
             strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
-            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight
-                the logging level is. Default is "INFO".
-
+            log_level (Integer, String, optional): A ``Integer`` or ``String`` Variable determining how hight the logging level is. Default is "INFO".
 
         Returns:
             None
 
         Examples:
-
             .. code-block:: python
-                :name: code-example1
+                :name: code-init-example1
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
 
-
-
             .. code-block:: python
-                :name: code-example2
+                :name: code-init-example2
 
                 import paddle.distributed.fleet as fleet
                 fleet.init(is_collective=True)
 
-
             .. code-block:: python
-                :name: code-example3
+                :name: code-init-example3
+
                 import paddle.distributed.fleet as fleet
                 role = fleet.PaddleCloudRoleMaker()
                 fleet.init(role)
 
-
             .. code-block:: python
-                :name: code-example4
+                :name: code-init-example4
+
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(strategy=strategy)
 
-
             .. code-block:: python
-                :name: code-example5
+                :name: code-init-example5
+
                 import paddle.distributed.fleet as fleet
                 strategy = fleet.DistributedStrategy()
                 fleet.init(log_level = "DEBUG")
@@ -441,11 +432,9 @@ class Fleet:
         Check whether the node is the first instance of worker.
 
         Returns:
-            bool: True if this is the first node of worker,
-                  False if not.
+            bool: True if this is the first node of worker, False if not.
 
         Examples:
-
             .. code-block:: python
 
                 import paddle.distributed.fleet as fleet

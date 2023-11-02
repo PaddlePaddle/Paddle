@@ -410,17 +410,19 @@ def get_available_custom_device():
 class Event:
     '''
     A device event wrapper around StreamBase.
+
     Parameters:
-        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None.
-            It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,
-            where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
+        device(str|paddle.CUDAPlace(n)|paddle.CustomPlace(n)): Which device the stream runn on. If device is None, the device is the current device. Default: None. It can be ``gpu``, ``gpu:x``,``custom_device``, ``custom_device:x``, where ``custom_device`` is the name of CustomDevicec,where ``x`` is the index of the GPUs, XPUs. And it can be paddle.CUDAPlace(n) or paddle.CustomPlace(n).
         enable_timing (bool, optional): indicates if the event should measure time, default is False
         blocking (bool, optional): if True, ``wait`` will be blocking, default is False
         interprocess (bool): if True, the event can be shared between processes, default is False
+
     Returns:
         Event: The event.
+
     Examples:
         .. code-block:: python
+
             # required: custom_device
             import paddle
 
@@ -429,6 +431,7 @@ class Event:
             e2 = paddle.device.Event('custom_cpu')
             e3 = paddle.device.Event('custom_cpu:0')
             e4 = paddle.device.Event(paddle.CustomPlace('custom_cpu', 0))
+
     '''
 
     def __init__(
