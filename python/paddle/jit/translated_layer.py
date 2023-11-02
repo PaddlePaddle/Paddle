@@ -336,7 +336,6 @@ class _ProgramHolder:
         # input, output, persistable, double_grads var info
         self._input_descs = []
         self._output_descs = []
-        self._double_grad_descs = []
         self._persistable_names = []
         self._grad_var_names = {}
 
@@ -410,10 +409,6 @@ class _ProgramHolder:
         return self._persistable_names
 
     @property
-    def double_grad_descs(self):
-        return self._double_grad_descs
-
-    @property
     def scope(self):
         return self._inner_scope
 
@@ -464,12 +459,6 @@ class _ProgramHolder:
 
         for op_idx in reversed(ops_to_remove):
             root_block._remove_op(op_idx, op_idx + 1)
-
-        for i in range(program_desc.num_blocks()):
-            block_desc = program_desc.block(i)
-            for var_desc in block_desc.all_vars():
-                if "@GRAD" in var_desc.name():
-                    self._double_grad_descs.append(var_desc)
 
         # 2. Input processing, reverse feed vars
         self._input_descs.reverse()
@@ -954,17 +943,6 @@ def _run_dygraph(instance, input, program_holder):
     # hold forward variables
     tmp_scope_vec = [program_holder.scope]
 
-    double_grad_vars = []
-    for var_desc in program_holder.double_grad_descs:
-        var = core.eager.Tensor(
-            dtype=var_desc.dtype(),
-            dims=var_desc.shape(),
-            name=var_desc.name(),
-            type=var_desc.type(),
-            persistable=False,
-        )
-        double_grad_vars.append(var)
-
     # 2. run program by op
     trace_program = (
         program_holder.infer_program
@@ -1026,7 +1004,6 @@ def _run_dygraph(instance, input, program_holder):
         _valid_vars(persistable_vars),
         _valid_vars(output_vars),
         tmp_scope_vec,
-        _valid_vars(double_grad_vars),
         None,
         *attrs,
     )

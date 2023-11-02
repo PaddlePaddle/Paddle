@@ -208,7 +208,6 @@ class RunProgramOpTest(unittest.TestCase):
 
         outputs['OutScope'] = [core.Scope()]
 
-        outputs['DOut'] = [create_var_base(False, "Fake_var")]
         return outputs
 
     def calc_dygraph_output(self, place):
@@ -256,7 +255,6 @@ class RunProgramOpTest(unittest.TestCase):
                 inputs['Params'],
                 outputs['Out'],
                 outputs['OutScope'],
-                outputs['DOut'],
                 None,
                 *self.attrs
             )
@@ -309,7 +307,6 @@ class RunProgramOpTest(unittest.TestCase):
                 inputs['Params'],
                 outputs['Out'],
                 outputs['OutScope'],
-                outputs['DOut'],
                 None,
                 *self.attrs
             )
