@@ -21,6 +21,7 @@ from functools import wraps
 
 import numpy as np
 
+import paddle
 from paddle import set_flags, static
 from paddle.base import core
 from paddle.jit.api import sot_mode_guard
@@ -60,6 +61,7 @@ class IrMode(Flag):
     LEGACY_IR = auto()
     # pir translator mode, Reference link: https://github.com/PaddlePaddle/community/blob/master/pfcc/paddle-code-reading/IR_Dialect/program_translator.md
     PIR_EXE = auto()
+    # using native pir api mode
     PIR_API = auto()
 
     def lower_case_name(self):
@@ -104,12 +106,9 @@ def to_pir_ast_test(fn):
         logger.info("[PIR][AST] running pir api")
         ir_outs = None
         try:
-            import paddle
-
             with paddle.pir_utils.IrGuard():
                 paddle.disable_static()
-                with sot_mode_guard(False):
-                    ir_outs = fn(*args, **kwargs)
+                ir_outs = fn(*args, **kwargs)
         finally:
             paddle.enable_static()
         return ir_outs
@@ -206,6 +205,12 @@ class Dy2StTestMeta(type):
             )
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
+                # NOTE(gouzil): Temporarily not supported SOT + PIR, link: https://github.com/PaddlePaddle/Paddle/pull/58630
+                if (
+                    to_static_mode == ToStaticMode.SOT
+                    and ir_mode == IrMode.PIR_API
+                ):
+                    continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
                         fn_name, to_static_mode, ir_mode
