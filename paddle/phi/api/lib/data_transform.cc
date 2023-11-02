@@ -814,12 +814,6 @@ void ReshardOutputPartialAxisToReplicated(
   if (out_tensor->dist_attr().is_partial()) {
     auto dist_attr = out_tensor->dist_attr();
     dist_attr.clean_partial_status();
-    if (!IsCurRankInMesh(out_tensor->dist_attr().process_mesh())) {
-      VLOG(6) << "DistTensor is not in mesh, just clear its partial status and "
-                 "skip reshard it to replicated.";
-      out_tensor->unsafe_set_dist_attr(dist_attr);
-      return;
-    }
     VLOG(6) << "FwdAPI Output P2R - "
             << ReshardDebugInfo(*out_tensor, dist_attr);
     auto* func =
