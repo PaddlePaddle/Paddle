@@ -21,7 +21,6 @@ from paddle.base.layer_helper import LayerHelper
 from paddle.framework import (
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
-    in_pir_mode,
 )
 
 __all__ = []
@@ -32,18 +31,6 @@ def _verify_dropout_rate(dropout_rate):
         raise TypeError("dropout_rate argument should be a number")
     if dropout_rate < 0 or dropout_rate > 1:
         raise ValueError("dropout_rate argument should between 0 and 1")
-
-
-def _default_main_program():
-    assert (
-        in_dynamic_or_pir_mode()
-    ), "in static branch, default_main_program is got from LayerHelper"
-    if in_dynamic_mode():
-        return paddle.base.framework.default_main_program()
-    elif in_pir_mode():
-        return paddle.pir.core.default_main_program()
-
-    return None
 
 
 def fused_feedforward(
@@ -152,8 +139,8 @@ def fused_feedforward(
     )  # semantic transfer
 
     if in_dynamic_or_pir_mode():
-        if _default_main_program().random_seed != 0:
-            seed = _default_main_program().random_seed
+        if paddle.static.default_main_program().random_seed != 0:
+            seed = paddle.static.default_main_program().random_seed
 
         if in_dynamic_mode():
             out, _, _, _, _, _, _, _, _, _, _ = _legacy_C_ops.fused_feedforward(
@@ -674,8 +661,8 @@ def fused_multi_head_attention(
         )
 
     if in_dynamic_or_pir_mode():
-        if _default_main_program().random_seed != 0:
-            seed = _default_main_program().random_seed
+        if paddle.static.default_main_program().random_seed != 0:
+            seed = paddle.static.default_main_program().random_seed
         # pre_ln_mean, pre_ln_variance, pre_ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out,
         # qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, attn_mask_out, fmha_out,
         # linear_out, dropout_mask_out, ln_mean_out, ln_var_out, bias_dropout_residual_out, final_out
