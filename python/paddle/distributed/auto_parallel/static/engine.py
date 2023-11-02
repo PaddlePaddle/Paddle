@@ -1685,6 +1685,37 @@ class Engine:
                 core._set_prim_forward_enabled(prev_fwd_prim_state)
                 core._set_prim_backward_enabled(prev_bwd_prim_state)
 
+    def _update_lr(self):
+        if self.lr_scheduler:
+            from paddle.base.executor import _as_lodtensor, convert_dtype
+            from paddle.optimizer.lr import LRScheduler
+
+            assert isinstance(
+                self.lr_scheduler, LRScheduler
+            ), "must be LRScheduler"
+            lr_scheduler = self.lr_scheduler
+            lr_value = lr_scheduler()
+            if lr_scheduler._var_name in self.main_program.global_block().vars:
+                lr_var = self.main_program.global_block().vars[
+                    lr_scheduler._var_name
+                ]
+                data = np.array([lr_value]).astype(convert_dtype(lr_var.dtype))
+                tensor = core.get_variable_tensor(
+                    global_scope(), lr_scheduler._var_name
+                )
+                # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
+                cpu_tensor = _as_lodtensor(data, core.CPUPlace())
+                if core.is_cuda_graph_capturing():
+                    warnings.warn(
+                        "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                        "take any effect! Please set the learning rate manually before each batch!"
+                    )
+                elif core.is_compiled_with_ipu():
+                    # for ipu, tensor is allocated on cpu
+                    tensor._copy_from(cpu_tensor, tensor._place())
+                else:
+                    tensor._copy_from(cpu_tensor, self._executor.place)
+
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
@@ -1699,6 +1730,7 @@ class Engine:
         if self.enable_prim_in_distribute:
             self._translate_to_newir_program(feed_dict)
             self._decompose_newir_program()
+            self._update_lr()
 
             fetch_list = []
             for fetch_name in fetch_names:
@@ -1710,44 +1742,6 @@ class Engine:
                 self.newir_program_after_decomposed,
                 self.newir_prune_startup_program,
             ):
-                if self.lr_scheduler:
-                    from paddle.base.executor import (
-                        _as_lodtensor,
-                        convert_dtype,
-                    )
-                    from paddle.optimizer.lr import LRScheduler
-
-                    assert isinstance(
-                        self.lr_scheduler, LRScheduler
-                    ), "must be LRScheduler"
-                    lr_scheduler = self.lr_scheduler
-                    lr_value = lr_scheduler()
-                    if (
-                        lr_scheduler._var_name
-                        in self.main_program.global_block().vars
-                    ):
-                        lr_var = self.main_program.global_block().vars[
-                            lr_scheduler._var_name
-                        ]
-                        data = np.array([lr_value]).astype(
-                            convert_dtype(lr_var.dtype)
-                        )
-                        tensor = core.get_variable_tensor(
-                            global_scope(), lr_scheduler._var_name
-                        )
-                        # NOTE(dev): `tensor.set(data, self.place)` always call TensorCopySync that is a blocking behavior. So we use `_copy_from` to replace it.
-                        cpu_tensor = _as_lodtensor(data, core.CPUPlace())
-                        if core.is_cuda_graph_capturing():
-                            warnings.warn(
-                                "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
-                                "take any effect! Please set the learning rate manually before each batch!"
-                            )
-                        elif core.is_compiled_with_ipu():
-                            # for ipu, tensor is allocated on cpu
-                            tensor._copy_from(cpu_tensor, tensor._place())
-                        else:
-                            tensor._copy_from(cpu_tensor, self._executor.place)
-
                 outs = self._executor.run(
                     self.newir_program_after_decomposed,
                     feed=feed_dict,
