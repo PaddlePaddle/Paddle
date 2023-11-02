@@ -72,10 +72,12 @@ def get_pir_program_and_param_map():
             dtype=tmp3.dtype,
             value=1.0,
         )
-        scale.stop_gradient = False
-        out = paddle.nn.functional.layer_norm(
+        scale.stop_gradient = True
+        tmp4 = paddle.nn.functional.layer_norm(
             tmp3, tmp3.shape[1:], scale, None, 1e-5
         )
+        tmp5 = paddle.nn.functional.dropout(tmp4, p=0.5)
+        out = paddle.add(x, tmp5)
         # construct backward graph
         gradients = paddle.static.gradients(out, [x, y, z])
 
@@ -104,11 +106,11 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         newir_ops = newir_program.global_block().ops
-        global_outputs = [newir_ops[7].result(0)]
+        global_outputs = [newir_ops[9].result(0)]
         global_grads = [
             newir_ops[-1].result(0),
-            newir_ops[-1].result(1),
-            newir_ops[-2].result(1),
+            newir_ops[-3].result(1),
+            newir_ops[-4].result(1),
         ]
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
@@ -120,16 +122,18 @@ class TestDecomposeOp(unittest.TestCase):
 
                 # get the old_ir_grad_var_to_var map
                 old_ir_grad_var_to_var_map = {
+                    'dropout_1.tmp_0@GRAD': 'dropout_1.tmp_0',
+                    'elementwise_add_2@GRAD': 'elementwise_add_2',
+                    'elementwise_add_3@GRAD': 'elementwise_add_3',
+                    'elementwise_mul_1@GRAD': 'elementwise_mul_1',
                     'layer_norm_1.tmp_2@GRAD': 'layer_norm_1.tmp_2',
                     'mean_1.tmp_0@GRAD': 'mean_1.tmp_0',
-                    "fill_constant_3.tmp_0@GRAD": "fill_constant_3.tmp_0",
-                    'elementwise_mul_1@GRAD': 'elementwise_mul_1',
-                    'elementwise_add_1@GRAD': 'elementwise_add_1',
-                    'z@GRAD': 'z',
                     'x@GRAD': 'x',
+                    'x@GRAD@RENAME@block0@0': 'x',
+                    'x@GRAD@RENAME@block0@1': 'x',
                     'y@GRAD': 'y',
+                    'z@GRAD': 'z',
                 }
-
                 grad_var_to_var_map = get_new_ir_grad_var_to_var_map(
                     param_mappings, old_ir_grad_var_to_var_map
                 )
@@ -150,6 +154,7 @@ class TestDecomposeOp(unittest.TestCase):
 
                 decompose_bwd_ops_names = [
                     "pd_op.layer_norm_grad",
+                    "pd_op.dropout_grad",
                     "pd_op.mean_grad",
                     "pd_op.add_grad",
                     "pd_op.multiply_grad",
@@ -161,53 +166,71 @@ class TestDecomposeOp(unittest.TestCase):
                     ):
                         fwd_op = get_fwd_op(bwd_op, grad_var_to_var_map)
                         assert fwd_op is not None, "fwd_op is None"
-                        fwd_inputs = tuple(
-                            x.source() for x in fwd_op.operands()
-                        )
-                        fwd_outputs = tuple(fwd_op.results())
 
                         # if bwd_op has custom_vjp rule, then decompose bwd_op firstly and decompose fwd_op secondly
-                        if core.has_custom_vjp(fwd_op):
-                            bwd_leaf_op_index = (
-                                bwd_leaf_ops.index(bwd_op)
-                                if bwd_op in bwd_leaf_ops
-                                else None
-                            )
-                            new_grads = decomp.decompose_bwd_op(
-                                newir_program.global_block(),
-                                bwd_op,
-                                grad_var_to_var_map,
-                                fwd_outputs,
-                                fwd_inputs,
-                            )
-                            if bwd_leaf_op_index is not None:
-                                decomp.replace_graph_outputs(
-                                    global_grads,
-                                    new_grads,
-                                    bwd_leaf_op_index,
-                                    bwd_leaf_ops_output_indexes,
+                        if core.has_vjp(fwd_op):
+                            if core.has_custom_vjp(fwd_op):
+                                bwd_leaf_op_index = (
+                                    bwd_leaf_ops.index(bwd_op)
+                                    if bwd_op in bwd_leaf_ops
+                                    else None
                                 )
-
-                            fwd_leaf_op_index = (
-                                fwd_leaf_ops.index(fwd_op)
-                                if fwd_op in fwd_leaf_ops
-                                else None
-                            )
-                            new_fwd_outputs = decomp.decompose_fwd_op(
-                                newir_program.global_block(),
-                                fwd_op,
-                                grad_var_to_var_map,
-                            )
-                            if fwd_leaf_op_index is not None:
-                                decomp.replace_graph_outputs(
-                                    global_outputs,
-                                    new_fwd_outputs,
-                                    fwd_leaf_op_index,
-                                    fwd_leaf_ops_output_indexes,
+                                new_grads = decomp.decompose_bwd_op(
+                                    newir_program.global_block(),
+                                    fwd_op,
+                                    bwd_op,
+                                    grad_var_to_var_map,
+                                    True,
                                 )
+                                if bwd_leaf_op_index is not None:
+                                    decomp.replace_graph_outputs(
+                                        global_grads,
+                                        new_grads,
+                                        bwd_leaf_op_index,
+                                        bwd_leaf_ops_output_indexes,
+                                    )
 
-                        # if bwd_op has no custom_vjp rule, then decompose fwd_op into a set of primitive ops firstly and decompose bwd_op secondly
+                                fwd_leaf_op_index = (
+                                    fwd_leaf_ops.index(fwd_op)
+                                    if fwd_op in fwd_leaf_ops
+                                    else None
+                                )
+                                new_fwd_outputs = decomp.decompose_fwd_op(
+                                    newir_program.global_block(),
+                                    fwd_op,
+                                    grad_var_to_var_map,
+                                )
+                                if fwd_leaf_op_index is not None:
+                                    decomp.replace_graph_outputs(
+                                        global_outputs,
+                                        new_fwd_outputs,
+                                        fwd_leaf_op_index,
+                                        fwd_leaf_ops_output_indexes,
+                                    )
+                            else:
+                                bwd_leaf_op_index = (
+                                    bwd_leaf_ops.index(bwd_op)
+                                    if bwd_op in bwd_leaf_ops
+                                    else None
+                                )
+                                new_grads = decomp.decompose_bwd_op(
+                                    newir_program.global_block(),
+                                    fwd_op,
+                                    bwd_op,
+                                    grad_var_to_var_map,
+                                    True,
+                                )
+                                if bwd_leaf_op_index is not None:
+                                    decomp.replace_graph_outputs(
+                                        global_grads,
+                                        new_grads,
+                                        bwd_leaf_op_index,
+                                        bwd_leaf_ops_output_indexes,
+                                    )
                         else:
+                            fwd_inputs = tuple(
+                                x.source() for x in fwd_op.operands()
+                            )
                             fwd_leaf_op_index = (
                                 fwd_leaf_ops.index(fwd_op)
                                 if fwd_op in fwd_leaf_ops
@@ -233,10 +256,11 @@ class TestDecomposeOp(unittest.TestCase):
                             )
                             new_grads = decomp.decompose_bwd_op(
                                 newir_program.global_block(),
+                                fwd_op,
                                 bwd_op,
                                 grad_var_to_var_map,
+                                False,
                                 new_fwd_outputs,
-                                fwd_inputs,
                             )
                             if bwd_leaf_op_index is not None:
                                 decomp.replace_graph_outputs(

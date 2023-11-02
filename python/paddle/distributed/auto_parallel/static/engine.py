@@ -18,6 +18,7 @@ import logging
 import numbers
 import os
 import random
+import warnings
 
 import numpy as np
 
@@ -25,6 +26,7 @@ import paddle
 import paddle.distributed.auto_parallel.static.utils as auto_utils
 from paddle import static, utils
 from paddle.base.executor import _to_name_str
+from paddle.decomposition import decomp
 from paddle.distributed import fleet
 from paddle.framework import IrGraph
 from paddle.framework import _current_expected_place as _get_device
@@ -247,6 +249,11 @@ class Engine:
             ), "EXP_CUDA_MODULE_LOADING_LAZY not supported in 1F1B pipeline."
 
         self.history = None
+
+        self.newir_prune_startup_prog = None
+        self.newir_program_initialized = False
+        self.newir_program = None
+        self.param_mapping = None
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -836,7 +843,17 @@ class Engine:
                 uninitialized.append(var)
             if uninitialized:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
-                self._executor.run(prune_startup_prog)
+
+                if os.environ.get("FLAGS_lxd_debug") is not None:
+                    self.newir_prune_startup_prog = (
+                        paddle.pir.translate_to_new_ir(prune_startup_prog.desc)
+                    )
+                    with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+                        self.newir_prune_startup_prog
+                    ):
+                        self._executor.run(self.newir_prune_startup_prog)
+                else:
+                    self._executor.run(prune_startup_prog)
 
             if hasattr(self, "_state_dict") and hasattr(self, "_dist_attr"):
                 self._set_state_dict(
@@ -1472,6 +1489,169 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
+    def _add_data_ops(
+        self,
+        program,
+        feed,
+    ):
+        tmp_program = program.clone()
+
+        global_block = tmp_program.global_block()
+        # prepend data operators
+        for i, name in enumerate(feed):
+            if global_block.has_var(name):
+                out = global_block.var(name)
+                global_block._prepend_op(
+                    type='data',
+                    inputs={},
+                    outputs={'out': out},
+                    attrs={
+                        'shape': out.shape,
+                        'dtype': out.dtype,
+                        'place': 2,
+                        'name': out.name,
+                    },
+                )
+            else:
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % name
+                )
+        return tmp_program
+
+    def _get_all_ops(self, newir_program):
+        fwd_ops = []
+        bwd_ops = []
+        global_block = newir_program.global_block()
+        for op in global_block.ops:
+            if op.name() not in fwd_ops and op.name() not in bwd_ops:
+                if op.name().endswith("_grad"):
+                    bwd_ops.append(op.name())
+                else:
+                    fwd_ops.append(op.name())
+        return fwd_ops, bwd_ops
+
+    def _get_fwd_op(self, bwd_op, grad_var_to_var_map):
+        bwd_op_input_names = bwd_op.get_input_names()
+        for idx, input_name in enumerate(bwd_op_input_names):
+            if input_name == "out_grad":
+                out_grad = bwd_op.operand(idx).source()
+                out = grad_var_to_var_map[out_grad]
+                fwd_op = out.get_defining_op()
+                return fwd_op
+
+        return None
+
+    # def _check_param_mapping(self, param_mapping):
+    #     invalid_param_mapping = {}
+    #     valid_param_mapping = {}
+    #     for VarDesc, Values in param_mapping.items():
+    #         if len(Values) < 0 or len(Values) > 1:
+    #             invalid_param_mapping[VarDesc] = Values
+    #         else:
+    #             valid_param_mapping[VarDesc] = Values
+    #     return valid_param_mapping, invalid_param_mapping
+
+    def _get_new_ir_grad_var_to_var_map(
+        self, param_mapping, old_ir_grad_var_to_var_map
+    ):
+        new_ir_grad_var_to_var_map = {}
+        for grad_var, var in old_ir_grad_var_to_var_map.items():
+            if grad_var in param_mapping.keys() and var in param_mapping.keys():
+                if (
+                    len(param_mapping[grad_var]) == 1
+                    and len(param_mapping[var]) == 1
+                ):
+                    new_grad_var = param_mapping[grad_var][0]
+                    new_var = param_mapping[var][0]
+                    new_ir_grad_var_to_var_map[new_grad_var] = new_var
+                elif len(param_mapping[grad_var]) > len(param_mapping[var]):
+                    new_grad_var_1 = param_mapping[grad_var][0]
+                    new_var_1 = param_mapping[var][0]
+                    new_ir_grad_var_to_var_map[new_grad_var_1] = new_var_1
+                    new_grad_var_2 = param_mapping[grad_var][-1]
+                    new_var_2 = param_mapping[var][-1]
+                    new_ir_grad_var_to_var_map[new_grad_var_2] = new_var_2
+            else:
+                raise RuntimeError(
+                    f"can not find {grad_var} and {var} mapping in param_mapping"
+                )
+        return new_ir_grad_var_to_var_map
+
+    def _decompose_newir_program(self, newir_program, param_mapping):
+        grad_var_to_var = self._dist_contexts[
+            self._mode
+        ]._dist_op_context.grad_var_to_var
+        assert len(grad_var_to_var.keys()) == 1
+        grad_var_to_var_map = grad_var_to_var[1]
+        newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
+            param_mapping, grad_var_to_var_map
+        )
+
+        # fwd_ops, bwd_ops = self._get_all_ops(newir_program)
+        """
+        fwd_ops:
+        ['pd_op.data', 'builtin.get_parameter', 'pd_op.embedding', 'pd_op.add', 'pd_op.dropout',
+        'pd_op.layer_norm', 'pd_op.matmul', 'pd_op.full_int_array', 'pd_op.reshape', 'pd_op.full',
+        'pd_op.split_with_num', 'builtin.slice', 'pd_op.transpose', 'pd_op.scale', 'pd_op.fused_softmax_mask_upper_triangle',
+        'pd_op.gelu', 'pd_op.unsqueeze', 'pd_op.cross_entropy_with_softmax', 'pd_op.cast', 'pd_op.multiply', 'pd_op.sum',
+        'pd_op.divide', 'builtin.combine', 'pd_op.add_n_with_kernel', 'pd_op.concat', 'pd_op.embedding_grad_dense',
+        'pd_op.check_finite_and_unscale_', 'pd_op.any', 'pd_op.memcpy_d2h', 'pd_op.update_loss_scaling_',
+        'pd_op.squared_l2_norm', 'pd_op.sqrt', 'pd_op.maximum', 'pd_op.multiply_', 'pd_op.adamw_']
+        bwd_ops:
+        ['pd_op.multiply_grad', 'pd_op.divide_grad', 'pd_op.sum_grad', 'pd_op.reshape_grad', 'pd_op.cross_entropy_with_softmax_grad',
+        'pd_op.matmul_grad', 'pd_op.layer_norm_grad', 'pd_op.add_grad', 'pd_op.dropout_grad', 'pd_op.gelu_grad', 'pd_op.transpose_grad',
+        'pd_op.fused_softmax_mask_upper_triangle_grad']
+        """
+
+        with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+            newir_program
+        ):
+            core._set_prim_backward_enabled(True)
+            core._set_prim_forward_enabled(True)
+            ops = newir_program.global_block().ops
+            bwd_ops_name = ["pd_op.reshape_grad"]
+            for op in ops:
+                if op.name() in bwd_ops_name:
+                    fwd_op = self._get_fwd_op(op, newir_grad_var_to_var_map)
+                    assert fwd_op is not None, "fwd_op is None"
+
+                    if core.has_vjp(fwd_op):
+                        new_grads = decomp.decompose_bwd_op(
+                            block=newir_program.global_block(),
+                            fwd_op=fwd_op,
+                            bwd_op=op,
+                            grad_var_to_var_map=newir_grad_var_to_var_map,
+                            has_vjp=True,
+                        )
+                        if core.has_custom_vjp(fwd_op):
+                            new_fwd_outputs = decomp.decompose_fwd_op(
+                                newir_program.global_block(),
+                                fwd_op,
+                                newir_grad_var_to_var_map,
+                            )
+                    else:
+                        new_fwd_outputs = decomp.decompose_fwd_op(
+                            newir_program.global_block(),
+                            fwd_op,
+                            newir_grad_var_to_var_map,
+                        )
+
+                        new_grads = decomp.decompose_bwd_op(
+                            block=newir_program.global_block(),
+                            fwd_op=fwd_op,
+                            bwd_op=op,
+                            grad_var_to_var_map=newir_grad_var_to_var_map,
+                            has_vjp=False,
+                            fwd_outputs_after_decompose=new_fwd_outputs,
+                        )
+
+            # ops_name = [op.name() for op in newir_program.global_block().ops]
+            # for op_name in bwd_ops_name:
+            #     assert op_name not in ops_name, "op %s is still in newir_program" % (op_name)
+
+        return newir_program
+
     def run(self, data=None, feed=None, fetch_list=None, mode=None):
         if mode is not None:
             self.to_mode(mode)
@@ -1482,13 +1662,75 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
-        outs = self._executor.run(
-            self.main_program,
-            feed=feed_dict,
-            fetch_list=fetch_names,
-            use_program_cache=self._strategy.use_cache,
-            return_numpy=self._strategy.return_numpy,
-        )
+
+        if os.environ.get("FLAGS_enable_prim_in_distribute") is not None:
+            if not self.newir_program_initialized:
+                tmp_program = self._add_data_ops(self.main_program, feed_dict)
+                (
+                    newir_program,
+                    param_mapping,
+                ) = paddle.pir.translate_to_new_ir_with_param_map(
+                    tmp_program.desc
+                )
+
+                data_ops = []
+                global_block = newir_program.global_block()
+                for op in global_block.ops:
+                    if op.name() == "pd_op.data":
+                        data_ops.append(op)
+                insert_point = 0
+                for data_op in data_ops:
+                    global_block.move_op(data_op, insert_point)
+
+                # decomposing
+                print(
+                    "before decompose, num ops: ",
+                    len(newir_program.global_block().ops),
+                )
+                newir_program_after_decompose = self._decompose_newir_program(
+                    newir_program, param_mapping
+                )
+                print(
+                    "after decompose, num ops: ",
+                    len(newir_program_after_decompose.global_block().ops),
+                )
+
+                self.newir_program = newir_program_after_decompose
+                self.param_mapping = param_mapping
+                self.newir_program_initialized = True
+
+            fetch_list = []
+            for fetch_name in fetch_names:
+                result = self.param_mapping[fetch_name]
+                assert len(result) == 1
+                op = result[0].get_defining_op()
+                fetch_list.append(op.result(0))
+
+            with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
+                self.newir_program, self.newir_prune_startup_prog
+            ):
+                print(
+                    "when running, num ops: ",
+                    len(self.newir_program.global_block().ops),
+                )
+                # print("when running, program: ", self.newir_program)
+                outs = self._executor.run(
+                    self.newir_program,
+                    feed=feed_dict,
+                    fetch_list=fetch_list,
+                    use_program_cache=self._strategy.use_cache,
+                    return_numpy=self._strategy.return_numpy,
+                )
+
+        else:
+            outs = self._executor.run(
+                self.main_program,
+                feed=feed_dict,
+                fetch_list=fetch_names,
+                use_program_cache=self._strategy.use_cache,
+                return_numpy=self._strategy.return_numpy,
+            )
+
         logs = self._prepare_logger(
             outs, None, None, None, fetch_names, fetch_indices, self._mode
         )
