@@ -2,7 +2,7 @@
 ---
 ## 1. Related Background
 
-PASS is a crucial component for optimizing intermediate representations (IR), and the transformation of DAG-to-DAG (Replace a subgraph of the directed acyclic graph (DAG) type in the original graph with another DAG) is the most common type of Pass. The transformation of DAG-to-DAG can be divided into two steps: matching and rewriting. Matching refers to the complete matching of a known subgraph to the corresponding target subgraph in the Program, while rewriting refers to replacing the matched graph with a new subgraph.
+PASS is a crucial component for optimizing intermediate representations (IR), and the transformation of DAG-to-DAG (Replace a subgraph of the directed acyclic graph (DAG) type in the original graph with another subgraph) is the most common type of Pass. The transformation of DAG-to-DAG can be divided into two steps: matching and rewriting. Matching refers to the complete matching of a known subgraph to the corresponding target subgraph in the Program, while rewriting refers to replacing the matched graph with a new subgraph.
 
 DRR can reduce the development cost of PASS, allowing developers to focus on processing optimization logic without caring about the data structure of the underlying IR. After the developer declares the pattern of the target subgraph and the new subgraph to be replaced through a set of simple and easy-to-use interfaces, DRR can automatically match the original subgraph in the Program and replace it with the new subgraph.
 
@@ -37,8 +37,8 @@ class RemoveRedundentCastPattern
 
 DRR PASS contains the following three parts:
 + `Source Pattern`：used to describe the target subgraph to be matched in Program
-+ `Result Pattern`：used to specify constraints for SourcePattern matching(nonessential)
-+ `Constrains`：Used to describe the subgraph that needs to be replaced by
++  `Constrains`：used to specify constraints for SourcePattern matching(nonessential)
++ `Result Pattern`：Used to describe the subgraph that needs to be replaced by
 Developers only need to define `SourcePattern`, `Constrains` and `ResultPattern` to implement a complete PASS.
 
 **Note:**
@@ -168,7 +168,7 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-	// Declare SourcePattern
+	// Define SourcePattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
@@ -178,9 +178,9 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // Declare ResultPattern
+    // Define ResultPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
-    // Declare Constrain
+    // Define Constrain
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
@@ -202,7 +202,7 @@ class FoldExpandToConstantPattern
     : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // Declare SourcePattern
+    // Define SourcePattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
@@ -217,7 +217,7 @@ class FoldExpandToConstantPattern
     const auto &expand = pat.Op(paddle::dialect::ExpandOp::name());
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
-    // Declare ResultPattern
+    // Define ResultPattern
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},

@@ -171,7 +171,7 @@ Example 1: Matmul + Add -> FusedGemmEpilogue
 class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // 声明 Source Pattern
+    // 定义 Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &matmul = pat.Op(paddle::dialect::MatmulOp::name(),
                                 {{"transpose_x", pat.Attr("trans_x")},
@@ -181,9 +181,9 @@ class FusedLinearPattern : public pir::drr::DrrPatternBase<FusedLinearPattern> {
     pat.Tensor("tmp") = matmul(pat.Tensor("x"), pat.Tensor("w"));
     pat.Tensor("out") = add(pat.Tensor("tmp"), pat.Tensor("bias"));
 
-    // 声明 Result Pattern
+    // 定义 Result Pattern
     pir::drr::ResultPattern res = pat.ResultPattern();
-    // 声明 Constrain
+    // 定义 Constrain
     const auto &act_attr =
         res.Attr([](const pir::drr::MatchContext &match_ctx) -> std::any {
           return "none";
@@ -205,7 +205,7 @@ class FoldExpandToConstantPattern
     : public pir::drr::DrrPatternBase<FoldExpandToConstantPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-    // 声明 Source Pattern
+    // 定义 Source Pattern
     pir::drr::SourcePattern pat = ctx->SourcePattern();
     const auto &full1 = pat.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("shape_1")},
@@ -220,7 +220,7 @@ class FoldExpandToConstantPattern
     const auto &expand = pat.Op(paddle::dialect::ExpandOp::name());
     pat.Tensor("ret") = expand(full1(), full_int_array1());
 
-    // 声明 Result Pattern      Constrains: 本 Pass 无额外约束规则
+    // 定义 Result Pattern      Constrains: 本 Pass 无额外约束规则
     pir::drr::ResultPattern res = pat.ResultPattern();
     const auto &full2 = res.Op(paddle::dialect::FullOp::name(),
                                {{"shape", pat.Attr("expand_shape_value")},
