@@ -255,40 +255,6 @@ def grad_check(
             raise RuntimeError(msg)
         return False
 
-    # # check input arguments
-    # x = _as_list(x)
-    # y = _as_list(y)
-
-    # for v in x:
-    #     v.stop_gradient = False
-    #     v.persistable = True
-    # for u in y:
-    #     u.stop_gradient = False
-    #     u.persistable = True
-    # if place is None:
-    #     place = base.CPUPlace()
-    # if program is None:
-    #     program = base.default_main_program()
-
-    # # init variable in startup program
-    # scope = base.executor.global_scope()
-    # exe = base.Executor(place)
-    # exe.run(base.default_startup_program())
-
-    # x_init = _as_list(x_init)
-    # # init inputs if x_init is not None
-    # if x_init:
-    #     if len(x_init) != len(x):
-    #         raise ValueError(
-    #             'len(x_init) (=%d) is not the same'
-    #             ' as len(x) (= %d)' % (len(x_init), len(x))
-    #         )
-    #     # init variable in main program
-    #     for var, arr in zip(x, x_init):
-    #         assert var.shape == arr.shape
-    #     feeds = {k.name: v for k, v in zip(x, x_init)}
-    #     exe.run(program, feed=feeds, scope=scope)
-
     # [x_idx, y_idx]
     numerical = [
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
@@ -386,38 +352,6 @@ def double_grad_check(
         ]
 
     x_init = _as_list(x_init)
-    # if program is None:
-    #     program = base.default_main_program()
-
-    # if y_grads is None:
-    #     scope = base.executor.global_scope()
-    #     y_grads = []
-    #     y_grads_init = []
-    #     for yi in y:
-    #         dyi_name = _append_grad_suffix_(yi.name)
-    #         np_type = dtype_to_np_dtype(yi.dtype)
-    #         dy = program.global_block().create_var(
-    #             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-    #         )
-    #         dy.stop_gradient = False
-    #         v = np.random.random(size=yi.shape).astype(np_type)
-    #         set_var_in_scope(scope, place, dyi_name, v)
-    #         y_grads.append(dy)
-    #         y_grads_init.append(v)
-    # else:
-    #     y_grads = _as_list(y_grads)
-    #     y_grads_init = [
-    #         var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-    #     ]
-
-    # # append first order grads
-    # target_grads = base.gradients(y, x, y_grads)
-
-    # # y_grads are the input of first-order backward,
-    # # so, they are also the input of second-order backward.
-    # x += y_grads
-    # x_init = _as_list(x_init)
-    # x_init += y_grads_init
 
     target_grads, grad_res, program, scope = get_static_double_grad(
         x, y, x_init, y_grads_init, place
@@ -489,69 +423,6 @@ def triple_grad_check(
         ]
 
     x_init = _as_list(x_init)
-    # if program is None:
-    #     program = base.default_main_program()
-
-    # if y_grads is None:
-    #     scope = base.executor.global_scope()
-    #     y_grads = []
-    #     y_grads_init = []
-    #     for yi in y:
-    #         dyi_name = _append_grad_suffix_(yi.name)
-    #         np_type = dtype_to_np_dtype(yi.dtype)
-    #         dy = program.global_block().create_var(
-    #             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-    #         )
-    #         dy.stop_gradient = False
-    #         v = np.random.random(size=yi.shape).astype(np_type)
-    #         set_var_in_scope(scope, place, dyi_name, v)
-    #         y_grads.append(dy)
-    #         y_grads_init.append(v)
-    # else:
-    #     y_grads = _as_list(y_grads)
-    #     y_grads_init = [
-    #         var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-    #     ]
-
-    # # append first order grads
-    # target_grads = base.gradients(y, x, y_grads)
-
-    # if x_grads_grads is None:
-    #     scope = base.executor.global_scope()
-    #     x_grads_grads = []
-    #     x_grads_grads_init = []
-    #     for dxi in target_grads:
-    #         ddxi_name = _append_grad_suffix_(dxi.name)
-    #         np_type = dtype_to_np_dtype(dxi.dtype)
-    #         ddx = program.global_block().create_var(
-    #             name=ddxi_name, shape=dxi.shape, dtype=np_type, persistable=True
-    #         )
-    #         ddx.stop_gradient = False
-    #         v = np.random.random(size=dxi.shape).astype(np_type)
-    #         set_var_in_scope(scope, place, ddxi_name, v)
-    #         x_grads_grads.append(ddx)
-    #         x_grads_grads_init.append(v)
-    # else:
-    #     x_grads_grads = _as_list(x_grads_grads)
-    #     x_grads_grads_init = [
-    #         var_to_np_array_in_scope(scope, place, v.name)
-    #         for v in x_grads_grads
-    #     ]
-    # x += y_grads
-    # x_init = _as_list(x_init)
-    # x_init += y_grads_init
-
-    # # append second order grads
-    # target_grads_grads = base.gradients(target_grads, x, x_grads_grads)
-
-    # # filter None in target_grads_grads for Dy/Dx may be None in kernel
-    # filted = [
-    #     (i, dyi) for i, dyi in enumerate(target_grads_grads) if dyi is not None
-    # ]
-    # filted_idx, filted_target_grads_grads = zip(*filted)
-
-    # x += x_grads_grads
-    # x_init += x_grads_grads_init
 
     # x <=> [x, dout, ddx]
     target_grads_grads, grad_res, program, scope = get_static_double_grad(
@@ -647,7 +518,6 @@ def get_static_double_grad(
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
-        exe.run(program, feed=feeds, scope=scope)
 
     dys = []
     for yi in y:
@@ -670,7 +540,7 @@ def get_static_double_grad(
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(ddx) if dxi is not None]
     filted_idx, filted_ddx = zip(*filted)
-    ddx_res = exe.run(program, scope=scope, fetch_list=filted_ddx)
+    ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filted_ddx)
 
     return dx, ddx_res, program, scope
 
