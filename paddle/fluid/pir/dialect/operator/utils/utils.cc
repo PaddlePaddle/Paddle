@@ -25,6 +25,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_broadcast_",
     "pd_op.c_sync_calc_stream_",
     "pd_op.c_sync_comm_stream_",
+    "pd_op.fused_gemm_epilogue",
+    "pd_op.fused_gemm_epilogue_grad",
     "pd_op.dpsgd",
     "pd_op.send_v2",
     "pd_op.recv_v2",
@@ -199,6 +201,25 @@ bool IsLegacyOp(const std::string& name) { return LegacyOpList.count(name); }
 
 bool IsEmptyValue(const pir::Value& value) {
   return !value.impl() || !value.type();
+}
+
+std::vector<int64_t> GetInt64Vector(const pir::Attribute& attr) {
+  PADDLE_ENFORCE_EQ(attr.isa<pir::ArrayAttribute>(),
+                    true,
+                    phi::errors::PreconditionNotMet(
+                        "attribute MUST be a pir::ArrayAttribute"));
+  auto attr_vec = attr.dyn_cast<pir::ArrayAttribute>().AsVector();
+
+  std::vector<int64_t> vec_int64;
+  for (auto vec_element : attr_vec) {
+    PADDLE_ENFORCE_EQ(
+        vec_element.isa<pir::Int64Attribute>(),
+        true,
+        phi::errors::PreconditionNotMet("element MUST be a Int64Attribute"));
+    vec_int64.push_back(vec_element.dyn_cast<pir::Int64Attribute>().data());
+  }
+
+  return vec_int64;
 }
 
 }  // namespace dialect

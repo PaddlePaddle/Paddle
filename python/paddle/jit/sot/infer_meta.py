@@ -182,7 +182,7 @@ def infer_meta_for_layer(layer, *args, **kwargs):
     assert isinstance(
         layer, paddle.nn.Layer
     ), f"Expect a Layer, but got {layer}."
-    layer = paddle.jit.to_static(layer, enable_fallback=False)
+    layer = paddle.jit.to_static(layer, full_graph=True)
 
     args_, kwargs_ = convert_meta_to_input_spec((args, kwargs))
 

@@ -37,7 +37,7 @@
 #include "paddle/pir/core/ir_printer.h"
 #include "paddle/pir/core/parser/ir_parser.h"
 #include "paddle/pir/core/program.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 using OperatorDialect = paddle::dialect::OperatorDialect;
 using ProgramDesc = paddle::framework::ProgramDesc;

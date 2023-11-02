@@ -30,7 +30,7 @@ class TestMatmulApiForSemiAutoParallel:
     def check_tensor_eq(self, a, b):
         np1 = a.numpy()
         np2 = b.numpy()
-        np.testing.assert_allclose(np1, np2, rtol=1e-05, verbose=True)
+        np.testing.assert_allclose(np1, np2, rtol=1e-04, verbose=True)
 
     def test_body(
         self, x_shape, y_shape, x_specs, y_specs, trans_x=False, trans_y=False

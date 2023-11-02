@@ -17,6 +17,7 @@ import struct
 import numpy as np
 
 from ..pir import OpResult
+from ..pir.core import ParameterMeta
 from . import core
 from .framework import (
     Variable,
@@ -147,7 +148,9 @@ def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
     if in_pir_mode():
-        check_type(input, input_name, OpResult, op_name, extra_message)
+        check_type(
+            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+        )
     else:
         check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
@@ -177,9 +180,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name
-            )
+            f"Because received '{input_name}' in {op_name} is a imperative Variable."
         )
     if not isinstance(input, expected_type):
         raise TypeError(
