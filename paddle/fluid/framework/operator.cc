@@ -611,11 +611,12 @@ bool RuntimeInferShapeContext::HasRuntimeAttributes() const {
   bool is_runtime = false;
   if (phi::DefaultKernelSignatureMap::Instance().Has(op_.Type())) {
     const auto& attr_names = GetPhiDefaultKernelSignature()->attr_names;
+    const auto& args_def = phi::KernelFactory::Instance().GetFirstKernelArgsDef(
+        GetPhiDefaultKernelSignature()->name);
+    const auto& attr_defs = args_def.attribute_defs();
     for (size_t i = 0; i < attr_names.size(); ++i) {
-      auto& attr_name = attr_names[i];
-      auto* attr_ptr = Attrs().GetAttr(attr_name);
-      bool is_attr_var = attr_ptr != nullptr && HasAttrVar(*attr_ptr);
-      if (!attr_ptr || is_attr_var) {
+      if (attr_defs[i].type_index == phi::AttributeType::SCALAR ||
+          attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
         is_runtime = true;
         break;
       }
