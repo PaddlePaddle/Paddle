@@ -31,14 +31,13 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
-    auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     ConstructAttrMapFromPyArgs(
-        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
+        "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
     tstate = PyEval_SaveThread();
-    run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
@@ -71,17 +70,16 @@ static PyObject *newir_eager_api_run_program(PyObject *self,
     auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
-    auto DOut = GetTensorPtrListFromArgs("run_program", "DOut", args, 4, true);
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
     VLOG(1) << "Start NewIR ConstructAttrMapFromPyArgs";
 
     ConstructAttrMapForRunProgram(
-        "run_program", args, 6, PyTuple_GET_SIZE(args), attrs);
+        "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
     VLOG(1) << "Finish NewIR ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
-    newir_run_program_ad_func(X, Params, Out, OutScope, DOut, attrs);
+    newir_run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;

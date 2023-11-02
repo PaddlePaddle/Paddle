@@ -283,7 +283,6 @@ class PartialProgramLayer:
             self._create_scope_vec(
                 program_id=self.program_id, use_scope_cache=True
             ),
-            self._double_grads,
             self._cuda_graph_vec,
             *attrs,
         )
@@ -337,11 +336,6 @@ class PartialProgramLayer:
                 return scope
         else:
             return core.Scope()
-
-    @cached_property
-    def _double_grads(self):
-        # TODO: check the affects.
-        return None
 
     # whole
     @switch_to_static_graph
@@ -589,7 +583,6 @@ class PartialProgramLayer:
         self._param_values = required_param_values
 
     def _prepare_attributes(self):
-        breakpoint()
         attrs = [
             'forward_global_block',
             self.program.forward_program.global_block(),

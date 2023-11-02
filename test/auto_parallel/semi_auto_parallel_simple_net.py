@@ -18,7 +18,6 @@ import numpy as np
 
 import paddle
 import paddle.distributed as dist
-import paddle.nn.functional as F
 from paddle import nn
 from paddle.distributed.fleet.utils import recompute
 
@@ -35,12 +34,20 @@ def create_numpy_like_random(name):
 
 
 class DemoNet(nn.Layer):
-    def __init__(self, param_prefix="", is_recompute=False):
+    def __init__(
+        self,
+        param_prefix="",
+        is_recompute=False,
+        is_pp=False,
+        pp_reshard_dist_attr=None,
+    ):
         super().__init__()
         weight_attr_0 = create_numpy_like_random(param_prefix + "_0")
         weight_attr_1 = create_numpy_like_random(param_prefix + "_1")
 
+        self.is_pp = is_pp
         self.is_recompute = is_recompute
+        self.pp_reshard_dist_attr = pp_reshard_dist_attr
         self.linear_0 = nn.Linear(IMAGE_SIZE, IMAGE_SIZE, weight_attr_0)
         self.linear_1 = nn.Linear(IMAGE_SIZE, CLASS_NUM, weight_attr_1)
         self.relu = nn.ReLU()
@@ -48,6 +55,8 @@ class DemoNet(nn.Layer):
     def _inner_forward_fn(self, x):
         out = self.linear_0(x)
         out = self.relu(out)
+        if self.is_pp:
+            out = dist.reshard(out, self.pp_reshard_dist_attr)
         out = self.linear_1(out)
         return out
 
@@ -58,44 +67,6 @@ class DemoNet(nn.Layer):
             return self._inner_forward_fn(x)
 
 
-class PPDemoNet(nn.Layer):
-    def __init__(self, mesh0, mesh1, param_suffix=""):
-        super().__init__()
-        self.replicate_dist_attr0 = dist.DistAttr(
-            mesh=mesh0, sharding_specs=[None, None]
-        )
-        self.replicate_dist_attr1 = dist.DistAttr(
-            mesh=mesh1, sharding_specs=[None, None]
-        )
-        self.w0 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, IMAGE_SIZE],
-                attr=paddle.framework.ParamAttr(
-                    name="pp_demo_weight_0" + param_suffix,
-                    initializer=paddle.nn.initializer.Uniform(0, 1),
-                ),
-            ),
-            dist_attr=self.replicate_dist_attr0,
-        )
-        self.w1 = dist.shard_tensor(
-            self.create_parameter(
-                shape=[IMAGE_SIZE, CLASS_NUM],
-                attr=paddle.framework.ParamAttr(
-                    name="pp_nemo_weight_1" + param_suffix,
-                    initializer=paddle.nn.initializer.Uniform(0, 1),
-                ),
-            ),
-            dist_attr=self.replicate_dist_attr1,
-        )
-
-    def forward(self, x):
-        out = F.linear(x, self.w0)
-        out = F.relu(out)
-        out = dist.reshard(out, dist_attr=self.replicate_dist_attr1)
-        out = F.linear(out, self.w1)
-        return out
-
-
 class TestSimpleNetForSemiAutoParallel:
     def __init__(self):
         self._dtype = os.getenv("dtype")
@@ -104,6 +75,9 @@ class TestSimpleNetForSemiAutoParallel:
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
         self._pp_mesh0 = dist.ProcessMesh([0], dim_names=["x"])
         self._pp_mesh1 = dist.ProcessMesh([1], dim_names=["x"])
+        self.pp_reshard_dist_attr = dist.DistAttr(
+            mesh=self._pp_mesh1, sharding_specs=[None, None]
+        )
 
         paddle.set_device(self._backend)
 
@@ -112,16 +86,43 @@ class TestSimpleNetForSemiAutoParallel:
         self.init_single_card_net_result()
 
     def shard_fn(self, layer_name, layer, process_mesh):
-        if layer_name == 'linear0':
+        if layer_name == 'linear_0':
             dist_attr = dist.DistAttr(
                 mesh=process_mesh, sharding_specs=[None, 'x']
             )
             layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
-        elif layer_name == 'linear1':
+        elif layer_name == 'linear_1':
             dist_attr = dist.DistAttr(
                 mesh=process_mesh, sharding_specs=['x', None]
             )
             layer.weight = dist.shard_tensor(layer.weight, dist_attr=dist_attr)
+
+    def pp_shard_fn(self, layer_name, layer, process_mesh):
+        if layer_name == 'linear_0':
+            # shard_layer doens't support cross-mesh now.
+            # input process_mesh of pp_shard_fn is useless,
+            # it's defined just for unified format.
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None, None]
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+        elif layer_name == 'linear_1':
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=[None, None]
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
 
     def init_input_data(self):
         paddle.seed(self._seed)
@@ -132,7 +133,6 @@ class TestSimpleNetForSemiAutoParallel:
         )
         self.label = np.random.random([BATCH_SIZE, CLASS_NUM]).astype('float32')
 
-    # TODO(GhostScreaming): support pp backward later.
     def run_dynamic(self, layer, shard_input=False, is_pp=False):
         paddle.seed(self._seed)
         np.random.seed(self._seed)
@@ -142,27 +142,26 @@ class TestSimpleNetForSemiAutoParallel:
 
         # run forward and backward
         image = paddle.to_tensor(self.image)
+        input_mesh = self._pp_mesh0 if is_pp else self._mesh
         if shard_input:
             image = dist.shard_tensor(
                 image,
                 dist_attr=dist.DistAttr(
-                    mesh=self._mesh, sharding_specs=['x', None]
+                    mesh=input_mesh, sharding_specs=['x', None]
                 ),
             )
 
         out = layer(image)
         label = paddle.to_tensor(self.label)
+
         loss = loss_fn(out, label)
 
-        if is_pp:
-            return loss, None, None
-        else:
-            loss.backward()
-            opt = paddle.optimizer.SGD(
-                learning_rate=0.1, parameters=layer.parameters()
-            )
-            opt.step()
-            return loss, layer.parameters()
+        loss.backward()
+        opt = paddle.optimizer.SGD(
+            learning_rate=0.1, parameters=layer.parameters()
+        )
+        opt.step()
+        return loss, layer.parameters()
 
     def init_single_card_net_result(self):
         self.base_loss, self.base_parameters = self.run_dynamic(
@@ -196,20 +195,43 @@ class TestSimpleNetForSemiAutoParallel:
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
-    # TODO(GhostScreaming): support pp backward later.
     def test_pp_demo_net(self):
         # Send/Recv operators doens't support CPU now.
         if self._backend != "gpu":
             return
-        self.pp_loss, _, _ = self.run_dynamic(
-            PPDemoNet(self._pp_mesh0, self._pp_mesh1),
-            is_pp=True,
+
+        pp_layer = dist.shard_layer(
+            DemoNet(
+                "pp_demo_weight",
+                is_pp=True,
+                pp_reshard_dist_attr=self.pp_reshard_dist_attr,
+            ),
+            self._pp_mesh0,
+            self.pp_shard_fn,
         )
+
+        self.pp_loss, self.pp_parameters = self.run_dynamic(
+            pp_layer, is_pp=True
+        )
+
         rank = dist.get_rank()
-        if rank == 1:
-            self.check_tensor_eq(self.pp_loss, self.base_loss)
+        # TODO(GhostScreaming): DistTensor.numpy() doesn't support
+        # cross-mesh now, ReshardXToReplicated function in eager_method
+        # needs to be fixed later.
+        if rank == 0:
+            # linear_0 weight and bias
+            self.check_tensor_eq(self.pp_parameters[0], self.base_parameters[0])
+            self.check_tensor_eq(self.pp_parameters[1], self.base_parameters[1])
         else:
-            pass
+            self.check_tensor_eq(self.pp_loss, self.base_loss)
+            # linear_1 weight and bias
+            self.check_tensor_eq(self.pp_parameters[2], self.base_parameters[2])
+            self.check_tensor_eq(self.pp_parameters[3], self.base_parameters[3])
+
+        # TODO(GhostScreaming): Enable it later.
+        # for param, param_base in zip(self.mp_parameters, self.base_parameters):
+        #     self.check_tensor_eq(param, param_base)
+        #     self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
         self.test_dp_demo_net()
