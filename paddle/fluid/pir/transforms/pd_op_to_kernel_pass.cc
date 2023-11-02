@@ -1328,14 +1328,14 @@ std::vector<pir::Value> BuildOpInputList(
                 << expected_kernel_key.dtype() << " to "
                 << kernel_dtype_for_var;
 
-        auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
-        new_in = pir::AddDtypeTransferOp(new_in,
-                                         block,
-                                         kernel_key,
-                                         out_place,
-                                         kernel_dtype_for_var,
-                                         expected_kernel_key.dtype());
-        vec_inputs.push_back(new_in);
+        // auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
+        // new_in = pir::AddDtypeTransferOp(new_in,
+        //                                  block,
+        //                                  kernel_key,
+        //                                  out_place,
+        //                                  kernel_dtype_for_var,
+        //                                  expected_kernel_key.dtype());
+        // vec_inputs.push_back(new_in);
       }
     }
   }
