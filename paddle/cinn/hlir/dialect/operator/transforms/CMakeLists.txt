@@ -25,7 +25,7 @@ if(NOT CINN_ONLY)
     SRCS
     add_broadcast_to_elementwise_pass.cc
     DEPS
-    pir_pattern_rewrite
+    pir
     cinn_op_dialect
     pd_op_dialect)
 endif()

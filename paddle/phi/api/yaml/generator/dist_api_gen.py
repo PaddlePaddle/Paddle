@@ -265,6 +265,7 @@ SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
       auto dist_input_{arg} = PrepareDataForDistTensor({arg}, GetKernelInputArgDef(kernel.InputAt({idx}), kernel_backend), {flag}, kernel_result.is_stride_kernel);
       auto input_{arg} = &dist_input_{arg}->value();
 """
+# dist_input_ prefix
 VECTOR_PREPARE_DATA_TEMPLATE = """
       auto dist_input_{name}_vec = PrepareDataForDistTensor(new_dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
@@ -277,6 +278,7 @@ VECTOR_PREPARE_DATA_TEMPLATE = """
         dense_input_{name}_meta_ptr_vec[i] = &dense_input_{name}_meta_vec[i];
       }}
 """
+
 OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE = """
       auto dist_input_{name} = PrepareDataForDistTensor(new_dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>((*dist_input_{name})->value()) : paddle::none;
@@ -285,6 +287,8 @@ OPTIONAL_SINGLE_PREPARE_DATA_TEMPLATE_NO_RESHARD = """
       auto dist_input_{name} = PrepareDataForDistTensor(new_dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       paddle::optional<phi::DenseTensor> input_{name} = dist_input_{name} ? paddle::make_optional<phi::DenseTensor>(dist_input_{name}->value()) : paddle::none;
 """
+
+# dist_input_ prefix
 OPTIONAL_VECTOR_PREPARE_DATA_TEMPLATE = """
       auto dist_input_{name}_vec = PrepareDataForDistTensor(new_dist_input_{name}, GetKernelInputArgDef(kernel.InputAt({index}), kernel_backend), {trans_flag}, kernel_result.is_stride_kernel);
       std::vector<const phi::DenseTensor*> dense_input_{name}_vec;
