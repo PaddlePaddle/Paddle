@@ -179,56 +179,20 @@ inline bool NeedTransformPlace(const phi::Place& src_place,
 std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
-    const phi::distributed::TensorDistAttr& dist_attr);
-
-std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const Tensor& tensor,
     const phi::distributed::ArgDistAttr& dist_attr);
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-ReshardApiInputToKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const std::vector<Tensor>& tensors,
-    const std::vector<phi::distributed::TensorDistAttr>& dist_attrs);
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-ReshardApiInputToKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const std::vector<Tensor>& tensors,
-    const std::vector<phi::distributed::ArgDistAttr>& dist_attrs);
 
 std::vector<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
-                             const std::vector<Tensor>& tensors,
-                             const phi::distributed::ArgDistAttr& dist_attrs);
-
-std::shared_ptr<phi::distributed::DistTensor>
-ReshardApiInputToReplicatedKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const Tensor& tensor,
-    const phi::distributed::ArgDistAttr& dist_attr);
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-ReshardApiInputToReplicatedKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const std::vector<Tensor>& tensor,
-    const phi::distributed::ArgDistAttr& dist_attr);
-
-std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-ReshardApiInputToReplicatedKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const std::vector<Tensor>& tensors,
-    const std::vector<phi::distributed::ArgDistAttr>& dist_attrs);
+                             const std::vector<Tensor>& tensor,
+                             const phi::distributed::ArgDistAttr& dist_attr);
 
 paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
-ReshardApiInputToReplicatedKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const paddle::optional<Tensor>& tensor,
-    const phi::distributed::ArgDistAttr& dist_attr);
+ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
+                             const paddle::optional<Tensor>& tensor,
+                             const phi::distributed::ArgDistAttr& dist_attr);
 
 paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
-ReshardApiInputToReplicatedKernelInput(
+ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const paddle::optional<std::vector<Tensor>>& tensors,
     const phi::distributed::ArgDistAttr& dist_attr);

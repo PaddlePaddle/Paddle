@@ -796,9 +796,6 @@ class DistForwardAPI(ForwardAPI):
         if input_decl_code == "":
             return UNSUPPORTED_INFER_SPMD_COMMENT_TEMPLATE.format(self.api)
 
-        print(
-            f"kernel_name: {self.kernel['func'][0]}, input_args_code: {input_args_code}"
-        )
         infer_spmd_code = GENERAL_INFER_SPMD_TEMPLATE.format(
             input_args_code[:-2]
         )
@@ -1029,7 +1026,6 @@ class DistForwardAPI(ForwardAPI):
                 else input_names
             )
 
-            input_reshard_code = ""
             for i, param in enumerate(kernel_params):
                 if param in input_names:
                     if self.inputs['input_info'][param] in [
@@ -1038,16 +1034,19 @@ class DistForwardAPI(ForwardAPI):
                         "const paddle::optional<Tensor>&",
                         "const paddle::optional<std::vector<Tensor>>&",
                     ]:
-                        if self.generate_general_infer_spmd is True:
-                            input_reshard_code += (
-                                GENERAL_INPUT_RESHARD_TEMPLATE.format(
-                                    name=param, idx=i
-                                )
-                            )
-                        else:
-                            input_reshard_code += INPUT_RESHARD_TEMPLATE.format(
-                                name=param, idx=i
-                            )
+                        input_reshard_code += INPUT_RESHARD_TEMPLATE.format(
+                            name=param, idx=i
+                        )
+                        # if self.generate_general_infer_spmd is True:
+                        #     input_reshard_code += (
+                        #         GENERAL_INPUT_RESHARD_TEMPLATE.format(
+                        #             name=param, idx=i
+                        #         )
+                        #     )
+                        # else:
+                        #     input_reshard_code += INPUT_RESHARD_TEMPLATE.format(
+                        #         name=param, idx=i
+                        #     )
                     else:
                         raise ValueError(
                             f"{self.api} : Param of reshard input error : {self.inputs['input_info'][param]} type is not supported."
