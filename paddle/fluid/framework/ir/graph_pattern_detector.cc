@@ -3331,6 +3331,46 @@ void patterns::DeleteWeightDequantLinearOpEncoderPattern::operator()() {
   any_op2->LinksFrom({weight_dequantize_linear_op_out});
 }
 
+PDNode *patterns::QuantLinearFusePattern::operator()(paddle::framework::ir::PDNode *x,
+                                 bool with_bias) {
+  // Create shared nodes.
+  x->assert_is_op_input("matmul_v2", "X");
+  auto *mul = pattern->NewNode(mul_repr())->assert_is_op("matmul_v2");
+
+  auto *mul_w_var = pattern->NewNode(w_repr())
+                        ->AsInput()
+                        ->assert_is_persistable_var()
+                        ->assert_is_op_input("matmul_v2", "Y");
+
+  auto *mul_out_var =
+      pattern->NewNode(mul_out_repr())->assert_is_op_output("matmul_v2");
+
+  // Add links.
+  mul->LinksFrom({x, mul_w_var}).LinksTo({mul_out_var});
+  if (!with_bias) {  // not with bias
+    return mul_out_var;
+  } else {  // with bias
+    mul_out_var->AsIntermediate()->assert_is_op_input("elementwise_add");
+    // Create operators.
+    auto *elementwise_add = pattern->NewNode(elementwise_add_repr())
+                                ->assert_is_op("elementwise_add");
+    // Create variables.
+    auto *bias = pattern->NewNode(bias_repr())
+                     ->assert_is_op_input("elementwise_add")
+                     ->assert_is_persistable_var()
+                     ->AsInput();
+
+    auto *elementwise_add_out_var =
+        pattern->NewNode(elementwise_add_out_repr())
+            ->AsOutput()
+            ->assert_is_op_output("elementwise_add");
+
+    elementwise_add->LinksFrom({mul_out_var, bias})
+        .LinksTo({elementwise_add_out_var});
+    return elementwise_add_out_var;
+  }
+}
+
 void patterns::DeleteWeightDequantLinearOpDecoderPattern::operator()() {
   auto weight_dequantize_linear_op_x =
       pattern->NewNode(weight_dequantize_linear_op_x_repr())

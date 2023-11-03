@@ -1841,6 +1841,24 @@ struct DeleteWeightDequantLinearOpEncoderPattern : public PatternBase {
   PATTERN_DECL_NODE(any_op2);
 };
 
+struct QuantLinearFusePattern : public PatternBase {
+  QuantLinearFusePattern(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "fc") {}
+
+  PDNode* operator()(PDNode* x, bool with_bias);
+
+  // declare operator node's name
+  PATTERN_DECL_NODE(quant_linear);
+  PATTERN_DECL_NODE(mul);
+  PATTERN_DECL_NODE(elementwise_add);
+  PATTERN_DECL_NODE(relu);
+  // declare variable node's name
+  PATTERN_DECL_NODE(w);
+  PATTERN_DECL_NODE(mul_out);  // (x,w) -> mul_out
+  PATTERN_DECL_NODE(bias);
+  PATTERN_DECL_NODE(elementwise_add_out);
+};
+
 struct DeleteWeightDequantLinearOpDecoderPattern : public PatternBase {
   DeleteWeightDequantLinearOpDecoderPattern(PDPattern* pattern,
                                             const std::string& name_scope)
