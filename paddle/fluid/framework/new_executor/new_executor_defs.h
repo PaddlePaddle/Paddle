@@ -24,6 +24,16 @@
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/phi/core/utils/rw_lock.h"
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
+#endif
+
+PHI_DECLARE_bool(fast_eager_deletion_mode);
+PHI_DECLARE_bool(new_executor_use_cuda_graph);
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
 #define SCOPE_VARS_WRITER_LOCK AutoWRLock auto_lock(&vars_lock_);
@@ -289,6 +299,13 @@ class Instruction {
   bool PreDefineContext() const { return pre_define_context_; }
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
+
+  // record stream for gc
+  bool need_record_stream_for_gc_ = false;
+
+  gpuStream_t record_stream_for_gc_;
+
+  void UpdataRecordStreamForGcInfo();
 
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used

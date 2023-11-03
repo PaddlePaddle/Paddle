@@ -1202,42 +1202,11 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
   PADDLE_THROW(platform::errors::Unimplemented(
       "RecordStreamForGC is only implemented when compiled with GPU."));
 #else
-  if (!IsInterpretercoreFastGCEnabled() ||
-      instr.KernelType() != OpFuncType::kGpuAsync) {
-    return;
-  }
-
-  if (instr.DeviceContext().GetPlace().GetType() ==
-      phi::AllocationType::CUSTOM) {
-    return;
-  }
-
   platform::RecordEvent record(
       "RecordStreamForGC", platform::TracerEventType::UserDefined, 10);
 
-  gpuStream_t stream =
-      reinterpret_cast<const phi::GPUContext&>(instr.DeviceContext()).stream();
-// TODO(lizhiyu): Only analyse the 'send_v2' for GPT pp strategy right now.
-// To support all the operators for communicating in the future.
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-  auto operator_base_ptr = instr.OpBase();
-  if ((operator_base_ptr->Type() == "send_v2") &&
-      (operator_base_ptr->Attr<bool>("use_calc_stream") == false)) {
-    int ring_id = operator_base_ptr->Attr<int>("ring_id");
-    if (FLAGS_dynamic_static_unified_comm) {
-      const auto& comm_context_manager =
-          phi::distributed::CommContextManager::GetInstance();
-      stream = static_cast<phi::distributed::NCCLCommContext*>(
-                   comm_context_manager.Get(std::to_string(ring_id)))
-                   ->GetStream();
-    } else {
-      stream = platform::NCCLCommContext::Instance()
-                   .Get(ring_id, instr.DeviceContext().GetPlace())
-                   ->stream();
-    }
-  }
-#endif
-  auto TensorRecordStream = [&stream](phi::DenseTensor& tensor) {
+  auto TensorRecordStream = [](phi::DenseTensor& tensor,
+                               const gpuStream_t& stream) {
     auto allocation = tensor.Holder();
     if (allocation == nullptr) {
       return;
@@ -1291,7 +1260,8 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     }
 
     if (var->IsType<phi::DenseTensor>()) {
-      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()));
+      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()),
+                         instr.record_stream_for_gc_);
     } else if (
         var->IsType<
             operators::reader::
@@ -1299,24 +1269,30 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
       // do nothing
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
-          *(var->GetMutable<phi::SelectedRows>()->mutable_value()));
+          *(var->GetMutable<phi::SelectedRows>()->mutable_value()),
+          instr.record_stream_for_gc_);
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {
-        TensorRecordStream(tensor);
+        TensorRecordStream(tensor, instr.record_stream_for_gc_);
       }
     } else if (var->IsType<phi::SparseCooTensor>()) {
       TensorRecordStream(
-          *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()));
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()),
+          instr.record_stream_for_gc_);
       TensorRecordStream(
-          *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()));
+          *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()),
+          instr.record_stream_for_gc_);
     } else if (var->IsType<phi::SparseCsrTensor>()) {
       TensorRecordStream(
-          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()));
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()),
+          instr.record_stream_for_gc_);
       TensorRecordStream(
-          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()));
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()),
+          instr.record_stream_for_gc_);
       TensorRecordStream(
-          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()));
+          *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()),
+          instr.record_stream_for_gc_);
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
@@ -1332,7 +1308,9 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
   platform::RecordEvent record(
       "CheckGC", platform::TracerEventType::UserDefined, 10);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  RecordStreamForGC(instr);
+  if (instr.need_record_stream_for_gc_) {
+    RecordStreamForGC(instr);
+  }
 #endif
   auto& var_scope = var_scope_;
 
