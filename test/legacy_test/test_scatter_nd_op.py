@@ -21,6 +21,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -431,6 +432,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 
 
 class TestScatterNdOpStaticAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_static_graph(self):
         if not base.core.is_compiled_with_cuda():
             return
@@ -451,14 +453,25 @@ class TestScatterNdOpStaticAPI(unittest.TestCase):
             val_t = paddle.static.data(
                 name="val", dtype=val.dtype, shape=val.shape
             )
-            out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
-            feed = {x_t.name: x, index_t.name: index, val_t.name: val}
-            fetch = [out_t]
-
             gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
             cpu_exe = paddle.static.Executor(paddle.CPUPlace())
-            cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
+            out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
+            gpu_value = gpu_exe.run(
+                feed={
+                    'x': x,
+                    'index': index,
+                    'val': val,
+                },
+                fetch_list=[out_t],
+            )
+            cpu_value = cpu_exe.run(
+                feed={
+                    'x': x,
+                    'index': index,
+                    'val': val,
+                },
+                fetch_list=[out_t],
+            )
             np.testing.assert_array_equal(gpu_value, cpu_value)
 
 
