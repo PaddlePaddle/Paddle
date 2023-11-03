@@ -660,6 +660,10 @@ void ProgramInterpreter::Convert(
     }
 #endif
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    vec_instruction_.back().UpdataRecordStreamForGcInfo();
+#endif
   }
 
   BuildOperatorDependences();

@@ -301,11 +301,11 @@ class Instruction {
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
   // record stream for gc
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   bool need_record_stream_for_gc_ = false;
-
   gpuStream_t record_stream_for_gc_;
-
   void UpdataRecordStreamForGcInfo();
+#endif
 
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
