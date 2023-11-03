@@ -686,19 +686,6 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
   return out;
 }
 
-// std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-// ReshardApiInputToReplicatedKernelInput(
-//     phi::DeviceContext* dev_ctx,
-//     const std::vector<Tensor>& tensors,
-//     const std::vector<phi::distributed::ArgDistAttr>& dist_attrs) {
-//   std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
-//   for (size_t i = 0; i < tensors.size(); ++i) {
-//     outputs.push_back(ReshardApiInputToReplicatedKernelInput(
-//         dev_ctx, tensors[i], dist_attrs[i]));
-//   }
-//   return outputs;
-// }
-
 paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
 ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
                              const paddle::optional<Tensor>& tensor,
