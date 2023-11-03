@@ -473,11 +473,9 @@ class StaticFunction:
 
         if not in_dynamic_mode():
             raise RuntimeError(
-                "Failed to run the callable object {} decorated by '@paddle.jit.to_static', "
+                f"Failed to run the callable object {self.dygraph_function} decorated by '@paddle.jit.to_static', "
                 "because it is NOT in dynamic mode. Please disable the static graph mode to enter dynamic mode with the "
-                "following API: paddle.disable_static().".format(
-                    self.dygraph_function
-                )
+                "following API: paddle.disable_static()."
             )
 
         return self._perform_call(*args, **kwargs)
@@ -798,7 +796,7 @@ class ASTStaticFunction(StaticFunction):
             else:
                 logging_utils.warn(
                     "Please file an issue at 'https://github.com/PaddlePaddle/Paddle/issues'"
-                    " if you can't handle this {} yourself.".format(type(e))
+                    f" if you can't handle this {type(e)} yourself."
                 )
                 raise e
 
