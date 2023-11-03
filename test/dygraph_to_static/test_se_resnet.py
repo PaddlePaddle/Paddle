@@ -20,10 +20,10 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
 )
 from predictor_utils import PredictorTools
 
@@ -351,8 +351,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
-@dy2static_unittest
-class TestSeResnet(unittest.TestCase):
+class TestSeResnet(Dy2StTestBase):
     def setUp(self):
         self.train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False, cycle=True),
@@ -374,7 +373,7 @@ class TestSeResnet(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def train(self, train_reader, to_static):
         paddle.jit.enable_to_static(to_static)
 
@@ -496,7 +495,7 @@ class TestSeResnet(unittest.TestCase):
 
             return pred_res.numpy()
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
@@ -570,7 +569,7 @@ class TestSeResnet(unittest.TestCase):
                 ),
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False

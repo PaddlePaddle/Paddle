@@ -180,9 +180,7 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name
-            )
+            f"Because received '{input_name}' in {op_name} is a imperative Variable."
         )
     if not isinstance(input, expected_type):
         raise TypeError(

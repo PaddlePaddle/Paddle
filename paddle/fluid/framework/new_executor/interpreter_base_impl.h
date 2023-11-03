@@ -67,7 +67,8 @@ class InterpreterBaseImpl {
   virtual ~InterpreterBaseImpl() = default;
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) = 0;
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true) = 0;
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
