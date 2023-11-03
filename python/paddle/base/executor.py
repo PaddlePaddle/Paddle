@@ -1711,7 +1711,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -1868,12 +1868,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)
@@ -2161,7 +2161,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
@@ -2287,7 +2287,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)

@@ -799,15 +799,17 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
   }
 }
 
-std::unordered_map<std::string, std::vector<pir::Value>>
-ProgramTranslator::VarDesc2Value() {
-  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
+std::unordered_map<std::string, std::vector<pir::OpResult>>
+ProgramTranslator::VarDesc2OpResult() {
+  std::unordered_map<std::string, std::vector<pir::OpResult>>
+      var_desc_2_opresult;
   for (const auto& [var_name, value_info_list] : param_map_) {
     for (const auto& value_info : value_info_list) {
-      var_desc_2_value[var_name].push_back(value_info.value);
+      var_desc_2_opresult[var_name].push_back(
+          value_info.value.dyn_cast<pir::OpResult>());
     }
   }
-  return var_desc_2_value;
+  return var_desc_2_opresult;
 }
 
 }  // namespace translator

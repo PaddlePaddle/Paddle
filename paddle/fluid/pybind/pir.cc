@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <utility>
 
+#include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/pybind/pybind_variant_caster.h"
 #include "paddle/pir/core/builtin_op.h"
 
@@ -39,6 +40,7 @@
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
+#include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
@@ -73,6 +75,7 @@ USE_PASS(fused_gemm_epilogue_pass);
 USE_PASS(fused_dropout_add_pass);
 USE_PASS(fused_linear_param_grad_add_pass);
 USE_PASS(inplace_pass);
+USE_PASS(replace_fetch_with_shadow_output_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -835,20 +838,6 @@ Operation *BuildOpFrom(
   return cloned_op;
 }
 
-std::shared_ptr<Program> ProgramClone(const Program &program) {
-  // Limitation of this function:
-  // 1. don't support Parameters.
-  // 2. don't support Regions in operator.
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  auto cloned_program = std::make_shared<Program>(ctx);
-  std::unordered_map<pir::Value, pir::Value> value_map;
-  for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
-    cloned_program->block()->push_back(cloned_op);
-  }
-  return cloned_program;
-}
-
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
@@ -964,7 +953,31 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
                                    no_need_buffer_values.end());
 }
 
-SplitedResult ForwardBackwardSplit(
+using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
+std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
+    const Program &program,
+    const std::vector<pir::OpResult> &op_result_forward_inputs,
+    const std::vector<pir::OpResult> &op_result_forward_params,
+    const std::vector<pir::OpResult> &op_result_forward_outputs) {
+  // Limitation of this function:
+  // 1. don't support Parameters.
+  // 2. don't support Regions in operator.
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto cloned_program = std::make_shared<Program>(ctx);
+  std::unordered_map<pir::Value, pir::Value> value_map;
+  for (auto &op : *program.block()) {
+    auto *cloned_op = BuildOpFrom(op, value_map);
+    cloned_program->block()->push_back(cloned_op);
+  }
+  std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
+  for (auto &pair : value_map) {
+    op_result_map[pair.first.dyn_cast<pir::OpResult>()] =
+        pair.second.dyn_cast<pir::OpResult>();
+  }
+  return std::make_pair(cloned_program, op_result_map);
+}
+
+SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
     const std::vector<pir::OpResult> &op_result_forward_params,
@@ -1201,8 +1214,8 @@ SplitedResult ForwardBackwardSplit(
 }
 
 void BindUtils(pybind11::module *m) {
-  m->def("program_clone", ProgramClone);
-  m->def("program_split", ForwardBackwardSplit);
+  m->def("clone_program", CloneProgram);
+  m->def("split_program", SplitForwardBackward);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
@@ -1296,10 +1309,10 @@ void BindUtils(pybind11::module *m) {
         translator::ProgramTranslator program_translator(&legacy_program,
                                                          program.get());
         program_translator.Translate();
-        return std::make_pair(program, program_translator.VarDesc2Value());
+        return std::make_pair(program, program_translator.VarDesc2OpResult());
       },
       R"DOC(
-        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::OpResult.
 
         Args:
 
@@ -1307,7 +1320,7 @@ void BindUtils(pybind11::module *m) {
 
         Returns:
             Program: The New IR Program
-            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+            dict[str, pir::OpResult]: Mapping between VarDesc(by name) and pir::OpResult.
 
         Raises:
             PreconditionNotMet: If legacy_program has multi block will raise error.
