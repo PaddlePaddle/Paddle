@@ -16,7 +16,7 @@ import inspect
 import unittest
 
 import numpy as np
-from op_test import OpTest, paddle_static_guard
+from op_test import OpTest
 
 import paddle
 from paddle import base
@@ -54,7 +54,10 @@ class TestDiagEmbedOpCase1(TestDiagEmbedOp):
 class TestDiagEmbedAPICase(unittest.TestCase):
     @test_with_pir_api
     def test_case1(self):
-        with paddle_static_guard():
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             diag_embed = np.random.randn(2, 3, 4).astype('float32')
             data1 = paddle.static.data(
                 name='data1', shape=[2, 3, 4], dtype='float32'
@@ -65,6 +68,7 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             place = core.CPUPlace()
             exe = base.Executor(place)
             results = exe.run(
+                main,
                 base.default_main_program(),
                 feed={"data1": diag_embed},
                 fetch_list=[out1, out2],
