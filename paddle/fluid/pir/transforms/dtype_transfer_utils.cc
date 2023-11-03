@@ -56,18 +56,17 @@ const phi::DataType GetKernelTypeforVar(
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op->name());
 
-  auto get_kernel_type_for_var_interface =
-      op_info.GetInterfaceImpl<paddle::dialect::GetKernelTypeForVarInterface>();
-  PADDLE_ENFORCE_NOT_NULL(
-      get_kernel_type_for_var_interface,
-      phi::errors::NotFound(
-          "can not find GetKernelTypeForVarInterface from [%s]", op->name()));
-
-  phi::DataType kernel_dtype_for_var =
-      get_kernel_type_for_var_interface->get_kernel_type_for_var_(
-          var_name, tensor_dtype, (*expected_kernel_key).dtype());
-
-  return kernel_dtype_for_var;
+  if (op_info
+          .GetInterfaceImpl<paddle::dialect::GetKernelTypeForVarInterface>()) {
+    auto get_kernel_type_for_var_interface =
+        op_info
+            .GetInterfaceImpl<paddle::dialect::GetKernelTypeForVarInterface>();
+    phi::DataType kernel_dtype_for_var =
+        get_kernel_type_for_var_interface->get_kernel_type_for_var_(
+            var_name, tensor_dtype, (*expected_kernel_key).dtype());
+    return kernel_dtype_for_var;
+  }
+  return (*expected_kernel_key).dtype();
 }
 
 pir::Type BuildDtypeTransferOutputType(pir::Type type,
