@@ -81,6 +81,48 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
   return res;
 }
 
+std::tuple<Tensor, Tensor, Tensor> layer_norm_decomp<primitive::LazyTensor>(
+    const Tensor& x,
+    const paddle::optional<Tensor>& scale,
+    const paddle::optional<Tensor>& bias,
+    float epsilon,
+    int begin_norm_axis) {
+  std::vector<int64_t> axis;
+  auto x_dim = phi::vectorize<int64_t>(x.dims());
+  for (const size_t i = begin_norm_axis; i < x_dim.size(); i++) {
+    axis.push_pack(i);
+  }
+  auto mean_ = mean_decomp(x, IntArray(axis), true);
+  auto difference = x - mean_;
+  auto var_tmp1 = difference * difference;
+  auto variance = mean_decomp(var_tmp1, axis, true);
+  auto out = difference * rsqrt_var;
+
+  auto scale_ptr = scale.get_ptr();
+  auto bias_ptr = bias.get_ptr();
+  std::vector<int64_t> slice_shape;
+  for (const int64_t i = begin_norm_axis; i < x.size(); i++) {
+    slice_shape.push_pack(x_dim[i]);
+  }
+  Tensor scale_;
+  if (scale_ptr) {
+    if (slice_shape != scale.shape()) {
+      scale_ = reshape<T>(*scale_ptr, slice_shape);
+    }
+    out = out * scale_;
+  }
+  Tensor bias_;
+  if (bias_ptr) {
+    if (slice_shape != bias.shape()) {
+      bias_ = reshape<T>(*bias_ptr, slice_shape);
+    }
+    out = out + bias_;
+  }
+  mean_ = reshape<T>(mean_, std::vector<int64_t>({-1}));
+  variance = reshape<T>(variance, std::vector<int64_t>({-1}));
+  return std::make_tuple(out, mean_, variance);
+}
+
 }  // namespace details
 
 }  // namespace primitive
