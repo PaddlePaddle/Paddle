@@ -25,6 +25,8 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   {{class_name}} op_obj = op->dyn_cast<{{class_name}}>();
   (void)op_obj;
 
+  FLAGS_tensor_operants_mode = "static";
+
   VLOG(4) << "Decomp Prepare inputs of {{fwd_name}}";
 
     {% for item in inputs %}
@@ -66,7 +68,6 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     {% endfor %}
 
   VLOG(4) << "Decomp prepare attributes of {{fwd_name}}";
-
     {% if attrs %}
       {% for item in attrs %}
       {% do attr_names.append(item.name) %}
