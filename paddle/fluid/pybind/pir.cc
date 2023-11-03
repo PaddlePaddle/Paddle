@@ -373,6 +373,17 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
+      .def("get_output_intermediate_value",
+           [](Operation &self) -> py::list {
+             py::list op_list;
+             paddle::dialect::OpYamlInfoInterface yaml_interface =
+                 self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+             auto outputs_info = std::get<2>(yaml_interface.GetOpInfo());
+             for (auto &output_info : outputs_info) {
+               op_list.append(output_info.intermediate);
+             }
+             return op_list;
+           })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
              py::list op_list;

@@ -71,21 +71,22 @@ def masked_multihead_attention(
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import paddle.incubate.nn.functional as F
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> import paddle.incubate.nn.functional as F
+            >>> paddle.device.set_device('gpu')
 
-            # input: [batch_size, 3 * num_head * dim_head]
-            x = paddle.rand(shape=(2, 3 * 32 * 128), dtype="float32")
+            >>> # input: [batch_size, 3 * num_head * dim_head]
+            >>> x = paddle.rand(shape=(2, 3 * 32 * 128), dtype="float32")
 
-            # src_mask: [batch_size, 1, 1, sequence_length]
-            src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
+            >>> # src_mask: [batch_size, 1, 1, sequence_length]
+            >>> src_mask = paddle.rand(shape=(2, 1, 1, 10), dtype="float32")
 
-            # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
-            cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
+            >>> # cache_kv: [2, batch_size, num_head, max_seq_len, dim_head]
+            >>> cache_kv = paddle.rand(shape=(2, 2, 32, 64, 128), dtype="float32")
 
-            output = F.masked_multihead_attention(
-                x, src_mask=src_mask, cache_kv=cache_kv)
+            >>> output = F.masked_multihead_attention(
+            ...     x, src_mask=src_mask, cache_kv=cache_kv)
 
     """
 
