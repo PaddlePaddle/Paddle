@@ -198,6 +198,13 @@ class TestPybind(unittest.TestCase):
         results = unsqueeze_op.get_output_intermediate_value()
         self.assertEqual(results, [False, True])
 
+    def test_prog_seed(self):
+        p = pir.Program()
+        self.assertEqual(p._seed, 0)
+
+        p.global_seed(10)
+        self.assertEqual(p._seed, 10)
+
 
 if __name__ == "__main__":
     unittest.main()

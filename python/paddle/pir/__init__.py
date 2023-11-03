@@ -38,5 +38,6 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
 from . import core
 
 from .math_op_patch import monkey_patch_opresult
+from .program_patch import monkey_patch_program
 
 __all__ = []
