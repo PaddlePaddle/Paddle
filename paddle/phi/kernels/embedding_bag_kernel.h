@@ -18,14 +18,14 @@
 
 namespace phi {
 
-enum class CalMode { ksum, kmean };
+enum class CalMode { ksum, kmean, kmax};
 
 template <typename T, typename Context>
 void EmbeddingBagCUDAKernel(const Context& ctx,
                             const DenseTensor& input,
-                            const DenseTensor& params,
                             const DenseTensor& weight,
-                            const std::string& mode,
-                            DenseTensor* out);
-
+                            const DenseTensor& per_sample_weight,
+                            int64_t padding_idx,
+                            const std::string &mode,
+                            DenseTensor *out);
 }  // namespace phi

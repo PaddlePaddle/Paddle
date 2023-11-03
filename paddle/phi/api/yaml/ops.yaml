@@ -787,15 +787,15 @@
   backward : elu_grad
 
 - op : embedding_bag
-  args : (Tensor input, Tensor params, Tensor weight, str mode)
+  args : (Tensor input, Tensor weight, Tensor per_sample_weight, int padding_idx=-1, str mode="sum", bool sparse=false)
   output : Tensor
   infer_meta :
     func : EmbeddingBagInferMeta
-    param : [input, params, weight]
+    param : [input, weight, per_sample_weight]
   kernel :
     func : embedding_bag
-    param : [input, params, weight, mode]
-    data_type : params
+    param : [input, weight, per_sample_weight]
+    data_type : weight
   backward : embedding_bag_grad
 
 - op : equal_all

@@ -680,12 +680,12 @@
   inplace : (out_grad -> x_grad)
 
 - backward_op : embedding_bag_grad
-  forward : embedding_bag (Tensor input, Tensor params, Tensor weight, str mode) -> Tensor(out)
-  args : (Tensor input, Tensor params, Tensor weight, Tensor out_grad, str mode)
-  output : Tensor(params_grad), Tensor(weight_grad)
+  forward : embedding_bag (Tensor input, Tensor weight, Tensor per_sample_weight, int padding_idx, str mode, bool sparse=false) -> Tensor(out)
+  args : (Tensor input, Tensor weight, Tensor per_sample_weight, Tensor out_grad, str mode)
+  output : Tensor(weight_grad), Tensor(per_sample_weight_grad)
   infer_meta :
     func : EmbeddingBagGradInferMeta
-    param : [input, params, weight]
+    param : [input, weight, per_sample_weight]
   kernel :
     func : embedding_bag_grad
 

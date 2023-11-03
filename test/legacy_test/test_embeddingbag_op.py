@@ -36,10 +36,10 @@ def manual_embeddingbag(input, params, weights=None, mode="sum"):
 
 
 # each row of input should avoid repeated elements
-def get_input(rows=5, cols=3, num_embedding=10):
-    a = np.random.choice(np.arange(num_embedding), size=cols, replace=False)
+def get_input(rows=5, cols=3, num_embeddings=10):
+    a = np.random.choice(np.arange(num_embeddings), size=cols, replace=False)
     for _ in range(rows - 1):
-        b = np.random.choice(np.arange(num_embedding), size=cols, replace=False)
+        b = np.random.choice(np.arange(num_embeddings), size=cols, replace=False)
         a = np.vstack((a, b))
     return a
 
@@ -51,16 +51,16 @@ class TestEmbeddingBagCPU(OpTest):
         self.ids_dtype = "int64"
         self.mode = "sum"
         self.python_api = paddle.nn.functional.embedding_bag
-        params = np.random.random((20, 64)).astype(self.dtype)
-        input = get_input(10, 20, params.shape[0])
-        weight = np.random.randint(low=0, high=10, size=input.shape).astype(
+        weight = np.random.random((20, 64)).astype(self.dtype)
+        input = get_input(10, 20, weight.shape[0])
+        per_sample_weight = np.random.randint(low=0, high=10, size=input.shape).astype(
             np.float64
         )
 
-        self.inputs = {'input': input, 'params': params, 'weight': weight}
-        np_out = manual_embeddingbag(input, params, weight)
+        self.inputs = {'input': input, 'weight': weight, 'per_sample_weight': per_sample_weight}
+        np_out = manual_embeddingbag(input, weight, per_sample_weight)
         self.outputs = {
-            'out': np_out.reshape((input.shape[0], params.shape[1]))
+            'out': np_out.reshape((input.shape[0], weight.shape[1]))
         }
         self.attrs = {'mode': self.mode}
         if core.is_compiled_with_cuda():
@@ -71,14 +71,14 @@ class TestEmbeddingBagCPU(OpTest):
 
     def test_check_grad(self):
         self.check_grad(
-            inputs_to_check=['weight'],
+            inputs_to_check=['per_sample_weight'],
             output_names=['out'],
             max_relative_error=0.5,
         )
 
-    def test_check_grad_params(self):
+    def test_check_grad_weight(self):
         self.check_grad(
-            inputs_to_check=['params'],
+            inputs_to_check=['weight'],
             output_names=['out'],
             max_relative_error=0.5,
         )

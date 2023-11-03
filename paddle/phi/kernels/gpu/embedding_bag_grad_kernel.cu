@@ -23,7 +23,7 @@
 
 namespace phi {
 
-enum class CalMode_c { ksum, kmean };
+enum class CalMode_c { ksum, kmean, kmax};
 
 // kernelfunc, calculate the grad of the variable 'weight'
 template <typename T, typename IdT>

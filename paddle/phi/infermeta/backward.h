@@ -493,9 +493,8 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
                            MetaTensor* value_grad);
 
 void EmbeddingBagGradInferMeta(const MetaTensor& input,
-                               const MetaTensor& params,
                                const MetaTensor& weight,
-                               MetaTensor* params_grad,
-                               MetaTensor* weight_grad);
-
+                               const MetaTensor& per_sample_weight,
+                               MetaTensor* weight_grad,
+                               MetaTensor* per_sample_weight_grad);
 }  // namespace phi

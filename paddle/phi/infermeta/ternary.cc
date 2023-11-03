@@ -1357,37 +1357,40 @@ void ViterbiDecodeInferMeta(const MetaTensor& input,
 }
 
 void EmbeddingBagInferMeta(const MetaTensor& input,
-                           const MetaTensor& params,
                            const MetaTensor& weight,
+                           const MetaTensor& per_sample_weight,
                            MetaTensor* out) {
-  const auto& input_dims = input.dims();
-  auto input_dims_size = input_dims.size();
-  const auto& params_dims = params.dims();
-  const auto& weight_dims = weight.dims();
-
+  const auto& table_dims = weight.dims();
+  auto table_dims_size = table_dims.size();
+  const auto& ids_dims = input.dims();
+  const auto& weight_dims = per_sample_weight.dims();
+  int ids_rank = ids_dims.size();
+  VLOG(5) << "ids rank is " << ids_rank << std::endl;
   PADDLE_ENFORCE_EQ(
-      input_dims,
+      ids_dims,
       weight_dims,
       phi::errors::InvalidArgument(
-          "ShapeError: The shapes of 'input' and 'weight' must be the same."
+          "ShapeError: The shapes of 'input' and 'per_sample_weight' must be the same."
           "But received input's shape = [%s],"
-          "weight's shape = [%s].",
-          input_dims,
+          "per_sample_weight's shape = [%s].",
+          ids_dims,
           weight_dims));
   PADDLE_ENFORCE_EQ(
-      input_dims_size,
+      table_dims.size(),
       2,
       phi::errors::InvalidArgument(
-          "ShapeError: The dimensions of the 'input' tensor must be 2."
-          "But received input's dimensions = %d, input's shape = [%s].",
-          input_dims,
-          input_dims_size));
+          "ShapeError: The dimensions of the 'lookup table' tensor must be 2."
+          "But received lookup table's dimensions = %d, "
+          "lookup table's shape = [%s].",
+          table_dims.size(),
+          table_dims));
 
   auto output_dims =
-      phi::vectorize(phi::slice_ddim(input_dims, 0, input_dims_size - 1));
-  output_dims.push_back(params_dims[1]);
+      phi::vectorize(phi::slice_ddim(ids_dims, 0, table_dims_size - 1));
+  output_dims.push_back(table_dims[1]);
   out->set_dims(phi::make_ddim(output_dims));
-  out->set_dtype(params.dtype());
+  out->set_dtype(weight.dtype());
+  out->share_lod(input);
 }
 
 }  // namespace phi

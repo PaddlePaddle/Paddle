@@ -1277,15 +1277,15 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
 }
 
 void EmbeddingBagGradInferMeta(const MetaTensor& input,
-                               const MetaTensor& params,
                                const MetaTensor& weight,
-                               MetaTensor* params_grad,
-                               MetaTensor* weight_grad) {
-  if (params_grad) {
-    params_grad->share_meta(params);
-  }
+                               const MetaTensor& per_sample_weight,
+                               MetaTensor* weight_grad,
+                               MetaTensor* per_sample_weight_grad) {
   if (weight_grad) {
     weight_grad->share_meta(weight);
+  }
+  if (per_sample_weight_grad) {
+    per_sample_weight_grad->share_meta(per_sample_weight);
   }
 }
 

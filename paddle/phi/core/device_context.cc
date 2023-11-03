@@ -18,6 +18,8 @@
 #include "paddle/phi/backends/gpu/cuda/cuda_graph.h"
 #endif
 
+#include <glog/logging.h>
+#include <gtest/gtest.h>
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
@@ -154,11 +156,11 @@ struct DeviceContext::Impl {
         ClearHolder(tensor);
       }
     } else {
+      VLOG(0) << "Segment Fault is about to come.";
       if (tensor->initialized() && tensor->place() != place) {
         ClearHolder(tensor);
       }
     }
-
     auto* allocator =
         (fake_alloc || tensor->numel() == 0) && requested_size == 0
             ? zero_allocator_

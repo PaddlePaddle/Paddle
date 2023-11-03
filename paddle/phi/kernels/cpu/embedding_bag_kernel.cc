@@ -22,22 +22,22 @@ template <typename T, typename Context>
 struct EmbeddingBagCPUFunctor {
   EmbeddingBagCPUFunctor(const Context& dev_ctx,
                          const DenseTensor& input,
-                         const DenseTensor& params,
                          const DenseTensor& weight,
+                         const DenseTensor& per_sample_weight,
+                         const int64_t padding_idx,
                          const std::string& mode,
                          DenseTensor* out)
       : dev_ctx_(dev_ctx),
         input_(input),
-        params_(params),
         weight_(weight),
+        per_sample_weight_(per_sample_weight),
+        padding_idx_(padding_idx),
         mode_(mode),
         out_(out) {}
 
-  using EigenArrayMap =
-      Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+  using EigenArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
   using EigenVectorMap = Eigen::Map<Eigen::Vector<T, Eigen::Dynamic>>;
-  using ConstEigenVectorMap =
-      Eigen::Map<const Eigen::Vector<T, Eigen::Dynamic>>;
+  using ConstEigenVectorMap = Eigen::Map<const Eigen::Vector<T, Eigen::Dynamic>>;
   using EigenIndex = Eigen::Index;
 
   template <typename IdT>
@@ -45,12 +45,12 @@ struct EmbeddingBagCPUFunctor {
     dev_ctx_.template Alloc<T>(out_);
     const EigenIndex bag_number = input_.dims()[0];
     const EigenIndex sequence_length = input_.dims()[1];
-    const EigenIndex output_dim = params_.dims()[1];
+    const EigenIndex output_dim = weight_.dims()[1];
 
     auto* input_d = input_.data<IdT>();
 
-    auto* params_d = params_.data<T>();
     auto* weight_d = weight_.data<T>();
+    auto* per_sample_weight_d = per_sample_weight_.data<T>();
 
     auto* output_d = out_->data<T>();
 
@@ -58,10 +58,10 @@ struct EmbeddingBagCPUFunctor {
       EigenVectorMap output_slice(&output_d[bag * output_dim], output_dim);
       output_slice.setZero();
       for (EigenIndex seq = 0; seq < sequence_length; ++seq) {
-        const ConstEigenVectorMap params_slice(
-            &params_d[input_d[bag * sequence_length + seq] * output_dim],
+        const ConstEigenVectorMap weight_slice(
+            &weight_d[input_d[bag * sequence_length + seq] * output_dim],
             output_dim);
-        output_slice += params_slice * weight_d[bag * sequence_length + seq];
+        output_slice += weight_slice * per_sample_weight_d[bag * sequence_length + seq];
       }
       if (mode_ == "mean") {
         output_slice /= static_cast<T>(sequence_length);
@@ -72,20 +72,22 @@ struct EmbeddingBagCPUFunctor {
  private:
   const Context& dev_ctx_;
   const DenseTensor& input_;
-  const DenseTensor& params_;
   const DenseTensor& weight_;
+  const DenseTensor& per_sample_weight_;
+  const int64_t padding_idx_;
   const std::string& mode_;
   DenseTensor* out_;
 };
 template <typename T, typename Context>
 void EmbeddingBagKernel(const Context& ctx,
                         const DenseTensor& input,
-                        const DenseTensor& params,
                         const DenseTensor& weight,
+                        const DenseTensor& per_sample_weight,
+                        int64_t padding_idx,
                         const std::string& mode,
                         DenseTensor* out) {
   EmbeddingBagCPUFunctor<T, Context> functor(
-      ctx, input, params, weight, mode, out);
+      ctx, input, weight, per_sample_weight, padding_idx, mode, out);
   if (input.dtype() == phi::DataType::INT32) {
     functor.template apply<int>();
   } else if (input.dtype() == phi::DataType::INT64) {
