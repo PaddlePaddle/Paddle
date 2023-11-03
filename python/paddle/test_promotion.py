@@ -38,8 +38,9 @@ class judge_dtype_for_type_promotion:
 
         @wraps(fn)
         def _fn(*args, **kwargs):
-            x = args[0]
-            y = args[1]
+            bound = sig.bind(*args, **kwargs)
+            x = bound.arguments['x']
+            y = bound.arguments['y']
             got_sclar = False
             got_numpy = False
             if isinstance(x, (Variable, paddle.Tensor)):
@@ -117,7 +118,7 @@ class judge_dtype_for_type_promotion:
                             " y.dtype: ",
                             y_dtype,
                         )
-                        result = fn(*args)
+                        result = fn(**bound.arguments)
                         return result
                 if got_numpy:
                     # numpy array + tensor, int=int64, float=float64, bool=bool, complex=complex128
@@ -177,13 +178,13 @@ class judge_dtype_for_type_promotion:
                             " y.dtype: ",
                             y_dtype,
                         )
-                        result = fn(*args)
+                        result = fn(**bound.arguments)
                         return result
                 raise ValueError(
                     f"got different dtype for x: ({x_dtype}), y: ({y_dtype})."
                 )
 
-            result = fn(*args)
+            result = fn(**bound.arguments)
             return result
 
         _fn.__signature__ = sig  # type: ignore[attr-defined]
