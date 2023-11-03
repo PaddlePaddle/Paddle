@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef PADDLE_WITH_CUDA
 #include <xxhash.h>
 
 #include <algorithm>
@@ -352,23 +351,24 @@ class CudnnConvDescManager {
 }  // namespace
 
 template <typename T, typename Context>
-void ConvFusionKernel(const Context& ctx,
-                      const DenseTensor& input,
-                      const DenseTensor& filter,
-                      const DenseTensor& bias,
-                      const paddle::optional<DenseTensor>& residual,
-                      const std::vector<int>& strides,
-                      const std::vector<int>& paddings_t,
-                      const std::string& padding_algorithm,
-                      const std::vector<int>& dilations_t,
-                      int groups,
-                      const std::string& data_format,
-                      const std::string& activation,
-                      bool exhaustive_search,
-                      const std::vector<int>& channels,
-                      int user_workspace_size,
-                      DenseTensor* output,
-                      std::vector<DenseTensor*> outs) {
+void Conv2dFusionKernel(const Context& ctx,
+                        const DenseTensor& input,
+                        const DenseTensor& filter,
+                        const DenseTensor& bias,
+                        const paddle::optional<DenseTensor>& residual,
+                        const std::vector<int>& strides,
+                        const std::vector<int>& paddings_t,
+                        const std::string& padding_algorithm,
+                        const std::vector<int>& dilations_t,
+                        int groups,
+                        const std::string& data_format,
+                        const std::string& activation,
+                        const std::vector<int>& split_channels,
+                        bool exhaustive_search,
+                        int workspace_size_MB,
+                        float fuse_alpha,
+                        DenseTensor* output,
+                        std::vector<DenseTensor*> outputs) {
   auto handle = ctx.cudnn_handle();
   ctx.template Alloc<T>(output);
   auto workspace_handle = ctx.cudnn_workspace_handle();
@@ -382,10 +382,10 @@ void ConvFusionKernel(const Context& ctx,
                         "FLAGS_cudnn_deterministic True at same time."));
 
   size_t workspace_size_limit = 0;
-  if (FLAGS_conv_workspace_size_limit > 0 || user_workspace_size > 0) {
+  if (FLAGS_conv_workspace_size_limit > 0 || workspace_size_MB > 0) {
     int64_t max_user_size =
         std::min(static_cast<int64_t>(FLAGS_conv_workspace_size_limit),
-                 static_cast<int64_t>(user_workspace_size));
+                 static_cast<int64_t>(workspace_size_MB));
     workspace_size_limit = max_user_size * 1024 * 1024;
   }
 
@@ -612,7 +612,7 @@ void ConvFusionKernel(const Context& ctx,
     workspace_handle.RunFunc(cudnn_func, workspace_size);
   }
 
-  if (!channels.empty()) {
+  if (!split_channels.empty()) {
     if (transformed_input.dims()[0] == 1 &&
         compute_format == CUDNN_TENSOR_NCHW) {
       // share data with Output
@@ -621,11 +621,13 @@ void ConvFusionKernel(const Context& ctx,
       auto y_dims = output->dims();
       t.Resize({y_dims[1], y_dims[2], y_dims[3]});
       int s = 0;
-      for (size_t i = 0; i < channels.size(); ++i) {
-        int e = s + channels[i];
-        outs[i]->ShareDataWith(t.Slice(s, e));
-        outs[i]->Resize(
-            {transformed_input.dims()[0], channels[i], y_dims[2], y_dims[3]});
+      for (size_t i = 0; i < split_channels.size(); ++i) {
+        int e = s + split_channels[i];
+        outputs[i]->ShareDataWith(t.Slice(s, e));
+        outputs[i]->Resize({transformed_input.dims()[0],
+                            split_channels[i],
+                            y_dims[2],
+                            y_dims[3]});
         s = e;
       }
     } else {
@@ -644,8 +646,7 @@ void ConvFusionKernel(const Context& ctx,
 PD_REGISTER_KERNEL(conv2d_fusion,  // cuda_only
                    GPUDNN,
                    ALL_LAYOUT,
-                   phi::fusion::ConvFusionKernel,
+                   phi::fusion::Conv2dFusionKernel,
                    float,
                    double,
                    phi::dtype::float16) {}
-#endif
