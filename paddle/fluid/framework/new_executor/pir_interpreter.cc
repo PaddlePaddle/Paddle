@@ -1447,7 +1447,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << place_ << " "
+    VLOG(4) << place_ << " Before:"
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1469,7 +1469,7 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << place_ << " "
+      VLOG(4) << place_ << " After:"
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";

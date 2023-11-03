@@ -835,20 +835,6 @@ Operation *BuildOpFrom(
   return cloned_op;
 }
 
-std::shared_ptr<Program> ProgramClone(const Program &program) {
-  // Limitation of this function:
-  // 1. don't support Parameters.
-  // 2. don't support Regions in operator.
-  pir::IrContext *ctx = pir::IrContext::Instance();
-  auto cloned_program = std::make_shared<Program>(ctx);
-  std::unordered_map<pir::Value, pir::Value> value_map;
-  for (auto &op : *program.block()) {
-    auto *cloned_op = BuildOpFrom(op, value_map);
-    cloned_program->block()->push_back(cloned_op);
-  }
-  return cloned_program;
-}
-
 std::list<Operation *>::const_iterator list_offset(const Block *block,
                                                    int start_idx) {
   auto it = block->begin();
@@ -964,7 +950,31 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
                                    no_need_buffer_values.end());
 }
 
-SplitedResult ForwardBackwardSplit(
+using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
+std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
+    const Program &program,
+    const std::vector<pir::OpResult> &op_result_forward_inputs,
+    const std::vector<pir::OpResult> &op_result_forward_params,
+    const std::vector<pir::OpResult> &op_result_forward_outputs) {
+  // Limitation of this function:
+  // 1. don't support Parameters.
+  // 2. don't support Regions in operator.
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto cloned_program = std::make_shared<Program>(ctx);
+  std::unordered_map<pir::Value, pir::Value> value_map;
+  for (auto &op : *program.block()) {
+    auto *cloned_op = BuildOpFrom(op, value_map);
+    cloned_program->block()->push_back(cloned_op);
+  }
+  std::unordered_map<pir::OpResult, pir::OpResult> op_result_map;
+  for (auto &pair : value_map) {
+    op_result_map[pair.first.dyn_cast<pir::OpResult>()] =
+        pair.second.dyn_cast<pir::OpResult>();
+  }
+  return std::make_pair(cloned_program, op_result_map);
+}
+
+SplitedResult SplitForwardBackward(
     const Program &program,
     const std::vector<pir::OpResult> &op_result_forward_inputs,
     const std::vector<pir::OpResult> &op_result_forward_params,
@@ -1201,8 +1211,8 @@ SplitedResult ForwardBackwardSplit(
 }
 
 void BindUtils(pybind11::module *m) {
-  m->def("program_clone", ProgramClone);
-  m->def("program_split", ForwardBackwardSplit);
+  m->def("clone_program", CloneProgram);
+  m->def("split_program", SplitForwardBackward);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
