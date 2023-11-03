@@ -104,7 +104,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                     "@fetch";
         }
       }
-
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
