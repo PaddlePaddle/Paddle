@@ -155,7 +155,7 @@ def unfold(x, kernel_sizes, strides=1, paddings=0, dilations=1, name=None):
             "of 2 or 4 integers"
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unfold(x, kernel_sizes, strides, paddings, dilations)
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)

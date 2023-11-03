@@ -142,7 +142,7 @@ class TestUnfoldOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Y')
+        self.check_grad(['X'], 'Y', check_pir=True)
 
     def test_support_tuple(self):
         paddle.disable_static()
@@ -199,10 +199,10 @@ class TestUnfoldBF16Op(TestUnfoldOp):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(self.place, ['X'], 'Y')
+        self.check_grad_with_place(self.place, ['X'], 'Y', check_pir=True)
 
 
 class TestUnfoldAPI(TestUnfoldOp):

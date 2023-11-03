@@ -2969,7 +2969,7 @@ def unbind(input, axis=0):
             f'The axis must in range({-input.ndim}, {input.ndim}).'
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.unbind(input, axis)
     else:
         if isinstance(axis, np.generic):
