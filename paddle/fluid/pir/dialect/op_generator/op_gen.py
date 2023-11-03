@@ -300,6 +300,23 @@ class OpCompatParser:
                         return compat
         return None
 
+    def parse_support_tensor(self, op):
+        scalar_item = {}
+        int_array_item = {}
+        for support_tensor_attr in op['support_tensor']:
+            for attr in op['attrs']:
+                if (
+                    attr['typename'] == 'Scalar'
+                    and attr['name'] == support_tensor_attr
+                ):
+                    scalar_item[support_tensor_attr] = {"support_tensor": True}
+                if (
+                    attr['typename'] == 'IntArray'
+                    and attr['name'] == support_tensor_attr
+                ):
+                    scalar_item[support_tensor_attr] = {"support_tensor": True}
+        return scalar_item, int_array_item
+
 
 # =====================================
 # Parse Op Information From Yaml
@@ -933,6 +950,27 @@ def get_mutable_attribute_grad_semantic(op_info, op_info_items):
     return mutable_attribute_grad_semantics
 
 
+def check_need_update_ops(op_yaml_files):
+    need_update_ops = False
+    update_yaml_file = None
+    for yaml_file in op_yaml_files:
+        if yaml_file.find("update_ops.parsed.yaml") != -1:
+            need_update_ops = True
+            update_yaml_file = yaml_file
+            break
+    return need_update_ops, update_yaml_file
+
+
+def update_ops(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_ops = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_op in update_ops:
+            if op_yaml_items[i]['name'] == update_op['name']:
+                op_yaml_items[i] = update_op
+                break
+
+
 def OpGenerator(
     op_yaml_files,
     op_compat_yaml_file,
@@ -950,12 +988,19 @@ def OpGenerator(
 
     # (2) Prepare: Get all op item in all op_yaml_files
     op_compat_parser = OpCompatParser(op_compat_yaml_file)
+    need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
     op_yaml_items = []
     for yaml_file in op_yaml_files:
+        if update_yaml_file == yaml_file:
+            continue
         with open(yaml_file, "r") as f:
             ops = yaml.safe_load(f)
             op_yaml_items = op_yaml_items + ops
+    # replace old ir ops with pir ops
+    if need_update_ops:
+        update_ops(op_yaml_items, update_yaml_file)
+
     op_info_items = {}
     for op in op_yaml_items:
         op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -972,6 +1017,13 @@ def OpGenerator(
             and 'scalar' in op_compat_item
         ):
             op_compat_item = op_compat_item.pop('scalar')
+
+        if 'support_tensor' in op.keys() and op['support_tensor']:
+            scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
+                op
+            )
+            op_compat_item['scalar'] = scalar_item
+            op_compat_item['int_array'] = int_array_item
 
         op_info_items[op['name']] = OpInfoParser(op, op_compat_item)
     # (3) CodeGen: Traverse op_info_items and generate
