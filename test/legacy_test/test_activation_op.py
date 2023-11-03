@@ -3489,7 +3489,6 @@ class TestLog2_ZeroDim(TestLog2):
 
 
 class TestLog2_Op_Int(unittest.TestCase):
-    @test_with_pir_api
     def test_api_int(self):
         paddle.disable_static()
         for dtype in ['int32', 'int64', 'float16']:
@@ -4781,9 +4780,9 @@ create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_fp16_class(TestLog2)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare, check_pir=True)
@@ -4931,9 +4930,9 @@ create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_bf16_class(TestLog2)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare, check_pir=True)
