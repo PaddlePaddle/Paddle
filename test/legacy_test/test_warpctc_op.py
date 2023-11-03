@@ -22,6 +22,7 @@ from test_softmax_op import stable_softmax
 import paddle
 import paddle.nn.functional as F
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 CUDA_BLOCK_SIZE = 32
 
@@ -274,7 +275,7 @@ class TestWarpCTCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -284,6 +285,7 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
+                check_pir = True,
             )
         else:
             self.check_grad(
@@ -291,6 +293,7 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
+                check_pir = True,
             )
 
 
@@ -394,7 +397,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -404,6 +407,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
+                check_pir = True,
             )
         else:
             self.check_grad(
@@ -411,6 +415,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
+                check_pir = True,
             )
 
 
@@ -516,14 +521,16 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss")
+        self.check_grad(["Logits"], "Loss", check_pir = True)
 
 
 class TestWarpCTCOpError(unittest.TestCase):
+
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -610,6 +617,7 @@ class TestWarpCTCOpError(unittest.TestCase):
 
 
 class TestCTCLossAPICase(unittest.TestCase):
+    @test_with_pir_api
     def test_class_api(self):
         self.batch_size = 3
         self.num_classes = 15
@@ -660,6 +668,7 @@ class TestCTCLossAPICase(unittest.TestCase):
         np.testing.assert_allclose(loss_pd, loss_np, rtol=1e-05, atol=1)
 
     def test_eager_ctcloss(self):
+        @test_with_pir_api
         def test_functinal_api():
             self.batch_size = 4
             self.num_classes = CUDA_BLOCK_SIZE + 2

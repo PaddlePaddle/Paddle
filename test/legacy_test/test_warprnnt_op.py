@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import _C_ops
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -227,7 +228,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -236,19 +237,21 @@ class TestWarpRNNTOp(OpTest):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_pir = True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_pir = True,
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -258,16 +261,20 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_pir = True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
+                check_pir = True,
             )
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
+
+    @test_with_pir_api
     def test_errors(self):
         print("test_errors")
         with program_guard(Program(), Program()):
@@ -450,6 +457,7 @@ class TestRNNTLossAPICase(unittest.TestCase):
             dtype=np.float64,
         )
 
+    @test_with_pir_api
     def test_functinal_api(self):
         self.config()
 
@@ -492,6 +500,7 @@ class TestRNNTLossAPICase(unittest.TestCase):
         )
         np.testing.assert_allclose(loss_pd_sum, loss_np_sum, rtol=1e-05, atol=1)
 
+    @test_with_pir_api
     def test_class_api(self):
         self.config()
 

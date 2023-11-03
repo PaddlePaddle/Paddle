@@ -22,7 +22,7 @@ from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_pir_mode
+from ...base.framework import _current_expected_place, in_pir_mode, in_dynamic_or_pir_mode
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
@@ -1889,7 +1889,7 @@ def ctc_loss(
         input_length=None,
         label_length=None,
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if input_length is None or label_length is None:
                 raise ValueError(
                     "input_length and label_length must not be None in dygraph mode!"
@@ -2013,7 +2013,7 @@ def rnnt_loss(
     def warprnnt(
         input, label, input_length, label_length, blank=0, fastemit_lambda=0.001
     ):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             loss_out = _C_ops.warprnnt(
                 input,
                 label,
