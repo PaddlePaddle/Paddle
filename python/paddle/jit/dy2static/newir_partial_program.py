@@ -260,20 +260,17 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if use_scope_cache:
-            if program_id not in self._scope_cache:
-                scope = core.Scope()
-                self._scope_cache[program_id] = [scope]
-                return scope
-            else:
-                for scope in self._scope_cache[program_id]:
-                    if scope._can_reused:
-                        return scope
-                scope = core.Scope()
-                self._scope_cache[program_id].append(scope)
-                return scope
-        else:
+        if not use_scope_cache:
             return core.Scope()
+        if program_id not in self._scope_cache:
+            self._scope_cache[program_id] = []
+        cached_scopes = self._scope_cache[program_id]
+        for scope in cached_scopes:
+            if scope._can_reused:
+                return scope
+        scope = core.Scope()
+        cached_scopes.append(scope)
+        return scope
 
     # whole
     @switch_to_static_graph
@@ -982,13 +979,10 @@ class PartialProgramLayer:
         return input_vars, out_vars
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
-        # Hold forward variables
-        tmp_scope_vec = None
         inner_scope = self._get_scope(
             program_id=program_id, use_scope_cache=use_scope_cache
         )
-        tmp_scope_vec = [inner_scope]
-        return tmp_scope_vec
+        return [inner_scope]
 
     def _create_cuda_graph_vec(self):
         var = core.eager.Tensor(
@@ -1089,19 +1083,6 @@ class PartialProgramLayer:
                 raise NotImplementedError(
                     "only support selected_row and dense_tensor grad type."
                 )
-
-    def _remove_op_call_stack(self, main_program):
-        """
-        Remove op's python call stack with redundant low-level error messages related to
-        transforamtions to avoid confusing users.
-        """
-        assert isinstance(main_program, framework.Program)
-        for block in main_program.blocks:
-            for op in block.ops:
-                if op.has_attr("op_callstack"):
-                    op._remove_attr("op_callstack")
-
-        return main_program
 
     def _check_params_all_inited(self, main_program):
         """
