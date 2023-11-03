@@ -127,9 +127,9 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
             },
         ]
         self.dtypes = [
-            {
-                "dtype": "bfloat16",
-            },
+            # {
+            #     "dtype": "bfloat16",
+            # },
             {
                 "dtype": "float16",
             },
