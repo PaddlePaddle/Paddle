@@ -86,6 +86,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_seqexpand_concat_fc',
     'fused_attention',
     'fused_feedforward',
+    'fused_elemwise_add_activation',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -103,8 +104,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'embedding_grad_sparse',
     'fused_batch_norm_act_',
     'fused_bn_add_activation_',
-    'fused_elemwise_add_activation',
-    'fused_feedforward',
     'fused_scale_bias_relu_conv_bnstats',
     'memcpy',
     'print',

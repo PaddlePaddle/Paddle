@@ -1349,6 +1349,11 @@ if(NOT WITH_GPU)
   list(REMOVE_ITEM NEW_IR_COVERAGE_TESTS test_fused_feedforward_pass)
 endif()
 
+set(NEW_IR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
+if(NOT WITH_GPU)
+  list(REMOVE_ITEM NEW_IR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
+endif()
+
 foreach(NEW_IR_COVERAGE_TEST ${NEW_IR_COVERAGE_TESTS})
   py_test_modules(
     ${NEW_IR_COVERAGE_TEST}_new_ir MODULES ${NEW_IR_COVERAGE_TEST} ENVS
