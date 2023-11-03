@@ -21,6 +21,9 @@
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/phi/api/lib/kernel_dispatch.h"
+#include "paddle/phi/common/backend.h"
+#include "paddle/phi/common/layout.h"
 #include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/op_info.h"
 
@@ -71,8 +74,9 @@ pir::Type BuildDtypeTransferOutputType(pir::Type type,
                                        const phi::Place& place,
                                        phi::DataType data_dtype,
                                        pir::IrContext* ctx) {
-  if (type.isa<paddle::dialect::DenseTensorType>()) {
-    auto dense_tensor_type = type.dyn_cast<paddle::dialect::DenseTensorType>();
+  if (type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    auto dense_tensor_type =
+        type.dyn_cast<paddle::dialect::AllocatedDenseTensorType>();
 
     auto out_dtype = paddle::dialect::TransToIrDataType(data_dtype, ctx);
     return paddle::dialect::AllocatedDenseTensorType::get(
@@ -84,9 +88,9 @@ pir::Type BuildDtypeTransferOutputType(pir::Type type,
         dense_tensor_type.lod(),
         dense_tensor_type.offset());
 
-  } else if (type.isa<paddle::dialect::SelectedRowsType>()) {
+  } else if (type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
     auto selected_rows_type =
-        type.dyn_cast<paddle::dialect::SelectedRowsType>();
+        type.dyn_cast<paddle::dialect::AllocatedSelectedRowsType>();
     auto out_dtype = paddle::dialect::TransToIrDataType(data_dtype, ctx);
     return paddle::dialect::AllocatedSelectedRowsType::get(
         ctx,
@@ -114,6 +118,36 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
       ctx->GetRegisteredOpInfo(paddle::dialect::PhiKernelOp::name());
   auto copy_kernel_key = kernel_key;
   copy_kernel_key.set_dtype(dst_dtype);
+
+  // Get kernelkey (backend、layout)
+  phi::Backend kernel_backend = phi::Backend::UNDEFINED;
+  phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
+  if (in.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
+    kernel_backend = paddle::experimental::ParseBackend(
+        in.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .place());
+    kernel_layout = paddle::experimental::ParseLayout(
+        in.type()
+            .dyn_cast<paddle::dialect::AllocatedDenseTensorType>()
+            .data_layout());
+  } else if (in.type().isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+    kernel_backend = paddle::experimental::ParseBackend(
+        in.type()
+            .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+            .place());
+    kernel_layout = paddle::experimental::ParseLayout(
+        in.type()
+            .dyn_cast<paddle::dialect::AllocatedSelectedRowsType>()
+            .data_layout());
+  } else {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("Get kernelkey for CastOp only support "
+                                   "DenseTensorType and SelectedRowsType"));
+  }
+  phi::KernelKey cast_kernel_key(kernel_backend, kernel_layout, src_dtype);
+
+  // Create CastOp
   std::unordered_map<std::string, pir::Attribute> op_attribute{
       {"op_name", pir::StrAttribute::get(ctx, "pd_op.cast")},
       {"kernel_name", pir::StrAttribute::get(ctx, "cast")},

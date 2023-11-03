@@ -1310,7 +1310,6 @@ std::vector<pir::Value> BuildOpInputList(
                                        "type and selected rows for now"));
       }
     }
-    vec_inputs.push_back(new_in);
 
     // 2. dtype transfer
     std::string var_name = op_info_parser->InputNames()[i];
@@ -1325,19 +1324,19 @@ std::vector<pir::Value> BuildOpInputList(
           expected_kernel_key.dtype(), kernel_dtype_for_var);
       if (check_dtype_transfer) {
         VLOG(4) << "trans input: " << var_name << "'s dtype from "
-                << expected_kernel_key.dtype() << " to "
-                << kernel_dtype_for_var;
+                << kernel_dtype_for_var << " to "
+                << expected_kernel_key.dtype();
 
-        // auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
-        // new_in = pir::AddDtypeTransferOp(new_in,
-        //                                  block,
-        //                                  kernel_key,
-        //                                  out_place,
-        //                                  kernel_dtype_for_var,
-        //                                  expected_kernel_key.dtype());
-        // vec_inputs.push_back(new_in);
+        auto out_place = phi::TransToPhiPlace(expected_kernel_key.backend());
+        new_in = pir::AddDtypeTransferOp(new_in,
+                                         block,
+                                         kernel_key,
+                                         out_place,
+                                         kernel_dtype_for_var,
+                                         expected_kernel_key.dtype());
       }
     }
+    vec_inputs.push_back(new_in);
   }
   return vec_inputs;
 }
@@ -1560,6 +1559,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
+  VLOG(2) << "IR after lowering = " << *program;
   if (FLAGS_print_ir) {
     std::cout << "IR after lowering = " << *program << std::endl;
   }
