@@ -608,6 +608,7 @@
     func : CumWithIndicesInferMeta
   kernel :
     func : cummax
+    data_type : x
   backward : cummax_grad
 
 - op : cummin
@@ -617,6 +618,7 @@
     func : CumWithIndicesInferMeta
   kernel :
     func : cummin
+    data_type : x
   backward : cummin_grad
 
 - op : cumprod

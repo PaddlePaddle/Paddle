@@ -92,11 +92,11 @@ class TestCummaxOp(OpTest):
 
     def test_check_output(self):
         paddle.enable_static()
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         paddle.enable_static()
-        self.check_grad(['x'], 'out')
+        self.check_grad(['x'], 'out', check_pir=True)
 
 
 class TestCummaxOpAxis1(TestCummaxOp):
@@ -152,6 +152,7 @@ class TestCummaxAPI(unittest.TestCase):
         np.testing.assert_array_equal(z, y.numpy())
         np.testing.assert_array_equal(ind, indices.numpy())
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         with base.program_guard(base.Program()):
             data_np = np.random.random((100, 100)).astype(np.float32)

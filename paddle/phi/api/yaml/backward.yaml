@@ -503,6 +503,7 @@
     param: [x]
   kernel :
     func : cummax_grad
+    data_type : out_grad
 
 - backward_op : cummin_grad
   forward : cummin(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
@@ -513,6 +514,7 @@
     param: [x]
   kernel :
     func : cummin_grad
+    data_type : out_grad
 
 - backward_op : cumprod_grad
   forward : cumprod (Tensor x, int dim) -> Tensor(out)
