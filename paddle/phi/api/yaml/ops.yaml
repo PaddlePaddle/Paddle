@@ -1040,13 +1040,15 @@
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
   kernel :
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  data_transform :
+    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
