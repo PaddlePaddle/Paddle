@@ -1499,54 +1499,52 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def _add_feed_ops(
-        self,
-        program,
-        feed,
-    ):
-        if feed is None:
-            raise RuntimeError(
-                "To add data ops for input variable, please specify feed list."
-            )
-
-        tmp_program = program.clone()
-
-        global_block = tmp_program.global_block()
-
-        feed_var_name = "feed"
-        if feed_var_name in global_block.vars:
-            feed_var = global_block.var(feed_var_name)
-        else:
-            feed_var = global_block.create_var(
-                name=feed_var_name,
-                type=core.VarDesc.VarType.FEED_MINIBATCH,
-                persistable=True,
-            )
-
-        # prepend feed operators
-        for i, name in enumerate(feed):
-            if global_block.has_var(name):
-                out = global_block.var(name)
-                global_block._prepend_op(
-                    type='feed',
-                    inputs={'X': [feed_var]},
-                    outputs={'Out': out},
-                    attrs={
-                        'col': i,
-                        'name': out.name,
-                    },
-                )
-            else:
-                warnings.warn(
-                    "The variable %s is not found in program. It is not declared or is pruned."
-                    % name
-                )
-        return tmp_program
-
     def _translate_to_newir_program(self, feed_dict=None):
+        def _add_feed_ops(
+            program,
+            feed,
+        ):
+            if feed is None:
+                raise RuntimeError(
+                    "To add data ops for input variable, please specify feed list."
+                )
+
+            tmp_program = program.clone()
+            global_block = tmp_program.global_block()
+
+            feed_var_name = "feed"
+            if feed_var_name in global_block.vars:
+                feed_var = global_block.var(feed_var_name)
+            else:
+                feed_var = global_block.create_var(
+                    name=feed_var_name,
+                    type=core.VarDesc.VarType.FEED_MINIBATCH,
+                    persistable=True,
+                )
+
+            # prepend feed operators
+            for i, name in enumerate(feed):
+                if global_block.has_var(name):
+                    out = global_block.var(name)
+                    global_block._prepend_op(
+                        type='feed',
+                        inputs={'X': [feed_var]},
+                        outputs={'Out': out},
+                        attrs={
+                            'col': i,
+                            'name': out.name,
+                        },
+                    )
+                else:
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % name
+                    )
+            return tmp_program
+
         if not self.newir_program_initialized:
             if feed_dict is not None:
-                tmp_program = self._add_feed_ops(self.main_program, feed_dict)
+                tmp_program = _add_feed_ops(self.main_program, feed_dict)
             else:
                 tmp_program = self.main_program.clone()
 
@@ -1560,45 +1558,48 @@ class Engine:
             self.param_mapping = param_mapping
             self.newir_program_initialized = True
 
-    def _get_new_ir_grad_var_to_var_map(
-        self, param_mapping, old_ir_grad_var_to_var_map
-    ):
-        new_ir_grad_var_to_var_map = {}
-        for grad_var, var in old_ir_grad_var_to_var_map.items():
-            if grad_var in param_mapping.keys() and var in param_mapping.keys():
-                if (
-                    len(param_mapping[grad_var]) == 1
-                    and len(param_mapping[var]) == 1
-                ):
-                    new_grad_var = param_mapping[grad_var][0]
-                    new_var = param_mapping[var][0]
-                    new_ir_grad_var_to_var_map[new_grad_var] = new_var
-                elif len(param_mapping[grad_var]) > len(param_mapping[var]):
-                    new_grad_var_1 = param_mapping[grad_var][0]
-                    new_var_1 = param_mapping[var][0]
-                    new_ir_grad_var_to_var_map[new_grad_var_1] = new_var_1
-                    new_grad_var_2 = param_mapping[grad_var][-1]
-                    new_var_2 = param_mapping[var][-1]
-                    new_ir_grad_var_to_var_map[new_grad_var_2] = new_var_2
-            else:
-                raise RuntimeError(
-                    f"can not find {grad_var} and {var} mapping in param_mapping"
-                )
-        return new_ir_grad_var_to_var_map
-
-    def _get_bwd_ops_name(self, newir_program):
-        bwd_ops = []
-        global_block = newir_program.global_block()
-        for op in global_block.ops:
-            if op.name().endswith("_grad") and op.name() not in bwd_ops:
-                bwd_ops.append(op.name())
-        return bwd_ops
-
     def _decompose_newir_program(self):
         if not self.newir_program_initialized:
             raise RuntimeError(
                 "To decompose newir program, please translate the main program to newir program first."
             )
+
+        def _get_new_ir_grad_var_to_var_map(
+            param_mapping, old_ir_grad_var_to_var_map
+        ):
+            new_ir_grad_var_to_var_map = {}
+            for grad_var, var in old_ir_grad_var_to_var_map.items():
+                if (
+                    grad_var in param_mapping.keys()
+                    and var in param_mapping.keys()
+                ):
+                    if (
+                        len(param_mapping[grad_var]) == 1
+                        and len(param_mapping[var]) == 1
+                    ):
+                        new_grad_var = param_mapping[grad_var][0]
+                        new_var = param_mapping[var][0]
+                        new_ir_grad_var_to_var_map[new_grad_var] = new_var
+                    elif len(param_mapping[grad_var]) > len(param_mapping[var]):
+                        new_grad_var_1 = param_mapping[grad_var][0]
+                        new_var_1 = param_mapping[var][0]
+                        new_ir_grad_var_to_var_map[new_grad_var_1] = new_var_1
+                        new_grad_var_2 = param_mapping[grad_var][-1]
+                        new_var_2 = param_mapping[var][-1]
+                        new_ir_grad_var_to_var_map[new_grad_var_2] = new_var_2
+                else:
+                    raise RuntimeError(
+                        f"can not find {grad_var} and {var} mapping in param_mapping"
+                    )
+            return new_ir_grad_var_to_var_map
+
+        def _get_bwd_ops_name(newir_program):
+            bwd_ops = []
+            global_block = newir_program.global_block()
+            for op in global_block.ops:
+                if op.name().endswith("_grad") and op.name() not in bwd_ops:
+                    bwd_ops.append(op.name())
+            return bwd_ops
 
         if not self.newir_program_decomposed:
             prev_fwd_prim_state = core._is_fwd_prim_enabled()
@@ -1611,7 +1612,7 @@ class Engine:
             ]._dist_op_context.grad_var_to_var
             assert len(grad_var_to_var.keys()) == 1
             grad_var_to_var_map = grad_var_to_var[1]
-            newir_grad_var_to_var_map = self._get_new_ir_grad_var_to_var_map(
+            newir_grad_var_to_var_map = _get_new_ir_grad_var_to_var_map(
                 self.param_mapping, grad_var_to_var_map
             )
 
@@ -1621,7 +1622,7 @@ class Engine:
                 program
             ):
                 ops = program.global_block().ops
-                bwd_ops_name = self._get_bwd_ops_name(program)
+                bwd_ops_name = _get_bwd_ops_name(program)
                 not_decomposed_bwd_ops_name = []
 
                 for op in ops:
