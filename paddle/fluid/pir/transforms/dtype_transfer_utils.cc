@@ -120,6 +120,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
   // Get kernelkey (backend、layout)
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
   phi::DataLayout kernel_layout = phi::DataLayout::UNDEFINED;
+
   if (in.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
     kernel_backend = paddle::experimental::ParseBackend(
         in.type()
@@ -143,6 +144,10 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
         phi::errors::Unimplemented("Get kernelkey for CastOp only support "
                                    "DenseTensorType and SelectedRowsType"));
   }
+  if (kernel_backend == phi::Backend::UNDEFINED) {
+    kernel_backend = phi::Backend::CPU;
+  }
+
   phi::KernelKey cast_kernel_key(kernel_backend, kernel_layout, src_dtype);
 
   // Create CastOp
