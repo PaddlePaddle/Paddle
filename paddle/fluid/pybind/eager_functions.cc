@@ -662,7 +662,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     }
 
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-    egr::run_custom_op_impl(vec_map[0], ctx);
+    egr::run_custom_op_impl(vec_map[0], true, false, ctx);
 
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {

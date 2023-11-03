@@ -96,6 +96,59 @@ static std::vector<std::vector<phi::DDim>> RunDefaultInferShapeFunc(
   return result;
 }
 
+static std::vector<std::vector<phi::DDim>> RunDefaultGradInferShapeFunc(
+    const paddle::CustomOpKernelContext& ctx,
+    const std::vector<std::string>& grad_op_inputs,
+    const std::vector<std::string>& grad_op_outputs,
+    bool is_double_grad) {
+  std::vector<std::vector<phi::DDim>> result;
+  // 1. if forward input exists, gradient's shape is same with forward
+  // input
+  // default
+  //    [Suitable for most situations]
+  // 2. if forward input not exists, and only contains one grad input and
+  // output,
+  //    use grad input shape as grad output shape
+  //    [Suitable for the situation that forward input is not used as
+  //    backward input]
+  for (auto& out_name : grad_op_outputs) {
+    auto fwd_name = paddle::framework::detail::NoGrad(out_name, is_double_grad);
+    if (paddle::framework::detail::IsDuplicableVar(fwd_name)) {
+      // Duplicable forward var must as backward input
+      auto iter =
+          std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          grad_op_inputs.end(),
+          phi::errors::NotFound("Custom grad operator should have the forward "
+                                "input(%s) as backward input",
+                                fwd_name));
+      auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
+      std::vector<phi::DDim> tmp;
+      for (size_t i = pair.first; i < pair.second; ++i) {
+        tmp.emplace_back(ctx.InputAt(i).dims());
+      }
+      result.emplace_back(std::move(tmp));
+    } else {
+      if (grad_op_inputs.size() == grad_op_outputs.size()) {
+        result.push_back({ctx.InputAt(0).dims()});
+      } else {
+        auto iter =
+            std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
+        PADDLE_ENFORCE_NE(
+            iter,
+            grad_op_inputs.end(),
+            phi::errors::NotFound("Custom grad operator should have the "
+                                  "forward input(%s) as backward input",
+                                  fwd_name));
+        auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
+        result.push_back({ctx.InputAt(pair.first).dims()});
+      }
+    }
+  }
+  return result;
+}
+
 static std::vector<std::vector<phi::DDim>> RunInferShapeFunc(
     const paddle::CustomOpKernelContext& ctx,
     const paddle::InferShapeFunc& func,
@@ -244,6 +297,50 @@ static std::vector<std::vector<phi::DataType>> RunDefaultInferDtypeFunc(
   return result;
 }
 
+static std::vector<std::vector<phi::DataType>> RunDefaultGradInferDtypeFunc(
+    const paddle::CustomOpKernelContext& ctx,
+    const std::vector<std::string>& grad_op_inputs,
+    const std::vector<std::string>& grad_op_outputs,
+    bool is_double_grad) {
+  std::vector<std::vector<phi::DataType>> result;
+  for (auto& out_name : grad_op_outputs) {
+    auto fwd_name = paddle::framework::detail::NoGrad(out_name, is_double_grad);
+    if (paddle::framework::detail::IsDuplicableVar(fwd_name)) {
+      // Duplicable forward var must as backward input
+      auto iter =
+          std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
+      PADDLE_ENFORCE_NE(
+          iter,
+          grad_op_inputs.end(),
+          phi::errors::NotFound("Custom grad operator should have the forward "
+                                "input(%s) as backward input",
+                                fwd_name));
+      auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
+      std::vector<phi::DataType> tmp;
+      for (size_t i = pair.first; i < pair.second; ++i) {
+        tmp.emplace_back(ctx.InputAt(i).dtype());
+      }
+      result.emplace_back(std::move(tmp));
+    } else {
+      if (grad_op_inputs.size() == grad_op_outputs.size()) {
+        result.push_back({ctx.InputAt(0).dtype()});
+      } else {
+        auto iter =
+            std::find(grad_op_inputs.begin(), grad_op_inputs.end(), fwd_name);
+        PADDLE_ENFORCE_NE(
+            iter,
+            grad_op_inputs.end(),
+            phi::errors::NotFound("Custom grad operator should have the "
+                                  "forward input(%s) as backward input",
+                                  fwd_name));
+        auto pair = ctx.InputRangeAt(iter - grad_op_inputs.begin());
+        result.push_back({ctx.InputAt(pair.first).dtype()});
+      }
+    }
+  }
+  return result;
+}
+
 static std::vector<std::vector<phi::DataType>> RunInferDtypeFunc(
     const paddle::CustomOpKernelContext& ctx,
     const paddle::InferDtypeFunc& func,
@@ -355,6 +452,8 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
 #endif
 
 void run_custom_op_impl(paddle::OpMetaInfo op_info,
+                        bool is_forward,
+                        bool is_double_grad,
                         paddle::CustomOpKernelContext& ctx) {  // NOLINT
   const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(op_info);
   const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(op_info);
@@ -454,7 +553,13 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
         out_dims = RunInferShapeFunc(
             ctx, infer_shape_func, inputs, outputs, inplace_map);
       } else {
-        out_dims = RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
+        if (is_forward) {
+          out_dims =
+              RunDefaultInferShapeFunc(ctx, inputs, outputs, inplace_map);
+        } else {
+          out_dims = RunDefaultGradInferShapeFunc(
+              ctx, inputs, outputs, is_double_grad);
+        }
       }
 
       std::vector<std::vector<phi::DataType>> out_dtypes;
@@ -462,8 +567,13 @@ void run_custom_op_impl(paddle::OpMetaInfo op_info,
         out_dtypes = RunInferDtypeFunc(
             ctx, infer_dtype_func, inputs, outputs, inplace_map);
       } else {
-        out_dtypes =
-            RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
+        if (is_forward) {
+          out_dtypes =
+              RunDefaultInferDtypeFunc(ctx, inputs, outputs, inplace_map);
+        } else {
+          out_dtypes = RunDefaultGradInferDtypeFunc(
+              ctx, inputs, outputs, is_double_grad);
+        }
       }
 
       PADDLE_ENFORCE_EQ(

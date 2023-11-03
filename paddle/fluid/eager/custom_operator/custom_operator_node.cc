@@ -250,7 +250,7 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad";
 
-  run_custom_op_impl(vec_map[1], ctx);
+  run_custom_op_impl(vec_map[1], false, false, ctx);
 
   for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
     auto output_pair = ctx.OutputRangeAt(i);
@@ -264,7 +264,9 @@ RunCustomOpNode::operator()(paddle::small_vector<std::vector<paddle::Tensor>,
           ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
       if (!out_tensor->initialized()) {
         PADDLE_ENFORCE(
-            paddle::framework::detail::IsOptionalVar(grad_outputs_names.at(i)),
+            paddle::framework::detail::IsOptionalVar(
+                grad_outputs_names.at(i)) ||
+                out_tensor->is_dist_tensor(),
             phi::errors::InvalidArgument(
                 "Custom grad operator's %d-th output is not initialized. "
                 "Please check your implementation again. If you are "
@@ -449,7 +451,7 @@ RunCustomOpDoubleGradNode::operator()(
   }
   VLOG(7) << "Run Kernel of Grad Custom Op: " << op_type_ << "_grad_grad";
 
-  run_custom_op_impl(vec_map[2], ctx);
+  run_custom_op_impl(vec_map[2], false, true, ctx);
 
   for (size_t i = 0; i < ctx.OutputRange().size(); ++i) {
     auto output_pair = ctx.OutputRangeAt(i);

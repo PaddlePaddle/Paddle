@@ -15,10 +15,7 @@
 import os
 from site import getsitepackages
 
-from semi_auto_parallel_simple_net import (
-    PPDemoNet,
-    TestSimpleNetForSemiAutoParallel,
-)
+from semi_auto_parallel_simple_net import TestSimpleNetForSemiAutoParallel
 
 import paddle
 import paddle.distributed as dist
@@ -70,10 +67,41 @@ custom_ops = load(
     verbose=True,
 )
 
+BATCH_SIZE = 16
+BATCH_NUM = 4
+IMAGE_SIZE = 784
+CLASS_NUM = 10
 
-class PPDemoNetCustomRelu(PPDemoNet):
+
+class PPDemoNet(nn.Layer):
     def __init__(self, mesh0, mesh1, param_suffix=""):
-        super().__init__(mesh0, mesh1, param_suffix)
+        super().__init__()
+        self.replicate_dist_attr0 = dist.DistAttr(
+            mesh=mesh0, sharding_specs=[None, None]
+        )
+        self.replicate_dist_attr1 = dist.DistAttr(
+            mesh=mesh1, sharding_specs=[None, None]
+        )
+        self.w0 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, IMAGE_SIZE],
+                attr=paddle.framework.ParamAttr(
+                    name="pp_demo_weight_0" + param_suffix,
+                    initializer=paddle.nn.initializer.Uniform(0, 1),
+                ),
+            ),
+            dist_attr=self.replicate_dist_attr0,
+        )
+        self.w1 = dist.shard_tensor(
+            self.create_parameter(
+                shape=[IMAGE_SIZE, CLASS_NUM],
+                attr=paddle.framework.ParamAttr(
+                    name="pp_nemo_weight_1" + param_suffix,
+                    initializer=paddle.nn.initializer.Uniform(0, 1),
+                ),
+            ),
+            dist_attr=self.replicate_dist_attr1,
+        )
 
     def forward(self, x):
         out = F.linear(x, self.w0)
@@ -119,7 +147,7 @@ class TestSimpleNetWithCustomReluForSemiAutoParallel(
 
     def test_demo_net(self):
         mp_layer = dist.shard_layer(
-            PPDemoNetCustomRelu(self._pp_mesh0, self._pp_mesh1),
+            PPDemoNet(self._pp_mesh0, self._pp_mesh1),
             self._mesh,
             self.shard_fn,
         )
