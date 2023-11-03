@@ -302,6 +302,7 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::SelectedRows>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
+    tensor_array->clear();
     for (size_t i = 0; i < value.type().dyn_cast<pir::VectorType>().size();
          i++) {
       PADDLE_ENFORCE(value.type()

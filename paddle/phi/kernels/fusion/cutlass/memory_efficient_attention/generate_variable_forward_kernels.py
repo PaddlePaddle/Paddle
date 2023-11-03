@@ -418,10 +418,10 @@ void dispatch_{family_name}(const ::phi::GPUContext &ctx, T cb) {{
 
 
 def write_main_header():
-    main_header_content = '''
+    main_header_content = f'''
 #pragma once
 
-#ifdef {}
+#ifdef {ENABLE_MACRO}
 
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/core/dense_tensor.h"
@@ -542,9 +542,7 @@ struct ToPhiDTypeTrait {{
 #include "./cutlass_forward.h"
 
 #endif
-'''.format(
-        ENABLE_MACRO
-    )
+'''
 
     path = Path(args.dst_path) / "autogen_variable"
     os.makedirs(path, exist_ok=True)
