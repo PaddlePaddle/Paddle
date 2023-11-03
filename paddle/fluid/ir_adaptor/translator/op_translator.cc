@@ -2395,6 +2395,47 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
     return op_inputs;
   }
 };
+
+struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "scale") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    } else if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "save_intermediate_out") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+};
+
+struct FusedElemwiseAddActivationGradOpTranscriber : public OpTranscriber {
+  void HandleNonexistentAttribute(pir::IrContext* ctx,
+                                  pir::AttributeMap* attribute_map,
+                                  const OpAttributeInfo& info) override {
+    if (info.name == "scale") {
+      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
+    } else if (info.name == "axis") {
+      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
+    } else if (info.name == "save_intermediate_out") {
+      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
+    }
+  }
+
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
+    if (inter_out_grad.size() > 0) {
+      IR_THROW(
+          "pd_op.fused_elemwise_add_activation_grad doesn't have "
+          "Intermediate_out_grad output");
+    }
+
+    return OpTranscriber::LoopkUpOpInfo(ctx, op_desc);
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2410,6 +2451,10 @@ OpTranslator::OpTranslator() {
   special_handlers["fetch_v2"] = FetchOpTranscriber();
   special_handlers["fill_constant"] = FillConstantTranscriber();
   special_handlers["fused_feedforward"] = FusedFeedForwardOpTranscriber();
+  special_handlers["fused_elemwise_add_activation"] =
+      FusedElemwiseAddActivationOpTranscriber();
+  special_handlers["fused_elemwise_add_activation_grad"] =
+      FusedElemwiseAddActivationGradOpTranscriber();
   special_handlers["grad_add"] = GradAddOpTranscriber();
   special_handlers["increment"] = IncrementOpTranscriber();
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();

@@ -205,7 +205,7 @@
   backward: fused_attention_grad
 
 - op: fused_elemwise_add_activation
-  args: (Tensor x, Tensor y, str[] functor_list, int axis=-1, bool save_intermediate_out=false)
+  args: (Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
   output: Tensor(out), Tensor(intermediate_out)
   kernel:
     func: fused_elemwise_add_activation

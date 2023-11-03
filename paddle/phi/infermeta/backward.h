@@ -202,6 +202,7 @@ void FusedElemwiseAddActivationGradInferMeta(
     const MetaTensor& intermediate_out,
     const MetaTensor& out_grad,
     const std::vector<std::string>& functor_list,
+    float scale,
     int axis,
     bool save_intermediate_out,
     MetaTensor* x_grad,

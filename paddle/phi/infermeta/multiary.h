@@ -338,6 +338,7 @@ void FusedElemwiseAddActivationInferMeta(
     const MetaTensor& x,
     const MetaTensor& y,
     const std::vector<std::string>& functor_list,
+    float scale,
     int axis,
     bool save_intermediate_out,
     MetaTensor* out,

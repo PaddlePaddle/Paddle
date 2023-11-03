@@ -29,8 +29,8 @@
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
 
 - backward_op: fused_elemwise_add_activation_grad
-  forward: fused_elemwise_add_activation(Tensor x, Tensor y, str[] functor_list, int axis=-1, bool save_intermediate_out=false) -> Tensor(out), Tensor(intermediate_out)
-  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, int axis=-1, bool save_intermediate_out=false)
+  forward: fused_elemwise_add_activation(Tensor x, Tensor y, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false) -> Tensor(out), Tensor(intermediate_out)
+  args: (Tensor x, Tensor y, Tensor out, Tensor intermediate_out, Tensor out_grad, str[] functor_list, float scale=0.0, int axis=-1, bool save_intermediate_out=false)
   output: Tensor(x_grad), Tensor(y_grad)
   infer_meta:
     func: FusedElemwiseAddActivationGradInferMeta
