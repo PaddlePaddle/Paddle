@@ -420,6 +420,11 @@ class ClipGradByGloblNormPass(PassBase):
                         removed_tmp_var.update(
                             set(block.ops[idx + 1].output_arg_names)
                         )
+                    if block.ops[idx + 2].type == 'cast':
+                        removed_op_idx.add(idx + 2)
+                        removed_tmp_var.update(
+                            set(block.ops[idx + 2].output_arg_names)
+                        )
                 else:
                     op.desc.set_input("X", reserved_vars)
 
