@@ -271,6 +271,10 @@ bool DrrRewritePattern::MatchFromOutputToInput(
         break;
       }
       // bfs producer_op of current_op
+      if (drr_visited.count(drr_producer_op) &&
+          ir_visited.count(ir_producer_op)) {
+        continue;
+      }
       if (!drr_visited.count(drr_producer_op) &&
           !ir_visited.count(ir_producer_op)) {
         drr_q.push(drr_producer_op);
