@@ -173,8 +173,15 @@ class FCMKLDNNHandler
     if (ctx.HasAttr("fuse_residual_connection") &&
         ctx.Attr<bool>("fuse_residual_connection")) {
       // For Inner Product primitives, the destination always N * C
-      auto residual_data_md = dnnl::memory::desc(
-          {MB, OC}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+      auto residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
+      auto residual_data_md =
+          dnnl::memory::desc({MB, OC},
+                             phi::funcs::is_int8<T_in>()
+                                 ? dnnl::memory::data_type::f32
+                                 : residual_data->mem_desc().get_data_type(),
+                             dnnl::memory::format_tag::ab);
+      // auto residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
+      // auto residual_data_md = residual_data->mem_desc().reshape({MB, OC});
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
     }
@@ -297,71 +304,57 @@ class FCMKLDNNHandler
 
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual, float scale_data) {
-    const std::string residual_key = this->memory_key_ + "@residual";
-    auto memory_p = std::static_pointer_cast<dnnl::memory>(
-        this->dev_ctx_.GetBlob(residual_key));
-    if (!memory_p) {
-      auto dims = this->fwd_pd_->dst_desc().get_dims();
-      if (phi::funcs::is_int8<T_in>()) {
-        auto data_type = residual->dtype() == phi::DataType::INT8
-                             ? dnnl::memory::data_type::s8
-                             : dnnl::memory::data_type::u8;
+    auto dims = this->fwd_pd_->dst_desc().get_dims();
+    void* residual_ptr = const_cast<void*>(residual->data());
+    if (phi::funcs::is_int8<T_in>()) {
+      auto src_0_md = residual->mem_desc().reshape(dims);
+      auto src_1_md = dnnl::memory::desc(
+          dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+      auto dst_md = dnnl::memory::desc(
+          dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+      std::vector<float> src_data(phi::product(residual->dims()),
+                                  1.f / scale_data);
 
-        auto src_0_md =
-            dnnl::memory::desc(dims, data_type, dnnl::memory::format_tag::ab);
-        auto src_1_md = dnnl::memory::desc(
-            dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
-        auto dst_md = dnnl::memory::desc(
-            dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
-        std::vector<float> src_data(phi::product(residual->dims()),
-                                    1.f / scale_data);
+      dnnl::memory src_0_mem =
+          dnnl::memory(src_0_md, this->dev_ctx_.GetEngine());
 
-        dnnl::memory src_0_mem =
-            dnnl::memory(src_0_md, this->dev_ctx_.GetEngine());
-        void* residual_ptr = const_cast<void*>(residual->data());
-        src_0_mem.set_data_handle(residual_ptr);
+      src_0_mem.set_data_handle(residual_ptr);
 
-        auto src_1_mem =
-            dnnl::memory(src_1_md,
-                         this->dev_ctx_.GetEngine(),
-                         phi::funcs::to_void_cast<float>(src_data.data()));
+      auto src_1_mem =
+          dnnl::memory(src_1_md,
+                       this->dev_ctx_.GetEngine(),
+                       phi::funcs::to_void_cast<float>(src_data.data()));
 
-        auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
+      auto dst_memory = dnnl::memory(dst_md, this->dev_ctx_.GetEngine());
 
-        auto binary_pd =
-            dnnl::binary::primitive_desc(this->dev_ctx_.GetEngine(),
-                                         dnnl::algorithm::binary_mul,
-                                         src_0_md,
-                                         src_1_md,
-                                         dst_md);
+      auto binary_pd = dnnl::binary::primitive_desc(this->dev_ctx_.GetEngine(),
+                                                    dnnl::algorithm::binary_mul,
+                                                    src_0_md,
+                                                    src_1_md,
+                                                    dst_md);
 
-        // Create the primitive.
-        auto binary_prim = dnnl::binary(binary_pd);
+      // Create the primitive.
+      auto binary_prim = dnnl::binary(binary_pd);
 
-        std::unordered_map<int, dnnl::memory> binary_args = {
-            {DNNL_ARG_SRC_0, src_0_mem},
-            {DNNL_ARG_SRC_1, src_1_mem},
-            {DNNL_ARG_DST, dst_memory}};
+      std::unordered_map<int, dnnl::memory> binary_args = {
+          {DNNL_ARG_SRC_0, src_0_mem},
+          {DNNL_ARG_SRC_1, src_1_mem},
+          {DNNL_ARG_DST, dst_memory}};
 
-        auto& astream = OneDNNContext::tls().get_stream();
-        binary_prim.execute(astream, binary_args);
-        astream.wait();
+      auto& astream = OneDNNContext::tls().get_stream();
+      binary_prim.execute(astream, binary_args);
+      astream.wait();
 
-        memory_p = std::make_shared<dnnl::memory>(dst_memory);
-      } else {
-        const float* input_data = residual->data<float>();
-        auto residual_md = dnnl::memory::desc(
-            dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+      auto memory_p = std::make_shared<dnnl::memory>(dst_memory);
+      return memory_p;
+    } else {
+      auto residual_md = residual->mem_desc().reshape(dims);
 
-        memory_p = std::make_shared<dnnl::memory>(
-            residual_md,
-            this->dev_ctx_.GetEngine(),
-            phi::funcs::to_void_cast<float>(input_data));
-      }
-
-      this->dev_ctx_.SetBlob(residual_key, memory_p);
+      auto memory_p = std::make_shared<dnnl::memory>(
+          residual_md, this->dev_ctx_.GetEngine());
+      memory_p->set_data_handle(residual_ptr);
+      return memory_p;
     }
-    return memory_p;
   }
 
   std::shared_ptr<dnnl::memory> AcquireWeightsMemoryWithReorder(
@@ -557,8 +550,47 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
         residual_data_memory_p =
             std::make_shared<dnnl::memory>(inner_product_cache->residual_mem);
         void* residual_ptr = const_cast<void*>(residual_data->data());
-        residual_data_memory_p->set_data_handle(residual_ptr);
+        if (phi::funcs::is_int8<T_in>()) {
+          auto dims = dst_memory_p->get_desc().get_dims();
+          auto src_0_md = residual_data->mem_desc().reshape(dims);
+          auto src_1_md = dnnl::memory::desc(
+              dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+          auto dst_md = dnnl::memory::desc(
+              dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
 
+          std::vector<float> src_data(phi::product(residual_data->dims()),
+                                      1.f / scale_in_eltwise_data);
+          auto src_0_mem = dnnl::memory(src_0_md, dev_ctx.GetEngine());
+          src_0_mem.set_data_handle(residual_ptr);
+          auto src_1_mem =
+              dnnl::memory(src_1_md,
+                           dev_ctx.GetEngine(),
+                           phi::funcs::to_void_cast<float>(src_data.data()));
+          auto dst_memory = dnnl::memory(dst_md, dev_ctx.GetEngine());
+          auto binary_pd =
+              dnnl::binary::primitive_desc(dev_ctx.GetEngine(),
+                                           dnnl::algorithm::binary_mul,
+                                           src_0_md,
+                                           src_1_md,
+                                           dst_md);
+
+          // Create the primitive.
+          auto binary_prim = dnnl::binary(binary_pd);
+
+          std::unordered_map<int, dnnl::memory> binary_args = {
+              {DNNL_ARG_SRC_0, src_0_mem},
+              {DNNL_ARG_SRC_1, src_1_mem},
+              {DNNL_ARG_DST, dst_memory}};
+
+          auto& astream = OneDNNContext::tls().get_stream();
+          binary_prim.execute(astream, binary_args);
+          astream.wait();
+
+          residual_data_memory_p = std::make_shared<dnnl::memory>(dst_memory);
+
+        } else {
+          residual_data_memory_p->set_data_handle(residual_ptr);
+        }
         fc_args.insert({DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1,
                         *residual_data_memory_p});
       }
