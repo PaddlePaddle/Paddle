@@ -20,7 +20,7 @@ import paddle
 from paddle.framework import core
 
 
-class TestDy2staticNewIR(unittest.TestCase):
+class TestDy2staticPIR(unittest.TestCase):
     def test_basic_network_backward(self):
         core._set_prim_all_enabled(True)
 

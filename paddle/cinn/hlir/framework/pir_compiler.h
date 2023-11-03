@@ -28,13 +28,13 @@ namespace framework {
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
-class PIRCompiler final {
+class PirCompiler final {
  public:
-  PIRCompiler(const ::pir::Program& prog,
+  PirCompiler(const ::pir::Program& prog,
               const Target& target,
               const std::shared_ptr<Scope>& scope)
       : program_(prog),
-        m_builder_("NewIR", target),
+        m_builder_("Pir", target),
         target_(target),
         scope_(scope) {}
 
@@ -46,7 +46,7 @@ class PIRCompiler final {
   std::unique_ptr<Program> Build(const std::vector<pir::GroupPtr>& groups);
 
  private:
-  CINN_DISALLOW_COPY_AND_ASSIGN(PIRCompiler);
+  CINN_DISALLOW_COPY_AND_ASSIGN(PirCompiler);
 
   std::vector<ir::LoweredFunc> GetOpFunc(const ::pir::Operation& op, int idx);
 

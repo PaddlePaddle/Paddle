@@ -66,7 +66,7 @@ def reset_prog():
     paddle.utils.unique_name.switch()
 
 
-class TestNewIR(unittest.TestCase):
+class TestPIR(unittest.TestCase):
     def setUp(self):
         self.batch_size = 2
         self.batch_num = 5
@@ -108,12 +108,12 @@ class TestNewIR(unittest.TestCase):
             ),
         )
 
-    def enable_new_ir(self, flag):
-        paddle.set_flags({'FLAGS_enable_new_ir_in_executor': flag})  # for c++
-        os.environ['FLAGS_enable_new_ir_in_executor'] = str(flag)  # for python
+    def enable_pir(self, flag):
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': flag})  # for c++
+        os.environ['FLAGS_enable_pir_in_executor'] = str(flag)  # for python
 
     def test_dp(self):
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_dp_prog = self.get_engine(
             "dp", name="dp_prog", use_sharding=True
         )
@@ -121,8 +121,8 @@ class TestNewIR(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
-        engine_dp_ir = self.get_engine("dp", name="dp_newir", use_sharding=True)
+        self.enable_pir(True)
+        engine_dp_ir = self.get_engine("dp", name="dp_pir", use_sharding=True)
         out_dp_ir = engine_dp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -132,14 +132,14 @@ class TestNewIR(unittest.TestCase):
         )
 
     def test_mp(self):
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_mp_prog = self.get_engine("mp", name="mp_prog")
         out_mp_prog = engine_mp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
-        engine_mp_ir = self.get_engine("mp", name="mp_newir")
+        self.enable_pir(True)
+        engine_mp_ir = self.get_engine("mp", name="mp_pir")
         out_mp_ir = engine_mp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -150,15 +150,15 @@ class TestNewIR(unittest.TestCase):
 
     def test_pp(self):
         # navie pipeline parallel without schedule
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_pp_prog = self.get_engine("pp", name="pp_prog0")
         out_pp_prog = engine_pp_prog.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
+        self.enable_pir(True)
         # send_v2/recv_v2 dynamic_shape is True
-        engine_pp_ir = self.get_engine("pp", name="pp_newir")
+        engine_pp_ir = self.get_engine("pp", name="pp_pir")
         out_pp_ir = engine_pp_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
@@ -189,7 +189,7 @@ class TestNewIR(unittest.TestCase):
             )
 
     def test_pp_1f1b(self):
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_1f1b_prog = self.get_engine(
             "pp", name="1f1b_prog", use_sharding=False, pipeline_mode="1F1B"
         )
@@ -197,9 +197,9 @@ class TestNewIR(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
+        self.enable_pir(True)
         engine_1f1b_ir = self.get_engine(
-            "pp", name="1f1b_newir", use_sharding=False, pipeline_mode="1F1B"
+            "pp", name="1f1b_pir", use_sharding=False, pipeline_mode="1F1B"
         )
         out_1f1b_ir = engine_1f1b_ir.fit(
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
@@ -212,7 +212,7 @@ class TestNewIR(unittest.TestCase):
             )
 
     def test_pp_fthenb(self):
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_fthenb_prog = self.get_engine(
             "pp", name="fthenb_prog", use_sharding=False, pipeline_mode="FThenB"
         )
@@ -220,10 +220,10 @@ class TestNewIR(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
+        self.enable_pir(True)
         engine_fthenb_ir = self.get_engine(
             "pp",
-            name="fthenb_newir",
+            name="fthenb_pir",
             use_sharding=False,
             pipeline_mode="FThenB",
         )

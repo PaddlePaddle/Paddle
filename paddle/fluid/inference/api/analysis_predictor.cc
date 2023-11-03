@@ -110,7 +110,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
@@ -726,7 +726,7 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 

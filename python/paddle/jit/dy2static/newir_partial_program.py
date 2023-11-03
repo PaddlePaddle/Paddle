@@ -96,8 +96,8 @@ class NestSequence:
 
 
 class RunableProgram:
-    """a newir program ready for run_program_op to run. constructed by 3 parts:
-    - newir program (pir::Program)
+    """a pir program ready for run_program_op to run. constructed by 3 parts:
+    - pir program (pir::Program)
     - in_out_values
         - input_x values ([pir::OpResult])
         - input_param values ([pir::OpResult])
@@ -273,7 +273,7 @@ class PartialProgramLayer:
 
         c_run_program_fn = None
         if use_pir_api():
-            c_run_program_fn = _legacy_C_ops.newir_run_program
+            c_run_program_fn = _legacy_C_ops.pir_run_program
         else:
             c_run_program_fn = _legacy_C_ops.run_program
         c_run_program_fn(

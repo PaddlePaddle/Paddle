@@ -1410,7 +1410,7 @@ void BindPassManager(pybind11::module *m) {
       .def("empty", &PassManager::Empty);
 }
 
-void BindPIR(pybind11::module *module) {
+void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);

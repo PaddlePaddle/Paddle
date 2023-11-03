@@ -97,7 +97,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
 
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
-  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PirCompiler*> compiler_list;
 
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
@@ -122,7 +122,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
                             "Only support one group after group fusion"));
       for (auto group : group_list) {
         auto ir_compiler =
-            new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+            new cinn::hlir::framework::PirCompiler(*program, target, scope);
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});

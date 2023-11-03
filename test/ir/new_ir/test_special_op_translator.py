@@ -35,7 +35,7 @@ class TestCastOpTranscriber(unittest.TestCase):
                 x = paddle.to_tensor([2, 3, 4], 'float64')
                 y = paddle.cast(x, 'uint8')
 
-        _, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+        _, mappings = pir.translate_to_pir_with_param_map(main_program.desc)
         assert len(str(mappings)) > 0, "no mapping found"
 
 
@@ -63,7 +63,7 @@ class TestCondWithInplace(unittest.TestCase):
             full_graph=True,
         )
 
-        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        l = pir.translate_to_pir(legacy_program.main_program.desc)
         assert l is not None
 
     def test_nested_op(self):
@@ -100,7 +100,7 @@ class TestCondWithInplace(unittest.TestCase):
             full_graph=True,
         )
 
-        l = pir.translate_to_new_ir(legacy_program.main_program.desc)
+        l = pir.translate_to_pir(legacy_program.main_program.desc)
         assert l is not None
 
 
@@ -185,7 +185,7 @@ class TestElementwiseOpTranscriber(unittest.TestCase):
                     outputs={"Out": y},
                     attrs={"axis": -1},
                 )
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestEmbeddingOpTranscriber(unittest.TestCase):
@@ -202,7 +202,7 @@ class TestEmbeddingOpTranscriber(unittest.TestCase):
                 )
                 output = embedding(x)
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestIncrementOpTranscriber(unittest.TestCase):
@@ -216,7 +216,7 @@ class TestIncrementOpTranscriber(unittest.TestCase):
                 data = paddle.zeros(shape=[1], dtype='float32')
                 counter = paddle.increment(data)
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestAssignValueOpTranscriber(unittest.TestCase):
@@ -233,7 +233,7 @@ class TestAssignValueOpTranscriber(unittest.TestCase):
                     stop_gradient=False,
                 )
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestRnnOpTranscriber(unittest.TestCase):
@@ -250,7 +250,7 @@ class TestRnnOpTranscriber(unittest.TestCase):
                 cell = paddle.nn.SimpleRNNCell(16, 32)
                 y, h = cell(x, prev_h)
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestEmptyVarTranslate(unittest.TestCase):
@@ -272,7 +272,7 @@ class TestEmptyVarTranslate(unittest.TestCase):
                 out2 = paddle.mean(out1)
                 sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.1)
                 sgd_optimizer.minimize(out2)
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestOneHotOpTranscriber(unittest.TestCase):
@@ -291,7 +291,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
     def test_normal_attribute(self):
         place = core.Place()
@@ -308,7 +308,7 @@ class TestOneHotOpTranscriber(unittest.TestCase):
                     x=label, num_classes=depth
                 )
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestReduceOpTranscriber(unittest.TestCase):
@@ -358,7 +358,7 @@ class TestIndexPutOpTranscriber(unittest.TestCase):
                 value = paddle.randn([2])
                 y = paddle.index_put(x, indices, value, False)
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestGradAddOpTranscriber(unittest.TestCase):
@@ -384,7 +384,7 @@ class TestGradAddOpTranscriber(unittest.TestCase):
                     attrs={"axis": -1},
                 )
 
-        _ = pir.translate_to_new_ir(main_program.desc)
+        _ = pir.translate_to_pir(main_program.desc)
 
 
 class TestShadowOutputSlice(unittest.TestCase):
@@ -409,7 +409,7 @@ class TestShadowOutputSlice(unittest.TestCase):
                     attrs={"name": out.name},
                 )
 
-        l = pir.translate_to_new_ir(main_program.desc)
+        l = pir.translate_to_pir(main_program.desc)
 
 
 class TestSetValueOp(unittest.TestCase):
@@ -513,7 +513,7 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
                     inputs={"X": x},
                     outputs={"Out": y, "XOut": x},
                 )
-        l = pir.translate_to_new_ir(main_program.desc)
+        l = pir.translate_to_pir(main_program.desc)
         assert (
             l.global_block().ops[2].name() == "pd_op.share_data"
         ), "share_buffer should be translated to share_data"
