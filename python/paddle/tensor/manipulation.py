@@ -3523,7 +3523,7 @@ def broadcast_to(x, shape, name=None):
         if isinstance(shape, (list, tuple)):
             shape = paddle.utils.convert_shape_to_list(shape)
         return _C_ops.expand(x, shape)
-    if in_dynamic_or_pir_mode():
+    elif in_pir_mode():
         place = _current_expected_place()
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
