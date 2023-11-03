@@ -665,7 +665,7 @@ void FcXPUFusePass::CreateFusionInputs(
       true,
       platform::errors::InvalidArgument("mul_x node ptr can not be null"));
   // x max
-  std::string mul_x_max_name = mul_x->Name() + "_max";
+  std::string mul_x_max_name = mul_x->Name() + "_input_max";
   Node* mul_x_max = nullptr;
   if (op_weights_precision == "int8") {
     PADDLE_ENFORCE_EQ(AreScalesPresentForNodes(var_quant_scales, {mul_x}),
