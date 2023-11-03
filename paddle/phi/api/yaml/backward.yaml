@@ -1123,6 +1123,8 @@
   kernel :
     func : index_put_grad
     data_type : out_grad
+  data_transform :
+    skip_transform : indices
 
 - backward_op : index_sample_grad
   forward : index_sample (Tensor x, Tensor index) -> Tensor(out)
