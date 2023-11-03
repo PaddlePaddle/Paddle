@@ -116,8 +116,6 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
 
   pir::OpInfo phi_kernel_op_info =
       ctx->GetRegisteredOpInfo(paddle::dialect::PhiKernelOp::name());
-  auto copy_kernel_key = kernel_key;
-  copy_kernel_key.set_dtype(dst_dtype);
 
   // Get kernelkey (backend、layout)
   phi::Backend kernel_backend = phi::Backend::UNDEFINED;
@@ -152,7 +150,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
       {"op_name", pir::StrAttribute::get(ctx, "pd_op.cast")},
       {"kernel_name", pir::StrAttribute::get(ctx, "cast")},
       {"kernel_key",
-       paddle::dialect::KernelAttribute::get(ctx, copy_kernel_key)},
+       paddle::dialect::KernelAttribute::get(ctx, cast_kernel_key)},
       {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, dst_dtype)}};
 
   pir::Type output_types =
