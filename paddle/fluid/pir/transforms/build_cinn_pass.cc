@@ -140,8 +140,8 @@ bool IsSupportCinn(pir::Operation* op) {
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
-  std::cerr << "op_name " << op_name << std::endl;
-
+  // TODO(phlrain): cinn fronted op name is not same with name in codegen
+  //                update using a better way define allow op list
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to") {
     return true;

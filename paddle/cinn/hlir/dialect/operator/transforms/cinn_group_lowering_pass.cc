@@ -129,7 +129,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
       for (auto group : group_list) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
-        std::cerr << "begin to build kernel \n";
         auto vec_ins = GetBlockOutsideInput(group->ops);
 
         std::vector<pir::Value> vec_new_ins;
@@ -145,7 +144,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
-        std::cerr << "end to build kernel \n";
         compiler_list.push_back(ir_compiler);
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,

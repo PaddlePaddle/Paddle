@@ -210,7 +210,6 @@ TEST(GroupOp, CINNLowering) {
   // Step 1: Construct pir::Program
   std::shared_ptr<::pir::Program> program = BuildGroupProgramForLowering();
 
-  program->Print(std::cout);
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -286,19 +285,13 @@ TEST(GroupOp, CINNLoweringSoftmax) {
 
   std::shared_ptr<::pir::Program> program = BuildSoftmaxGroupProgram();
 
-  program->Print(std::cout);
-
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
-  std::cerr << "after cinn op convert" << std::endl;
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
 
-  std::cerr << "fin build cinn pass process " << std::endl;
-  program->Print(std::cout);
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 }
