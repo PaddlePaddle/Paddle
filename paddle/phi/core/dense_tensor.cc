@@ -232,6 +232,9 @@ void DenseTensor::set_meta(const DenseTensorMeta& meta) {
   } else {
     meta_.strides = meta.strides;
   }
+#ifdef PADDLE_WITH_XPU
+  meta_.scale_value = meta.scale_value;
+#endif
 }
 
 /* @jim19930609: This interface will be further modified until we finalized the
