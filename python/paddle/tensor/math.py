@@ -4939,7 +4939,7 @@ def conj(x, name=None):
              [(4-4j), (5-5j), (6-6j)]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.conj(x)
     else:
         check_variable_and_dtype(
@@ -5793,7 +5793,7 @@ def diff(x, n=1, axis=-1, prepend=None, append=None, name=None):
         dtype = x.dtype
         axes = [axis]
         infer_flags = [1 for i in range(len(axes))]
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             has_pend = False
             input_list = []
             if prepend is not None and append is not None:

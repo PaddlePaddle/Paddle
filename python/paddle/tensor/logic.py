@@ -262,7 +262,7 @@ def logical_xor(x, y, out=None, name=None):
             [[False, True ],
              [True , False]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logical_xor(x, y)
 
     return _logical_op(

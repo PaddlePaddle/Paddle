@@ -26,6 +26,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle.base.dygraph as dg
 from paddle import static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -50,12 +51,13 @@ class TestConjOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir = True)
 
     def test_check_grad_normal(self):
         self.check_grad(
             ['X'],
             'Out',
+            check_pir = True,
         )
 
 
@@ -90,6 +92,7 @@ class TestComplexConjOp(unittest.TestCase):
                     target = np.conj(input)
                     np.testing.assert_array_equal(result, target)
 
+    @test_with_pir_api
     def test_conj_static_mode(self):
         def init_input_output(dtype):
             input = rand([2, 20, 2, 3]).astype(dtype) + 1j * rand(
@@ -125,6 +128,8 @@ class TestComplexConjOp(unittest.TestCase):
 
 
 class Testfp16ConjOp(unittest.TestCase):
+
+    @test_with_pir_api
     def testfp16(self):
         input_x = (
             np.random.random((12, 14)) + 1j * np.random.random((12, 14))
@@ -170,11 +175,11 @@ class TestConjBF16(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir = True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out')
+        self.check_grad_with_place(place, ['X'], 'Out', check_pir = True)
 
 
 if __name__ == "__main__":
