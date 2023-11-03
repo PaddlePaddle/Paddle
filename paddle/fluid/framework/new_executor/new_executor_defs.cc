@@ -286,8 +286,8 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
-void Instruction::UpdataRecordStreamForGcInfo() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+void Instruction::UpdataRecordStreamForGcInfo() {
   bool is_interpreter_fast_gc_enabled =
       (memory::allocation::AllocatorFacade::Instance()
            .IsStreamSafeCUDAAllocatorUsed() &&
@@ -325,8 +325,8 @@ void Instruction::UpdataRecordStreamForGcInfo() {
     }
   }
 #endif
-#endif
 }
+#endif
 
 }  // namespace framework
 }  // namespace paddle
