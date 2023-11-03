@@ -358,7 +358,9 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   // so we must find all the var_name+id.
   // https://github.com/PaddlePaddle/Paddle/pull/53184
   for (auto *n : graph->Nodes()) {
-    if (n->IsVar() && input_names.count(n->Name())) {
+    if (n->IsVar() &&
+        find(graph_params.begin(), graph_params.end(), n->Name()) !=
+            graph_params.end()) {
       input_names_with_id.insert(
           RenameVarBeUnique(n->Name(), std::to_string(n->id())));
     }
@@ -586,6 +588,13 @@ std::string TensorRtSubgraphPass::CreateTensorRTOp(
   auto inspector_serialize = Get<bool>("inspector_serialize");
   auto disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
   auto context_memory_sharing = Get<bool>("context_memory_sharing");
+  if (context_memory_sharing && TRT_VERSION < 7200) {
+    // https://forums.developer.nvidia.com/t/nvinfer1-createexecutioncontextwithoutdevicememory-returns-nullptr/111878/2
+    // when trt version less than 7.2,
+    // createExecutionContextWithoutDeviceMemory() has bug.
+    // so, we cannot enable engine context memory sharing.
+    context_memory_sharing = false;
+  }
   auto enable_low_precision_io = Get<bool>("enable_low_precision_io");
   auto workspace_size = Get<int64_t>("workspace_size");
   auto gpu_device_id = Get<int>("gpu_device_id");

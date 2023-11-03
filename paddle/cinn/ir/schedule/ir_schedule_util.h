@@ -436,9 +436,11 @@ IterRange RangeUnion(const IterRange& range1, const IterRange& range2);
  * \param loop The loop where we will insert the block under it
  * @param root The root of the whole AST.
  * \param required_blocks vector of ScheduleBlockRealize nodes that require the
- * block \param is_store_provided Whether Store nodes of the block provide the
+ * block
+ * \param is_store_provided Whether Store nodes of the block provide the
  * tensor, true means it is in compute_at case, otherwise false means in
- * reverse_compuate_at case \return Each index's range of block's tensor.
+ * reverse_compuate_at case
+ * \return Each index's range and can_keep_loop flag of block's tensor.
  * Indicating the buffer region being required.
  */
 std::vector<IterRange> CalculateRequiredRegions(

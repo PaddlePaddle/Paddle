@@ -22,7 +22,7 @@
 
 #include "paddle/phi/core/kernel_registry.h"
 
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/pir/dialect/operator/ir/control_flow_op.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -35,7 +35,7 @@
 
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
@@ -65,20 +65,19 @@ TEST(StandaloneExecutor, run) {
   paddle::dialect::FullOp op2 = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.0, phi::DataType::FLOAT32, phi::CPUPlace());
 
-  builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+  auto add_op =
+      builder.Build<paddle::dialect::AddOp>(op1->result(0), op2->result(0));
+
+  std::string out_name = "add_out";
+  builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
   Scope scope;
 
-  ProgramDesc prog_desc;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-  std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
-      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_2";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
@@ -136,8 +135,10 @@ TEST(StandaloneExecutor, run_feed_tensor) {
       pir::Operation::Create({}, attr_map2, {dense_tensor_dtype}, feed_op_info);
   program.block()->push_back(feed_op2);
 
-  builder.Build<paddle::dialect::AddOp>(feed_op1->result(0),
-                                        feed_op2->result(0));
+  auto add_op = builder.Build<paddle::dialect::AddOp>(feed_op1->result(0),
+                                                      feed_op2->result(0));
+  std::string out_name = "add_out";
+  builder.Build<pir::ShadowOutputOp>(add_op->result(0), out_name);
 
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
@@ -145,10 +146,6 @@ TEST(StandaloneExecutor, run_feed_tensor) {
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-  std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
-      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_2";
   test_core.SetSkipGcVars({out_name});
 
   phi::DenseTensorMeta meta(
@@ -191,16 +188,15 @@ TEST(StandaloneExecutor, run_inplace_sqrt) {
 
   builder.Build<paddle::dialect::Sqrt_Op>(full->result(0));
 
+  std::string out_name = "full_out";
+  builder.Build<pir::ShadowOutputOp>(full->result(0), out_name);
+
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-  std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
-      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_0";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
@@ -254,16 +250,16 @@ TEST(StandaloneExecutor, if_op) {
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
+  std::string out_name = "if_out";
+  builder.SetInsertionPointToEnd(block);
+  builder.Build<pir::ShadowOutputOp>(if_op->result(0), out_name);
+
   auto kernel_program = paddle::dialect::PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-  std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
-      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_1";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});
@@ -325,16 +321,15 @@ TEST(StandaloneExecutor, while_op) {
 
   builder.SetInsertionPointAfter(while_op);
 
+  std::string out_name = "while_out";
+  builder.Build<pir::ShadowOutputOp>(while_op->result(0), out_name);
+
   auto kernel_program = PdOpLowerToKernelPass(&program);
 
   auto place = platform::CPUPlace();
   Scope scope;
   InterpreterCore test_core(place, {}, kernel_program->block(), &scope);
 
-  std::stringstream os;
-  os << reinterpret_cast<NewIRInterpreter*>(
-      const_cast<InterpreterBaseImpl*>(test_core.Impl()));
-  std::string out_name = os.str() + "_inner_var_3";
   test_core.SetSkipGcVars({out_name});
 
   test_core.Run({});

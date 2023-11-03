@@ -1,4 +1,4 @@
-add_subdirectory(new_ir)
+add_subdirectory(pir)
 core_gather_headers()
 
 gather_srcs(
@@ -22,13 +22,13 @@ gather_srcs(
   op_lowering_impl.cc
   accuracy_checker.cc
   visualize_helper.cc
-  compile_error.cc)
+  compile_error.cc
+  group_scheduler.cc)
 
-# TODO(Aurelius84): new_ir_compiler depends on pd_op_dialect and could
+# TODO(Aurelius84): pir_compiler depends on pd_op_dialect and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  cinn_cc_library(new_ir_compiler SRCS new_ir_compiler.cc DEPS cinnapi
-                  pd_op_dialect)
+  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi pd_op_dialect)
 endif()
 
 if(WITH_CUDA)
@@ -44,6 +44,8 @@ endif()
 if(WITH_CUDA)
   cinn_cc_test(test_hlir_framework_op_lowering SRCS op_lowering_test.cc DEPS
                cinncore decomposer_test_helper)
+  cinn_cc_test(test_group_scheduler SRCS group_scheduler_test.cc DEPS cinncore
+               decomposer_test_helper)
 endif()
 cinn_cc_test(test_hlir_framework_tensor SRCS tensor_test.cc DEPS cinncore)
 cinn_cc_test(test_hlir_framework_scope SRCS scope_test.cc DEPS cinncore)

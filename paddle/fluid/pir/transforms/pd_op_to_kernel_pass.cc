@@ -37,6 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -73,7 +74,6 @@ const std::unordered_set<std::string> SpecialLowerOps = {
     "pd_op.if",
     "pd_op.while",
     "cf.yield",
-    "cf.cond_yield",
     "cinn_runtime.jit_kernel"};
 
 bool NeedFallBackCpu(const pir::Operation* op,
@@ -520,10 +520,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
@@ -678,10 +675,34 @@ phi::KernelKey GetKernelKey(
 
   phi::KernelKey res(kernel_backend, kernel_layout, kernel_data_type);
 
+  // kernel backend infered incorrectly from memcpy op operands,
+  // case that place from (not GPU) to GPU.
+  // We handle this special case by following code to fix up the problem.
+  // This could be further improved if we had another method.
+  if (!platform::is_gpu_place(place)) {
+    if (op->isa<paddle::dialect::MemcpyOp>()) {
+      VLOG(6) << "MemcpyOp need a special handle";
+      int dst_place_type = op->attribute("dst_place_type")
+                               .dyn_cast<pir::Int32Attribute>()
+                               .data();
+      if (dst_place_type == 1) {
+        res.set_backend(phi::Backend::GPU);
+      }
+    }
+  }
+
   if (op->isa<paddle::dialect::LoadCombineOp>()) {
     res.set_dtype(phi::DataType::FLOAT32);
     VLOG(8) << "LoadCombineOp's kernel data type must be FLOAT32";
   }
+
+  if (op->isa<paddle::dialect::CSyncCommStream_Op>() ||
+      op->isa<paddle::dialect::CSyncCommStreamOp>()) {
+    res.set_dtype(phi::DataType::FLOAT32);
+    VLOG(8) << "CSyncCommStream_Op/CSyncCommStreamOp's kernel data type must "
+               "be FLOAT32";
+  }
+
   if (NeedFallBackCpu((op), kernel_fn_str, res)) {
     res.set_backend(phi::Backend::CPU);
     VLOG(8) << "kernel backend must be on CPU when need fallback";
@@ -791,14 +812,14 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-    if (i == 0)
+    if (i == 0) {
       cond_val = new_in;
-    else
+    } else {
       vec_in.push_back(new_in);
+    }
   }
 
   pir::Builder builder(ctx, block);
-
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
   auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();
@@ -814,13 +835,22 @@ void HandleForWhileOp(
                ctx,
                map_op_pair,
                map_value_pair);
+
+  (*map_op_pair)[op_item] = new_while_op;
+
+  // only deal with single output
+  if (op_item->num_results() > 0) {
+    for (size_t i = 0; i < op_item->num_results(); ++i) {
+      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
+    }
+  }
 }
 
 pir::Value GetNewInput(
     const pir::Value cur_in,
     const std::unordered_map<pir::Value, pir::Value>& map_value_pair,
     const int index,
-    const std::string op_name) {
+    const std::string& op_name) {
   PADDLE_ENFORCE_EQ(
       map_value_pair.count(cur_in),
       true,
@@ -921,7 +951,7 @@ void HandleForSpecialOp(
     }
   }
 
-  if (op_item->name() == "cf.yield" || op_item->name() == "cf.cond_yield") {
+  if (op_item->isa<::pir::YieldOp>()) {
     if (op_item->num_operands() > 0) {
       for (size_t i = 0; i < op_item->num_operands(); ++i) {
         auto cur_in = op_item->operand_source(i);

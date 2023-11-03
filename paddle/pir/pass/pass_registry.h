@@ -21,9 +21,8 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/macros.h"
 #include "paddle/pir/pass/pass.h"
-namespace pir {
 
-class Pass;
+namespace pir {
 
 using PassCreator = std::function<std::unique_ptr<Pass>()>;
 

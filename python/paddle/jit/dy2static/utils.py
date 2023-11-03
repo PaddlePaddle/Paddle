@@ -178,21 +178,6 @@ def data_layer_not_check(name, shape, dtype='float32', lod_level=0):
     )
 
 
-def create_undefined_variable_local():
-    helper = LayerHelper('create_undefined_variable', **locals())
-    var = helper.create_variable(
-        name=unique_name.generate("undefined_var"),
-        shape=[1],
-        dtype="float64",
-        type=core.VarDesc.VarType.LOD_TENSOR,
-        stop_gradient=False,
-        is_data=True,
-        need_check_feed=False,
-    )
-    paddle.assign(RETURN_NO_VALUE_MAGIC_NUM, var)
-    return var
-
-
 def create_undefined_variable():
     var = data_layer_not_check(
         unique_name.generate("undefined_var"), [1], "float64"

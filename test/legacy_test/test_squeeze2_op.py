@@ -291,6 +291,16 @@ class TestSqueezeAPI(unittest.TestCase):
 
         self.assertRaises(TypeError, test_axes_type)
 
+    def test_pir_error(self):
+        def test_axes_type():
+            with paddle.pir_utils.IrGuard():
+                x2 = paddle.static.data(
+                    name="x2", shape=[2, 1, 25], dtype="int32"
+                )
+                self.squeeze(x2, axis=2.1)
+
+        self.assertRaises(ValueError, test_axes_type)
+
 
 class TestSqueezeInplaceAPI(TestSqueezeAPI):
     def executed_api(self):

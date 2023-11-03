@@ -31,11 +31,11 @@ class OpNode {
 
   OpPatternKind kind() const {
     auto kind = GetOpKind(node_->name());
-    if (kind == kBroadcast) {
+    if (kind == OpPatternKind::kBroadcast) {
       // As binary op was defined as broadcast, actually it should be
       // element-wise.
       if (node_->name() != "broadcast_to") {
-        return kElementWise;
+        return OpPatternKind::kElementWise;
       }
     }
     return kind;
@@ -137,10 +137,10 @@ class OpNode {
   const OutputTensorListView& outputs() const { return output_tensors_; }
 
   template <typename T>
-  const T& GetAttr(const std::string& attr_name) const {
+  T GetAttr(const std::string& attr_name) const {
     auto attr =
         paddle::dialect::GetAttributeData(node_->attributes().at(attr_name));
-    return PADDLE_GET_CONST(T, attr);
+    return paddle::get<T>(attr);
   }
 
  private:

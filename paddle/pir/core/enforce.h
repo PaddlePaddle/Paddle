@@ -19,6 +19,13 @@
 
 #include "paddle/utils/string/printf.h"
 
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
 #if !defined(_WIN32)
 #define UNLIKELY(condition) __builtin_expect(static_cast<bool>(condition), 0)
 #else

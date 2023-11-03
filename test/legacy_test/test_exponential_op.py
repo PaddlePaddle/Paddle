@@ -411,7 +411,7 @@ class TestExponentialBP16Op(OpTest):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
+            checker=self.verify_output, place=place, check_pir=True
         )
 
     def verify_output(self, outs):

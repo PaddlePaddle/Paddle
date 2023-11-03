@@ -420,10 +420,10 @@ class LayerHelperBase:
             is_used = unique_name.dygraph_parameter_name_checker(attr.name)
             if is_used:
                 raise ValueError(
-                    "parameter name [{}] have be been used. "
+                    f"parameter name [{attr.name}] have be been used. "
                     "In dygraph mode, the name of parameter can't be same."
                     "Please check the parameter attr value passed to self.create_parameter or "
-                    "constructor of dygraph Layers".format(attr.name)
+                    "constructor of dygraph Layers"
                 )
             return self.main_program.global_block().create_parameter(
                 dtype=dtype,
