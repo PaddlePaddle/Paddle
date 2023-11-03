@@ -107,12 +107,7 @@ class TestDecomposeOp(unittest.TestCase):
         ) = get_pir_program_and_param_map()
 
         newir_ops = newir_program.global_block().ops
-        global_outputs = [newir_ops[9].result(0)]
-        global_grads = [
-            newir_ops[-1].result(0),
-            newir_ops[-3].result(1),
-            newir_ops[-4].result(1),
-        ]
+        global_outputs = [newir_ops[10].result(0)]
 
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
             newir_program
@@ -139,20 +134,6 @@ class TestDecomposeOp(unittest.TestCase):
                 grad_var_to_var_map = get_new_ir_grad_var_to_var_map(
                     param_mappings, old_ir_grad_var_to_var_map
                 )
-                # get global outputs and grads info, when decomposing an op that corresponds to global outputs and grads, then update the global outputs and grads
-                (
-                    fwd_leaf_ops,
-                    fwd_leaf_ops_output_indexes,
-                ) = decomp.get_leaf_ops(
-                    newir_program.global_block(), global_outputs
-                )  # without update during execution
-                (
-                    bwd_leaf_ops,
-                    bwd_leaf_ops_output_indexes,
-                ) = decomp.get_leaf_ops(
-                    newir_program.global_block(), global_grads
-                )
-
                 bwd_ops_to_be_decomposed = [
                     "pd_op.layer_norm_grad",
                     "pd_op.dropout_grad",
@@ -169,11 +150,6 @@ class TestDecomposeOp(unittest.TestCase):
                         fwd_op = get_fwd_op(bwd_op, grad_var_to_var_map)
                         assert fwd_op is not None, "fwd_op is None"
 
-                        bwd_leaf_op_index = (
-                            bwd_leaf_ops.index(bwd_op)
-                            if bwd_op in bwd_leaf_ops
-                            else None
-                        )
                         (
                             new_grads,
                             bwd_has_decomposed,
@@ -183,21 +159,7 @@ class TestDecomposeOp(unittest.TestCase):
                             bwd_op,
                             grad_var_to_var_map,
                         )
-                        if bwd_has_decomposed:
-                            if bwd_leaf_op_index is not None:
-                                decomp.replace_graph_outputs(
-                                    global_grads,
-                                    new_grads,
-                                    bwd_leaf_op_index,
-                                    bwd_leaf_ops_output_indexes,
-                                )
-
-                        else:
-                            fwd_leaf_op_index = (
-                                fwd_leaf_ops.index(fwd_op)
-                                if fwd_op in fwd_leaf_ops
-                                else None
-                            )
+                        if not bwd_has_decomposed:
                             fwd_inputs = [x.source() for x in fwd_op.operands()]
                             (
                                 new_fwd_outputs,
@@ -208,19 +170,6 @@ class TestDecomposeOp(unittest.TestCase):
                                 grad_var_to_var_map,
                             )
                             if fwd_has_decomposed:
-                                if fwd_leaf_op_index is not None:
-                                    decomp.replace_graph_outputs(
-                                        global_outputs,
-                                        new_fwd_outputs,
-                                        fwd_leaf_op_index,
-                                        fwd_leaf_ops_output_indexes,
-                                    )
-
-                                bwd_leaf_op_index = (
-                                    bwd_leaf_ops.index(bwd_op)
-                                    if bwd_op in bwd_leaf_ops
-                                    else None
-                                )
                                 new_grads = (
                                     decomp.decompose_bwd_op_after_fwd_op(
                                         newir_program.global_block(),
@@ -231,13 +180,6 @@ class TestDecomposeOp(unittest.TestCase):
                                         new_fwd_outputs,
                                     )
                                 )
-                                if bwd_leaf_op_index is not None:
-                                    decomp.replace_graph_outputs(
-                                        global_grads,
-                                        new_grads,
-                                        bwd_leaf_op_index,
-                                        bwd_leaf_ops_output_indexes,
-                                    )
 
             # execution
             exe = paddle.static.Executor()
@@ -246,9 +188,6 @@ class TestDecomposeOp(unittest.TestCase):
                 feed={'x': self.x, 'y': self.y, 'z': self.z},
                 fetch_list=[
                     global_outputs[0],
-                    global_grads[0],
-                    global_grads[1],
-                    global_grads[2],
                 ],
             )
             core._set_prim_backward_enabled(False)
