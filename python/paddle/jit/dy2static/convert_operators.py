@@ -12,13 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from __future__ import annotations
+
 import re
+from contextlib import contextmanager
 
 import paddle
 from paddle.autograd.py_layer import PyLayerMeta
 from paddle.base.data_feeder import convert_dtype
 from paddle.base.dygraph.base import _convert_into_variable, in_to_static_mode
 from paddle.base.framework import Variable, core, default_main_program
+from paddle.static.amp.fp16_utils import AmpOptions
 
 from .py_layer import StaticPyLayer
 from .utils import (
@@ -64,6 +68,9 @@ def convert_load(x):
             )
             if new_var is not None:
                 return new_var
+
+        if x is paddle.amp.auto_cast:
+            return convert_auto_cast
 
     return x
 
@@ -797,6 +804,37 @@ def convert_pop(target, *args):
         return _run_paddle_pop(target, *args)
     else:
         return _run_python_pop(target, *args)
+
+
+@contextmanager
+def convert_auto_cast(
+    enable=True,
+    custom_white_list=None,
+    custom_black_list=None,
+    level='O1',
+    dtype='float16',
+    use_promote=True,
+):
+    from .program_translator import ProgramTranslator
+
+    if enable:
+        raise NotImplementedError("Does not support local switching on amp now")
+
+    amp_records = ProgramTranslator.get_instance()._amp_records
+    main_program = paddle.static.default_main_program()
+    current_block_idx = main_program.current_block_idx
+    current_block = main_program.current_block()
+    start_op_idx = len(current_block.ops)
+    amp_options = AmpOptions(
+        enable, custom_white_list, custom_black_list, level, dtype, use_promote
+    )
+    yield
+    end_op_idx = len(current_block.ops)
+    if current_block_idx not in amp_records:
+        amp_records[current_block_idx] = []
+    amp_records[current_block_idx].append(
+        (amp_options, start_op_idx, end_op_idx)
+    )
 
 
 def _run_paddle_pop(array, *args):

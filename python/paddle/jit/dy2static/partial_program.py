@@ -309,11 +309,19 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_amp_program(self, is_infer_mode=False):
+        from .program_translator import ProgramTranslator
+
         amp_program = self._origin_main_program.clone(for_test=is_infer_mode)
+        # ProgramTranslator.get_instance()._amp_records.clear()
         with program_guard(amp_program):
             paddle.static.amp.fp16_utils.cast_model_to_fp16(
-                amp_program, self._amp_list, use_fp16_guard=False, level='O1'
+                amp_program,
+                self._amp_list,
+                use_fp16_guard=False,
+                level='O1',
+                ranged_cast_info=ProgramTranslator.get_instance()._amp_records,
             )
+        print(amp_program)
         if is_infer_mode:
             if self._hooker:
                 amp_program = self._hooker.after_infer(amp_program)
@@ -325,12 +333,17 @@ class PartialProgramLayer:
 
     @switch_to_static_graph
     def _create_pure_fp16_program(self, is_infer_mode=False):
+        from .program_translator import ProgramTranslator
+
         pure_fp16_program = self._origin_main_program.clone(
             for_test=is_infer_mode
         )
         with program_guard(pure_fp16_program):
             paddle.static.amp.fp16_utils.cast_model_to_fp16(
-                pure_fp16_program, self._amp_list, use_fp16_guard=False
+                pure_fp16_program,
+                self._amp_list,
+                use_fp16_guard=False,
+                ranged_cast_info=ProgramTranslator.get_instance()._amp_records,
             )
 
         if is_infer_mode:
