@@ -46,7 +46,7 @@ class MyTest2(MyTest):
 """
 
 logger = logging.getLogger("Dygraph to static utils")
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 class ToStaticMode(Flag):
@@ -69,7 +69,7 @@ class IrMode(Flag):
 
 
 DEFAULT_TO_STATIC_MODE = ToStaticMode.AST | ToStaticMode.SOT
-DEFAULT_IR_MODE = IrMode.LEGACY_IR
+DEFAULT_IR_MODE = IrMode.PIR_API
 
 
 def to_legacy_ast_test(fn):
