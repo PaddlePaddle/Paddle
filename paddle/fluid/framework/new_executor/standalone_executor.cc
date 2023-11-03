@@ -22,7 +22,6 @@
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
-#include "paddle/fluid/pir/transforms/fusion_passes.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/pass/pass.h"
@@ -30,7 +29,6 @@
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
-PHI_DECLARE_bool(enable_fused_pass);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
@@ -105,17 +103,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                         .AsString() +
                                     "@fetch";
         }
-      }
-
-      if (FLAGS_enable_fused_pass) {
-        pir::PassManager pm(pir::IrContext::Instance());
-        pm.AddPass(pir::CreateFusedDropoutAddPass());
-        pm.AddPass(pir::CreateFusedLinearParamGradAddPass());
-        pm.AddPass(pir::CreateFusedGemmEpiloguePass());
-        if (VLOG_IS_ON(6)) {
-          pm.EnableIRPrinting();
-        }
-        pm.Run(base_program.get());
       }
 
       auto kernel_program =

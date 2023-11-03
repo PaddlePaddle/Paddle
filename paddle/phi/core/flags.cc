@@ -1319,19 +1319,6 @@ PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
 
-/**
- * Apply fused passes to new IR FLAG
- * Name: enable_fused_pass
- * Since Version: 2.6.0
- * Value Range: bool, default=false
- * Example:
- * Note: If Ture, will apply fused pass to new IR.
- */
-PHI_DEFINE_EXPORTED_bool(enable_fused_pass,
-                         false,
-                         "Whether to apply fused passes on lowering "
-                         "::pir::Program to Kernel Dialect");
-
 PHI_DEFINE_EXPORTED_string(
     ir_inplace_kernel_blacklist,
     "",
