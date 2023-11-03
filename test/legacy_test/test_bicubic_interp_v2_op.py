@@ -590,15 +590,15 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
         actual_size_data = np.array([12, 12]).astype("int32")
         scale_data = np.array([2.0]).astype("float32")
 
-        prog = base.Program()
-        startup_prog = base.Program()
+        prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
             else base.CPUPlace()
         )
 
-        with base.program_guard(prog, startup_prog):
+        with paddle.static.program_guard(prog, startup_prog):
             x = paddle.static.data(
                 name="x", shape=[2, 3, 6, 6], dtype="float32"
             )
@@ -640,9 +640,9 @@ class TestBicubicInterpOpAPI(unittest.TestCase):
             )
 
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
+            exe.run(startup_prog)
             results = exe.run(
-                base.default_main_program(),
+                prog,
                 feed={
                     "x": x_data,
                     "dim": dim_data,

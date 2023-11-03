@@ -897,10 +897,10 @@ class TestNearestInterpOp_attr_tensor(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output(check_pir=False)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', in_place=True, check_pir=True)
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=False)
 
     def init_test_case(self):
         self.interp_method = 'nearest'

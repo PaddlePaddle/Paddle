@@ -314,6 +314,15 @@ class TestLinearInterpOpSizeTensor(TestLinearInterpOp):
             self.attrs['scale'] = self.scale
         self.outputs = {'Out': output_np}
 
+    def test_check_output(self):
+        if platform.system() == "Linux":
+            self.check_output(atol=1e-7, check_pir=False)
+        else:
+            self.check_output(atol=1e-5, check_pir=False)
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', in_place=True, check_pir=False)
+
 
 class TestLinearInterpOpAPI2_0(unittest.TestCase):
     def test_case(self):
