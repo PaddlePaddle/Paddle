@@ -335,10 +335,11 @@ static void ParseIndex(const paddle::Tensor& tensor,
       VLOG(4) << "Call Py_DECREF";
     }
   });
+  // for case 0-size tensor in slice
   PADDLE_ENFORCE_EQ(
-      tensor.initialized(),
+      tensor.defined(),
       true,
-      platform::errors::InvalidArgument("tensor has not been initialized"));
+      platform::errors::InvalidArgument("tensor has not been defined"));
   const auto& shape = tensor.dims();
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
@@ -367,7 +368,7 @@ static void ParseIndex(const paddle::Tensor& tensor,
     PyObject* slice_item = PyTuple_GetItem(index, i);
 
     infer_flags->push_back(1);
-    int64_t dim_len = shape[i];
+    int64_t dim_len = shape[current_dim];
     if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
       // integer, PyLong_AsLong supports both int and long
       int64_t start = static_cast<int64_t>(PyLong_AsLong(slice_item));
@@ -423,18 +424,45 @@ static void ParseIndex(const paddle::Tensor& tensor,
       if (slice_tensor.shape().size() == 0 &&
           slice_tensor.dtype() != phi::DataType::BOOL) {
         // 0-D tensor is same with scalar
-        Py_ssize_t start = GetSliceIndexFromTensor(
+        Py_ssize_t s_t = GetSliceIndexFromTensor(
             (*static_cast<phi::DenseTensor*>(slice_tensor.impl().get())));
+        auto start = s_t < 0 ? s_t + dim_len : s_t;
+
+        PADDLE_ENFORCE(0 <= start && start < dim_len,
+                       platform::errors::OutOfRange(
+                           "The starting index %d of slice is out "
+                           "of bounds in tensor %d-th axis, it "
+                           "shound be in the range of [%d, %d).",
+                           s_t,
+                           current_dim,
+                           -dim_len,
+                           dim_len));
+
         slice_axes->push_back(current_dim);
         slice_starts->push_back(start);
         slice_ends->push_back(start + 1);
         slice_strides->push_back(1);
         decrease_axis->push_back(current_dim);
       } else {
-        *has_advanced_index = true;
+        if (slice_tensor.dtype() == phi::DataType::BOOL) {
+          if (slice_tensor.shape().size() == 0) {
+            // 0-D bool Tensor, same as single PY-bool.
+            none_axes->push_back(current_dim + none_count);
+            none_count++;
+          } else {
+            PADDLE_ENFORCE_EQ(slice_tensor.shape()[0],
+                              dim_len,
+                              platform::errors::OutOfRange(
+                                  "The shape of boolean index %d did not match"
+                                  "indexed tensor %d along axis %d.",
+                                  slice_tensor.shape()[0],
+                                  dim_len,
+                                  current_dim));
+          }
+        }
 
-        advanced_index->push_back(
-            reinterpret_cast<TensorObject*>(slice_item)->tensor);
+        *has_advanced_index = true;
+        advanced_index->push_back(slice_tensor);
         (*advanced_index_dim)[estimated_dim] = estimated_dim;
         estimated_dim++;
       }
@@ -442,8 +470,8 @@ static void ParseIndex(const paddle::Tensor& tensor,
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "Currently, Tensor.__indices__() only allows indexing "
-          "by Integers, Slices, Ellipsis, None, tuples of these types "
-          "and list of Bool and Integers, but received "
+          "by Integers, Slices, Ellipsis, None, Tuples of these types "
+          "and List / Tensor of Bool and Integers, but received "
           "%s in %dth slice item",
           std::string(Py_TYPE(slice_item)->tp_name),
           i + 1));
@@ -575,20 +603,20 @@ static paddle::Tensor dealWithAdvancedIndex(
 
 static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
                                             const paddle::Tensor& bool_index) {
-  PADDLE_ENFORCE(bool_index.size() <= tensor.size(),
+  PADDLE_ENFORCE(bool_index.shape().size() <= tensor.shape().size(),
                  platform::errors::InvalidArgument(
                      "The dims of bool index doesn't match indexed array, "
                      "the dims of bool index except to be equal or less "
                      "than %d, but received %d}.",
-                     tensor.size(),
-                     bool_index.size()));
+                     tensor.shape().size(),
+                     bool_index.shape().size()));
   auto tensor_shape = tensor.shape();
-  int i = 0;
-  while (i < bool_index.size()) {
+  size_t i = 0;
+  while (i < bool_index.shape().size()) {
     PADDLE_ENFORCE_EQ(
         bool_index.shape()[i],
         tensor_shape[i],
-        platform::errors::InvalidArgument(
+        platform::errors::OutOfRange(
             "The dimension of bool index doesn't match indexed array along "
             "dimension %d, the target dimension is %d, but received %d",
             i,
@@ -596,8 +624,11 @@ static paddle::Tensor getValueForBoolTensor(const paddle::Tensor& tensor,
             bool_index.shape()[i]));
     i++;
   }
-  bool* idx_is_not_empty = static_cast<bool*>((any_ad_func(bool_index).data()));
-  if (*idx_is_not_empty) {
+
+  bool idx_is_not_empty = phi::GetValue<bool>(
+      static_cast<phi::DenseTensor*>(any_ad_func(bool_index).impl().get()));
+
+  if (idx_is_not_empty) {
     auto bool_2_idx = nonzero_ad_func(bool_index);
     return gather_nd_ad_func(tensor, bool_2_idx);
   } else {
