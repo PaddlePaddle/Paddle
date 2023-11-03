@@ -29,6 +29,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
@@ -508,6 +509,51 @@ class TestGroupNormAPI_With_NHWC(unittest.TestCase):
             )
             np.testing.assert_allclose(results[0], expect_res1[0], rtol=1e-05)
             np.testing.assert_allclose(results[1], expect_res2[0], rtol=1e-05)
+
+    @test_with_pir_api
+    def test_case2(self):
+        shape = (2, 6, 3, 6)
+        data_np = np.random.random(shape).astype("float32")
+
+        paddle.enable_static()
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            data = paddle.static.data(
+                name='data', shape=[None, 6, 3, 6], dtype='float32'
+            )
+            groupNorm = paddle.nn.GroupNorm(
+                num_groups=3,
+                num_channels=shape[-1],
+                data_format='NHWC',
+                weight_attr=paddle.nn.initializer.Constant(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=0),
+            )
+            out = groupNorm(input=data)
+
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            exe.run(startup)
+            static_res = exe.run(
+                main,
+                feed={"data": data_np},
+                fetch_list=[out],
+                return_numpy=True,
+            )[0]
+
+        paddle.disable_static()
+
+        with paddle.base.dygraph.guard():
+            groupNorm = paddle.nn.GroupNorm(
+                num_groups=3,
+                num_channels=shape[-1],
+                data_format='NHWC',
+                weight_attr=paddle.nn.initializer.Constant(value=1),
+                bias_attr=paddle.nn.initializer.Constant(value=0),
+            )
+            dy_result = groupNorm(base.dygraph.to_variable(data_np))
+
+        np.testing.assert_allclose(static_res, dy_result, rtol=1e-05)
 
 
 class TestGroupNormException(unittest.TestCase):
