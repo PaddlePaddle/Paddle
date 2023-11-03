@@ -179,8 +179,6 @@ class FCMKLDNNHandler
                                  ? dnnl::memory::data_type::f32
                                  : residual_data->mem_desc().get_data_type(),
                              dnnl::memory::format_tag::ab);
-      // auto residual_data = ctx.Input<phi::DenseTensor>("ResidualData");
-      // auto residual_data_md = residual_data->mem_desc().reshape({MB, OC});
       post_operations.append_binary(dnnl::algorithm::binary_add,
                                     residual_data_md);
     }
