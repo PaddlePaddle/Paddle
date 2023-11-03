@@ -481,7 +481,7 @@ def _setitem_impl_(var, item, value):
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
-                "but received {}.".format(slice_item)
+                f"but received {slice_item}."
             )
 
         axes.append(dim)
@@ -493,9 +493,7 @@ def _setitem_impl_(var, item, value):
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
             raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".format(
-                    item
-                )
+                f"Valid index accept int or slice or ellipsis or list, but received {item}."
             )
         return slice_info.set_item(var, value)
     attrs = {

@@ -47,7 +47,7 @@ class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
     pir::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_sum =
         res.Op(cinn::dialect::ReduceSumOp::name(),
-               {{"axis", pattern.Attr("axis_info")},
+               {{"dim", pattern.Attr("axis_info")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
@@ -72,7 +72,7 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
     pir::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceMaxOp::name(),
-               {{"axis", pattern.Attr("axis_info")},
+               {{"dim", pattern.Attr("axis_info")},
                 {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }

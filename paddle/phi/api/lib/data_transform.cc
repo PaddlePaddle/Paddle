@@ -640,6 +640,70 @@ std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
   return nullptr;
 }
 
+std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+  const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
+  return ReshardApiInputToKernelInput(dev_ctx, tensor, tensor_dist_attr);
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
+                             const std::vector<Tensor>& tensors,
+                             const phi::distributed::ArgDistAttr& dist_attrs) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          dist_attrs),
+      true,
+      phi::errors::PreconditionNotMet(
+          "Arg must be a vector of  TensorDistAttr"));
+  const auto& tensor_dist_attrs = paddle::get<1>(dist_attrs);
+  return ReshardApiInputToKernelInput(dev_ctx, tensors, tensor_dist_attrs);
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const std::vector<phi::distributed::TensorDistAttr>& dist_attrs) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> output;
+  PADDLE_ENFORCE_EQ(tensors.size(),
+                    dist_attrs.size(),
+                    phi::errors::PreconditionNotMet(
+                        "tensors size and  dist_attrs size not equal: %d vs %d",
+                        tensors.size(),
+                        dist_attrs.size()));
+  for (size_t i = 0; i < dist_attrs.size(); i++) {
+    output.push_back(
+        ReshardApiInputToKernelInput(dev_ctx, tensors[i], dist_attrs[i]));
+  }
+  return output;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const std::vector<phi::distributed::ArgDistAttr>& dist_attrs) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> output;
+  PADDLE_ENFORCE_EQ(tensors.size(),
+                    dist_attrs.size(),
+                    phi::errors::PreconditionNotMet(
+                        "tensors size and  dist_attrs size not equal: %d vs %d",
+                        tensors.size(),
+                        dist_attrs.size()));
+  for (size_t i = 0; i < dist_attrs.size(); i++) {
+    output.push_back(
+        ReshardApiInputToKernelInput(dev_ctx, tensors[i], dist_attrs[i]));
+  }
+  return output;
+}
+
 std::shared_ptr<phi::distributed::DistTensor>
 ReshardApiInputToReplicatedKernelInput(
     phi::DeviceContext* dev_ctx,
@@ -688,11 +752,74 @@ ReshardApiInputToReplicatedKernelInput(
   return result;
 }
 
+std::shared_ptr<phi::distributed::DistTensor>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const Tensor& tensor,
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
+  const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx, tensor, tensor_dist_attr);
+}
+
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const paddle::optional<Tensor>& tensor,
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
+  const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx, tensor, tensor_dist_attr);
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const std::vector<phi::distributed::ArgDistAttr>& dist_attrs) {
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> outputs;
+  for (size_t i = 0; i < tensors.size(); ++i) {
+    outputs.push_back(ReshardApiInputToReplicatedKernelInput(
+        dev_ctx, tensors[i], dist_attrs[i]));
+  }
+  return outputs;
+}
+
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToReplicatedKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const std::vector<Tensor>& tensors,
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          dist_attr),
+      true,
+      phi::errors::PreconditionNotMet(
+          "Arg must be a vector of TensorDistAttr"));
+  const auto& tensor_dist_attrs = paddle::get<1>(dist_attr);
+  return ReshardApiInputToReplicatedKernelInput(
+      dev_ctx, tensors, tensor_dist_attrs);
+}
+
 void ReshardOutputPartialAxisToReplicated(
     phi::DeviceContext* dev_ctx, phi::distributed::DistTensor* out_tensor) {
   if (out_tensor->dist_attr().is_partial()) {
     auto dist_attr = out_tensor->dist_attr();
     dist_attr.clean_partial_status();
+    if (!IsCurRankInMesh(out_tensor->dist_attr().process_mesh())) {
+      VLOG(6) << "DistTensor is not in mesh, just clear its partial status and "
+                 "skip reshard it to replicated.";
+      out_tensor->unsafe_set_dist_attr(dist_attr);
+      return;
+    }
     VLOG(6) << "FwdAPI Output P2R - "
             << ReshardDebugInfo(*out_tensor, dist_attr);
     auto* func =
