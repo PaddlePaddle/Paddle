@@ -376,7 +376,7 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
-      .def("get_output_intermediate_value",
+      .def("get_output_intermediate_status",
            [](Operation &self) -> py::list {
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =

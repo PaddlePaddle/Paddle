@@ -33,11 +33,11 @@ def _build_tensor_tuple(xs):
 
 
 def _analyse_decomp_results(orig_outs, decomp_outs, op):
-    intermediate_values = op.get_output_intermediate_value()
-    assert len(orig_outs) == len(decomp_outs) == len(intermediate_values)
+    intermediate_status = op.get_output_intermediate_status()
+    assert len(orig_outs) == len(decomp_outs) == len(intermediate_status)
     res = []
     for org_item, new_item, value in zip(
-        orig_outs, decomp_outs, intermediate_values
+        orig_outs, decomp_outs, intermediate_status
     ):
         if isinstance(org_item, pir.OpResult):
             if value:
