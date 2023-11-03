@@ -548,6 +548,11 @@ void ProgramTranslator::TranslateWhileOperation(
   }
   body_block->push_back(
       pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
+  auto name_iter = loop_vars_reverse.rbegin();
+  for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
+    translation_ctx->PushValue(name_iter++->first, while_op->result(idx));
+  }
+
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
 }
