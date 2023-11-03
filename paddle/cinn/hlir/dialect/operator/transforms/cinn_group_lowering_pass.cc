@@ -130,7 +130,7 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler =
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         std::cerr << "begin to build kernel \n";
-        auto vec_ins = GetBlockOutsideInput(group->nodes);
+        auto vec_ins = GetBlockOutsideInput(group->ops);
 
         std::vector<pir::Value> vec_new_ins;
         for (size_t i = 0; i < vec_ins.size(); ++i) {
