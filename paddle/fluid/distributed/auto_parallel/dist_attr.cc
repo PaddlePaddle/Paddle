@@ -76,6 +76,7 @@ OperatorDistAttr& OperatorDistAttr::operator=(
   std::swap(this->stream_priority_, tmp.stream_priority_);
   std::swap(this->scheduling_priority_, tmp.scheduling_priority_);
   std::swap(this->annotated_, tmp.annotated_);
+  std::swap(this->run_time_us_, tmp.run_time_us_);
   // Note: Make sure all tensor dist attr has the same process_mesh
   set_process_mesh(this->process_mesh_);
   return *this;
@@ -125,6 +126,7 @@ void OperatorDistAttr::copy_from(const OperatorDistAttr& dist_attr) {
   set_events_to_wait(dist_attr.events_to_wait());
   set_scheduling_priority(dist_attr.scheduling_priority());
   set_annotated(dist_attr.annotated());
+  set_run_time_us(dist_attr.run_time_us());
 }
 
 void OperatorDistAttr::set_input_dist_attrs(

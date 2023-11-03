@@ -486,6 +486,9 @@ void BindAutoParallel(py::module *m) {
           static_cast<std::map<std::string, TensorDistAttr> &(
               OperatorDistAttr::*)()>(&OperatorDistAttr::output_dist_attrs),
           &OperatorDistAttr::set_output_dist_attrs)
+      .def_property("run_time_us",
+                    &OperatorDistAttr::run_time_us,
+                    &OperatorDistAttr::set_run_time_us)
       .def("get_input_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
