@@ -108,6 +108,10 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
                 "y_shape": [16, 32],
             },
             {
+                "x_shape": [5, 4, 16],
+                "y_shape": [5, 16, 32],
+            },
+            {
                 # Matrix mul row vector
                 "x_shape": [4, 16],
                 "y_shape": [16],

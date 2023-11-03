@@ -205,16 +205,16 @@ inline cublasStatus_t cublasGemmStridedBatched(cudaDataType_t dtype,
                                       k,
                                       &alpha,
                                       A,
-                                      CUDA_R_16BF,
+                                      CUDA_R_16F,
                                       lda,
                                       strideA,
                                       B,
-                                      CUDA_R_16BF,
+                                      CUDA_R_16F,
                                       ldb,
                                       strideB,
                                       &beta,
                                       C,
-                                      CUDA_R_16BF,
+                                      CUDA_R_16F,
                                       ldc,
                                       strideC,
                                       batchCount,
@@ -327,6 +327,28 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                               ldc,
                               batchCount);
   } else if (dtype == CUDA_R_16F) {
+#if CUDA_VERSION >= 11000
+    return cublasGemmBatchedEx(handle,
+                               transa,
+                               transb,
+                               m,
+                               n,
+                               k,
+                               &alpha,
+                               A,
+                               CUDA_R_16F,
+                               lda,
+                               B,
+                               CUDA_R_16F,
+                               ldb,
+                               &beta,
+                               C,
+                               CUDA_R_16F,
+                               ldc,
+                               batchCount,
+                               CUBLAS_COMPUTE_32F,
+                               CUBLAS_GEMM_DEFAULT_TENSOR_OP);
+#else
     __half alpha_fp16{alpha};
     __half beta_fp16{beta};
     return cublasHgemmBatched(handle,
@@ -344,6 +366,7 @@ inline cublasStatus_t cublasGemmBatched(cudaDataType_t dtype,
                               reinterpret_cast<__half **>(C),
                               ldc,
                               batchCount);
+#endif
   } else if (dtype == CUDA_R_16BF) {
 #if CUDA_VERSION >= 11000
     return cublasGemmBatchedEx(handle,
