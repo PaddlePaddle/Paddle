@@ -2037,6 +2037,7 @@ def split(x, num_or_sections, axis=0, name=None):
             >>> print(out2.shape)
             [3, 3, 5]
     """
+
     input = x
     dim = axis
     if in_dynamic_mode():
@@ -2061,15 +2062,32 @@ def split(x, num_or_sections, axis=0, name=None):
         else:
             return _C_ops.split(input, num_or_sections, dim)
     elif in_pir_mode():
+        if isinstance(dim, paddle.pir.OpResult):
+            dim.stop_gradient = True
         if isinstance(dim, int):
             assert len(input.shape) + dim >= 0, "(rank(x) + axis) must >= 0"
             dim = (len(input.shape) + dim) if dim < 0 else dim
 
+        input_shape = input.shape
         if isinstance(num_or_sections, int):
-            dim = dim if dim >= 0 else dim + len(input.shape)
+            assert num_or_sections > 0, 'num_or_sections must be than 0.'
+            if isinstance(dim, int) and input_shape[dim] > 0:
+                assert input_shape[dim] % num_or_sections == 0, (
+                    "The input's size along the split dimension "
+                    "must be evenly divisible by Attr(num_or_sections). "
+                    "But %d is not evenly divisible by %d. "
+                    % (num_or_sections, input_shape[dim])
+                )
             return _C_ops.split_with_num(input, num_or_sections, dim)
         else:
-            dim = dim if dim >= 0 else dim + len(input.shape)
+            if isinstance(dim, int) and input_shape[dim] > 0:
+                assert (
+                    len(num_or_sections) <= input_shape[dim]
+                ), 'len(num_or_sections) must not be more than input.shape[dim].'
+            if paddle.utils._contain_var(num_or_sections):
+                num_or_sections = paddle.utils.get_int_tensor_list(
+                    num_or_sections
+                )
             return _C_ops.split(input, num_or_sections, dim)
 
     else:
@@ -3603,7 +3621,21 @@ def expand(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
+        return _C_ops.expand(x, shape)
+    elif in_pir_mode():
+        if convert_dtype(x.dtype) == 'bool' and not x.stop_gradient:
+            raise ValueError(
+                "When the data type of input 'x' for expand is bool, "
+                "you must set its stop_gradient to be False by "
+                "some_var.stop_gradient = True, supporting "
+                "some_var as the input."
+            )
+        if isinstance(shape, paddle.pir.OpResult):
+            shape.stop_gradient = True
+        elif isinstance(shape, (list, tuple)):
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils._convert_to_tensor_list(shape)
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3798,6 +3830,26 @@ def reshape(x, shape, name=None):
             )
         return out
     elif in_pir_mode():
+        check_variable_and_dtype(
+            x,
+            'x',
+            [
+                'float16',
+                'float32',
+                'float64',
+                'int8',
+                'uint8',
+                'int16',
+                'int32',
+                'int64',
+                'bool',
+                'uint16',
+            ],
+            'reshape',
+        )
+        check_type(
+            shape, 'shape', (list, tuple, paddle.pir.OpResult), 'reshape'
+        )
         if isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 new_shape = paddle.utils._convert_to_tensor_list(shape)
@@ -4720,6 +4772,76 @@ def moveaxis(x, source, destination, name=None):
             attrs={'axis': perm},
         )
         return out
+
+
+def masked_fill(x, mask, value, name=None):
+    """
+    Fills elements of self tensor with value where mask is True. The shape of mask must be broadcastable with the shape of the underlying tensor.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are float,
+            double, int, int64_t,float16 and bfloat16.
+        mask (Tensor): The boolean tensor indicate the position to be filled.
+            The data type of mask must be bool.
+        value (Scalar or 0-D Tensor): The value used to fill the target tensor.
+            Supported data types are float, double, int, int64_t,float16 and bfloat16.
+        name(str, optional): The default value is None. Normally there is no
+            need for user to set this property. For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, True, False]])
+            >>> print(mask)
+            Tensor(shape=[1, 3], dtype=bool, place=Place(gpu:0), stop_gradient=True,
+                   [[True , True , False]])
+            >>> out = paddle.masked_fill(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 2., 1.],
+                    [2., 2., 1.],
+                    [2., 2., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where(mask, x, value)
+    return out
+
+
+@inplace_apis_in_dygraph_only
+def masked_fill_(x, mask, value, name=None):
+    """
+    Inplace version of ``masked_fill`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_masked_fill`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.ones((3, 3), dtype="float32")
+            >>> mask = paddle.to_tensor([[True, False, False]])
+            >>> out = paddle.masked_fill_(x, mask, 2)
+            >>> print(out)
+            Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[2., 1., 1.],
+                    [2., 1., 1.],
+                    [2., 1., 1.]])
+    """
+    if np.isscalar(value):
+        value = paddle.full([], value, x.dtype)
+
+    mask = paddle.logical_not(mask)
+    out = paddle.where_(mask, x, value)
+    return out
 
 
 def non_negative_axis(arr, axis):

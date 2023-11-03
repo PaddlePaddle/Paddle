@@ -746,7 +746,7 @@ class PipelineOptimizer:
                     is_backward = self._is_backward_op(op)
                     assert is_forward or is_backward, (
                         'send/recv in pipeline should only be inserted in forward or backward,'
-                        'please check the op_role of op={}'.format(op)
+                        f'please check the op_role of op={op}'
                     )
 
                     if is_forward:

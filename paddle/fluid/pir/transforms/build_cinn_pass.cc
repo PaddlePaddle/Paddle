@@ -27,7 +27,7 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 

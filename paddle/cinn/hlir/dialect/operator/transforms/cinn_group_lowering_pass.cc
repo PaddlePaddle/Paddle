@@ -26,7 +26,7 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 namespace cinn {
 namespace dialect {
