@@ -1559,7 +1559,6 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  VLOG(2) << "IR after lowering = " << *program;
   if (FLAGS_print_ir) {
     std::cout << "IR after lowering = " << *program << std::endl;
   }
