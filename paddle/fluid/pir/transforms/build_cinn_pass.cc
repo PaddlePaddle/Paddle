@@ -135,10 +135,25 @@ bool IsSupportCinn(pir::Operation* op) {
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
   VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+
+  // cinn not support uniform, the FullOp of max and min support NOT generate by
+  // CINN
+  if (op->isa<paddle::dialect::FullOp>()) {
+    auto out = op->result(0);
+    // return IsSuportCinn( out.first_use().owern() )
+    if (out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
+      return false;
+    }
+  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto& op_name = CompatibleInfo::OpName(*op);
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
+
+  if (op_name == "uniform") {
+    return false;
+  }
 
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to" || op_name == "multiply") {
@@ -614,7 +629,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
-  auto* laste_input_op = group_ops.back();
+  auto* laste_input_op = group_ops.front();
   builder.SetInsertionPointAfter(laste_input_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);

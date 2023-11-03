@@ -154,7 +154,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
             new cinn::hlir::framework::PIRCompiler(*program, target, scope);
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
+        std::cerr << "before compile\n";
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+        std::cerr << "fin compile\n";
         compiler_list.push_back(ir_compiler);
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,

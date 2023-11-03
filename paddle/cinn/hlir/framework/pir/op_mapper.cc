@@ -39,6 +39,21 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
   attrs["dim"] = dim;
 }
 
+void AppendAttrForUniformOp(const ::pir::Operation& op,
+                            utils::AttributeMap& attrs) {  // NOLINT
+  auto attr = op.attributes().at("shape");
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> shape;
+  for (auto vec_element : attr_vec) {
+    shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
+  }
+
+  std::cerr << "append dim" << std::endl;
+  attrs["shape"] = shape;
+  attrs["dtype"] = "float32";
+}
+
 void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
                                utils::AttributeMap& attrs) {  // NOLINT
   auto axes_attr = op.attributes().at("broadcast_axes");
@@ -84,6 +99,7 @@ void OpMapper::RegisterMapRules() {
   REGISTER_ATTR_RULE(ReduceMaxOp, AppendAttrForReduceOp);
   REGISTER_ATTR_RULE(ReduceSumOp, AppendAttrForReduceOp);
   REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBoadcastToOp);
+  REGISTER_ATTR_RULE(UniformRandomOp, AppendAttrForUniformOp);
 }
 
 }  // namespace pir

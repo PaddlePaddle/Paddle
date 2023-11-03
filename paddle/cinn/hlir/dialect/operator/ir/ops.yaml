@@ -25,7 +25,7 @@
     func : frobenius_norm
 
 - op : uniform_random
-  args : (int64_t[] shape,  float min, float max, int seed, DataType dtype, int diag_num, int diag_step, float diag_val)
+  args : (int64_t[] shape,  float min, float max, int seed, DataType dtype, int diag_num = 0, int diag_step=0, float diag_val=1.0)
   output : Tensor(out)
   infer_meta :
     func : CreateVecShapeInferMeta
