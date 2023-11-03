@@ -30,6 +30,10 @@ void UniformKernel(const Context &dev_ctx,
                    DenseTensor *out) {
   out->Resize(phi::make_ddim(shape.GetData()));
   T *data = dev_ctx.template Alloc<T>(out);
+  if (out->numel() == 0) {
+    return;
+  }
+
   using XPUType = typename XPUTypeTrait<T>::Type;
   int64_t real_seed = seed != 0 ? seed : dev_ctx.GetGenerator()->Random64();
 
