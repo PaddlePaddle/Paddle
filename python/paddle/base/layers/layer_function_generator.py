@@ -338,7 +338,7 @@ def generate_inplace_fn(inplace_op_type):
     func.__name__ = inplace_op_type
     func.__doc__ = """
 Inplace version of ``{}`` API, the output Tensor will be inplaced with input ``x``.
-Please refer to :ref:`api_base_layers_{}`.
+Please refer to :ref:`api_paddle_{}`.
 """.format(
         origin_op_type, origin_op_type
     )
