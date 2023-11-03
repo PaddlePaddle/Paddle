@@ -32,6 +32,8 @@ def get_ir_program():
         y_s = paddle.matmul(x_s, x_s)
         z_s = paddle.add(y_s, y_s)
         k_s = paddle.tanh(z_s)
+        q_s = paddle.unsqueeze(k_s, [2])
+
     newir_program = pir.translate_to_new_ir(main_program.desc)
     return newir_program
 
@@ -51,10 +53,10 @@ class TestPybind(unittest.TestCase):
         block = newir_program.global_block()
         ops = block.ops
         self.assertEqual(
-            len(ops), 4
+            len(ops), 6
         )  # pir program add "builtin.get_parameter" by default, so size is 4
-        block.remove_op(ops[3])
-        self.assertEqual(len(block.ops), 3)
+        block.remove_op(ops[5])
+        self.assertEqual(len(block.ops), 5)
 
     def test_operation(self):
         newir_program = get_ir_program()
@@ -64,7 +66,7 @@ class TestPybind(unittest.TestCase):
         tanh_op = newir_program.global_block().ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
-        self.assertEqual(parent_ops_num, 4)
+        self.assertEqual(parent_ops_num, 6)
         self.assertEqual(tanh_op.num_results(), 1)
         self.assertEqual(len(matmul_op.get_input_names()), 2)
         self.assertEqual(len(matmul_op.get_attr_names()), 2)
@@ -189,6 +191,12 @@ class TestPybind(unittest.TestCase):
         matmul_op = newir_program.global_block().ops[1]
         results = matmul_op.results()
         self.assertEqual(len(results), 1)
+
+    def test_get_output_intermediate_value(self):
+        newir_program = get_ir_program()
+        unsqueeze_op = newir_program.global_block().ops[-1]
+        results = unsqueeze_op.get_output_intermediate_value()
+        self.assertEqual(results, [False, True])
 
 
 if __name__ == "__main__":
