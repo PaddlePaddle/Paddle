@@ -41,18 +41,6 @@ def get_new_ir_grad_var_to_var_map(param_mappings, old_ir_grad_var_to_var_map):
     return new_ir_grad_var_to_var_map
 
 
-def get_fwd_op(bwd_op, grad_var_to_var_map):
-    bwd_op_input_names = bwd_op.get_input_names()
-    for idx, input_name in enumerate(bwd_op_input_names):
-        if input_name == "out_grad":
-            out_grad = bwd_op.operand(idx).source()
-            out = grad_var_to_var_map[out_grad]
-            fwd_op = out.get_defining_op()
-            return fwd_op
-
-    return None
-
-
 def get_pir_program_and_param_map():
     shape = [2, 3]
     mp = paddle.static.Program()

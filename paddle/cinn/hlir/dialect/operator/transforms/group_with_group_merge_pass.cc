@@ -26,6 +26,8 @@
 #include "paddle/cinn/hlir/dialect/operator/transforms/op_with_group_merge_util.h"
 #include "paddle/phi/core/flags.h"
 
+#include "paddle/cinn/common/is_reachable_predicator.h"
+
 PD_DECLARE_bool(enhance_vertical_fusion_with_recompute);
 
 namespace cinn {
@@ -154,49 +156,45 @@ class GraphGroupFuseHelper final : public FuseHelper {
  private:
   bool IsReachableInDag(const OpGroupPtr& producer,
                         const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            Visit(node_producer);
+          }
+        };
+    ::cinn::common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   bool ReachableIfDirectEdgeIgnored(const OpGroupPtr& producer,
                                     const OpGroupPtr& consumer) const {
-    // const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->min_depth;
-    // };
-    // const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
-    //   return node.GetGroup()->max_depth;
-    // };
-    // const auto& VisitNextNodes =
-    //     [&](const OpGroupPtr& node,
-    //         const std::function<void(OpGroupPtr)>& Visit) {
-    //       for (const auto& node_producer : node.producers()) {
-    //         if (node == consumer && node_producer == producer) {
-    //           continue;
-    //         }
-    //         Visit(node_producer);
-    //       }
-    //     };
-    // common::IsReachablePredicator<OpGroupPtr> is_reachable(
-    //     MinDepth4Node, MaxDepth4Node, VisitNextNodes);
-    // return is_reachable(consumer, producer, [](OpGroupPtr) {});
-    // TODO(phlrain) : support IsReachable
-    return false;
+    const auto& MinDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->min_depth;
+    };
+    const auto& MaxDepth4Node = [&](const OpGroupPtr& node) {
+      return node.GetGroup()->max_depth;
+    };
+    const auto& VisitNextNodes =
+        [&](const OpGroupPtr& node,
+            const std::function<void(OpGroupPtr)>& Visit) {
+          for (const auto& node_producer : node.producers()) {
+            if (node == consumer && node_producer == producer) {
+              continue;
+            }
+            Visit(node_producer);
+          }
+        };
+    common::IsReachablePredicator<OpGroupPtr> is_reachable(
+        MinDepth4Node, MaxDepth4Node, VisitNextNodes);
+    return is_reachable(consumer, producer, [](OpGroupPtr) {});
   }
 
   const FusePassCtxT* ctx_;
@@ -390,7 +388,7 @@ bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseBroadcast(
 template <typename FusePassCtxT>
 bool GraphGroupFuseHelper<FusePassCtxT>::ReduceFuseReduce(
     const OpGroupPtr& src, const OpGroupPtr& dst) const {
-  return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+  return ReduceFuseReduce1(src, dst);
 }
 
 template <typename FusePassCtxT>
@@ -407,6 +405,7 @@ struct HorizontalFuseUtil {
       return false;
     }
     auto out = iter->second(src, dst);
+
     return out;
   }
 
@@ -485,7 +484,7 @@ struct HorizontalFuseUtil {
 
   static bool ReduceFuseReduce(const OpGroupPtr& src, const OpGroupPtr& dst) {
     // return ctx->fuse_helper().ReduceFuseReduce(src, dst);
-    return reduce_fuse_reduce(src.GetGroup(), dst.GetGroup());
+    return ReduceFuseReduce1(src, dst);
   }
 };
 
@@ -1084,8 +1083,10 @@ class GeneralFusionMergePassHelper {
     VLOG(3) << "DoFusionMerge...!";
     while (DoGeneralHorizontalFusion()) {
     }
+
     while (DoGeneralVerticalFusion()) {
     }
+
     while (DoGeneralRecomputeAndVerticalFusion()) {
     }
   }
@@ -1361,6 +1362,10 @@ class GeneralFusionMergePassHelper {
       } else {
         fused_group->group_id = consumer->group_id;
       }
+
+      for (auto* op : consumer->ops) {
+        fused_group->ops.push_back(op);
+      }
       // set op pattern kind
       fused_group->op_pattern_kind =
           static_cast<int>(fused_group->op_pattern_kind) >=
@@ -1578,6 +1583,11 @@ class GeneralFusionMergePassHelper {
               : consumer->op_pattern_kind;
       // input nodes
       fused_group->input_ops = producer->input_ops;
+
+      fused_group->ops = producer->ops;
+      for (size_t i = 0; i < consumer->ops.size(); ++i) {
+        fused_group->ops.push_back(consumer->ops[i]);
+      }
 
       // internal nodes
       if (producer->fused_sub_groups.size()) {
@@ -2071,6 +2081,7 @@ class GeneralFusionMergePassHelper {
       belong_group->max_depth = group->depth;
       belong_group->min_depth = group->depth;
       belong_group->group_id = group->group_id;
+      belong_group->ops = group->ops;
       belong_group->input_ops = group->input_ops;
       belong_group->output_ops = group->output_ops;
       belong_group->op_pattern_kind = group->op_pattern_kind;

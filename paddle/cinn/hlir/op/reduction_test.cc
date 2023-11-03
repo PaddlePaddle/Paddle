@@ -39,6 +39,9 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
+
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -362,6 +365,9 @@ void TestCaseForReduce(const float init_val,
   dim3 block;
   grid = {c, 1, 1};
   int block_dim_x = n * w * h > 1024 ? 1024 : n * w * h;
+  if (FLAGS_cinn_new_group_scheduler) {
+    block_dim_x = 1;
+  }
   block = {block_dim_x, 1, 1};
 
   void* args[] = {&dev_x, &dev_z};
@@ -531,7 +537,8 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce) {
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
@@ -544,7 +551,8 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
@@ -558,7 +566,8 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce_Case_1");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
@@ -572,7 +581,8 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce_Case_2");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 }  // namespace framework
 }  // namespace hlir

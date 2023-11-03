@@ -535,9 +535,7 @@ def equal(x, y, name=None):
     """
     if not isinstance(y, (int, bool, float, Variable, paddle.pir.OpResult)):
         raise TypeError(
-            "Type of input args must be float, bool, int or Tensor, but received type {}".format(
-                type(y)
-            )
+            f"Type of input args must be float, bool, int or Tensor, but received type {type(y)}"
         )
     if not isinstance(y, (Variable, paddle.pir.OpResult)):
         y = full(shape=[], dtype=x.dtype, fill_value=y)
