@@ -41,10 +41,11 @@ class TestI0API(unittest.TestCase):
 
     def setUp(self):
         self.x = np.array(self.DATA).astype(self.DTYPE)
+        self.out_ref = output_i0(self.x)
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
-
+        
     @test_with_pir_api
     def test_api_static(self):
         def run(place):
@@ -60,8 +61,7 @@ class TestI0API(unittest.TestCase):
                     feed={"x": self.x},
                     fetch_list=[out],
                 )
-                out_ref = output_i0(self.x)
-                np.testing.assert_allclose(res[0], out_ref, rtol=1e-5)
+                np.testing.assert_allclose(res[0], self.out_ref, rtol=1e-5)
             paddle.disable_static()
 
         for place in self.place:
