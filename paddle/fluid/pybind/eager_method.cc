@@ -1753,8 +1753,8 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
                                                            &use_strided_slice);
 
     std::vector<paddle::Tensor> transed_index;
-    std::vector<int> trans_back_dim(tensor.shape().size());
-    std::iota(trans_back_dim.begin(), trans_back_dim.end(), 0);
+    std::vector<int> trans_back_dim;
+
     int pos_of_new_dim = 0, rank_of_new_dim = 0;
 
     paddle::Tensor transed_sub_tensor =
@@ -1788,15 +1788,25 @@ static PyObject* tensor__setitem_dygraph(TensorObject* self,
       }
     }
 
-    // use inplace index_put_ operator
+    // TODO(zoooo0820) 1.Using inplace version index_put
+    //                  2.Remove following code after backward bug fixed.
     transed_sub_tensor =
-        index_put__ad_func(transed_sub_tensor, transed_index, value_tensor);
+        index_put_ad_func(transed_sub_tensor, transed_index, value_tensor);
 
-    // TODO(zoooo0820) Remove following code after backward bug fixed.
     paddle::Tensor transback_sub_tensor =
         transpose_ad_func(transed_sub_tensor, trans_back_dim);
     self->tensor = set_value__dygraph_function(
         self->tensor, transback_sub_tensor, {}, {}, {}, attrs);
+
+    if (PyCheckTensor(value_obj)) {
+      // pass the stop_gradient from value to tensor.
+      // pass stop gradient should be done after CheckInplace in
+      // set_value__dygraph_function.
+      if (!egr::EagerUtils::autograd_meta(&value_tensor)->StopGradient() &&
+          egr::EagerUtils::autograd_meta(&self->tensor)->StopGradient()) {
+        egr::EagerUtils::autograd_meta(&self->tensor)->SetStopGradient(false);
+      }
+    }
   }
 
   RETURN_PY_NONE

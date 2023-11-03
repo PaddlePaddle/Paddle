@@ -562,6 +562,8 @@ static paddle::Tensor dealWithAdvancedIndex(
   paddle::Tensor transed_tensor = transpose_ad_func(tensor, trans_dim);
 
   if (is_for_setitem) {
+    trans_back_dim->resize(trans_dim.size());
+    std::iota(trans_back_dim->begin(), trans_back_dim->end(), 0);
     std::sort(trans_back_dim->begin(),
               trans_back_dim->end(),
               [&trans_dim](int left, int right) {

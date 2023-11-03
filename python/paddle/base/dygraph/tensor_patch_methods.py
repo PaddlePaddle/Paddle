@@ -762,7 +762,7 @@ def monkey_patch_tensor():
             elif isinstance(slice_item, range):
                 item[i] = paddle.to_tensor(list(item))
 
-        if not isinstance(value, Variable):
+        if value is not None and not isinstance(value, Variable):
             value = paddle.to_tensor(value)
 
         return tuple(item), value
