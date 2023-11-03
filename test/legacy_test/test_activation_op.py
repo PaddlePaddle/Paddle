@@ -4752,9 +4752,9 @@ create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
 )
-create_test_act_fp16_class(TestTanhshrink)
-create_test_act_fp16_class(TestHardShrink)
-create_test_act_fp16_class(TestSoftshrink)
+create_test_act_fp16_class(TestTanhshrink, check_pir=True)
+create_test_act_fp16_class(TestHardShrink, check_pir=True)
+create_test_act_fp16_class(TestSoftshrink, check_pir=True)
 create_test_act_fp16_class(
     TestSqrt,
     check_prim=True,
@@ -4806,7 +4806,7 @@ create_test_act_fp16_class(
     cinn_rtol=1e-3,
     cinn_atol=1e-3,
 )
-create_test_act_fp16_class(TestBRelu)
+create_test_act_fp16_class(TestBRelu, check_pir=True)
 create_test_act_fp16_class(TestRelu6)
 create_test_act_fp16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_fp16_class(TestELU)
@@ -4823,12 +4823,12 @@ create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
 create_test_act_fp16_class(TestSTanh)
-create_test_act_fp16_class(TestSoftplus)
-create_test_act_fp16_class(TestSoftsign)
+create_test_act_fp16_class(TestSoftplus, check_pir=True)
+create_test_act_fp16_class(TestSoftsign, check_pir=True)
 create_test_act_fp16_class(TestThresholdedRelu)
-create_test_act_fp16_class(TestHardSigmoid)
+create_test_act_fp16_class(TestHardSigmoid, check_pir=True)
 create_test_act_fp16_class(TestSwish)
-create_test_act_fp16_class(TestHardSwish, check_prim=True)
+create_test_act_fp16_class(TestHardSwish, check_prim=True, check_pir=True)
 create_test_act_fp16_class(TestMish)
 create_test_act_fp16_class(
     TestLeakyRelu, check_prim=True, enable_cinn=True, check_pir=True
@@ -4921,8 +4921,8 @@ create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestTanhshrink)
-create_test_act_bf16_class(TestHardShrink)
-create_test_act_bf16_class(TestSoftshrink)
+create_test_act_bf16_class(TestHardShrink, check_pir=True)
+create_test_act_bf16_class(TestSoftshrink, check_pir=True)
 create_test_act_bf16_class(
     TestSqrt, check_prim=True, check_pir=True, check_prim_pir=True
 )
@@ -4956,7 +4956,7 @@ create_test_act_bf16_class(
     cinn_rtol=1e-2,
     cinn_atol=1e-2,
 )
-create_test_act_bf16_class(TestBRelu)
+create_test_act_bf16_class(TestBRelu, check_pir=True)
 create_test_act_bf16_class(TestRelu6)
 create_test_act_bf16_class(TestSoftRelu, check_dygraph=False)
 create_test_act_bf16_class(TestELU)
@@ -4973,10 +4973,10 @@ create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
 create_test_act_bf16_class(TestSTanh)
-create_test_act_bf16_class(TestSoftplus)
-create_test_act_bf16_class(TestSoftsign)
+create_test_act_bf16_class(TestSoftplus, check_pir=True)
+create_test_act_bf16_class(TestSoftsign, check_pir=True)
 create_test_act_bf16_class(TestThresholdedRelu)
-create_test_act_bf16_class(TestHardSigmoid)
+create_test_act_bf16_class(TestHardSigmoid, check_pir=True)
 create_test_act_bf16_class(TestSwish)
 create_test_act_bf16_class(TestHardSwish, check_prim=True)
 create_test_act_bf16_class(TestMish)
