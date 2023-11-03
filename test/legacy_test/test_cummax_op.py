@@ -165,20 +165,19 @@ class TestCummaxAPI(unittest.TestCase):
 
             place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
             exe = base.Executor(place)
-            exe.run(base.default_startup_program())
             out = exe.run(
                 feed={'x': data_np},
                 fetch_list=[
-                    y1.name,
-                    indices1.name,
-                    y2.name,
-                    indices2.name,
-                    y3.name,
-                    indices3.name,
-                    y4.name,
-                    indices4.name,
-                    y5.name,
-                    indices5.name,
+                    y1,
+                    indices1,
+                    y2,
+                    indices2,
+                    y3,
+                    indices3,
+                    y4,
+                    indices4,
+                    y5,
+                    indices5,
                 ],
             )
 
