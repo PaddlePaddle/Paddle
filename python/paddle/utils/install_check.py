@@ -287,13 +287,11 @@ def run_check():
         )
     except Exception as e:
         logging.warning(
-            "PaddlePaddle meets some problem with {} {}s. This may be caused by:"
+            f"PaddlePaddle meets some problem with {device_count} {device_str}s. This may be caused by:"
             "\n 1. There is not enough GPUs visible on your system"
             "\n 2. Some GPUs are occupied by other process now"
             "\n 3. NVIDIA-NCCL2 is not installed correctly on your system. Please follow instruction on https://github.com/NVIDIA/nccl-tests "
-            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html".format(
-                device_count, device_str
-            )
+            "\n to test your NCCL, or reinstall it following https://docs.nvidia.com/deeplearning/sdk/nccl-install-guide/index.html"
         )
 
         logging.warning(f"\n Original Error is: {e}")
