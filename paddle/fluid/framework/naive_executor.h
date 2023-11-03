@@ -29,6 +29,8 @@
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
+#include "paddle/pir/core/program.h"
+
 namespace paddle {
 namespace framework {
 
@@ -58,6 +60,12 @@ class NaiveExecutor {
   void PrepareInterpreterCore(
       Scope* scope,
       const ProgramDesc& program_desc,
+      const framework::interpreter::ExecutionConfig& execution_config =
+          framework::interpreter::ExecutionConfig{});
+
+  void PrepareInterpreterCore(
+      Scope* scope,
+      const ::pir::Program& pir_program,
       const framework::interpreter::ExecutionConfig& execution_config =
           framework::interpreter::ExecutionConfig{});
 

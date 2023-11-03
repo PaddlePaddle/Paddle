@@ -157,24 +157,26 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
     ClearLoDTensorArrayInLocalScope();
   }
 
-  // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var && need_fetch) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope =
+        HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
 #ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
-    }
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
 #endif
-    return fetch_list;
-  } else {
-    return {};
+      return fetch_list;
+    }
   }
+  return {};
 }
 
 void ProgramInterpreter::Build(
@@ -206,7 +208,8 @@ void ProgramInterpreter::Build(
 
 FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -225,24 +228,27 @@ FetchList ProgramInterpreter::Run(
     ClearLoDTensorArrayInLocalScope();
   }
 
-  // return Fetch Tensors
-  Scope* inner_scope =
-      HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
-  auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
-    auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope =
+        HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
+    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
+    if (fetch_var) {
+      auto fetch_list =
+          std::move(*fetch_var->GetMutable<framework::FetchList>());
 #ifdef PADDLE_WITH_CUDA
-    if (platform::IsCUDAGraphCapturing()) {
-      PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                        true,
-                        platform::errors::InvalidArgument(
-                            "Cannot fetch data when using CUDA Graph."));
-    }
+      if (platform::IsCUDAGraphCapturing()) {
+        PADDLE_ENFORCE_EQ(fetch_list.empty(),
+                          true,
+                          platform::errors::InvalidArgument(
+                              "Cannot fetch data when using CUDA Graph."));
+      }
 #endif
-    return fetch_list;
-  } else {
-    return {};
+      return fetch_list;
+    }
   }
+
+  return {};
 }
 
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
@@ -403,9 +409,10 @@ void ProgramInterpreter::BuildAndCacheInstructionCtx(Instruction* instr_node) {
                                                                  // in kernel
     Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
                                          : var_scope_.GetMutableScope();
-    instr_node->ResetContextWithScope(ins_map, outs_map, *local_scope);
+    instr_node->ResetContextWithScope(
+        ins_map, outs_map, *local_scope, instr_node->OpBase()->Type());
   } else {
-    instr_node->ResetContext(ins_map, outs_map);
+    instr_node->ResetContext(ins_map, outs_map, instr_node->OpBase()->Type());
   }
 }
 
@@ -885,8 +892,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
       // see OperatorWithKernel::RunImpl in operator.cc for why
       if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
             op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
-        op_with_kernel->Info().infer_shape_(
-            instr_node.InnerInferShapeContext().get());
+        if (instr_node.can_use_infermeta_ctx_) {
+          op_with_kernel->Info().infer_meta_(const_cast<phi::InferMetaContext*>(
+              instr_node.InnerCompatInferMetaContext()));
+        } else {
+          op_with_kernel->Info().infer_shape_(
+              instr_node.InnerInferShapeContext().get());
+        }
       }
       if (FLAGS_enable_host_event_recorder_hook) {
         platform::RecordOpInfoSupplement(op->Type(),
