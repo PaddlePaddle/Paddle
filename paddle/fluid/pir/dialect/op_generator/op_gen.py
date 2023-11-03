@@ -1435,9 +1435,15 @@ def OpGenerator(
                         'data_type' in op_kernel_map
                         and op_kernel_map['data_type']
                     ):
-                        kernel_key_dtype = '", "'.join(
-                            op_kernel_map['data_type']['candidates']
-                        )
+                        if op_kernel_map['data_type']['to_complex_flag']:
+                            kernel_key_dtype = '", "'.join(
+                                "complex:"
+                                + op_kernel_map['data_type']['candidates']
+                            )
+                        else:
+                            kernel_key_dtype = '", "'.join(
+                                op_kernel_map['data_type']['candidates']
+                            )
                         if kernel_key_dtype != "":
                             kernel_key_dtype = '"' + kernel_key_dtype + '"'
                     if 'backend' in op_kernel_map and op_kernel_map['backend']:
