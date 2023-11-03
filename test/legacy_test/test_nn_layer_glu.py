@@ -50,6 +50,8 @@ class TestGLUV2(unittest.TestCase):
         self.check_identity(base.CPUPlace())
         if base.is_compiled_with_cuda():
             self.check_identity(base.CUDAPlace(0))
+        act = nn.GLU(axis=0, name="test")
+        self.assertTrue(act.extra_repr() == 'axis=0, name=test')
 
 
 class TestGlu(unittest.TestCase):
