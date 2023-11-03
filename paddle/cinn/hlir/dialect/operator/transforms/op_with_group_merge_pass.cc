@@ -90,7 +90,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 int GetSharedSize(::pir::Operation* op) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
 
-  auto axes = GetVectorAttr(op, "axis");
+  auto axes = GetVectorAttr(op, "dim");
 
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
@@ -504,12 +504,6 @@ GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
   auto op_fusion_helper = OpFusionPassHelper(op_list);
   auto res = op_fusion_helper();
 
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
-
-    for (size_t j = 0; j < group->ops.size(); ++j) {
-    }
-  }
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;

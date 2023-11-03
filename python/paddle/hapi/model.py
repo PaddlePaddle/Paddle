@@ -2472,9 +2472,7 @@ class Model:
                 assert isinstance(spec, Input)
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
 
         return out_specs

@@ -126,7 +126,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 
   std::stringstream ss;
   ss << this
-     << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
@@ -1023,7 +1023,8 @@ void PirInterpreter::ConstructEventForJitInput() {
 
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1101,11 +1102,12 @@ paddle::framework::FetchList PirInterpreter::Run(
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
   framework::FetchList fetch_res;
-
-  for (auto& var_name : fetch_var_names_) {
-    auto* var = inner_scope->FindVar(var_name);
-    VLOG(4) << "fetch " << var_name << "[" << var << "]";
-    fetch_res.push_back(var->Get<phi::DenseTensor>());
+  if (need_fetch) {
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
+    }
   }
 
   VLOG(4) << "get fetch list size: " << fetch_res.size();
@@ -1417,7 +1419,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                            ? "kGpuSync"
                            : "kGpuAsync"))
             << " runs on " << platform::GetCurrentThreadName();
-    VLOG(4) << cur_place << " "
+
+    VLOG(4) << cur_place << " Before:"
             << instr_node->DebugStringEx(scope_, value_exe_info_.get());
     if (!instr_node->IsArtificial()) {
       instr_node->Run();
@@ -1439,7 +1442,8 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
                              ? "kGpuSync"
                              : "kGpuAsync"))
               << " runs on " << platform::GetCurrentThreadName();
-      VLOG(4) << cur_place << " "
+
+      VLOG(4) << cur_place << " After:"
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";

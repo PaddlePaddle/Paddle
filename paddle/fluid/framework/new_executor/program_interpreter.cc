@@ -205,7 +205,8 @@ void ProgramInterpreter::Build(
 
 FetchList ProgramInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   SetDeviceId(place_);
   CheckCUDAGraphBeforeRun(feed_names);
 
@@ -228,7 +229,7 @@ FetchList ProgramInterpreter::Run(
   Scope* inner_scope =
       HasLocalScope() ? local_scope_ : var_scope_.GetMutableScope();
   auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-  if (fetch_var) {
+  if (fetch_var && need_fetch) {
     auto fetch_list = std::move(*fetch_var->GetMutable<framework::FetchList>());
 #ifdef PADDLE_WITH_CUDA
     if (platform::IsCUDAGraphCapturing()) {
