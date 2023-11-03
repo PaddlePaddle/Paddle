@@ -121,7 +121,7 @@ class TestDigammaAPI(unittest.TestCase):
                     out = paddle.digamma(x)
 
                     exe = static.Executor(place)
-                    out_value = exe.run(feed=input_dict, fetch_list=[out]) 
+                    out_value = exe.run(feed=input_dict, fetch_list=[out])
                     np.testing.assert_allclose(out_value[0], sc_res, rtol=1e-05)
 
     def test_in_dynamic_mode(self):
