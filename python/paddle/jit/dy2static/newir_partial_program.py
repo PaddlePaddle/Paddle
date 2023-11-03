@@ -376,20 +376,17 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
-        if use_scope_cache:
-            if program_id not in self._scope_cache:
-                scope = core.Scope()
-                self._scope_cache[program_id] = [scope]
-                return scope
-            else:
-                for scope in self._scope_cache[program_id]:
-                    if scope._can_reused:
-                        return scope
-                scope = core.Scope()
-                self._scope_cache[program_id].append(scope)
-                return scope
-        else:
+        if not use_scope_cache:
             return core.Scope()
+        if program_id not in self._scope_cache:
+            self._scope_cache[program_id] = []
+        cached_scopes = self._scope_cache[program_id]
+        for scope in cached_scopes:
+            if scope._can_reused:
+                return scope
+        scope = core.Scope()
+        cached_scopes.append(scope)
+        return scope
 
     # whole
     @switch_to_static_graph
@@ -400,6 +397,7 @@ class PartialProgramLayer:
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
+            # TODO(Aurelius84): Support this later
             # if self._hooker:
             #     infer_program = self._hooker.after_infer(infer_program)
             return infer_program
