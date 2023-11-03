@@ -1296,10 +1296,10 @@ void BindUtils(pybind11::module *m) {
         translator::ProgramTranslator program_translator(&legacy_program,
                                                          program.get());
         program_translator.Translate();
-        return std::make_pair(program, program_translator.VarDesc2Value());
+        return std::make_pair(program, program_translator.VarDesc2OpResult());
       },
       R"DOC(
-        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::OpResult.
 
         Args:
 
@@ -1307,7 +1307,7 @@ void BindUtils(pybind11::module *m) {
 
         Returns:
             Program: The New IR Program
-            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+            dict[str, pir::OpResult]: Mapping between VarDesc(by name) and pir::OpResult.
 
         Raises:
             PreconditionNotMet: If legacy_program has multi block will raise error.
