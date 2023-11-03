@@ -88,7 +88,8 @@ void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
 void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
-  "trt_support_nhwc_pass",
+      "trt_remove_amp_strategy_op_pass",                          //
+      "trt_support_nhwc_pass",                                    //
       "adaptive_pool2d_convert_global_pass",                      //
       "trt_map_ops_to_matrix_multiply_pass",                      //
       "shuffle_channel_detect_pass",                              //
@@ -211,6 +212,9 @@ const std::vector<std::string> kGpuLowerPrecisionPasses{
     "inplace_op_var_pass"};
 
 const std::vector<std::string> kTrtLowerPrecisionPasses{
+    "trt_remove_amp_strategy_op_pass",
+    "trt_support_nhwc_pass",
+    "trt_map_ops_to_matrix_multiply_pass",
     "simplify_with_basic_ops_pass",
     // "conv_bn_fuse_pass",
     // "conv_eltwiseadd_bn_fuse_pass",

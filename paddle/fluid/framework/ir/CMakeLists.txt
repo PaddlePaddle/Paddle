@@ -165,6 +165,7 @@ if(WITH_TENSORRT)
   pass_library(trt_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(preln_embedding_eltwise_layernorm_fuse_pass inference)
   pass_library(split_layernorm_to_math_ops_pass inference)
+  pass_library(trt_remove_amp_strategy_op_pass inference)
 endif()
 
 if(WITH_GPU OR WITH_ROCM)
