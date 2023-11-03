@@ -137,7 +137,6 @@ def send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
     elif in_pir_mode():
-        out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
@@ -333,7 +332,6 @@ def send_ue_recv(
             out_size,
         )
     elif in_pir_mode():
-        out_size = convert_out_size_to_list(out_size)
         return _C_ops.send_ue_recv(
             x,
             y,
