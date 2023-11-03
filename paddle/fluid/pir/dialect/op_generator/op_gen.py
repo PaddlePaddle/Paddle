@@ -1436,9 +1436,8 @@ def OpGenerator(
                         and op_kernel_map['data_type']
                     ):
                         if op_kernel_map['data_type']['to_complex_flag']:
-                            kernel_key_dtype = '", "'.join(
-                                "complex:"
-                                + op_kernel_map['data_type']['candidates']
+                            kernel_key_dtype = 'complex:' + '", complex:"'.join(
+                                op_kernel_map['data_type']['candidates']
                             )
                         else:
                             kernel_key_dtype = '", "'.join(
