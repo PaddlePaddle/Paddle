@@ -445,7 +445,8 @@ class Parallelizer:
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
 
-        main_program._pipeline_opt["pass_list"] = ir_pass_list
+        main_program._pass_opt = {}
+        main_program._pass_opt['pass_list'] = ir_pass_list
 
         if (
             self.is_train
@@ -464,7 +465,6 @@ class Parallelizer:
                     "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
                     "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
                 )
-
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
                 "enable_send_recv_overlap": enable_send_recv_overlap,
