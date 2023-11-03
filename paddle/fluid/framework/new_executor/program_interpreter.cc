@@ -40,6 +40,9 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
+PD_DECLARE_bool(enable_host_event_recorder_hook);
+PD_DECLARE_bool(log_memory_stats);
+
 namespace paddle {
 namespace framework {
 
@@ -881,6 +884,13 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
         op_with_kernel->Info().infer_shape_(
             instr_node.InnerInferShapeContext().get());
       }
+      if (FLAGS_enable_host_event_recorder_hook) {
+        platform::RecordOpInfoSupplement(op->Type(),
+                                         op->Attrs(),
+                                         *(instr_node.InnerInferShapeContext()),
+                                         *(instr_node.InnerRuntimeContext()),
+                                         op->Id());
+      }
     }
   }
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
@@ -1018,7 +1028,9 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
       CheckGC(instr_node);
-      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+      if (FLAGS_log_memory_stats) {
+        memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+      }
     }
 
     instr_node.RecordEvent(place_);
