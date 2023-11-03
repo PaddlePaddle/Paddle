@@ -35,7 +35,6 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
     dim.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
 
-  std::cerr << "append dim" << std::endl;
   attrs["dim"] = dim;
 }
 
@@ -49,7 +48,6 @@ void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
     axis.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
 
-  std::cerr << "append axis" << std::endl;
   attrs["broadcast_axes"] = axis;
 
   auto out_shape_attr = op.attributes().at("out_shape");
@@ -61,7 +59,6 @@ void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
     out_shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
   }
 
-  std::cerr << "append dim" << std::endl;
   attrs["out_shape"] = out_shape;
 }
 

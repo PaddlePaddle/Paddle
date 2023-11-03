@@ -62,7 +62,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   const std::vector<int64_t> shape = {128, 128, 768};
   auto x = builder
                .Build<paddle::dialect::FullOp>(
-                   shape, value_one, phi::DataType::FLOAT16, phi::GPUPlace())
+                   shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
 
   auto max =
@@ -73,7 +73,7 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   auto sum =
       builder
           .Build<paddle::dialect::SumOp>(
-              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT16, true)
+              exp, std::vector<int64_t>{-1}, phi::DataType::FLOAT32, true)
           .result(0);
   auto out = builder.Build<paddle::dialect::DivideOp>(exp, sum).result(0);
 
@@ -88,44 +88,31 @@ TEST(GroupOp, TestBuild) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  program->Print(std::cout);
-
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
-  std::cerr << "fin build cinn pass process " << std::endl;
-
-  program->Print(std::cout);
-
-  std::cerr << "finish here" << std::endl;
 
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
-
-  res->Print(std::cout);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
 
-  kernel_program->Print(std::cout);
-
   paddle::framework::Scope exe_scope;
 
   paddle::framework::InterpreterCore executor(
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-  for (size_t i = 0; i < 100; ++i) {
-    executor.Run({}, true);
-  }
+  executor.Run({}, true);
 
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  std::cerr << out_tensor.dims() << std::endl;
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 768);
+  EXPECT_EQ(res0, true);
 }
