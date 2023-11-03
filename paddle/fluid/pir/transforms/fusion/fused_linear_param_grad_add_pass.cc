@@ -68,7 +68,7 @@ class FusedMatmulAddGradAddPattern
                {{"transpose_x", false_attr}, {"transpose_y", true_attr}});
     const auto &fused_linear_param_grad_add =
         res.Op(paddle::dialect::FusedLinearParamGradAddOp::name(),
-               {{{"multi_precision", true_attr}, {"has_bias", true_attr}}});
+               {{{"multi_precision", multi_precision_attr}, {"has_bias", true_attr}}});
 
     matmul({&res.Tensor("addout_grad"), &res.Tensor("weight")},
            {&res.Tensor("x_grad")});
