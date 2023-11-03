@@ -15,10 +15,7 @@
 import random
 import unittest
 
-from dygraph_to_static_util import (
-    enable_fallback_guard,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle.jit.api import to_static
@@ -80,7 +77,7 @@ def train_dygraph():
     return train(net, adam, x)
 
 
-@test_and_compare_with_new_ir(True)
+@compare_legacy_with_pir
 def train_static():
     paddle.seed(100)
     net = IRSelectedRowsTestNet()
@@ -90,10 +87,10 @@ def train_static():
         parameters=net.parameters(), learning_rate=0.01, grad_clip=clip
     )
 
-    return to_static(train)(net, adam, x)
+    return to_static(train, full_graph=True)(net, adam, x)
 
 
-class TestSimnet(unittest.TestCase):
+class TestSimnet(Dy2StTestBase):
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train_dygraph()
         static_loss = train_static()
@@ -104,5 +101,4 @@ class TestSimnet(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    with enable_fallback_guard("False"):
-        unittest.main()
+    unittest.main()

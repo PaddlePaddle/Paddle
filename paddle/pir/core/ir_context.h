@@ -113,7 +113,8 @@ class IR_API IrContext {
                       const std::vector<TypeId> &trait_set,
                       size_t attributes_num,
                       const char **attributes_name,
-                      void (*verify)(Operation *));
+                      void (*verify_sig)(Operation *),
+                      void (*verify_region)(Operation *));
 
   ///
   /// \brief Get registered operaiton infomation.

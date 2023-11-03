@@ -69,6 +69,7 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
 
   GraphPatternDetector gpd;
   std::vector<PDNode *> input_nodes;
+  input_nodes.reserve(times);
   for (int i = 0; i < times; i++) {
     input_nodes.push_back(gpd.mutable_pattern()
                               ->NewNode("x" + std::to_string(i))
@@ -166,6 +167,7 @@ void TransposeFlattenConcatFusePass::RunTransposeFlattenConcatFuse(
     int concat_axis = PADDLE_GET_CONST(int, concat_op->Op()->GetAttr("axis"));
     std::string output_name = concat_out->Name();
 
+    input_names.reserve(times);
     for (int i = 0; i < times; i++) {
       input_names.push_back(nodes[i * kNumFields]->Name());
     }

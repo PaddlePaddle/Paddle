@@ -19,6 +19,7 @@
 #include "paddle/fluid/distributed/auto_parallel/dist_attr.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/framework/new_executor/instruction/instruction_base.h"
 #include "paddle/fluid/framework/new_executor/interpreter/data_transfer.h"
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
@@ -45,10 +46,6 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_log_memory_stats,
-    false,
-    "Log memory stats after each op runs, just used for debug.");
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
@@ -228,7 +225,9 @@ bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
 
   return type == proto::VarType::LOD_TENSOR ||
          type == proto::VarType::SELECTED_ROWS ||
-         type == proto::VarType::LOD_TENSOR_ARRAY;
+         type == proto::VarType::LOD_TENSOR_ARRAY ||
+         type == proto::VarType::SPARSE_COO ||
+         type == proto::VarType::SPARSE_CSR;
 }
 
 std::unordered_map<const paddle::framework::OperatorBase*,
@@ -599,6 +598,11 @@ void BuildOpFuncList(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
+    if (execution_config.used_for_inference) {
+      if (op_type == "feed" || op_type == "fetch") {
+        continue;
+      }
+    }
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
@@ -934,7 +938,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
     } catch (platform::EnforceNotMet& ex) {
       framework::InsertCallStackInfo(op_type, op->Attrs(), &ex);
-      throw std::move(ex);
+      throw ex;
     } catch (platform::EOFException&) {
       std::rethrow_exception(std::current_exception());
     } catch (std::exception& ex) {
@@ -983,7 +987,7 @@ void BuildOpFuncList(const platform::Place& place,
       // gc---------------------------------------------
       auto iter = unused_var_map.find(op);
       if (iter == unused_var_map.end()) {
-        interpreter::LogDeviceMemoryStats(place);
+        memory::LogDeviceMemoryStats(place, op_type);
         continue;
       }
 
@@ -1002,11 +1006,38 @@ void BuildOpFuncList(const platform::Place& place,
         if (var->IsType<phi::DenseTensor>()) {
           garbages->emplace_back(
               var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+        } else if (var->IsType<phi::SelectedRows>()) {
+          garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                     ->mutable_value()
+                                     ->MoveMemoryHolder());
+          var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+        } else if (var->IsType<LoDTensorArray>()) {
+          auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+          for (auto& t : *tensor_arr) {
+            garbages->emplace_back(t.MoveMemoryHolder());
+          }
+        } else if (var->IsType<phi::SparseCooTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_indices()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
+        } else if (var->IsType<phi::SparseCsrTensor>()) {
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_cols()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_crows()
+                                     ->MoveMemoryHolder());
+          garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                     ->mutable_values()
+                                     ->MoveMemoryHolder());
         }
       }
       delete garbages;  // free mem
 
-      interpreter::LogDeviceMemoryStats(place);
+      memory::LogDeviceMemoryStats(place, op_type);
     }
   }
 
@@ -1022,6 +1053,33 @@ void BuildOpFuncList(const platform::Place& place,
     if (var->IsType<phi::DenseTensor>()) {
       garbages->emplace_back(
           var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder());
+    } else if (var->IsType<phi::SelectedRows>()) {
+      garbages->emplace_back(var->GetMutable<phi::SelectedRows>()
+                                 ->mutable_value()
+                                 ->MoveMemoryHolder());
+      var->GetMutable<phi::SelectedRows>()->mutable_rows()->clear();
+    } else if (var->IsType<LoDTensorArray>()) {
+      auto* tensor_arr = var->GetMutable<LoDTensorArray>();
+      for (auto& t : *tensor_arr) {
+        garbages->emplace_back(t.MoveMemoryHolder());
+      }
+    } else if (var->IsType<phi::SparseCooTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_indices()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCooTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
+    } else if (var->IsType<phi::SparseCsrTensor>()) {
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_cols()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_crows()
+                                 ->MoveMemoryHolder());
+      garbages->emplace_back(var->GetMutable<phi::SparseCsrTensor>()
+                                 ->mutable_values()
+                                 ->MoveMemoryHolder());
     }
   }
   delete garbages;
@@ -1074,21 +1132,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-  }
-}
-
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx) {
   if (operator_base->HasAttr("ring_id")) {
@@ -1138,7 +1181,7 @@ std::unordered_set<std::string> GetSpecialOpNames() {
       "builtin.set_parameter",
       "builtin.get_parameter",
       "pd_op.data",
-      "pd_op.shadow_output",
+      "builtin.shadow_output",
   };
 }
 

@@ -365,6 +365,7 @@ def check_op_config(op_entry, op_name):
         'data_transform',
         'composite',
         'support_dygraph_mode',
+        'support_tensor',
     )
     infer_meta_key_set = ('func', 'param', 'spmd_rule')
     kernel_key_set = (
@@ -508,6 +509,11 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
     else:
         data_trans = None
 
+    if "support_tensor" in op_entry.keys():
+        support_tensor = op_entry["support_tensor"]
+    else:
+        support_tensor = []
+
     op = {
         "name": op_name,
         "inputs": inputs,
@@ -515,6 +521,7 @@ def parse_op_entry(op_entry: Dict[str, Any], name_field="op"):
         "outputs": outputs,
         "no_need_buffer": no_buffer_args,
         "data_transform": data_trans,
+        "support_tensor": support_tensor,
     }
 
     # op should be is_base_op or is_invoke_op or is_only_composite_op

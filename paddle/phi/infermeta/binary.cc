@@ -1170,7 +1170,7 @@ void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {
 void ElementwiseInferMeta(const MetaTensor& x,
                           const MetaTensor& y,
                           MetaTensor* out) {
-  return ElementwiseRawInferMeta(x, y, -1, std::move(out));
+  return ElementwiseRawInferMeta(x, y, -1, out);
 }
 
 void ElementwiseRawInferMeta(const MetaTensor& x,
@@ -1545,6 +1545,8 @@ void GatherInferMeta(const MetaTensor& x,
     if (input_dim.size() == 1) {
       // the index is a 0D tensor and the x is a 1D tensor
       out->set_dims(phi::DDim(phi::Dim<0>()));
+      out->set_dtype(x.dtype());
+      out->share_lod(x);
     } else {
       if (axis.FromTensor() || axis_v == 0) {
         // decrease the output dimension

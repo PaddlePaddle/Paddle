@@ -46,24 +46,27 @@ std::vector<int64_t> GetUnionProcessIds(std::vector<int64_t> in_process_ids,
 
 bool SameStatusReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= (in_dist_attr.dims_mapping() == out_dist_attr.dims_mapping());
-  flag &= (in_dist_attr.partial_dims() == out_dist_attr.partial_dims());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.dims_mapping() ==
+                            out_dist_attr.dims_mapping());
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.partial_dims() ==
+                            out_dist_attr.partial_dims());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
-  flag &= (in_process_mesh != out_process_mesh);
-  flag &= (in_process_mesh.shape() == out_process_mesh.shape());
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
 
-  return flag;
+  return true;
 }
 
 void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
+  VLOG(3) << "Call SameStatusReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& in_process_ids = in_process_mesh.process_ids();
@@ -79,6 +82,19 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   // kernel execution.
   bool dynamic_shape = true;
 
+  // TODO(GhostScreaming): After cross-mesh reshard, current device may
+  // needs to execute next layer. When it construct next layer's backward
+  // graph, out->place() will be called such as in SetGradOutMeta method. As
+  // a result, out can't be undefined. Try to allocate a zero-memory value
+  // for out. Following send/recv will cover this empty DenseTensor
+  // construction.
+  VLOG(3) << "Same_status_reshard_function create an empty DenseTensor for "
+             "cross-mesh DistTensor.";
+  *(out->unsafe_mutable_value()) =
+      phi::DenseTensor(std::make_shared<phi::Allocation>(
+                           nullptr, 0, phi::distributed::GetDefaultPlace()),
+                       in.value().meta());
+
   std::vector<std::pair<int64_t, int64_t>> p2p_pair;
   for (size_t i = 0; i < out_process_ids.size(); ++i) {
     p2p_pair.emplace_back(
@@ -89,8 +105,8 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   for (const auto& iter : p2p_pair) {
     int64_t src = iter.first;
     int64_t dst = iter.second;
-    VLOG(3) << "Send/Recv from src " << src << " to dst " << dst;
     if (src == cur_global_rank) {
+      VLOG(3) << "Send from src " << src << " to dst " << dst;
       int64_t dst_local_rank = GetLocalRankInParticipate(all_process_ids, dst);
       // Sice send kernel only has input, so we don't need to infermeta
       // actually. According to this reason, just use the kernel directly.
@@ -102,6 +118,7 @@ void SameStatusReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                 dst_local_rank,
                                 dynamic_shape);
     } else if (dst == cur_global_rank) {
+      VLOG(3) << "Recv from src " << src << " to dst " << dst;
       int64_t src_local_rank = GetLocalRankInParticipate(all_process_ids, src);
       RESHARD_FUNCTOR_WITH_COMM(dev_ctx,
                                 PRecv,

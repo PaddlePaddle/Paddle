@@ -25,6 +25,7 @@
 #include "paddle/pir/core/builtin_op.h"
 
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
@@ -35,6 +36,8 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
+#include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/block.h"
@@ -46,6 +49,7 @@
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/transforms/dead_code_elimination_pass.h"
+#include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 namespace py = pybind11;
@@ -63,13 +67,20 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination);
-USE_PASS(inplace);
+USE_PASS(dead_code_elimination_pass);
+USE_PASS(attention_fuse_pass);
+USE_PASS(fused_gemm_epilogue_pass);
+USE_PASS(fused_dropout_add_pass);
+USE_PASS(fused_linear_param_grad_add_pass);
+USE_PASS(inplace_pass);
+
+PHI_DECLARE_bool(print_ir);
 
 namespace paddle {
 namespace pybind {
 
 PyTypeObject *g_ir_opresult_pytype = nullptr;
+PyTypeObject *g_ir_value_pytype = nullptr;
 
 void BindOpsAPI(pybind11::module *module);
 
@@ -133,20 +144,41 @@ void BindProgram(py::module *m) {
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            main_program = static.Program()
-            startup_program = static.Program()
-            with static.program_guard(main_program=main_program, startup_program=startup_program):
-                x = static.data(name="x", shape=[-1, 784], dtype='float32')
-                y = static.data(name="y", shape=[-1, 1], dtype='int32')
-                z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
+            >>> main_program = static.Program()
+            >>> startup_program = static.Program()
+            >>> with static.program_guard(main_program=main_program, startup_program=startup_program):
+            ...    x = static.data(name="x", shape=[-1, 784], dtype='float32')
+            ...    y = static.data(name="y", shape=[-1, 1], dtype='int32')
+            ...    z = static.nn.fc(name="fc", x=x, size=10, activation="relu")
 
-            print("main program is: {}".format(main_program))
-            print("start up program is: {}".format(startup_program))
+            >>> print("main program is: {}".format(main_program))
+            main program is: { // block 0
+                var x : LOD_TENSOR.shape(-1, 784).dtype(float32).stop_gradient(True)
+                var y : LOD_TENSOR.shape(-1, 1).dtype(int32).stop_gradient(True)
+                persist trainable param fc.w_0 : LOD_TENSOR.shape(784, 10).dtype(float32).stop_gradient(False)
+                var fc.tmp_0 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
+                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
+                var fc.tmp_1 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
+                var fc.tmp_2 : LOD_TENSOR.shape(-1, 10).dtype(float32).stop_gradient(False)
+
+                {Out=['fc.tmp_0']} = mul(inputs={X=['x'], Y=['fc.w_0']}, force_fp32_output = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], scale_out = 1.0, scale_x = 1.0, scale_y = [1.0], use_mkldnn = False, with_quant_attr = False, x_num_col_dims = 1, y_num_col_dims = 1)
+                {Out=['fc.tmp_1']} = elementwise_add(inputs={X=['fc.tmp_0'], Y=['fc.b_0']}, Scale_out = 1.0, Scale_x = 1.0, Scale_y = 1.0, axis = 1, mkldnn_data_type = float32, op_device = , op_namescope = /, op_role = 0, op_role_var = [], use_mkldnn = False, use_quantizer = False, with_quant_attr = False, x_data_format = , y_data_format = )
+                {Out=['fc.tmp_2']} = relu(inputs={X=['fc.tmp_1']}, op_device = , op_namescope = /, op_role = 0, op_role_var = [], use_cudnn = False, use_mkldnn = False, with_quant_attr = False)
+            }
+
+            >>> print("start up program is: {}".format(startup_program))
+            start up program is: { // block 0
+                persist trainable param fc.w_0 : LOD_TENSOR.shape(784, 10).dtype(float32).stop_gradient(False)
+                persist trainable param fc.b_0 : LOD_TENSOR.shape(10,).dtype(float32).stop_gradient(False)
+
+                {Out=['fc.w_0']} = uniform_random(inputs={ShapeTensor=[], ShapeTensorList=[]}, diag_num = 0, diag_step = 0, diag_val = 1.0, dtype = 5, max = 0.08692913502454758, min = -0.08692913502454758, op_device = , op_namescope = /, op_role = 0, op_role_var = [], seed = 0, shape = [784, 10], with_quant_attr = False)
+                {Out=['fc.b_0']} = fill_constant(inputs={}, dtype = 5, force_cpu = False, op_device = , op_namescope = /, op_role = 0, op_role_var = [], place_type = -1, shape = [10], str_value = 0.0, use_mkldnn = False, value = 0.0, with_quant_attr = False)
+            }
   )DOC");
   program
       .def("__init__",
@@ -230,6 +262,24 @@ void BindBlock(py::module *m) {
             None
 
       )DOC")
+      .def(
+          "move_op",
+          [](Block &self, Operation *op, uint32_t offset) {
+            Block::Iterator position = self.begin();
+            std::advance(position, offset);
+            op->MoveTo(&self, position);
+          },
+          R"DOC(
+          Move an op to a specific position (block.begin() + offset).
+
+          Args:
+              op (pir.Operation): the operator to be moved.
+              offset (uint32_t) : offset relative to the begin of the block
+
+          Returns:
+              None
+
+        )DOC")
       .def("all_parameters", [](Block &self) -> py::list {
         py::list param_list;
         for (auto iter = self.begin(); iter != self.end(); iter++) {
@@ -323,6 +373,17 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
+      .def("get_output_intermediate_value",
+           [](Operation &self) -> py::list {
+             py::list op_list;
+             paddle::dialect::OpYamlInfoInterface yaml_interface =
+                 self.dyn_cast<paddle::dialect::OpYamlInfoInterface>();
+             auto outputs_info = std::get<2>(yaml_interface.GetOpInfo());
+             for (auto &output_info : outputs_info) {
+               op_list.append(output_info.intermediate);
+             }
+             return op_list;
+           })
       .def("get_input_grad_semantics",
            [](Operation &self) -> py::list {
              py::list op_list;
@@ -340,6 +401,38 @@ void BindOperation(py::module *m) {
            });
 }
 
+py::str Value2String(const Value &self) {
+  std::ostringstream print_stream;
+  print_stream << "Value(";
+  print_stream << GetValueInfo(self);
+  print_stream << ")";
+  return print_stream.str();
+}
+
+phi::DataType GetValueDtype(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<DenseTensorType>().dtype());
+  } else if (value.type().isa<SelectedRowsType>()) {
+    return paddle::dialect::TransToPhiDataType(
+        value.type().dyn_cast<SelectedRowsType>().dtype());
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get phi::DataType from DenseTensorType and "
+        "SelectedRowsType."));
+  }
+}
+
+phi::DDim GetValueDims(const Value &value) {
+  if (value.type().isa<DenseTensorType>()) {
+    return value.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
+  }
+}
+
 void BindValue(py::module *m) {
   py::class_<Value> value(*m, "Value", R"DOC(
     Value class represents the SSA value in the IR system. It is a directed edge
@@ -350,6 +443,7 @@ void BindValue(py::module *m) {
         when build network.
 
   )DOC");
+  g_ir_value_pytype = reinterpret_cast<PyTypeObject *>(value.ptr());
   value
       .def(
           "get_defining_op",
@@ -363,6 +457,10 @@ void BindValue(py::module *m) {
       .def("first_use", &Value::first_use, return_value_policy::reference)
       .def("has_one_use", &Value::HasOneUse)
       .def("use_empty", &Value::use_empty)
+      .def("replace_all_uses_with",
+           [](Value &self, Value &op_value) {
+             self.ReplaceAllUsesWith(op_value);
+           })
       .def("__eq__", &Value::operator==)
       .def("__eq__",
            [](Value &self, OpResult &other) {
@@ -370,13 +468,22 @@ void BindValue(py::module *m) {
            })
       .def("__hash__",
            [](const Value &self) { return std::hash<pir::Value>{}(self); })
-      .def("__str__", [](const Value &self) -> py::str {
-        std::ostringstream print_stream;
-        print_stream << "Value(";
-        print_stream << GetValueInfo(self);
-        print_stream << ")";
-        return print_stream.str();
-      });
+      .def("__str__", &Value2String)
+      .def("__repr__", &Value2String)
+      .def_property(
+          "shape",
+          [](Value &self) { return phi::vectorize(GetValueDims(self)); },
+          [](Value &self, const std::vector<int> &shape) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set shape when building static graph"));
+          })
+      .def_property(
+          "dtype",
+          [](Value &self) { return GetValueDtype(self); },
+          [](Value &self, phi::DataType dtype) {
+            PADDLE_THROW(phi::errors::InvalidArgument(
+                "can't set dtype when building static graph"));
+          });
 }
 
 void BindOpOperand(py::module *m) {
@@ -454,6 +561,16 @@ phi::DataType GetOpResultDtype(const OpResult &result) {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Currently, we can only get phi::DataType from DenseTensorType and "
         "SelectedRowsType."));
+  }
+}
+
+const phi::DDim &GetOpResultDims(const OpResult &result) {
+  if (result.type().isa<DenseTensorType>()) {
+    return result.type().dyn_cast<DenseTensorType>().dims();
+  } else {
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "Currently, we can only get shape for dense "
+        "tensor."));
   }
 }
 
@@ -610,6 +727,12 @@ void BindOpResult(py::module *m) {
                return false;
              }
            })
+      .def("numel",
+           [](OpResult &self) { return phi::product(GetOpResultDims(self)); })
+      .def("replace_all_uses_with",
+           [](OpResult &self, OpResult &op_result) {
+             self.ReplaceAllUsesWith(op_result);
+           })
       .def_property(
           "stop_gradient",
           [](OpResult &self) {
@@ -638,16 +761,7 @@ void BindOpResult(py::module *m) {
           })
       .def_property(
           "shape",
-          [](OpResult &self) {
-            if (self.type().isa<DenseTensorType>()) {
-              return phi::vectorize(
-                  self.type().dyn_cast<DenseTensorType>().dims());
-            } else {
-              PADDLE_THROW(phi::errors::InvalidArgument(
-                  "Currently, we can only get shape for dense "
-                  "tensor."));
-            }
-          },
+          [](OpResult &self) { return phi::vectorize(GetOpResultDims(self)); },
           [](OpResult &self, const std::vector<int> &shape) {
             PADDLE_THROW(phi::errors::InvalidArgument(
                 "can't set shape when building static graph"));
@@ -1038,12 +1152,15 @@ SplitedResult ForwardBackwardSplit(
 
   VLOG(4) << "forward_value_map.size() is " << forward_value_map.size();
   VLOG(4) << "backward_value_map.size() is " << backward_value_map.size();
-  std::ostringstream print_stream;
-  print_stream << "ForwardProgram is :\n";
-  forward_program->Print(print_stream);
-  print_stream << "BackwardProgram is:\n";
-  backward_program->Print(print_stream);
-  VLOG(4) << "Splited Program (fwd | bwd): \n" << print_stream.str();
+  if (FLAGS_print_ir) {
+    std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
+    forward_program->Print(print_stream);
+    print_stream << "BackwardProgram is:\n";
+    backward_program->Print(print_stream);
+    std::cout << "Splited Program (fwd | bwd): \n"
+              << print_stream.str() << std::endl;
+  }
 
   // construct all attributes we needed.
 
@@ -1123,24 +1240,37 @@ void BindUtils(pybind11::module *m) {
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle import pir
-                paddle.enable_static()
+                >>> import os
+                >>> # Paddle will remove this flag in the next version
+                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[pir_flag] = 'True'
 
-                x = paddle.randn([4, 4])
-                main_program, start_program = (
-                    paddle.static.Program(),
-                    paddle.static.Program(),
-                )
-                with paddle.static.program_guard(main_program, start_program):
-                    x_s = paddle.static.data('x', [4, 4], x.dtype)
-                    x_s.stop_gradient = False
-                    y_s = paddle.matmul(x_s, x_s)
-                    z_s = paddle.add(y_s, y_s)
-                    k_s = paddle.tanh(z_s)
-                newir_program = ir.translate_to_new_ir(main_program.desc)
+                >>> import paddle
+                >>> from paddle import pir
+                >>> paddle.enable_static()
 
-                print(newir_program)
+                >>> x = paddle.randn([4, 4])
+                >>> main_program, start_program = (
+                ...    paddle.static.Program(),
+                ...    paddle.static.Program(),
+                ...)
+
+                >>> with paddle.static.program_guard(main_program, start_program):
+                ...    x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...    x_s.stop_gradient = False
+                ...    y_s = paddle.matmul(x_s, x_s)
+                ...    z_s = paddle.add(y_s, y_s)
+                ...    k_s = paddle.tanh(z_s)
+                >>> newir_program = pir.translate_to_new_ir(main_program.desc)
+
+                >>> print(newir_program)
+                {
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                }
+
 
       )DOC");
   m->def(
@@ -1157,6 +1287,67 @@ void BindUtils(pybind11::module *m) {
         legacy_program (ProgramDesc): The Fluid Program that need checked.
       Returns:
         list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
+    )DOC");
+  m->def(
+      "translate_to_new_ir_with_param_map",
+      [](const framework::ProgramDesc &legacy_program) {
+        auto ir_ctx = pir::IrContext::Instance();
+        auto program = std::make_shared<pir::Program>(ir_ctx);
+        translator::ProgramTranslator program_translator(&legacy_program,
+                                                         program.get());
+        program_translator.Translate();
+        return std::make_pair(program, program_translator.VarDesc2Value());
+      },
+      R"DOC(
+        Convert Fluid Program to New IR Program and get the mappings of VarDesc -> pir::Value.
+
+        Args:
+
+            legacy_program (ProgramDesc): The Fluid Program that will be converted.
+
+        Returns:
+            Program: The New IR Program
+            dict[str, pir::Value]: Mapping between VarDesc(by name) and pir::Value.
+
+        Raises:
+            PreconditionNotMet: If legacy_program has multi block will raise error.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import os
+                >>> # Paddle will remove this flag in the next version
+                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> os.environ[pir_flag] = 'True'
+
+                >>> import paddle
+                >>> from paddle import pir
+                >>> paddle.enable_static()
+
+                >>> x = paddle.randn([4, 4])
+                >>> main_program, start_program = (
+                ...     paddle.static.Program(),
+                ...     paddle.static.Program(),
+                ... )
+
+                >>> with paddle.static.program_guard(main_program, start_program):
+                ...     x_s = paddle.static.data('x', [4, 4], x.dtype)
+                ...     x_s.stop_gradient = False
+                ...     y_s = paddle.matmul(x_s, x_s)
+                ...     z_s = paddle.add(y_s, y_s)
+                ...     k_s = paddle.tanh(z_s)
+                >>> newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+
+                >>> print(newir_program)
+                {
+                 (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
+                 (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%2) = "pd_op.add" (%1, %1) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                 (%3) = "pd_op.tanh" (%2) {is_persisable:[false],stop_gradient:[false]} : (pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
+                }
+
+                >>> print(mappings)
+                {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=pd_op.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=pd_op.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=pd_op.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=pd_op.tensor<4x4xf32>)]}
     )DOC");
 }
 

@@ -123,7 +123,12 @@ Operation *Operation::Create(const std::vector<Value> &inputs,
 
   // 0. Verify
   if (op_info) {
-    op_info.Verify(op);
+    try {
+      op_info.VerifySig(op);
+    } catch (const pir::IrNotMetException &e) {
+      op->Destroy();
+      throw e;
+    }
   }
   return op;
 }
@@ -292,6 +297,21 @@ std::string Operation::name() const {
   auto p_name = info_.name();
   return p_name ? p_name : "";
 }
+
+void Operation::Erase() {
+  if (auto *parent = GetParent())
+    parent->erase(*this);
+  else
+    Destroy();
+}
+
+bool Operation::use_empty() {
+  auto res = results();
+  return std::all_of(res.begin(), res.end(), [](OpResult result) {
+    return result.use_empty();
+  });
+}
+
 void Operation::ReplaceAllUsesWith(const std::vector<Value> &values) {
   IR_ENFORCE(num_results_ == values.size(),
              "the num of result should be the same.");

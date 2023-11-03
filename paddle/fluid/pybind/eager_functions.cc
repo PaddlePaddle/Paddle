@@ -280,7 +280,7 @@ PyObject* eager_api_get_grads_types(PyObject* self,
 
     auto& grad = meta->Grad();
     if (meta && grad.initialized()) {
-      if (grad.is_dense_tensor() &&
+      if ((grad.is_dense_tensor() || grad.is_dist_tensor()) &&
           (tensor.dtype() == phi::DataType::FLOAT32 ||
            tensor.dtype() == phi::DataType::FLOAT16 ||
            tensor.dtype() == phi::DataType::BFLOAT16)) {
@@ -660,7 +660,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add vector<tensor> size = "
                   << empty_tensors.size();
-          ctx.EmplaceBackOutputs(std::move(empty_tensors));
+          ctx.EmplaceBackOutputs(empty_tensors);
           continue;
         }
       }

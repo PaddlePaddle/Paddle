@@ -21,7 +21,9 @@ from op_gen import (
     PD_MANUAL_OP_LIST,
     OpCompatParser,
     OpInfoParser,
+    check_need_update_ops,
     to_pascal_case,
+    update_ops,
 )
 
 H_FILE_TEMPLATE = """
@@ -154,12 +156,18 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            update_ops(op_yaml_items, update_yaml_file)
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -178,6 +186,13 @@ class CodeGen:
                 and 'scalar' in op_compat_item
             ):
                 op_compat_item = op_compat_item.pop('scalar')
+            if 'support_tensor' in op.keys() and op['support_tensor']:
+                (
+                    scalar_item,
+                    int_array_item,
+                ) = op_compat_parser.parse_support_tensor(op)
+                op_compat_item['scalar'] = scalar_item
+                op_compat_item['int_array'] = int_array_item
 
             op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
@@ -197,7 +212,9 @@ class CodeGen:
             return True
         return False
 
-    def _is_optinonal_output(self, op_info, output_name):
+    def _is_optional_output(self, op_info, op_name, output_name):
+        if op_name.endswith(('_grad', '_grad_')):
+            return False
         inplace_map = op_info.inplace_map
         input_optional_list = op_info.input_optional_list
         input_name_list = op_info.input_name_list
@@ -271,7 +288,7 @@ class CodeGen:
         )
         return (inputs + ', ' + attrs).strip(', ')
 
-    def _gen_ret_type(self, op_info):
+    def _gen_ret_type(self, op_info, op_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -285,7 +302,7 @@ class CodeGen:
             ):
                 if intermediate == 'true':
                     continue
-                if self._is_optinonal_output(op_info, name):
+                if self._is_optional_output(op_info, op_name, name):
                     ret.append(OPTIONAL_OUTPUT_TYPE_MAP[type])
                 else:
                     ret.append(OUTPUT_TYPE_MAP[type])
@@ -293,7 +310,7 @@ class CodeGen:
         elif output_num == 1:
             index = intermediate_list.index('false')
             name = name_list[index]
-            if self._is_optinonal_output(op_info, name):
+            if self._is_optional_output(op_info, op_name, name):
                 return OPTIONAL_OUTPUT_TYPE_MAP[type_list[index]]
             else:
                 return OUTPUT_TYPE_MAP[type_list[index]]
@@ -304,7 +321,7 @@ class CodeGen:
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
         return API_DECLARE_TEMPLATE.format(
-            ret_type=self._gen_ret_type(op_info),
+            ret_type=self._gen_ret_type(op_info, op_name),
             api_name=op_name,
             args=self._gen_api_args(
                 op_info, True, is_mutable_attr, is_vector_mutable_attr
@@ -367,7 +384,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optinonal_output(op_info, name):
+            if self._is_optional_output(op_info, op_name, name):
                 if VECTOR_TYPE in type:
                     ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
                         name=name,
@@ -461,7 +478,7 @@ class CodeGen:
             op_inst_name,
         )
 
-    def _gen_out_split_and_ret_list(self, op_info, op_inst_name):
+    def _gen_out_split_and_ret_list(self, op_info, op_name, op_inst_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
@@ -480,7 +497,7 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if self._is_optinonal_output(op_info, name):
+            if self._is_optional_output(op_info, op_name, name):
                 ret_list.append(f'optional_{name}')
             elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
@@ -503,7 +520,7 @@ class CodeGen:
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
-        ret_type = self._gen_ret_type(op_info)
+        ret_type = self._gen_ret_type(op_info, op_name)
         in_combine, in_combine_op_list = self._gen_in_combine(
             op_info, is_mutable_attr, is_vector_mutable_attr
         )
@@ -514,7 +531,7 @@ class CodeGen:
             compute_op += f' (void){op_inst_name};'
 
         out_split, ret_list = self._gen_out_split_and_ret_list(
-            op_info, op_inst_name
+            op_info, op_name, op_inst_name
         )
 
         ret = API_IMPL_TEMPLATE.format(

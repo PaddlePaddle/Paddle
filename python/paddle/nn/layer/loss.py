@@ -1484,7 +1484,7 @@ class MultiLabelSoftMarginLoss(Layer):
         if reduction not in ['sum', 'mean', 'none']:
             raise ValueError(
                 "'reduction' in 'MultiLabelSoftMarginloss' should be 'sum', 'mean' or 'none', "
-                "but received {}.".format(reduction)
+                f"but received {reduction}."
             )
         self.weight = weight
         self.reduction = reduction

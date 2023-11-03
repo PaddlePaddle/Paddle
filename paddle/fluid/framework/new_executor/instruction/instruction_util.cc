@@ -31,6 +31,9 @@
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/core/block_argument.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
@@ -188,6 +191,89 @@ OpFuncType AnalyseOpFuncType(pir::Operation* op, const platform::Place& place) {
   }
 
   return OpFuncType::kGpuAsync;
+}
+
+std::vector<pir::Value> GetYiedOpInputs(pir::Block* block) {
+  std::vector<pir::Value> vec_res;
+
+  if (block && !block->empty() && block->back()->isa<pir::YieldOp>()) {
+    auto* op = block->back();
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      vec_res.emplace_back(op->operand_source(i));
+    }
+  }
+  return vec_res;
+}
+
+void GetInputIds(pir::Operation* op,
+                 const ValueExecutionInfo& value_exec_info,
+                 std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  for (size_t i = 0; i < op->num_operands(); i++) {
+    pir::Value value = op->operand_source(i);
+    if (value && value.type()) {
+      PADDLE_ENFORCE_EQ(
+          value_exec_info.HasValue(value),
+          true,
+          phi::errors::PreconditionNotMet(
+              "input should in name map, [%d] 'th input of [%s] op",
+              i,
+              "if op"));
+      input_ids->emplace(value, GetValueIds(value, value_exec_info));
+    }
+  }
+}
+
+std::vector<pir::Value> GetOutsideOpInputs(
+    pir::Block* block,
+    const ValueExecutionInfo& value_exec_info,
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
+  std::unordered_set<pir::Value> inner_outputs;
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_results(); ++i) {
+      inner_outputs.insert(op->result(i));
+    }
+  }
+  for (size_t arg_id = 0; arg_id < block->args_size(); ++arg_id) {
+    inner_outputs.insert(block->argument(arg_id));
+  }
+
+  std::vector<pir::Value> outside_op_inputs;
+  for (auto op : (*block)) {
+    for (size_t i = 0; i < op->num_operands(); ++i) {
+      pir::Value value = op->operand_source(i);
+      if (value && (!inner_outputs.count(value))) {
+        PADDLE_ENFORCE_EQ(
+            value_exec_info.HasValue(value),
+            true,
+            phi::errors::PreconditionNotMet(
+                "input should in name map, [%d] 'th input of [%s] op",
+                i,
+                op->name()));
+        input_ids->emplace(value, GetValueIds(value, value_exec_info));
+        outside_op_inputs.push_back(value);
+      }
+    }
+  }
+  return outside_op_inputs;
+}
+
+bool GetCondData(const phi::DenseTensor& cond) {
+  if (paddle::platform::is_cpu_place(cond.place())) {
+    return cond.data<bool>()[0];
+  }
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_xpu_place(cond.place()) is true
+  std::unique_ptr<phi::DenseTensor> cpu_cond{new phi::DenseTensor()};
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_XPU) || defined(PADDLE_WITH_CUSTOM_DEVICE)
+  paddle::framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
+#else
+  PADDLE_THROW(paddle::platform::errors::PreconditionNotMet(
+      "This version of PaddlePaddle does NOT support GPU/XPU but got "
+      "GPU/XPU tensor Cond in WhileOp. Please compile WITH_GPU or "
+      "WITH_XPU option."));
+#endif
+  return cpu_cond->data<bool>()[0];
 }
 
 }  // namespace framework

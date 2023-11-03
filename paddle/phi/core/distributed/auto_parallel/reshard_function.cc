@@ -30,7 +30,7 @@ std::shared_ptr<DistTensor> ReshardFunction::Eval(
 }
 
 void ReshardFunction::SetValue(DistTensor* tensor, const DenseTensor& value) {
-  tensor->value_ = value;
+  tensor->value_ = std::make_shared<DenseTensor>(value);
 }
 
 void ReshardFunction::SetDistProps(DistTensor* tensor,
@@ -56,7 +56,7 @@ void ReshardFunction::SetDistProps(DistTensor* tensor,
 }
 
 DenseTensor* ReshardFunction::GetMutableTensor(DistTensor* tensor) {
-  return &tensor->value_;
+  return tensor->value_.get();
 }
 
 ReshardFunction* ChooseProperReshardFunction(

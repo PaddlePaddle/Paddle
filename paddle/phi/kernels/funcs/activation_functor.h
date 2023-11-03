@@ -800,6 +800,31 @@ struct SoftplusGradFunctor : public BaseActivationFunctor<T> {
 };
 
 template <typename T>
+struct SoftplusGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  float beta;
+  float threshold;
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+  template <typename Device,
+            typename X,
+            typename Out,
+            typename dOut,
+            typename dX>
+  void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
+    auto x_beta = static_cast<ComplexType<T>>(beta) * x;  // NOLINT
+    dx.device(d) =
+        (x_beta > static_cast<ComplexType<T>>(threshold))
+            .select(dout,
+                    dout / (static_cast<ComplexType<T>>(1) + (-x_beta).exp())
+                               .unaryExpr(Conj<T>()));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
 struct SoftplusDoubleGradFunctor : public BaseActivationFunctor<T> {
   float beta;
   float threshold;
@@ -3681,7 +3706,7 @@ struct CudaSoftplusFunctor : public BaseActivationFunctor<T> {
     MPType x = static_cast<MPType>(arg_x);
     MPType b = static_cast<MPType>(beta);
     MPType t = static_cast<MPType>(threshold);
-    MPType x_beta = x * beta;
+    MPType x_beta = x * static_cast<MPType>(beta);
     return static_cast<T>(x_beta > t ? x : log(one + exp(x_beta)) / b);
   }
 };
@@ -3706,6 +3731,34 @@ struct CudaSoftplusGradFunctor : public BaseActivationFunctor<T> {
     MPType t = static_cast<MPType>(threshold);
     MPType x_beta = x * beta;
     return x_beta > t ? arg_dout : static_cast<T>(dout / (one + exp(-x_beta)));
+  }
+
+  static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
+};
+
+template <typename T>
+struct CudaSoftplusGradFunctor<ComplexType<T>>
+    : public BaseActivationFunctor<ComplexType<T>> {
+  using MPType = typename phi::dtype::MPTypeTrait<ComplexType<T>>::Type;
+  MPType one = static_cast<MPType>(1.0f);
+  float beta;
+  float threshold;
+
+  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
+    return {{"beta", &beta}, {"threshold", &threshold}};
+  }
+
+  // dx = x * beta > threshold ? dout : dout / (1 + exp(-beta * x))
+  __device__ __forceinline__ ComplexType<T> operator()(
+      const ComplexType<T> arg_dout, const ComplexType<T> arg_x) const {
+    MPType dout = static_cast<MPType>(arg_dout);
+    MPType x = static_cast<MPType>(arg_x);
+    MPType b = static_cast<MPType>(beta);
+    MPType t = static_cast<MPType>(threshold);
+    MPType x_beta = x * static_cast<MPType>(beta);
+    return x_beta > t
+               ? dout
+               : static_cast<ComplexType<T>>(dout / conj(one + exp(-x_beta)));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

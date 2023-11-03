@@ -14,6 +14,7 @@
 
 import itertools
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -224,7 +225,8 @@ def replace_ellipsis(var, item):
     item_remove_var = [
         ele
         for ele in item
-        if not isinstance(ele, (Variable, np.ndarray)) and ele is not None
+        if not isinstance(ele, (Variable, paddle.pir.OpResult, np.ndarray))
+        and ele is not None
     ]
     ell_count = item_remove_var.count(Ellipsis)
     if ell_count == 0:
@@ -284,6 +286,9 @@ def is_integer_or_scalar_tensor(ele):
                 return True
         if len(ele.shape) == 0 and ele.dtype != paddle.bool:
             return True
+    elif isinstance(ele, paddle.pir.OpResult):
+        if len(ele.shape) == 0 and ele.dtype != paddle.base.libpaddle.BOOL:
+            return True
     return False
 
 
@@ -291,6 +296,11 @@ def is_bool_tensor(ele):
     from .framework import Variable
 
     if isinstance(ele, Variable) and ele.dtype == paddle.bool:
+        return True
+    elif (
+        isinstance(ele, paddle.pir.OpResult)
+        and ele.dtype == paddle.base.libpaddle.BOOL
+    ):
         return True
     return False
 
@@ -303,7 +313,7 @@ def deal_attrs(attrs, attr, attr_name, tensor_attr_name, inputs, infer_flags):
             attr, dtype="int64"
         )
         for i, dim in enumerate(attr):
-            if isinstance(dim, Variable):
+            if isinstance(dim, (Variable, paddle.pir.OpResult)):
                 attrs[attr_name].append(-1)
                 infer_flags[i] = -1
             else:
@@ -335,14 +345,10 @@ def get_value_for_bool_tensor(var, item):
     empty_shape = [0] + list(var.shape[i:])
 
     def idx_not_empty(var, item):
-        from ..tensor import gather_nd
+        bool_2_idx = paddle.nonzero(item)
+        return paddle.gather_nd(var, bool_2_idx)
 
-        bool_2_idx = paddle.nonzero(item == True)
-        return gather_nd(var, bool_2_idx)
-
-    from paddle.static.nn import cond
-
-    return cond(
+    return paddle.static.nn.cond(
         item.any(),
         lambda: idx_not_empty(var, item),
         lambda: paddle.empty(empty_shape, var.dtype),
@@ -475,7 +481,7 @@ def _setitem_impl_(var, item, value):
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
-                "but received {}.".format(slice_item)
+                f"but received {slice_item}."
             )
 
         axes.append(dim)
@@ -487,9 +493,7 @@ def _setitem_impl_(var, item, value):
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
             raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".format(
-                    item
-                )
+                f"Valid index accept int or slice or ellipsis or list, but received {item}."
             )
         return slice_info.set_item(var, value)
     attrs = {
@@ -758,9 +762,14 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
 
-        elif isinstance(slice_item, paddle.base.Variable):
+        elif isinstance(
+            slice_item, (paddle.base.Variable, paddle.pir.OpResult)
+        ):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
-            if slice_item.dtype == paddle.bool:
+            if (
+                slice_item.dtype == paddle.bool
+                or slice_item.dtype == paddle.base.libpaddle.BOOL
+            ):
                 if slice_item.ndim == 0:
                     # 0-D bool Tensor, same as single PY-bool.
                     none_axes.append(dim)
@@ -788,7 +797,12 @@ def parse_index(x, indices):
             axes.append(dim)
             use_strided_slice = (
                 True
-                if (isinstance(step, paddle.base.Variable) or step != 1)
+                if (
+                    isinstance(
+                        step, (paddle.base.Variable, paddle.pir.OpResult)
+                    )
+                    or step != 1
+                )
                 else use_strided_slice
             )
     return (
@@ -1032,7 +1046,7 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        from . import in_dynamic_or_pir_mode
+        from . import in_dynamic_or_pir_mode, in_pir_mode
 
         if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
@@ -1052,6 +1066,13 @@ def get_tensor_with_basic_indexing(
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
             else:
+                if in_pir_mode():
+                    if isinstance(st, (list, tuple)):
+                        if paddle.utils._contain_var(st):
+                            st = paddle.utils.get_int_tensor_list(st)
+                    if isinstance(end, (list, tuple)):
+                        if paddle.utils._contain_var(end):
+                            end = paddle.utils.get_int_tensor_list(end)
                 out = paddle._C_ops.slice(
                     x,
                     axes,

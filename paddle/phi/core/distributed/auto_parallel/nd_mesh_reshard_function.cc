@@ -41,7 +41,7 @@ ProcessMesh GetSubProcessMesh(const ProcessMesh& mesh, int64_t axis) {
     for (int64_t j = static_cast<int64_t>(coord.size() - 2); j >= 0; --j) {
       rank += coord[j] * mesh.dim_size(j + 1);
     }
-    process_ids.emplace_back(rank);
+    process_ids.emplace_back(mesh.process_ids()[rank]);
   }
 
   ProcessMesh out_mesh(shape, process_ids, dim_names);
@@ -73,33 +73,38 @@ int64_t FindFirstDiffShardAxis(const TensorDistAttr& in_dist_attr,
 
 bool SameNdMeshReshardFunction::IsSuitable(
     const DistTensor& in, const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
-
-  flag &= (in.dist_attr().process_mesh() == out_dist_attr.process_mesh());
-  flag &= (out_dist_attr.process_mesh().ndim() > 1);
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr().process_mesh() ==
+                            out_dist_attr.process_mesh());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.process_mesh().ndim() > 1);
 
   // check the input and output dims_mapping is not equal
-  flag &= in.dist_attr() != out_dist_attr;
+  RESHARD_SHORTCUT_IF_FALSE(in.dist_attr() != out_dist_attr);
 
-  return flag;
+  return true;
 }
 
 void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
                                      const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr,
                                      DistTensor* out) {
+  VLOG(3) << "Call SameNdMeshReshardFunction Eval";
   const auto& in_dist_attr = in.dist_attr();
   const auto& process_mesh = out_dist_attr.process_mesh();
 
   int64_t first_diff_axis = FindFirstDiffShardAxis(in_dist_attr, out_dist_attr);
+
+  // Backup out_dist_attr to to avoid overwriting the out's dist attr
+  auto out_dist_attr_orig = out_dist_attr;
 
   SetValue(out, in.value());
   SetDistProps(out, in.dims(), in_dist_attr);
 
   // 1. change all the partial status to replicated status if needed
   if (in_dist_attr.is_partial()) {
-    const auto& in_partial_status = in_dist_attr.partial_status();
-    const auto& out_partial_status = out_dist_attr.partial_status();
+    // Copy in_dist_attr.partial_status to avoid overwriting the value of
+    // input when the output and input are the same value
+    const auto in_partial_status = in_dist_attr.partial_status();
+    const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : in_partial_status) {
       if (out_partial_status.count(kv.first) != 0) {
         continue;
@@ -115,7 +120,8 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
       // 1.3 Calculate the input one dim dist attr
       TensorDistAttr in_one_dim_dist_attr(vectorize(in.dims()));
       in_one_dim_dist_attr.set_process_mesh(sub_mesh);
-      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0});
+      in_one_dim_dist_attr.set_partial_status(std::vector<int64_t>{0},
+                                              kv.second);
 
       // 1.4 Calculate the output one dim dist attr
       TensorDistAttr out_one_dim_dist_attr(vectorize(in.dims()));
@@ -174,9 +180,9 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   }
 
   // 3. Change replicated to partial
-  if (out_dist_attr.is_partial()) {
+  if (out_dist_attr_orig.is_partial()) {
     const auto& in_partial_status = out->dist_attr().partial_status();
-    const auto& out_partial_status = out_dist_attr.partial_status();
+    const auto& out_partial_status = out_dist_attr_orig.partial_status();
     for (const auto& kv : out_partial_status) {
       if (in_partial_status.count(kv.first) != 0) {
         continue;
@@ -212,7 +218,7 @@ void SameNdMeshReshardFunction::Eval(phi::DeviceContext* dev_ctx,
 
   // 4. Change replicated to shard
   for (int64_t i = first_diff_axis; i >= 0; --i) {
-    int64_t out_mesh_axis = out_dist_attr.dims_mapping()[i];
+    int64_t out_mesh_axis = out_dist_attr_orig.dims_mapping()[i];
     if (out_mesh_axis != -1) {
       VLOG(3) << "Step4: out_mesh axis " << out_mesh_axis;
       // 4.1 Calculate the dist_attr after this transform

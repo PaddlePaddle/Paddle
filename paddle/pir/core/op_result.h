@@ -30,6 +30,7 @@ class IR_API OpResult : public Value {
  public:
   OpResult(std::nullptr_t ptr = nullptr) : Value(ptr){};  // NOLINT
   Operation *owner() const;
+  // Return the result index of this op result.
   uint32_t index() const;
   bool operator==(const OpResult &other) const;
 
