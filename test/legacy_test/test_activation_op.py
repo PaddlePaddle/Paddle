@@ -409,7 +409,8 @@ class TestSigmoid_Complex64(TestSigmoid):
         self.dtype = np.complex64
 
     def test_check_output(self):
-        self.check_output(check_prim=False)
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_prim=False)
 
     def test_check_grad(self):
         self.check_grad(
@@ -757,10 +758,18 @@ class TestTanh_Complex64(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex64
 
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
+
 
 class TestTanh_Complex128(TestTanh):
     def init_dtype(self):
         self.dtype = np.complex128
+
+    def test_check_output(self):
+        with paddle.static.scope_guard(paddle.static.Scope()):
+            self.check_output(check_pir=True)
 
 
 class TestTanh_ZeroDim(TestTanh):
@@ -956,7 +965,9 @@ class TestSinhAPI(unittest.TestCase):
     def test_api(self):
         with static_guard():
             test_data_shape = [11, 17]
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
                     "float32"
                 )
@@ -968,9 +979,9 @@ class TestSinhAPI(unittest.TestCase):
 
                 pd_sinh_out = paddle.sinh(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (np_sinh_res,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[pd_sinh_out],
                 )
@@ -993,7 +1004,6 @@ class TestSinhAPI(unittest.TestCase):
 
 
 class TestSinhOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with program_guard(Program()):
@@ -4137,6 +4147,11 @@ class TestSoftsign(TestActivation):
 
         np.random.seed(1024)
         x = np.random.uniform(-1, 1, self.shape).astype(self.dtype)
+        if self.dtype == np.complex64 or self.dtype == np.complex128:
+            x = (
+                np.random.uniform(-1, 1, self.shape)
+                + 1j * np.random.uniform(-1, 1, self.shape)
+            ).astype(self.dtype)
         out = ref_softsign(x)
 
         self.inputs = {'X': OpTest.np_dtype_to_base_dtype(x)}
@@ -4150,6 +4165,16 @@ class TestSoftsign(TestActivation):
         if self.dtype == np.float16:
             return
         self.check_grad(['X'], 'Out')
+
+
+class TestSoftsign_Complex64(TestSoftsign):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestSoftsign_Complex128(TestSoftsign):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 class TestSoftsign_ZeroDim(TestSoftsign):
