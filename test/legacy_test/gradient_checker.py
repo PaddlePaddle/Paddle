@@ -224,7 +224,6 @@ def grad_check(
     x_init=None,
     place=None,
     program=None,
-    scope=None,
     eps=1e-6,
     atol=1e-5,
     rtol=1e-3,
@@ -255,6 +254,7 @@ def grad_check(
             raise RuntimeError(msg)
         return False
 
+    scope = base.executor.global_scope()
     # [x_idx, y_idx]
     numerical = [
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
@@ -338,26 +338,13 @@ def double_grad_check(
         u.stop_gradient = False
         u.persistable = True
 
-    scope = base.executor.global_scope()
-    if y_grads is None:
-        y_grads_init = []
-        for yi in y:
-            np_type = dtype_to_np_dtype(yi.dtype)
-            v = np.random.random(size=yi.shape).astype(np_type)
-            y_grads_init.append(v)
-    else:
-        y_grads = _as_list(y_grads)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
-
     x_init = _as_list(x_init)
 
-    grad_res, x, target_grads, program, scope = get_static_double_grad(
-        x, y, x_init, y_grads_init, place
+    grad_res, x, target_grads, program = get_static_double_grad(
+        x, y, x_init, y_grads, place
     )
 
-    grad_check(x, target_grads, x_init, place, program, scope, eps, atol, rtol)
+    grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
 # TODO(jiabin): We currently support only triple grad check here, extend this to support
@@ -409,31 +396,17 @@ def triple_grad_check(
         u.stop_gradient = False
         u.persistable = True
 
-    scope = base.executor.global_scope()
-    if y_grads is None:
-        y_grads_init = []
-        for yi in y:
-            np_type = dtype_to_np_dtype(yi.dtype)
-            v = np.random.random(size=yi.shape).astype(np_type)
-            y_grads_init.append(v)
-    else:
-        y_grads = _as_list(y_grads)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
-
     x_init = _as_list(x_init)
 
     # x <=> [x, dout, ddx]
-    grad_res, x, target_grads_grads, program, scope = get_static_triple_grad(
-        x, y, x_init, y_grads_init, place
+    grad_res, x, target_grads_grads, program = get_static_triple_grad(
+        x, y, x_init, y_grads, place
     )
     grad_check(
         x=x,
         y=target_grads_grads,
         x_init=x_init,
         place=place,
-        scope=scope,
         program=program,
         eps=eps,
         atol=atol,
@@ -460,19 +433,28 @@ def get_static_double_grad(
     """
 
     if program is None:
-        program = base.default_main_program()
+        program = paddle.static.default_main_program()
+
     scope = base.executor.global_scope()
-    y_grads = []
-    for i in range(len(y)):
-        yi = y[i]
-        dyi_name = _append_grad_suffix_(yi.name)
-        np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-        )
-        dy.stop_gradient = False
-        set_var_in_scope(scope, place, dyi_name, dy_init[i])
-        y_grads.append(dy)
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = _as_list(dy_init)
+        y_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+        ]
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -480,7 +462,7 @@ def get_static_double_grad(
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
     x += y_grads
-    x_init += dy_init
+    x_init += y_grads_init
 
     # filter None in dx for DX/DY may be None in kernel
     filted_dx = [dxi for dxi in dx if dxi is not None]
@@ -498,13 +480,10 @@ def get_static_double_grad(
         u.persistable = True
     if place is None:
         place = base.CPUPlace()
-    if program is None:
-        program = base.default_main_program()
 
     # init variable in startup program
-    scope = base.executor.global_scope()
-    exe = base.Executor(place)
-    exe.run(base.default_startup_program())
+    exe = paddle.static.Executor(place)
+    exe.run(paddle.static.default_startup_program())
 
     x_init = _as_list(x_init)
     # init inputs if x_init is not None
@@ -534,7 +513,7 @@ def get_static_double_grad(
 
     # append second order backward
     ddx = base.gradients(y, x, dys)
-    exe = base.Executor(place)
+    exe = paddle.static.Executor(place)
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
@@ -542,7 +521,7 @@ def get_static_double_grad(
     filted_idx, filted_ddx = zip(*filted)
     ddx_res = exe.run(program, feed=feeds, scope=scope, fetch_list=filted_ddx)
 
-    return ddx_res, x, filted_dx, program, scope
+    return ddx_res, x, filted_dx, program
 
 
 def get_eager_double_grad(
@@ -674,8 +653,8 @@ def double_grad_check_for_dygraph(
     eager_double_grad = get_eager_double_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    static_double_grad, _, _, _, _ = get_static_double_grad(
-        x, y, x_init, y_grads_init, place
+    static_double_grad, _, _, _ = get_static_double_grad(
+        x, y, x_init, None, place
     )
 
     if len(static_double_grad) != len(eager_double_grad):
@@ -716,19 +695,27 @@ def get_static_triple_grad(
         A list of numpy array that stores third derivative result calculated by static graph.
     """
     if program is None:
-        program = base.default_main_program()
+        program = paddle.static.default_main_program()
     scope = base.executor.global_scope()
-    y_grads = []
-    for i in range(len(y)):
-        yi = y[i]
-        dyi_name = _append_grad_suffix_(yi.name)
-        np_type = dtype_to_np_dtype(yi.dtype)
-        dy = program.global_block().create_var(
-            name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
-        )
-        dy.stop_gradient = False
-        set_var_in_scope(scope, place, dyi_name, dy_init[i])
-        y_grads.append(dy)
+    if dy_init is None:
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = _as_list(dy_init)
+        y_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+        ]
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -736,17 +723,11 @@ def get_static_triple_grad(
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
     x += y_grads
-    x_init += dy_init
+    x_init += y_grads_init
     y = dx
 
-    x_grads_grads_init = []
-    for dxi in dx:
-        np_type = dtype_to_np_dtype(dxi.dtype)
-        value = np.ones(dxi.shape, dtype=np_type)
-        x_grads_grads_init.append(value)
-
     return get_static_double_grad(
-        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program
+        x, y, x_init, dy_init=None, place=place, program=program
     )
 
 
@@ -837,8 +818,8 @@ def triple_grad_check_for_dygraph(
     eager_triple_grad = get_eager_triple_grad(func, x_init, y_grads_init, place)
     paddle.enable_static()
 
-    static_triple_grad, _, _, _, _ = get_static_triple_grad(
-        x, y, x_init, y_grads_init, place
+    static_triple_grad, _, _, _ = get_static_triple_grad(
+        x, y, x_init, None, place
     )
 
     if len(static_triple_grad) != len(eager_triple_grad):
