@@ -23,6 +23,8 @@ from paddle.framework import core
 
 from . import register
 
+decomp_output_unused_op = ("pd_op.unsqueeze", "pd_op.squeeze")
+
 
 def _build_tensor_tuple(xs):
     if isinstance(xs, pir.OpResult):
@@ -40,7 +42,7 @@ def _analyse_decomp_results(orig_outs, decomp_outs, op):
         orig_outs, decomp_outs, intermediate_status
     ):
         if isinstance(org_item, pir.OpResult):
-            if value:
+            if value and op.name() in decomp_output_unused_op:
                 assert new_item[0] is None
             else:
                 assert len(new_item) == 1 and isinstance(
@@ -274,7 +276,7 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
                 _check_op_results(
                     op_name, orig_outs, new_outs, orig_vars, dst_vars
                 )
-                if op.name() in ("pd_op.unsqueeze", "pd_op.squeeze"):
+                if op.name() in decomp_output_unused_op:
                     orig_outs[0].replace_all_uses_with(new_outs[0])
                 else:
                     op.replace_all_uses_with(new_outs)
