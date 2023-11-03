@@ -6677,7 +6677,7 @@ def i0_(x, name=None):
     Please refer to :ref:`api_paddle_i0`.
     """
 
-    if in_dynamic_or_pir_mode():
+    if in_dynamic_mode():
         return _C_ops.i0_(x)
 
 
