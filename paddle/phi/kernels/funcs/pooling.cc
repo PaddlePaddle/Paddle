@@ -499,6 +499,91 @@ class Pool2dGradFunctor<CPUContext, PoolProcess, T> {
   }
 };
 
+template <typename PoolProcess, class T>
+class LPPool2dGradFunctor<CPUContext, PoolProcess, T> {
+ public:
+  void operator()(const CPUContext& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  float norm_type,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* input_grad,
+                  PoolProcess pool_grad_process) {
+    const int batch_size = static_cast<int>(input.dims()[0]);
+    const int input_height = static_cast<int>(input.dims()[2]);
+    const int input_width = static_cast<int>(input.dims()[3]);
+    const int output_channels = static_cast<int>(output.dims()[1]);
+    const int output_height = static_cast<int>(output.dims()[2]);
+    const int output_width = static_cast<int>(output.dims()[3]);
+    const int ksize_height = ksize[0];
+    const int ksize_width = ksize[1];
+    const int stride_height = strides[0];
+    const int stride_width = strides[1];
+    const int padding_height = paddings[0];
+    const int padding_width = paddings[1];
+    const int input_stride = input_height * input_width;
+    const int output_stride = output_height * output_width;
+
+    const T* input_data = input.data<T>();
+    const T* output_data = output.data<T>();
+    const T* output_grad_data = output_grad.data<T>();
+    T* input_grad_data = context.template Alloc<T>(input_grad);
+
+    int hstart = 0, hend = 1;
+    int wstart = 0, wend = 1;
+    for (int i = 0; i < batch_size; i++) {
+      for (int c = 0; c < output_channels; ++c) {
+        for (int ph = 0; ph < output_height; ++ph) {
+          if (adaptive) {
+            hstart = AdaptStartIndex(ph, input_height, output_height);
+            hend = AdaptEndIndex(ph, input_height, output_height);
+          }
+          for (int pw = 0; pw < output_width; ++pw) {
+            if (adaptive) {
+              wstart = AdaptStartIndex(pw, input_width, output_width);
+              wend = AdaptEndIndex(pw, input_width, output_width);
+            } else {
+              hstart = ph * stride_height - padding_height;
+              wstart = pw * stride_width - padding_width;
+              hend = std::min(hstart + ksize_height,
+                              input_height + padding_height);
+              wend =
+                  std::min(wstart + ksize_width, input_width + padding_width);
+
+              wstart = std::max(wstart, 0);
+              hstart = std::max(hstart, 0);
+              hend = std::min(hend, input_height);
+              wend = std::min(wend, input_width);
+            }
+            for (int h = hstart; h < hend; ++h) {
+              for (int w = wstart; w < wend; ++w) {
+                pool_grad_process.compute(
+                    output_grad_data[ph * output_width + pw],
+                    static_cast<T>(norm_type),
+                    input_grad_data + h * input_width + w);
+              }
+            }
+          }
+        }
+        input_data += input_stride;
+        output_data += output_stride;
+        input_grad_data += input_stride;
+        output_grad_data += output_stride;
+      }
+    }
+
+    for (int64_t i = 0; i < input_grad->numel(); i++) {
+      pool_grad_process.finalize(static_cast<T>(norm_type),
+                                 input_grad_data + i);
+    }
+  }
+};
+
 /*
  * Tensors are in NCHW or NHWC format.
  * Ksize, strides are two elements. These two elements represent height
@@ -689,11 +774,13 @@ template class Pool2dFunctor<CPUContext, AvgPool<float>, float>;
 template class Pool2dFunctor<CPUContext, LPPool<float>, float>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<float>, float>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<float>, float>;
+template class LPPool2dGradFunctor<CPUContext, LPPoolGrad<float>, float>;
 template class Pool2dFunctor<CPUContext, MaxPool<double>, double>;
 template class Pool2dFunctor<CPUContext, AvgPool<double>, double>;
 template class Pool2dFunctor<CPUContext, LPPool<double>, double>;
 template class Pool2dGradFunctor<CPUContext, MaxPoolGrad<double>, double>;
 template class Pool2dGradFunctor<CPUContext, AvgPoolGrad<double>, double>;
+template class LPPool2dGradFunctor<CPUContext, LPPoolGrad<double>, double>;
 
 /*
  * Tensors are in NCDHW or NDHWC format.

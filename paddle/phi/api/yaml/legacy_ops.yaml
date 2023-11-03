@@ -688,7 +688,7 @@
   kernel :
     func : lp_pool2d
     param : [x, norm_type, kernel_size, strides, paddings, ceil_mode, exclusive, data_format, pooling_type, global_pooling, adaptive, padding_algorithm]
-  # backward : lp_pool2d_grad
+  backward : lp_pool2d_grad
 
 - op : matmul
   args : (Tensor x, Tensor y, bool transpose_x = false, bool transpose_y = false)

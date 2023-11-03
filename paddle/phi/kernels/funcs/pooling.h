@@ -133,9 +133,13 @@ template <class T>
 class LPPoolGrad {
  public:
   static constexpr bool use_x = false;
-  HOSTDEVICE inline void compute(
-      const T& x UNUSED, const T& y UNUSED, const T& dy, T scale, T* dx) {
-    *dx += (scale * dy);
+  // HOST能用 powf 吗
+  HOSTDEVICE inline void compute(const T& dy, T norm_type, T* dx) {
+    *dx += static_cast<T>(powf(dy, norm_type));
+  }
+
+  HOSTDEVICE inline void finalize(T norm_type, T* dx) {
+    *dx += static_cast<T>(powf(*dx, 1.0 / norm_type));
   }
 };
 
@@ -233,6 +237,23 @@ class Pool2dGradFunctor {
                   const std::vector<int>& strides,
                   const std::vector<int>& paddings,
                   const std::string data_format,
+                  bool exclusive,
+                  bool adaptive,
+                  DenseTensor* input_grad,
+                  PoolProcess pool_compute);
+};
+
+template <typename Context, typename PoolProcess, typename T>
+class LPPool2dGradFunctor {
+ public:
+  void operator()(const Context& context,
+                  const DenseTensor& input,
+                  const DenseTensor& output,
+                  const DenseTensor& output_grad,
+                  float norm_type,
+                  const std::vector<int>& ksize,
+                  const std::vector<int>& strides,
+                  const std::vector<int>& paddings,
                   bool exclusive,
                   bool adaptive,
                   DenseTensor* input_grad,
