@@ -205,6 +205,14 @@ cc_library(
   DEPS ${DIALECT_DEPS})
 
 if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-  set_target_properties(dialect PROPERTIES COMPILE_FLAGS
-                                           "-Wno-maybe-uninitialized")
+  execute_process(COMMAND ${CMAKE_C_COMPILER} -dumpfullversion -dumpversion
+                  OUTPUT_VARIABLE GCC_VERSION)
+  string(REGEX MATCHALL "[0-9]+" GCC_VERSION_COMPONENTS ${GCC_VERSION})
+  list(GET GCC_VERSION_COMPONENTS 0 GCC_MAJOR)
+  list(GET GCC_VERSION_COMPONENTS 1 GCC_MINOR)
+  set(GCC_VERSION "${GCC_MAJOR}.${GCC_MINOR}")
+  if(GCC_VERSION GREATER_EQUAL "12.0")
+    set_target_properties(dialect PROPERTIES COMPILE_FLAGS
+                                             "-Wno-maybe-uninitialized")
+  endif()
 endif()
