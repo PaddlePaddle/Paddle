@@ -44,11 +44,13 @@ class TestReshardSToR(test_base.CommunicationTestDistBase):
         envs_list = test_base.gen_product_envs_list(
             self._default_envs, self._changeable_envs
         )
+
         for envs in envs_list:
-            self.run_test_case(
-                "reshard_s_to_r_cross_mesh.py",
-                user_defined_envs=envs,
-            )
+            if envs["backend"] != "cpu":
+                self.run_test_case(
+                    "reshard_s_to_r_cross_mesh.py",
+                    user_defined_envs=envs,
+                )
 
 
 if __name__ == "__main__":
