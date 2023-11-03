@@ -67,6 +67,25 @@ Tensor relu_decomp(const Tensor& x) {
   return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
 }
 
+template <typename T>
+std::tuple<Tensor, Tensor> squeeze_decomp(const Tensor& x,
+                                          const IntArray& axis) {
+  auto axis_ = process_dims(x, axis.GetData());
+  auto out_shape = get_squeeze_dims(x, axis_);
+  Tensor out = reshape<T>(x, out_shape);
+  Tensor xshape;
+  return std::make_tuple(out, xshape);
+}
+
+template <typename T>
+Tensor add_n_decomp(const std::vector<Tensor>& x) {
+  Tensor res = x[0];
+  for (size_t i = 1; i < x.size(); i++) {
+    res = add<T>(res, x[i]);
+  }
+  return res;
+}
+
 }  // namespace details
 
 }  // namespace primitive

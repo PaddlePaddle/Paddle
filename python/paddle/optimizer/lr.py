@@ -225,9 +225,7 @@ class LRScheduler:
                 self.__dict__[key] = state_dict[key]
             else:
                 raise RuntimeError(
-                    "Please check whether state_dict is correct for optimizer. Can't find [ {} ] in state_dict".format(
-                        key
-                    )
+                    f"Please check whether state_dict is correct for optimizer. Can't find [ {key} ] in state_dict"
                 )
         if len(state_dict) > len(self.keys):
             warnings.warn(

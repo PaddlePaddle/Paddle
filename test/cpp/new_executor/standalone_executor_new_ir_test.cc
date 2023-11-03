@@ -35,7 +35,7 @@
 
 #include "paddle/fluid/platform/init_phi.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 
 DECLARE_FILE_SYMBOLS(kernel_dialect);
 
