@@ -346,7 +346,7 @@ phi::DataType GetKernelDataTypeByYamlInfo(
 
     bool is_complex_tag = false;
     if (slot_name.find("complex:") == 0) {
-      slot_name = str.substr(3);
+      slot_name = slot_name.substr(3);
       is_complex_tag = true;
     }
 
