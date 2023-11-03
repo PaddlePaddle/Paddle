@@ -1565,13 +1565,13 @@ def cholesky_inverse(x, upper=False, name=None):
 
 
     Args:
-    x (Tensor): The input tensor. Its shape should be :math:`[*, M, M]`,
-        where :math:`*` is zero or more batch dimensions. Its data type should
-        be float32 or float64.
-    upper (bool, optional): The flag indicating whether the Cholesky
-        factor is upper or lower triangular matrices. Default: False.
-    name (str, optional): Name for the operation (optional, default is None).
-        For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): The input tensor. Its shape should be :math:`[*, M, M]`,
+            where :math:`*` is zero or more batch dimensions. Its data type should
+            be float32 or float64.
+        upper (bool, optional): The flag indicating whether the Cholesky
+            factor is upper or lower triangular matrices. Default: False.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor, A Tensor with same shape and data type as `x`. It represents
