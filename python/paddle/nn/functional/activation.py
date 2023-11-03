@@ -696,9 +696,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".format(
-                lower
-            )
+            f"The lower value must be no less than zero or greater than one. Received: {lower}."
         )
 
     if upper < lower:
@@ -1448,7 +1446,7 @@ def swish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.swish(x)
     else:
         check_variable_and_dtype(

@@ -21,7 +21,9 @@ from op_gen import (
     PD_MANUAL_OP_LIST,
     OpCompatParser,
     OpInfoParser,
+    check_need_update_ops,
     to_pascal_case,
+    update_ops,
 )
 
 H_FILE_TEMPLATE = """
@@ -154,12 +156,18 @@ class CodeGen:
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = check_need_update_ops(op_yaml_files)
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            update_ops(op_yaml_items, update_yaml_file)
         op_info_items = []
         for op in op_yaml_items:
             op_compat_item = op_compat_parser.get_compat(op['name'])
@@ -178,6 +186,13 @@ class CodeGen:
                 and 'scalar' in op_compat_item
             ):
                 op_compat_item = op_compat_item.pop('scalar')
+            if 'support_tensor' in op.keys() and op['support_tensor']:
+                (
+                    scalar_item,
+                    int_array_item,
+                ) = op_compat_parser.parse_support_tensor(op)
+                op_compat_item['scalar'] = scalar_item
+                op_compat_item['int_array'] = int_array_item
 
             op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items

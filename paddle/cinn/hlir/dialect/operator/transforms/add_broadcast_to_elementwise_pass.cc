@@ -93,17 +93,21 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
+    std::vector<int64_t> vec_dims;
+    for (int64_t i = 0; i < output_shape.size(); ++i) {
+      vec_dims.push_back(i);
+    }
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(0), std::vector<int64_t>({}), output_shape);
+          op->operand_source(0), vec_dims, output_shape);
 
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 
     if (!IsSameDim(y_dims, output_shape)) {
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
-          op->operand_source(1), std::vector<int64_t>({}), output_shape);
+          op->operand_source(1), vec_dims, output_shape);
 
       op->operand(1).set_source(new_transpose_op->result(0));
     }
