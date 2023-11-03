@@ -34,7 +34,6 @@ struct InnerProductCache {
   dnnl::memory bias_mem;
   dnnl::memory dst_mem;
   dnnl::memory residual_mem;
-  phi::DenseTensor residual_data;
   dnnl::memory src_scales_mem;
   dnnl::memory wei_scales_mem;
   dnnl::memory dst_scales_mem;
@@ -655,8 +654,7 @@ class FCMKLDNNKernel : public framework::OpKernel<T_in> {
       ip_cache->src_mem = *src_memory_p;
       ip_cache->weights_mem = *weights_memory_p;
       ip_cache->dst_mem = *dst_memory_p;
-      if (residual_data && residual_data_memory_p) {
-        ip_cache->residual_data = *residual_data;
+      if (residual_data_memory_p) {
         ip_cache->residual_mem = *residual_data_memory_p;
       }
       if (bias) {
