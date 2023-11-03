@@ -17,7 +17,7 @@ import unittest
 from functools import partial
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -50,7 +50,7 @@ class TinyModel(paddle.nn.Layer):
         return self.layer1(data)
 
 
-class TestTrainStepTinyModel(unittest.TestCase):
+class TestTrainStepTinyModel(Dy2StTestBase):
     def setUp(self):
         self.input = paddle.randn([10000, 10])
         self.net_creator = TinyModel
@@ -77,7 +77,7 @@ class TestTrainStepTinyModel(unittest.TestCase):
             losses.append(loss)
         return losses
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_train_step(self):
         reset_seed()
         dygraph_losses = self.get_train_step_losses(
@@ -428,6 +428,23 @@ class TestTrainStepTinyModelLRCyclicLR(TestTrainStepTinyModel):
             max_learning_rate=1.0,
             step_size_up=15,
             step_size_down=5,
+        )
+        self.optimizer_creator = paddle.optimizer.SGD
+        self.loss_fn = loss_fn_tiny_model
+        self.train_step_func = train_step_tiny_model
+        self.steps = 3
+        self.rtol = 1e-4
+
+
+class TestTrainStepTinyModelCosineAnnealingWarmRestarts(TestTrainStepTinyModel):
+    def setUp(self):
+        self.input = paddle.randn([10000, 10])
+        self.net_creator = TinyModel
+        self.lr_creator = partial(
+            paddle.optimizer.lr.CosineAnnealingWarmRestarts,
+            learning_rate=0.5,
+            T_0=1,
+            T_mult=1,
         )
         self.optimizer_creator = paddle.optimizer.SGD
         self.loss_fn = loss_fn_tiny_model

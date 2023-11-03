@@ -31,12 +31,12 @@ __global__ void ContiguousCaseZeroFunc(
                               blockDim.z * blockDim.y * blockDim.x +
                           threadIdx.z * blockDim.y * blockDim.x +
                           threadIdx.y * blockDim.x + threadIdx.x;
-  float coordinate[6] = {threadIdx.x,
-                         threadIdx.y,
-                         threadIdx.z,
-                         blockIdx.x,
-                         blockIdx.y,
-                         blockIdx.z};
+  int64_t coordinate[6] = {threadIdx.x,
+                           threadIdx.y,
+                           threadIdx.z,
+                           blockIdx.x,
+                           blockIdx.y,
+                           blockIdx.z};
 
 #pragma unroll
   for (int dim = N - 1; dim >= 0; --dim) {

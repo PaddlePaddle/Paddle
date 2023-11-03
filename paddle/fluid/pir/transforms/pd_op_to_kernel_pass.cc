@@ -37,7 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -520,10 +520,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
@@ -815,29 +812,20 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-    if (i == 0)
+    if (i == 0) {
       cond_val = new_in;
-    else
+    } else {
       vec_in.push_back(new_in);
+    }
   }
 
   pir::Builder builder(ctx, block);
-
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
   auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();
   for (size_t i = 0; i < vec_in.size(); ++i) {
     auto block_arg = body_block->AddArgument(vec_in[i].type());
     (*map_value_pair)[base_while_op.body_block()->argument(i)] = block_arg;
-  }
-
-  (*map_op_pair)[op_item] = new_while_op;
-
-  // only deal with single output
-  if (op_item->num_results() > 0) {
-    for (size_t i = 0; i < op_item->num_results(); ++i) {
-      (*map_value_pair)[op_item->result(i)] = new_while_op->result(i);
-    }
   }
 
   // process body block

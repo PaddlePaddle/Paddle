@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult, translate_to_new_ir
+from ..pir import OpResult, Value, translate_to_new_ir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -513,7 +513,7 @@ def _add_pir_fetch_ops(program, fetch_list, fetch_var_name):
         with paddle.static.program_guard(program):
             for i, fetch_input in enumerate(fetch_list):
                 assert isinstance(
-                    fetch_input, OpResult
+                    fetch_input, (OpResult, Value)
                 ), f"Wrong type for fetch_list[{i}]: {type(fetch_input)}"
                 paddle._pir_ops.fetch(fetch_input, fetch_var_name + str(i), i)
 
@@ -798,7 +798,11 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            return _merge_tensors(tensors, self._plan.micro_batch_num())
+            if not get_flags("FLAGS_enable_new_ir_in_executor")[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
+                return _merge_tensors(tensors, self._plan.micro_batch_num())
+            return tensors
         else:
             if self._plan.micro_batch_num() > 1:
                 raise RuntimeError(
@@ -1707,7 +1711,7 @@ class Executor:
         if isinstance(program, Program) and program._heter_pipeline_opt:
             # print("program._heter_pipeline_opt: {}".format(
             #    program._heter_pipeline_opt))
-            ## change default executor
+            # change default executor
             heter_place = program._heter_pipeline_opt["heter_place"]
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
@@ -1864,12 +1868,12 @@ class Executor:
                 varobj = global_block.vars[varname]
 
                 if (
-                    vardesc.persistable() == False
+                    vardesc.persistable() is False
                     and vardesc.type() == core.VarDesc.VarType.LOD_TENSOR
-                    and vardesc.need_check_feed() == True
-                    and varobj.stop_gradient == True
-                    and varobj.is_data == True
-                    and varobj.belong_to_optimizer == False
+                    and vardesc.need_check_feed() is True
+                    and varobj.stop_gradient is True
+                    and varobj.is_data is True
+                    and varobj.belong_to_optimizer is False
                     and varname not in feed
                 ):
                     raise ValueError('Need feed data for variable %s' % varname)
@@ -1952,7 +1956,9 @@ class Executor:
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        is_fetch_var = lambda var: isinstance(var, (Variable, str, OpResult))
+        is_fetch_var = lambda var: isinstance(
+            var, (Variable, str, OpResult, Value)
+        )
         is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
         if fetch_list is None:
@@ -1978,7 +1984,7 @@ class Executor:
                     res.append(var)
             else:
                 raise TypeError(
-                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".format(
+                    "Require fetch_list[{}] 's type shall be one of (OpResult, str), but received {}.".format(
                         i, type(var).__name__
                     )
                 )
@@ -2155,7 +2161,7 @@ class Executor:
     ):
         is_heter = 0
         use_ps_gpu = 0
-        if not program._fleet_opt is None:
+        if program._fleet_opt is not None:
             if program._fleet_opt.get("worker_class", "") == "HeterCpuWorker":
                 is_heter = 1
             if program._fleet_opt.get("trainer", "") == "HeterXpuTrainer":
@@ -2281,7 +2287,7 @@ class Executor:
                     raise RuntimeError(
                         "dataset is need and should be initialized"
                     )
-            ## change default executor
+            # change default executor
             heter_place = framework._get_paddle_place(heter_place)
             p = core.Place()
             p.set_place(heter_place)

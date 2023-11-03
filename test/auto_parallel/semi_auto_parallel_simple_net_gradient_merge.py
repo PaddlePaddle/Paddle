@@ -14,10 +14,9 @@
 
 import os
 
+import numpy as np
 from semi_auto_parallel_simple_net import (
     DemoNet,
-    DPDemoNet,
-    MPDemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
 
@@ -39,11 +38,21 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
         self.init_input_data()
         self.init_single_card_net_result()
 
-    def run_dynamic_gradient_merge(self, layer):
+    def run_dynamic_gradient_merge(self, layer, shard_input=False):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
         image = paddle.to_tensor(self.image)
+        if shard_input:
+            image = dist.shard_tensor(
+                image,
+                dist_attr=dist.DistAttr(
+                    mesh=self._mesh, sharding_specs=['x', None]
+                ),
+            )
 
         for i in range(2):
             out = layer(image)
@@ -51,38 +60,41 @@ class TestSimpleNetWithGradientMergeForSemiAutoParallel(
             loss = loss_fn(out, label)
             loss.backward()
 
-        return loss, layer.w0.grad, layer.w1.grad
+        return loss, layer.parameters()
 
     def init_single_card_net_result(self):
         (
             self.base_loss,
-            self.base_w0_grad,
-            self.base_w1_grad,
-        ) = self.run_dynamic_gradient_merge(DemoNet(self.w0, self.w1))
+            self.base_parameters,
+        ) = self.run_dynamic_gradient_merge(DemoNet("gradient_merge_demo"))
 
     def test_dp_demo_net(self):
         (
             self.dp_loss,
-            self.dp_w0_grad,
-            self.dp_w1_grad,
+            self.dp_parameters,
         ) = self.run_dynamic_gradient_merge(
-            DPDemoNet(self.w0, self.w1, self._mesh)
+            DemoNet("gradient_merge_dp_demo"),
+            shard_input=True,
         )
         self.check_tensor_eq(self.dp_loss, self.base_loss)
-        self.check_tensor_eq(self.dp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.dp_w1_grad, self.base_w1_grad)
+        self.check_tensor_eq(self.dp_loss, self.base_loss)
+        for param, param_base in zip(self.dp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        mp_layer = dist.shard_layer(
+            DemoNet("gradient_merge_mp_demo"), self._mesh, self.shard_fn
+        )
         (
             self.mp_loss,
-            self.mp_w0_grad,
-            self.mp_w1_grad,
-        ) = self.run_dynamic_gradient_merge(
-            MPDemoNet(self.w0, self.w1, self._mesh)
-        )
+            self.mp_parameters,
+        ) = self.run_dynamic_gradient_merge(mp_layer)
+
         self.check_tensor_eq(self.mp_loss, self.base_loss)
-        self.check_tensor_eq(self.mp_w0_grad, self.base_w0_grad)
-        self.check_tensor_eq(self.mp_w1_grad, self.base_w1_grad)
+        for param, param_base in zip(self.mp_parameters, self.base_parameters):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
         self.test_dp_demo_net()
