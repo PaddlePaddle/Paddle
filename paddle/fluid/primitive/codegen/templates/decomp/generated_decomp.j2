@@ -11,16 +11,15 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/op_base.h"
 
-
 namespace paddle {
 namespace dialect {
 using IntArray = paddle::experimental::IntArray;
-
 {% macro sig(fwd_name, class_name, inputs, attrs, outputs) %}
-{%- set input_names=[] -%}
-{%- set attr_names=[] -%}
-{%- set output_names=[] -%}
-{%- set output_types=[] -%}
+{% set input_names=[] %}
+{% set attr_names=[] %}
+{% set output_names=[] %}
+{% set output_types=[] %}
+
 std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* op) {
   {{class_name}} op_obj = op->dyn_cast<{{class_name}}>();
   (void)op_obj;
@@ -29,7 +28,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
 
   VLOG(4) << "Decomp Prepare inputs of {{fwd_name}}";
 
-    {% for item in inputs %}
+    {% for item in inputs -%}
       {% do input_names.append(item.name) %}
       {% if item.typename == "Tensor" %}  {#- Tensor or Tensor[] #}
         {% if item.optional %}
@@ -71,7 +70,6 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     {% if attrs %}
       {% for item in attrs %}
       {% do attr_names.append(item.name) %}
-
       {% if item.typename == "Scalar" and item.support_tensor %}
 
   Tensor {{item.name}}_(std::make_shared<primitive::LazyTensor>(op_obj.{{item.name}}()));
@@ -88,7 +86,6 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
                                         "for now. "));
   }
   Scalar {{item.name}} = {{item.name}}_define_op->attribute("value").dyn_cast<paddle::dialect::ScalarAttribute>().data();
-
 
       {% elif item.typename == "IntArray" and item.support_tensor %}
 
@@ -109,7 +106,6 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
       paddle::dialect::GetInt64Vector({{item.name}}_define_op->attribute("value")));
 
       {% else %}
-
   {{item.typename}} {{item.name}} = op->attribute("{{item.name}}").dyn_cast<{{item.mapped_type}}>().data();
       {% endif %}
       {% endfor %}
@@ -126,8 +122,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
     std::static_pointer_cast<primitive::LazyTensor>(op_res.impl())
         ->value()
         .dyn_cast<pir::OpResult>());
-  
-  {%- else -%}
+  {% else %}
     {% for item in outputs %}
       {% do output_names.append(item.name) %}
       {% do output_types.append(item.mapped_type) %}
@@ -145,16 +140,15 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   {% endif %}
 
   return res;
-
 }
-
 {% endmacro %}
 
-{% for api in apis %}
-  {%- if api.name in decomp_white_list -%}
+{% for api in apis -%}
+  {% if api.name in decomp_white_list %}
     {{sig(api.name, api.class_name, api.inputs, api.attrs, api.outputs)}}
-  {%- else -%} {#- render nothing -#}
+  {% else %} {# render nothing #}
   {% endif %}
 {% endfor %}
+
 }  // namespace dialect
 }  // namespace paddle
