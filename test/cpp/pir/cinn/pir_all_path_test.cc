@@ -81,54 +81,54 @@ std::shared_ptr<::pir::Program> BuildGroupProgram() {
   return program;
 }
 
-// TEST(GroupOp, TestBuild) {
-//   // Step 1: Construct pir::Program
-//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-//   std::shared_ptr<::pir::Program> program = BuildGroupProgram();
-//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
-//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+TEST(GroupOp, TestBuild) {
+  // Step 1: Construct pir::Program
+  ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+  std::shared_ptr<::pir::Program> program = BuildGroupProgram();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-//   program->Print(std::cout);
+  program->Print(std::cout);
 
-//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+  cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-//   program->Print(std::cout);
-//   pir::PassManager pm(ctx);
-//   pm.AddPass(
-//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
-//   pm.AddPass(pir::CreateBuildCinnPass());
-//   CHECK_EQ(pm.Run(program.get()), true);
-//   std::cerr << "fin build cinn pass process " << std::endl;
+  program->Print(std::cout);
+  pir::PassManager pm(ctx);
+  pm.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+  pm.AddPass(pir::CreateBuildCinnPass());
+  CHECK_EQ(pm.Run(program.get()), true);
+  std::cerr << "fin build cinn pass process " << std::endl;
 
-//   program->Print(std::cout);
+  program->Print(std::cout);
 
-//   std::cerr << "finish here" << std::endl;
+  std::cerr << "finish here" << std::endl;
 
-//   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+  auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
-//   res->Print(std::cout);
+  res->Print(std::cout);
 
-//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+  paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
-//   auto kernel_program =
-//       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+  auto kernel_program =
+      paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
 
-//   kernel_program->Print(std::cout);
+  kernel_program->Print(std::cout);
 
-//   paddle::framework::Scope exe_scope;
+  paddle::framework::Scope exe_scope;
 
-//   paddle::framework::InterpreterCore executor(
-//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+  paddle::framework::InterpreterCore executor(
+      place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-//   for (size_t i = 0; i < 100; ++i) {
-//     executor.Run({}, true);
-//   }
+  for (size_t i = 0; i < 100; ++i) {
+    executor.Run({}, true);
+  }
 
-//   auto out_tensor =
-//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-//   std::cerr << out_tensor.dims() << std::endl;
-// }
+  std::cerr << out_tensor.dims() << std::endl;
+}
 
 // std::shared_ptr<::pir::Program> BuildLayerNormProgram() {
 //   ::pir::IrContext* ctx = ::pir::IrContext::Instance();

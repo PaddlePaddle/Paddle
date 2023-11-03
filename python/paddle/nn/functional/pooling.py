@@ -171,9 +171,7 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimmention should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimmention should be 1 or 2. But got padding={padding}"
         )
     return padding
 

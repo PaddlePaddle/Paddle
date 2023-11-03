@@ -113,7 +113,6 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
           op->operand_source(0),
           GetBroadcastAxis(x_dims, output_shape),
           output_shape);
-
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 
