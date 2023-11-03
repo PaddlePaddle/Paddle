@@ -204,6 +204,20 @@ class ProcessMesh(core.ProcessMesh):
             else:
                 return ProcessMesh([new_mesh])
 
+    def get_mesh_with_dim(self, dim_name):
+        assert (
+            dim_name in self._dim_names
+        ), f'{dim_name} is not a valid dim name.'
+        index_axis = self._dim_names.index(dim_name)
+        new_order = [index_axis] + [
+            i for i in range(len(self._dim_names)) if i != index_axis
+        ]
+        new_dim_names = [dim_name] + [
+            dim for dim in self._dim_names if dim != dim_name
+        ]
+        new_mesh = self._mesh.transpose(new_order)
+        return ProcessMesh(new_mesh, new_dim_names)
+
     def __enter__(self):
         set_current_process_mesh(self)
         default_prog = paddle.static.default_main_program()

@@ -19,6 +19,8 @@ from .interface import shard_tensor
 from .interface import shard_op
 from .interface import recompute
 from .interface import fetch
+from .interface import create_mesh
+from .interface import get_mesh
 from .random import parallel_manual_seed
 
 __all__ = []

@@ -12,6 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from functools import reduce
+from typing import List, Tuple
+
+import numpy as np
+
 import paddle
 from paddle.framework import core
 
@@ -273,3 +278,28 @@ def fetch(tensor, name=None, logging=False):
     add_to_collection(CollectionNames.FETCHES, tensor, name)
     if logging:
         add_to_collection(CollectionNames.LOGGING, tensor, name)
+
+
+_g_mesh = None
+
+
+def get_mesh():
+    global _g_mesh
+    return _g_mesh
+
+
+def create_mesh(mesh_dims: List[Tuple[str, int]]):
+    """
+    Create a global process_mesh for auto parallel.
+
+    Args:
+        mesh_dims (list[tuple[str, int]]): A list of tuple, each element is (dim_name, dim_degree).
+    """
+    global _g_mesh
+    dim_names = [mesh_dim[0] for mesh_dim in mesh_dims]
+    mesh_shape = [mesh_dim[1] for mesh_dim in mesh_dims]
+    mesh_arr = np.arange(0, reduce(lambda x, y: x * y, mesh_shape, 1)).reshape(
+        mesh_shape
+    )
+    _g_mesh = ProcessMesh(mesh_arr, dim_names)
+    return _g_mesh
