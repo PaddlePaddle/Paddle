@@ -810,6 +810,17 @@ class _StandaloneExecutor:
                 )
             return tensors
 
+    def run_profile(self, feed_names):
+        """
+        Description:
+            Profiling run time (us) for each instruction.
+            NOTE: the time cost of communication op will not be recorded.
+        Args:
+            feed_names (list): input names of the model.
+        """
+        program_desc = self._new_exe.run_profile(feed_names)
+        return program_desc
+
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
@@ -1852,6 +1863,7 @@ class Executor:
                     tensor._copy_from(cpu_tensor, self.place)
 
             ret = new_exe.run(list(feed.keys()), return_numpy)
+
             set_flags(stored_flag)
             return ret
 

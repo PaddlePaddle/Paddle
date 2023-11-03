@@ -3692,6 +3692,60 @@ class Operator:
         """
         self.desc.dist_attr = dist_attr
 
+    def supports_runtime_profiling(self):
+        """
+        An utility function to check if this operator supports runtime profiling feature.
+        Now the criteria of judging if an operator can be profiled is by its type.
+        == NOTE ==: If an operator supports runtime profiling feature, its actual run time
+        will be stored in its "dist_attr" after the operator is run. The operator must be
+        run at least once before retrieving its run time.
+        """
+        op_type = self.desc.type()
+        if op_type.startswith("c_"):
+            # op type starts with "c_" means it is a communication op
+            return False
+        elif op_type.startswith("send") or op_type.startswith("recv"):
+            # op type starts with "send" or "recv" means it is a communication op
+            return False
+        else:
+            # otherwise we enabling its runtime profiling feature
+            return True
+
+    def get_runtime_us(self):
+        """
+        Retrieve the actual run time of this operator if runtime profiling feature is enabled.
+        """
+        op_type = self.desc.type()
+        if not self.supports_runtime_profiling():
+            raise RuntimeError(
+                "This operator (type=%s) does not support runtime profiling feature."
+                % op_type
+            )
+        run_time_us = self.desc.dist_attr.run_time_us
+        if run_time_us < 0.0:
+            raise RuntimeError(
+                "Invalid run time profiling result (%s) found! Run operator at least once to retrieve its run time."
+                % str(run_time_us)
+            )
+        return run_time_us
+
+    def set_runtime_us(self, run_time_us):
+        """
+        Set the run time (us) for this op.
+        """
+        op_type = self.desc.type()
+        if not self.supports_runtime_profiling():
+            raise RuntimeError(
+                "This operator (type=%s) does not support runtime profiling feature."
+                % op_type
+            )
+        if run_time_us < 0.0:
+            raise RuntimeError(
+                "Invalid run time profiling result (%s) found! Run operator at least once to retrieve its run time."
+                % str(run_time_us)
+            )
+        self.desc.dist_attr.run_time_us = run_time_us
+
 
 @signature_safe_contextmanager
 def _stride_in_no_check_dy2st_diff():

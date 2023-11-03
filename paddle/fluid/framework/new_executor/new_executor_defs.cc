@@ -286,5 +286,21 @@ void Instruction::AddInplace(Variable* in, Variable* out) {
 
 void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
+bool Instruction::IsSupportRuntimeProfiling() const {
+  if (this->OpBaseValid() == false) return false;
+  std::string op_type = this->OpBase()->Type();
+  if (op_type.substr(0, 2) == "c_") {
+    // op type starts with c_ are considered communication op
+    // and comm op are not supported for runtime profiling
+    return false;
+  } else if (op_type.substr(0, 4) == "send" || op_type.substr(0, 4) == "recv") {
+    // send and recv ops are also comm ops and they don't
+    // support runtime profiling.
+    return false;
+  } else {
+    return true;
+  }
+}
+
 }  // namespace framework
 }  // namespace paddle

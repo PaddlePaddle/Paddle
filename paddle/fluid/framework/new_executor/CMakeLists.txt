@@ -5,8 +5,13 @@ add_subdirectory(workqueue)
 add_subdirectory(pir_adaptor)
 
 set(STANDALONE_EXECUTOR_SRCS
-    feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
+    feed_fetch_utils.cc
+    interpretercore.cc
+    new_executor_defs.cc
+    standalone_executor.cc
+    program_interpreter.cc
+    pir_interpreter.cc
+    profiler.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
     interpreter

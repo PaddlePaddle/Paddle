@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/framework/new_executor/interpreter_base_impl.h"
+#include "paddle/fluid/framework/new_executor/profiler.h"
 
 namespace paddle {
 namespace framework {
@@ -49,6 +50,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
 
+  void RunProfile(const std::vector<std::string>& feed_names) override;
+
   void Build(
       const std::vector<std::string>& feed_names,
       std::vector<paddle::framework::OpFuncNode>* op_func_nodes) override;
@@ -67,6 +70,8 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   bool IsSharedResultsBuild() const override;
 
   void SetCopyProgram(std::shared_ptr<ProgramDesc> prog) override;
+
+  std::shared_ptr<ProgramDesc> GetMutableCopyProgram() override;
 
   void SetSkipGcVars(const std::set<std::string>& skip_gc_vars) override;
 
@@ -126,8 +131,19 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   void RunNextInstructions(const Instruction& instr_id,
                            SchedulingQueue* reserved_next_ops);
   void RunOperator(const Instruction& instr_node);
+
   // Trace
   void TraceInstructionList(const std::vector<Instruction>& vec_instr);
+
+  // profiling
+  void RunProfileImpl();
+  void ProfileInstructionList(const std::vector<Instruction>& vec_instr);
+  void ProfileInstruction(const Instruction& instr_node,
+                          profiler::OpRuntimeProfiler* op_runtime_profiler,
+                          const std::string& profile_signature);
+  void ProfileOperator(const Instruction& instr_node,
+                       profiler::OpRuntimeProfiler* op_runtime_profiler,
+                       const std::string& profile_signature);
 
   // only used when program contains no feed op
   void Prepare(const std::vector<std::string>& feed_names,

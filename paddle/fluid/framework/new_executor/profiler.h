@@ -13,10 +13,15 @@
 // limitations under the License.
 
 #pragma once
+#include <glog/logging.h>
+#include <stdlib.h>
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
+#include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/timer.h"
+#include "paddle/phi/backends/gpu/gpu_context.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -56,5 +61,55 @@ class ProfilerGuard {
 };
 
 }  // namespace interpreter
+
+namespace profiler {
+
+class OpProfileEvent {
+ public:
+  explicit OpProfileEvent(const platform::DeviceContext* device_context);
+  virtual ~OpProfileEvent();
+
+  // record event on host and device side (making a time stamp)
+  void Record();
+
+  // measure time lapse with respect to another event
+  std::tuple<double, double> MeasureTimeLapseWrtOtherEvent(
+      const OpProfileEvent& end_event) const;
+
+ private:
+  ///////////////////////////////////
+  //      HOST side profiling      //
+  ///////////////////////////////////
+  struct cpuEvent_t {
+    // cpu can also be treated as a compute device
+    uint64_t event_time_us_;
+  } event_obj_cpu_;
+};
+
+class OpRuntimeProfiler {
+  // Cross-platform event recorder for op runtime profiling.
+  // For CPU device, recorder uses a simple timer to record op runtime.
+  // For GPU device, recorder uses cuda event and stream to record op runtime.
+ public:
+  OpRuntimeProfiler();
+  virtual ~OpRuntimeProfiler();
+
+  // this will record event on both host and device side (if exist)
+  void RecordEvent(const std::string& event_name,
+                   const platform::DeviceContext* device_context);
+
+  // return time lapse between two events in both host and device side
+  std::tuple<double, double> MeasureTimeLapseBetweenEvents(
+      const std::string& start_event_name,
+      const std::string& end_event_name) const;
+
+ protected:
+  // mapping event name to event object, users just need to use event name
+  // to record event of measure time lapse between events.
+  std::unordered_map<std::string, std::shared_ptr<OpProfileEvent>>
+      name_to_device_profile_events_;
+};
+
+}  // namespace profiler
 }  // namespace framework
 }  // namespace paddle

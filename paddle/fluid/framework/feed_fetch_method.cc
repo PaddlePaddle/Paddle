@@ -30,6 +30,31 @@ namespace framework {
 
 class Variable;
 
+void SetVariable(Scope* scope,
+                 const phi::DenseTensor& input,
+                 const std::string& var_name) {
+  // provide a way to create persist variable or parameter in program object
+  // this function is very similar to SetFeedVariable
+  // === !!! IMPORTANT NOTE !!! ===
+  // SetVariable only supports phi::DenseTensor
+  // and other types are currently not supported.
+  bool is_new_var = (scope->FindVar(var_name) == nullptr);
+  auto target_var = scope->Var(var_name);
+  VLOG(1) << "Currently, SetVariable() only supports phi::DenseTensor.";
+  VLOG(3) << "SetVariable \"" << var_name << "\"";
+  if (!is_new_var && !target_var->IsType<phi::DenseTensor>()) {
+    VLOG(1)
+        << "ERROR: \"" << var_name
+        << "\" is not a phi::DenseTensor and "
+           "other types are currently not supported, force reset its type to "
+           "phi::DenseTensor instead.";
+    target_var->Clear();
+  }
+  auto val = target_var->GetMutable<phi::DenseTensor>();
+  val->ShareDataWith(input);
+  val->set_lod(input.lod());
+}
+
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
                      const std::string& var_name,

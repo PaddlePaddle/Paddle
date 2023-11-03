@@ -604,6 +604,11 @@ void BuildOpFuncList(const platform::Place& place,
       }
     }
 
+    op->SetId(i);  // save op id info into op base
+                   // (note: op id is equivalent to
+                   // its dist_attr id)
+    VLOG(6) << "set op id " << i << " for op " << op_type;
+
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
     // Print new executor log if grad op is used.
@@ -1120,13 +1125,15 @@ void BuildVariableScope(const framework::BlockDesc& block,
       // NOTE(zhiqiu): if var exists in scope and the type is right,
       // InitializeVariable will not create a new variable.
       InitializeVariable(ptr, var_desc->GetType());
-      VLOG(3) << "Create Variable " << var_name << " global, which pointer is "
-              << ptr << " type is " << static_cast<int>(var_desc->GetType());
+      VLOG(3) << "Created global variable \"" << var_name
+              << "\", which pointer is " << ptr << " type is "
+              << static_cast<int>(var_desc->GetType());
     } else {
       auto* ptr = local_scope->Var(var_name);
       InitializeVariable(ptr, var_desc->GetType());
-      VLOG(3) << "Create Variable " << var_name << " locally, which pointer is "
-              << ptr << " type is " << static_cast<int>(var_desc->GetType());
+      VLOG(3) << "Created local variable \"" << var_name
+              << "\", which pointer is " << ptr << " type is "
+              << static_cast<int>(var_desc->GetType());
     }
     var_scope->AddVar(var_name, var_desc);
   }

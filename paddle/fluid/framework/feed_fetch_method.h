@@ -29,6 +29,10 @@ namespace framework {
 
 class Scope;
 
+void SetVariable(Scope* scope,
+                 const phi::DenseTensor& input,
+                 const std::string& var_name);
+
 void SetFeedVariable(Scope* scope,
                      const phi::DenseTensor& input,
                      const std::string& var_name,

@@ -176,6 +176,338 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
   return {};
 }
 
+void ProgramInterpreter::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  if (!static_build_) {
+    throw std::runtime_error(
+        "Run profile requires static_build==true, "
+        "use FLAGS_new_executor_static_build=1 to enable it.");
+  }
+
+  SetDeviceId(place_);
+  CheckCUDAGraphBeforeRun(feed_names);
+
+#ifdef PADDLE_WITH_DNNL
+  platform::AttachPointerHashToMKLDNNKey(this, place_);
+#endif
+
+  if (!is_build_) {
+    LOG_FIRST_N(INFO, 1) << "New Executor is Running.";
+    paddle::framework::interpreter::BuildVariableScope(
+        block_, execution_config_, &var_scope_);
+
+    std::vector<paddle::framework::OpFuncNode> op_func_nodes;
+    paddle::framework::interpreter::BuildOpFuncList(
+        place_,
+        block_,
+        execution_config_.skip_gc_vars,
+        &op_func_nodes,
+        &var_scope_,
+        execution_config_,
+        HasLocalScope(),
+        static_build_);
+    SetFeedVarsInplaceSkip(feed_names);
+    // convert vec func_list to graph
+    Convert(&op_func_nodes);
+    UpdateSyncOpNum();
+    RunProfileImpl();
+
+    is_build_ = true;
+    is_shared_results_build_ = true;
+  } else {
+    RunProfileImpl();
+  }
+
+  if (HasLocalScope()) {
+    ClearLoDTensorArrayInLocalScope();
+  }
+}
+
+void ProgramInterpreter::RunProfileImpl() {
+  // lazy initialization of gc, do not create gc is the program only run once
+  if (!gc_) {
+    gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
+  }
+
+  interpreter::ResetAtomicGuard guard(&deps_, &refs_);
+
+  VLOG(4) << "Profiling Instruction List";
+  ProfileInstructionList(vec_instruction_);
+
+#ifdef PADDLE_WITH_CUSTOM_DEVICE
+  if (platform::is_custom_place(place_)) {
+    platform::DeviceContextPool::Instance().Get(place_)->Wait();
+  }
+#endif
+}
+
+void ProgramInterpreter::ProfileInstructionList(
+    const std::vector<Instruction>& vec_instr) {
+  unfinished_op_number_ = vec_instr.size();
+  if (unfinished_op_number_ == 0) {
+    VLOG(4) << "No op to run, return";
+    return;
+  }
+  exception_holder_.Clear();
+  for (size_t i = 0; i < dependecy_count_->size(); ++i) {
+    if ((*dependecy_count_)[i] == 0) {
+      RecordMemcpyD2H(vec_instr.at(i));
+    }
+  }
+
+  profiler::OpRuntimeProfiler op_runtime_profiler;
+
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto& instr = vec_instruction_[trace_execute_order_[idx]];
+    OperatorBase* op_base = instr.OpBase();
+
+    VLOG(4) << "** Profile instruction " << idx;
+
+    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
+      // if this instruction supports runtime profiling and op_base ID is
+      // correctly set, then run op profiling
+      std::string profile_signature = std::to_string(op_base->Id());
+      ProfileInstruction(instr, &op_runtime_profiler, profile_signature);
+    } else {
+      // don't need profiling
+      RunInstruction(instr);
+      VLOG(4) << "** op does not support runtime profiling.";
+    }
+
+    if (UNLIKELY(exception_holder_.IsCaught())) {
+      VLOG(4) << "Exception caught";
+      break;
+    }
+  }
+
+// make sure all instructions are executed on device side, then we starts
+// collecting profiling information
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  platform::GpuDeviceSync();
+#endif
+
+  // then starts collecting profiling information, and write op run time
+  // info into dist_attr.
+  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
+    auto& instr = vec_instruction_[trace_execute_order_[idx]];
+    OperatorBase* op_base = instr.OpBase();
+    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
+      OpDesc* op_desc = block_.Op(op_base->Id());
+      OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
+      std::string profile_signature = std::to_string(op_base->Id());
+      double cpu_us = -1.0, device_us = -1.0;
+      std::tie(cpu_us, device_us) =
+          op_runtime_profiler.MeasureTimeLapseBetweenEvents(
+              profile_signature + "@start", profile_signature + "@end");
+      op_dist_attr->set_run_time_us(cpu_us);  // cpu_us is ignored here
+    }
+  }
+
+  if (UNLIKELY(exception_holder_.IsCaught())) {
+    VLOG(1) << "Exception caught " << exception_holder_.Type();
+    PADDLE_ENFORCE_EQ(
+        main_thread_blocker_.Clear(),
+        0,
+        platform::errors::PreconditionNotMet(
+            "main_thread_blocker_.Clear() return -1, clear failed"));
+    VLOG(4) << "clear ok";
+    exception_holder_.ReThrow();
+  }
+}
+
+void ProgramInterpreter::ProfileInstruction(
+    const Instruction& instr_node,
+    profiler::OpRuntimeProfiler* op_runtime_profiler,
+    const std::string& profile_signature) {
+  auto* op = instr_node.OpBase();
+
+  platform::RecordEvent instruction_event(
+      op->Type(), platform::TracerEventType::Operator, 1);
+
+  SetDeviceId(instr_node.DeviceContext().GetPlace());
+
+  try {
+    instr_node.WaitEvent(place_);
+    if (!instr_node.IsArtificial()) {
+      ProfileOperator(instr_node, op_runtime_profiler, profile_signature);
+      CheckGC(instr_node);
+      memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
+    }
+    instr_node.RecordEvent(place_);
+  } catch (platform::EnforceNotMet& ex) {
+    framework::InsertCallStackInfo(op->Type(), op->Attrs(), &ex);
+    exception_holder_.Catch(std::make_exception_ptr(ex));
+  } catch (platform::EOFException&) {
+    exception_holder_.Catch(std::current_exception());
+  } catch (std::exception& ex) {
+    LOG(WARNING) << op->Type() << " raises an exception "
+                 << platform::demangle(typeid(ex).name()) << ", " << ex.what();
+    exception_holder_.Catch(std::current_exception());
+  } catch (...) {
+    LOG(WARNING) << op->Type() << " raises an unknown exception";
+    exception_holder_.Catch(std::current_exception());
+  }
+}
+
+void ProgramInterpreter::ProfileOperator(
+    const Instruction& instr_node,
+    profiler::OpRuntimeProfiler* op_runtime_profiler,
+    const std::string& profile_signature) {
+  auto* op = instr_node.OpBase();
+  auto place = instr_node.DeviceContext().GetPlace();
+  Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
+                                       : var_scope_.GetMutableScope();
+
+  auto op_with_kernel = dynamic_cast<const framework::OperatorWithKernel*>(op);
+  {
+    // If it is OperatorBase, InferShape do nothing.
+    if (op_with_kernel != nullptr) {
+      platform::RecordEvent infershape_event(
+          "infer_shape",
+          platform::TracerEventType::OperatorInner,
+          1,
+          platform::EventRole::kInnerOp);
+
+      // see OperatorWithKernel::RunImpl in operator.cc for why
+      if (!(op_with_kernel->HasAttr(kAllKernelsMustComputeRuntimeShape) &&
+            op_with_kernel->Attr<bool>(kAllKernelsMustComputeRuntimeShape))) {
+        op_with_kernel->Info().infer_shape_(
+            instr_node.InnerInferShapeContext().get());
+      }
+      infershape_event.End();
+      platform::RecordOpInfoSupplement(op->Type(),
+                                       op->Attrs(),
+                                       *(instr_node.InnerInferShapeContext()),
+                                       *(instr_node.InnerRuntimeContext()),
+                                       op->Id());
+    }
+  }
+  if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.InplaceInfo()) {
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
+  }
+
+  {
+    platform::RecordEvent compute_event(
+        "compute",
+        platform::TracerEventType::OperatorInner,
+        1,
+        platform::EventRole::kInnerOp);
+
+    std::string op_start_event_signature = profile_signature + "@start";
+    std::string op_end_event_signature = profile_signature + "@end";
+    const platform::DeviceContext& dev_ctx = instr_node.DeviceContext();
+
+    auto SyncDevice = []() -> void {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      platform::GpuDeviceSync();
+#endif
+    };
+
+    // compute
+    if (op_with_kernel == nullptr) {  // operator base
+      SyncDevice();
+      instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
+      op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+      SyncDevice();
+      op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+    } else {
+      phi::Kernel* kernel = instr_node.PhiKernel();
+      if (kernel && kernel->IsValid()) {  // phi kernel
+        if (kernel->GetKernelRegisteredType() ==
+            phi::KernelRegisteredType::FUNCTION) {
+          phi::KernelContext phi_kernel_context;
+          op_with_kernel->BuildPhiKernelContext(
+              *instr_node.InnerRuntimeContext().get(),
+              const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
+              &phi_kernel_context);
+
+          SyncDevice();
+          (*kernel)(&phi_kernel_context);  // op run case 2
+          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+          SyncDevice();
+          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+
+        } else {
+          SyncDevice();
+          (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
+          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+          SyncDevice();
+          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+        }
+      } else {  // fluid kernel
+        SyncDevice();
+        instr_node.KernelFunc()(
+            *instr_node.InnerExecutionContext().get());  // op run case 4
+        op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+        SyncDevice();
+        op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+      }
+    }
+  }
+
+  if (!instr_node.InplaceBackMap().empty()) {
+    auto& m = instr_node.InplaceBackMap();
+    for (auto& p : m) {
+      auto* transformed_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          var_scope_.VarRef(p.first));
+      auto* original_tensor = GetMutableLoDTensorOrSelectedRowsValueFromVar(
+          var_scope_.VarRef(p.second));
+      original_tensor->ShareDataWith(*transformed_tensor);
+    }
+  }
+
+  /*For profiling/benchmark only*/
+  if (FLAGS_benchmark) {
+    instr_node.DeviceContext().Wait();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    PADDLE_ENFORCE_GPU_SUCCESS(platform::GpuGetLastError());
+#endif
+  }
+
+  for (auto& hook : hookfuncs_) {
+    hook(op, local_scope);
+  }
+
+  // for debug nan/inf
+  if (op_with_kernel != nullptr && FLAGS_check_nan_inf) {
+    VLOG(4) << "Check nan/inf";
+    try {
+      framework::details::CheckOpHasNanOrInf(
+          *op,
+          *local_scope,
+          place);  // TODO(xiongkun03) change it to inner scope.
+    } catch (...) {
+      const std::vector<std::string>* callstack = nullptr;
+      auto attrs = op->Attrs();
+      auto iter =
+          attrs.find(OpProtoAndCheckerMaker::OpCreationCallstackAttrName());
+      if (iter != attrs.end()) {
+        callstack = &PADDLE_GET_CONST(std::vector<std::string>, iter->second);
+        if (callstack->empty()) callstack = nullptr;
+      }
+      std::ostringstream sout;
+      if (callstack) {
+        if (FLAGS_call_stack_level > 1) {
+          sout << "\n\n  Compile Traceback (most recent call last):";
+        } else {
+          sout << "In user code:\n";
+        }
+        for (auto& line : *callstack) {
+          sout << "\n  " << line;
+        }
+      }
+      std::rethrow_exception(std::current_exception());
+    }
+  }
+}
+
 void ProgramInterpreter::Build(
     const std::vector<std::string>& feed_names,
     std::vector<paddle::framework::OpFuncNode>* op_func_nodes) {
@@ -250,6 +582,10 @@ FetchList ProgramInterpreter::Run(
 
 void ProgramInterpreter::SetCopyProgram(std::shared_ptr<ProgramDesc> prog) {
   copy_program_ = prog;
+}
+
+std::shared_ptr<ProgramDesc> ProgramInterpreter::GetMutableCopyProgram() {
+  return copy_program_;
 }
 
 void ProgramInterpreter::SetSkipGcVars(

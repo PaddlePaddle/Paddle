@@ -41,6 +41,11 @@ class StandaloneExecutor {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
+  // Perform a profiling run, retrieving the actual time cost of each kernel
+  // this API will insert sync for every kernel in the graph
+  std::shared_ptr<framework::ProgramDesc> RunProfile(
+      const std::vector<std::string>& feed_names);
+
  private:
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
