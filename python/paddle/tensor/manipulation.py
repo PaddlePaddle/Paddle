@@ -3518,19 +3518,20 @@ def broadcast_to(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
+
+    if in_dynamic_mode():
+        if isinstance(shape, (list, tuple)):
+            shape = paddle.utils.convert_shape_to_list(shape)
+        return _C_ops.expand(x, shape)
     if in_dynamic_or_pir_mode():
         place = _current_expected_place()
-        if in_dynamic_mode():
-            if isinstance(shape, (list, tuple)):
-                shape = paddle.utils.convert_shape_to_list(shape)
+        if isinstance(shape, (list, tuple)):
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils.get_int_tensor_list(shape, place)
+        elif isinstance(shape, paddle.pir.OpResult):
+            shape.stop_gradient = True
         else:
-            if isinstance(shape, (list, tuple)):
-                if paddle.utils._contain_var(shape):
-                    shape = paddle.utils.get_int_tensor_list(shape, place)
-            elif isinstance(shape, paddle.pir.OpResult):
-                pass
-            else:
-                TypeError("Shape only supports OpReslut, or list, or tuple.")
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3649,6 +3650,8 @@ def expand(x, shape, name=None):
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils._convert_to_tensor_list(shape)
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
