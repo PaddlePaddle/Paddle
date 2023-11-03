@@ -19,7 +19,7 @@ import tempfile
 import unittest
 
 
-class TestGPTPIR(unittest.TestCase):
+class TestGPTPir(unittest.TestCase):
     def test_gpt_pir(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
         launch_model_path = os.path.join(file_dir, "gpt_with_pir.py")

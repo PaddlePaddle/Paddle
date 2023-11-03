@@ -66,7 +66,7 @@ def reset_prog():
     paddle.utils.unique_name.switch()
 
 
-class TestPIR(unittest.TestCase):
+class TestPir(unittest.TestCase):
     def setUp(self):
         self.batch_size = 2
         self.batch_num = 5

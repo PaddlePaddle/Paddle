@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 
-class TestDy2staticPIR(unittest.TestCase):
+class TestDy2staticPir(unittest.TestCase):
     def test_basic_network(self):
         def func(x):
             out = paddle.mean(x)
