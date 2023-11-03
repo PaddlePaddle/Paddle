@@ -183,17 +183,15 @@ void IrParamsSyncAmongDevicesPass::CopyParamsToXpu(Argument *argument) {
   platform::CPUPlace cpu_place;
   platform::Place xpu_place = platform::XPUPlace(argument->xpu_device_id());
   auto *scope = argument->scope_ptr();
-  framework::ir::Graph &main_graph = argument->main_graph();
+  std::vector<std::string> all_vars = scope->LocalVarNames();
+  for (auto &var_name : all_vars) {
+    auto *var = scope->FindLocalVar(var_name);
+    PADDLE_ENFORCE_NOT_NULL(
+        var,
+        platform::errors::PreconditionNotMet("The var should not be nullptr"));
 
-  for (size_t i = 0; i < main_graph.SubGraphsSize(); i++) {
-    auto *graph = main_graph.GetSubGraph(i);
-    for (auto *node : graph->Nodes()) {
-      if (!node->IsVar() || !node->Var()->Persistable()) continue;
-      auto *var = scope->FindVar(node->Name());
-      if (!var->IsType<phi::DenseTensor>()) continue;
+    if (var->IsType<phi::DenseTensor>()) {
       auto *tensor = var->GetMutable<phi::DenseTensor>();
-      if (tensor->place().GetType() == phi::AllocationType::XPU) continue;
-
       phi::DenseTensor temp_tensor;
       temp_tensor.Resize(tensor->dims());
       paddle::framework::TensorCopySync(*tensor, cpu_place, &temp_tensor);
