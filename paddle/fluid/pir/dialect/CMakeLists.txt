@@ -126,8 +126,6 @@ add_custom_command(
           ${op_yaml_file5}
   VERBATIM)
 
-add_custom_target(api_header_and_source_gen ALL DEPENDS ${api_header_file}
-                                                        ${api_source_file})
 set(python_c_gen_file
     ${PADDLE_SOURCE_DIR}/paddle/fluid/pir/dialect/op_generator/python_c_gen.py)
 set(python_c_header_file
