@@ -470,8 +470,7 @@ def load_inference_model_distributed(
 ):
     """
     Load the inference model from a given directory. By this API, you can get the model
-    structure(Inference Program) and model parameters. If you just want to load
-    parameters of the pre-trained model, please use the ``paddle.static.load_inference_model`` API.
+    structure(Inference Program) and model parameters.
     You can refer to :ref:`api_guide_model_save_reader_en` for more details.
 
     Args:
