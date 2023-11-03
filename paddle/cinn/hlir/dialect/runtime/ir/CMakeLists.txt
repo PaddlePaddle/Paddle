@@ -6,5 +6,5 @@ if(NOT CINN_ONLY)
     jit_kernel_op.cc
     DEPS
     cinn_op_dialect
-    pir_core)
+    pir)
 endif()

@@ -450,9 +450,7 @@ def convert_to_input_spec(inputs, input_spec):
             real_spec.shape = input_spec.shape
         else:
             logging_utils.warn(
-                "input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} ".format(
-                    input_spec=input_spec, real_spec=real_spec
-                )
+                f"input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
             )
         return real_spec
     else:

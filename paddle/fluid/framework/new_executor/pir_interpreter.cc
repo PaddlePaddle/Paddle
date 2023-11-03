@@ -126,7 +126,7 @@ PirInterpreter::PirInterpreter(const platform::Place& place,
 
   std::stringstream ss;
   ss << this
-     << std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+     << std::chrono::high_resolution_clock::now().time_since_epoch().count();
   BuildScope(*ir_block_, ss.str(), value_exe_info_.get());
 }
 
