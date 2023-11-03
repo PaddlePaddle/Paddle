@@ -736,8 +736,8 @@ class OpInfoParser:
     def parse_output_optional_list(self):
         optional_list = []
         for output_info in self.op_yaml_item['outputs']:
-            if 'optional' in output_info:
-                if output_info['optional']:
+            if 'optional' in output_info or 'intermediate' in output_info:
+                if output_info['optional'] or output_info['intermediate']:
                     optional_list.append("true")
                 else:
                     optional_list.append("false")
