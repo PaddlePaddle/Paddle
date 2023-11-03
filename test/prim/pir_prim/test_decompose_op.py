@@ -147,39 +147,11 @@ class TestDecomposeOp(unittest.TestCase):
                         flag == "decompose"
                         and bwd_op.name() in bwd_ops_to_be_decomposed
                     ):
-                        fwd_op = get_fwd_op(bwd_op, grad_var_to_var_map)
-                        assert fwd_op is not None, "fwd_op is None"
-
-                        (
-                            new_grads,
-                            bwd_has_decomposed,
-                        ) = decomp.decompose_bwd_op_directly(
+                        new_grads, has_decomposed = decomp.decomp_bwd_op(
                             newir_program.global_block(),
-                            fwd_op,
                             bwd_op,
                             grad_var_to_var_map,
                         )
-                        if not bwd_has_decomposed:
-                            fwd_inputs = [x.source() for x in fwd_op.operands()]
-                            (
-                                new_fwd_outputs,
-                                fwd_has_decomposed,
-                            ) = decomp.decompose_fwd_op(
-                                newir_program.global_block(),
-                                fwd_op,
-                                grad_var_to_var_map,
-                            )
-                            if fwd_has_decomposed:
-                                new_grads = (
-                                    decomp.decompose_bwd_op_after_fwd_op(
-                                        newir_program.global_block(),
-                                        fwd_op,
-                                        bwd_op,
-                                        grad_var_to_var_map,
-                                        fwd_inputs,
-                                        new_fwd_outputs,
-                                    )
-                                )
 
             # execution
             exe = paddle.static.Executor()

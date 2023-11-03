@@ -290,7 +290,22 @@ def _decompose_subgraph(block, orig_vars, dst_vars, op_filter):
     )
 
 
-def decompose_fwd_op(
+def _get_fwd_op(bwd_op, grad_var_to_var_map):
+    bwd_op_input_names = bwd_op.get_input_names()
+    out_grad_name = ["out_grad", "Out_grad", "loss_grad"]
+    for idx, input_name in enumerate(bwd_op_input_names):
+        if input_name in out_grad_name:
+            out_grad = bwd_op.operand(idx).source()
+            out = grad_var_to_var_map[out_grad]
+            assert (
+                out is not None
+            ), "can not find the variable of corresponding forward op"
+            fwd_op = out.get_defining_op()
+            return fwd_op
+    return None
+
+
+def _decomp_fwd_op(
     block: Block, fwd_op: pir.Operation, grad_var_to_var_map: dict
 ) -> tuple:
     '''
@@ -343,7 +358,7 @@ def decompose_fwd_op(
             return tuple(orig_outs), False
 
 
-def decompose_bwd_op_directly(
+def _decomp_bwd_with_vjp(
     block: Block,
     fwd_op: pir.Operation,
     bwd_op: pir.Operation,
@@ -435,7 +450,7 @@ def decompose_bwd_op_directly(
         return tuple(res), True
 
 
-def decompose_bwd_op_after_fwd_op(
+def _decomp_bwd_without_vjp(
     block: Block,
     fwd_op: pir.Operation,
     bwd_op: pir.Operation,
@@ -459,6 +474,7 @@ def decompose_bwd_op_after_fwd_op(
             fwd_outputs_after_decompose means the new output of the decomposed forward op. If forward op has vjp rules, fwd_outputs_after_decompose is None.
     Return:
         new_input_grads (tuple(Value)): results of backward op after decomposing.
+        has_decomposed: whether the backward op has been successfully decomposed.
     '''
 
     if not core._is_bwd_prim_enabled():
@@ -522,5 +538,73 @@ def decompose_bwd_op_after_fwd_op(
     # replace the following use of original backward op's outputs with new outputs, and then remove original backward op
     bwd_op.replace_all_uses_with(res)
     block.remove_op(bwd_op)
+    has_decomposed = True
 
-    return tuple(res)
+    return tuple(res), has_decomposed
+
+
+def decomp_bwd_op(
+    block: Block,
+    bwd_op: pir.Operation,
+    grad_var_to_var_map: dict,
+):
+    '''
+    Decompose a backward op in pir program.
+    Get the corresponding forward op according to grad_var_to_var_map firstly, then
+    (1) try to decompose backward op by calling _decompose_bwd_with_vjp, if forward op has composite vjp rules (including custom vjp),
+    _decompose_bwd_with_vjp will call call_vjp() to get a list of primitive operators in backward graph, then replace backward op successfully and return True;
+    (2) when _decompose_bwd_with_vjp return False, means there is no composite vjp rules,
+    try to decompose forward op firstly by calling _decompose_fwd_op and get corresponding primitive operators in backward graph by calling _decompose_bwd_without_vjp, then replace backward op successfully and return True;
+    (3) if the backward op is still not decomposed by the above two steps, returns False.
+
+    Args:
+        block (Block): the block to which the backward op belongs.
+        bwd_op (pir.Operation): the backward op to be decomposed.
+        grad_var_to_var_map (dict): a dict obtained from distributed processing,
+            which maps the backward grad variable to its corresponding forward variable.
+    Return:
+        new_input_grads (tuple(Value)): new results of backward op after decomposing.
+        has_decomposed: whether the backward op has been successfully decomposed.
+    '''
+
+    if not core._is_bwd_prim_enabled():
+        raise RuntimeError(
+            "To decompose backward op, please set `core._set_prim_backward_enabled(True)` firstly"
+        )
+    fwd_op = _get_fwd_op(bwd_op, grad_var_to_var_map)
+    assert fwd_op is not None, "fwd_op is None"
+
+    (
+        new_grads,
+        bwd_has_decomposed,
+    ) = _decomp_bwd_with_vjp(
+        block,
+        fwd_op,
+        bwd_op,
+        grad_var_to_var_map,
+    )
+
+    if not bwd_has_decomposed:
+        fwd_inputs = [x.source() for x in fwd_op.operands()]
+        (
+            new_fwd_outputs,
+            fwd_has_decomposed,
+        ) = _decomp_fwd_op(
+            block,
+            fwd_op,
+            grad_var_to_var_map,
+        )
+        if fwd_has_decomposed:
+            (
+                new_grads,
+                bwd_has_decomposed,
+            ) = _decomp_bwd_without_vjp(
+                block,
+                fwd_op,
+                bwd_op,
+                grad_var_to_var_map,
+                fwd_inputs,
+                new_fwd_outputs,
+            )
+
+    return new_grads, bwd_has_decomposed
