@@ -201,7 +201,7 @@ TrtDeleteWeightQuantDequantLinearOpPass::
 // Delete dequantize_linear_op, then dequantize weight
 void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     ir::Graph* graph) const {
-  const std::string pattern_name =
+    const std::string pattern_name =
       "delete_weight_quantdequant_linear_op_pattern";
   FusePassBase::Init(pattern_name, graph);
 
@@ -212,11 +212,11 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       platform::errors::InvalidArgument(
           "Scope in TrtDeleteWeightQuantDequantLinearOpPass should not be "
           "null."));
-  // Create pattern
+    // Create pattern
   patterns::DeleteWeightQuantDequantLinearOpPattern pattern(
       gpd.mutable_pattern(), pattern_name);
   pattern();
-  int found_count = 0;
+    int found_count = 0;
 
   // Device context
   auto* dev_ctx = static_cast<phi::CPUContext*>(
@@ -224,8 +224,8 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
-    GET_NODES;
-    /*
+        GET_NODES;
+        /*
     if (!IsCompat(subgraph, g)) {
       LOG(WARNING) << "trt_delete_weight_dequant_linear_op_pass "
                       "compat check failed.";
@@ -235,17 +235,17 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     std::unordered_set<const Node*> nodes2rm = {};
     int bit_length = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("bit_length"));
-    int range = ((1 << (bit_length - 1)) - 1);
+        int range = ((1 << (bit_length - 1)) - 1);
 
     auto* any_op2_desc = any_op2->Op();
-
+    
     // get weight tensor
     auto* weight_tensor = scope->GetVar(weight_dequantize_linear_op_x->Name())
                               ->GetMutable<phi::DenseTensor>();
-    int8_t* quantized_weight_data = weight_tensor->data<int8_t>();
-
+    float* quantized_weight_data = weight_tensor->data<float>();
+    
     auto w_dims = weight_tensor->dims();
-
+    
     // Get weight scale
     std::vector<float> weight_scale;
     auto* weight_scale_tensor =
@@ -258,7 +258,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     for (int i = 0; i < weight_scale_nums; i++) {
       weight_scale.push_back(weight_scale_data[i] / static_cast<float>(range));
     }
-
+    
     // dequant weight
     std::vector<float> weight_data_tmp;
     weight_data_tmp.reserve(weight_tensor->numel());
@@ -266,7 +266,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     int quant_axis = PADDLE_GET_CONST(
         int, weight_dequantize_linear_op->Op()->GetAttr("quant_axis"));
     if (quant_axis == -1) {  // per_layer quant_dequant: all OP
-      PADDLE_ENFORCE_EQ(weight_scale_nums,
+            PADDLE_ENFORCE_EQ(weight_scale_nums,
                         1,
                         platform::errors::InvalidArgument(
                             "When quant_axis == -1 means use per_layer "
@@ -275,11 +275,11 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
       //  float(weight) * scale
       for (int i = 0; i < weight_tensor->numel(); i++) {
         weight_data_tmp[i] =
-            static_cast<float>(quantized_weight_data[i]) * weight_scale[0];
+            quantized_weight_data[i] * weight_scale[0];
       }
     } else if (quant_axis == 0) {  // per_channel quant_dequant: conv2d,
                                    // depthwise_conv2d, conv2d_fusion
-      PADDLE_ENFORCE_EQ(
+            PADDLE_ENFORCE_EQ(
           weight_scale_nums,
           w_dims[quant_axis],
           platform::errors::InvalidArgument(
@@ -298,7 +298,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                              weight_scale[i / inner_size];
       }
     } else if (quant_axis == 1) {
-      PADDLE_ENFORCE_EQ(
+            PADDLE_ENFORCE_EQ(
           weight_scale_nums,
           w_dims[quant_axis],
           platform::errors::InvalidArgument(
@@ -319,7 +319,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
                                weight_scale[(i / inner_size) % w_dims[1]];
         }
       } else if (w_dims.size() == 2) {
-        for (int i = 0; i < weight_tensor->numel(); i++) {
+                for (int i = 0; i < weight_tensor->numel(); i++) {
           weight_data_tmp[i] = static_cast<float>(quantized_weight_data[i]) *
                                weight_scale[i % w_dims[1]];
         }
@@ -333,23 +333,23 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
           "quant_axis should be -1 or 0 or 1, please check your model "
           "OP'attribute "));
     }
-    weight_tensor->clear();  // clear int weight
+        weight_tensor->clear();  // clear int weight
     weight_tensor->Resize(phi::make_ddim(phi::vectorize(w_dims)));
     float* new_quantized_weight_data = dev_ctx->HostAlloc<float>(
         weight_tensor, weight_tensor->numel() * sizeof(float));
     memcpy(new_quantized_weight_data,
            weight_data_tmp.data(),
            weight_tensor->numel() * sizeof(float));
-
+    
     nodes2rm.insert(weight_dequantize_linear_op_scale);
     nodes2rm.insert(weight_dequantize_linear_op);
     nodes2rm.insert(weight_dequantize_linear_op_out);
-
+    
     // relink weight to any_op2
     any_op2_desc->RenameInput(weight_dequantize_linear_op_out->Var()->Name(),
                               weight_dequantize_linear_op_x->Var()->Name());
     any_op2_desc->Flush();
-    IR_NODE_LINK_TO(weight_dequantize_linear_op_x, any_op2);
+        IR_NODE_LINK_TO(weight_dequantize_linear_op_x, any_op2);
     GraphSafeRemoveNodes(graph, nodes2rm);
     found_count++;
   };
