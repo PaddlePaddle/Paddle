@@ -495,8 +495,8 @@
     data_type : out_grad
 
 - backward_op : cummax_grad
-  forward : cummax(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummax(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta
@@ -505,8 +505,8 @@
     func : cummax_grad
 
 - backward_op : cummin_grad
-  forward : cummin(Tensor x, int axis=-1, int dtype=3) -> Tensor(out), Tensor(indices)
-  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, int dtype)
+  forward : cummin(Tensor x, int axis=-1, DataType dtype = DataType::INT64) -> Tensor(out), Tensor(indices)
+  args : (Tensor x, Tensor indices, Tensor out_grad, int axis, DataType dtype)
   output : Tensor(x_grad)
   infer_meta :
     func : UnchangedInferMeta

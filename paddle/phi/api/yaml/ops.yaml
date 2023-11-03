@@ -602,7 +602,7 @@
   backward : cross_entropy_with_softmax_grad
 
 - op : cummax
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
@@ -611,7 +611,7 @@
   backward : cummax_grad
 
 - op : cummin
-  args : (Tensor x, int axis=-1, int dtype=3)
+  args : (Tensor x, int axis=-1, DataType dtype = DataType::INT64)
   output : Tensor(out), Tensor(indices)
   infer_meta :
     func : CumWithIndicesInferMeta
