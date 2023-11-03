@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-
+from paddle.pir_utils import test_with_pir_api
 
 def ref_frac(x):
     return x - np.trunc(x)
@@ -40,6 +40,7 @@ class TestFracAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with program_guard(Program()):
@@ -101,6 +102,7 @@ class TestFracError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
