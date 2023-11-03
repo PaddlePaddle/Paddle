@@ -115,7 +115,7 @@ class TestSimpleNetWithCustomReluForSemiAutoParallel(
         label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
 
-        # loss.backward()
+        loss.backward()
 
     def test_demo_net(self):
         mp_layer = dist.shard_layer(
