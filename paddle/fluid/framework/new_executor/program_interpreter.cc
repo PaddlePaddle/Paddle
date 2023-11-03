@@ -790,7 +790,10 @@ void ProgramInterpreter::Convert(
                 << var_scope_.GetNameById(static_cast<int>(i)) << " : " << item
                 << " " << vec_instruction_[item].OpBase()->Type();
         minumum_last_live_ops.insert(item);
-        vec_instruction_[item].AddGCCheckVar(i);
+        if (!(var_scope_.VarDesc(static_cast<int>(i)) &&
+              var_scope_.VarDesc(static_cast<int>(i))->Persistable())) {
+          vec_instruction_[item].AddGCCheckVar(i);
+        }
       }
     }
     last_live_ops_[i] = minumum_last_live_ops;
@@ -878,12 +881,6 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
         op_with_kernel->Info().infer_shape_(
             instr_node.InnerInferShapeContext().get());
       }
-      infershape_event.End();
-      platform::RecordOpInfoSupplement(op->Type(),
-                                       op->Attrs(),
-                                       *(instr_node.InnerInferShapeContext()),
-                                       *(instr_node.InnerRuntimeContext()),
-                                       op->Id());
     }
   }
   if (op_with_kernel != nullptr && FLAGS_new_executor_use_inplace) {
@@ -1288,12 +1285,6 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     VLOG(4) << "GC sync " << var_scope_.GetNameById(var_id) << " "
             << var_scope_.VarDesc(var_id);
 
-    // persistable var will be ignore while GC
-    if (var_scope_.VarDesc(var_id) &&
-        var_scope_.VarDesc(var_id)->Persistable()) {
-      continue;
-    }
-
     paddle::framework::Variable* var = var_scope_.VarRef(var_id);
     if (var == nullptr) {
       continue;
@@ -1349,13 +1340,6 @@ void ProgramInterpreter::CheckGC(const Instruction& instr) {
     VLOG(4) << "GC:" << var_scope_.GetNameById(static_cast<int>(var_id))
             << ", id:" << var_id << ", ref:" << refs_[var_id]->DynamicRef();
     bool is_ready = refs_[var_id]->CheckAndDecrease();
-    // ignore all persistable var while GC
-    if (var_scope.VarDesc(static_cast<int>(var_id)) &&
-        var_scope.VarDesc(static_cast<int>(var_id))->Persistable()) {
-      VLOG(4) << "Skip persistable var: "
-              << var_scope_.GetNameById(static_cast<int>(var_id));
-      continue;
-    }
     if (is_ready) {
       VLOG(6) << "Async delete variable with name : "
               << var_scope.GetNameById(static_cast<int>(var_id));
