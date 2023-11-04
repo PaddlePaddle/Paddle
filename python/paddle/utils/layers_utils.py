@@ -388,9 +388,10 @@ def _contain_var(list_or_tuple):
     return False
 
 
-def get_int_tensor_list(
-    ele_list, place=_current_expected_place(), default_dtype='int64'
-):
+def get_int_tensor_list(ele_list, place=None, default_dtype='int64'):
+    if place is None:
+        place = _current_expected_place()
+
     int_tensor_list = []
     for ele in ele_list:
         if isinstance(ele, paddle.pir.OpResult):
