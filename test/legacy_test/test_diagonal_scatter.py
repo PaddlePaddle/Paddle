@@ -102,6 +102,7 @@ class TestDiagonalScatterAPI(unittest.TestCase):
         )
 
     def setUp(self):
+        # init the test case
         self.set_api()
         self.set_args()
         self.get_output()
