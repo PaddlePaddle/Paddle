@@ -102,14 +102,17 @@ void CholeskyInverseKernel(const Context& dev_ctx,
   DenseTensor* tri = new DenseTensor();
   tri->Resize(x.dims());
   dev_ctx.template Alloc<T>(tri);
+  phi::Copy<Context>(dev_ctx, *out, dev_ctx.GetPlace(), false, tri);
 
   if (upper) {
     phi::TrilTriuKernel<T>(dev_ctx, *out, -1, true, tri);
   } else {
     phi::TrilTriuKernel<T>(dev_ctx, *out, 1, false, tri);
   }
+
   trans_result = phi::TransposeLast2Dim<T>(dev_ctx, *tri);
-  phi::AddKernel<T>(dev_ctx, *out, trans_result, out);
+  phi::Copy(dev_ctx, trans_result, dev_ctx.GetPlace(), false, tri);
+  phi::AddKernel<T>(dev_ctx, *out, *tri, out);
 }
 
 }  // namespace phi

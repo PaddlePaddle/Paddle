@@ -90,6 +90,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_cast_op',
     'test_center_loss',
     'test_channel_shuffle',
+    'test_cholesky_inverse_op',
     'test_cholesky_op',
     'test_chunk_eval_op',
     'test_chunk_op',

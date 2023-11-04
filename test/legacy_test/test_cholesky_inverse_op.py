@@ -77,6 +77,7 @@ class TestCholeskyInverseOp(OpTest):
 
     @prog_scope()
     def func(self, place):
+        paddle.enable_static()
         # use small size since Jacobian gradients is time consuming
         root_data = self.root_data[..., :3, :3]
         prog = base.Program()
@@ -177,6 +178,7 @@ class TestCholeskyInverseSingularAPI(unittest.TestCase):
                 print("The mat is singular")
 
     def test_static(self):
+        paddle.enable_static()
         for place in self.places:
             self.check_static_result(place=place)
 

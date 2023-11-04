@@ -1582,32 +1582,26 @@ def cholesky_inverse(x, upper=False, name=None):
         .. code-block:: python
 
             >>> import paddle
-            >>> paddle.seed(2023)
 
-            >>> a = paddle.rand([3,3], dtype="float32")
-            >>> a_t = paddle.transpose(a, [1,0])
-            >>> x = paddle.matmul(a, a_t) + 1e-03
+            >>> x = paddle.to_tensor([[5.,4.],[4.,5.]], dtype=paddle.float64)
             >>> print(x.inverse())
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 45.15793228, -25.02791595, -14.93955708],
-             [-25.02785110,  35.53761673, -8.97592354 ],
-             [-14.93961048, -8.97587204 ,  19.25232124]])
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[ 0.55555556, -0.44444444],
+             [-0.44444444,  0.55555556]])
 
             >>> l = paddle.cholesky(x, upper=False)
             >>> out = paddle.cholesky_inverse(l, upper=False)
             >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 45.15793228, -25.02791595, -14.93955708],
-             [-25.02785110,  35.53761673, -8.97592354 ],
-             [-14.93961048, -8.97587204 ,  19.25232124]])
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[ 0.55555556, -0.44444444],
+             [-0.44444444,  0.55555556]])
 
             >>> u = paddle.cholesky(x, upper=True)
             >>> out = paddle.cholesky_inverse(u, upper=True)
             >>> print(out)
-            Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            [[ 45.15793228, -25.02791595, -14.93955708],
-             [-25.02785110,  35.53761673, -8.97592354 ],
-             [-14.93961048, -8.97587204 ,  19.25232124]])
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[ 0.55555556, -0.44444444],
+             [-0.44444444,  0.55555556]])
     """
     if in_dynamic_mode():
         return _C_ops.cholesky_inverse(x, upper)
