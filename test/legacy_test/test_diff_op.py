@@ -112,7 +112,6 @@ class TestDiffOp(unittest.TestCase):
                     x, n=self.n, axis=self.axis, prepend=prepend, append=append
                 )
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={
                         "input": self.input,
                         "prepend": self.prepend,
