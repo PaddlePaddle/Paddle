@@ -1603,7 +1603,7 @@ def cholesky_inverse(x, upper=False, name=None):
             [[ 0.55555556, -0.44444444],
              [-0.44444444,  0.55555556]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.cholesky_inverse(x, upper)
     else:
         check_variable_and_dtype(
