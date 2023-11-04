@@ -546,6 +546,14 @@ class DygraphShardingOptimizerV2:
         slice_param.name = param.name
         if hasattr(param, "is_distributed"):
             slice_param.is_distributed = param.is_distributed
+
+        def copy_attr(attr_name):
+            setattr(slice_param, attr_name, getattr(param, attr_name))
+
+        copy_attr("optimize_attr")
+        copy_attr("do_model_average")
+        copy_attr("need_clip")
+
         self._slice_params[param.name] = slice_param
         return slice_param
 
