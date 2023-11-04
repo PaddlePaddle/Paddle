@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 
+#include "paddle/phi/infermeta/spmd_rules/concat.h"
 #include "paddle/phi/infermeta/spmd_rules/default_data_parallel.h"
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/embedding.h"
@@ -25,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/spmd_rules/reduction.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/reshape.h"
+#include "paddle/phi/infermeta/spmd_rules/slice.h"
 #include "paddle/phi/infermeta/spmd_rules/softmax.h"
 #include "paddle/phi/infermeta/spmd_rules/split.h"
 #include "paddle/phi/infermeta/spmd_rules/transpose.h"
@@ -516,6 +518,15 @@ PD_REGISTER_SPMD_RULE(
     split_with_num,
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmd),
     PD_INFER_SPMD(phi::distributed::SplitWithNumInferSpmdReverse));
+
+// slice rule
+PD_REGISTER_SPMD_RULE(slice,
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::SliceInferSpmdReverse));
+
+PD_REGISTER_SPMD_RULE(concat,
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmd),
+                      PD_INFER_SPMD(phi::distributed::ConcatInferSpmdReverse));
 
 // transpose rule
 PD_REGISTER_SPMD_RULE(

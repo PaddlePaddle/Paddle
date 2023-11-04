@@ -17,10 +17,10 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_ast_only,
+    test_legacy_and_pir,
 )
 from test_fetch_feed import Linear
 
@@ -59,8 +59,7 @@ def forward_post_hook_for_prim_net(layer, input, output):
     return output * 2
 
 
-@dy2static_unittest
-class TestDyToStaticSaveLoad(unittest.TestCase):
+class TestDyToStaticSaveLoad(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.model_path = os.path.join(
@@ -116,8 +115,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             dygraph_loss.numpy(), static_loss.numpy(), rtol=1e-05
         )
 
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
+    @test_legacy_and_pir
     def test_save_load_prim(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")
@@ -158,8 +157,8 @@ class TestDyToStaticSaveLoad(unittest.TestCase):
             self.assertIn("pool2d", load_op_type_list)
             np.testing.assert_allclose(res.numpy(), new_res.numpy(), rtol=1e-05)
 
-    @ast_only_test
-    @test_and_compare_with_new_ir(False)
+    @test_ast_only
+    @test_legacy_and_pir
     def test_save_load_prim_with_hook(self):
         with base.dygraph.guard(place):
             self.x = paddle.randn([4, 2, 6, 6], dtype="float32")

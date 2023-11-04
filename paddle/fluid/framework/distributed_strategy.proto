@@ -23,11 +23,19 @@ enum Mode {
   HETER = 4; // support XPU and GPU computing server
 }
 
+message RefinedOpsPattern {
+    repeated string main_ops = 1;
+    optional int32 num = 2 [default = 0];
+    repeated string pre_ops = 3;
+    repeated string suf_ops = 4;
+}
+
 message RecomputeConfig {
   repeated string checkpoints = 1;
   optional bool enable_offload = 2 [ default = false ];
   repeated int32 checkpoint_shape = 3;
   optional bool enable_tuning = 4 [ default = false ]; // incubate for auto parallel
+  repeated RefinedOpsPattern refined_ops_patterns = 5;
 }
 
 message ShardingConfig {

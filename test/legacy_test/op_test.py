@@ -95,9 +95,7 @@ def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
                         shape, dtype = spec
                     else:
                         raise ValueError(
-                            "Value of in_specs[{}] should contains two elements: [shape, dtype]".format(
-                                index
-                            )
+                            f"Value of in_specs[{index}] should contains two elements: [shape, dtype]"
                         )
                     input_t.append(
                         paddle.static.data(
@@ -1367,6 +1365,8 @@ class OpTest(unittest.TestCase):
                         ret_tuple, paddle.base.libpaddle.pir.OpResult
                     ):
                         fetch_list.append(ret_tuple)
+                    elif ret_tuple is None:
+                        pass
                     else:
                         raise ValueError(
                             "output of python api should be OpResult or list of OpResult or tuple of OpResult"
@@ -1404,14 +1404,14 @@ class OpTest(unittest.TestCase):
         stored_flag = get_flags(
             [
                 'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
                     "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             new_scope = paddle.static.Scope()
@@ -1435,10 +1435,12 @@ class OpTest(unittest.TestCase):
             ), "Fetch result should have same length when executed in pir"
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None) == "True":
                 check_method = lambda x, y, z: np.testing.assert_allclose(
                     x, y, err_msg=z, atol=1e-6, rtol=1e-6
                 )
+            if os.getenv("FLAGS_NEW_IR_NO_CHECK", None) == "True":
+                check_method = lambda x, y, err_msg: None
 
             for i in range(len(outs)):
                 check_method(
@@ -3343,14 +3345,14 @@ class OpTest(unittest.TestCase):
         stored_flag = get_flags(
             [
                 'FLAGS_enable_new_ir_in_executor',
-                "FLAGS_new_ir_apply_inplace_pass",
+                "FLAGS_pir_apply_inplace_pass",
             ]
         )
         try:
             set_flags(
                 {
                     "FLAGS_enable_new_ir_in_executor": True,
-                    "FLAGS_new_ir_apply_inplace_pass": 0,
+                    "FLAGS_pir_apply_inplace_pass": 0,
                 }
             )
             executor = Executor(place)
@@ -3368,10 +3370,13 @@ class OpTest(unittest.TestCase):
             )
 
             check_method = np.testing.assert_array_equal
-            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None):
+            if os.getenv("FLAGS_NEW_IR_OPTEST_RELAX_CHECK", None) == "True":
                 check_method = lambda x, y, z: np.testing.assert_allclose(
                     x, y, err_msg=z, atol=1e-6, rtol=1e-6
                 )
+
+            if os.getenv("FLAGS_NEW_IR_NO_CHECK", None) == "True":
+                check_method = lambda x, y, err_msg: None
 
             for i in range(len(new_gradients)):
                 check_method(
