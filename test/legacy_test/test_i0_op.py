@@ -20,7 +20,6 @@ from scipy import special
 
 import paddle
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(100)
 paddle.seed(100)
@@ -45,7 +44,6 @@ class TestI0API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
-    @test_with_pir_api
     def test_api_static(self):
         def run(place):
             paddle.enable_static()
@@ -132,14 +130,13 @@ class TestI0Op(OpTest):
         self.target = output_i0(self.inputs['x'])
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def test_check_grad(self):
         self.check_grad(
             ['x'],
             'out',
             user_defined_grads=[ref_i0_grad(self.case, 1 / self.case.size)],
-            check_pir=True,
         )
 
 
