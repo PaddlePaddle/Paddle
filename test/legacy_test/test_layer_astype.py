@@ -14,6 +14,8 @@
 
 import unittest
 
+import numpy as np
+
 import paddle
 
 
@@ -22,6 +24,9 @@ class LayerAstypeTest(unittest.TestCase):
         net = paddle.nn.Sequential(
             paddle.nn.Linear(2, 2), paddle.nn.Linear(2, 2)
         )
+        value = np.array([0]).astype("float32")
+        buffer = paddle.to_tensor(value)
+        net.register_buffer("test_buffer", buffer, persistable=True)
         valid_dtypes = [
             "bfloat16",
             "float16",
@@ -40,6 +45,10 @@ class LayerAstypeTest(unittest.TestCase):
             net = net.astype(dtype)
             typex_str = str(net._dtype)
             self.assertEqual((typex_str == "paddle." + dtype), True)
+            param_typex_str = str(net.parameters()[0].dtype)
+            self.assertEqual((param_typex_str == "paddle." + dtype), True)
+            buffer_typex_str = str(net.buffers()[0].dtype)
+            self.assertEqual((buffer_typex_str == "paddle." + dtype), True)
 
     def test_error(self):
         linear1 = paddle.nn.Linear(10, 3)

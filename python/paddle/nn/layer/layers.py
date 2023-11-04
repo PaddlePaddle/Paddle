@@ -995,7 +995,7 @@ class Layer:
             return self
         else:
             raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'complex64', 'complex128', 'bool', or paddle.dtype, but recieve "
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
                 + str(dtype)
             )
 
