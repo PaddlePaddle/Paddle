@@ -53,6 +53,10 @@ set(PYBIND_DEPS
     type_info
     auto_parallel)
 
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pd_build_cinn_pass op_with_group_merge_pass)
+endif()
+
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
   if(WITH_HETERPS)

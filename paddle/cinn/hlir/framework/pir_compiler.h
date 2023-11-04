@@ -65,6 +65,23 @@ class PIRCompiler final {
 
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
+class PIRCompilerManager {
+ public:
+  static PIRCompilerManager& Instance() {
+    static PIRCompilerManager instance;
+    return instance;
+  }
+
+  void insert(const std::shared_ptr<PIRCompiler>& compiler) {
+    compilers_.push_back(compiler);
+  }
+
+  void clear() { compilers_.clear(); }
+
+ private:
+  std::vector<std::shared_ptr<PIRCompiler>> compilers_;
+};
+
 }  // namespace framework
 }  // namespace hlir
 }  // namespace cinn
