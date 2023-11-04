@@ -63,8 +63,8 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
@@ -274,17 +274,17 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
   dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
-const interpreter::NewIrDependencyBuilder&
-PirInterpreter::GetNewIrDependencyBuilder() const {
+const interpreter::PirDependencyBuilder&
+PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
@@ -293,7 +293,7 @@ std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
     const {
   return ir_stream_analyzer_;
 }
@@ -1069,7 +1069,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1085,7 +1085,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1143,7 +1143,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1159,7 +1159,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {

@@ -233,6 +233,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   std::vector<DDim> GetOutputsDim(const std::string& name) const;
 
+  bool HasRuntimeAttributes() const;
+
  protected:
   DDim GetDim(Variable* var) const;
 

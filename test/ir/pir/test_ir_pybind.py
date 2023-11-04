@@ -192,10 +192,10 @@ class TestPybind(unittest.TestCase):
         results = matmul_op.results()
         self.assertEqual(len(results), 1)
 
-    def test_get_output_intermediate_value(self):
+    def test_get_output_intermediate_status(self):
         pir_program = get_ir_program()
         unsqueeze_op = pir_program.global_block().ops[-1]
-        results = unsqueeze_op.get_output_intermediate_value()
+        results = unsqueeze_op.get_output_intermediate_status()
         self.assertEqual(results, [False, True])
 
 

@@ -54,6 +54,12 @@
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
+#ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/fluid/pir/transforms/build_cinn_pass.h"
+#endif
+
 namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
@@ -69,13 +75,13 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination_pass);
-USE_PASS(attention_fuse_pass);
-USE_PASS(fused_gemm_epilogue_pass);
-USE_PASS(fused_dropout_add_pass);
-USE_PASS(fused_linear_param_grad_add_pass);
-USE_PASS(inplace_pass);
-USE_PASS(replace_fetch_with_shadow_output_pass);
+USE_PIR_PASS(dead_code_elimination_pass);
+USE_PIR_PASS(attention_fuse_pass);
+USE_PIR_PASS(fused_gemm_epilogue_pass);
+USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_linear_param_grad_add_pass);
+USE_PIR_PASS(inplace_pass);
+USE_PIR_PASS(replace_fetch_with_shadow_output_pass);
 
 PHI_DECLARE_bool(print_ir);
 
@@ -376,7 +382,7 @@ void BindOperation(py::module *m) {
              }
              return op_list;
            })
-      .def("get_output_intermediate_value",
+      .def("get_output_intermediate_status",
            [](Operation &self) -> py::list {
              py::list op_list;
              paddle::dialect::OpYamlInfoInterface yaml_interface =
@@ -1082,11 +1088,28 @@ SplitedResult SplitForwardBackward(
     if (v.impl() == nullptr) {
       return;
     }
+    // NOTE(Aurelius84): we should skip insert SetParameterOp repeatly by
+    // calling SplitForwardBackward multi-times.
+    std::string parameter_name =
+        std::string("output_") + std::to_string(counter);
+    for (auto it = forward_program->block()->rbegin();
+         it != forward_program->block()->rend();
+         ++it) {
+      auto *op = *it;
+      if (op->isa<pir::SetParameterOp>()) {
+        auto out_name =
+            op->attribute<pir::StrAttribute>("parameter_name").AsString();
+        if (out_name == parameter_name) {
+          VLOG(4) << out_name
+                  << " has been inserted SetParameterOp, skip it now.";
+          return;
+        }
+      }
+    }
+
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
     pir::AttributeMap attribute_map = {
-        {"parameter_name",
-         pir::StrAttribute::get(
-             ctx, std::string("output_") + std::to_string(counter))},
+        {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
     };
     pir::Operation *operation = pir::Operation::Create(
         {forward_value_map[v]}, attribute_map, {}, op_info);
@@ -1362,9 +1385,38 @@ void BindUtils(pybind11::module *m) {
                 >>> print(mappings)
                 {'matmul_v2_0.tmp_0': [Value(define_op_name=pd_op.matmul, index=0, dtype=pd_op.tensor<4x4xf32>)], 'x': [Value(define_op_name=pd_op.data, index=0, dtype=pd_op.tensor<4x4xf32>)], 'tanh_0.tmp_0': [Value(define_op_name=pd_op.tanh, index=0, dtype=pd_op.tensor<4x4xf32>)], 'elementwise_add_0': [Value(define_op_name=pd_op.add, index=0, dtype=pd_op.tensor<4x4xf32>)]}
     )DOC");
+
+  m->def("clear_pir_compiler_manager", []() {
+#ifdef PADDLE_WITH_CINN
+    pybind11::gil_scoped_release release;
+    VLOG(4) << "clear PIRCompilerManager and free PIRCompiler resources.";
+    cinn::hlir::framework::PIRCompilerManager::Instance().clear();
+#endif
+  });
 }
 
+// TODO(Aurelius84): Need consider to make an agreement about
+// what a Pass should receive and return. Existed Passes have
+// mutable and immutable interface.
+std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
+#ifdef PADDLE_WITH_CINN
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  pir::PassManager pass_manager(ctx);
+  pass_manager.AddPass(pir::CreateBuildCinnPass());
+  pass_manager.Run(&forward_program);
+  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  std::unique_ptr<pir::Program> new_program =
+      cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
+  VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
+  return std::move(new_program);
+#endif
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "Currently we only support CINN Pass for PIR under @to_static, please "
+      "compile PaddlePaddle with CINN"));
+}
 void BindIrPass(pybind11::module *m) {
+  m->def("apply_pir_pass", ApplyPirPass);
+
   py::class_<Pass, std::shared_ptr<Pass>> pass(*m,
                                                "Pass",
                                                R"DOC(

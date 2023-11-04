@@ -232,13 +232,14 @@ inline void pir_run_program_ad_func(
   auto output_size =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo")).size();
   auto middles = std::vector<paddle::Tensor*>();
-  std::shared_ptr<PirGradNodeRunProgram> grad_node;
-  VLOG(2) << "start run run_program with require_any_grad = "
-          << require_any_grad;
+
   auto is_test = false;
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
+  std::shared_ptr<PirGradNodeRunProgram> grad_node;
+  VLOG(2) << "start run run_program with require_any_grad = "
+          << require_any_grad << ", is_test = " << is_test;
 
   if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
