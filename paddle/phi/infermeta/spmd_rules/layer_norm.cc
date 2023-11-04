@@ -278,5 +278,19 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
   return {ToArgDistAttr(input_dist_attrs), ToArgDistAttr(output_dist_attrs)};
 }
 
+std::tuple<std::vector<std::string>, std::string> BuildLayerNormGradEinsum(
+    int64_t input_rank, int64_t begin_norm_axis) {}
+
+SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& scale,
+                                const DistMetaTensor& bias,
+                                const DistMetaTensor& mean,
+                                const DistMetaTensor& variance,
+                                const DistMetaTensor out_grad,
+                                float epsilon,
+                                int begin_norm_axis) {
+  return SpmdInfo();
+}
+
 }  // namespace distributed
 }  // namespace phi

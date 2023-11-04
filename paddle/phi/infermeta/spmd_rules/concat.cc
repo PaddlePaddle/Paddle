@@ -25,8 +25,19 @@ namespace distributed {
 
 using phi::distributed::auto_parallel::str_join;
 
-static bool IsEmpty(const std::vector<int64_t>& shape) {
-  return shape.empty() || shape.at(0) == 0;
+std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
+                                                        int64_t concat_axis) {
+  PADDLE_ENFORCE_EQ(
+      n_axis > concat_axis, true, phi::errors::InvalidArgument(""));
+  static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
+  PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis),
+                    true,
+                    phi::errors::InvalidArgument(""));
+  std::string all_axis = alphabet.substr(0, n_axis);
+  std::string align_axis =
+      std::string(all_axis.begin(), all_axis.begin() + concat_axis) +
+      std::string(all_axis.begin() + concat_axis + 1, all_axis.end());
+  return {all_axis, align_axis};
 }
 
 SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
@@ -58,10 +69,15 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   auto non_empty_index = non_empty_iter - tensor_shapes.begin();
   int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
   // normlize dim
-  int64_t dim = axis;
-  dim = dim < 0 ? dim + ndim : dim;
+  auto dim = axis < 0 ? ndim + axis : axis;
 
   std::vector<TensorDistAttr> input_attrs;
+  std::transform(
+      x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
+        return meta.dist_attr();
+      });
+  /*
+
   // 2、make sure all tensors replicated on concat dim
   auto n_inputs = x.size();
   for (size_t i = 0; i < n_inputs; ++i) {
@@ -170,6 +186,14 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
     }
     std::swap(input_attrs, new_input_attrs);
   }
+
+  */
+  std::string all_aixs;
+  std::string align_axis;
+  std::tie(all_aixs, align_axis) = FillConcatNotation(axis, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  AlignDimsSharding(
+      &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
   return {{input_attrs}, {input_attrs[non_empty_index]}};
 }
 
