@@ -1443,7 +1443,6 @@ def OpGenerator(
                                 and op_kernel_map['data_type'][
                                     'to_complex_flag'
                                 ][idx]
-                                == 'true'
                             ):
                                 kernel_key_dtype += (
                                     'complex:'
