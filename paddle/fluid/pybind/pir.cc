@@ -73,12 +73,12 @@ using pir::Type;
 using pir::Value;
 using pybind11::return_value_policy;
 
-USE_PASS(dead_code_elimination_pass);
-USE_PASS(attention_fuse_pass);
-USE_PASS(fused_gemm_epilogue_pass);
-USE_PASS(fused_dropout_add_pass);
-USE_PASS(fused_linear_param_grad_add_pass);
-USE_PASS(inplace_pass);
+USE_PIR_PASS(dead_code_elimination_pass);
+USE_PIR_PASS(attention_fuse_pass);
+USE_PIR_PASS(fused_gemm_epilogue_pass);
+USE_PIR_PASS(fused_dropout_add_pass);
+USE_PIR_PASS(fused_linear_param_grad_add_pass);
+USE_PIR_PASS(inplace_pass);
 
 PHI_DECLARE_bool(print_ir);
 

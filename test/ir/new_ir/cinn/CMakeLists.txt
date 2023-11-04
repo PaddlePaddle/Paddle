@@ -14,6 +14,8 @@ if(WITH_GPU)
         FLAGS_enable_pir_api=1 python3
         ${CMAKE_CURRENT_SOURCE_DIR}/${cinn_pir_test_name}.py
       WORKING_DIRECTORY ${CMAKE_BINARY_DIR})
+    set_tests_properties(${cinn_pir_test_name} PROPERTIES LABELS
+                                                          "RUN_TYPE=CINN")
   endforeach()
 
 endif()

@@ -92,7 +92,7 @@ class PassRegistrar {
       &__pir_ass_tmp_registrar_##pass_type##__ UNUSED =       \
           __pir_pass_registrar_##pass_type##__
 
-#define USE_PASS(pass_type)                              \
+#define USE_PIR_PASS(pass_type)                          \
   STATIC_ASSERT_PASS_GLOBAL_NAMESPACE(                   \
       __use_pir_pass_itself_##pass_type,                 \
       "USE_PASS must be called in global namespace");    \
