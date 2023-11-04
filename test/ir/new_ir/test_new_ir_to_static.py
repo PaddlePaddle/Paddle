@@ -25,7 +25,7 @@ class TestDy2staticNewIR(unittest.TestCase):
             out = paddle.mean(x)
             return out
 
-        static_func = paddle.jit.to_static(func)
+        static_func = paddle.jit.to_static(func, full_graph=True)
         x = paddle.randn((3, 3))
         y = paddle.randn((3, 3))
         x.stop_gradient = False
@@ -43,7 +43,7 @@ class TestDy2staticNewIR(unittest.TestCase):
             return out
 
         # ==== dygraph computation ====
-        static_func = paddle.jit.to_static(func)
+        static_func = paddle.jit.to_static(func, full_graph=True)
         x = paddle.randn((3, 3))
         y = paddle.randn((3, 3))
         x.stop_gradient = False
@@ -78,7 +78,7 @@ class TestDy2staticNewIR2(unittest.TestCase):
         x = paddle.randn((10, 10))
         x.stop_gradient = False
         ans = net(x)
-        net = paddle.jit.to_static(net)
+        net = paddle.jit.to_static(net, full_graph=True)
         out = net(x)
         np.testing.assert_allclose(
             out.numpy(), ans.numpy(), rtol=1e-05, atol=1e-8
@@ -101,7 +101,7 @@ class TestDy2staticNewIR3(unittest.TestCase):
             y.stop_gradient = True
             func = output_pure_func
             if to_static:
-                func = paddle.jit.to_static(func)
+                func = paddle.jit.to_static(func, full_graph=True)
             y, y_mean = func(x, y)
             loss = y.mean()
             loss.backward()
@@ -134,7 +134,7 @@ class TestLossFor10Steps(unittest.TestCase):
                 learning_rate=0.1, parameters=net.parameters()
             )
             if to_static:
-                net = paddle.jit.to_static(net)
+                net = paddle.jit.to_static(net, full_graph=True)
             losses = []
             for step in range(100):
                 y_pred = net(x)
@@ -177,7 +177,7 @@ class TestDy2staticNewIR5(unittest.TestCase):
                 learning_rate=0.1, parameters=net.parameters()
             )
             if to_static:
-                net = paddle.jit.to_static(net)
+                net = paddle.jit.to_static(net, full_graph=True)
             losses = []
             for step in range(100):
                 y_pred = net(x, step % 2 == 1)
@@ -203,7 +203,7 @@ class TestDy2staticNewIR6(unittest.TestCase):
             out = shape[1:]
             return out
 
-        static_func = paddle.jit.to_static(func)
+        static_func = paddle.jit.to_static(func, full_graph=True)
         x = paddle.randn((2, 3, 4))
         x.stop_gradient = False
         ans = func(x)

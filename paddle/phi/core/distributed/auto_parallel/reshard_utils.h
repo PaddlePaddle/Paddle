@@ -22,6 +22,9 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/device_context.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
+#include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/visit_type.h"
 
 namespace phi {
@@ -32,7 +35,13 @@ class ProcessMesh;
 
 bool IsCurRankInMesh(const ProcessMesh& process_mesh);
 
+bool NeedComputationClipForPP(
+    const std::shared_ptr<phi::TensorBase>& tensor_impl);
+
 Place GetDefaultPlace();
+
+phi::DeviceContext* GetDistTensorDeviceContext(
+    phi::distributed::DistTensor* input);
 
 int64_t GetLocalRankInParticipate(const std::vector<int64_t>& process_ids,
                                   int64_t global_rank = -1);
@@ -67,14 +76,14 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
   do {                                                                \
     if (phi::CPUContext::classof(dev_ctx)) {                          \
       VLOG(4) << "Call `" << #fn_name << "` in Resharding on GPU.";   \
-      PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
+      PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES(                  \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const CPUContext&>(*dev_ctx), \
                             __VA_ARGS__);                             \
           }));                                                        \
     } else if (phi::GPUContext::classof(dev_ctx)) {                   \
       VLOG(4) << "Call `" << #fn_name << "` in Resharding on CPU.";   \
-      PD_VISIT_FLOATING_AND_INTEGRAL_TYPES(                           \
+      PD_VISIT_BOOL_AND_FLOATING_AND_INTEGRAL_TYPES(                  \
           dtype, #fn_name, ([&] {                                     \
             fn_name<data_t>(static_cast<const GPUContext&>(*dev_ctx), \
                             __VA_ARGS__);                             \
@@ -144,6 +153,13 @@ CommContext* CreateOrGetCommContext(const DeviceContext& dev_ctx,
     }                                                                     \
   } while (0)
 #endif
+
+#define RESHARD_SHORTCUT_IF_FALSE(expr) \
+  do {                                  \
+    if (!(expr)) {                      \
+      return false;                     \
+    }                                   \
+  } while (0)
 
 }  // namespace distributed
 }  // namespace phi

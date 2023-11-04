@@ -943,9 +943,7 @@ def parse_op_info(op_name):
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
-                op_name
-            )
+            f"Please load {op_name} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
         )
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 

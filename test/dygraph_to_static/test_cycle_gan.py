@@ -26,10 +26,7 @@ from paddle import base
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle.base.dygraph import to_variable
@@ -679,8 +676,7 @@ def train(args, to_static):
         return np.array(loss_data)
 
 
-@dy2static_unittest
-class TestCycleGANModel(unittest.TestCase):
+class TestCycleGANModel(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
 
@@ -688,7 +684,7 @@ class TestCycleGANModel(unittest.TestCase):
         out = train(self.args, to_static)
         return out
 
-    @test_and_compare_with_new_ir(False)
+    @test_legacy_and_pir
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)

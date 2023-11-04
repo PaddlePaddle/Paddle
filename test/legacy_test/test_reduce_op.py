@@ -1713,21 +1713,25 @@ class TestAllAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_float_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
@@ -1736,26 +1740,29 @@ class TestAllAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_int_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)

@@ -27,12 +27,12 @@
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 
 #include "paddle/cinn/frontend/op_mapper_registry.h"
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_string(allow_cinn_ops);
@@ -43,7 +43,7 @@ using GroupOpsVec = std::vector<pir::Operation*>;
 // The delim(`;`) that is used to split the FLAGS_allow_cinn_ops
 // & FLAGS_deny_cinn_ops.
 constexpr char kDelim[] = ";";
-using CompatibleInfo = cinn::hlir::framework::newir::CompatibleInfo;
+using CompatibleInfo = cinn::hlir::framework::pir::CompatibleInfo;
 
 // OpTransInfo contains informations used to detect subgraphs
 // supported by the CINN compiler.
@@ -574,11 +574,11 @@ void ReplaceWithGroupOp(pir::Block* block,
 
 class BuildCinnPass : public pir::Pass {
  public:
-  BuildCinnPass() : pir::Pass("BuildCinnPass", /*opt_level=*/1) {}
+  BuildCinnPass() : pir::Pass("build_cinn_pass", /*opt_level=*/1) {}
 
   void Run(pir::Operation* op) override {
     auto module_op = op->dyn_cast<pir::ModuleOp>();
-    IR_ENFORCE(module_op, "InplacePass should run on module op.");
+    IR_ENFORCE(module_op, "build_cinn_pass should run on module op.");
     auto* block = module_op.block();
 
     std::vector<GroupOpsVec> groups =

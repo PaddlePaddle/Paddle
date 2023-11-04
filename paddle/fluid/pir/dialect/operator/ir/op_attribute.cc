@@ -35,6 +35,8 @@ phi::Scalar ScalarAttribute::data() {
     return phi::Scalar(dyn_cast<pir::DoubleAttribute>().data());
   } else if (isa<pir::Int32Attribute>()) {
     return phi::Scalar(dyn_cast<pir::Int32Attribute>().data());
+  } else if (isa<pir::IndexAttribute>()) {
+    return phi::Scalar(dyn_cast<pir::IndexAttribute>().data());
   } else if (isa<pir::Int64Attribute>()) {
     return phi::Scalar(dyn_cast<pir::Int64Attribute>().data());
   } else if (isa<pir::BoolAttribute>()) {

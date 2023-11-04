@@ -375,6 +375,77 @@ class TestBatchNormOpInference(unittest.TestCase):
     def init_kernel_type(self):
         pass
 
+    def check_without_scale_and_bias(self, place, data_layout, dtype, shape):
+        epsilon = 0.00001
+        if len(shape) == 2:
+            x_shape = shape
+            c = x_shape[1]
+        else:
+            n, h, w, c = shape[0], shape[1], shape[2], shape[3]
+            if data_layout == "NHWC":
+                x_shape = [n, h, w, c]
+            elif data_layout == "NCHW":
+                x_shape = [n, c, h, w]
+            else:
+                raise ValueError("Unknown data layout.")
+        scale_shape = [c]
+
+        if dtype == np.uint16:
+            x_val = np.random.random_sample(x_shape).astype(np.float32)
+        else:
+            x_val = np.random.random_sample(x_shape).astype(dtype)
+        # generate some negative values to test case with relu fused
+        x_val = x_val - 0.5
+        scale_val = np.ones(scale_shape).astype(np.float32)
+        bias_val = np.zeros(scale_shape).astype(np.float32)
+
+        mean = np.zeros(scale_shape).astype(np.float32)
+        variance = np.ones(scale_shape).astype(np.float32)
+
+        if dtype == np.uint16:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(np.float32)
+            y_out = convert_float_to_uint16(y_out)
+        else:
+            y_out = _reference_testing(
+                x_val, scale_val, bias_val, mean, variance, epsilon, data_layout
+            ).astype(dtype)
+        if self.fuse_with_relu:
+            y_out = np.maximum(y_out, 0)
+
+        if dtype == np.uint16:
+            x_val = convert_float_to_uint16(x_val)
+
+        y_tensor, _, _, _, _, _ = paddle.nn.functional.batch_norm(
+            paddle.to_tensor(x_val),
+            paddle.to_tensor(mean),
+            paddle.to_tensor(variance),
+            None,
+            None,
+            False,
+        )
+
+        # check inference result
+        atol = 1e-3
+        if dtype == np.uint16:
+            y_tensor = convert_uint16_to_float(y_tensor)
+            y_out = convert_uint16_to_float(y_out)
+            atol = 1e-2
+        self.__assert_close(
+            y_tensor,
+            y_out,
+            "inference output are different at "
+            + str(place)
+            + ", "
+            + data_layout
+            + ", "
+            + str(np.dtype(dtype))
+            + str(np.array(y_tensor))
+            + str(y_out),
+            atol=atol,
+        )
+
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
     def setUp(self):

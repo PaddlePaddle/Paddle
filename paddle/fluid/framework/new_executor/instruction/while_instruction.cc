@@ -16,8 +16,8 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/interpreter_util.h"
 #include "paddle/fluid/framework/new_executor/interpreter/stream_analyzer.h"
-#include "paddle/fluid/framework/new_executor/new_ir_interpreter.h"
 #include "paddle/fluid/framework/new_executor/pir_adaptor/pir_adaptor_util.h"
+#include "paddle/fluid/framework/new_executor/pir_interpreter.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -53,8 +53,6 @@ WhileInstruction::WhileInstruction(size_t id,
   SetKernelType(AnalyseOpFuncType(op, place));
   VLOG(6) << "finish process analyse kernel type";
 
-  Scope* inner_scope = local_scope == nullptr ? scope : local_scope;
-
   VLOG(6) << "finish process inputs outputs index";
 
   PADDLE_ENFORCE(op->isa<paddle::dialect::WhileOp>(),
@@ -63,41 +61,25 @@ WhileInstruction::WhileInstruction(size_t id,
 
   auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
-  cond_var_ = inner_scope->GetVar(
+  cond_var_ = parent_exe_info->GetScope()->FindVar(
       parent_exe_info->GetValue2VarName().at(while_op.operand_source(0)));
+
   for (size_t i = 1; i < while_op.num_operands(); ++i) {
-    inputs_.push_back(inner_scope->GetVar(
+    inputs_.push_back(parent_exe_info->GetScope()->FindVar(
         parent_exe_info->GetValue2VarName().at(while_op.operand_source(i))));
   }
 
   for (size_t i = 0; i < while_op.num_results(); ++i) {
-    outputs_.push_back(inner_scope->GetVar(
+    outputs_.push_back(parent_exe_info->GetScope()->FindVar(
         parent_exe_info->GetValue2VarName().at(while_op.result(i))));
   }
 
   body_block_ = while_op.body_block();
-  auto body_block_outputs = GetYiedOpInputs(body_block_);
-
-  Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
-  auto body_exe_info = parent_exe_info->NewChild(body_scope);
-  for (size_t i = 0; i < body_block_->args_size(); ++i) {
-    auto var_name = "body_block_arg_" + std::to_string(i);
-    body_scope->Var(var_name);
-    body_exe_info->Add(body_block_->argument(i), var_name);
-  }
-  body_inter_ = std::unique_ptr<NewIRInterpreter>(new NewIRInterpreter(
-      place, {}, body_block_, body_scope, body_exe_info, {}));
-
-  std::set<std::string> body_skip_gc_names_set;
-  for (auto value : body_block_outputs) {
-    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
-    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
-  }
-  body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 
   std::unordered_map<pir::Value, std::vector<int>> inputs;
   GetInputIds(op, *parent_exe_info, &inputs);
-
+  auto body_outside_inputs =
+      GetOutsideOpInputs(body_block_, *parent_exe_info, &inputs);
   SetInputs(inputs);
 
   std::unordered_map<pir::Value, std::vector<int>> outputs;
@@ -116,6 +98,29 @@ WhileInstruction::WhileInstruction(size_t id,
     }
   }
   SetOutputs(outputs);
+
+  Scope* body_scope = &(parent_exe_info->GetScope()->NewScope());
+  auto body_exe_info = parent_exe_info->NewChild(body_scope);
+  for (size_t i = 0; i < body_block_->args_size(); ++i) {
+    auto var_name = "body_block_arg_" + std::to_string(i);
+    body_scope->Var(var_name);
+    body_exe_info->Add(body_block_->argument(i), var_name);
+  }
+  body_inter_ = std::unique_ptr<PirInterpreter>(new PirInterpreter(
+      place, {}, body_block_, body_scope, body_exe_info, {}));
+
+  std::set<std::string> body_skip_gc_names_set;
+  auto body_block_outputs = GetYiedOpInputs(body_block_);
+  for (auto value : body_block_outputs) {
+    body_outputs_.push_back(body_inter_->GetNameByValue(value));
+    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
+    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+  }
+  for (auto value : body_outside_inputs) {
+    body_skip_gc_names_.push_back(body_inter_->GetNameByValue(value));
+    body_skip_gc_names_set.insert(body_inter_->GetNameByValue(value));
+  }
+  body_inter_->SetSkipGcVars(body_skip_gc_names_set);
 }
 
 void WhileInstruction::CopyInputsToOutputs() {
@@ -138,18 +143,19 @@ void WhileInstruction::PassArgsToBodyBlock() {
 void WhileInstruction::GetValueFromBodyBlock() {
   cond_var_->GetMutable<phi::DenseTensor>()->ShareDataWith(
       body_inter_->local_scope()
-          ->GetVar(body_skip_gc_names_[0])
+          ->GetVar(body_outputs_[0])
           ->Get<phi::DenseTensor>());
   for (size_t i = 0; i < outputs_.size(); ++i) {
-    auto& out_var_name = body_skip_gc_names_[i + 1];
+    auto& out_var_name = body_outputs_[i + 1];
     auto* out_var = body_inter_->local_scope()->GetVar(out_var_name);
     outputs_[i]->GetMutable<phi::DenseTensor>()->ShareDataWith(
         out_var->Get<phi::DenseTensor>());
   }
 }
+
 void WhileInstruction::Run() {
   CopyInputsToOutputs();
-  while (cond_var_->Get<phi::DenseTensor>().data<bool>()[0]) {
+  while (GetCondData(cond_var_->Get<phi::DenseTensor>())) {
     PassArgsToBodyBlock();
     body_inter_->Run({}, false);
     GetValueFromBodyBlock();

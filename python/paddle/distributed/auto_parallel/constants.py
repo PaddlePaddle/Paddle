@@ -56,6 +56,8 @@ RECOMPUTE = "recompute"
 set_field_default_config(RECOMPUTE, "enable", False)
 set_field_default_config(RECOMPUTE, "checkpoints", [])
 set_field_default_config(RECOMPUTE, "no_recompute_segments", [])
+set_field_default_config(RECOMPUTE, "sr", 0)
+set_field_default_config(RECOMPUTE, "refined_ops_patterns", [])  # List[Dict]
 set_field_default_config(RECOMPUTE, "enable_tuning", False)
 
 #########################################
@@ -157,3 +159,11 @@ set_field_default_config(DP_OPTIMIZATION, "enable", False)
 set_field_default_config(DP_OPTIMIZATION, "fuse_all_reduce_ops", True)
 set_field_default_config(DP_OPTIMIZATION, "fuse_grad_size_in_MB", 32)
 set_field_default_config(DP_OPTIMIZATION, "overlap_comm_cacl", True)
+
+#########################################
+# model parallel configuration
+#########################################
+MP_OPTIMIZATION = "mp_optimization"
+set_field_default_config(
+    MP_OPTIMIZATION, "allreduce_matmul_grad_overlapping", False
+)
