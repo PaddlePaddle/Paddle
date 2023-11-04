@@ -21,6 +21,7 @@ from scipy.special import psi
 import paddle
 from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestDigammaOp(OpTest):
@@ -106,6 +107,7 @@ class TestDigammaAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [8, 3, 32, 32]
 
+    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(dtype)
@@ -119,7 +121,7 @@ class TestDigammaAPI(unittest.TestCase):
                     out = paddle.digamma(x)
 
                     exe = static.Executor(place)
-                    out_value = exe.run(feed=input_dict, fetch_list=[out.name])
+                    out_value = exe.run(feed=input_dict, fetch_list=[out])
                     np.testing.assert_allclose(out_value[0], sc_res, rtol=1e-05)
 
     def test_in_dynamic_mode(self):
