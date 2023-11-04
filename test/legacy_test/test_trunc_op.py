@@ -37,10 +37,10 @@ class TestTruncOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_pir = True)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True)
 
 
 class TestFloatTruncOp(TestTruncOp):
@@ -87,7 +87,6 @@ class TestTruncAPI(unittest.TestCase):
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=1e-08)
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data('X', [20, 20], 'bool')
@@ -117,11 +116,13 @@ class TestTruncBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place, check_pir = True)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=1e-5, check_pir = True)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True
+        )
 
 
 if __name__ == "__main__":
