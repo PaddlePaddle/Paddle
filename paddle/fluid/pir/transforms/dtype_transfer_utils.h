@@ -25,7 +25,6 @@
 #include "paddle/pir/core/value.h"
 
 namespace pir {
-phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key);
 
 bool NeedTransformDataType(const phi::DataType& l, const phi::DataType& r);
 

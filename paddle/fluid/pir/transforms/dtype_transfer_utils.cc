@@ -28,15 +28,6 @@
 #include "paddle/pir/core/op_info.h"
 
 namespace pir {
-phi::Kernel* GetKernel(pir::Operation* op, const phi::KernelKey& kernel_key) {
-  auto& op_attributes = op->attributes();
-  auto kernel_name =
-      op_attributes.at("kernel_name").dyn_cast<pir::StrAttribute>().AsString();
-  auto kernel_result = phi::KernelFactory::Instance().SelectKernelOrThrowError(
-      kernel_name, kernel_key);
-  auto phi_kernel = new phi::Kernel(kernel_result.kernel);
-  return phi_kernel;
-}
 
 bool NeedTransformDataType(const phi::DataType& l, const phi::DataType& r) {
   return l != phi::DataType::ALL_DTYPE && r != phi::DataType::ALL_DTYPE &&
@@ -48,11 +39,6 @@ const phi::DataType GetKernelTypeforVar(
     const std::string& var_name,
     const phi::DataType& tensor_dtype,
     const phi::KernelKey* expected_kernel_key) {
-  //   auto phi_kernel = GetKernel(op, *expected_kernel_key);
-
-  //   bool has_infer_varkernel_fn =
-  //       phi_kernel && phi_kernel->get_kerneltype_forvar_fn_ != nullptr;
-
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op->name());
 
