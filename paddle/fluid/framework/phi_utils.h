@@ -20,6 +20,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/framework/init_default_kernel_signature_map.h"
 #include "paddle/fluid/framework/op_kernel_type.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -59,8 +60,6 @@ class KernelArgsNameMaker {
   virtual const paddle::small_vector<const char*>& GetOutputArgsNames() = 0;
   virtual const paddle::small_vector<const char*>& GetAttrsArgsNames() = 0;
 };
-
-TEST_API void InitDefaultKernelSignatureMap();
 
 // TODO(Wilber): support others device context.
 template <typename T>

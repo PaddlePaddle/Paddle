@@ -85,19 +85,27 @@ def distributed_model(model):
     if paddle.distributed.get_world_size() <= 1:
         return model
 
-    amp_enable = False
     strategy = fleet_env._user_defined_strategy
     if strategy.amp:
-        amp_enable = True
-        amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
-        if amp_level.upper() == "O2":
+        level = (
+            "O2"
+            if strategy.amp_configs['use_pure_fp16']
+            or strategy.amp_configs['use_pure_bf16']
+            else "O1"
+        )
+
+        if level == "O2":
             model = paddle.amp.decorate(
                 models=model,
                 optimizers=None,
                 level="O2",
                 master_weight=None,
                 save_dtype=None,
+                dtype="float16"
+                if strategy.amp_configs['use_pure_fp16']
+                else "bfloat16",
             )
+
         init_loss_scaling = strategy.amp_configs['init_loss_scaling']
         incr_ratio = strategy.amp_configs['incr_ratio']
         decr_ratio = strategy.amp_configs['decr_ratio']

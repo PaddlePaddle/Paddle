@@ -232,7 +232,7 @@ class BaseTestCases:
             self.outputs = {'Out': np_logcumsumexp(input, **attrs)}
 
         def test_check_output(self):
-            self.check_output()
+            self.check_output(check_pir=True)
 
         def test_check_grad(self):
             self.check_grad(
@@ -245,6 +245,7 @@ class BaseTestCases:
                         **self.attrs
                     )
                 ],
+                check_pir=True,
             )
 
         def input_and_attrs(self):
@@ -332,7 +333,7 @@ class TestLogcumsumexpBF16Op(OpTest):
         place = core.CUDAPlace(0)
         place = core.CUDAPlace(0)
         self.check_output_with_place_customized(
-            checker=self.verify_output, place=place
+            checker=self.verify_output, place=place, check_pir=True
         )
 
     def verify_output(self, outs):
@@ -352,7 +353,12 @@ class TestLogcumsumexpBF16Op(OpTest):
     def test_check_grad(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X'], 'Out', numeric_grad_delta=0.5, max_relative_error=0.5
+            place,
+            ['X'],
+            'Out',
+            numeric_grad_delta=0.5,
+            max_relative_error=0.5,
+            check_pir=True,
         )
 
 

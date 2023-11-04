@@ -144,10 +144,8 @@ class InstructionBase {
                             const ValueExecutionInfo& value_exec_info);
 
   // if scope is not null, also show dimensions of arguments
-  virtual std::string DebugStringEx(
-      const paddle::framework::Scope* scope,
-      const std::unordered_map<::pir::Value, std::string>& value_2_var_name)
-      const;
+  virtual std::string DebugStringEx(const paddle::framework::Scope* scope,
+                                    ValueExecutionInfo* value_exe_info) const;
 
  protected:
   size_t id_;

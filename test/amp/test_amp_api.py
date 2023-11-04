@@ -289,7 +289,7 @@ class TestDy2STWithSetValue(AmpTestBase):
 
         func = SimpleModelIncludeSetValue()
         func = paddle.amp.decorate(func, level='O2')
-        func = paddle.jit.to_static(func)
+        func = paddle.jit.to_static(func, full_graph=True)
         input = paddle.randn((2, 3))
 
         with paddle.amp.auto_cast(level='O2'):

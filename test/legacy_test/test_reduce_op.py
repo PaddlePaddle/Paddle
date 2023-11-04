@@ -965,7 +965,7 @@ class TestAnyOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyFloatOp(OpTest):
@@ -977,7 +977,7 @@ class TestAnyFloatOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyIntOp(OpTest):
@@ -989,7 +989,7 @@ class TestAnyIntOp(OpTest):
         self.attrs = {'reduce_all': True}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOp_ZeroDim(OpTest):
@@ -1001,7 +1001,7 @@ class TestAnyOp_ZeroDim(OpTest):
         self.attrs = {'dim': []}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOp(OpTest):
@@ -1017,7 +1017,7 @@ class TestAny8DOp(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpWithDim(OpTest):
@@ -1029,7 +1029,7 @@ class TestAnyOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=1)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOpWithDim(OpTest):
@@ -1045,7 +1045,7 @@ class TestAny8DOpWithDim(OpTest):
         self.outputs = {'Out': self.inputs['X'].any(axis=self.attrs['dim'])}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpWithKeepDim(OpTest):
@@ -1061,7 +1061,7 @@ class TestAnyOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAny8DOpWithKeepDim(OpTest):
@@ -1081,7 +1081,7 @@ class TestAny8DOpWithKeepDim(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestAnyOpError(unittest.TestCase):
@@ -1713,21 +1713,25 @@ class TestAllAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_float_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
@@ -1736,26 +1740,29 @@ class TestAllAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
     def check_static_int_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.all(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.all(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
@@ -1814,21 +1821,25 @@ class TestAnyAPI(unittest.TestCase):
             self.places.append(base.CUDAPlace(0))
 
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="bool")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("bool")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_float_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[4, 4], dtype="float"
             )
@@ -1837,26 +1848,29 @@ class TestAnyAPI(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
     def check_static_int_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with base.program_guard(main, startup):
             input = paddle.static.data(name="input", shape=[4, 4], dtype="int")
             result = paddle.any(x=input)
             input_np = np.random.randint(0, 2, [4, 4]).astype("int")
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
+                main,
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             self.assertTrue((fetches[0] == np.any(input_np)).all())
 
+    @test_with_pir_api
     def test_static(self):
         for place in self.places:
             self.check_static_result(place=place)
