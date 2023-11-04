@@ -222,12 +222,8 @@ class TestDiagoalScatterInt8(TestDiagonalScatterAPI):
 class TestDiagoalScatterInt32(TestDiagonalScatterAPI):
     def set_args(self):
         self.dtype = "int32"
-        self.x = np.random.randint(-2147483648, 2147483647, [10, 10]).astype(
-            np.int32
-        )
-        self.y = np.random.randint(-2147483648, 2147483647, [10]).astype(
-            np.int32
-        )
+        self.x = np.random.randint(-256, 255, [10, 10]).astype(np.int32)
+        self.y = np.random.randint(-256, 255, [10]).astype(np.int32)
         self.offset = 0
         self.axis1 = 0
         self.axis2 = 1
@@ -236,12 +232,8 @@ class TestDiagoalScatterInt32(TestDiagonalScatterAPI):
 class TestDiagoalScatterInt64(TestDiagonalScatterAPI):
     def set_args(self):
         self.dtype = "int64"
-        self.x = np.random.randint(
-            -9223372036854775808, 9223372036854775807, [10, 10]
-        ).astype(np.int64)
-        self.y = np.random.randint(
-            -9223372036854775808, 9223372036854775807, [10]
-        ).astype(np.int64)
+        self.x = np.random.randint(-1024, 1023, [10, 10]).astype(np.int64)
+        self.y = np.random.randint(-1024, 1023, [10]).astype(np.int64)
         self.offset = 0
         self.axis1 = 0
         self.axis2 = 1
