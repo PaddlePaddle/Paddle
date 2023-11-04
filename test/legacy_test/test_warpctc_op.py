@@ -275,7 +275,7 @@ class TestWarpCTCOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -285,7 +285,7 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
-                check_pir = True,
+                check_pir=True,
             )
         else:
             self.check_grad(
@@ -293,7 +293,7 @@ class TestWarpCTCOp(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
-                check_pir = True,
+                check_pir=True,
             )
 
 
@@ -397,7 +397,7 @@ class TestWarpCTCOpWithPadding(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
@@ -407,7 +407,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.009,
                 check_dygraph=False,
-                check_pir = True,
+                check_pir=True,
             )
         else:
             self.check_grad(
@@ -415,7 +415,7 @@ class TestWarpCTCOpWithPadding(OpTest):
                 "Loss",
                 max_relative_error=0.007,
                 check_dygraph=False,
-                check_pir = True,
+                check_pir=True,
             )
 
 
@@ -521,15 +521,14 @@ class TestWarpCTCOpFp64(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs['WarpCTCGrad'] = self.gradient
-        self.check_grad(["Logits"], "Loss", check_pir = True)
+        self.check_grad(["Logits"], "Loss", check_pir=True)
 
 
 class TestWarpCTCOpError(unittest.TestCase):
-
     @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()

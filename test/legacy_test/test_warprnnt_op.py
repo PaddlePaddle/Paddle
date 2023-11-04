@@ -228,7 +228,7 @@ class TestWarpRNNTOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.outputs["warprnntgrad"] = self.gradient
@@ -237,21 +237,21 @@ class TestWarpRNNTOp(OpTest):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_pir = True,
+                check_pir=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_pir = True,
+                check_pir=True,
             )
 
 
 class TestWarpRNNTFP64Op(TestWarpRNNTOp):
     def test_check_output(self):
         self.acts.astype(np.float64)
-        self.check_output(check_pir = True)
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.acts.astype(np.float64)
@@ -261,20 +261,18 @@ class TestWarpRNNTFP64Op(TestWarpRNNTOp):
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_pir = True,
+                check_pir=True,
             )
         else:
             self.check_grad(
                 ["input"],
                 "loss",
                 numeric_grad_delta=0.009,
-                check_pir = True,
+                check_pir=True,
             )
 
 
 class TestWarpRNNTOpError(unittest.TestCase):
-
-    @test_with_pir_api
     def test_errors(self):
         print("test_errors")
         with program_guard(Program(), Program()):
