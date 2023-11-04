@@ -65,21 +65,21 @@ class PirCompiler final {
 
 std::shared_ptr<Scope> BuildScope(const Target&, const ::pir::Program&);
 
-class PIRCompilerManager {
+class PirCompilerManager {
  public:
-  static PIRCompilerManager& Instance() {
-    static PIRCompilerManager instance;
+  static PirCompilerManager& Instance() {
+    static PirCompilerManager instance;
     return instance;
   }
 
-  void insert(const std::shared_ptr<PIRCompiler>& compiler) {
+  void insert(const std::shared_ptr<PirCompiler>& compiler) {
     compilers_.push_back(compiler);
   }
 
   void clear() { compilers_.clear(); }
 
  private:
-  std::vector<std::shared_ptr<PIRCompiler>> compilers_;
+  std::vector<std::shared_ptr<PirCompiler>> compilers_;
 };
 
 }  // namespace framework

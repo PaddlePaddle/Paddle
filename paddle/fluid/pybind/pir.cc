@@ -1389,8 +1389,8 @@ void BindUtils(pybind11::module *m) {
   m->def("clear_pir_compiler_manager", []() {
 #ifdef PADDLE_WITH_CINN
     pybind11::gil_scoped_release release;
-    VLOG(4) << "clear PIRCompilerManager and free PIRCompiler resources.";
-    cinn::hlir::framework::PIRCompilerManager::Instance().clear();
+    VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
+    cinn::hlir::framework::PirCompilerManager::Instance().clear();
 #endif
   });
 }
@@ -1411,7 +1411,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   return std::move(new_program);
 #endif
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Currently we only support CINN Pass for PIR under @to_static, please "
+      "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
 }
 void BindIrPass(pybind11::module *m) {
