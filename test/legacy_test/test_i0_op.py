@@ -45,7 +45,7 @@ class TestI0API(unittest.TestCase):
         self.place = [paddle.CPUPlace()]
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
-        
+
     @test_with_pir_api
     def test_api_static(self):
         def run(place):
