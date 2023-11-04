@@ -105,12 +105,9 @@ def to_pir_ast_test(fn):
     def impl(*args, **kwargs):
         logger.info("[PIR][AST] running pir api")
         ir_outs = None
-        try:
-            with paddle.pir_utils.IrGuard():
-                paddle.disable_static()
-                ir_outs = fn(*args, **kwargs)
-        finally:
-            paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            paddle.disable_static()
+            ir_outs = fn(*args, **kwargs)
         return ir_outs
 
     return impl
