@@ -1435,19 +1435,32 @@ def OpGenerator(
                         'data_type' in op_kernel_map
                         and op_kernel_map['data_type']
                     ):
-                        if (
-                            'to_complex_flag' in op_kernel_map['data_type']
-                            and op_kernel_map['data_type']['to_complex_flag']
+                        for idx in range(
+                            len(op_kernel_map['data_type']['candidates'])
                         ):
-                            kernel_key_dtype = 'complex:' + '", "complex:'.join(
-                                op_kernel_map['data_type']['candidates']
-                            )
-                        else:
-                            kernel_key_dtype = '", "'.join(
-                                op_kernel_map['data_type']['candidates']
-                            )
+                            if (
+                                'to_complex_flag' in op_kernel_map['data_type']
+                                and op_kernel_map['data_type'][
+                                    'to_complex_flag'
+                                ][idx]
+                                == 'true'
+                            ):
+                                kernel_key_dtype += (
+                                    'complex:'
+                                    + op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
+                            else:
+                                kernel_key_dtype += (
+                                    op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
                         if kernel_key_dtype != "":
-                            kernel_key_dtype = '"' + kernel_key_dtype + '"'
+                            kernel_key_dtype = '"' + kernel_key_dtype[:-3]
                     if 'backend' in op_kernel_map and op_kernel_map['backend']:
                         kernel_key_backend = '", "'.join(
                             op_kernel_map['backend']['candidates']
