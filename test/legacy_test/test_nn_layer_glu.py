@@ -63,6 +63,13 @@ class TestGlu(unittest.TestCase):
 
     def test_errors(self):
         self.assertRaises(ValueError, self.glu_axis_size)
+        act = nn.GLU(256)
+        self.assertRaises(TypeError, act, 1)
+        # The input dtype must be float16, float32, float64.
+        x_int32 = paddle.static.data(
+            name='x_int32', shape=[10, 18], dtype='int32'
+        )
+        self.assertRaises(TypeError, act, x_int32)
 
 
 if __name__ == '__main__':
