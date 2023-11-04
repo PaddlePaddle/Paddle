@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def reference_unique_consecutive(
@@ -99,7 +100,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
@@ -203,6 +204,7 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
             paddle.enable_static()
@@ -240,6 +242,7 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
             paddle.enable_static()
@@ -281,6 +284,7 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
             paddle.enable_static()
@@ -347,7 +351,7 @@ class TestUniqueConsecutiveEmptyInput(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 if __name__ == "__main__":
