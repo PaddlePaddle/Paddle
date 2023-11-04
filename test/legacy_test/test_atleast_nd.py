@@ -319,6 +319,7 @@ class TestAtleastMixDim(BaseTest):
     (
         (
             (
+                paddle.to_tensor(True, dtype='bool'),
                 paddle.to_tensor(0.1, dtype='float16'),
                 paddle.to_tensor(1, dtype='uint16'),
                 paddle.to_tensor(0.1, dtype='float32'),
@@ -333,6 +334,7 @@ class TestAtleastMixDim(BaseTest):
                 paddle.to_tensor(0.1, dtype='bfloat16'),
             ),
             (
+                'bool',
                 'float16',
                 'uint16',
                 'float32',
@@ -359,6 +361,7 @@ class TestAtleastMixDim(BaseTest):
                 (),
                 (),
                 (),
+                (),
             ),
             (
                 '0_mixdtype',
@@ -373,6 +376,7 @@ class TestAtleastMixDim(BaseTest):
                 '9_mixdtype',
                 '10_mixdtype',
                 '11_mixdtype',
+                '12_mixdtype',
             ),
         ),
     ),
