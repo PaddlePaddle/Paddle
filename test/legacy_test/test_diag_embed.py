@@ -69,7 +69,6 @@ class TestDiagEmbedAPICase(unittest.TestCase):
             exe = base.Executor(place)
             results = exe.run(
                 main,
-                base.default_main_program(),
                 feed={"data1": diag_embed},
                 fetch_list=[out1, out2],
                 return_numpy=True,
