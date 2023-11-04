@@ -35,7 +35,6 @@ class TestUnbind(unittest.TestCase):
         exe = base.Executor(place=base.CPUPlace())
 
         [res_1, res_2] = exe.run(
-            base.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
@@ -95,7 +94,6 @@ class TestLayersUnbind(unittest.TestCase):
         exe = base.Executor(place=base.CPUPlace())
 
         [res_1, res_2] = exe.run(
-            base.default_main_program(),
             feed={"x_1": input_1, "axis": 0},
             fetch_list=[out_0, out_1],
         )
