@@ -366,9 +366,9 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
     MT mu = static_cast<MT>(ctx.Attr<float>("mu"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
 
-    int axis = ctx.Attr<int>("axis");
-    // get axis from tensor
+    int axis = 0;
     if (ctx.HasInput("Axis")) {
+      // do something
       phi::DenseTensor cpu_axis;
       const phi::DenseTensor* axis_tensor = ctx.Input<phi::DenseTensor>("Axis");
       framework::TensorCopy(*axis_tensor, platform::CPUPlace(), &cpu_axis);
@@ -379,6 +379,8 @@ class SparseMomentumOpKernel : public framework::OpKernel<T> {
       } else if (axis_type == framework::proto::VarType::INT64) {
         axis = static_cast<int>(cpu_axis.data<int64_t>()[0]);
       }
+    } else {
+      axis = ctx.Attr<int>("axis");
     }
     PADDLE_ENFORCE_EQ(
         axis == 0 || axis == 1,
