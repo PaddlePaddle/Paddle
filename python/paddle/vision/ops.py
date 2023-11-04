@@ -22,7 +22,7 @@ from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..base.framework import Variable, in_dygraph_mode
 from ..base.layer_helper import LayerHelper
-from ..framework import _current_expected_place
+from ..framework import _current_expected_place, in_dynamic_or_pir_mode
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
 from ..nn.initializer import Normal
 
@@ -872,7 +872,7 @@ def deform_conv2d(
 
     use_deform_conv2d_v1 = True if mask is None else False
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         pre_bias = _C_ops.deformable_conv(
             x,
             offset,
@@ -1225,7 +1225,7 @@ def distribute_fpn_proposals(
         num_lvl < 100
     ), "Only support max to 100 levels, (max_level - min_level + 1 < 100)"
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         assert (
             rois_num is not None
         ), "rois_num should not be None in dygraph mode."
@@ -1367,7 +1367,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
             >>> print(img.shape)
             [3, 400, 300]
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.decode_jpeg(x, mode, _current_expected_place())
     else:
         inputs = {'X': x}
