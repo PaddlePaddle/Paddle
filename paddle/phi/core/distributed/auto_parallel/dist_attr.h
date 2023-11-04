@@ -32,6 +32,8 @@ limitations under the License. */
 namespace phi {
 namespace distributed {
 
+constexpr int kReplicateDim = -1;
+
 class PlacementStatus {
  public:
   virtual ~PlacementStatus() = default;

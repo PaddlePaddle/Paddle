@@ -772,7 +772,11 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
-        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            a = 1.5
+            b = paddle.full([4, 5, 6], True, dtype='bool')
+            c = a + b
+            self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
         paddle.disable_static()

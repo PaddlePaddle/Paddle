@@ -18,8 +18,8 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "paddle/cinn/hlir/framework/new_ir/utils.h"
 #include "paddle/cinn/hlir/framework/op.h"
+#include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/pir/core/attribute_base.h"
 #include "paddle/pir/core/operation.h"
 
@@ -51,7 +51,7 @@ struct GroupInfo {
  private:
   void Initialize() {
     op_pattern_kind = hlir::framework::OpPatternKind::kElementWise;
-    fn_name = hlir::framework::newir::CompatibleInfo::GroupOpsName(ops);
+    fn_name = hlir::framework::pir::CompatibleInfo::GroupOpsName(ops);
   }
 };
 
@@ -69,6 +69,28 @@ struct GroupInfoAttributeStorage : public pir::AttributeStorage {
 
   bool operator==(const ParamKey& key) const {
     return data_.group_id == key.group_id;
+  }
+
+  const ParamKey& GetAsKey() const { return data_; }
+
+ private:
+  ParamKey data_;
+};
+
+struct JITInfoAttributeStorage : public pir::AttributeStorage {
+  using ParamKey = cinn::hlir::framework::pir::CUDAJITInfo;
+  explicit JITInfoAttributeStorage(const ParamKey& key) : data_(key) {}
+
+  static JITInfoAttributeStorage* Construct(const ParamKey& key) {
+    return new JITInfoAttributeStorage(key);
+  }
+
+  static std::size_t HashValue(const ParamKey& key) {
+    return std::hash<int64_t>()(*(reinterpret_cast<int64_t*>(key.fn_ptr)));
+  }
+
+  bool operator==(const ParamKey& key) const {
+    return data_.fn_ptr == key.fn_ptr;
   }
 
   const ParamKey& GetAsKey() const { return data_; }

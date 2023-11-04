@@ -166,12 +166,12 @@ LegacyKernelInstruction::~LegacyKernelInstruction() {
 }
 
 void LegacyKernelInstruction::Run() {
+  VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
   if (infer_meta_interface_) {
     infer_meta_interface_->infer_meta_(&(infer_meta_context_));
   }
-  VLOG(6) << "Run op " << legacy_op_name_ << " infer meta.";
-  (*(phi_kernel_))((kernel_context_));
   VLOG(6) << "Run op " << legacy_op_name_ << " kernel.";
+  (*(phi_kernel_))((kernel_context_));
 }
 }  // namespace framework
 }  // namespace paddle
