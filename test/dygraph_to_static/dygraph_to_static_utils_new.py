@@ -284,12 +284,12 @@ def test_legacy_and_pir(fn):
 
 
 def test_legacy_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
     return fn
 
 
 def test_legacy_and_pir_api_and_pir_exe(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
     return fn
 
 

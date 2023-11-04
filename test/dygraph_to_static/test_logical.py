@@ -18,7 +18,10 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_api_and_pir_exe,
+)
 
 import paddle
 from paddle import base
@@ -264,10 +267,12 @@ class TestShapeNotEqual(TestLogicalNot):
 
 
 class TestCmpopNodeToStr(Dy2StTestBase):
+    @test_legacy_and_pir_api_and_pir_exe
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())
 
+    @test_legacy_and_pir_api_and_pir_exe
     def test_expected_result(self):
         self.assertEqual(cmpop_node_to_str(gast.Eq()), "==")
         self.assertEqual(cmpop_node_to_str(gast.NotEq()), "!=")

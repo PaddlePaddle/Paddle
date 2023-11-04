@@ -26,7 +26,10 @@ from paddle import base
 # Use GPU:0 to elimate the influence of other tasks.
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_api_and_pir_exe,
+)
 
 import paddle
 from paddle.base.dygraph import to_variable
@@ -684,7 +687,7 @@ class TestCycleGANModel(Dy2StTestBase):
         out = train(self.args, to_static)
         return out
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_api_and_pir_exe
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
