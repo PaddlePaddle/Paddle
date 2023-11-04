@@ -35,9 +35,11 @@ struct EmbeddingBagCPUFunctor {
         mode_(mode),
         out_(out) {}
 
-  using EigenArrayMap = Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
+  using EigenArrayMap =
+      Eigen::Map<Eigen::Array<T, Eigen::Dynamic, Eigen::Dynamic>>;
   using EigenVectorMap = Eigen::Map<Eigen::Vector<T, Eigen::Dynamic>>;
-  using ConstEigenVectorMap = Eigen::Map<const Eigen::Vector<T, Eigen::Dynamic>>;
+  using ConstEigenVectorMap =
+      Eigen::Map<const Eigen::Vector<T, Eigen::Dynamic>>;
   using EigenIndex = Eigen::Index;
 
   template <typename IdT>
@@ -61,7 +63,8 @@ struct EmbeddingBagCPUFunctor {
         const ConstEigenVectorMap weight_slice(
             &weight_d[input_d[bag * sequence_length + seq] * output_dim],
             output_dim);
-        output_slice += weight_slice * per_sample_weight_d[bag * sequence_length + seq];
+        output_slice +=
+            weight_slice * per_sample_weight_d[bag * sequence_length + seq];
       }
       if (mode_ == "mean") {
         output_slice /= static_cast<T>(sequence_length);

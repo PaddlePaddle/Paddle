@@ -41,7 +41,7 @@ __global__ void EmbeddingBag(T *output,
       int padding_idx_count = 0;
       T sum = static_cast<T>(0);
       T max_d = static_cast<T>(0);
-      for (int j = 0; j < S; j ++) {
+      for (int j = 0; j < S; j++) {
         auto id = static_cast<int64_t>(ids[idy * S + j]);
         const T *tab = table + id * D;
         if (PaddingFlag && id == padding_idx) {
@@ -57,8 +57,10 @@ __global__ void EmbeddingBag(T *output,
       if (mode == CalMode::ksum) {
         out[i] = sum;
       } else if (mode == CalMode::kmean) {
-        if (padding_idx_count == S) out[i] = static_cast<T>(0);
-        else out[i] = sum / (S - padding_idx_count);
+        if (padding_idx_count == S)
+          out[i] = static_cast<T>(0);
+        else
+          out[i] = sum / (S - padding_idx_count);
       } else {
         out[i] = max_d;
       }
@@ -73,7 +75,7 @@ struct EmbeddingBagCUDAFunctor {
                           const DenseTensor &input,
                           const DenseTensor &weight,
                           const DenseTensor &per_sample_weight,
-                          const int64_t padding_idx,
+                          int64_t padding_idx,
                           const std::string &mode,
                           DenseTensor *out)
       : dev_ctx_(dev_ctx),
@@ -91,6 +93,11 @@ struct EmbeddingBagCUDAFunctor {
     size_t K = input_.numel();
     size_t S = input_.dims()[1];
 
+    printf("N;D;K;S %ld %ld %ld %ld\n", N, D, K, S);
+    const int gridx = 2 * dev_ctx_.GetSMCount();
+    dim3 blocks(256, 4);
+    dim3 grids(gridx, 1);
+
     const T *weight_d = weight_.data<T>();
     const IdT *ids_d = input_.data<IdT>();
     const T *per_sample_weight_d = per_sample_weight_.data<T>();
@@ -99,20 +106,34 @@ struct EmbeddingBagCUDAFunctor {
     auto stream = dev_ctx_.stream();
     printf("After Alloc\n");
 
-    const int gridx = 2 * dev_ctx_.GetSMCount();
-    dim3 blocks(256, 4);
-    dim3 grids(gridx, 1);
-
     CalMode mode_enum = CalMode::ksum;
     if (mode_ == "mean") mode_enum = CalMode::kmean;
     if (mode_ == "max") mode_enum = CalMode::kmax;
 
     if (padding_idx_ == -1) {
-      EmbeddingBag<T, IdT, false><<<grids, blocks, 0, stream>>>(
-        output_d, weight_d, ids_d, per_sample_weight_d, N, K, D, S, padding_idx_, mode_enum);
+      EmbeddingBag<T, IdT, false>
+          <<<grids, blocks, 0, stream>>>(output_d,
+                                         weight_d,
+                                         ids_d,
+                                         per_sample_weight_d,
+                                         N,
+                                         K,
+                                         D,
+                                         S,
+                                         padding_idx_,
+                                         mode_enum);
     } else {
-      EmbeddingBag<T, IdT, true><<<grids, blocks, 0, stream>>>(
-        output_d, weight_d, ids_d, per_sample_weight_d, N, K, D, S, padding_idx_, mode_enum);
+      EmbeddingBag<T, IdT, true>
+          <<<grids, blocks, 0, stream>>>(output_d,
+                                         weight_d,
+                                         ids_d,
+                                         per_sample_weight_d,
+                                         N,
+                                         K,
+                                         D,
+                                         S,
+                                         padding_idx_,
+                                         mode_enum);
     }
   }
 
@@ -121,8 +142,8 @@ struct EmbeddingBagCUDAFunctor {
   const DenseTensor &input_;
   const DenseTensor &weight_;
   const DenseTensor &per_sample_weight_;
-  const std::string& mode_;
-  const int64_t padding_idx_;
+  int64_t padding_idx_;
+  const std::string &mode_;
   DenseTensor *out_;
 };
 

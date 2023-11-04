@@ -254,7 +254,15 @@ def embedding(x, weight, padding_idx=None, sparse=False, name=None):
         return tmp
 
 
-def embedding_bag(input, weight, per_sample_weight=None, padding_idx=None, mode="sum", sparse=False, name=None):
+def embedding_bag(
+    input,
+    weight,
+    per_sample_weight=None,
+    padding_idx=None,
+    mode="sum",
+    sparse=False,
+    name=None,
+):
     """
     Used to calculate the sum ,mean, or max of the specified bag in the embeddings vector by : attr:'input'.
     Each bag contains several row indexes of embeddings.
@@ -289,9 +297,9 @@ def embedding_bag(input, weight, per_sample_weight=None, padding_idx=None, mode=
             such as :ref:`api_paddle_optimizer_adadelta_Adadelta` , :ref:`api_paddle_optimizer_adamax_Adamax` , :ref:`api_paddle_optimizer_lamb_Lamb`.
             In these cases, sparse must be False. Default: False.
         padding_idx(int|long|None, optional): padding_idx needs to be in the interval [-weight.shape[0], weight.shape[0]).
-            If :math:`padding\_idx < 0`, the :math:`padding\_idx` will automatically be converted
-            to :math:`weight.shape[0] + padding\_idx` . It will output all-zero padding data whenever lookup
-            encounters :math:`padding\_idx` in id. And the padding data will not be updated while training.
+            If :math:`padding_idx < 0`, the :math:`padding_idx` will automatically be converted
+            to :math:`weight.shape[0] + padding_idx` . It will output all-zero padding data whenever lookup
+            encounters :math:`padding_idx` in id. And the padding data will not be updated while training.
             If set None, it makes no effect to output. Default: None.
         mode(str):  Specifies the way to reduce the bag. "sum" computes the weighted sum, taking weight into consideration. "mean" computes the
             average of the values in the bag, "max" computes the max value over each bag. Default: "mean"
@@ -308,7 +316,7 @@ def embedding_bag(input, weight, per_sample_weight=None, padding_idx=None, mode=
             >>> input = np.random.randint(low=0, high=10, size = (2,6)).astype(np.int64)
             >>> input = paddle.to_tensor(input, stop_gradient = False)
             >>> per_sample_weight = np.random.random((2,6)).astype(np.float32)
-            >>> per_sample_weight = paddle.to_tensor(per_sample_weight, stop_gradient = False) 
+            >>> per_sample_weight = paddle.to_tensor(per_sample_weight, stop_gradient = False)
             >>> weight = np.random.random((10,3)).astype(np.float32)
             >>> weight = paddle.to_tensor(weight, stop_gradient = False)
             >>> sum = nn.functional.embedding_bag(input, weight, per_sample_weight, mode='sum')
@@ -330,7 +338,9 @@ def embedding_bag(input, weight, per_sample_weight=None, padding_idx=None, mode=
         )
 
     if in_dynamic_or_pir_mode():
-        return _C_ops.embedding_bag(input, weight, per_sample_weight, padding_idx, mode, sparse, name)
+        return _C_ops.embedding_bag(
+            input, weight, per_sample_weight, padding_idx, mode, sparse
+        )
     else:
         helper = LayerHelper('embedding_bag', **locals())
         dtype = helper.input_dtype(input_param_name='weight')
@@ -360,7 +370,7 @@ def embedding_bag(input, weight, per_sample_weight=None, padding_idx=None, mode=
                 'is_distributed': is_distributed,
                 'remote_prefetch': remote_prefetch,
                 'padding_idx': padding_idx,
-                'mode': mode
+                'mode': mode,
             },
         )
         return tmp

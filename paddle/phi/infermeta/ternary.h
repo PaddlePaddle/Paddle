@@ -64,8 +64,8 @@ void BoxCoderInferMeta(const MetaTensor& prior_box,
                        MetaConfig config = MetaConfig());
 
 void EmbeddingBagInferMeta(const MetaTensor& input,
-                           const MetaTensor& params,
                            const MetaTensor& weight,
+                           const MetaTensor& per_sample_weight,
                            MetaTensor* out);
 
 void DpsgdInferMeta(const MetaTensor& param,

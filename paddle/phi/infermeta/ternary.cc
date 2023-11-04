@@ -1499,20 +1499,20 @@ void EmbeddingBagInferMeta(const MetaTensor& input,
                            const MetaTensor& per_sample_weight,
                            MetaTensor* out) {
   const auto& table_dims = weight.dims();
-  auto table_dims_size = table_dims.size();
   const auto& ids_dims = input.dims();
+  auto ids_dims_size = ids_dims.size();
   const auto& weight_dims = per_sample_weight.dims();
   int ids_rank = ids_dims.size();
   VLOG(5) << "ids rank is " << ids_rank << std::endl;
   PADDLE_ENFORCE_EQ(
       ids_dims,
       weight_dims,
-      phi::errors::InvalidArgument(
-          "ShapeError: The shapes of 'input' and 'per_sample_weight' must be the same."
-          "But received input's shape = [%s],"
-          "per_sample_weight's shape = [%s].",
-          ids_dims,
-          weight_dims));
+      phi::errors::InvalidArgument("ShapeError: The shapes of 'input' and "
+                                   "'per_sample_weight' must be the same."
+                                   "But received input's shape = [%s],"
+                                   "per_sample_weight's shape = [%s].",
+                                   ids_dims,
+                                   weight_dims));
   PADDLE_ENFORCE_EQ(
       table_dims.size(),
       2,
@@ -1524,11 +1524,14 @@ void EmbeddingBagInferMeta(const MetaTensor& input,
           table_dims));
 
   auto output_dims =
-      phi::vectorize(phi::slice_ddim(ids_dims, 0, table_dims_size - 1));
+      phi::vectorize(phi::slice_ddim(ids_dims, 0, ids_dims_size - 1));
   output_dims.push_back(table_dims[1]);
   out->set_dims(phi::make_ddim(output_dims));
+  for (auto i : output_dims) {
+    VLOG(5) << i << " ";
+  }
   out->set_dtype(weight.dtype());
-  out->share_lod(input);
+  VLOG(5) << "EmbeddingBagInferMeta End.";
 }
 
 }  // namespace phi

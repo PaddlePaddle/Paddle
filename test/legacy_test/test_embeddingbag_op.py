@@ -39,7 +39,9 @@ def manual_embeddingbag(input, params, weights=None, mode="sum"):
 def get_input(rows=5, cols=3, num_embeddings=10):
     a = np.random.choice(np.arange(num_embeddings), size=cols, replace=False)
     for _ in range(rows - 1):
-        b = np.random.choice(np.arange(num_embeddings), size=cols, replace=False)
+        b = np.random.choice(
+            np.arange(num_embeddings), size=cols, replace=False
+        )
         a = np.vstack((a, b))
     return a
 
@@ -53,11 +55,15 @@ class TestEmbeddingBagCPU(OpTest):
         self.python_api = paddle.nn.functional.embedding_bag
         weight = np.random.random((20, 64)).astype(self.dtype)
         input = get_input(10, 20, weight.shape[0])
-        per_sample_weight = np.random.randint(low=0, high=10, size=input.shape).astype(
-            np.float64
-        )
+        per_sample_weight = np.random.randint(
+            low=0, high=10, size=input.shape
+        ).astype(np.float64)
 
-        self.inputs = {'input': input, 'weight': weight, 'per_sample_weight': per_sample_weight}
+        self.inputs = {
+            'input': input,
+            'weight': weight,
+            'per_sample_weight': per_sample_weight,
+        }
         np_out = manual_embeddingbag(input, weight, per_sample_weight)
         self.outputs = {
             'out': np_out.reshape((input.shape[0], weight.shape[1]))
