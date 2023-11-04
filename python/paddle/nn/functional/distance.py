@@ -14,7 +14,7 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
@@ -67,7 +67,7 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [4.99999860, 4.99999860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         sub = _C_ops.subtract(x, y)
         # p_norm op has not used epsilon, so change it to the following.
         if epsilon != 0.0:

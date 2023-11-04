@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 def np_pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False):
@@ -42,6 +43,7 @@ def call_pairwise_distance_functional(
     return distance
 
 
+@test_with_pir_api
 def test_static(
     place, x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False, functional=False
 ):
