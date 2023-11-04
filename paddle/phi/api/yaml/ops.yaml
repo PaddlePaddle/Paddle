@@ -2681,7 +2681,7 @@
   backward: uniform_inplace_grad
 
 - op : unique_consecutive
-  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, int dtype = 5)
+  args : (Tensor x, bool return_inverse = false, bool return_counts = false, int[] axis = {}, DataType dtype = DataType::INT32)
   output : Tensor(out), Tensor(index), Tensor(counts)
   infer_meta :
       func : UniqueConsecutiveInferMeta
