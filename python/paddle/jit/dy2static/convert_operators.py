@@ -428,15 +428,11 @@ def _run_paddle_cond(
             "Unsupported return type of true_fn and false_fn in cond", str(e)
         ):
             raise Dygraph2StaticException(
-                "Your if/else have different return type. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different return type. TODO: add link to modifty. {str(e)}"
             )
         if re.search("Incompatible return values of", str(e)):
             raise Dygraph2StaticException(
-                "Your if/else have different number of return value. TODO: add link to modifty. {}".format(
-                    str(e)
-                )
+                f"Your if/else have different number of return value. TODO: add link to modifty. {str(e)}"
             )
         raise e
     get_args = lambda: helper.get(return_name_ids)
@@ -739,9 +735,7 @@ def convert_var_dtype(var, dtype):
             'bool',
             'int',
             'float',
-        ], "The casted target dtype is {}, which is not supported in type casting.".format(
-            dtype
-        )
+        ], f"The casted target dtype is {dtype}, which is not supported in type casting."
         cast_map = {
             'bool': 'bool',
             'int': 'int32',

@@ -617,48 +617,52 @@ void BatchNormInferMeta(const MetaTensor& x,
                              (data_layout == DataLayout::kNCHW)
                          ? x_dims[1]
                          : x_dims[x_dims.size() - 1]);
-  auto scale_dim = scale.dims();
-  auto bias_dim = bias.dims();
+  if (scale) {
+    PADDLE_ENFORCE_EQ(
+        scale.dims().size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "ShapeError: the dimension of scale must equal to 1."
+            "But received: the shape of scale is [%s], the dimension "
+            "of scale is [%d]",
+            scale.dims().size(),
+            scale.dims().size()));
+  }
 
-  PADDLE_ENFORCE_EQ(
-      scale_dim.size(),
-      1UL,
-      phi::errors::InvalidArgument(
-          "ShapeError: the dimension of scale must equal to 1."
-          "But received: the shape of scale is [%s], the dimension "
-          "of scale is [%d]",
-          scale_dim,
-          scale_dim.size()));
-  PADDLE_ENFORCE_EQ(bias_dim.size(),
-                    1UL,
-                    phi::errors::InvalidArgument(
-                        "ShapeError: the dimension of bias must equal to 1."
-                        "But received: the shape of bias is [%s],the dimension "
-                        "of bias is [%d]",
-                        bias_dim,
-                        bias_dim.size()));
+  if (bias) {
+    PADDLE_ENFORCE_EQ(
+        bias.dims().size(),
+        1UL,
+        phi::errors::InvalidArgument(
+            "ShapeError: the dimension of bias must equal to 1."
+            "But received: the shape of bias is [%s],the dimension "
+            "of bias is [%d]",
+            bias.dims(),
+            bias.dims().size()));
+  }
 
   bool check = true;
-  if ((!config.is_runtime) &&
-      (phi::product(scale_dim) <= 0 || phi::product(bias_dim) <= 0)) {
+  if (!scale || !bias ||
+      ((!config.is_runtime) &&
+       (phi::product(scale.dims()) <= 0 || phi::product(bias.dims()) <= 0))) {
     check = false;
   }
 
   if (check) {
-    PADDLE_ENFORCE_EQ(scale_dim[0],
+    PADDLE_ENFORCE_EQ(scale.dims()[0],
                       C,
                       phi::errors::InvalidArgument(
                           "ShapeError: the shape of scale must equal to [%d]"
                           "But received: the shape of scale is [%d]",
                           C,
-                          scale_dim[0]));
-    PADDLE_ENFORCE_EQ(bias_dim[0],
+                          scale.dims()[0]));
+    PADDLE_ENFORCE_EQ(bias.dims()[0],
                       C,
                       phi::errors::InvalidArgument(
                           "ShapeError: the shape of bias must equal to [%d]"
                           "But received: the shape of bias is [%d]",
                           C,
-                          bias_dim[0]));
+                          bias.dims()[0]));
   }
   y->set_dims(x_dims);
   mean_out->set_dims({C});
@@ -4279,9 +4283,21 @@ void MaskedMultiheadAttentionInferMeta(const MetaTensor& x,
                                        MetaTensor* beam_cache_offset_out) {
   int bsz = static_cast<int>(x.dims()[0]);
   auto cache_kv_dims = cache_kv.dims();
-  int num_head = static_cast<int>(cache_kv.dims()[2]);
+  int k_num_head = static_cast<int>(cache_kv.dims()[2]);
+  int v_num_head = k_num_head;
   int dim_head = static_cast<int>(cache_kv.dims()[4]);
+  // below's num_head is q's head actually.
+  int num_head =
+      x.dims()[x.dims().size() - 1] / dim_head - k_num_head - v_num_head;
 
+  PADDLE_ENFORCE_EQ(
+      num_head % k_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          num_head,
+          k_num_head));
   PADDLE_ENFORCE_EQ(
       cache_kv_dims.size(),
       5,

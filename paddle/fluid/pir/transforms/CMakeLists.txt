@@ -25,9 +25,14 @@ cc_library(
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)
 
+cc_library(
+  replace_fetch_with_shadow_output_pass
+  SRCS replace_fetch_with_shadow_output_pass.cc
+  DEPS pd_op_dialect pir)
+
 if(WITH_CINN)
   cc_library(
     pd_build_cinn_pass
     SRCS build_cinn_pass.cc
-    DEPS pd_op_dialect cinn_op_dialect pir_control_flow cinnapi)
+    DEPS pd_op_dialect cinn_op_dialect pir cinnapi)
 endif()

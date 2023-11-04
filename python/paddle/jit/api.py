@@ -25,6 +25,7 @@ import threading
 import types
 import warnings
 from collections import OrderedDict
+from contextlib import contextmanager
 from typing import Any
 
 import paddle
@@ -55,6 +56,10 @@ from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
 from paddle.nn import Layer
 from paddle.static.io import save_inference_model
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
 
 from .dy2static import logging_utils
 from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
@@ -73,6 +78,14 @@ from .translated_layer import (
     INFER_PROPERTY_SUFFIX,
     TranslatedLayer,
 )
+
+ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+@contextmanager
+def sot_mode_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
+        yield
 
 
 def create_program_from_desc(program_desc):
@@ -220,9 +233,7 @@ def ignore_module(modules: list[Any]):
 def _check_and_set_backend(backend, build_strategy):
     if backend not in ['CINN', None]:
         raise ValueError(
-            "The backend of to_static should be 'CINN' or None, but received {}.".format(
-                backend
-            )
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -294,11 +305,8 @@ def to_static(
 
         nonlocal full_graph
         if full_graph is None:
-            flag = os.environ.get("ENABLE_FALL_BACK", None)
-            if flag == "True" or flag is None:
-                full_graph = False
-            else:  # False
-                full_graph = True
+            flag = ENV_ENABLE_SOT.get()
+            full_graph = not flag
 
         if sys.version_info >= (3, 12) and not full_graph:
             warnings.warn(
@@ -1159,9 +1167,7 @@ def save(layer, path, input_spec=None, **configs):
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.format(
-                            layer
-                        )
+                        f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
 
         # when save multi `StaticFunction`, all `StaticFunction` share params.

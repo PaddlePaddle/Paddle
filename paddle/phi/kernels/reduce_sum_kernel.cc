@@ -48,6 +48,8 @@ PD_REGISTER_KERNEL(sum,
                    int16_t,
                    int,
                    int64_t,
+                   uint8_t,
+                   int8_t,
                    complex64,
                    complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
@@ -66,6 +68,8 @@ PD_REGISTER_KERNEL(sum,
                    int16_t,
                    int,
                    int64_t,
+                   uint8_t,
+                   int8_t,
                    complex64,
                    complex128) {
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);

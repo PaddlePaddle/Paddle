@@ -24,7 +24,7 @@ from .auto_parallel_data_parallel_optimization import *  # noqa: F403
 from .auto_parallel_grad_clip import *  # noqa: F403
 from .auto_parallel_supplement_explicit_dependencies import *  # noqa: F403
 from .auto_parallel_pipeline import *  # noqa: F403
-from .column_parallel_linear_backward_overlapping import *  # noqa: F403
+from .allreduce_matmul_grad_overlapping import *  # noqa: F403
 from .cpp_pass import *  # noqa: F403
 from .fuse_all_reduce import *  # noqa: F403
 from .pipeline_scheduler_pass import *  # noqa: F403

@@ -33,6 +33,7 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/common/memory_utils.h"
 #include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/distributed/nccl_tools.h"
 #endif
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/core/distributed/xccl_comm_context.h"
@@ -56,18 +57,19 @@ void CommContextManager::CreateNCCLCommContext(
     const std::string& unique_comm_key,
     int rank,
     int size,
-    const std::string& hash_key) {
+    const std::string& hash_key,
+    const P2POption* p2p_opt) {
   auto& comm_context_manager = CommContextManager::GetInstance();
   if (comm_context_manager.Has(unique_comm_key)) {
     return;
   }
   ncclUniqueId nccl_id;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     PADDLE_ENFORCE_GPU_SUCCESS(phi::dynload::ncclGetUniqueId(&nccl_id));
   }
 
   std::string unique_key = "NCCLCommContext/" + unique_comm_key + hash_key;
-  if (rank == 0) {
+  if (rank == 0 || (p2p_opt && p2p_opt->is_p2p_op && p2p_opt->p2p_rank == 0)) {
     std::vector<uint8_t> nccl_id_wrapper(
         reinterpret_cast<uint8_t*>(&nccl_id),
         reinterpret_cast<uint8_t*>(&nccl_id) + NCCL_UNIQUE_ID_BYTES);
@@ -77,6 +79,14 @@ void CommContextManager::CreateNCCLCommContext(
     std::memcpy(&nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
 
+  if (p2p_opt) {
+    rank = p2p_opt->rank;
+    size = p2p_opt->num_ranks;
+  }
+  VLOG(3) << "init NCCLCommContext rank: " << rank << ", size: " << size
+          << ", unique_comm_key: " << unique_comm_key
+          << ", unique_key: " << unique_key
+          << ", nccl_id: " << SerializeNCCLUniqueId(nccl_id);
   auto nccl_comm_context =
       std::make_unique<NCCLCommContext>(rank, size, nccl_id);
   if (CommContextManager::device_id != -1) {

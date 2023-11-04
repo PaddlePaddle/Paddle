@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from test_case_base import TestCaseBase, strict_mode_guard
+from test_case_base import TestCaseBase
 
 import paddle
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 def foo(x, y):
@@ -32,7 +33,7 @@ class TestNumpy(TestCaseBase):
         self.assert_results(foo, x, y)
         self.assert_results(foo, y, x)
 
-    @strict_mode_guard(0)
+    @strict_mode_guard(False)
     def test_tensor_add_numpy_array(self):
         x = paddle.to_tensor([1.0])
         y = np.array(2.0)
