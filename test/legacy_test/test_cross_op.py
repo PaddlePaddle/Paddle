@@ -20,6 +20,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestCrossOp(OpTest):
@@ -47,10 +48,10 @@ class TestCrossOp(OpTest):
         self.outputs = {'Out': np.array(z_list).reshape(self.shape)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
 
 class TestCrossOpCase1(TestCrossOp):
@@ -116,13 +117,15 @@ class TestCrossBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place)
+                self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Y'], 'Out', check_pir=True
+                )
 
 
 class TestCrossAPI(unittest.TestCase):
@@ -134,6 +137,7 @@ class TestCrossAPI(unittest.TestCase):
             [[1.0, 1.0, 1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 1.0]]
         ).astype('float32')
 
+    @test_with_pir_api
     def test_cross_api(self):
         self.input_data()
 
