@@ -2001,7 +2001,7 @@ def diag(x, offset=0, padding_value=0, name=None):
             Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')
