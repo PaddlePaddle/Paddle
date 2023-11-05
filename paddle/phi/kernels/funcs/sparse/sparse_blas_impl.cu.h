@@ -97,8 +97,8 @@ inline void CreateCsrDescriptor(const phi::SparseCsrTensor& x,
                                     const_cast<IntT*>(crows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_64I,
-                                    CUSPARSE_INDEX_64I,
+                                    CUSPARSE_INDEX_32I,
+                                    CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -151,7 +151,7 @@ inline void CreateCooDescriptor(const phi::SparseCooTensor& x,
                                     const_cast<IntT*>(rows_data),
                                     const_cast<IntT*>(cols_data),
                                     const_cast<T*>(values_data),
-                                    CUSPARSE_INDEX_64I,
+                                    CUSPARSE_INDEX_32I,
                                     CUSPARSE_INDEX_BASE_ZERO,
                                     gpu_type);
   });
@@ -481,6 +481,130 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
 }
 #endif
 
+/************* SPARSE*SPARSE->SPARSE MATMUL ************/
+template <>
+template <typename T>
+void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
+                                         bool transb,
+                                         T alpha,
+                                         const SparseCsrTensor& mat_a,
+                                         const SparseCsrTensor& mat_b,
+                                         T beta,
+                                         SparseCsrTensor* mat_out) const {
+  auto a_descriptor = CuSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
+  auto b_descriptor = CuSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
+  auto out_descriptor = CuSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  cudaDataType_t gpu_type = GetGpuDataType<T>();
+  size_t buffer_a_size = 0, buffer_b_size = 0;
+  cusparseSpGEMMDescr_t spgemmDesc;
+  phi::dynload::cusparseSpGEMM_createDescr(&spgemmDesc);
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_workEstimation(handle,
+                                                GetTransposeOperation(transa),
+                                                GetTransposeOperation(transb),
+                                                &alpha,
+                                                a_descriptor.descriptor(),
+                                                b_descriptor.descriptor(),
+                                                &beta,
+                                                out_descriptor.descriptor(),
+                                                gpu_type,
+                                                CUSPARSE_SPGEMM_DEFAULT,
+                                                spgemmDesc,
+                                                &buffer_a_size,
+                                                nullptr);
+  });
+
+  phi::Allocator::AllocationPtr tmp_buffer_a = phi::memory_utils::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_a_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+  void* tmp_buffer_a_ptr = tmp_buffer_a->ptr();
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_workEstimation(handle,
+                                                GetTransposeOperation(transa),
+                                                GetTransposeOperation(transb),
+                                                &alpha,
+                                                a_descriptor.descriptor(),
+                                                b_descriptor.descriptor(),
+                                                &beta,
+                                                out_descriptor.descriptor(),
+                                                gpu_type,
+                                                CUSPARSE_SPGEMM_DEFAULT,
+                                                spgemmDesc,
+                                                &buffer_a_size,
+                                                tmp_buffer_a_ptr);
+  });
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_compute(handle,
+                                         GetTransposeOperation(transa),
+                                         GetTransposeOperation(transb),
+                                         &alpha,
+                                         a_descriptor.descriptor(),
+                                         b_descriptor.descriptor(),
+                                         &beta,
+                                         out_descriptor.descriptor(),
+                                         gpu_type,
+                                         CUSPARSE_SPGEMM_DEFAULT,
+                                         spgemmDesc,
+                                         &buffer_b_size,
+                                         nullptr);
+  });
+
+  phi::Allocator::AllocationPtr tmp_buffer_b = phi::memory_utils::Alloc(
+      dev_ctx_.GetPlace(),
+      buffer_b_size,
+      phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+  void* tmp_buffer_b_ptr = tmp_buffer_b->ptr();
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_compute(handle,
+                                         GetTransposeOperation(transa),
+                                         GetTransposeOperation(transb),
+                                         &alpha,
+                                         a_descriptor.descriptor(),
+                                         b_descriptor.descriptor(),
+                                         &beta,
+                                         out_descriptor.descriptor(),
+                                         gpu_type,
+                                         CUSPARSE_SPGEMM_DEFAULT,
+                                         spgemmDesc,
+                                         &buffer_b_size,
+                                         tmp_buffer_b_ptr);
+  });
+
+  // get matrix C non-zero entries C_nnz1
+  int64_t C_num_rows1, C_num_cols1, C_nnz1;
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpMatGetSize(
+        out_descriptor.descriptor(), &C_num_rows1, &C_num_cols1, &C_nnz1);
+  });
+  VLOG(0) << C_num_rows1 << " " << C_num_cols1 << " " << C_nnz1;
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpGEMM_copy(handle,
+                                      GetTransposeOperation(transa),
+                                      GetTransposeOperation(transb),
+                                      &alpha,
+                                      a_descriptor.descriptor(),
+                                      b_descriptor.descriptor(),
+                                      &beta,
+                                      out_descriptor.descriptor(),
+                                      gpu_type,
+                                      CUSPARSE_SPGEMM_DEFAULT,
+                                      spgemmDesc);
+  });
+
+  dev_ctx_.CusparseCall([&](cusparseHandle_t handle) {
+    phi::dynload::cusparseSpMatGetSize(
+        out_descriptor.descriptor(), &C_num_rows1, &C_num_cols1, &C_nnz1);
+  });
+  VLOG(0) << C_num_rows1 << " " << C_num_cols1 << " " << C_nnz1;
+}
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi

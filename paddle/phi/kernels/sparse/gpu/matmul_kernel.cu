@@ -103,6 +103,85 @@ void MatmulKernelImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void MatmulKernelImpl(const Context& dev_ctx,
+                      const SparseCsrTensor& x,
+                      const SparseCsrTensor& y,
+                      SparseCsrTensor* out) {
+#if CUDA_VERSION >= 11000 || HIP_VERSION >= 402
+  std::vector<int64_t> xdim_vec = phi::vectorize(x.dims());
+  std::vector<int64_t> ydim_vec = phi::vectorize(y.dims());
+  auto x_ndims = xdim_vec.size();
+  auto y_ndims = ydim_vec.size();
+  PADDLE_ENFORCE_EQ(
+      x_ndims,
+      y_ndims,
+      phi::errors::PreconditionNotMet("The dims size of Input(x) and Input(y) "
+                                      "should be equal, But received X's "
+                                      "dimensions=%d, Y's dimensions=%d.",
+                                      x_ndims,
+                                      y_ndims));
+  PADDLE_ENFORCE_GE(
+      x_ndims,
+      2,
+      phi::errors::InvalidArgument("the dims size of Input(x) and "
+                                   "Input(y) must be greater than "
+                                   "or eaqual to 2."));
+
+  for (size_t i = 0; i < x_ndims - 2; ++i) {
+    PADDLE_ENFORCE_EQ(xdim_vec[i],
+                      ydim_vec[i],
+                      phi::errors::InvalidArgument(
+                          "x.dim[%d] and x.dim[%d] must be eaqul.", i, i));
+  }
+
+  PADDLE_ENFORCE_GE(
+      xdim_vec[x_ndims - 1],
+      ydim_vec[y_ndims - 2],
+      phi::errors::PreconditionNotMet(
+          "The shape of Input(x) and Input(y) is not suitable for matmul "
+          "opetation, x_dim[-1] must be eaqual to y_dim[-2]."));
+  // InferMeta of  'out'
+  // std::vector<int64_t> out_dim_vec(ydim_vec);
+  // out_dim_vec[y_ndims - 2] = xdim_vec[x_ndims - 2];
+  // out_dim_vec[y_ndims - 1] = ydim_vec[y_ndims - 1];
+  // MetaTensor meta_out(out);
+
+  // meta_out.set_dims(phi::make_ddim(out_dim_vec));
+  // meta_out.set_dtype(x.dtype());
+
+  // dev_ctx.template Alloc<T>(out);
+  VLOG(0) << "tyep " << out->crows().dtype();
+  // *(out->mutable_crows()) = x.crows();
+  // *(out->mutable_cols()) = x.cols();
+
+  // const DenseTensor& x_values = x.values();
+  // DenseTensor* out_values = out->mutable_values();
+  // out_values->Resize(x_values.dims());
+  // out->set_meta(x.meta());
+  // dev_ctx.template Alloc<T>(out_values);
+
+#ifdef PADDLE_WITH_HIP
+  phi::funcs::SetConstant<Context, T> set_zero;
+  // set_zero(dev_ctx, out, static_cast<T>(0.0f));
+#endif
+
+  auto sparse_blas = phi::funcs::sparse::GetSparseBlas<Context, T>(dev_ctx);
+  sparse_blas.SPGEMM(
+      false, false, static_cast<T>(1), x, y, static_cast<T>(0), out);
+#else
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_THROW(
+      phi::errors::Unimplemented("forward of 'sparse.matmul' use cusparseSpMM, "
+                                 "which is supported from CUDA 11.0"));
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "forward of 'sparse.matmul' use rocsparse_spmm, "
+      "which is supported from ROCM 4.2.0"));
+#endif
+#endif
+}
+
+template <typename T, typename Context>
 void MatmulCooDenseKernel(const Context& dev_ctx,
                           const SparseCooTensor& x,
                           const DenseTensor& y,
@@ -115,6 +194,22 @@ void MatmulCsrDenseKernel(const Context& dev_ctx,
                           const SparseCsrTensor& x,
                           const DenseTensor& y,
                           DenseTensor* out) {
+  MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCooCooKernel(const Context& dev_ctx,
+                        const SparseCooTensor& x,
+                        const SparseCooTensor& y,
+                        SparseCooTensor* out) {
+  // MatmulKernelImpl<T>(dev_ctx, x, y, out);
+}
+
+template <typename T, typename Context>
+void MatmulCsrCsrKernel(const Context& dev_ctx,
+                        const SparseCsrTensor& x,
+                        const SparseCsrTensor& y,
+                        SparseCsrTensor* out) {
   MatmulKernelImpl<T>(dev_ctx, x, y, out);
 }
 
@@ -220,6 +315,24 @@ PD_REGISTER_KERNEL(matmul_coo_dense,
                    float,
                    double) {
   kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(matmul_coo_coo,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCooCooKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_COO);
+}
+
+PD_REGISTER_KERNEL(matmul_csr_csr,
+                   GPU,
+                   ALL_LAYOUT,
+                   phi::sparse::MatmulCsrCsrKernel,
+                   float,
+                   double) {
+  kernel->InputAt(0).SetDataLayout(phi::DataLayout::SPARSE_CSR);
 }
 
 PD_REGISTER_KERNEL(masked_matmul_csr,

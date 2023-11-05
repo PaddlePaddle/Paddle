@@ -400,6 +400,82 @@ void SparseBlas<phi::GPUContext>::SDDMM(bool transa,
   });
 }
 #endif
+
+/************* SPARSE*SPARSE->SPARSE MATMUL ************/
+template <>
+template <typename T>
+void SparseBlas<phi::GPUContext>::SPGEMM(bool transa,
+                                         bool transb,
+                                         T alpha,
+                                         const SparseCsrTensor& mat_a,
+                                         const SparseCsrTensor& mat_b,
+                                         T beta,
+                                         SparseCsrTensor* mat_out) const {
+  // auto a_descriptor = RocSparseSpMatDescriptor<T>(mat_a, dev_ctx_);
+  // auto b_descriptor = RocSparseSpMatDescriptor<T>(mat_b, dev_ctx_);
+  // auto out_descriptor = RocSparseSpMatDescriptor<T>(*mat_out, dev_ctx_);
+
+  // rocsparse_datatype ttype = GetGpuDataType<T>();
+  // size_t buffer_size = 0;
+
+  // // Query SpMM buffer
+  // dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
+  //   phi::dynload::rocsparse_spmm(handle,
+  //                                GetTransposeOperation(transa),
+  //                                GetTransposeOperation(transb),
+  //                                &alpha,
+  //                                a_descriptor.descriptor(),
+  //                                b_descriptor.descriptor(),
+  //                                &beta,
+  //                                out_descriptor.descriptor(),
+  //                                ttype,
+  //                                GetSpMMAlgorithm(mat_a),
+  //                                rocsparse_spmm_stage_buffer_size,
+  //                                &buffer_size,
+  //                                nullptr);
+  // });
+
+  // // Allocate buffer
+  // phi::Allocator::AllocationPtr tmp_buffer = phi::memory_utils::Alloc(
+  //     dev_ctx_.GetPlace(),
+  //     buffer_size,
+  //     phi::Stream(reinterpret_cast<phi::StreamId>(dev_ctx_.stream())));
+  // void* tmp_buffer_ptr = tmp_buffer->ptr();
+
+  // // Preprocess data
+  // dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
+  //   phi::dynload::rocsparse_spmm(handle,
+  //                                GetTransposeOperation(transa),
+  //                                GetTransposeOperation(transb),
+  //                                &alpha,
+  //                                a_descriptor.descriptor(),
+  //                                b_descriptor.descriptor(),
+  //                                &beta,
+  //                                out_descriptor.descriptor(),
+  //                                ttype,
+  //                                GetSpMMAlgorithm(mat_a),
+  //                                rocsparse_spmm_stage_preprocess,
+  //                                &buffer_size,
+  //                                tmp_buffer_ptr);
+  // });
+
+  // // Performs the actual SpMM computation
+  // dev_ctx_.CusparseCall([&](rocsparse_handle handle) {
+  //   phi::dynload::rocsparse_spmm(handle,
+  //                                GetTransposeOperation(transa),
+  //                                GetTransposeOperation(transb),
+  //                                &alpha,
+  //                                a_descriptor.descriptor(),
+  //                                b_descriptor.descriptor(),
+  //                                &beta,
+  //                                out_descriptor.descriptor(),
+  //                                ttype,
+  //                                GetSpMMAlgorithm(mat_a),
+  //                                rocsparse_spmm_stage_compute,
+  //                                &buffer_size,
+  //                                tmp_buffer_ptr);
+  // });
+}
 }  // namespace sparse
 }  // namespace funcs
 }  // namespace phi
