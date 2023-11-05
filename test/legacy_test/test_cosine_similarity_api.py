@@ -18,8 +18,8 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import nn
-from paddle.base import Executor, Program, core, program_guard
+from paddle import nn, static
+from paddle.base import Executor, core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -41,7 +41,11 @@ class TestCosineSimilarityAPI(unittest.TestCase):
     def check_static_result(self, place):
         paddle.enable_static()
 
-        with program_guard(Program(), Program()):
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
             shape = [10, 15]
             axis = 1
             eps = 1e-8
