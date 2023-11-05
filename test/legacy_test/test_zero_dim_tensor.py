@@ -25,6 +25,7 @@ from decorator_helper import prog_scope
 
 import paddle
 import paddle.nn.functional as F
+from paddle.pir_utils import test_with_pir_api
 
 unary_api_list = [
     paddle.nn.functional.elu,
@@ -2088,6 +2089,7 @@ class TestSundryAPI(unittest.TestCase):
         self.assertEqual(out3.grad.shape, [])
         self.assertTrue(out3.grad.numpy() == 1)
 
+    @test_with_pir_api
     def test_logcumsumexp(self):
         x = paddle.rand([])
         x.stop_gradient = False
@@ -4342,6 +4344,7 @@ class TestSundryAPIStatic(unittest.TestCase):
         self.assertEqual(out3.shape, ())
 
     @prog_scope()
+    @test_with_pir_api
     def test_logcumsumexp(self):
         x = paddle.rand([])
         x.stop_gradient = False
