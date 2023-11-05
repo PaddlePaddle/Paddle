@@ -78,6 +78,7 @@ def test_static(
 def test_dygraph(
     place, x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False, functional=False
 ):
+    paddle.disable_static()
     x = paddle.to_tensor(x_np)
     y = paddle.to_tensor(y_np)
     if functional:
@@ -89,6 +90,7 @@ def test_dygraph(
             x=x, y=y, p=p, epsilon=epsilon, keepdim=keepdim
         )
     dygraph_ret = dy_distance.numpy()
+    paddle.enable_static()
     return dygraph_ret
 
 
