@@ -18,8 +18,10 @@ import numpy as np
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
+@test_with_pir_api
 def run_static(x_np, dtype, op_str, use_gpu=False):
     paddle.enable_static()
     startup_program = base.Program()
@@ -150,6 +152,7 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
+    @test_with_pir_api
     def test_bad_input(self):
         paddle.enable_static()
         with base.program_guard(base.Program()):
