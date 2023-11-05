@@ -63,6 +63,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def init_predictor(self):
+        paddle.set_flags({'FLAGS_enable_new_ir_in_executor': True})
         config = Config(
             os.path.join(
                 self.temp_dir.name,
@@ -74,7 +75,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
             ),
         )
         config.enable_use_gpu(256, 0)
-        config.enable_memory_optim()
+        config.switch_ir_optim(False)
+        # config.enable_memory_optim()
+        config.enable_new_executor()
         predictor = create_predictor(config)
         return predictor
 
@@ -89,9 +92,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         return [input0_tensor, input1_tensor]
 
-    def get_disorder_output(self):
-        predictor = self.init_predictor()
-
+    def get_disorder_output(self, predictor):
         [input0_tensor, input1_tensor] = self.get_inputs()
 
         input_names = predictor.get_input_names()
@@ -104,9 +105,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
 
         return outputs[0]
 
-    def get_inorder_output(self):
-        predictor = self.init_predictor()
-
+    def get_inorder_output(self, predictor):
         [input0_tensor, input1_tensor] = self.get_inputs()
 
         # inorder
@@ -116,8 +115,9 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         return outputs[0]
 
     def test_output(self):
-        inorder_output = self.get_inorder_output()
-        disorder_output = self.get_disorder_output()
+        predictor = self.init_predictor()
+        inorder_output = self.get_inorder_output(predictor)
+        disorder_output = self.get_disorder_output(predictor)
 
         np.testing.assert_allclose(
             inorder_output.numpy().flatten(), disorder_output.numpy().flatten()

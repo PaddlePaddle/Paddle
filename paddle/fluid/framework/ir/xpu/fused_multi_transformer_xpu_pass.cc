@@ -424,11 +424,23 @@ int FusedMultiTransformerXPUPass::FusedMultiTransformerXPUQuant(
             nullptr,
             platform::errors::Fatal("w node should not be nullptr"));
         if (quant_post_dynamic_weight_precision == 0) {
-          PrepareWeight<int8_t>(
-              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+          PrepareWeight<float, int8_t>(graph,
+                                       scope,
+                                       block,
+                                       w_node,
+                                       &w_intx,
+                                       &w_max,
+                                       need_transpose,
+                                       std::vector<float>({}));
         } else {
-          PrepareWeight<int16_t>(
-              graph, scope, block, w_node, &w_intx, &w_max, need_transpose);
+          PrepareWeight<float, int16_t>(graph,
+                                        scope,
+                                        block,
+                                        w_node,
+                                        &w_intx,
+                                        &w_max,
+                                        need_transpose,
+                                        std::vector<float>({}));
         }
         w_nodes->push_back(w_node);
         w_intx_nodes->push_back(w_intx);

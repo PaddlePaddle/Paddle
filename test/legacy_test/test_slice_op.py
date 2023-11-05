@@ -657,7 +657,7 @@ class TestSliceAPI(unittest.TestCase):
 
             exe = base.Executor(place=base.CPUPlace())
             res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-                base.default_main_program(),
+                paddle.static.default_main_program(),
                 feed={
                     "x": input,
                     'starts': np.array([-3, 0, 2]).astype("int32"),
@@ -673,6 +673,65 @@ class TestSliceAPI(unittest.TestCase):
             np.testing.assert_array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
             np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
             np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard(), paddle.static.program_guard(
+            paddle.static.Program()
+        ):
+            input = np.random.random([3, 4, 5, 6]).astype("float64")
+            minus_1 = paddle.tensor.fill_constant([], "int32", -1)
+            minus_3 = paddle.tensor.fill_constant([], "int64", -3)
+            starts = paddle.static.data(name='starts', shape=[3], dtype="int32")
+            ends = paddle.static.data(name='ends', shape=[3], dtype="int32")
+            x = paddle.static.data(
+                name="x",
+                shape=[3, 4, 5, 6],
+                dtype="float64",
+            )
+
+            # value_int64 is greater than 2147483647 which is the max of int32
+            value_int64 = paddle.tensor.fill_constant([1], "int64", 2147483648)
+
+            out_1 = paddle.slice(
+                x,
+                axes=[0, 1, 2],
+                starts=[-3, 0, 2],
+                ends=[value_int64, 100, -1],
+            )
+            out_2 = paddle.slice(
+                x, axes=[0, 1, 3], starts=[minus_3, 0, 2], ends=[3, 100, -1]
+            )
+            out_3 = paddle.slice(
+                x,
+                axes=[0, 1, 3],
+                starts=[minus_3, 0, 2],
+                ends=[3, 100, minus_1],
+            )
+            out_4 = paddle.slice(x, axes=[0, 1, 2], starts=starts, ends=ends)
+
+            out_5 = x[-3:3, 0:100, 2:-1]
+            out_6 = x[minus_3:3, 0:100, :, 2:-1]
+            # open it after supporting control flow
+            # out_7 = x[minus_1, 0:100, :, 2:minus_1]
+
+            exe = base.Executor(place=base.CPUPlace())
+            res_1, res_2, res_3, res_4, res_5, res_6 = exe.run(
+                paddle.static.default_main_program(),
+                feed={
+                    "x": input,
+                    'starts': np.array([-3, 0, 2]).astype("int32"),
+                    'ends': np.array([3, 100, -1]).astype("int32"),
+                },
+                fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6],
+            )
+
+            np.testing.assert_array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+            np.testing.assert_array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_5, input[-3:3, 0:100, 2:-1, :])
+            np.testing.assert_array_equal(res_6, input[-3:3, 0:100, :, 2:-1])
+            # np.testing.assert_array_equal(res_7, input[-1, 0:100, :, 2:-1])
 
 
 class TestSliceApiWithTensor(unittest.TestCase):
@@ -754,7 +813,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def set_program_and_run(self, main_program, case_num):
         with paddle_static_guard():
-            with base.program_guard(main_program):
+            with paddle.static.program_guard(main_program):
                 x = [
                     paddle.static.data(
                         name='x0', shape=self.shape, dtype="float32"
@@ -810,7 +869,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
                 )
 
     def test_case_1(self):
-        main_program = base.Program()
+        main_program = paddle.static.Program()
         self.set_program_and_run(main_program, 1)
 
         self.assertTrue(self.sliced_arr.type == core.VarDesc.VarType.LOD_TENSOR)
@@ -822,7 +881,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def test_case_2(self):
         with paddle_static_guard():
-            main_program = base.Program()
+            main_program = paddle.static.Program()
             self.set_program_and_run(main_program, 2)
 
             self.assertTrue(
@@ -838,7 +897,7 @@ class TestSliceApiWithLoDTensorArray(unittest.TestCase):
 
     def test_case_3(self):
         with paddle_static_guard():
-            main_program = base.Program()
+            main_program = paddle.static.Program()
             self.set_program_and_run(main_program, 3)
 
             self.assertTrue(
@@ -892,6 +951,13 @@ class TestInferShape(unittest.TestCase):
 
             out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
             self.assertEqual(out0.shape, (3, -1, 5))
+
+    def test_pir(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data('x', shape=[3, -1, 5])
+
+            out0 = paddle.slice(x, axes=[1], starts=[0], ends=[3])
+            self.assertEqual(out0.shape, [3, -1, 5])
 
     def test_axis_less_than_zero(self):
         # Using paddle.disable_static will make other unittests fail.

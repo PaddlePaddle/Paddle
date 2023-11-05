@@ -139,7 +139,7 @@ auto op_res = paddle::dialect::{{name}}({{common.args(input_names, attr_names)}}
 
 
 {% for api in apis %}
-{%- if api is only_composite_op -%}{#- render nothing -#}
+{%- if api is only_composite_op or "infer_meta" not in api and "composite" not in api and "invoke" not in api -%}{#- render nothing -#}
 {% elif api.name not in backend_black_list %}
   {%- if 'invoke' not in api or 'invoke' in api and api.is_fwd-%}
   {% set api_outputs = api.outputs | trip_intermediate %}
