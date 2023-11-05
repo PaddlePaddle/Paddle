@@ -21,7 +21,8 @@ from test_softmax_op import stable_softmax
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base import Program, core, program_guard
+from paddle import static
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 CUDA_BLOCK_SIZE = 32
@@ -529,10 +530,13 @@ class TestWarpCTCOpFp64(OpTest):
 
 
 class TestWarpCTCOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
-        with program_guard(Program(), Program()):
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
             logits = paddle.static.data(
                 name='logits', shape=[5, 16, 6], dtype='float32'
             )
