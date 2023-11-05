@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 import paddle.nn.functional as F
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 paddle.seed(2022)
@@ -143,10 +144,10 @@ class TestUnpool3DOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.unpool3d_forward_naive = unpool3dmax_forward_naive
@@ -187,6 +188,7 @@ class TestUnpool3DOpException(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_exception(self):
         def indices_size_error():
             data = paddle.rand(shape=[1, 1, 3, 3, 3])
@@ -373,6 +375,7 @@ class TestUnpool3DOpAPI_dygraph3(unittest.TestCase):
 
 
 class TestUnpool3DOpAPI_static(unittest.TestCase):
+    @test_with_pir_api
     def test_case(self):
         paddle.enable_static()
         places = [paddle.CPUPlace()]

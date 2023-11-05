@@ -20,6 +20,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -121,8 +122,9 @@ class TestPool1D_API(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(base.CUDAPlace(0))
 
+    @test_with_pir_api
     def check_avg_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32], dtype="float32"
             )
@@ -135,12 +137,12 @@ class TestPool1D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )
             np.testing.assert_allclose(fetches[0], result_np, rtol=1e-05)
 
+    @test_with_pir_api
     def check_avg_static_results_fp16(self, place):
         with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data(
@@ -161,7 +163,6 @@ class TestPool1D_API(unittest.TestCase):
                 place = paddle.CUDAPlace(0)
                 exe = paddle.static.Executor(place)
                 fetches = exe.run(
-                    paddle.static.default_main_program(),
                     feed={"input": input_np},
                     fetch_list=[result],
                 )
@@ -206,8 +207,11 @@ class TestPool1D_API(unittest.TestCase):
             result = avg_pool1d_dg(input)
             np.testing.assert_allclose(result.numpy(), result_np, rtol=1e-05)
 
+    @test_with_pir_api
     def check_max_static_results(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 32], dtype="float32"
             )
@@ -220,7 +224,6 @@ class TestPool1D_API(unittest.TestCase):
 
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": input_np},
                 fetch_list=[result],
             )

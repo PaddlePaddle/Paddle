@@ -22,6 +22,7 @@ from test_attribute_var import UnittestBase
 import paddle
 import paddle.nn.functional as F
 from paddle.base import Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 def _unpool_output_size(x, kernel_size, stride, padding, output_size):
@@ -130,10 +131,10 @@ class TestUnpoolOp(OpTest):
         self.outputs = {'Out': output.astype('float64')}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.unpool2d_forward_naive = unpool2dmax_forward_naive
@@ -185,6 +186,7 @@ class TestUnpoolOpException(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_exception(self):
         def indices_size_error():
             data = paddle.rand(shape=[1, 1, 3, 3])
@@ -399,6 +401,7 @@ class TestUnpoolOpAPI_dy3(unittest.TestCase):
 
 
 class TestUnpoolOpAPI_st(unittest.TestCase):
+    @test_with_pir_api
     def test_case(self):
         import paddle
         import paddle.nn.functional as F
@@ -446,6 +449,7 @@ class TestOutputSizeTensor(UnittestBase):
         self.shapes = [[1, 3, 6, 6]]
         self.save_path = os.path.join(self.temp_dir.name, self.path_prefix())
 
+    @test_with_pir_api
     def test_static(self):
         main_prog = Program()
         starup_prog = Program()
