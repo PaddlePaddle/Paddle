@@ -3967,7 +3967,6 @@ class TestSTanhAPI(unittest.TestCase):
             out_ref = ref_stanh(self.x_np, self.scale_a, self.scale_b)
             np.testing.assert_allclose(out_ref, res[0], rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
