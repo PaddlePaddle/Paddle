@@ -340,7 +340,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(

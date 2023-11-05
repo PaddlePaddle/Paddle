@@ -19,13 +19,8 @@ import numpy as np
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.base import (
-    Executor,
-    Program,
-    core,
-    default_main_program,
-    program_guard,
-)
+from paddle.base import Executor, Program, core, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestCosineSimilarityAPI(unittest.TestCase):
@@ -42,6 +37,7 @@ class TestCosineSimilarityAPI(unittest.TestCase):
         cos_sim = w12 / n12
         return cos_sim
 
+    @test_with_pir_api
     def check_static_result(self, place):
         paddle.enable_static()
 
@@ -58,7 +54,6 @@ class TestCosineSimilarityAPI(unittest.TestCase):
             result = F.cosine_similarity(x1, x2, axis=axis, eps=eps)
             exe = Executor(place)
             fetches = exe.run(
-                default_main_program(),
                 feed={"x1": np_x1, "x2": np_x2},
                 fetch_list=[result],
             )
