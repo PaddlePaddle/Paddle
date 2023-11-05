@@ -5303,7 +5303,7 @@ def hstack(x, name=None):
             'hstack',
             f"For 'hstack', each element of 'inputs' must be a tensor, but got {type(tensor)}",
         )
-        # similar to the function of atleast_1d
+        # similar to the atleast_1d
         if tensor.ndim == 0:
             tensor = paddle.reshape(tensor, [1])
         rep += (tensor,)
