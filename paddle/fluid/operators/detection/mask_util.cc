@@ -194,6 +194,7 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
   w = std::max(w, static_cast<float>(1.));
   h = std::max(h, static_cast<float>(1.));
 
+  // short-circuit for case "polygons.size() == 1"
   if (polygons.size() == 1UL) {
     int k = static_cast<int>(polygons[0].size() / 2);
     std::vector<float> p;
