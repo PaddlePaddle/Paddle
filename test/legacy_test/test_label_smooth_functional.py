@@ -42,7 +42,6 @@ class LabelSmoothTestCase(unittest.TestCase):
     def setUp(self):
         self.label = np.random.randn(*(self.label_shape)).astype(self.dtype)
 
-    @test_with_pir_api
     def base_layer(self, place):
         paddle.enable_static()
         main = base.Program()
@@ -63,7 +62,6 @@ class LabelSmoothTestCase(unittest.TestCase):
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
-    @test_with_pir_api
     def functional(self, place):
         paddle.enable_static()
         main = base.Program()
@@ -93,11 +91,17 @@ class LabelSmoothTestCase(unittest.TestCase):
 
     def _test_equivalence(self, place):
         place = base.CPUPlace()
-        result1 = self.base_layer(place)
         result2 = self.functional(place)
         result3 = self.paddle_dygraph_layer()
-        np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
+
+        @test_with_pir_api
+        def dynamic_and_pir_mode_test():
+            result1 = self.base_layer(place)
+            result2 = self.functional(place)
+            np.testing.assert_array_almost_equal(result1, result2)
+
+        dynamic_and_pir_mode_test()
 
     def runTest(self):
         place = base.CPUPlace()

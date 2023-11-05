@@ -189,7 +189,6 @@ class TestClassCenterSampleV2(unittest.TestCase):
                 )
                 exe = paddle.base.Executor(place)
                 [remapped_label_res, sampled_class_index_res] = exe.run(
-                    paddle.base.default_main_program(),
                     feed={'label': label_np},
                     fetch_list=[remapped_label, sampled_class_index],
                 )
