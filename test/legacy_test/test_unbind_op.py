@@ -18,7 +18,7 @@ import numpy as np
 from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import base, tensor
+from paddle import base, static, tensor
 from paddle.base import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
 
@@ -28,19 +28,24 @@ class TestUnbind(unittest.TestCase):
     def test_unbind(self):
         paddle.enable_static()
 
-        x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
-        [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
-        input_1 = np.random.random([2, 3]).astype("float32")
-        axis = paddle.static.data(shape=[], dtype='int32', name='axis')
-        exe = base.Executor(place=base.CPUPlace())
+        main_program = static.Program()
+        startup_program = static.Program()
+        with static.program_guard(
+            main_program=main_program, startup_program=startup_program
+        ):
+            x_1 = paddle.static.data(shape=[2, 3], dtype='float32', name='x_1')
+            [out_0, out_1] = tensor.unbind(input=x_1, axis=0)
+            input_1 = np.random.random([2, 3]).astype("float32")
+            axis = paddle.static.data(shape=[], dtype='int32', name='axis')
+            exe = base.Executor(place=base.CPUPlace())
 
-        [res_1, res_2] = exe.run(
-            feed={"x_1": input_1, "axis": 0},
-            fetch_list=[out_0, out_1],
-        )
+            [res_1, res_2] = exe.run(
+                feed={"x_1": input_1, "axis": 0},
+                fetch_list=[out_0, out_1],
+            )
 
-        np.testing.assert_array_equal(res_1, input_1[0, 0:100])
-        np.testing.assert_array_equal(res_2, input_1[1, 0:100])
+            np.testing.assert_array_equal(res_1, input_1[0, 0:100])
+            np.testing.assert_array_equal(res_2, input_1[1, 0:100])
 
     @test_with_pir_api
     def test_unbind_static_fp16_gpu(self):
