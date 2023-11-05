@@ -71,9 +71,7 @@ def pairwise_distance(x, y, p=2.0, epsilon=1e-6, keepdim=False, name=None):
         sub = _C_ops.subtract(x, y)
         # p_norm op has not used epsilon, so change it to the following.
         if epsilon != 0.0:
-            epsilon = paddle.base.dygraph.base.to_variable(
-                [epsilon], dtype=sub.dtype
-            )
+            epsilon = paddle.to_tensor([epsilon], dtype=sub.dtype)
             sub = _C_ops.add(sub, epsilon)
         return _C_ops.p_norm(sub, p, -1, 0.0, keepdim, False)
 

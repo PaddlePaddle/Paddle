@@ -43,7 +43,6 @@ def call_pairwise_distance_functional(
     return distance
 
 
-@test_with_pir_api
 def test_static(
     place, x_np, y_np, p=2.0, epsilon=1e-6, keepdim=False, functional=False
 ):
@@ -111,14 +110,6 @@ class TestPairwiseDistance(unittest.TestCase):
                             x_np = np.random.random(shape).astype(dtype)
                             y_np = np.random.random(shape).astype(dtype)
 
-                            static_ret = test_static(
-                                place,
-                                x_np,
-                                y_np,
-                                p,
-                                epsilon=epsilon,
-                                keepdim=keepdim,
-                            )
                             dygraph_ret = test_dygraph(
                                 place,
                                 x_np,
@@ -132,26 +123,13 @@ class TestPairwiseDistance(unittest.TestCase):
                             )
 
                             self.assertEqual(
-                                static_ret.shape, excepted_value.shape
-                            )
-                            self.assertEqual(
                                 dygraph_ret.shape, excepted_value.shape
                             )
 
                             np.testing.assert_allclose(
-                                static_ret, excepted_value, rtol=1e-05
-                            )
-                            np.testing.assert_allclose(
                                 dygraph_ret, excepted_value, rtol=1e-05
                             )
-                            static_functional_ret = test_static(
-                                place,
-                                x_np,
-                                y_np,
-                                p,
-                                epsilon=epsilon,
-                                keepdim=keepdim,
-                            )
+
                             dygraph_functional_ret = test_dygraph(
                                 place,
                                 x_np,
@@ -162,24 +140,56 @@ class TestPairwiseDistance(unittest.TestCase):
                             )
 
                             self.assertEqual(
-                                static_functional_ret.shape,
-                                excepted_value.shape,
-                            )
-                            self.assertEqual(
                                 dygraph_functional_ret.shape,
                                 excepted_value.shape,
                             )
 
                             np.testing.assert_allclose(
-                                static_functional_ret,
-                                excepted_value,
-                                rtol=1e-05,
-                            )
-                            np.testing.assert_allclose(
                                 dygraph_functional_ret,
                                 excepted_value,
                                 rtol=1e-05,
                             )
+
+                            @test_with_pir_api
+                            def dynamic_and_pir_mode_test():
+                                static_ret = test_static(
+                                    place,
+                                    x_np,
+                                    y_np,
+                                    p,
+                                    epsilon=epsilon,
+                                    keepdim=keepdim,
+                                )
+
+                                self.assertEqual(
+                                    static_ret.shape, excepted_value.shape
+                                )
+
+                                np.testing.assert_allclose(
+                                    static_ret, excepted_value, rtol=1e-05
+                                )
+
+                                static_functional_ret = test_static(
+                                    place,
+                                    x_np,
+                                    y_np,
+                                    p,
+                                    epsilon=epsilon,
+                                    keepdim=keepdim,
+                                )
+
+                                self.assertEqual(
+                                    static_functional_ret.shape,
+                                    excepted_value.shape,
+                                )
+
+                                np.testing.assert_allclose(
+                                    static_functional_ret,
+                                    excepted_value,
+                                    rtol=1e-05,
+                                )
+
+                            dynamic_and_pir_mode_test()
 
     def test_pairwise_distance_broadcast_1(self):
         shape_x = [100, 100]
