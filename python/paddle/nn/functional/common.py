@@ -2226,7 +2226,7 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.class_center_sample(
             label,
             num_classes,

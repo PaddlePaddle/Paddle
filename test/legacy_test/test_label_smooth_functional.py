@@ -20,6 +20,7 @@ import paddle
 import paddle.base.dygraph as dg
 import paddle.nn.functional as F
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class LabelSmoothTestCase(unittest.TestCase):
@@ -41,6 +42,7 @@ class LabelSmoothTestCase(unittest.TestCase):
     def setUp(self):
         self.label = np.random.randn(*(self.label_shape)).astype(self.dtype)
 
+    @test_with_pir_api
     def base_layer(self, place):
         paddle.enable_static()
         main = base.Program()
@@ -61,6 +63,7 @@ class LabelSmoothTestCase(unittest.TestCase):
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 
+    @test_with_pir_api
     def functional(self, place):
         paddle.enable_static()
         main = base.Program()
