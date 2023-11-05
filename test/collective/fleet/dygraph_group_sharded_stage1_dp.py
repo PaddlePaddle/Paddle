@@ -81,8 +81,8 @@ def train_mlp(
     use_sharding_stage1=False,
     use_pure_bf16=False,
     accumulate_grad=False,
-    test_scaler=False,
     use_main_grad=False,
+    test_scaler=False,
     test_dp=False,
 ):
     # bf16 not support dynamic loss scaling
@@ -208,7 +208,7 @@ def test_stage1_bf16_dp():
     mlp = MLP()
     state_dict = mlp.state_dict()
 
-    # stage1 + dp + fp32 vs pure stage1 + fp32
+    # stage1 + dp vs pure stage1
     mlp1 = MLP()
     mlp2 = MLP()
     mlp1.set_state_dict(state_dict)
@@ -223,18 +223,11 @@ def test_stage1_bf16_dp():
         o2_loss = o2_losses[i].detach()
         np.testing.assert_array_equal(o1_loss, o2_loss)
 
-    # stage1 + dp + fp32 vs pure dp + fp32
+    # stage1 + dp vs pure dp
     mlp3 = MLP()
-    mlp4 = MLP()
     mlp3.set_state_dict(state_dict)
-    mlp4.set_state_dict(state_dict)
-    o1_losses = train_mlp(
-        mlp3,
-        use_sharding_stage1=True,
-        test_dp=True,
-    )
     o2_losses = train_mlp(
-        mlp4,
+        mlp3,
         use_sharding_stage1=False,
     )
     for i in range(len(o1_losses)):
@@ -242,19 +235,32 @@ def test_stage1_bf16_dp():
         o2_loss = o2_losses[i].detach()
         np.testing.assert_array_equal(o1_loss, o2_loss)
 
-    # stage1 + dp + bf16 vs pure dp + bf16
-    mlp3 = MLP()
+    # test bf16
     mlp4 = MLP()
-    mlp3.set_state_dict(state_dict)
+    mlp5 = MLP()
     mlp4.set_state_dict(state_dict)
+    mlp5.set_state_dict(state_dict)
     o1_losses = train_mlp(
-        mlp3,
+        mlp4,
         use_sharding_stage1=True,
         use_pure_bf16=True,
         test_dp=True,
     )
     o2_losses = train_mlp(
-        mlp4,
+        mlp5,
+        use_sharding_stage1=True,
+        use_pure_bf16=True,
+    )
+    for i in range(len(o1_losses)):
+        o1_loss = o1_losses[i].detach()
+        o2_loss = o2_losses[i].detach()
+        np.testing.assert_array_equal(o1_loss, o2_loss)
+
+    mlp6 = MLP()
+    mlp6.set_state_dict(state_dict)
+    mlp6.set_state_dict(state_dict)
+    o2_losses = train_mlp(
+        mlp6,
         use_sharding_stage1=False,
         use_pure_bf16=True,
     )
@@ -263,20 +269,35 @@ def test_stage1_bf16_dp():
         o2_loss = o2_losses[i].detach()
         np.testing.assert_array_equal(o1_loss, o2_loss)
 
-    # stage1 + dp + bf16 vs pure dp + bf16
-    mlp3 = MLP()
-    mlp4 = MLP()
-    mlp3.set_state_dict(state_dict)
-    mlp4.set_state_dict(state_dict)
+    # test bf16 + accumlate_grad
+    mlp7 = MLP()
+    mlp8 = MLP()
+    mlp7.set_state_dict(state_dict)
+    mlp8.set_state_dict(state_dict)
     o1_losses = train_mlp(
-        mlp3,
+        mlp7,
         use_sharding_stage1=True,
-        test_dp=True,
+        accumulate_grad=True,
         use_pure_bf16=True,
+        test_dp=True,
     )
     o2_losses = train_mlp(
-        mlp4,
+        mlp8,
+        use_sharding_stage1=True,
+        accumulate_grad=True,
+        use_pure_bf16=True,
+    )
+    for i in range(len(o1_losses)):
+        o1_loss = o1_losses[i].detach()
+        o2_loss = o2_losses[i].detach()
+        np.testing.assert_array_equal(o1_loss, o2_loss)
+
+    mlp9 = MLP()
+    mlp9.set_state_dict(state_dict)
+    o2_losses = train_mlp(
+        mlp9,
         use_sharding_stage1=False,
+        accumulate_grad=True,
         use_pure_bf16=True,
     )
     for i in range(len(o1_losses)):
