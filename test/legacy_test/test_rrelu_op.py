@@ -21,6 +21,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core, dygraph
+from paddle.pir_utils import test_with_pir_api
 
 paddle.seed(102)
 np.random.seed(102)
@@ -56,6 +57,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             else base.CPUPlace()
         ]
 
+    @test_with_pir_api
     def check_static_result(self, place):
         with base.program_guard(base.Program(), base.Program()):
             input = paddle.static.data(
@@ -72,7 +74,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             res_np1 = ref_rrelu(in_np, self.lower_0, self.upper_0)
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res1],
             )
@@ -81,7 +82,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             res_np2 = ref_rrelu(in_np, self.lower_1, self.upper_1)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input": in_np},
                 fetch_list=[res2],
             )
@@ -91,6 +91,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
         for place in self.places:
             self.check_static_result(place=place)
 
+    @test_with_pir_api
     def test_static_graph_functional(self):
         '''test_static_graph_functional'''
 
@@ -108,19 +109,16 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             (res_1,) = exe.run(
-                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
             (res_2,) = exe.run(
-                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_2,
                 use_prune=True,
             )
             (res_3,) = exe.run(
-                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_3,
                 use_prune=True,
@@ -134,6 +132,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 check_output(self.x_np, res_3[0], self.lower_1, self.upper_1)
             )
 
+    @test_with_pir_api
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
 
@@ -153,13 +152,11 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
             res_2 = exe.run(
-                base.default_main_program(),
                 feed={"x2": self.x_np},
                 fetch_list=out_2,
                 use_prune=True,
@@ -214,6 +211,7 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
             paddle.enable_static()
 
+    @test_with_pir_api
     def test_error_functional(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

@@ -1143,6 +1143,9 @@ class TestTanhshrink(TestActivation):
             return
         self.check_grad(['X'], 'Out', check_pir=True)
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
 
 class TestTanhshrink_ZeroDim(TestTanhshrink):
     def init_shape(self):
@@ -4224,7 +4227,10 @@ class TestThresholdedRelu(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestThresholdedRelu_ZeroDim(TestThresholdedRelu):
@@ -4700,7 +4706,7 @@ create_test_act_fp16_class(TestLogSigmoid)
 create_test_act_fp16_class(
     TestTanh, check_prim=True, check_prim_pir=True, enable_cinn=True
 )
-create_test_act_fp16_class(TestTanhshrink)
+create_test_act_fp16_class(TestTanhshrink, check_pir=True)
 create_test_act_fp16_class(TestHardShrink)
 create_test_act_fp16_class(TestSoftshrink)
 create_test_act_fp16_class(
@@ -4868,7 +4874,7 @@ create_test_act_bf16_class(TestSigmoid, check_prim=True, check_pir=True)
 create_test_act_bf16_class(TestSilu, check_prim=True, check_prim_pir=True)
 create_test_act_bf16_class(TestLogSigmoid)
 create_test_act_bf16_class(TestTanh, check_prim=True, check_prim_pir=True)
-create_test_act_bf16_class(TestTanhshrink)
+create_test_act_bf16_class(TestTanhshrink, check_pir=True)
 create_test_act_bf16_class(TestHardShrink)
 create_test_act_bf16_class(TestSoftshrink)
 create_test_act_bf16_class(
