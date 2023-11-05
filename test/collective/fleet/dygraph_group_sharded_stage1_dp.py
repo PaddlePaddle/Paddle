@@ -18,6 +18,7 @@ import numpy as np
 
 import paddle
 from paddle.distributed import fleet
+from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.nn import Linear, ReLU
 
 seed = 2022
@@ -58,13 +59,19 @@ class RandomDataset(paddle.io.Dataset):
         return self.num_samples
 
 
-def optimizer_setting(model):
+def optimizer_setting(model, use_pure_bf16, use_main_grad):
+    if use_main_grad:
+        assert use_pure_bf16
+        model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
     optimizer = paddle.optimizer.AdamW(
         parameters=model.parameters(),
         learning_rate=0.00001,
         weight_decay=0.00001,
         grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
+        multi_precision=use_pure_bf16,
     )
+    if use_main_grad:
+        optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
 
     return optimizer
 
@@ -72,19 +79,50 @@ def optimizer_setting(model):
 def train_mlp(
     model,
     use_sharding_stage1=False,
+    use_pure_bf16=False,
     accumulate_grad=False,
+    test_scaler=False,
+    use_main_grad=False,
     test_dp=False,
 ):
-    optimizer = optimizer_setting(model=model)
+    # bf16 not support dynamic loss scaling
+    # disable dynamic_loss_scaling to coverage distributed_scaler
+    dynamic_loss_scaling = False
+    scaler = None
+    scale_loss = 1024
+    if test_scaler:
+        assert use_sharding_stage1
+        assert not accumulate_grad
+        scaler = paddle.amp.GradScaler(
+            init_loss_scaling=scale_loss,
+            use_dynamic_loss_scaling=dynamic_loss_scaling,
+        )
+        scaler = fleet.distributed_scaler(scaler)
+    optimizer = optimizer_setting(
+        model=model, use_pure_bf16=use_pure_bf16, use_main_grad=use_main_grad
+    )
 
     strategy = fleet.DistributedStrategy()
-    level = 'O1'
-    custom_white_list = [
-        "matmul_v2",
-        "elementwise_add",
-        "relu",
-        "reduce_mean",
-    ]
+    if use_pure_bf16:
+        level = 'O2'
+        custom_white_list = None
+
+        amp_configs = {
+            "init_loss_scaling": scale_loss,
+            "use_pure_bf16": True,
+            "use_dynamic_loss_scaling": dynamic_loss_scaling,
+        }
+        strategy.amp = True
+        strategy.amp_configs = amp_configs
+    else:
+        level = 'O1'
+        custom_white_list = [
+            "matmul_v2",
+            "elementwise_add",
+            "relu",
+            "reduce_mean",
+        ]
+        strategy.amp = True
 
     if use_sharding_stage1:
         if test_dp:
@@ -109,7 +147,8 @@ def train_mlp(
     fleet.init(is_collective=True, strategy=strategy)
 
     model = fleet.distributed_model(model)
-    optimizer = fleet.distributed_optimizer(optimizer)
+    if use_sharding_stage1 == 1:
+        optimizer = fleet.distributed_optimizer(optimizer)
 
     paddle.seed(2023)
     np.random.seed(2023)
@@ -121,7 +160,15 @@ def train_mlp(
         num_workers=0,
     )
 
-    model.to(device="gpu")
+    if use_sharding_stage1 == 1:
+        model.to(device="gpu")
+
+    if not use_pure_bf16:
+        for param in model.parameters():
+            t = paddle.cast(
+                paddle.cast(param, dtype='bfloat16'), dtype='float32'
+            )
+            param.set_value(t)
 
     losses = []
     for eop in range(epoch):
@@ -153,7 +200,7 @@ def train_mlp(
     return losses
 
 
-def test_stage1_dp():
+def test_stage1_bf16_dp():
     if not paddle.amp.is_bfloat16_supported():
         return
     paddle.distributed.init_parallel_env()
@@ -161,22 +208,22 @@ def test_stage1_dp():
     mlp = MLP()
     state_dict = mlp.state_dict()
 
-    # stage1 + dp vs pure stage1
+    # stage1 + dp + fp32 vs pure stage1 + fp32
     mlp1 = MLP()
     mlp2 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
-    o1_losses = train_mlp(
-        mlp1,
+    o1_losses = train_mlp(mlp1, use_sharding_stage1=True, test_dp=True)
+    o2_losses = train_mlp(
+        mlp2,
         use_sharding_stage1=True,
     )
-    o2_losses = train_mlp(mlp2, use_sharding_stage1=True, test_dp=True)
     for i in range(len(o1_losses)):
         o1_loss = o1_losses[i].detach()
         o2_loss = o2_losses[i].detach()
         np.testing.assert_array_equal(o1_loss, o2_loss)
 
-    # stage1 + dp vs pure dp
+    # stage1 + dp + fp32 vs pure dp + fp32
     mlp3 = MLP()
     mlp4 = MLP()
     mlp3.set_state_dict(state_dict)
@@ -195,8 +242,50 @@ def test_stage1_dp():
         o2_loss = o2_losses[i].detach()
         np.testing.assert_array_equal(o1_loss, o2_loss)
 
+    # stage1 + dp + bf16 vs pure dp + bf16
+    mlp3 = MLP()
+    mlp4 = MLP()
+    mlp3.set_state_dict(state_dict)
+    mlp4.set_state_dict(state_dict)
+    o1_losses = train_mlp(
+        mlp3,
+        use_sharding_stage1=True,
+        use_pure_bf16=True,
+        test_dp=True,
+    )
+    o2_losses = train_mlp(
+        mlp4,
+        use_sharding_stage1=False,
+        use_pure_bf16=True,
+    )
+    for i in range(len(o1_losses)):
+        o1_loss = o1_losses[i].detach()
+        o2_loss = o2_losses[i].detach()
+        np.testing.assert_array_equal(o1_loss, o2_loss)
+
+    # stage1 + dp + bf16 vs pure dp + bf16
+    mlp3 = MLP()
+    mlp4 = MLP()
+    mlp3.set_state_dict(state_dict)
+    mlp4.set_state_dict(state_dict)
+    o1_losses = train_mlp(
+        mlp3,
+        use_sharding_stage1=True,
+        test_dp=True,
+        use_pure_bf16=True,
+    )
+    o2_losses = train_mlp(
+        mlp4,
+        use_sharding_stage1=False,
+        use_pure_bf16=True,
+    )
+    for i in range(len(o1_losses)):
+        o1_loss = o1_losses[i].detach()
+        o2_loss = o2_losses[i].detach()
+        np.testing.assert_array_equal(o1_loss, o2_loss)
+
     return
 
 
 if __name__ == '__main__':
-    test_stage1_dp()
+    test_stage1_bf16_dp()
