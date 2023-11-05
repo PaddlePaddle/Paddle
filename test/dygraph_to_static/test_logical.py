@@ -32,7 +32,7 @@ SEED = 2020
 np.random.seed(22)
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not(x):
     x = paddle.to_tensor(x)
     if not x:
@@ -54,7 +54,7 @@ def test_logical_not(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not_2(x):
     x = paddle.to_tensor(x)
 
@@ -67,7 +67,7 @@ def test_logical_not_2(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_and(x):
     x = paddle.to_tensor(x)
 
@@ -85,7 +85,7 @@ def test_logical_and(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_and_2(x):
     x = paddle.to_tensor(x)
 
@@ -109,7 +109,7 @@ def test_logical_and_2(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_or(x):
     x = paddle.to_tensor(x)
 
@@ -127,7 +127,7 @@ def test_logical_or(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_or_2(x):
     x = paddle.to_tensor(x)
 
@@ -139,7 +139,7 @@ def test_logical_or_2(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not_and_or(x):
     x = paddle.to_tensor(x)
 
@@ -151,7 +151,7 @@ def test_logical_not_and_or(x):
     return x
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_shape_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
@@ -161,7 +161,7 @@ def test_shape_equal(x):
         return paddle.ones([1, 2, 3])
 
 
-@paddle.jit.to_static
+@test_legacy_and_pir_api_and_pir_exe
 def test_shape_not_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
@@ -189,7 +189,7 @@ class TestLogicalBase(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
         with base.dygraph.guard(self.place):
-            result = self.dygraph_func(self.input)
+            result = paddle.jit.to_static(self.dygraph_func)(self.input)
             return result.numpy()
 
     def _run_dygraph(self):
@@ -203,6 +203,7 @@ class TestLogicalNot(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not
 
+    @test_legacy_and_pir_api_and_pir_exe
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()
@@ -218,6 +219,7 @@ class TestLogicalNot2(TestLogicalBase):
     def _set_test_func(self):
         self.dygraph_func = test_logical_not_2
 
+    @test_legacy_and_pir_api_and_pir_exe
     def test_transformed_result(self):
         dygraph_res = self._run_dygraph()
         static_res = self._run_static()

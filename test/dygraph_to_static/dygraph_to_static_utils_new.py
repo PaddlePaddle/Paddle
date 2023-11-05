@@ -100,10 +100,10 @@ def to_sot_test(fn):
     return impl
 
 
-def to_pir_ast_test(fn):
+def to_pir_api_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR][AST] running pir api")
+        logger.info("[PIR] running pir api")
         ir_outs = None
         with paddle.pir_utils.IrGuard():
             paddle.disable_static()
@@ -121,10 +121,10 @@ def to_legacy_ir_test(fn):
     return impl
 
 
-def to_pir_test(fn):
+def to_pir_exe_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR] running pir")
+        logger.info("[PIR] running pir exe")
         ir_outs = None
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
@@ -152,8 +152,8 @@ class Dy2StTestMeta(type):
 
     IR_HANDLER_MAP = {
         IrMode.LEGACY_IR: to_legacy_ir_test,
-        IrMode.PIR_EXE: to_pir_test,
-        IrMode.PIR_API: to_pir_ast_test,
+        IrMode.PIR_EXE: to_pir_exe_test,
+        IrMode.PIR_API: to_pir_api_test,
     }
 
     def __new__(cls, name, bases, attrs):
@@ -296,7 +296,7 @@ def compare_legacy_with_pir(fn):
         outs = fn(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        ir_outs = to_pir_test(fn)(*args, **kwargs)
+        ir_outs = to_pir_exe_test(fn)(*args, **kwargs)
         np.testing.assert_equal(
             outs,
             ir_outs,
