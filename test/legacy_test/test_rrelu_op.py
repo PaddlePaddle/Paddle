@@ -59,7 +59,9 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
     @test_with_pir_api
     def check_static_result(self, place):
-        with base.program_guard(base.Program(), base.Program()):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
