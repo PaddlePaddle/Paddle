@@ -5790,9 +5790,9 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     Args:
         x (Tensor): `x`` is the original Tensor. Must be at least 2-dimensional.
         y (Tensor): ``y`` is the Tensor to embed into ``x``
-        offset (int,optional): which diagonal to consider. Default: 0 (main diagonal).
-        axis1 (int,optional): first axis with respect to which to take diagonal. Default: 0.
-        axis2 (int,optional): second axis with respect to which to take diagonal. Default: 1.
+        offset (int, optional): which diagonal to consider. Default: 0 (main diagonal).
+        axis1 (int, optional): first axis with respect to which to take diagonal. Default: 0.
+        axis2 (int, optional): second axis with respect to which to take diagonal. Default: 1.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -5801,12 +5801,15 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-
-            x = paddle.arange(6.0).reshape((2, 3))
-            y = paddle.ones((2,))
-            nx = x.diagonal_scatter(y)
-            print(nx.tolist())   #[[1.0, 1.0, 2.0], [3.0, 1.0, 5.0]]
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> x = paddle.arange(6.0).reshape((2, 3))
+            >>> y = paddle.ones((2,))
+            >>> out = x.diagonal_scatter(y)
+            >>> print(out)
+            Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
+                   [[1., 1., 2.],
+                    [3., 1., 5.]])
 
     """
     x_shape = x.shape
