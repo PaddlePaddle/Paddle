@@ -20,6 +20,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestSvdOp(OpTest):
@@ -255,6 +256,7 @@ class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_full_matrices(self):
         mat_shape = (2, 3)
         mat = np.random.random(mat_shape).astype("float64")
@@ -293,6 +295,7 @@ class TestSvdAPI(unittest.TestCase):
         gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
         np.testing.assert_allclose(s, gt_s, rtol=1e-05)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -308,12 +311,12 @@ class TestSvdAPI(unittest.TestCase):
                 exe = base.Executor(place)
                 gt_u, gt_s, gt_vh = np.linalg.svd(a, full_matrices=False)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": a},
                     fetch_list=[s],
                 )
                 np.testing.assert_allclose(fetches[0], gt_s, rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.base.dygraph.guard():
             # The size of input in svd should not be 0.
