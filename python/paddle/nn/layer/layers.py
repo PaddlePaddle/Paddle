@@ -1652,10 +1652,8 @@ class Layer:
                         # conservative code.
                         if in_to_static_mode() and _buffers[name] is None:
                             raise RuntimeError(
-                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
-                                'not allowed to be set to Variable when self.{0} is None.'.format(
-                                    name
-                                )
+                                f'In Dy2stat, self.{name} is a buffer and self.{name} is '
+                                f'not allowed to be set to Variable when self.{name} is None.'
                             )
                         elif (
                             _buffers[name] is None

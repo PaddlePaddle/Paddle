@@ -312,11 +312,11 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                emb = paddle.nn.Embedding(10, 10)
+                >>> import paddle
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                state_dict = adam.state_dict()
+                >>> adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                >>> state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -1306,6 +1306,16 @@ class Optimizer:
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
                 if in_pir_mode():
+                    if parameter_list is None:
+                        # all parameters will be updated.
+                        program_all_params = (
+                            program.global_block().all_parameters()
+                        )
+                        parameter_list = [
+                            param
+                            for param in program_all_params
+                            if param.stop_gradient is False
+                        ]
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set

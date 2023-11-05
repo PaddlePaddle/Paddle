@@ -135,7 +135,7 @@ void DownpourWorker::CollectLabelInfo(size_t table_idx) {
           static_cast<int>(table_idx)));
 
   TableParameter table;
-  for (auto i : param_.sparse_table()) {
+  for (auto const& i : param_.sparse_table()) {
     if (i.table_id() == table_id) {
       table = i;
       break;
@@ -191,7 +191,7 @@ void DownpourWorker::FillSparseValue(size_t table_idx) {
           static_cast<int>(table_idx)));
 
   TableParameter table;
-  for (auto i : param_.sparse_table()) {
+  for (auto const& i : param_.sparse_table()) {
     if (i.table_id() == table_id) {
       table = i;
       break;
@@ -513,7 +513,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -599,7 +599,7 @@ void DownpourWorker::TrainFilesWithProfiler() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;
@@ -819,7 +819,7 @@ void DownpourWorker::TrainFiles() {
       uint64_t tid = static_cast<uint64_t>(
           param_.program_config(0).pull_sparse_table_id(i));
       TableParameter table;
-      for (auto j : param_.sparse_table()) {
+      for (auto const& j : param_.sparse_table()) {
         if (j.table_id() == tid) {
           table = j;
           break;
@@ -936,7 +936,7 @@ void DownpourWorker::TrainFiles() {
         uint64_t tid = static_cast<uint64_t>(
             param_.program_config(0).push_sparse_table_id(i));
         TableParameter table;
-        for (auto i : param_.sparse_table()) {
+        for (auto const& i : param_.sparse_table()) {
           if (i.table_id() == tid) {
             table = i;
             break;

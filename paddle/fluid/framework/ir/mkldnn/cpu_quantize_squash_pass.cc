@@ -202,7 +202,7 @@ void CPUQuantizeSquashPass::DequantQuantSquash(
     if (dequant_scale == quant_scale && dequant_shift == quant_shift) {
       // squash dequantize-quantize to nothing
       auto quant_out_var_name = quant_out->Name();
-      for (auto input_name : next_op_desc->InputNames()) {
+      for (auto const& input_name : next_op_desc->InputNames()) {
         auto& input_names = next_op_desc->MutableInputs()->at(input_name);
         std::replace(input_names.begin(),
                      input_names.end(),

@@ -113,6 +113,24 @@ static void CopyOrAddTensor(paddle::Tensor* tensor,
                                                           &tensor_values);
           }
         }
+      } else if (LIKELY(t.is_dist_tensor())) {
+        PADDLE_ENFORCE(
+            tensor->is_dist_tensor(),
+            paddle::platform::errors::Fatal("A DistTensor can only do gradient "
+                                            "merge with another DistTensor."));
+        PADDLE_ENFORCE(!t.is_custom_device(),
+                       paddle::platform::errors::Fatal(
+                           "DistTensor doesn't support custom device."));
+        auto t_dist =
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl());
+        paddle::Tensor t_values(
+            std::make_shared<phi::DenseTensor>(t_dist->value()));
+        auto tensor_dist =
+            std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                tensor->impl());
+        paddle::Tensor tensor_values(
+            std::make_shared<phi::DenseTensor>(tensor_dist->value()));
+        paddle::imperative::TensorAdd<paddle::Tensor>(t_values, &tensor_values);
       } else {
         // TODO(jiabin): Support Other TensorBase later
         // TODO(zhanlve): Replace SelectedRowsAddTensor with

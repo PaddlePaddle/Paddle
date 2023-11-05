@@ -74,6 +74,12 @@ MultiplyGradNode::operator()(
   // Runtime check if we need next grad
   bool trace_backward = egr::Controller::Instance().HasGrad() && create_graph;
 
+  // Set DistAttr of Out Tensor for semi-auto parallel
+  if (IsRunAutoParallel()) {
+    egr::EagerUtils::SetGradOutputDistAttr(
+        out_metas, {0, 1}, api_output_0, api_output_1);
+  }
+
   // Inplace Check
 
   // Inplace Strategy

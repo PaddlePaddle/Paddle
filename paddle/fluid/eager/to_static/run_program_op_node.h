@@ -32,6 +32,7 @@
 #include "paddle/pir/core/value.h"
 
 PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(print_ir);
 
 namespace details {
 using Tensor = paddle::Tensor;
@@ -191,6 +192,12 @@ static auto GetNameFromValue(const ::pir::Block *block,
                  .dyn_cast<pir::StrAttribute>()
                  .AsString();
       value2name[op->operand(0).source()] = name;
+    } else if (!is_input && op->name() == "builtin.shadow_output") {
+      name = op->attributes()
+                 .at("output_name")
+                 .dyn_cast<pir::StrAttribute>()
+                 .AsString();
+      value2name[op->operand(0).source()] = name;
     } else if (is_input && op->name() == "builtin.get_parameter") {
       name = op->attributes()
                  .at("parameter_name")
@@ -310,22 +317,12 @@ static void ShareTensorsFromScopeWithPartialBlock(
     paddle::framework::Scope *scope) {
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto &name = tensors[i]->name();
-    bool in_forward_block = forward_global_block.HasVar(name);
-    bool in_backward_block =
-        backward_global_block && backward_global_block->HasVar(name);
+    auto *var = scope->FindVar(name);
     if (name == paddle::framework::kEmptyVarName ||
-        name == paddle::framework::kFakeVarName ||
-        (!in_forward_block && !in_backward_block)) {
+        name == paddle::framework::kFakeVarName || var == nullptr) {
       VLOG(2) << "find tensor name is " << name << ", skip it!";
       continue;
     }
-    auto *var = scope->FindVar(name);
-    PADDLE_ENFORCE_NOT_NULL(
-        var,
-        paddle::platform::errors::NotFound("The output tensor %s is not in "
-                                           "RunProgram(Grad)Op'"
-                                           "s internal scope.",
-                                           name));
     CheckOutputVarStatus(*var, *tensors[i]);
     // share tensor
     if (var->IsType<phi::DenseTensor>()) {
@@ -415,7 +412,6 @@ inline void NewIRRunProgramAPI(
     std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::Tensor *> &middles,               // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::Tensor *> &dout,                  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -460,15 +456,20 @@ inline void NewIRRunProgramAPI(
 
   auto *forward_program =
       forward_global_block->GetParentOp()->GetParentProgram();
-  auto *backward_program =
-      backward_global_block->GetParentOp()->GetParentProgram();
 
-  if (VLOG_IS_ON(4)) {
+  if (FLAGS_print_ir) {
     std::ostringstream print_stream;
+    print_stream << "ForwardProgram is :\n";
     forward_program->Print(print_stream);
-    print_stream << "\n";
-    backward_program->Print(print_stream);
-    VLOG(4) << print_stream.str();
+    if (!is_test) {
+      auto *backward_program =
+          backward_global_block->GetParentOp()->GetParentProgram();
+      print_stream << "BackwardProgram is:\n";
+      backward_program->Print(print_stream);
+    } else {
+      print_stream << "BackwardProgram is empty in test mode.\n";
+    }
+    std::cout << "Program (fwd | bwd): \n" << print_stream.str() << std::endl;
   }
 
   VLOG(10) << is_test << program_id;
@@ -494,7 +495,7 @@ inline void NewIRRunProgramAPI(
     // Step 2. create new interpretercore
     auto kernel_forward_program =
         paddle::dialect::PdOpLowerToKernelPass(forward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_forward_program),
         place,
         /*is_grad=*/false,
@@ -599,7 +600,6 @@ inline void RunProgramAPI(
     const std::vector<paddle::Tensor> &params,
     std::vector<paddle::Tensor *> &out,                   // NOLINT
     std::vector<paddle::framework::Scope *> &step_scope,  // NOLINT
-    std::vector<paddle::Tensor *> &dout,                  // NOLINT
     bool require_any_grad,
     const paddle::framework::AttributeMap &attrs) {
   VLOG(2) << "RunProgramOpKernel Compute";
@@ -610,6 +610,7 @@ inline void RunProgramAPI(
   if (attrs.count("is_test")) {
     is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
   }
+  auto need_grad = !is_test && require_any_grad;
   int64_t program_id = PADDLE_GET_CONST(int64_t, attrs.at("program_id"));
   auto place = egr::Controller::Instance().GetExpectedPlace();
 
@@ -632,7 +633,6 @@ inline void RunProgramAPI(
       PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
   auto output_names = details::GetTensorsName(out);
   auto param_names = details::GetTensorsName(params);
-  auto dout_names = details::GetTensorsName(dout);
 
   if (VLOG_IS_ON(6)) {
     std::stringstream s;
@@ -651,11 +651,6 @@ inline void RunProgramAPI(
       s << name << " ";
     }
     s << std::endl;
-    s << "dout_names: ";
-    for (auto name : dout_names) {
-      s << name << " ";
-    }
-    s << std::endl;
     VLOG(6) << s.str();
   }
 
@@ -666,7 +661,7 @@ inline void RunProgramAPI(
   paddle::framework::BlockDesc *backward_global_block = nullptr;
   paddle::framework::ProgramDesc *backward_program = nullptr;
 
-  if (!is_test) {
+  if (need_grad) {
     backward_global_block = PADDLE_GET_CONST(paddle::framework::BlockDesc *,
                                              attrs.at("backward_global_block"));
     backward_program = backward_global_block->Program();
@@ -700,13 +695,12 @@ inline void RunProgramAPI(
                                                       input_names,
                                                       params,
                                                       place);
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(ir_program),
-              place,
-              /*is_grad=*/false,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(ir_program),
+          place,
+          /*is_grad=*/false,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -718,7 +712,7 @@ inline void RunProgramAPI(
     }
     // Step 3. get all eager gc vars
     std::set<std::string> skip_eager_delete_vars;
-    if (!is_test) {
+    if (need_grad) {
       skip_eager_delete_vars =
           paddle::framework::details::ParseSafeEagerDeletionSkipVarsSet(
               *backward_program);
@@ -726,7 +720,6 @@ inline void RunProgramAPI(
 
     // all out_vars are skip_eager_var
     skip_eager_delete_vars.insert(output_names.begin(), output_names.end());
-    skip_eager_delete_vars.insert(dout_names.begin(), dout_names.end());
     // update interpretercore skip_gc_var
     interpreter_core->SetSkipGcVars(skip_eager_delete_vars);
 
@@ -782,10 +775,8 @@ inline void RunProgramAPI(
     // Get Output
     details::ShareTensorsFromScopeWithPartialBlock(
         out, *forward_global_block, backward_global_block, global_inner_scope);
-    details::ShareTensorsFromScopeWithPartialBlock(
-        dout, *forward_global_block, backward_global_block, global_inner_scope);
 
-    if (is_test || !require_any_grad) {
+    if (!need_grad) {
       VLOG(4) << "don't require any grad, set this scope can reused";
       VLOG(4) << "is_test: " << is_test
               << ", require_any_grad: " << require_any_grad;
@@ -857,13 +848,12 @@ inline void RunProgramGradAPI(
                                                         global_inner_scope,
                                                         place);
 
-      interpreter_core =
-          paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
-              std::move(res),
-              place,
-              /*is_grad=*/true,
-              program_id,
-              global_inner_scope);
+      interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
+          std::move(res),
+          place,
+          /*is_grad=*/true,
+          program_id,
+          global_inner_scope);
     } else {
       interpreter_core =
           paddle::framework::CreateProgramInterpreterCoreInfoToCache(
@@ -1033,7 +1023,7 @@ inline void NewIRRunProgramGradAPI(
     // Step 1. share input_vars & parameters into scope
     auto kernel_backward_program =
         paddle::dialect::PdOpLowerToKernelPass(backward_program, place);
-    interpreter_core = paddle::framework::CreateNewIRInterpreterCoreInfoToCache(
+    interpreter_core = paddle::framework::CreatePirInterpreterCoreInfoToCache(
         std::move(kernel_backward_program),
         place,
         /*is_grad=*/true,
@@ -1185,6 +1175,10 @@ class GradNodeRunProgram : public egr::GradNodeBase {
     VLOG(3) << "End Eager Backward Node: GradNodeRunProgram";
 
     executed_ = true;
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&x_grad,
+                                                        this->OutputMeta()[0]);
+    egr::EagerUtils::FillZeroForEmptyOptionalGradOutput(&params_grad,
+                                                        this->OutputMeta()[1]);
     return {x_grad, params_grad};
   }
 
@@ -1229,7 +1223,8 @@ class GradNodeRunProgram : public egr::GradNodeBase {
       if (x[i].is_dense_tensor()) {
         x_grad->emplace_back(std::make_shared<phi::DenseTensor>());
       } else if (x[i].is_selected_rows()) {
-        x_grad->emplace_back(std::make_shared<phi::SelectedRows>());
+        auto selected_row = std::make_shared<phi::SelectedRows>();
+        x_grad->emplace_back(selected_row);
       }
       x_grad->back().set_name(x_grad_names[i]);
     }

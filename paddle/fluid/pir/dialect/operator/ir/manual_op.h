@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -34,7 +35,8 @@ namespace dialect {
 class AddNOp : public pir::Op<AddNOp,
                               paddle::dialect::OpYamlInfoInterface,
                               paddle::dialect::InferMetaInterface,
-                              paddle::dialect::VjpInterface> {
+                              paddle::dialect::VjpInterface,
+                              paddle::dialect::DecompInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n"; }
@@ -45,14 +47,17 @@ class AddNOp : public pir::Op<AddNOp,
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value inputs);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,
@@ -69,7 +74,7 @@ class AddN_Op : public pir::Op<AddN_Op,
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value inputs_);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
 
@@ -89,7 +94,7 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
                     pir::OperationArgument &argument,  // NOLINT
                     pir::Value inputs_);
 
-  void Verify();
+  void VerifySig();
   pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
 
@@ -113,7 +118,7 @@ class FusedGemmEpilogueOp
                     pir::Value y_,
                     pir::Value bias_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::Value y() { return operand_source(1); }
   pir::Value bias() { return operand_source(2); }
@@ -141,7 +146,7 @@ class FusedGemmEpilogueGradOp
                     pir::Value reserve_space_,
                     pir::Value out_grad_,
                     pir::AttributeMap attributes);
-  void Verify();
+  void VerifySig();
   pir::Value x() { return operand_source(0); }
   pir::Value y() { return operand_source(1); }
   pir::Value reserve_space() { return operand_source(2); }
@@ -169,7 +174,7 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
                     pir::Value out_grad_,
                     pir::Value axis_);
 
-  void Verify();
+  void VerifySig();
   pir::Value out_grad() { return operand_source(0); }
   pir::Value axis() { return operand_source(1); }
   pir::OpResult x_grad() { return result(0); }

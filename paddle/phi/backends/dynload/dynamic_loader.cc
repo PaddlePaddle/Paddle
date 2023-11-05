@@ -263,7 +263,7 @@ static inline void* GetDsoHandleFromSearchPath(
 #endif  // !_WIN32
   std::vector<std::string> dso_names = split(dso_name, ";");
   void* dso_handle = nullptr;
-  for (auto dso : dso_names) {
+  for (auto const& dso : dso_names) {
     // 1. search in user config path by FLAGS
     dso_handle = GetDsoHandleFromSpecificPath(config_path, dso, dynload_flags);
     // 2. search in system default path
@@ -272,7 +272,7 @@ static inline void* GetDsoHandleFromSearchPath(
     }
     // 3. search in extra paths
     if (nullptr == dso_handle) {
-      for (auto path : extra_paths) {
+      for (auto const& path : extra_paths) {
         VLOG(3) << "extra_paths: " << path;
         dso_handle = GetDsoHandleFromSpecificPath(path, dso, dynload_flags);
       }

@@ -295,7 +295,7 @@ void DistModel::InsertCommOp(std::string tmp_var_name,
      << ". The ring id is: " << ring_id << ". The group has: " << nranks
      << " ranks. Current rank in the group is: " << rank
      << ". The endpoint is: " << endpoint << ". Peer endpoints are: ";
-  for (auto ep : peer_endpoints) {
+  for (const auto &ep : peer_endpoints) {
     ss << ep << ", ";
   }
   VLOG(3) << ss.str();

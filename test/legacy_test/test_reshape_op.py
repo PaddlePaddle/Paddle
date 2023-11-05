@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -44,14 +45,14 @@ class TestReshapeOp(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ["X"],
             "Out",
             check_prim=True,
-            check_new_ir=True,
+            check_pir=True,
             check_prim_pir=True,
         )
 
@@ -123,7 +124,7 @@ class TestReshapeBF16Op(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -131,7 +132,7 @@ class TestReshapeBF16Op(OpTest):
             "Out",
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -157,7 +158,7 @@ class TestReshapeFP16Op(OpTest):
         self.infered_shape = (12, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -165,7 +166,7 @@ class TestReshapeFP16Op(OpTest):
             "Out",
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -209,7 +210,7 @@ class TestReshapeOpWithInputShape(OpTest):
         self.actual_shape = (2, 3, 20)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -217,7 +218,7 @@ class TestReshapeOpWithInputShape(OpTest):
             "Out",
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -254,7 +255,7 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
         self.shape = (-1, -1)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -262,7 +263,7 @@ class TestReshapeOp_attr_ShapeTensor(OpTest):
             "Out",
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -308,7 +309,7 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
         self.infered_shape = (10, 10)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['XShape'], check_new_ir=True)
+        self.check_output(no_check_set=['XShape'], check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -316,7 +317,7 @@ class TestReshapeOp_attr_OnlyShape(OpTest):
             "Out",
             check_prim=True,
             check_prim_pir=True,
-            check_new_ir=True,
+            check_pir=True,
         )
 
 
@@ -370,7 +371,7 @@ class TestReshapeInt8Op(OpTest):
             base.core.CPUPlace(),
             atol=1e-5,
             no_check_set=['XShape'],
-            check_new_ir=True,
+            check_pir=True,
         )
 
     def test_check_grad(self):
@@ -416,12 +417,13 @@ class TestReshapeAPI(unittest.TestCase):
     def _executed_api(self):
         self.reshape = paddle.reshape
 
+    @test_with_pir_api
     def _test_api(self):
         paddle.enable_static()
         input = np.random.random([2, 25]).astype("float32")
         shape = [2, 5, 5]
-        main_prog = Program()
-        with program_guard(main_prog, Program()):
+        main_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, paddle.static.Program()):
             positive_five = self.fill_constant([1], "int32", 5)
             x = self.data(name="x", shape=[2, 25], dtype="float32")
 
@@ -517,13 +519,6 @@ class TestReshapeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_x_type)
 
-            # The x dtype of reshape_op must be float16, float32, float64, int32 or int64.
-            def test_x_dtype():
-                x2 = self.data(name="x2", shape=[2, 25], dtype="int8")
-                self.reshape(x2, shape=[2, 5, 5])
-
-            self.assertRaises(TypeError, test_x_dtype)
-
             def test_x_dtype_float16():
                 x_float16 = self.data(
                     name="x_float16", shape=[2, 25], dtype="float16"
@@ -559,6 +554,7 @@ class TestReshapeOpError(unittest.TestCase):
             self.assertRaises(AssertionError, test_shape_3)
         paddle.disable_static()
 
+    @test_with_pir_api
     def test_paddle_api_error(self):
         self._set_paddle_api()
         self._test_errors()
@@ -649,25 +645,30 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
         main_prog = base.Program()
         with base.program_guard(main_prog, base.Program()):
             x = paddle.rand([])
             x.stop_gradient = False
             out = paddle.reshape(x, [-1])
-            base.backward.append_backward(out)
+            if paddle.framework.in_pir_mode():
+                grads = paddle.autograd.ir_backward.grad(out, x)
+                x_grad = grads[0]
+                out_grad = x_grad.get_defining_op().operand_source(1)
+            else:
+                base.backward.append_backward(out)
+                prog = paddle.static.default_main_program()
+                block = prog.global_block()
 
-            prog = paddle.static.default_main_program()
-            block = prog.global_block()
-
-            x_grad = block.var(base.framework.grad_var_name(x.name))
-            out_grad = block.var(base.framework.grad_var_name(out.name))
+                x_grad = block.var(base.framework.grad_var_name(x.name))
+                out_grad = block.var(base.framework.grad_var_name(out.name))
 
             # Test compile shape
-            self.assertEqual(x.shape, ())
-            self.assertEqual(out.shape, (1,))
-            self.assertEqual(x_grad.shape, ())
-            self.assertEqual(out_grad.shape, (1,))
+            self.assertEqual(tuple(x.shape), ())
+            self.assertEqual(tuple(out.shape), (1,))
+            self.assertEqual(tuple(x_grad.shape), ())
+            self.assertEqual(tuple(out_grad.shape), (1,))
 
             exe = base.Executor()
             result = exe.run(main_prog, fetch_list=[x, out, x_grad, out_grad])

@@ -18,6 +18,7 @@ or nested loop have been covered in file test_ifelse.py and test_loop.py"""
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 from paddle import base
@@ -167,7 +168,7 @@ def test_shape_not_equal(x):
         return paddle.ones([1, 2, 3])
 
 
-class TestLogicalBase(unittest.TestCase):
+class TestLogicalBase(Dy2StTestBase):
     def setUp(self):
         self.input = np.array([3]).astype('int32')
         self.place = (
@@ -262,7 +263,7 @@ class TestShapeNotEqual(TestLogicalNot):
         self.dygraph_func = test_shape_not_equal
 
 
-class TestCmpopNodeToStr(unittest.TestCase):
+class TestCmpopNodeToStr(Dy2StTestBase):
     def test_exception(self):
         with self.assertRaises(KeyError):
             cmpop_node_to_str(gast.Or())

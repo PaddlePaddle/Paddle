@@ -7,7 +7,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : add_n_with_kernel
   args : (Tensor[] inputs)
@@ -18,7 +17,6 @@
   kernel:
     func: add_n
     param: [inputs]
-  backward: add_n_grad
 
 - op : assert
   args : (Tensor cond, Tensor[] data, int64_t summarize = -1)
@@ -83,6 +81,16 @@
   args : (Tensor[] x)
   output : Tensor(out)
 
+- op : memcpy
+  args : (Tensor x, int dst_place_type)
+  output : Tensor(out)
+  infer_meta:
+    func: UnchangedInferMeta
+    param: [x]
+  kernel:
+    func : memcpy
+    param: [x, dst_place_type]
+
 - op : print
   args : (Tensor in, int first_n, str message, int summarize, bool print_tensor_name = true, bool print_tensor_type = true, bool print_tensor_shape = true, bool print_tensor_layout = true, bool print_tensor_lod = true, str print_phase = "BOTH", bool is_forward = true)
   output : Tensor(out)
@@ -132,7 +140,7 @@
     param : [x, ring_id, dynamic_shape, peer, use_calc_stream]
 
 - op : set_value
-  args : (Tensor x, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
   infer_meta:
     func: SetValueInferMeta
@@ -144,7 +152,7 @@
   backward: set_value_grad
 
 - op : set_value_with_tensor
-  args : (Tensor x, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
   infer_meta:
     func: SetValueInferMeta
@@ -175,7 +183,15 @@
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)
-  backward: write_to_array_grad
+
+- op: dpsgd
+  args: (Tensor param, Tensor grad, Tensor learning_rate, float clip = 10.0f, float batch_size = 16.0f, float sigma = 1.0f, int seed = 0)
+  output: Tensor(param_out)
+  infer_meta:
+     func: DpsgdInferMeta
+  kernel:
+     func: dpsgd
+     data_type: param
 
 - op: fused_attention
   args: (Tensor x, Tensor ln_scale, Tensor ln_bias, Tensor qkv_weight, Tensor qkv_bias, Tensor cache_kv, Tensor src_mask, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale_2, Tensor ln_bias_2, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)

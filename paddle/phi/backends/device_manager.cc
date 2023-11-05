@@ -494,7 +494,7 @@ std::vector<size_t> DeviceManager::GetSelectedDeviceList(
     auto FLAGS_selected_devices = getenv(FLAGS.c_str());
     if (FLAGS_selected_devices) {
       auto devices_str = paddle::string::Split(FLAGS_selected_devices, ',');
-      for (auto id : devices_str) {
+      for (auto const& id : devices_str) {
         device_list.push_back(atoi(id.c_str()));
       }
     } else {
@@ -697,8 +697,8 @@ DeviceManager& DeviceManager::Instance() {
 }
 
 void DeviceManager::Release() {
-  stream::Stream::ReleaseAll();
   event::Event::ReleaseAll();
+  stream::Stream::ReleaseAll();
   Instance().device_map_.clear();
   Instance().device_impl_map_.clear();
 }

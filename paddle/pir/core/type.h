@@ -120,6 +120,7 @@ class IR_API Type {
   /// type.
   ///
   bool IsIntOrIndex() const;
+  bool IsIndex() const;
 
  protected:
   const Storage *storage_{nullptr};
