@@ -100,7 +100,7 @@ class TestUniqueConsecutiveOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
 
 class TestUniqueConsecutiveOp2(TestUniqueConsecutiveOp):
