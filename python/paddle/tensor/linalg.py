@@ -717,7 +717,7 @@ def dist(x, y, p=2, name=None):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(
@@ -2818,7 +2818,7 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -3324,7 +3324,7 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:
