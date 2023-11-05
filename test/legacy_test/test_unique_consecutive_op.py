@@ -219,7 +219,6 @@ class TestUniqueConsecutiveAPI(unittest.TestCase):
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
@@ -259,7 +258,6 @@ class TestUniqueConsecutiveCase2API(unittest.TestCase):
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
@@ -301,7 +299,6 @@ class TestUniqueConsecutiveCase3API(unittest.TestCase):
             x_np = np.random.randint(20, size=100).astype("float32")
             exe = base.Executor(place)
             fetches = exe.run(
-                base.default_main_program(),
                 feed={"input_x": x_np},
                 fetch_list=[result],
             )
