@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/print_equations.h"
+#include "paddle/cinn/adt/print_utils/print_equations.h"
 
 #include <sstream>
 #include <string>

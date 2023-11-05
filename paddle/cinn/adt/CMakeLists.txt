@@ -1,3 +1,5 @@
+add_subdirectory(print_utils)
+
 core_gather_headers()
 
 gather_srcs(
@@ -16,22 +18,11 @@ gather_srcs(
   naive_bidirection_equation_generator.cc
   naive_op_equation_context.cc
   partition_op_stmts.cc
-  print_constant.cc
-  print_equations.cc
-  print_map_expr.cc
-  print_value.cc
   schedule_descriptor.cc
   schedule_dim.cc
   schedule_mesh.cc
   simplify_value.cc
-  print_equations.cc
-  print_constant.cc
-  print_value.cc
-  print_schedule_descriptor.cc
-  write_broadcast_disabled_bidirection_equation_generator.cc
-  print_schedule_mesh.cc
-  print_schedule_dim.cc
-  print_loop_size.cc)
+  write_broadcast_disabled_bidirection_equation_generator.cc)
 
 cinn_cc_test(equation_value_match_trait_test SRCS
              equation_value_match_trait_test.cc DEPS gtest glog)

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/print_schedule_dim.h"
-#include "paddle/cinn/adt/print_loop_size.h"
+#include "paddle/cinn/adt/print_utils/print_schedule_dim.h"
+#include "paddle/cinn/adt/print_utils/print_loop_size.h"
 #include "paddle/cinn/adt/schedule_dim.h"
 
 namespace cinn::adt {

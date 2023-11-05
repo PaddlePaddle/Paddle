@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/adt/print_schedule_descriptor.h"
+#include "paddle/cinn/adt/print_utils/print_schedule_descriptor.h"
 #include "paddle/cinn/adt/schedule_descriptor.h"
 
 namespace cinn::adt {
