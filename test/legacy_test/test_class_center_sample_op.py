@@ -19,7 +19,7 @@ import numpy as np
 from op_test import OpTest, paddle_static_guard
 
 import paddle
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -166,7 +166,9 @@ class TestClassCenterSampleV2(unittest.TestCase):
     @test_with_pir_api
     def check_static_result(self, place):
         with paddle_static_guard():
-            with program_guard(Program(), Program()):
+            main = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(main, startup):
                 label_np = np.random.randint(
                     0, self.num_classes, (self.batch_size,), dtype=self.dtype
                 )
