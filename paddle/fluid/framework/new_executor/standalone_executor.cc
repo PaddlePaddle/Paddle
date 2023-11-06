@@ -105,6 +105,17 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
         }
       }
 
+      if (FLAGS_enable_fused_pass) {
+        pir::PassManager pm(pir::IrContext::Instance());
+        // pm.AddPass(pir::CreateFusedDropoutAddPass());
+        // pm.AddPass(pir::CreateFusedLinearParamGradAddPass());
+        pm.AddPass(pir::CreateFusedGemmEpiloguePass());
+        if (VLOG_IS_ON(6)) {
+          pm.EnableIRPrinting();
+        }
+        pm.Run(base_program.get());
+      }
+
       auto kernel_program =
           paddle::dialect::PdOpLowerToKernelPass(base_program.get(), place);
       std::shared_ptr<pir::Program> shared_program = std::move(kernel_program);
