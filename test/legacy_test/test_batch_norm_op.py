@@ -360,22 +360,9 @@ class TestBatchNormOpInference(unittest.TestCase):
             atol=atol,
         )
 
-    def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-
-        for place in places:
-            for data_format in ["NCHW", "NHWC"]:
-                self.check_with_place(
-                    place, data_format, self.dtype, [2, 3, 4, 5]
-                )
-                self.check_with_place(place, data_format, self.dtype, [2, 3])
-
-    def init_kernel_type(self):
-        pass
-
-    def check_without_scale_and_bias(self, place, data_layout, dtype, shape):
+    def check_with_place_without_scale_and_bias(
+        self, place, data_layout, dtype, shape
+    ):
         epsilon = 0.00001
         if len(shape) == 2:
             x_shape = shape
@@ -417,14 +404,48 @@ class TestBatchNormOpInference(unittest.TestCase):
         if dtype == np.uint16:
             x_val = convert_float_to_uint16(x_val)
 
-        y_tensor, _, _, _, _, _ = paddle.nn.functional.batch_norm(
-            paddle.to_tensor(x_val),
-            paddle.to_tensor(mean),
-            paddle.to_tensor(variance),
-            None,
-            None,
-            False,
-        )
+        exe = paddle.static.Executor(place)
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            x_ = paddle.static.data(
+                name='x_val', shape=x_shape, dtype='float32'
+            )
+            mean_ = paddle.static.data(
+                name='mean', shape=scale_shape, dtype='float32'
+            )
+            variance_ = paddle.static.data(
+                name='variance', shape=scale_shape, dtype='float32'
+            )
+            y_tensor = paddle.nn.functional.batch_norm(
+                x_,
+                mean_,
+                variance_,
+                None,
+                None,
+                False,
+                data_format=data_layout,
+            )
+        y_tensor = exe.run(
+            main,
+            feed={'x_val': x_val, 'mean': mean, 'variance': variance},
+            fetch_list=[y_tensor],
+        )[0]
+
+        # When op is called without Executor then
+        # MKL-DNN Tensor is returned. For NHWC data layout
+        # dims will be in NCHW order as it is MKL-DNN way
+        # of memory descripting. So we need to convert NCHW
+        # dims into NHWC.
+        if data_layout == "NHWC" and self.use_mkldnn:
+            # Create executor to have MKL-DNN cache
+            # cleared after NHWC unit test
+            place = core.CPUPlace()
+            exe = base.Executor(place)
+            dims = y_tensor.shape()
+            c = dims.pop(1)
+            dims.append(c)
+            y_tensor._set_dims(dims)
 
         # check inference result
         atol = 1e-3
@@ -445,6 +466,27 @@ class TestBatchNormOpInference(unittest.TestCase):
             + str(y_out),
             atol=atol,
         )
+
+    def test_check_output(self):
+        places = [core.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(core.CUDAPlace(0))
+
+        for place in places:
+            for data_format in ["NCHW", "NHWC"]:
+                self.check_with_place(
+                    place, data_format, self.dtype, [2, 3, 4, 5]
+                )
+                self.check_with_place(place, data_format, self.dtype, [2, 3])
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3, 4, 5]
+                )
+                self.check_with_place_without_scale_and_bias(
+                    place, data_format, self.dtype, [2, 3]
+                )
+
+    def init_kernel_type(self):
+        pass
 
 
 class TestFP16BatchNormOpInference(TestBatchNormOpInference):
