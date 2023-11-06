@@ -245,7 +245,7 @@ class TestNewIR(unittest.TestCase):
 
         if paddle.distributed.get_rank() == 1:
             self.check_results(
-                out_1f1b_prog.history["loss"][0][1],
+                out_1f1b_prog.history["loss"][0],
                 out_1f1b_ir.history["loss"][0],
             )
 
@@ -270,7 +270,7 @@ class TestNewIR(unittest.TestCase):
         )
         if paddle.distributed.get_rank() == 1:
             self.check_results(
-                out_fthenb_prog.history["loss"][0][1],
+                out_fthenb_prog.history["loss"][0],
                 out_fthenb_ir.history["loss"][0],
             )
 

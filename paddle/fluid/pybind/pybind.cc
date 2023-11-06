@@ -2026,8 +2026,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
       .def("type", &framework::interpreter::Job::Type)
-      .def("set_col_attr_for_fetch_op",
-           &framework::interpreter::Job::SetColAttrForFetchOp)
       .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
       .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
