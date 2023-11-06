@@ -193,7 +193,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  std::string event_name = "xccl allreduce compute";
+  std::string reduce_op_name =
+      paddle::distributed::ToXCCLRedString(opts.reduce_op);
+  std::string event_name = "xccl allreduce_" + reduce_op_name + " compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
