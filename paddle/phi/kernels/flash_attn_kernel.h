@@ -18,7 +18,6 @@
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
-
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
@@ -28,6 +27,7 @@ void FlashAttnUnpaddedKernel(
     const DenseTensor& cu_seqlens_q,
     const DenseTensor& cu_seqlens_k,
     const paddle::optional<DenseTensor>& fixed_seed_offset,
+    const paddle::optional<DenseTensor>& attn_mask,
     int64_t max_seqlen_q,
     int64_t max_seqlen_k,
     float scale,
@@ -47,6 +47,7 @@ void FlashAttnKernel(const Context& ctx,
                      const DenseTensor& k,
                      const DenseTensor& v,
                      const paddle::optional<DenseTensor>& fixed_seed_offset,
+                     const paddle::optional<DenseTensor>& attn_mask,
                      float dropout,
                      bool causal,
                      bool return_softmax,
