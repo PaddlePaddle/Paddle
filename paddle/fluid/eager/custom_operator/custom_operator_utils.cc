@@ -451,18 +451,12 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
 }
 #endif
 
-void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
-                        bool is_forward,
-                        bool is_double_grad,
-                        paddle::CustomOpKernelContext& ctx) {  // NOLINT
-  const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(op_info);
-  const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(op_info);
-  const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
-  ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
-
-  std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
-
 #ifdef PADDLE_WITH_DISTRIBUTE
+std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
+    const paddle::OpMetaInfo& op_info,
+    bool is_forward,
+    bool is_double_grad,
+    paddle::CustomOpKernelContext& ctx) {  // NOLINT
   bool run_auto_parallel = false;
   bool rank_is_in_current_mesh = true;
   phi::distributed::ProcessMesh current_process_mesh;
@@ -539,8 +533,8 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
           paddle::experimental::ReshardApiInputToReplicatedKernelInput(
               dev_ctx, x, spmd_info.first[0]);
       for (size_t i = 0; i < x.size(); ++i) {
-        all_inputs->at(i).set_impl(std::make_shared<phi::DenseTensor>(
-            *(dist_input_x[i]->unsafe_mutable_value())));
+        all_inputs->at(i).set_impl(
+            std::make_shared<phi::DenseTensor>(dist_input_x[i]->value()));
       }
     } else {
       auto& infer_shape_func =
@@ -619,34 +613,22 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
         } else {
           for (size_t j = pair.first; j < pair.second; j++) {
             *(ctx.MutableOutputAt(j)) = BuildEmptyDistPaddleTensor(
-                current_process_mesh, out_dim[0], out_dtype[0]);
+                current_process_mesh, out_dim[j], out_dtype[j]);
           }
         }
       }
-      return;
+      return std::tuple<bool, bool, phi::distributed::ProcessMesh>(
+          run_auto_parallel, rank_is_in_current_mesh, current_process_mesh);
     }
   }
+}
 #endif
 
-  for (size_t i = 0; i < all_inputs->size(); ++i) {
-    auto& tensor = all_inputs->at(i);
-    if (tensor.initialized() && tensor.is_dense_tensor() &&
-        !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
-             ->meta()
-             .is_contiguous()) {
-      tensor.set_impl(std::make_shared<phi::DenseTensor>(
-          std::move(paddle::experimental::Trans2Contiguous(
-              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
-    }
-  }
-
-  // handle inplace map
-  ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
-  VLOG(7) << "Begin run Kernel of Custom Op";
-  (*paddle::OpMetaInfoHelper::GetKernelFn(op_info))(&ctx);
-  ctx.AssignInplaceOutputs();
-
 #ifdef PADDLE_WITH_DISTRIBUTE
+void TransCtxTensorsToDistTensors(
+    paddle::CustomOpKernelContext& ctx,  // NOLINT
+    bool run_auto_parallel,
+    const phi::distributed::ProcessMesh& current_process_mesh) {
   if (run_auto_parallel) {
     std::vector<Tensor>* output_all = ctx.AllMutableOutput();
     for (size_t i = 0; i < output_all->size(); ++i) {
@@ -671,6 +653,51 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
       tensor.set_impl(dist_t);
     }
   }
+}
+#endif
+
+void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
+                        bool is_forward,
+                        bool is_double_grad,
+                        paddle::CustomOpKernelContext& ctx) {  // NOLINT
+  const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(op_info);
+  const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(op_info);
+  const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
+  ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
+
+  std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  auto result =
+      PrepareCtxForAutoParallel(op_info, is_forward, is_double_grad, ctx);
+  bool run_auto_parallel = std::get<0>(result);
+  bool rank_is_in_current_mesh = std::get<1>(result);
+  phi::distributed::ProcessMesh current_process_mesh = std::get<2>(result);
+  if (!rank_is_in_current_mesh) {
+    return;
+  }
+#endif
+
+  for (size_t i = 0; i < all_inputs->size(); ++i) {
+    auto& tensor = all_inputs->at(i);
+    if (tensor.initialized() && tensor.is_dense_tensor() &&
+        !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
+             ->meta()
+             .is_contiguous()) {
+      tensor.set_impl(std::make_shared<phi::DenseTensor>(
+          std::move(paddle::experimental::Trans2Contiguous(
+              *(std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
+    }
+  }
+
+  // handle inplace map
+  ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
+  VLOG(7) << "Begin run Kernel of Custom Op";
+  (*paddle::OpMetaInfoHelper::GetKernelFn(op_info))(&ctx);
+  ctx.AssignInplaceOutputs();
+
+#ifdef PADDLE_WITH_DISTRIBUTE
+  TransCtxTensorsToDistTensors(ctx, run_auto_parallel, current_process_mesh);
 #endif
 }
 
