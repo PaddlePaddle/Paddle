@@ -1960,7 +1960,7 @@ class TestTan(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestTan_float32(TestTan):
@@ -2001,6 +2001,7 @@ class TestTanAPI(unittest.TestCase):
             out_ref = np.tan(self.x_np)
             np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -4745,7 +4746,7 @@ create_test_act_fp16_class(
     check_pir=True,
 )
 create_test_act_fp16_class(TestCos, check_pir=True)
-create_test_act_fp16_class(TestTan)
+create_test_act_fp16_class(TestTan, check_pir=True)
 create_test_act_fp16_class(TestCosh)
 create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
