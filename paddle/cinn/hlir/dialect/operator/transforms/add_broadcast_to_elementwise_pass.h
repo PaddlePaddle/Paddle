@@ -21,18 +21,11 @@ namespace cinn {
 namespace dialect {
 namespace ir {
 
-class AddBroadcastToElementwisePass : public pir::Pass {
+class AddBroadcastToElementwisePass : public pir::PatternPass {
  public:
   AddBroadcastToElementwisePass();
 
-  bool Initialize(pir::IrContext *context) override;
-
-  void Run(pir::Operation *op) override;
-
-  bool CanApplyOn(pir::Operation *op) const override;
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
+  bool InitializePatterns(pir::IrContext *context) override;
 };
 
 }  // namespace ir

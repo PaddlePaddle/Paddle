@@ -105,32 +105,17 @@ class FusedDropoutGradAddGradPattern
   }
 };
 
-class FusedDropoutAddPass : public pir::Pass {
+class FusedDropoutAddPass : public pir::PatternPass {
  public:
-  FusedDropoutAddPass() : pir::Pass("fused_dropout_add_pass", 1) {}
+  FusedDropoutAddPass() : pir::PatternPass("fused_dropout_add_pass", 1) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
-
     ps.Add(FusedDropoutAddPattern().Build(context));
     ps.Add(FusedDropoutGradAddGradPattern().Build(context));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
 
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    return ps;
   }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

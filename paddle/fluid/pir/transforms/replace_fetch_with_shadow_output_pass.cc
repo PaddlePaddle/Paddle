@@ -39,31 +39,17 @@ class ReplaceFetchWithShadowOutputPattern
   }
 };
 
-class ReplaceFetchWithShadowOutputPass : public pir::Pass {
+class ReplaceFetchWithShadowOutputPass : public pir::PatternPass {
  public:
   ReplaceFetchWithShadowOutputPass()
-      : pir::Pass("replace_fetch_with_shadow_output_pass", 1) {}
+      : pir::PatternPass("replace_fetch_with_shadow_output_pass", 1) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ReplaceFetchWithShadowOutputPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
 
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    return ps;
   }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

@@ -78,26 +78,15 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
-PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
+PdOpToCinnOpPass::PdOpToCinnOpPass() : PatternPass("pd_to_cinn_pass", 1) {}
 
-bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
+pir::RewritePatternSet PdOpToCinnOpPass::InitializePatterns(
+    pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
-}
-
-void PdOpToCinnOpPass::Run(pir::Operation *op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-}
-
-bool PdOpToCinnOpPass::CanApplyOn(pir::Operation *op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return ps;
 }
 
 void PdOp2CinnOpConverter(::pir::Program *program) {

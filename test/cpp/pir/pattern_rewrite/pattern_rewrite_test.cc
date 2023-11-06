@@ -1009,11 +1009,11 @@ class Conv2dAddFusePattern
   }
 };
 
-class TestPass : public pir::Pass {
+class TestPass : public pir::PatternPass {
  public:
-  TestPass() : pir::Pass("TestPass", 1) {}
+  TestPass() : pir::PatternPass("TestPass", 1) {}
 
-  bool Initialize(pir::IrContext *context) override {
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<RedundantTransposeFusePattern>(context);
     auto conv_bn_pattern = std::make_unique<Conv2dBnFusePattern>(
@@ -1032,23 +1032,9 @@ class TestPass : public pir::Pass {
       LOG(INFO) << "--- " << op_info.name();
     }
     ps.Add(std::move(conv_bn_pattern));
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
-    return true;
-  }
 
-  void Run(pir::Operation *op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+    return ps;
   }
-
-  bool CanApplyOn(pir::Operation *op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 void BuildProgram(pir::Builder &builder) {  // NOLINT

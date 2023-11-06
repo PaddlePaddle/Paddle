@@ -190,30 +190,16 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   inline static paddle::framework::interpreter::ExecutionConfig exe_config_{};
 };
 
-class ConstantFoldingPass : public pir::Pass {
+class ConstantFoldingPass : public pir::PatternPass {
  public:
-  ConstantFoldingPass() : pir::Pass("constant_folding_pass", 1) {}
+  ConstantFoldingPass() : pir::PatternPass("constant_folding_pass", 1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(context);
-    patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
+
     return true;
   }
-
-  void Run(pir::Operation* op) override {
-    pir::GreedyRewriteConfig cfg;
-    cfg.use_top_down_traversal = true;
-    cfg.max_iterations = 10;
-    pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(pir::Operation* op) const override {
-    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
-  }
-
- private:
-  pir::FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace

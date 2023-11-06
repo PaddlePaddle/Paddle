@@ -130,28 +130,17 @@ class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
 };
 
 AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::Pass("add_broadcast_to_elementwise_pass", 1) {}
+    : pir::PatternPass("add_broadcast_to_elementwise_pass", 1) {}
 
-bool AddBroadcastToElementwisePass::Initialize(pir::IrContext* context) {
+pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
+    pir::IrContext* context) {
   pir::RewritePatternSet ps(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::AddOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::SubtractOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::MultiplyOp>>(context);
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
 
-  patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
-  return true;
-}
-
-void AddBroadcastToElementwisePass::Run(pir::Operation* op) {
-  pir::GreedyRewriteConfig cfg;
-  cfg.use_top_down_traversal = true;
-  cfg.max_iterations = 10;
-  pir::ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-}
-
-bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
-  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  return ps;
 }
 
 }  // namespace ir
