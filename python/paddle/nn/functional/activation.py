@@ -1389,7 +1389,7 @@ def softsign(x, name=None):
         softsign(x) = \frac{x}{1 + |x|}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64 or complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
