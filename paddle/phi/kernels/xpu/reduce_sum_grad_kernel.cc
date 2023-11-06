@@ -17,8 +17,6 @@
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/backends/xpu/xpu_context.h"
-// #include "paddle/phi/"
 
 namespace phi {
 
@@ -73,9 +71,6 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
-<<<<<<< HEAD
-PD_REGISTER_KERNEL(sum_grad, XPU, ALL_LAYOUT, phi::ReduceSumGradKernel, float, phi::dtype::float16, phi::dtype::bfloat16) {
-=======
 PD_REGISTER_KERNEL(sum_grad,
                    XPU,
                    ALL_LAYOUT,
@@ -83,6 +78,5 @@ PD_REGISTER_KERNEL(sum_grad,
                    float,
                    phi::dtype::float16,
                    phi::dtype::bfloat16) {
->>>>>>> support bf16/fp16 reduce_mean&sum on kl3
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }
