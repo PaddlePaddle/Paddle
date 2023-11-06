@@ -37,7 +37,7 @@ def mean(x, axis, keepdim):
     return res
 
 
-@register_decomp('pd_op.gelu')
+# @register_decomp('pd_op.gelu')
 def gelu(x, approximate):
     """define composite rule of op gelu"""
     M_SQRT1_2 = (

@@ -81,6 +81,36 @@ Tensor add_n_decomp(const std::vector<Tensor>& x) {
   return res;
 }
 
+// template <typename T>
+// Tensor pow_decomp(const Tensor& x, const bool approximate) {
+
+// }
+
+template <typename T>
+Tensor gelu_decomp(const Tensor& x, bool approximate) {
+  auto org_dtype = x.dtype();
+
+  auto half = full<T>(phi::vectorize(x.dims()), 0.5, org_dtype);
+  auto one = full<T>(phi::vectorize(x.dims()), 1, org_dtype);
+  if (approximate) {
+    // gelu(x) = 0.5 * x * (1 + tanh(sqrt(2 / \pi) * (x + 0.044715 * x^{3})))
+    auto kAlpha =
+        full<T>(phi::vectorize(x.dims()), M_2_SQRTPI * M_SQRT1_2, org_dtype);
+    auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
+    auto tanh_out = tanh<T>(kAlpha * (x + GELU_CONSTANT * x * x * x));
+
+    auto res = x * half * (one + tanh_out);
+    return res;
+  } else {
+    // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
+    auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), M_SQRT1_2, org_dtype);
+    auto res = x * full<T>(phi::vectorize(x.dims()), 0.5, org_dtype) *
+               (one + erf<T>(x * M_SQRT1_2T));
+
+    return res;
+  }
+}
+
 }  // namespace details
 
 }  // namespace primitive
