@@ -28,7 +28,7 @@ cc_library(
 cc_library(
   replace_fetch_with_shadow_output_pass
   SRCS replace_fetch_with_shadow_output_pass.cc
-  DEPS pd_op_dialect pir)
+  DEPS op_dialect_vjp pir)
 
 if(WITH_CINN)
   cc_library(
