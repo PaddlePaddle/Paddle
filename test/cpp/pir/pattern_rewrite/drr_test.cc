@@ -185,9 +185,10 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
-class DrrPatternRewritePass : public pir::PatternPass {
+class DrrPatternRewritePass : public pir::PatternRewritePass {
  public:
-  DrrPatternRewritePass() : pir::PatternPass("DrrPatternRewritePass", 1) {}
+  DrrPatternRewritePass()
+      : pir::PatternRewritePass("drr_pattern_rewrite_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

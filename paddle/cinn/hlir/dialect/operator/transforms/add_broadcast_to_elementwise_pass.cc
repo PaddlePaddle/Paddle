@@ -130,7 +130,7 @@ class AddBrodcastToElementwisePattern : public pir::OpRewritePattern<OPTYPE> {
 };
 
 AddBroadcastToElementwisePass::AddBroadcastToElementwisePass()
-    : pir::PatternPass("add_broadcast_to_elementwise_pass", 1) {}
+    : pir::PatternRewritePass("add_broadcast_to_elementwise_pass", 1) {}
 
 pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
     pir::IrContext* context) {
@@ -141,6 +141,10 @@ pir::RewritePatternSet AddBroadcastToElementwisePass::InitializePatterns(
   ps.Add<AddBrodcastToElementwisePattern<paddle::dialect::DivideOp>>(context);
 
   return ps;
+}
+
+bool AddBroadcastToElementwisePass::CanApplyOn(pir::Operation* op) const {
+  return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
 }
 
 }  // namespace ir

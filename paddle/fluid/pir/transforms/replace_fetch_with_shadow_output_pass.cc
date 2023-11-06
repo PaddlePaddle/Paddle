@@ -39,16 +39,20 @@ class ReplaceFetchWithShadowOutputPattern
   }
 };
 
-class ReplaceFetchWithShadowOutputPass : public pir::PatternPass {
+class ReplaceFetchWithShadowOutputPass : public pir::PatternRewritePass {
  public:
   ReplaceFetchWithShadowOutputPass()
-      : pir::PatternPass("replace_fetch_with_shadow_output_pass", 1) {}
+      : pir::PatternRewritePass("replace_fetch_with_shadow_output_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ReplaceFetchWithShadowOutputPattern>(context);
 
     return ps;
+  }
+
+  bool CanApplyOn(pir::Operation* op) const override {
+    return op->isa<::pir::ModuleOp>() && op->num_regions() > 0;
   }
 };
 

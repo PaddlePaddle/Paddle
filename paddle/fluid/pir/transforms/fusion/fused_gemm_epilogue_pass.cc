@@ -255,9 +255,10 @@ class FusedLinearReluGradPattern
   }
 };
 
-class FusedGemmEpiloguePass : public pir::PatternPass {
+class FusedGemmEpiloguePass : public pir::PatternRewritePass {
  public:
-  FusedGemmEpiloguePass() : pir::PatternPass("fused_gemm_epilogue_pass", 2) {}
+  FusedGemmEpiloguePass()
+      : pir::PatternRewritePass("fused_gemm_epilogue_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

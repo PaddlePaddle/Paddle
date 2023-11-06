@@ -316,10 +316,10 @@ class FusedMatmulAddGradAddbPattern
   }
 };
 
-class FusedLinearParamGradAddPass : public pir::PatternPass {
+class FusedLinearParamGradAddPass : public pir::PatternRewritePass {
  public:
   FusedLinearParamGradAddPass()
-      : pir::PatternPass("fused_linear_param_grad_add_pass", 1) {}
+      : pir::PatternRewritePass("fused_linear_param_grad_add_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

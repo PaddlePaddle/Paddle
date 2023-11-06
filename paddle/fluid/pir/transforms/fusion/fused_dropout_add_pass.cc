@@ -105,9 +105,10 @@ class FusedDropoutGradAddGradPattern
   }
 };
 
-class FusedDropoutAddPass : public pir::PatternPass {
+class FusedDropoutAddPass : public pir::PatternRewritePass {
  public:
-  FusedDropoutAddPass() : pir::PatternPass("fused_dropout_add_pass", 1) {}
+  FusedDropoutAddPass()
+      : pir::PatternRewritePass("fused_dropout_add_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

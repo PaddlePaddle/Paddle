@@ -190,9 +190,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   inline static paddle::framework::interpreter::ExecutionConfig exe_config_{};
 };
 
-class ConstantFoldingPass : public pir::PatternPass {
+class ConstantFoldingPass : public pir::PatternRewritePass {
  public:
-  ConstantFoldingPass() : pir::PatternPass("constant_folding_pass", 1) {}
+  ConstantFoldingPass() : pir::PatternRewritePass("constant_folding_pass", 1) {}
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);

@@ -214,9 +214,9 @@ class MultiHeadMatmulFusePattern
   }
 };
 
-class AttentionFusePass : public pir::PatternPass {
+class AttentionFusePass : public pir::PatternRewritePass {
  public:
-  AttentionFusePass() : pir::PatternPass("attention_fuse_pass", 2) {}
+  AttentionFusePass() : pir::PatternRewritePass("attention_fuse_pass", 2) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);

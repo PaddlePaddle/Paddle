@@ -107,20 +107,30 @@ class IR_API Pass {
   friend class detail::PassAdaptor;
 };
 
-class PatternPass : public Pass {
+class PatternRewritePass : public Pass {
  public:
-  PatternPass(const std::string& name = "PatternPass",
-              uint8_t opt_level = 1,
-              const std::vector<std::string>& dependents = {})
+  PatternRewritePass(const std::string& name,
+                     uint8_t opt_level,
+                     const std::vector<std::string>& dependents = {})
       : Pass(name, opt_level, dependents) {}
 
  protected:
-  virtual RewritePatternSet InitializePatterns(IrContext* context) {
-    return RewritePatternSet(context);
-  }
+  virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
 
   bool Initialize(IrContext* context) override {
-    patterns_ = FrozenRewritePatternSet(std::move(InitializePatterns(context)));
+    RewritePatternSet ps = InitializePatterns(context);
+    PADDLE_ENFORCE_NE(
+        ps.empty(),
+        true,
+        phi::errors::Unavailable(
+            "Pass creation failed."
+            "When using PatternRewritePass to create a Pass, the number of "
+            "customized Patterns is required to be greater than zero."
+            "Suggested fix: Check whether Pattern is added to the "
+            "InitializePatterns() function of class [%s]",
+            name()));
+    patterns_ = FrozenRewritePatternSet(std::move(ps));
+
     return true;
   }
 
@@ -129,10 +139,6 @@ class PatternPass : public Pass {
     cfg.use_top_down_traversal = true;
     cfg.max_iterations = 10;
     ApplyPatternsGreedily(op->region(0), patterns_, cfg);
-  }
-
-  bool CanApplyOn(Operation* op) const override {
-    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
   }
 
  private:

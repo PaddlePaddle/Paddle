@@ -1009,9 +1009,9 @@ class Conv2dAddFusePattern
   }
 };
 
-class TestPass : public pir::PatternPass {
+class TestPass : public pir::PatternRewritePass {
  public:
-  TestPass() : pir::PatternPass("TestPass", 1) {}
+  TestPass() : pir::PatternRewritePass("test_pass", 1) {}
 
   pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
     pir::RewritePatternSet ps(context);
