@@ -62,9 +62,7 @@ void MeanRawKernel(const Context& dev_ctx,
 PD_REGISTER_KERNEL(mean_raw,
                    XPU,
                    ALL_LAYOUT,
-                   phi::MeanRawKernel, 
-                   float, 
+                   phi::MeanRawKernel,
+                   float,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16
-                   ) {
-}
+                   phi::dtype::bfloat16) {}

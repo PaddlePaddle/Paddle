@@ -15,6 +15,7 @@
 
 #include <set>
 #include "paddle/phi/backends/xpu/enforce_xpu.h"
+#include "paddle/phi/backends/xpu/xpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/backends/xpu/xpu_context.h"
 // #include "paddle/phi/"
@@ -32,7 +33,7 @@ void ReduceSumGradKernel(const Context& dev_ctx,
   using XPUType = typename XPUTypeTrait<T>::Type;
   reduce_all = recompute_reduce_all(x, dims_arr, reduce_all);
   auto dims = dims_arr.GetData();
-  dev_ctx.template Alloc<T>(x_grad);
+  dev_ctx.template Alloc<XPUType>(x_grad);
   auto* out_data = reinterpret_cast<const XPUType*>(out_grad.data<T>());
   auto* x_grad_data = reinterpret_cast<XPUType*>(x_grad->data<T>());
   const auto& input_dim_size = x.dims().size();
@@ -72,6 +73,16 @@ void ReduceSumGradKernel(const Context& dev_ctx,
 
 }  // namespace phi
 
+<<<<<<< HEAD
 PD_REGISTER_KERNEL(sum_grad, XPU, ALL_LAYOUT, phi::ReduceSumGradKernel, float, phi::dtype::float16, phi::dtype::bfloat16) {
+=======
+PD_REGISTER_KERNEL(sum_grad,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::ReduceSumGradKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {
+>>>>>>> support bf16/fp16 reduce_mean&sum on kl3
   kernel->OutputAt(0).SetDataType(phi::DataType::UNDEFINED);
 }

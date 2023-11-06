@@ -624,8 +624,7 @@ XPUOpMap& get_kl3_ops() {
                      phi::DataType::INT64})},
       {"reduce_mean_grad", XPUKernelSet({phi::DataType::FLOAT32})},
       {"reduce_mean",
-       XPUKernelSet({
-                     phi::DataType::FLOAT32,
+       XPUKernelSet({phi::DataType::FLOAT32,
                      phi::DataType::FLOAT16,
                      phi::DataType::BFLOAT16})},
       {"reduce_min_grad", XPUKernelSet({phi::DataType::FLOAT32})},

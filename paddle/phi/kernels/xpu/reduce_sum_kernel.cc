@@ -29,6 +29,11 @@ void SumRawKernel(const Context& dev_ctx,
                   DataType out_dtype,
                   DenseTensor* out) {
   if (out_dtype == DataType::UNDEFINED && out->dtype() != x.dtype()) {
+    printf(
+        "out_dtype == DataType::UNDEFINED : %d && out->dtype() != x.dtype(): "
+        "%d\n",
+        out_dtype == DataType::UNDEFINED,
+        out->dtype() != x.dtype());
     out_dtype = out->dtype();
   }
   XPUReduce<Context, T, phi::SumFunctor>(
