@@ -136,8 +136,6 @@ class TestMatmulOpShapeDtype(TestCaseHelper):
             # },
             {
                 "dtype": "float16",
-                "max_relative_error": 1e-2,
-                "max_absolute_error": 1e-2,
             },
             {
                 "dtype": "float32",
