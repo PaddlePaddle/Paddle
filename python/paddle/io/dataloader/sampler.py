@@ -349,7 +349,6 @@ class SubsetRandomSampler(Sampler):
 
     Args:
         indices (sequence): a sequence of indices
-        generator(Generator, optional): specify a generator to sample the :code:`data_source`. Default None, disabled.
 
     Examples:
 
@@ -371,13 +370,12 @@ class SubsetRandomSampler(Sampler):
 
     """
 
-    def __init__(self, indices, generator=None):
+    def __init__(self, indices):
         if len(indices) == 0:
             raise ValueError(
                 "The length of `indices` in SubsetRandomSampler should be greater than 0."
             )
         self.indices = indices
-        assert generator is None
 
     def __iter__(self):
         for i in randperm(len(self.indices)):
