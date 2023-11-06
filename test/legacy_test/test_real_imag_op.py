@@ -66,6 +66,7 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
+            check_pir=True,
         )
 
 
