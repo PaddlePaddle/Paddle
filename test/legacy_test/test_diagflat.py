@@ -77,15 +77,19 @@ class TestDiagFlatAPI(unittest.TestCase):
         result3 = paddle.diagflat(x2)
 
         place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        res0, res3 = exe.run(
-            feed={"input": self.input_np, 'input2': self.input_np2},
-            fetch_list=[result0, result3],
-        )
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(main, startup):
+            exe = paddle.static.Executor(place)
+            exe.run(paddle.static.default_startup_program())
+            res0, res3 = exe.run(
+                main,
+                feed={"input": self.input_np, 'input2': self.input_np2},
+                fetch_list=[result0, result3],
+            )
 
-        np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
-        np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
+            np.testing.assert_allclose(res0, self.expected0, rtol=1e-05)
+            np.testing.assert_allclose(res3, self.expected3, rtol=1e-05)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.CPUPlace())
