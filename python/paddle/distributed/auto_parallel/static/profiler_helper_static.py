@@ -53,11 +53,6 @@ def process_job_log(log_data, device_id):
         start_time = float(job_start_time.strip()) * 1000
         end_time = float(job_end_time.strip()) * 1000
 
-        if last_end_time is not None:
-            if start_time < last_end_time:
-                end_time = end_time + last_end_time - start_time
-                start_time = last_end_time
-
         event_start = {
             "name": job_type + "_" + str(job_id),
             "cat": job_type,

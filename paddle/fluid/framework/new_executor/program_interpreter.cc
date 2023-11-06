@@ -104,13 +104,6 @@ ProgramInterpreter::~ProgramInterpreter() {
 }
 
 void ProgramInterpreter::RunImpl() {
-#if defined(PADDLE_WITH_CUDA)
-  if (FLAGS_auto_parallel_profiler) {
-    calculate_stream_timer_.Start();
-  }
-
-#endif
-
   // lazy initialization of gc, do not create gc is the program only run once
   if (!gc_) {
     gc_ = CreateInterpreterCoreGarbageCollector(place_, vec_instruction_);
@@ -131,15 +124,10 @@ void ProgramInterpreter::RunImpl() {
     async_work_queue_ = GetWorkQueue();
     ExecuteInstructionList(vec_instruction_);
   }
+
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
   if (platform::is_custom_place(place_)) {
     platform::DeviceContextPool::Instance().Get(place_)->Wait();
-  }
-#endif
-
-#if defined(PADDLE_WITH_CUDA)
-  if (FLAGS_auto_parallel_profiler) {
-    calculate_stream_timer_.Stop();
   }
 #endif
 }
@@ -639,9 +627,35 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time, end_time;
-#if defined(PADDLE_WITH_CUDA)
-  start_time = calculate_stream_timer_.StartTime();
-  end_time = calculate_stream_timer_.EndTime();
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  //   double remaining_time = std::numeric_limits<double>::max();
+  //   double event_time, wait_time;
+  start_time = calculated_stream_timer_.StartTime();
+  end_time = calculated_stream_timer_.EndTime();
+//   gpuEvent_t stop_event = calculated_stream_timer_.StopEvent();
+
+//   for (auto& inst : vec_instruction_) {
+//     for (auto event_inter : inst.EventsToWait()) {
+//       auto* wrapper = static_cast<paddle::platform::CUDADeviceEventWrapper*>(
+//           event_inter.event_->GetEvent().get());
+
+//       gpuEvent_t start_event = wrapper->inner_event_.GetRawCudaEvent();
+//       event_time = 0;
+//       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
+//           reinterpret_cast<float*>(&event_time), start_event, stop_event));
+//       remaining_time = std::min(remaining_time, event_time);
+//       VLOG(0) << "event time: " << std::to_string(event_time)
+//               << " remaining: " << std::to_string(remaining_time);
+//     }
+//   }
+//   if (remaining_time == std::numeric_limits<double>::max()) {
+//     remaining_time = 0;
+//   }
+//   wait_time = end_time - start_time - remaining_time;
+//   start_time = start_time + wait_time;
+//   VLOG(0) << "wait time: " << std::to_string(wait_time)
+//           << " start time: " << std::to_string(start_time)
+//           << " end time: " << std::to_string(end_time);
 #endif
   return std::make_tuple(start_time, end_time);
 }
@@ -683,12 +697,12 @@ void ProgramInterpreter::Convert(
   }
 
   if (FLAGS_auto_parallel_profiler) {
-#if defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     gpuStream_t calculate_stream =
         dynamic_cast<phi::GPUContext*>(
             platform::DeviceContextPool::Instance().Get(place_))
             ->stream();
-    calculate_stream_timer_.SetStream(calculate_stream);
+    calculated_stream_timer_.SetStream(calculate_stream);
 #endif
   }
 
@@ -1050,6 +1064,15 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
+    if (FLAGS_auto_parallel_profiler) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (!interpreter::IsCommunicationOp(instr_node) &&
+          !calculated_stream_timer_.IsStart()) {
+        VLOG(3) << "Start calculated stream timer from op: " << op->Type();
+        calculated_stream_timer_.Start();
+      }
+#endif
+    }
 
     if (!instr_node.IsArtificial()) {
       RunOperator(instr_node);
@@ -1101,6 +1124,17 @@ void ProgramInterpreter::ExecuteInstructionList(
   }
 
   exception_holder_.Clear();
+
+  if (FLAGS_auto_parallel_profiler) {
+    for (int i = vec_instr.size() - 1; i >= 0; --i) {
+      auto& instr_node = vec_instr[i];
+      if (!interpreter::IsCommunicationOp(instr_node)) {
+        VLOG(3) << "Last calculated op type: " << instr_node.OpBase()->Type();
+        last_calculated_instr_id = i;
+        break;
+      }
+    }
+  }
 
   for (size_t i = 0; i < dependecy_count_->size(); ++i) {
     if ((*dependecy_count_)[i] == 0) {
@@ -1212,6 +1246,16 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
     auto& instr_node = vec_instruction_.at(instr_id);
 
     RunInstruction(instr_node);
+
+    if (FLAGS_auto_parallel_profiler) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+      if (instr_id == last_calculated_instr_id) {
+        VLOG(3) << "Stop calculated stream timer from op: "
+                << instr_node.OpBase()->Type();
+        calculated_stream_timer_.Stop();
+      }
+#endif
+    }
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
       VLOG(4) << "Exception caught";

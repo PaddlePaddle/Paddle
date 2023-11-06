@@ -217,9 +217,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
 
   std::vector<HookFunc> hookfuncs_;
 
-#if defined(PADDLE_WITH_CUDA)
-  phi::GpuTimer calculate_stream_timer_;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  phi::GpuTimer calculated_stream_timer_;
 #endif
+  size_t last_calculated_instr_id;
 };
 
 }  // namespace framework
