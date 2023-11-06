@@ -84,7 +84,7 @@ TEST(CinnJitInstruction, Run) {
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
 
-  std::vector<cinn::hlir::framework::PIRCompiler*> compiler_list;
+  std::vector<cinn::hlir::framework::PirCompiler*> compiler_list;
 
   std::set<std::string> checking_cinn_ops = {"pd_op.sin", "pd_op.cos"};
 
@@ -101,7 +101,7 @@ TEST(CinnJitInstruction, Run) {
        ++it) {
     if (checking_cinn_ops.count((*it)->name())) {
       auto ir_compiler =
-          new cinn::hlir::framework::PIRCompiler(*program, target, scope);
+          new cinn::hlir::framework::PirCompiler(*program, target, scope);
 
       std::vector<::pir::Operation*> ops = {*it};
       auto group = std::make_shared<cinn::hlir::framework::pir::Group>(ops);
