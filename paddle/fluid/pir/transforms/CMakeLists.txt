@@ -12,7 +12,7 @@ cc_library(
 
 cc_library(
   pd_op_to_kernel_pass
-  SRCS pd_op_to_kernel_pass.cc dtype_transfer_utils.cc
+  SRCS pd_op_to_kernel_pass.cc
   DEPS pd_kernel_dialect pd_op_dialect pd_op_dialect_utils)
 
 cc_library(
