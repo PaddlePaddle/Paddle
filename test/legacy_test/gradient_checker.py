@@ -451,10 +451,18 @@ def get_static_double_grad(
             y_grads.append(dy)
             y_grads_init.append(v)
     else:
-        y_grads = _as_list(dy_init)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            set_var_in_scope(scope, place, dyi_name, dy_init[i])
+            y_grads.append(dy)
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -654,7 +662,7 @@ def double_grad_check_for_dygraph(
     paddle.enable_static()
 
     static_double_grad, _, _, _ = get_static_double_grad(
-        x, y, x_init, None, place
+        x, y, x_init, y_grads_init, place
     )
 
     if len(static_double_grad) != len(eager_double_grad):
@@ -712,10 +720,18 @@ def get_static_triple_grad(
             y_grads.append(dy)
             y_grads_init.append(v)
     else:
-        y_grads = _as_list(dy_init)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
+        y_grads = []
+        y_grads_init = dy_init
+        for i in range(len(y)):
+            yi = y[i]
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True
+            )
+            dy.stop_gradient = False
+            set_var_in_scope(scope, place, dyi_name, dy_init[i])
+            y_grads.append(dy)
 
     # append first order grads
     dx = base.gradients(y, x, y_grads)
@@ -726,8 +742,14 @@ def get_static_triple_grad(
     x_init += y_grads_init
     y = dx
 
+    x_grads_grads_init = []
+    for dxi in dx:
+        np_type = dtype_to_np_dtype(dxi.dtype)
+        value = np.ones(dxi.shape, dtype=np_type)
+        x_grads_grads_init.append(value)
+
     return get_static_double_grad(
-        x, y, x_init, dy_init=None, place=place, program=program
+        x, y, x_init, dy_init=x_grads_grads_init, place=place, program=program
     )
 
 
@@ -819,7 +841,7 @@ def triple_grad_check_for_dygraph(
     paddle.enable_static()
 
     static_triple_grad, _, _, _ = get_static_triple_grad(
-        x, y, x_init, None, place
+        x, y, x_init, y_grads_init, place
     )
 
     if len(static_triple_grad) != len(eager_triple_grad):
