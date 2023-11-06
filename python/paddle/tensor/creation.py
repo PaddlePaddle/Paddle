@@ -309,20 +309,20 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -441,23 +441,23 @@ def logspace(start, stop, num, base=10.0, dtype=None, name=None):
     tensor_start = start
     tensor_stop = stop
     tensor_base = base
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'logspace')
-    if not isinstance(dtype, core.VarDesc.VarType):
+    if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num)
-    if not isinstance(base, Variable):
+    if not isinstance(base, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_base = fill_constant([1], dtype, base)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logspace(
             tensor_start,
             tensor_stop,
@@ -1368,15 +1368,20 @@ def arange(start=0, end=None, step=1, dtype=None, name=None):
                     dtype = 'int64'
 
     out_shape = None
-    if not in_dynamic_or_pir_mode() and (
+    is_value_input = (
         not isinstance(start, (Variable, paddle.pir.OpResult))
         and not isinstance(end, (Variable, paddle.pir.OpResult))
         and not isinstance(step, (Variable, paddle.pir.OpResult))
-    ):
+    )
+
+    if not in_dynamic_mode() and is_value_input:
         out_shape = [int(math.ceil((end - start) / step))]
 
     if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
         dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if is_value_input and in_pir_mode():
+        return _C_ops.arange(start, end, step, dtype, _current_expected_place())
 
     if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
@@ -1643,7 +1648,7 @@ def meshgrid(*args, **kwargs):
 
     if len(args) == 1 and isinstance(args[0], (list, tuple)):
         args = args[0]
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.meshgrid(list(args))
     else:
         name = kwargs.get("name", None)
@@ -2001,7 +2006,7 @@ def diag(x, offset=0, padding_value=0, name=None):
             Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')
@@ -2603,7 +2608,7 @@ def complex(real, imag, name=None):
             [[0j    , 1j    , 2j    ],
              [(1+0j), (1+1j), (1+2j)]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.complex(real, imag)
     else:
         check_variable_and_dtype(
@@ -2678,7 +2683,7 @@ def tril_indices(row, col, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.tril_indices(
@@ -2757,7 +2762,7 @@ def triu_indices(row, col=None, offset=0, dtype='int64'):
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if col is None:
             col = row
         out = _C_ops.triu_indices(

@@ -31,24 +31,24 @@ class SumOpPattern : public pir::drr::DrrPatternBase<SumOpPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern patttern = ctx->SourcePattern();
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
-        patttern.Op(paddle::dialect::FullIntArrayOp::name(),
-                    {{"value", patttern.Attr("axis_info")},
-                     {"dtype", patttern.Attr("dtype_2")},
-                     {"place", patttern.Attr("place_2")}});
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
 
-    const auto &sum = patttern.Op(paddle::dialect::SumOp::name(),
-                                  {{"dtype", patttern.Attr("dtype")},
-                                   {"keepdim", patttern.Attr("keep_dim")}});
-    patttern.Tensor("ret") = sum(patttern.Tensor("arg0"), full_int_array());
+    const auto &sum = pattern.Op(paddle::dialect::SumOp::name(),
+                                 {{"dtype", pattern.Attr("dtype")},
+                                  {"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = sum(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = patttern.ResultPattern();
+    pir::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_sum =
         res.Op(cinn::dialect::ReduceSumOp::name(),
-               {{"axis", patttern.Attr("axis_info")},
-                {"keep_dim", patttern.Attr("keep_dim")}});
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_sum(res.Tensor("arg0"));
   }
 };
@@ -57,23 +57,23 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
  public:
   void operator()(pir::drr::DrrPatternContext *ctx) const override {
     // Source Pattern
-    pir::drr::SourcePattern patttern = ctx->SourcePattern();
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
     const auto &full_int_array =
-        patttern.Op(paddle::dialect::FullIntArrayOp::name(),
-                    {{"value", patttern.Attr("axis_info")},
-                     {"dtype", patttern.Attr("dtype_2")},
-                     {"place", patttern.Attr("place_2")}});
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
 
-    const auto &pd_max = patttern.Op(paddle::dialect::MaxOp::name(),
-                                     {{"keepdim", patttern.Attr("keep_dim")}});
-    patttern.Tensor("ret") = pd_max(patttern.Tensor("arg0"), full_int_array());
+    const auto &pd_max = pattern.Op(paddle::dialect::MaxOp::name(),
+                                    {{"keepdim", pattern.Attr("keep_dim")}});
+    pattern.Tensor("ret") = pd_max(pattern.Tensor("arg0"), full_int_array());
 
     // Result patterns
-    pir::drr::ResultPattern res = patttern.ResultPattern();
+    pir::drr::ResultPattern res = pattern.ResultPattern();
     const auto &cinn_reduce_max =
         res.Op(cinn::dialect::ReduceMaxOp::name(),
-               {{"axis", patttern.Attr("axis_info")},
-                {"keep_dim", patttern.Attr("keep_dim")}});
+               {{"dim", pattern.Attr("axis_info")},
+                {"keep_dim", pattern.Attr("keep_dim")}});
     res.Tensor("ret") = cinn_reduce_max(res.Tensor("arg0"));
   }
 };

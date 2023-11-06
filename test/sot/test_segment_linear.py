@@ -19,6 +19,7 @@ from test_case_base import TestCaseBase
 import paddle
 from paddle import nn
 from paddle.jit import sot
+from paddle.jit.sot.utils import strict_mode_guard
 
 
 class Head(nn.Layer):
@@ -48,6 +49,7 @@ class SimpleNet(nn.Layer):
         return x
 
     def forward(self, x):
+        sot.psdb.fallback()
         shape = self.getshape(x)
         feat = self.tmp(x.mean().reshape([1])).reshape([1, 1024, 10])
         logits = self.head(feat, shape[2:])
@@ -55,8 +57,8 @@ class SimpleNet(nn.Layer):
 
 
 class TestExecutor(TestCaseBase):
+    @strict_mode_guard(False)
     def test_simple(self):
-        sot.skip_function(SimpleNet.forward)
         x = paddle.randn((1, 8, 8))
         net = SimpleNet()
         net = paddle.jit.to_static(

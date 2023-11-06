@@ -14,10 +14,9 @@
 
 import os
 
+import numpy as np
 from semi_auto_parallel_simple_net import (
     DemoNet,
-    DPDemoNet,
-    MPDemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
 
@@ -37,7 +36,10 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         self.init_input_data()
         self.init_single_card_net_result()
 
-    def run_dynamic_amp(self, layer, level='O1'):
+    def run_dynamic_amp(self, layer, level='O1', shard_input=False):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
         if level == 'O2':
             layer = paddle.amp.decorate(models=layer, level='O2')
         # create loss
@@ -45,6 +47,13 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
         scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
         # run forward and backward
         image = paddle.to_tensor(self.image)
+        if shard_input:
+            image = dist.shard_tensor(
+                image,
+                dist_attr=dist.DistAttr(
+                    mesh=self._mesh, sharding_specs=['x', None]
+                ),
+            )
 
         with paddle.amp.auto_cast(level=level):
             out = layer(image)
@@ -53,65 +62,71 @@ class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
 
         scaled = scaler.scale(loss)
         scaled.backward()
-        return loss, layer.w0.grad, layer.w1.grad
+        return loss, layer.parameters()
 
     def init_single_card_net_result(self):
         (
             self.base_loss_o1,
-            self.base_w0_grad_o1,
-            self.base_w1_grad_o1,
-        ) = self.run_dynamic_amp(DemoNet(self.w0, self.w1, 'O1'), 'O1')
+            self.base_parameters_o1,
+        ) = self.run_dynamic_amp(DemoNet('demo_weight_O1'), 'O1')
         (
             self.base_loss_o2,
-            self.base_w0_grad_o2,
-            self.base_w1_grad_o2,
-        ) = self.run_dynamic_amp(DemoNet(self.w0, self.w1, 'O2'), 'O2')
+            self.base_parameters_o2,
+        ) = self.run_dynamic_amp(DemoNet('demo_weight_O2'), 'O2')
 
     def test_dp_demo_net(self):
         (
             self.dp_loss_o1,
-            self.dp_w0_grad_o1,
-            self.dp_w1_grad_o1,
+            self.dp_parameters_o1,
         ) = self.run_dynamic_amp(
-            DPDemoNet(self.w0, self.w1, self._mesh, 'O1'), 'O1'
+            DemoNet('dp_demo_weight_O1'), 'O1', shard_input=True
         )
         self.check_tensor_eq(self.dp_loss_o1, self.base_loss_o1)
-        self.check_tensor_eq(self.dp_w0_grad_o1, self.base_w0_grad_o1)
-        self.check_tensor_eq(self.dp_w1_grad_o1, self.base_w1_grad_o1)
+        for param, param_base in zip(
+            self.dp_parameters_o1, self.base_parameters_o1
+        ):
+            # self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
         (
             self.dp_loss_o2,
-            self.dp_w0_grad_o2,
-            self.dp_w1_grad_o2,
-        ) = self.run_dynamic_amp(
-            DPDemoNet(self.w0, self.w1, self._mesh, 'O2'), 'O2'
-        )
+            self.dp_parameters_o2,
+        ) = self.run_dynamic_amp(DemoNet('dp_demo_weight_O2'), 'O2')
         self.check_tensor_eq(self.dp_loss_o2, self.base_loss_o2)
-        self.check_tensor_eq(self.dp_w0_grad_o2, self.base_w0_grad_o2)
-        self.check_tensor_eq(self.dp_w1_grad_o2, self.base_w1_grad_o2)
+        for param, param_base in zip(
+            self.dp_parameters_o2, self.base_parameters_o2
+        ):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
     def test_mp_demo_net(self):
+        mp_layer_o1 = dist.shard_layer(
+            DemoNet("mp_demo_weight_O1"), self._mesh, self.shard_fn
+        )
         (
             self.mp_loss_o1,
-            self.mp_w0_grad_o1,
-            self.mp_w1_grad_o1,
-        ) = self.run_dynamic_amp(
-            MPDemoNet(self.w0, self.w1, self._mesh, 'O1'), 'O1'
-        )
+            self.mp_parameters_o1,
+        ) = self.run_dynamic_amp(mp_layer_o1, 'O1')
         self.check_tensor_eq(self.mp_loss_o1, self.base_loss_o1)
-        self.check_tensor_eq(self.mp_w0_grad_o1, self.base_w0_grad_o1)
-        self.check_tensor_eq(self.mp_w1_grad_o1, self.base_w1_grad_o1)
+        for param, param_base in zip(
+            self.mp_parameters_o1, self.base_parameters_o1
+        ):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
+        mp_layer_o2 = dist.shard_layer(
+            DemoNet("mp_demo_weight_O2"), self._mesh, self.shard_fn
+        )
         (
             self.mp_loss_o2,
-            self.mp_w0_grad_o2,
-            self.mp_w1_grad_o2,
-        ) = self.run_dynamic_amp(
-            MPDemoNet(self.w0, self.w1, self._mesh, 'O2'), 'O2'
-        )
+            self.mp_parameters_o2,
+        ) = self.run_dynamic_amp(mp_layer_o2, 'O2')
         self.check_tensor_eq(self.mp_loss_o2, self.base_loss_o2)
-        self.check_tensor_eq(self.mp_w0_grad_o2, self.base_w0_grad_o2)
-        self.check_tensor_eq(self.mp_w1_grad_o2, self.base_w1_grad_o2)
+        for param, param_base in zip(
+            self.mp_parameters_o2, self.base_parameters_o2
+        ):
+            self.check_tensor_eq(param, param_base)
+            self.check_tensor_eq(param.grad, param_base.grad)
 
     def run_test_case(self):
         self.test_dp_demo_net()

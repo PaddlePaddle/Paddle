@@ -33,11 +33,12 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
-from .pir import monkey_patch_opresult
+from .pir import monkey_patch_opresult, monkey_patch_program
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
 monkey_patch_opresult()
+monkey_patch_program()
 
 from .framework import (
     disable_signal_handler,
@@ -252,6 +253,10 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     unfold,
+    masked_fill,
+    masked_fill_,
+    index_fill,
+    index_fill_,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -910,8 +915,12 @@ __all__ = [
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
     'hypot',
     'hypot_',
+    'index_fill',
+    'index_fill_',
     'bernoulli_',
     'log_normal',
     'log_normal_',
