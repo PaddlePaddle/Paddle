@@ -84,6 +84,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_gru',
     'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc',
+    'conv2d_fusion',
     'fused_attention',
     'fused_feedforward',
 ]

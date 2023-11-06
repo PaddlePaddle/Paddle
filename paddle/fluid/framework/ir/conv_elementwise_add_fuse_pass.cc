@@ -115,7 +115,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     new_op_desc.SetAttr("activation", act_type);
     new_op_desc.SetOutput("Output", {output_name});
     new_op_desc.SetAttr("is_test", true);
-    new_op_desc.SetAttr("use_cudnn", false);
+    new_op_desc.SetAttr("use_cudnn", true);
 
     bool is_fp16_precision =
         static_cast<phi::DataType>(Get<int>("model_precision")) ==
@@ -126,7 +126,7 @@ void ConvElementwiseAddFusePass::ApplyImpl(ir::Graph* graph) const {
     bool cutlass_can_fuse = CutlassTeller::Instance()->CbaCanSupport(
         conv_op->Op(), scope, act_type, Get<int>("gpu_device_id"));
     if (cutlass_can_fuse && cutlass_enable && is_fp16_precision) {
-      new_op_desc.SetAttr("use_cutlass", true);
+      new_op_desc.SetAttr("use_cudnn", false);
     }
 
     auto* elementwise_add_op_desc = elementwise_add_op->Op();
