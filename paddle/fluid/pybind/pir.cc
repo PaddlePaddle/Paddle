@@ -128,7 +128,8 @@ std::string GetValueInfo(Value v) {
 }
 
 void BindProgram(py::module *m) {
-  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(
+      *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.

@@ -50,4 +50,5 @@ PD_REGISTER_KERNEL(gaussian,
                    ALL_LAYOUT,
                    phi::GaussianKernel,
                    float,
-                   phi::dtype::float16) {}
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
