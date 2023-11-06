@@ -134,7 +134,7 @@ class GLU(Layer):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Shape:
-        - input: Tensor with any shape.
+        - input: Tensor which the size of the given aixs is even.
         - output: Tensor which the size of the given aixs is halved.
 
     Examples:
