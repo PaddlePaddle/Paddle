@@ -345,7 +345,6 @@ class FCMKLDNNHandler
   std::shared_ptr<dnnl::memory> AcquireResidualMemory(
       const phi::DenseTensor* residual, float scale_data) {
     auto dims = this->fwd_pd_->dst_desc().get_dims();
-    void* residual_ptr = const_cast<void*>(residual->data());
     if (phi::funcs::is_int8<T_in>()) {
       auto memory_p =
           GetBinaryAddValueInt8(this->dev_ctx_, residual, dims, scale_data);
