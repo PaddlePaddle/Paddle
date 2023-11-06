@@ -20,7 +20,7 @@ from paddle.utils import convert_to_list
 
 from ..base import core
 from ..base.data_feeder import check_type, check_variable_and_dtype
-from ..base.framework import Variable, in_dygraph_mode
+from ..base.framework import Variable, in_dygraph_mode, in_dynamic_or_pir_mode
 from ..base.layer_helper import LayerHelper
 from ..framework import _current_expected_place
 from ..nn import BatchNorm2D, Conv2D, Layer, ReLU, Sequential
@@ -1937,7 +1937,7 @@ def nms(
     """
 
     def _nms(boxes, iou_threshold):
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.nms(boxes, iou_threshold)
 
         else:
@@ -2017,7 +2017,7 @@ def nms(
     if top_k is None:
         return keep_boxes_idxs[sorted_sub_indices]
 
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         top_k = shape if shape < top_k else top_k
         _, topk_sub_indices = paddle.topk(scores[keep_boxes_idxs], top_k)
         return keep_boxes_idxs[topk_sub_indices]
