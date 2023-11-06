@@ -167,7 +167,19 @@ class GradSlotMeta {
 
   void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
     dist_attr_ = dist_attr;
+    is_dist_meta = true;
   }
+
+  const phi::DDim& DistTensorGlobalDims() const {
+    return dist_tensor_global_dims_;
+  }
+
+  void SetDistTensorGlobalDims(const phi::DDim& dims) {
+    dist_tensor_global_dims_ = dims;
+    is_dist_meta = true;
+  }
+
+  bool IsDistMeta() const { return is_dist_meta; }
 
  private:
   bool stop_gradient_{false};
@@ -178,6 +190,8 @@ class GradSlotMeta {
   // Save the dist attr of the forward input Tensor for proper resharding
   // operation when compute the input Tensor's gradient
   phi::distributed::TensorDistAttr dist_attr_;
+  phi::DDim dist_tensor_global_dims_;
+  bool is_dist_meta{false};
 };
 
 class GradNodeBase {

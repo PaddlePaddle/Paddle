@@ -499,12 +499,28 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
   for (size_t i = 0; i < in_grads->size(); i++) {
     paddle::Tensor& grad = (*in_grads)[i];
     if (!grad.initialized() && grad_in_metas[i].HasTensorMeta()) {
-      auto tensor_with_zero = paddle::experimental::full(
-          phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
-          0.0,
-          grad_in_metas[i].GetTensorMeta().dtype,
-          grad_in_metas[i].GetPlace());
-      grad.set_impl(tensor_with_zero.impl());
+      if (grad_in_metas[i].IsDistMeta()) {
+        grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            grad_in_metas[i].DistTensorGlobalDims(),
+            grad_in_metas[i].DistAttr()));
+        if (grad_in_metas[i].GetTensorMeta().dims.size() != -1) {
+          auto tensor_with_zero = paddle::experimental::full(
+              phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+              0.0,
+              grad_in_metas[i].GetTensorMeta().dtype,
+              grad_in_metas[i].GetPlace());
+          *(static_cast<phi::distributed::DistTensor*>(grad.impl().get())
+                ->unsafe_mutable_value()) =
+              *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+        }
+      } else {
+        auto tensor_with_zero = paddle::experimental::full(
+            phi::vectorize(grad_in_metas[i].GetTensorMeta().dims),
+            0.0,
+            grad_in_metas[i].GetTensorMeta().dtype,
+            grad_in_metas[i].GetPlace());
+        grad.set_impl(tensor_with_zero.impl());
+      }
     }
   }
 }
@@ -518,13 +534,29 @@ void EagerUtils::FillZeroForEmptyOptionalGradOutput(
       if (grad.defined() && grad.is_selected_rows()) {
         continue;
       }
-      auto tensor_with_zero =
-          paddle::experimental::full(  // only create dense tensor.
+      if (grad_output_metas[i].IsDistMeta()) {
+        grad.set_impl(std::make_shared<phi::distributed::DistTensor>(
+            grad_output_metas[i].DistTensorGlobalDims(),
+            grad_output_metas[i].DistAttr()));
+        if (grad_output_metas[i].GetTensorMeta().dims.size() != -1) {
+          auto tensor_with_zero = paddle::experimental::full(
               phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
               0.0,
               grad_output_metas[i].GetTensorMeta().dtype,
               grad_output_metas[i].GetPlace());
-      grad.set_impl(tensor_with_zero.impl());
+          *(static_cast<phi::distributed::DistTensor*>(grad.impl().get())
+                ->unsafe_mutable_value()) =
+              *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+        }
+      } else {
+        auto tensor_with_zero =
+            paddle::experimental::full(  // only create dense tensor.
+                phi::vectorize(grad_output_metas[i].GetTensorMeta().dims),
+                0.0,
+                grad_output_metas[i].GetTensorMeta().dtype,
+                grad_output_metas[i].GetPlace());
+        grad.set_impl(tensor_with_zero.impl());
+      }
     }
   }
 }
@@ -537,12 +569,27 @@ void EagerUtils::FillZeroForEmptyGradInput(paddle::Tensor* in_grad,
         paddle::platform::errors::Fatal(
             "Unable to fill empty grad inputs due to empty GradSlotMeta"));
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-    auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
-                                   0.0,
-                                   tensor_meta.dtype,
-                                   grad_in_meta.GetPlace());
-    in_grad->set_impl(tensor_with_zero.impl());
+    if (grad_in_meta.IsDistMeta()) {
+      in_grad->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
+      if (tensor_meta.dims.size() != -1) {
+        auto tensor_with_zero =
+            paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                       0.0,
+                                       tensor_meta.dtype,
+                                       grad_in_meta.GetPlace());
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      }
+    } else {
+      auto tensor_with_zero =
+          paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                     0.0,
+                                     tensor_meta.dtype,
+                                     grad_in_meta.GetPlace());
+      in_grad->set_impl(tensor_with_zero.impl());
+    }
   }
 }
 
@@ -550,12 +597,27 @@ void EagerUtils::FillZeroForEmptyOptionalGradInput(
     paddle::Tensor* in_grad, const GradSlotMeta& grad_in_meta) {
   if (!in_grad->initialized() && grad_in_meta.HasTensorMeta()) {
     const auto& tensor_meta = grad_in_meta.GetTensorMeta();
-    auto tensor_with_zero =
-        paddle::experimental::full(phi::vectorize(tensor_meta.dims),
-                                   0.0,
-                                   tensor_meta.dtype,
-                                   grad_in_meta.GetPlace());
-    in_grad->set_impl(tensor_with_zero.impl());
+    if (grad_in_meta.IsDistMeta()) {
+      in_grad->set_impl(std::make_shared<phi::distributed::DistTensor>(
+          grad_in_meta.DistTensorGlobalDims(), grad_in_meta.DistAttr()));
+      if (tensor_meta.dims.size() != -1) {
+        auto tensor_with_zero =
+            paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                       0.0,
+                                       tensor_meta.dtype,
+                                       grad_in_meta.GetPlace());
+        *(static_cast<phi::distributed::DistTensor*>(in_grad->impl().get())
+              ->unsafe_mutable_value()) =
+            *(static_cast<phi::DenseTensor*>(tensor_with_zero.impl().get()));
+      }
+    } else {
+      auto tensor_with_zero =
+          paddle::experimental::full(phi::vectorize(tensor_meta.dims),
+                                     0.0,
+                                     tensor_meta.dtype,
+                                     grad_in_meta.GetPlace());
+      in_grad->set_impl(tensor_with_zero.impl());
+    }
   }
 }
 
