@@ -322,14 +322,6 @@
     func : quantize_xpu
     data_type : x
 
-- op : self_dp_attention
-  args : (Tensor x, float alpha = 1.0f, int head_number = 1)
-  output : Tensor(out)
-  infer_meta :
-    func : SelfDPAttenInferMeta
-  kernel :
-    func : self_dp_attention
-
 - op : squeeze_excitation_block
   args : (Tensor x, Tensor filter, Tensor filter_max, Tensor bias, Tensor branch, int[] act_type, float[] act_param, int[] filter_dims)
   output : Tensor(out)

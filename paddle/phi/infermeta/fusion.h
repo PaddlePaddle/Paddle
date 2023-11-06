@@ -519,11 +519,6 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
                                           MetaTensor* variance,
                                           MetaConfig config = MetaConfig());
 
-void SelfDPAttenInferMeta(const MetaTensor& x,
-                          const float alpha,
-                          const int head_number,
-                          MetaTensor* out);
-
 void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
                                    const std::vector<const MetaTensor*>& w,
                                    const std::vector<const MetaTensor*>& bias,

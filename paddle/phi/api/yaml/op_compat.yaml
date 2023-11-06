@@ -2633,12 +2633,6 @@
   outputs :
     {out : Out, summed_ids : SummedIds}
 
-- op : self_dp_attention
-  inputs :
-    x : X
-  outputs :
-    out : Out
-
 - op : selu
   backward : selu_grad
   inputs :
