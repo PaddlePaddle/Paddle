@@ -14,8 +14,9 @@
 
 import os
 
+import numpy as np
 from semi_auto_parallel_simple_net import (
-    MPDemoNet,
+    DemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
 
@@ -58,20 +59,28 @@ class TestSimpleNetWithGradientHookForSemiAutoParallel(
         loss.backward()
 
     def test_register_grad_hook(self):
-        model = MPDemoNet(
-            self.w0, self.w1, self._mesh, param_suffix="register_grad_hook"
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        model = dist.shard_layer(
+            DemoNet("mp_demo_register_grad_hook"), self._mesh, self.shard_fn
         )
-        model.w0._register_grad_hook(backward_hook())
+        model.parameters()[0]._register_grad_hook(backward_hook())
+
         self.run_dynamic(model)
         global hook_triggered
         assert hook_triggered
         hook_triggered = False
 
     def test_register_hook(self):
-        model = MPDemoNet(
-            self.w0, self.w1, self._mesh, param_suffix="register_hook"
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        model = dist.shard_layer(
+            DemoNet("mp_demo_register_hook"), self._mesh, self.shard_fn
         )
-        model.w0.register_hook(backward_hook())
+        model.parameters()[0].register_hook(backward_hook())
+
         self.run_dynamic(model)
         global hook_triggered
         assert hook_triggered

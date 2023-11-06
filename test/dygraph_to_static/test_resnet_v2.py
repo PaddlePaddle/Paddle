@@ -427,7 +427,7 @@ class TestResnet(Dy2StTestBase):
         )
 
     @test_pir_only
-    def test_resnet_new_ir(self):
+    def test_resnet_pir(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)
         np.testing.assert_allclose(

@@ -243,7 +243,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -297,7 +297,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             [-1.       , 0.30000001,  1.       ])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardtanh(x, min, max)
     else:
         check_variable_and_dtype(
@@ -364,7 +364,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
             [0.        , 1.        , 0.66666669])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
@@ -418,7 +418,7 @@ def hardswish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.       , 5.        , 0.66666669])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
@@ -696,9 +696,7 @@ def rrelu(x, lower=1.0 / 8.0, upper=1.0 / 3.0, training=True, name=None):
 
     if lower < 0 or lower > 1:
         raise ValueError(
-            "The lower value must be no less than zero or greater than one. Received: {}.".format(
-                lower
-            )
+            f"The lower value must be no less than zero or greater than one. Received: {lower}."
         )
 
     if upper < lower:
@@ -1298,7 +1296,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
@@ -1365,7 +1363,7 @@ def softshrink(x, threshold=0.5, name=None):
             f"The threshold must be no less than zero. Received: {threshold}."
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -1391,7 +1389,7 @@ def softsign(x, name=None):
         softsign(x) = \frac{x}{1 + |x|}
 
     Parameters:
-        x (Tensor): The input Tensor with data type float32, float64.
+        x (Tensor): The input Tensor with data type float32, float64, complex64 or complex128.
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
     Returns:
@@ -1409,7 +1407,7 @@ def softsign(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softsign(x)
 
     check_variable_and_dtype(
@@ -1448,7 +1446,7 @@ def swish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.23840584,  0.        ,  0.73105860])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.swish(x)
     else:
         check_variable_and_dtype(

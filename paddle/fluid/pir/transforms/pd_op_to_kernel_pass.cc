@@ -37,7 +37,7 @@
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/utils/flags.h"
 
 PHI_DECLARE_bool(print_ir);
@@ -520,10 +520,7 @@ phi::KernelKey GetKernelKey(
   if (op->isa<paddle::dialect::SeedOp>()) {
     VLOG(6) << "SeedOp doesn't need a kernel";
     auto backend = paddle::experimental::ParseBackend(place);
-    return {backend,
-            phi::DataLayout::ANY,
-            TransToPhiDataType(
-                op->result(0).type().dyn_cast<DenseTensorType>().dtype())};
+    return {backend, phi::DataLayout::ANY, phi::DataType::INT32};
   }
 
   if (op->isa<paddle::dialect::FullWithTensorOp>()) {
@@ -615,19 +612,16 @@ phi::KernelKey GetKernelKey(
             paddle::experimental::BackendSet(data_op_backend);
         VLOG(8) << "Update kernel backend set from owner op (DataOp): "
                 << data_op_backend;
-      } else if (op->operand_source(i)
-                     .dyn_cast<pir::OpResult>()
-                     .owner()
-                     ->isa<pir::CombineOp>()) {
-        auto combine_op =
-            op->operand_source(i).dyn_cast<pir::OpResult>().owner();
+      } else if (op_res.owner()->isa<pir::CombineOp>()) {
+        auto combine_op = op_res.owner();
         for (size_t j = 0; j < combine_op->num_operands(); ++j) {
-          if (combine_op->operand_source(j)
-                  .dyn_cast<pir::OpResult>()
-                  .owner()
-                  ->isa<DataOp>()) {
-            auto data_op =
-                combine_op->operand_source(j).dyn_cast<pir::OpResult>().owner();
+          auto combine_op_res =
+              combine_op->operand_source(j).dyn_cast<pir::OpResult>();
+          if (!combine_op_res) {
+            continue;
+          }
+          if (combine_op_res.owner()->isa<DataOp>()) {
+            auto data_op = combine_op_res.owner();
             auto data_place =
                 data_op->attribute<PlaceAttribute>("place").data();
 
@@ -815,14 +809,14 @@ void HandleForWhileOp(
         phi::errors::PreconditionNotMet(
             "[%d]'s input of [%s] op MUST in map pair", 0, op_item->name()));
     auto new_in = map_value_pair->at(cur_in);
-    if (i == 0)
+    if (i == 0) {
       cond_val = new_in;
-    else
+    } else {
       vec_in.push_back(new_in);
+    }
   }
 
   pir::Builder builder(ctx, block);
-
   auto base_while_op = op_item->dyn_cast<paddle::dialect::WhileOp>();
   auto new_while_op = builder.Build<paddle::dialect::WhileOp>(cond_val, vec_in);
   pir::Block* body_block = new_while_op.body_block();
@@ -1153,7 +1147,8 @@ std::vector<pir::Value> BuildOpInputList(
                           op_info_parser,
                           kernel.InputAt(tensor_param_index).backend,
                           i);
-        VLOG(6) << "Infer kernel backend from input " << i << " of op ";
+        VLOG(6) << "Infer kernel backend from input " << i << " of op "
+                << op_item->name();
 
         bool need_trans =
             (in_place.GetType() != phi::AllocationType::UNDEFINED) &&

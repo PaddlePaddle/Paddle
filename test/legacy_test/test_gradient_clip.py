@@ -180,9 +180,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
                 v,
                 rtol=1e-05,
                 atol=1e-08,
-                err_msg='gradient clip by global norm has wrong results!, \nu={}\nv={}\ndiff={}'.format(
-                    u, v, u - v
-                ),
+                err_msg=f'gradient clip by global norm has wrong results!, \nu={u}\nv={v}\ndiff={u - v}',
             )
 
     # test whether the output is right when use 'set_gradient_clip'

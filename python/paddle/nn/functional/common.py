@@ -1155,9 +1155,7 @@ def dropout(
                     dropout_prob, Variable
                 ) and not dropout_prob.shape != [1]:
                     raise TypeError(
-                        "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                            p.shape
-                        )
+                        f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
                     )
                 attrs = {
                     'dropout_prob': dropout_prob,
@@ -2050,7 +2048,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     if epsilon > 1.0 or epsilon < 0.0:
         raise ValueError("The value of epsilon must be between 0 and 1.")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.label_smooth(label, prior_dist, float(epsilon))
 
     check_variable_and_dtype(
