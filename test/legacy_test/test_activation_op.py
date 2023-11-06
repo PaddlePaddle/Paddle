@@ -3906,7 +3906,10 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestSTanhScaleA(TestSTanh):
@@ -3953,6 +3956,7 @@ class TestSTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3972,6 +3976,7 @@ class TestSTanhAPI(unittest.TestCase):
             for r in [out]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
