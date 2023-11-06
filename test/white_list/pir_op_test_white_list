@@ -177,6 +177,7 @@ test_roi_pool_op
 test_rrelu_op
 test_scale_op
 test_searchsorted_op
+test_seed_op
 test_segment_ops
 test_segment_ops_static_build
 test_selu_op

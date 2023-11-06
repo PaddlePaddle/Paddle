@@ -173,7 +173,7 @@ class FunctionSpec:
         return args_with_spec, kwargs_with_spec
 
     @switch_to_static_graph
-    def newir_to_static_inputs_with_spec(self, input_with_spec, main_program):
+    def pir_to_static_inputs_with_spec(self, input_with_spec, main_program):
         """
         Constructs feed layer by inputs with InputSpec information for main program.
 
@@ -450,9 +450,7 @@ def convert_to_input_spec(inputs, input_spec):
             real_spec.shape = input_spec.shape
         else:
             logging_utils.warn(
-                "input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} ".format(
-                    input_spec=input_spec, real_spec=real_spec
-                )
+                f"input spec is not compatitable with real inputs. input_spec: {input_spec} , real_spec: {real_spec} "
             )
         return real_spec
     else:

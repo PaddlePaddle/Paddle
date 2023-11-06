@@ -327,6 +327,7 @@
   output : Tensor(out)
   infer_meta :
     func : ElementwiseInferMeta
+    spmd_rule : ElementwiseBinaryInferSpmd
   kernel :
     func : bitwise_and
     backend : x
@@ -337,6 +338,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : bitwise_not
     backend : x
@@ -503,6 +505,7 @@
   infer_meta :
     func : ConcatInferMeta
     param : [x, axis]
+    spmd_rule : ConcatInferSpmdDynamic
   kernel :
     func : concat
     data_type : x
@@ -550,6 +553,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : cos
   inplace: (x -> out)
@@ -819,6 +823,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : exp
   inplace : (x -> out)
@@ -1035,13 +1040,15 @@
 
 - op : gather_nd
   args : (Tensor x, Tensor index)
-  output : Tensor
+  output : Tensor(out)
   infer_meta :
     func : GatherNdInferMeta
   kernel :
     func : gather_nd
     data_type : x
   backward : gather_nd_grad
+  data_transform :
+    skip_transform : index
 
 - op : gather_tree
   args : (Tensor ids, Tensor parents)
@@ -1241,6 +1248,8 @@
     data_type : x
   inplace : (x -> out)
   backward : index_put_grad
+  data_transform :
+    skip_transform : indices
 
 - op : index_sample
   args : (Tensor x, Tensor index)
@@ -2180,6 +2189,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : rsqrt
   inplace : (x -> out)
@@ -2360,6 +2370,7 @@
   output : Tensor
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : silu
   backward : silu_grad
@@ -2369,6 +2380,7 @@
   output : Tensor(out)
   infer_meta :
     func : UnchangedInferMeta
+    spmd_rule : ElementwiseUnaryInferSpmd
   kernel :
     func : sin
   inplace: (x -> out)
