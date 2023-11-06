@@ -104,6 +104,12 @@ class CommTask {
     return;
   }
 
+  virtual void ClearRecord() {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return;
+  }
+
   virtual std::string GetCommErrors() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));

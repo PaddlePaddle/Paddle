@@ -112,6 +112,7 @@ void CommTaskManager::CommTaskLoop() {
         iter = comm_task_list_.erase(iter);
       } else {
         if (task->IsStarted() && task->IsCompleted()) {
+          iter->ClearRecord();
           iter = comm_task_list_.erase(iter);
         } else {
           ++iter;
@@ -136,6 +137,7 @@ void CommTaskManager::CommTaskLoop() {
          iter != start_comm_task_map_.end();) {
       auto task = iter->second;
       if (task->IsCompleted()) {
+        iter->ClearRecord();
         iter = start_comm_task_map_.erase(iter);
         LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
       } else {
