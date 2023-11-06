@@ -32,7 +32,6 @@ SEED = 2020
 np.random.seed(22)
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not(x):
     x = paddle.to_tensor(x)
     if not x:
@@ -54,7 +53,6 @@ def test_logical_not(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not_2(x):
     x = paddle.to_tensor(x)
 
@@ -67,7 +65,6 @@ def test_logical_not_2(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_and(x):
     x = paddle.to_tensor(x)
 
@@ -85,7 +82,6 @@ def test_logical_and(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_and_2(x):
     x = paddle.to_tensor(x)
 
@@ -109,7 +105,6 @@ def test_logical_and_2(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_or(x):
     x = paddle.to_tensor(x)
 
@@ -127,7 +122,6 @@ def test_logical_or(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_or_2(x):
     x = paddle.to_tensor(x)
 
@@ -139,7 +133,6 @@ def test_logical_or_2(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_logical_not_and_or(x):
     x = paddle.to_tensor(x)
 
@@ -151,7 +144,6 @@ def test_logical_not_and_or(x):
     return x
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_shape_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
@@ -161,7 +153,6 @@ def test_shape_equal(x):
         return paddle.ones([1, 2, 3])
 
 
-@test_legacy_and_pir_api_and_pir_exe
 def test_shape_not_equal(x):
     x = paddle.to_tensor(x)
     y = paddle.zeros([1, 2, 3])
