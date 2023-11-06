@@ -519,6 +519,24 @@ class TestShareBufferOpTranscriber(unittest.TestCase):
         ), "share_buffer should be translated to share_data"
 
 
+class TestDataOp(unittest.TestCase):
+    def test_data_op(self):
+        place = core.Place()
+        place.set_place(paddle.CPUPlace())
+
+        new_scope = paddle.static.Scope()
+        main_program = paddle.static.Program()
+        with paddle.static.scope_guard(new_scope):
+            with paddle.static.program_guard(main_program):
+                _ = paddle.static.data(name="y", shape=[3, 9, 5], dtype="int64")
+        l = pir.translate_to_pir(main_program.desc)
+        self.assertTrue(len(l.global_block().ops) > 0)
+        self.assertTrue(l.global_block().ops[0].name() == "pd_op.data")
+        data_op = l.global_block().ops[0]
+        self.assertIn("dtype", data_op.attrs)
+        self.assertEqual(data_op.attrs["dtype"], "int64")
+
+
 class TestCheckUnregisteredOp(unittest.TestCase):
     def test_program(self):
         main_program = paddle.static.Program()
