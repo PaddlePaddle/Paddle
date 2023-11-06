@@ -20,6 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -340,7 +341,7 @@ def stanh(x, scale_a=0.67, scale_b=1.7159, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.stanh(x, scale_a, scale_b)
     else:
         check_variable_and_dtype(
@@ -2026,7 +2027,7 @@ def trunc(input, name=None):
             [[ 0.,  1.],
              [-0., -2.]])
     '''
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.trunc(input)
     else:
         inputs = {"X": input}
@@ -2671,7 +2672,7 @@ def inverse(x, name=None):
              [0.        , 0.50000000]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.inverse(x)
     else:
 
@@ -3360,7 +3361,7 @@ def log2(x, name=None):
             Tensor(shape=[1], dtype=float64, place=Place(cpu), stop_gradient=True,
             [1.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log2(x)
     else:
         check_variable_and_dtype(
@@ -6061,11 +6062,15 @@ def frac(x, name=None):
         paddle.int64,
         paddle.float32,
         paddle.float64,
+        DataType.INT32,
+        DataType.INT64,
+        DataType.FLOAT32,
+        DataType.FLOAT64,
     ]:
         raise TypeError(
             f"The data type of input must be one of ['int32', 'int64', 'float32', 'float64'], but got {x.dtype}"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         y = _C_ops.trunc(x)
         return _C_ops.subtract(x, y)
     else:
@@ -6708,7 +6713,7 @@ def i0e(x, name=None):
             Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.99999994, 0.46575963, 0.30850831, 0.24300036, 0.20700191])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.i0e(x)
     else:
         check_variable_and_dtype(x, "x", ["float32", "float64"], "i0e")
@@ -6828,7 +6833,7 @@ def polygamma(x, n, name=None):
     if n == 0:
         return digamma(x)
     else:
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return _C_ops.polygamma(x, n)
         else:
             check_variable_and_dtype(

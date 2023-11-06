@@ -69,10 +69,10 @@ class PipelinePassBase(PassBase):
         )
 
         for type in type_to_program.keys():
-            if paddle.framework.get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if paddle.framework.get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
-                type_to_program[type] = paddle.pir.translate_to_new_ir(
+                type_to_program[type] = paddle.pir.translate_to_pir(
                     type_to_program[type].desc
                 )
             else:

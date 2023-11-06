@@ -126,9 +126,9 @@ const paddle::framework::Variable* GetVariableByName(
     const std::unordered_map<const paddle::framework::Variable*, std::string>&
         variable_2_var_name);
 
-std::vector<std::string> GetOriginInputNames(std::string op_name);
+std::vector<std::string> GetOriginInputNames(const std::string& op_name);
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name);
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name);
 
 void PrintValuesAndVariables(
     const pir::Block& block,
