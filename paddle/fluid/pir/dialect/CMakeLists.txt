@@ -92,7 +92,9 @@ add_custom_command(
           ${op_yaml_file4}
           ${op_yaml_file5}
   VERBATIM)
-
+add_custom_target(
+  op_header_and_source_gen ALL DEPENDS ${op_header_file} ${op_source_file}
+                                       ${op_vjp_source_file})
 set(api_gen_yaml_files
     ${op_forward_yaml_file1},${op_forward_yaml_file2},${op_backward_yaml_file1},${op_backward_yaml_file2},${op_yaml_file3},${op_yaml_file4},${op_yaml_file5}
 )
@@ -191,11 +193,15 @@ add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
 #Note(risemeup1):compile some *.cc files which do not depend on primitive_vjp_experimental into op_dialect.a/lib
 file(GLOB_RECURSE op_dialect_srcs "*.cc")
-list(REMOVE_ITEM op_dialect_srcs
-     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
-     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc)
+list(
+  REMOVE_ITEM
+  op_dialect_srcs
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc)
 
 set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
+
 set(op_dialect_deps phi phi_utils pir type_info)
 
 cc_library(
@@ -207,12 +213,14 @@ cc_library(
 set(op_dialect_vjp_srcs
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
-    ${op_decomp_source_file} ${op_vjp_source_file})
-set(op_dialect_vjp_deps op_dialect primitive_vjp_experimental)
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/op_dialect.cc
+    ${op_decomp_source_file}
+    ${op_vjp_source_file})
+set(op_dialect_vjp_deps primitive_vjp_experimental op_dialect)
 
 cc_library(
   op_dialect_vjp
-  SRCS ${op_dialect_vjp_sources}
+  SRCS ${op_dialect_vjp_srcs}
   DEPS ${op_dialect_vjp_deps})
 
 if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
