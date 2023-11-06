@@ -377,7 +377,7 @@ bool AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
     }
   }
   std::vector<TensorDistAttr> new_input_attrs;
-  for (size_t i; i < n_inputs; i++) {
+  for (size_t i = 0; i < n_inputs; i++) {
     auto& e = input_attrs[i];
     std::vector<std::shared_ptr<PlacementStatus>> placements(
         process_mess.ndim(), std::make_shared<ReplicatedStatus>());
