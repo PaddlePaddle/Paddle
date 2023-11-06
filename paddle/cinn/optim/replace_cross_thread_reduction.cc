@@ -29,6 +29,7 @@
 
 namespace cinn {
 namespace optim {
+namespace {
 
 namespace {
 

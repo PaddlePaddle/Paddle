@@ -28,30 +28,28 @@ namespace distributed {
 
 bool SToRReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
-  // TODO(GhostScreaming): Fix problems of using uninitialized DistTensor's
-  // local_dims const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
 
-  flag &= in_dist_attr.is_shard();
-  flag &= out_dist_attr.is_replicated();
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  // TODO(GhostScreaming): Fix problems of using uninitialized DistTensor's
-  // local_dims Ensure the tensor is balanced split, or we need send/recv rather
-  // than all_gather int split_axis =
-  // GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first; int64_t
-  // num_of_process = in_process_mesh.size(); flag &=
-  // (in.local_dims()[static_cast<int>(split_axis)] * num_of_process ==
-  //          in.dims()[static_cast<int>(split_axis)]);
+  // Ensure the tensor is balanced split, or we need send/recv rather than
+  // all_gather
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+  int64_t num_of_process = in_process_mesh.size();
+  RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
+                                num_of_process ==
+                            in.dims()[static_cast<int>(split_axis)]);
 
-  return flag;
+  return true;
 }
 
 void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
@@ -117,7 +115,52 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   }
 }
 
+bool SToRReshardFunctionCrossMesh::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  const auto& in_dist_attr = in.dist_attr();
+  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
+
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+  int64_t num_of_process = in_process_mesh.size();
+  RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
+                                num_of_process ==
+                            in.dims()[static_cast<int>(split_axis)]);
+
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+
+  return true;
+}
+
+void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
+                                        const DistTensor& in,
+                                        const TensorDistAttr& out_dist_attr,
+                                        DistTensor* out) {
+  VLOG(3) << "Call SToRReshardFunctionCrossMesh Eval";
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  SameStatusReshardFunction same_status_func;
+  DistTensor tmp_result;
+
+  TensorDistAttr tmp_dist_attr = in.dist_attr();
+  tmp_dist_attr.set_process_mesh(out_process_mesh);
+  same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+
+  SToRReshardFunction s_to_r_func;
+  s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+}
+
 REGISTER_RESHARD_FUNC(SToRReshardFunction);
+REGISTER_RESHARD_FUNC(SToRReshardFunctionCrossMesh);
 
 }  // namespace distributed
 }  // namespace phi

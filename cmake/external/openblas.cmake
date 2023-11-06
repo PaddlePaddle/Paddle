@@ -46,9 +46,8 @@ endif()
 file(GLOB CBLAS_SOURCE_FILE_LIST ${CBLAS_SOURCE_DIR})
 list(LENGTH CBLAS_SOURCE_FILE_LIST RES_LEN)
 if(RES_LEN EQUAL 0)
-  execute_process(
-    COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
-            "https://github.com/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
+  execute_process(COMMAND ${GIT_EXECUTABLE} clone -b ${CBLAS_TAG}
+                          "${GIT_URL}/xianyi/OpenBLAS.git" ${CBLAS_SOURCE_DIR})
 else()
   # check git tag
   execute_process(

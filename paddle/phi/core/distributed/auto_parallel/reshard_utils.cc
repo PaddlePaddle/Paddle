@@ -15,10 +15,13 @@
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
 
 #include "glog/logging.h"
+#include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/device_context.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
 #include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
+#include "paddle/phi/core/enforce.h"
 
 namespace phi {
 namespace distributed {
@@ -142,6 +145,24 @@ bool IsCurRankInMesh(const ProcessMesh& process_mesh) {
           process_ids.end());
 }
 
+// Only Input is DistTensor and current device id isn't in DistTensor's mesh
+// will return true.
+bool NeedComputationClipForPP(
+    const std::shared_ptr<phi::TensorBase>& tensor_impl) {
+  PADDLE_ENFORCE_EQ(
+      phi::distributed::DistTensor::classof(tensor_impl.get()),
+      true,
+      phi::errors::InvalidArgument(
+          "The input tensor of NeedComputationClipForPP should be "
+          "``phi::distributed::DistTensor``. "
+          "However it's %s",
+          typeid(tensor_impl.get()).name()));
+  return !IsCurRankInMesh(
+      std::static_pointer_cast<phi::distributed::DistTensor>(tensor_impl)
+          ->dist_attr()
+          .process_mesh());
+}
+
 Place GetDefaultPlace() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (phi::backends::gpu::GetGPUDeviceCount() >= 0) {
@@ -149,6 +170,14 @@ Place GetDefaultPlace() {
   }
 #endif
   return paddle::CPUPlace();
+}
+
+phi::DeviceContext* GetDistTensorDeviceContext(
+    phi::distributed::DistTensor* input) {
+  // TODO(GhostScreaming): pipeline parallel may create an undefined middle grad
+  // tensor. In such case, we need to get default place.
+  auto place = input && input->defined() ? input->place() : GetDefaultPlace();
+  return phi::DeviceContextPool::Instance().Get(place);
 }
 
 }  // namespace distributed
