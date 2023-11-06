@@ -46,10 +46,6 @@
 #ifdef PADDLE_WITH_CUSTOM_DEVICE
 #include "paddle/phi/backends/device_manager.h"
 #endif
-PADDLE_DEFINE_EXPORTED_bool(
-    new_executor_log_memory_stats,
-    false,
-    "Log memory stats after each op runs, just used for debug.");
 
 PHI_DECLARE_bool(use_mkldnn);
 PHI_DECLARE_bool(check_nan_inf);
@@ -602,6 +598,11 @@ void BuildOpFuncList(const platform::Place& place,
   for (size_t i = 0; i < ops.size(); ++i) {
     auto op = ops[i].get();
     const std::string& op_type = op->Type();
+    if (execution_config.used_for_inference) {
+      if (op_type == "feed" || op_type == "fetch") {
+        continue;
+      }
+    }
 
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
@@ -986,7 +987,7 @@ void BuildOpFuncList(const platform::Place& place,
       // gc---------------------------------------------
       auto iter = unused_var_map.find(op);
       if (iter == unused_var_map.end()) {
-        interpreter::LogDeviceMemoryStats(place);
+        memory::LogDeviceMemoryStats(place, op_type);
         continue;
       }
 
@@ -1036,7 +1037,7 @@ void BuildOpFuncList(const platform::Place& place,
       }
       delete garbages;  // free mem
 
-      interpreter::LogDeviceMemoryStats(place);
+      memory::LogDeviceMemoryStats(place, op_type);
     }
   }
 
@@ -1131,21 +1132,6 @@ void BuildVariableScope(const framework::BlockDesc& block,
   }
 }
 
-void LogDeviceMemoryStats(const platform::Place& place) {
-  if (FLAGS_new_executor_log_memory_stats && platform::is_gpu_place(place)) {
-    VLOG(0) << "memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatCurrentValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-    VLOG(0) << "max_memory_allocated: "
-            << static_cast<double>(memory::DeviceMemoryStatPeakValue(
-                   "Allocated", place.device)) /
-                   1024 / 1024
-            << " MB";
-  }
-}
-
 void SetDeviceCommContext(framework::OperatorBase* operator_base,
                           platform::DeviceContext* dev_ctx) {
   if (operator_base->HasAttr("ring_id")) {
@@ -1221,7 +1207,7 @@ const paddle::framework::Variable* GetVariableByName(
   return nullptr;
 }
 
-std::vector<std::string> GetOriginInputNames(std::string op_name) {
+std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -1234,7 +1220,7 @@ std::vector<std::string> GetOriginInputNames(std::string op_name) {
   return ret;
 }
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);

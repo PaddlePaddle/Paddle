@@ -453,6 +453,14 @@ void layer_norm_grad(const Tensor& x,
   }
 
   // cast dtype to float32 if dtype =float16 or bfloat16
+  if (x.dtype() == phi::DataType::FLOAT16 ||
+      x.dtype() == phi::DataType::BFLOAT16) {
+    x_cast = cast<T>(x_cast, phi::DataType::FLOAT32);
+    out_grad_cast = cast<T>(out_grad_cast, phi::DataType::FLOAT32);
+    if (scale_ptr) {
+      scale_cast = cast<T>(scale_cast, phi::DataType::FLOAT32);
+    }
+  }
 
   auto x_sub_mean = x_cast - mean_;          // M,N
   auto tmp = (1.0 / (variance_ + epsilon));  // M,1
@@ -480,6 +488,10 @@ void layer_norm_grad(const Tensor& x,
     auto x_grad_tmp = dx_end - d_mean_d_std;
     x_grad_tmp = reshape<T>(x_grad_tmp, phi::vectorize(x.dims()));
 
+    if (x.dtype() == phi::DataType::FLOAT16 ||
+        x.dtype() == phi::DataType::BFLOAT16) {
+      x_grad_tmp = cast<T>(x_grad_tmp, x.dtype());
+    }
     set_output<T>(x_grad_tmp, x_grad);
   }
 
@@ -489,6 +501,10 @@ void layer_norm_grad(const Tensor& x,
           (x_sub_mean_mul_sqrt_var_1 * out_grad_cast)
               .sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       scale_grad_tmp = reshape<T>(scale_grad_tmp, scale_ptr->shape());
+      if (scale_ptr->dtype() == phi::DataType::FLOAT16 ||
+          scale_ptr->dtype() == phi::DataType::BFLOAT16) {
+        scale_grad_tmp = cast<T>(scale_grad_tmp, scale_ptr->dtype());
+      }
       set_output<T>(scale_grad_tmp, scale_grad);
     } else {
       scale_grad = nullptr;
@@ -500,6 +516,10 @@ void layer_norm_grad(const Tensor& x,
       auto bias_grad_tmp =
           out_grad_cast.sum(std::vector<int64_t>({0}), x_cast.dtype(), true);
       bias_grad_tmp = reshape<T>(bias_grad_tmp, bias_ptr->shape());
+      if (bias_ptr->dtype() == phi::DataType::FLOAT16 ||
+          bias_ptr->dtype() == phi::DataType::BFLOAT16) {
+        bias_grad_tmp = cast<T>(bias_grad_tmp, bias_ptr->dtype());
+      }
       set_output<T>(bias_grad_tmp, bias_grad);
     } else {
       bias_grad = nullptr;
@@ -649,10 +669,20 @@ void softmax_grad(const Tensor& out,
         set_output<T>(tmp_x_grad, x_grad);
       }
     } else {
-      set_output<T>(
-          full<T>(phi::vectorize(out_grad.dims()), 0.0, out_grad.dtype()),
-          x_grad);
+      set_output<T>(out_grad * 0.0, x_grad);
     }
+  }
+}
+
+template <typename T>
+void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition,
+                        out_grad,
+                        full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    set_output<T>(res, x_grad);
   }
 }
 

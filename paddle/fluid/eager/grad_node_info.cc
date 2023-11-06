@@ -105,9 +105,16 @@ void GradNodeBase::SetGradInMeta(const paddle::Tensor& fwd_out,
   }
 
   if (!fwd_out.initialized()) {
-    VLOG(7)
-        << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
-    return;
+    if (fwd_out.defined() && fwd_out.is_dist_tensor() &&
+        phi::distributed::NeedComputationClipForPP(fwd_out.impl())) {
+      VLOG(3) << "Tensor " << fwd_out.name() << " is DistTensor,"
+              << " and needs computation clip for pipeline parallel."
+              << " Still SetGradInMeta for it.";
+    } else {
+      VLOG(7)
+          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
+      return;
+    }
   }
 
   const phi::DenseTensor* dense_tensor = nullptr;
@@ -183,9 +190,16 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
     }
 
     if (!fwd_out_tensor.initialized()) {
-      VLOG(7)
-          << "Skip Configuring GradSlotMeta for uninitialized GradInput Tensor";
-      return;
+      if (fwd_out_tensor.defined() && fwd_out_tensor.is_dist_tensor() &&
+          !phi::distributed::NeedComputationClipForPP(fwd_out_tensor.impl())) {
+        VLOG(3) << "Tensor " << fwd_out_tensor.name() << " is DistTensor,"
+                << " and needs computation clip for pipeline parallel."
+                << " Still SetGradInMeta for it.";
+      } else {
+        VLOG(7) << "Skip Configuring GradSlotMeta for uninitialized GradInput "
+                   "Tensor";
+        return;
+      }
     }
 
     // Record TensorMeta
@@ -277,10 +291,7 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
       meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
       // Set DistAttr
-      PADDLE_ENFORCE_EQ(dist_tensor->defined(),
-                        true,
-                        phi::errors::InvalidArgument(
-                            "The forward input DistTensor is not defined."));
+      // Forward input DistTensor could be uninitialized.
       PADDLE_ENFORCE_NE(
           dist_tensor->dist_attr().empty(),
           true,

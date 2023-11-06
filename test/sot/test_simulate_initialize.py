@@ -31,6 +31,18 @@ def foo(x, y):
     return out
 
 
+def foo2(x, y):
+    t = nn.Softmax()
+    out1 = t(paddle.to_tensor([x, y], dtype="float32"))
+    out2 = t(paddle.to_tensor([x, y], dtype="float32"))
+    return out1 + out2
+
+
+def error_foo(x):
+    t = nn.Linear(10, 10)
+    return t(x)
+
+
 def bar(x):
     a = A(x)
     t = paddle.to_tensor(x)
@@ -40,11 +52,19 @@ def bar(x):
 class TestInit(TestCaseBase):
     def test_init_paddle_layer(self):
         self.assert_results(foo, 1, 2)
+        self.assert_results(foo2, 1, 2)
 
     def test_init_python_object(self):
         sot_output = symbolic_translate(bar)([1.0, 2.0])
         dyn_output = bar([1.0, 2.0])
         self.assert_nest_match(sot_output, dyn_output)
+
+    def test_error(self):
+        def run():
+            inputs = paddle.randn((10, 10))
+            symbolic_translate(error_foo)(inputs)
+
+        self.assertRaises(paddle.jit.sot.utils.exceptions.InnerError, run)
 
 
 if __name__ == "__main__":

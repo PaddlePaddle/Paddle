@@ -22,6 +22,7 @@ import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
 
@@ -164,29 +165,6 @@ class TestSoftmaxOp_ZeroDim1(TestSoftmaxOp):
                 check_prim=True, check_pir=True, check_prim_pir=True
             )
 
-    def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        if self.use_cudnn or self.dtype == np.float16:
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ["X"],
-                    "Out",
-                    max_relative_error=0.01,
-                    check_dygraph=(not self.use_mkldnn),
-                    check_pir=True,
-                )
-        else:
-            self.check_grad(
-                ["X"],
-                "Out",
-                max_relative_error=0.01,
-                check_dygraph=(not self.use_mkldnn),
-                check_prim=True,
-                check_pir=True,
-            )
-
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda(), "core is not compiled with CUDA"
@@ -229,29 +207,6 @@ class TestSoftmaxOp_ZeroDim2(TestSoftmaxOp):
         else:
             self.check_output(
                 check_prim=True, check_pir=True, check_prim_pir=True
-            )
-
-    def test_check_grad(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        if self.use_cudnn or self.dtype == np.float16:
-            place = core.CUDAPlace(0)
-            if core.is_float16_supported(place):
-                self.check_grad_with_place(
-                    place,
-                    ["X"],
-                    "Out",
-                    max_relative_error=0.01,
-                    check_dygraph=(not self.use_mkldnn),
-                    check_pir=True,
-                )
-        else:
-            self.check_grad(
-                ["X"],
-                "Out",
-                max_relative_error=0.01,
-                check_dygraph=(not self.use_mkldnn),
-                check_prim=True,
-                check_pir=True,
             )
 
 
@@ -558,6 +513,7 @@ class TestSoftmaxAPI(unittest.TestCase):
     def executed_api(self):
         self.softmax = F.softmax
 
+    @test_with_pir_api
     def test_static_check(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -636,6 +592,7 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static(self):
         with static_guard():
             main_prog = base.Program()
@@ -643,18 +600,17 @@ class TestSoftmaxAPI_ZeroDim(unittest.TestCase):
                 x = paddle.rand([])
                 x.stop_gradient = False
                 out = paddle.nn.functional.softmax(x)
-                base.backward.append_backward(out)
 
                 # Test compile shape
-                self.assertEqual(x.shape, ())
-                self.assertEqual(out.shape, ())
+                self.assertEqual(tuple(x.shape), ())
+                self.assertEqual(tuple(out.shape), ())
 
                 exe = base.Executor()
                 result = exe.run(main_prog, fetch_list=[x, out])
 
                 # Test runtime shape
-                self.assertEqual(result[0].shape, ())
-                self.assertEqual(result[1].shape, ())
+                self.assertEqual(tuple(result[0].shape), ())
+                self.assertEqual(tuple(result[1].shape), ())
 
 
 class TestSoftmaxInplaceAPI(TestSoftmaxAPI):

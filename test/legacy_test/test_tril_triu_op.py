@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base, tensor
 from paddle.base import core
-from paddle.base.framework import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 
 class TrilTriuOpDefaultTest(OpTest):
@@ -200,14 +200,15 @@ for dtype in ["float64", "float16", "bfloat16"]:
 class TestTrilTriuOpAPI(unittest.TestCase):
     """test case by using API and has -1 dimension"""
 
+    @test_with_pir_api
     def test_api(self):
         paddle.enable_static()
 
         dtypes = ['float16', 'float32']
         for dtype in dtypes:
-            prog = Program()
-            startup_prog = Program()
-            with program_guard(prog, startup_prog):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = paddle.static.data(
                     shape=[1, 9, -1, 4], dtype=dtype, name='x'
@@ -221,7 +222,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 )
                 exe = base.Executor(place)
                 tril_out, triu_out = exe.run(
-                    base.default_main_program(),
+                    prog,
                     feed={"x": data},
                     fetch_list=[tril_out, triu_out],
                 )
@@ -243,14 +244,15 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 np.testing.assert_allclose(tril_out, np.tril(data), rtol=1e-05)
                 np.testing.assert_allclose(triu_out, np.triu(data), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         paddle.enable_static()
 
         dtypes = ['float16', 'float32']
         for dtype in dtypes:
-            prog = Program()
-            startup_prog = Program()
-            with program_guard(prog, startup_prog):
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
+            with paddle.static.program_guard(prog, startup_prog):
                 data = np.random.random([1, 9, 9, 4]).astype(dtype)
                 x = paddle.static.data(
                     shape=[1, 9, -1, 4], dtype=dtype, name='x'
@@ -264,7 +266,7 @@ class TestTrilTriuOpAPI(unittest.TestCase):
                 )
                 exe = base.Executor(place)
                 triu_out = exe.run(
-                    base.default_main_program(),
+                    prog,
                     feed={"x": data},
                     fetch_list=[triu_out],
                 )

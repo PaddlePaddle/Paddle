@@ -312,11 +312,11 @@ class Optimizer:
         Examples:
             .. code-block:: python
 
-                import paddle
-                emb = paddle.nn.Embedding(10, 10)
+                >>> import paddle
+                >>> emb = paddle.nn.Embedding(10, 10)
 
-                adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
-                state_dict = adam.state_dict()
+                >>> adam = paddle.optimizer.Adam(0.001, parameters=emb.parameters())
+                >>> state_dict = adam.state_dict()
 
         '''
         state_dict = {}
@@ -1154,7 +1154,7 @@ class Optimizer:
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
 
-    def _new_ir_create_optimization_pass(
+    def _pir_create_optimization_pass(
         self, parameters_and_grads, param_group_idx=0
     ):
         """Add optimization operators to update gradients to tensors.
@@ -1306,6 +1306,16 @@ class Optimizer:
             parameter_list = parameters if parameters else self._parameter_list
             with paddle.static.program_guard(program, startup_program):
                 if in_pir_mode():
+                    if parameter_list is None:
+                        # all parameters will be updated.
+                        program_all_params = (
+                            program.global_block().all_parameters()
+                        )
+                        parameter_list = [
+                            param
+                            for param in program_all_params
+                            if param.stop_gradient is False
+                        ]
                     params_grads = []
                     grads = paddle.autograd.ir_backward.grad(
                         loss, parameter_list, no_grad_vars=act_no_grad_set
@@ -1406,7 +1416,7 @@ class Optimizer:
                         params_grads['params'], self.regularization
                     )
                 if in_pir_mode():
-                    optimize_ops = self._new_ir_create_optimization_pass(
+                    optimize_ops = self._pir_create_optimization_pass(
                         params_grads, param_group_idx=param_group_idx
                     )
                 else:

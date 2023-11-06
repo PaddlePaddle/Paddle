@@ -19,6 +19,7 @@ from op_test import OpTest
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestAllcloseOp(OpTest):
@@ -174,12 +175,13 @@ class TestAllcloseError(unittest.TestCase):
 
 
 class TestAllcloseOpFp16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         x_data = np.random.rand(10, 10).astype('float16')
         y_data = np.random.rand(10, 10).astype('float16')
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
-            y = paddle.static.data(shape=[10, 10], name='x', dtype='float16')
+            y = paddle.static.data(shape=[10, 10], name='y', dtype='float16')
             out = paddle.allclose(x, y, rtol=1e-05, atol=1e-08)
             if core.is_compiled_with_cuda():
                 place = paddle.CUDAPlace(0)

@@ -178,6 +178,7 @@ class TestMultinomialBF16OP(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.op_type = "multinomial"
+        self.python_api = paddle.multinomial
         self.dtype = np.uint16
         self.init_data()
         self.inputs = {"X": convert_float_to_uint16(self.input_np)}
@@ -190,7 +191,9 @@ class TestMultinomialBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def sample_output(self, out):
         return sample_output_one_dimension(out, 4)

@@ -1111,9 +1111,12 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
 // TODO(wilber): Add a normal test.
 TEST(pattern_rewrite, Patterns) {
   pir::IrContext *ctx = pir::IrContext::Instance();
+
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<pir::BuiltinDialect>();
   auto *test_dialect = ctx->GetOrRegisterDialect<Conv2dFusionTestDialect>();
   test_dialect->RegisterOp<paddle::dialect::Conv2dFusionOpTest>();
-  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
   pir::Program program(ctx);
   pir::Builder builder = pir::Builder(ctx, program.block());
   BuildProgram(builder);
@@ -1122,7 +1125,7 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  //   pm.AddPass(ir::CreateConstantFoldingPass());
+  //   pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.AddPass(pir::CreateReorderBlockOpsPass());
   pm.EnablePassTiming();
