@@ -38,26 +38,26 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
         Save model parameters for auto parallel inference.
         Supporting dp + mp + pp + sharding(stage1), dp + sharding stage2-3.
         MoE not sdupported till MoE is supported in auto parallel mode.
-    Args:
-        path_prefix: path prefix to save
-                    If `path_preifx` ends with path sepreator,
-                        the path is processed as a directory and parameters will be saved in it,
-                        automatically named saved_parameters.
-                    Otherwisw, the parameters will be saved with name
-                        path_preifx_dist{global_rank}.pdparams and  path_preifx_dist{global_rank}.pdattrs
 
-        dist_model:
-                model in distributed modeß
+    Args:
+        path_prefix: path prefix to save. If `path_preifx` ends with path sepreator,
+            the path is processed as a directory and parameters will be saved in it,
+            automatically named saved_parameters. Otherwisw, the parameters will be saved with name
+            path_preifx_dist{global_rank}.pdparams and path_preifx_dist{global_rank}.pdattrs.
+        dist_model: model in distributed model.
         cvt2cpu: wheather to move parameters to CPU when using sharding stage 3.
-                The var is invalid if not using sharding stage 3.
+            The var is invalid if not using sharding stage 3.
+
     Returns:
         None
+
     Examples:
-        dist_model = build_distributed_model()
 
-        path_prefix = "path/to/save_infer"
+        .. code-block:: python
 
-        save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
+            dist_model = build_distributed_model()
+            path_prefix = "path/to/save_infer"
+            save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
 
     Outputs:
         path/to/save_infer_dist0.pdparams path/to/save_infer_dist1.pdparams path/to/save_infer_dist2.pdparams ...
