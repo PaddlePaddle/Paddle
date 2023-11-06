@@ -682,8 +682,13 @@ PHI_DEFINE_EXPORTED_bool(
  */
 PHI_DEFINE_EXPORTED_bool(
     use_mkldnn,
+#ifdef PADDLE_WITH_DNNL
     phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ? true
-                                                                     : false,
+                                                                     : false
+#else
+    false
+#endif
+    ,
     "Use MKLDNN to run");
 
 /**
