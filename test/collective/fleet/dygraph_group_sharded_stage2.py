@@ -184,6 +184,7 @@ def test_dp_stage2():
     strategy = fleet.DistributedStrategy()
     strategy.hybrid_configs["sharding_configs"].accumulate_steps = 2
     strategy.hybrid_configs["sharding_configs"].delay_scale_loss = True
+    fleet.init(is_collective=True, strategy=strategy)
     mlp = MLP()
     state_dict = mlp.state_dict()
     mlp1 = MLP()
