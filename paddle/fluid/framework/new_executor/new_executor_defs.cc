@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -237,7 +238,8 @@ const std::vector<size_t>& Instruction::GCCheckVars() const {
 }
 
 void Instruction::ResetContext(const VariableValueMap& in_vars,
-                               const VariableValueMap& out_vars) {
+                               const VariableValueMap& out_vars,
+                               const std::string& op_name) {
   runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
   infershape_ctx_.reset(
       new RuntimeInferShapeContext(*OpBase(), *runtime_ctx_.get()));
@@ -246,16 +248,37 @@ void Instruction::ResetContext(const VariableValueMap& in_vars,
   static framework::Scope scope_;
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope_, dev_ctx_, *runtime_ctx_.get()));
+
+  auto op_with_kernel =
+      dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
+  if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
+  }
 }
 
 void Instruction::ResetContextWithScope(const VariableValueMap& in_vars,
                                         const VariableValueMap& out_vars,
-                                        const framework::Scope& scope) {
+                                        const framework::Scope& scope,
+                                        const std::string& op_name) {
   runtime_ctx_.reset(new RuntimeContext(in_vars, out_vars));
   infershape_ctx_.reset(
       new RuntimeInferShapeContext(*OpBase(), *runtime_ctx_.get()));
   execution_ctx_.reset(
       new ExecutionContext(*OpBase(), scope, dev_ctx_, *runtime_ctx_.get()));
+
+  auto op_with_kernel =
+      dynamic_cast<const framework::OperatorWithKernel*>(OpBase());
+  if (op_with_kernel != nullptr && op_with_kernel->Info().infer_meta_) {
+    if (infershape_ctx_->HasRuntimeAttributes() == false) {
+      compat_infermeta_ctx_ = paddle::framework::BuildInferMetaContext(
+          infershape_ctx_.get(), op_name);
+      can_use_infermeta_ctx_ = true;
+    }
+  }
 }
 
 std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
@@ -265,6 +288,10 @@ std::shared_ptr<RuntimeContext> Instruction::InnerRuntimeContext() const {
 std::shared_ptr<RuntimeInferShapeContext> Instruction::InnerInferShapeContext()
     const {
   return infershape_ctx_;
+}
+
+const phi::InferMetaContext* Instruction::InnerCompatInferMetaContext() const {
+  return &compat_infermeta_ctx_;
 }
 
 std::shared_ptr<ExecutionContext> Instruction::InnerExecutionContext() const {
