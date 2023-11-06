@@ -1280,7 +1280,7 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
  * Note: If Ture, executor will use new IR
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
-                         false,
+                         true,
                          "Enable new IR in executor");
 
 /**
@@ -1303,7 +1303,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
-                         true,
+                         false,
                          "Enable new IR in executor");
 
 /**
