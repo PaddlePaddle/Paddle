@@ -2193,6 +2193,81 @@ def split(x, num_or_sections, axis=0, name=None):
         return outs
 
 
+def tensor_split(x, indices_or_sections, axis=0, name=None):
+    """
+    TODO(megemini)
+    """
+    if x.ndim < 1:
+        raise ValueError(
+            f"The input tensor's dimension must be greater than 0, but got {x.ndim}"
+        )
+
+    total_n = x.shape[axis]
+
+    def _tensor_split_array(total_n, sections, axis):
+        splits = []
+
+        starts = 0
+        ends = 0
+        for idx in sections:
+            ends = idx
+            sub_array = paddle.slice(
+                x, axes=[axis], starts=[starts], ends=[ends]
+            )
+            splits.append(sub_array)
+            starts = ends
+
+        starts = ends
+        ends = total_n
+        sub_array = paddle.slice(x, axes=[axis], starts=[starts], ends=[ends])
+        splits.append(sub_array)
+
+        return splits
+
+    def _tensor_split_int(total_n, sections, axis):
+        if sections <= 0:
+            raise ValueError('indices_or_sections must be larger than 0.')
+
+        base, mod = divmod(total_n, sections)
+        section_array = [base + 1] * mod + [base] * (sections - mod)
+        section_array = np.cumsum(section_array[:-1], dtype=int)
+
+        return _tensor_split_array(total_n, section_array, axis)
+
+    if isinstance(indices_or_sections, int):
+        return _tensor_split_int(total_n, indices_or_sections, axis)
+
+    elif isinstance(indices_or_sections, (list, tuple)):
+        return _tensor_split_array(total_n, indices_or_sections, axis)
+
+    else:
+        raise ValueError(
+            f"The indices_or_sections should be int, list or tuple of ints, but got {type(indices_or_sections)}"
+        )
+
+
+def hsplit(x, num_or_sections, name=None):
+    """
+    TODO(megemini)
+    """
+    if x.ndim < 1:
+        raise ValueError(
+            f"The input tensor's dimension must be greater than 0, but got {x.ndim}"
+        )
+    return split(x, num_or_sections, axis=1, name=name)
+
+
+def dsplit(x, num_or_sections, name=None):
+    """
+    TODO(megemini)
+    """
+    if x.ndim < 3:
+        raise ValueError(
+            f"The input tensor's dimension must be greater than 2, but got {x.ndim}"
+        )
+    return split(x, num_or_sections, axis=2, name=name)
+
+
 def vsplit(x, num_or_sections, name=None):
     """
     Split the input tensor into multiple sub-Tensors along the vertical axis, which is equivalent to ``paddle.split`` with ``axis=0``.

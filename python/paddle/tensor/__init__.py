@@ -134,6 +134,9 @@ from .manipulation import scatter_nd  # noqa: F401
 from .manipulation import shard_index  # noqa: F401
 from .manipulation import slice  # noqa: F401
 from .manipulation import split  # noqa: F401
+from .manipulation import tensor_split  # noqa: F401
+from .manipulation import hsplit  # noqa: F401
+from .manipulation import dsplit  # noqa: F401
 from .manipulation import vsplit  # noqa: F401
 from .manipulation import squeeze  # noqa: F401
 from .manipulation import squeeze_  # noqa: F401
@@ -571,6 +574,9 @@ tensor_method_func = [
     'shard_index',
     'slice',
     'split',
+    'tensor_split',
+    'hsplit',
+    'dsplit',
     'vsplit',
     'chunk',
     'tensordot',

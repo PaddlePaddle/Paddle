@@ -30,8 +30,10 @@ def func_ref(func, x, num_or_sections):
     return func(x, indices_or_sections)
 
 
-# TODO: add other split API, such as dsplit、hsplit
 test_list = [
+    (paddle.tensor_split, np.array_split),
+    (paddle.hsplit, np.hsplit),
+    (paddle.dsplit, np.dsplit),
     (paddle.vsplit, np.vsplit),
 ]
 
