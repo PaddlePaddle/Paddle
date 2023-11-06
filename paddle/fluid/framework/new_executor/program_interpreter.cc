@@ -910,11 +910,6 @@ void ProgramInterpreter::RunOperator(const Instruction& instr_node) {
   }
 
   {
-    platform::RecordEvent compute_event(
-        "compute",
-        platform::TracerEventType::OperatorInner,
-        1,
-        platform::EventRole::kInnerOp);
     if (op_with_kernel == nullptr) {  // operator base
       instr_node.OpBase()->Run(*local_scope, place_);
     } else {
