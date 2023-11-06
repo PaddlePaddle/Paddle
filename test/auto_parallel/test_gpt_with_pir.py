@@ -19,10 +19,10 @@ import tempfile
 import unittest
 
 
-class TestGPTNewIR(unittest.TestCase):
-    def test_gpt_newir(self):
+class TestGPTPir(unittest.TestCase):
+    def test_gpt_pir(self):
         file_dir = os.path.dirname(os.path.abspath(__file__))
-        launch_model_path = os.path.join(file_dir, "gpt_with_newir.py")
+        launch_model_path = os.path.join(file_dir, "gpt_with_pir.py")
 
         if os.environ.get("WITH_COVERAGE", "OFF") == "ON":
             coverage_args = ["-m", "coverage", "run", "--branch", "-p"]

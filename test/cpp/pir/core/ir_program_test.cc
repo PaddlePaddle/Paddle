@@ -110,10 +110,10 @@ TEST(program_test, program) {
   auto op1 = builder.Build<pir::GetParameterOp>("a", dense_tensor_dtype);
 
   EXPECT_EQ(&program, op1->GetParentProgram());
-  EXPECT_EQ(op1->result(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op1->result_type(0).dialect().id(), paddle_dialect->id());
   using Interface = paddle::dialect::ParameterConvertInterface;
   Interface *a_interface =
-      op1->result(0).type().dialect().GetRegisteredInterface<Interface>();
+      op1->result_type(0).dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> a_var =
       a_interface->ParameterToVariable(program.GetParameter("a"));
   const phi::DenseTensor &a_tensor = a_var->Get<phi::DenseTensor>();
@@ -130,9 +130,9 @@ TEST(program_test, program) {
   // (5) Def b = GetParameterOp("b"), and create DenseTensor for b.
   auto op2 = builder.Build<pir::GetParameterOp>("b", dense_tensor_dtype);
 
-  EXPECT_EQ(op2->result(0).type().dialect().id(), paddle_dialect->id());
+  EXPECT_EQ(op2->result_type(0).dialect().id(), paddle_dialect->id());
   Interface *b_interface =
-      op2->result(0).type().dialect().GetRegisteredInterface<Interface>();
+      op2->result_type(0).dialect().GetRegisteredInterface<Interface>();
   std::shared_ptr<paddle::framework::Variable> b_var =
       b_interface->ParameterToVariable(program.GetParameter("b"));
   const phi::DenseTensor &b_tensor = b_var->Get<phi::DenseTensor>();
@@ -269,7 +269,7 @@ TEST(program_test, builder) {
 
   paddle::dialect::FullOp full_op = builder.Build<paddle::dialect::FullOp>(
       std::vector<int64_t>{2, 2}, 1.5, phi::DataType::FLOAT32, phi::CPUPlace());
-  pir::Type full_op_output = full_op->result(0).type();
+  pir::Type full_op_output = full_op->result_type(0);
   EXPECT_EQ(program.block()->size(), 1u);
   EXPECT_EQ(program.block()->back(), full_op.operation());
   EXPECT_EQ(full_op.num_operands(), 0u);
