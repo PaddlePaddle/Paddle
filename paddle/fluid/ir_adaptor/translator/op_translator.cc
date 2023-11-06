@@ -2397,6 +2397,7 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
     return op_inputs;
   }
 };
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
