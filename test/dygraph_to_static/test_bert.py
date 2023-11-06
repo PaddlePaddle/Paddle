@@ -266,7 +266,7 @@ class TestBert(Dy2StTestBase):
         return out
 
     @test_pir_only
-    def test_train_new_ir(self):
+    def test_train_pir(self):
         static_loss, static_ppl = self.train_static(
             self.bert_config, self.data_reader
         )
