@@ -1022,9 +1022,13 @@ class _ExecutorCache:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
-        if new_program._pass_opt and "pass_list" in new_program._pass_opt:
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
             for p in new_program._pass_opt['pass_list']:
-                pm = pir.PassManager()
                 pm.add_pass(p)
             for job_type in plan.job_types():
                 ir_program = plan.ir_program(job_type)
