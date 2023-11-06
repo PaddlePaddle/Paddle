@@ -237,22 +237,21 @@ void GradNodeBase::SetGradInMeta(const std::vector<paddle::Tensor>& fwd_out,
                                        ->dims());
       SetIsRunAutoParallel(true);
 
-      phi::DenseTensor* dense_tensor =
-          static_cast<phi::distributed::DistTensor*>(
-              fwd_out_tensor.impl().get())
-              ->unsafe_mutable_value();
+      auto dense_tensor = static_cast<phi::distributed::DistTensor*>(
+                              fwd_out_tensor.impl().get())
+                              ->value();
 
       PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
+          dense_tensor.meta().dtype,
           phi::DataType::UNDEFINED,
           paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
-      meta.SetTensorMeta(dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_out_tensor.place());
 
-      if (dense_tensor->type() == phi::DataType::COMPLEX64 ||
-          dense_tensor->type() == phi::DataType::COMPLEX128) {
+      if (dense_tensor.type() == phi::DataType::COMPLEX64 ||
+          dense_tensor.type() == phi::DataType::COMPLEX128) {
         need_complex_to_real_ = true;
       }
     } else {
@@ -410,16 +409,16 @@ void GradNodeBase::SetGradOutMeta(const paddle::Tensor& fwd_in,
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
               ->dims());
       SetIsRunAutoParallel(true);
-      phi::DenseTensor* dense_tensor =
+      auto dense_tensor =
           static_cast<phi::distributed::DistTensor*>(fwd_in.impl().get())
-              ->unsafe_mutable_value();
+              ->value();
       PADDLE_ENFORCE_NE(
-          dense_tensor->meta().dtype,
+          dense_tensor.meta().dtype,
           phi::DataType::UNDEFINED,
           paddle::platform::errors::Fatal("Attempting to copy DenseTensorMeta "
                                           "with phi::DataType::UNDEFINED,"
                                           "which is illegal."));
-      meta.SetTensorMeta(dense_tensor->meta());
+      meta.SetTensorMeta(dense_tensor.meta());
       meta.SetPlace(fwd_in.place());
     }
   } else {
@@ -488,17 +487,16 @@ void GradNodeBase::SetGradOutMeta(const std::vector<paddle::Tensor>& fwd_in,
                                          fwd_in_tensor.impl().get())
                                          ->dims());
         SetIsRunAutoParallel(true);
-        phi::DenseTensor* dense_tensor =
-            static_cast<phi::distributed::DistTensor*>(
-                fwd_in_tensor.impl().get())
-                ->unsafe_mutable_value();
-        PADDLE_ENFORCE_NE(dense_tensor->dtype(),
+        auto dense_tensor = static_cast<phi::distributed::DistTensor*>(
+                                fwd_in_tensor.impl().get())
+                                ->value();
+        PADDLE_ENFORCE_NE(dense_tensor.dtype(),
                           phi::DataType::UNDEFINED,
                           paddle::platform::errors::Fatal(
                               "Attempting to copy DenseTensorMeta "
                               "with phi::DataType::UNDEFINED,"
                               "which is illegal."));
-        meta.SetTensorMeta(dense_tensor->meta());
+        meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
@@ -571,17 +569,16 @@ void GradNodeBase::SetGradOutMeta(
                                          fwd_in_tensor.impl().get())
                                          ->dims());
         SetIsRunAutoParallel(true);
-        phi::DenseTensor* dense_tensor =
-            static_cast<phi::distributed::DistTensor*>(
-                fwd_in_tensor.impl().get())
-                ->unsafe_mutable_value();
-        PADDLE_ENFORCE_NE(dense_tensor->dtype(),
+        auto dense_tensor = static_cast<phi::distributed::DistTensor*>(
+                                fwd_in_tensor.impl().get())
+                                ->value();
+        PADDLE_ENFORCE_NE(dense_tensor.dtype(),
                           phi::DataType::UNDEFINED,
                           paddle::platform::errors::Fatal(
                               "Attempting to copy DenseTensorMeta "
                               "with phi::DataType::UNDEFINED,"
                               "which is illegal."));
-        meta.SetTensorMeta(dense_tensor->meta());
+        meta.SetTensorMeta(dense_tensor.meta());
         meta.SetPlace(fwd_in_tensor.place());
       }
     } else {
