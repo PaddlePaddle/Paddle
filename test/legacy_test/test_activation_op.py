@@ -3459,8 +3459,9 @@ class TestLog2(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
             with paddle.static.program_guard(
@@ -3508,6 +3509,7 @@ class TestLog2_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -4803,9 +4805,9 @@ create_test_act_fp16_class(TestCELU)
 create_test_act_fp16_class(TestReciprocal)
 create_test_act_fp16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_fp16_class(TestLog2)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_fp16_class(TestLog2)
+    create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
 create_test_act_fp16_class(TestLog1p)
 create_test_act_fp16_class(TestSquare, check_pir=True)
@@ -4953,9 +4955,9 @@ create_test_act_bf16_class(TestCELU)
 create_test_act_bf16_class(TestReciprocal)
 create_test_act_bf16_class(TestLog, check_prim=True, check_pir=True)
 if core.is_compiled_with_rocm():
-    create_test_act_bf16_class(TestLog2)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
 else:
-    create_test_act_bf16_class(TestLog2)
+    create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
 create_test_act_bf16_class(TestLog1p)
 create_test_act_bf16_class(TestSquare, check_pir=True)
