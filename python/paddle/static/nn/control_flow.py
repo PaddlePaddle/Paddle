@@ -1037,9 +1037,7 @@ def switch_case(branch_index, branch_fns, default=None, name=None):
 
             if key in keys_of_fns:
                 raise ValueError(
-                    "The key in 'branch_fns' must be unique, but '{}' appears more than once.".format(
-                        key
-                    )
+                    f"The key in 'branch_fns' must be unique, but '{key}' appears more than once."
                 )
             else:
                 keys_of_fns.append(key)

@@ -469,9 +469,9 @@ def get_device_properties(device=None):
                 device_id = int(device[4:])
             else:
                 raise ValueError(
-                    "The current string {} is not expected. Because paddle.device."
+                    f"The current string {device} is not expected. Because paddle.device."
                     "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriate string again!".format(device)
+                    "Please input appropriate string again!"
                 )
         else:
             raise ValueError(

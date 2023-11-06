@@ -83,6 +83,7 @@ class IR_API alignas(8) Operation final {
   ///
   uint32_t num_results() const { return num_results_; }
   OpResult result(uint32_t index) { return op_result_impl(index); }
+  Type result_type(uint32_t index) { return result(index).type(); }
   std::vector<OpResult> results();
 
   ///

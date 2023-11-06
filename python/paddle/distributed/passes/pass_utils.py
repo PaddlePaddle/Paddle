@@ -316,8 +316,8 @@ def set_skip_gc_vars(num_micro_batches, job_types, sub_programs, jobs):
         job.set_skip_gc_vars(skip_gc_vars)
         suffixed_required_vars[micro_batch_id] |= required_vars
 
-    if get_flags("FLAGS_enable_new_ir_in_executor")[
-        'FLAGS_enable_new_ir_in_executor'
+    if get_flags("FLAGS_enable_pir_in_executor")[
+        'FLAGS_enable_pir_in_executor'
     ]:
         for i, type in enumerate(job_types):
             if i == len(job_types) - 1:
