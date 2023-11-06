@@ -424,6 +424,9 @@ from .tensor.random import (
     randint,
     randint_like,
     randperm,
+    bernoulli_,
+    log_normal,
+    log_normal_,
 )
 from .tensor.search import (
     argmax,

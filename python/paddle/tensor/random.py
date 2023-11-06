@@ -1393,7 +1393,7 @@ def exponential_(x, lam=1.0, name=None):
 def bernoulli_(x, p=0.5, name=None):
     r"""
     This inplace OP fill input Tensor ``x`` with random number from a Bernoulli Distribution with probability ``p``.
-    
+
     Args:
         x (Tensor):  Input tensor. The data type should be float32, float64.
         p (float, optional): probability :math:`p` parameter of Bernoulli Distribution. Default: 0.5.
@@ -1408,23 +1408,22 @@ def bernoulli_(x, p=0.5, name=None):
     if 0 <= p and p <= 1:
         raise ValueError(f"bernoulli_ expects p to be in [0, 1], but got p={p}")
 
-    check_variable_and_dtype(
-            x, "x", ["float32", "float64"], "exponential"
-        )
+    check_variable_and_dtype(x, "x", ["float32", "float64"], "exponential")
 
     uniform_(x, 0, 1)
     return (x < p).astype(x.dtype)
     pass
 
 
-def log_normal(mean=1.0, std=2.0, shape=None, dtype=None):
+def log_normal(shape, mean=0.0, std=1.0, seed=0, dtype=None, name=None):
     r"""
-    Returns a Tensor filled with random values sampled from a log normal
-    distribution, with ``mean``, ``std``, ``shape`` and ``dtype``. 
+    Returns a Tensor filled with random values sampled from a Log Normal
+    Distribution, with ``mean``, ``std``, ``shape`` and ``dtype``.
     The Log Normal Distribution is defined as follows:
-    
+
     .. math::
         f(x) = \frac{1}{x\sigma\sqrt{2\pi}}e^{-\frac{(\ln{x}-\mu)^2}{2\sigma^2}}
+
     Args:
         mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
             If ``mean`` is float, all elements of the output Tensor shared the same mean.
@@ -1441,7 +1440,7 @@ def log_normal(mean=1.0, std=2.0, shape=None, dtype=None):
             Default is None
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
     Returns:
-        - out (Tensor): A Tensor filled with random values sampled from a normal distribution with ``mean`` and ``std`` .
+        - out (Tensor): A Tensor filled with random values sampled from a log normal distribution with ``mean`` and ``std`` .
     Examples:
         .. code-block:: python
             >>> import paddle
@@ -1467,17 +1466,33 @@ def log_normal(mean=1.0, std=2.0, shape=None, dtype=None):
             [0.48646951, 0.00815189, 3.74022293])
             >>> # doctest: -SKIP
     """
-    pass
+    op_type_for_check = 'gaussian/standard_normal/randn/normal'
+    supported_dtypes = ['float32', 'float64', 'float16', 'uint16', 'bfloat16']
+
+    if dtype is None:
+        dtype = paddle.framework.get_default_dtype()
+        if dtype not in supported_dtypes:
+            raise TypeError(
+                "{} only supports {}, but the default dtype is {}".format(
+                    op_type_for_check, supported_dtypes, dtype
+                )
+            )
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    distribution = gaussian(shape, dtype, mean, std, seed)
+    return paddle.exp(distribution)
 
 
-def log_normal_(x, mean=1.0, std=2.0):
+@dygraph_only
+def log_normal_(x, mean=0.0, std=1.0, seed=0, name=None):
     r"""
-    This inplace OP fill input Tensor ``x`` with random number from a Log Normal Distribution 
+    This inplace OP fill input Tensor ``x`` with random number from a Log Normal Distribution
     with ``mean`` and ``std``. The Log Normal Distribution is defined as follows:
-    
+
     .. math::
         f(x) = \frac{1}{x\sigma\sqrt{2\pi}}e^{-\frac{(\ln{x}-\mu)^2}{2\sigma^2}}
-    
+
     Args:
         x (Tensor): The input tensor to be filled with random values.
         mean (float|Tensor, optional): The mean of the output Tensor's normal distribution.
@@ -1505,4 +1520,5 @@ def log_normal_(x, mean=1.0, std=2.0):
              [-1.85169315, -1.50370061,  1.73954511,  0.13331604],
              [ 1.66359663, -0.55764782, -0.59911072, -0.57773495]])
     """
-    pass
+
+    return gaussian_(x, mean, std, seed).exp_()
