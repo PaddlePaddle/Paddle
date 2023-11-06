@@ -340,8 +340,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
+  phi::RecordEvent* xccl_record_event = nullptr;
   if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
+    xccl_record_event = new phi::RecordEvent(
         "xccl reduce compute", platform::TracerEventType::Communication, 1);
     std::pair<const char*, std::vector<std::string>> reduce_type{
         "Reduce type",
@@ -353,7 +354,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
         };
     phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
   }
-  return RunFnInXCCLEnv(
+  std::shared_ptr<ProcessGroup::Task> task = RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
         comm_context->Reduce(out_tensor,
@@ -366,6 +367,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       CommType::REDUCE,
       sync_op,
       use_calc_stream);
+  if (xccl_record_event != nullptr) {
+    delete xccl_record_event;
+  }
+  return task;
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
@@ -988,7 +993,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     platform::RecordEvent record_event(
         "xccl broadcast compute", platform::TracerEventType::Communication, 1);
     const std::vector<int64_t> bcast_root_vec{
-        opts.source_rank * in_tensors.size() + opts.source_root};
+        static_cast<int64_t>(opts.source_rank) * in_tensors.size() +
+        static_cast<int64_t>(opts.source_root)};
     std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
         broadcast_info{
             {"bcast_root", {bcast_root_vec}},
