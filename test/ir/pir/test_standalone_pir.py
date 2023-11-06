@@ -21,8 +21,8 @@ import numpy as np
 import paddle
 
 
-class TestNewIr(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPir(unittest.TestCase):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -47,7 +47,7 @@ class TestNewIr(unittest.TestCase):
 
 
 class TestCombineOp(unittest.TestCase):
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -73,7 +73,7 @@ class TestCombineOp(unittest.TestCase):
 
 
 class TestFeedOp(unittest.TestCase):
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -105,7 +105,7 @@ class TestFeedOp(unittest.TestCase):
 
 
 class TestSelectedRows(unittest.TestCase):
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         # TODO(phlrain): support selected rows in GPU
         paddle.enable_static()
         place = paddle.CPUPlace()
@@ -129,7 +129,7 @@ class TestSelectedRows(unittest.TestCase):
 
 
 class TestAddGradOp(unittest.TestCase):
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -163,8 +163,8 @@ class TestAddGradOp(unittest.TestCase):
         np.testing.assert_array_equal(out[0], gold_res)
 
 
-class TestNewIrDygraph(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPirDygraph(unittest.TestCase):
+    def test_with_pir(self):
         paddle.disable_static()
 
         @paddle.jit.to_static
@@ -179,8 +179,8 @@ class TestNewIrDygraph(unittest.TestCase):
         np.testing.assert_array_equal(z.numpy(), gold_res)
 
 
-class TestNewIrBackwardDygraph(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPirBackwardDygraph(unittest.TestCase):
+    def test_with_pir(self):
         paddle.disable_static()
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.enable_inplace = False
@@ -204,8 +204,8 @@ class TestNewIrBackwardDygraph(unittest.TestCase):
         np.testing.assert_array_equal(y.gradient(), gold_res)
 
 
-class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPirReshapeBackwardDygraph(unittest.TestCase):
+    def test_with_pir(self):
         paddle.disable_static()
         build_strategy = paddle.static.BuildStrategy()
         build_strategy.enable_inplace = False
@@ -233,7 +233,7 @@ class TestNewIrReshapeBackwardDygraph(unittest.TestCase):
 
 
 class TestSplitOp(unittest.TestCase):
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -260,8 +260,8 @@ class TestSplitOp(unittest.TestCase):
             np.testing.assert_array_equal(out[0], np_a[0:2])
 
 
-class TestNewIrPrint(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPirPrint(unittest.TestCase):
+    def test_with_pir(self):
         paddle.enable_static()
         place = (
             paddle.CUDAPlace(0)
@@ -290,12 +290,12 @@ class TestNewIrPrint(unittest.TestCase):
 class TestJitSaveOp(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.model_path = os.path.join(self.temp_dir.name, "new_ir_save_load")
+        self.model_path = os.path.join(self.temp_dir.name, "pir_save_load")
 
     def tearDown(self):
         self.temp_dir.cleanup()
 
-    def test_with_new_ir(self):
+    def test_with_pir(self):
         paddle.disable_static()
 
         linear = paddle.nn.Linear(10, 10)
@@ -328,8 +328,8 @@ class TestJitSaveOp(unittest.TestCase):
         )
 
 
-class TestNewIrConcatDygraph(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPirConcatDygraph(unittest.TestCase):
+    def test_with_pir(self):
         paddle.disable_static()
 
         @paddle.jit.to_static
@@ -346,8 +346,8 @@ class TestNewIrConcatDygraph(unittest.TestCase):
 
 
 # TODO(phlrain): open this after fix pr(55509) confict
-# class TestNewIrLogicalDygraph(unittest.TestCase):
-#     def test_with_new_ir(self):
+# class TestPirLogicalDygraph(unittest.TestCase):
+#     def test_with_pir(self):
 #         paddle.disable_static()
 
 #         @paddle.jit.to_static

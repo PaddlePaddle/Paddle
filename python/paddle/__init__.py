@@ -254,6 +254,8 @@ from .tensor.manipulation import (  # noqa: F401
     unfold,
     masked_fill,
     masked_fill_,
+    index_fill,
+    index_fill_,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -913,4 +915,6 @@ __all__ = [
     'masked_fill_',
     'hypot',
     'hypot_',
+    'index_fill',
+    "index_fill_",
 ]
