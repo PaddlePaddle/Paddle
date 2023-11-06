@@ -24,8 +24,8 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     Type,
 )
 from paddle.base.libpaddle.pir import (  # noqa: F401
-    translate_to_new_ir,
-    translate_to_new_ir_with_param_map,
+    translate_to_pir,
+    translate_to_pir_with_param_map,
     set_global_program,
     set_insertion_point,
     reset_insertion_point_to_start,
@@ -38,5 +38,6 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
 from . import core
 
 from .math_op_patch import monkey_patch_opresult
+from .program_patch import monkey_patch_program
 
 __all__ = []

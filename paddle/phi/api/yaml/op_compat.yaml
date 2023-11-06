@@ -2482,6 +2482,24 @@
   attrs :
     repeats : Repeats
 
+- op : repeat_interleave
+  backward : repeat_interleave_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {repeats : Repeats, axis : dim}
+
+- op : repeat_interleave_with_tensor_index
+  backward : repeat_interleave_with_tensor_index_grad
+  inputs :
+    {x : X, repeats: RepeatTensor}
+  outputs:
+    out : Out
+  attrs:
+    axis : dim
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:

@@ -14,7 +14,6 @@ set(infermeta_srcs CACHE INTERNAL "" FORCE)
 
 # paddle experimental common components
 add_subdirectory(common)
-
 # phi (low level) api headers: include
 # phi (high level) api
 add_subdirectory(api)
