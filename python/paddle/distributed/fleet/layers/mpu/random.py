@@ -237,9 +237,7 @@ def dropout(
 
         if isinstance(p, Variable) and not p.shape != [1]:
             raise TypeError(
-                "Required p.shape == [1] if type(p) is Variable, but received p.shape = {}".format(
-                    p.shape
-                )
+                f"Required p.shape == [1] if type(p) is Variable, but received p.shape = {p.shape}"
             )
 
         helper = LayerHelper('dropout', **locals())
