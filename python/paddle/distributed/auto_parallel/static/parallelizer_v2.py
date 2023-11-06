@@ -430,8 +430,8 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
-        enable_ir = get_flags("FLAGS_enable_new_ir_in_executor")[
-            'FLAGS_enable_new_ir_in_executor'
+        enable_ir = get_flags("FLAGS_enable_pir_in_executor")[
+            'FLAGS_enable_pir_in_executor'
         ]
         ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
