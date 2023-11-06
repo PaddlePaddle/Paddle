@@ -56,7 +56,7 @@ def convert_load(x):
         if isinstance(x, OpResult):
             cur_block = default_main_program().current_block()
 
-            from paddle.jit.newir_dy2static.parameter_recorder import (
+            from paddle.jit.pir_dy2static.parameter_recorder import (
                 _global_inplace_map,
             )
 
