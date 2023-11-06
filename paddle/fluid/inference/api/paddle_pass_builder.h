@@ -215,6 +215,9 @@ class PD_INFER_DECL CpuPassStrategy : public PassStrategy {
   /// \brief Enable the use of MKLDNN.
   void EnableMKLDNN() override;
 
+  /// \brief Disable the use of MKLDNN.
+  void DisableMKLDNN() override;
+
   /// \brief Enable MKLDNN quantize optimization.
   void EnableMkldnnQuantizer() override;
 
