@@ -57,9 +57,9 @@ paddle_includes.append(test_include)
 custom_ops = load(
     name='dist_custom_relu_jit',
     sources=[
-        'dist_custom_relu_op.cc',
-        'dist_custom_relu_op_dup.cc',
-        'dist_custom_relu_op.cu',
+        '../custom_op/custom_relu_op.cc',
+        '../custom_op/custom_relu_op_dup.cc',
+        '../custom_op/custom_relu_op.cu',
     ],
     extra_include_paths=paddle_includes,  # add for Coverage CI
     extra_cxx_cflags=extra_cc_args,  # test for cc flags
