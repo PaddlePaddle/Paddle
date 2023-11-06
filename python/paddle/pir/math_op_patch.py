@@ -447,9 +447,10 @@ def monkey_patch_opresult():
             if impl:
                 setattr(OpResult, magic_method, impl)
 
-        # Handling __getitem__
-        from ..base.variable_index import _getitem_static
+        # Handling __getitem__ and __setitem__
+        from ..base.variable_index import _getitem_static, _setitem_static
 
         OpResult.__getitem__ = _getitem_static
+        OpResult.__setitem__ = _setitem_static
 
         _already_patch_opresult = True
