@@ -171,9 +171,7 @@ def _expand_low_nd_padding(padding):
         padding = [0] + padding
     else:
         raise ValueError(
-            "The size of padding's dimmention should be 1 or 2. But got padding={}".format(
-                padding
-            )
+            f"The size of padding's dimmention should be 1 or 2. But got padding={padding}"
         )
     return padding
 
@@ -2000,8 +1998,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
                 "adaptive": True,
             },
         )
-        # return (pool_out, mask) if return_mask else pool_out
-        return pool_out
+        return (pool_out, mask) if return_mask else pool_out
 
 
 def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):

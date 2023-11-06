@@ -736,8 +736,8 @@ class OpInfoParser:
     def parse_output_optional_list(self):
         optional_list = []
         for output_info in self.op_yaml_item['outputs']:
-            if 'optional' in output_info:
-                if output_info['optional']:
+            if 'optional' in output_info or 'intermediate' in output_info:
+                if output_info['optional'] or output_info['intermediate']:
                     optional_list.append("true")
                 else:
                     optional_list.append("false")
@@ -1018,7 +1018,7 @@ def OpGenerator(
         ):
             op_compat_item = op_compat_item.pop('scalar')
 
-        if op['support_tensor'] != []:
+        if 'support_tensor' in op.keys() and op['support_tensor']:
             scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
                 op
             )
