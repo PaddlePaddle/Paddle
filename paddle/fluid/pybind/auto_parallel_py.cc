@@ -74,6 +74,7 @@ using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::ArgDistAttr;
 using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::Device;
@@ -143,9 +144,9 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   dist_attr->clear_annotated();
 }
 
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_forward(const phi::distributed::SpmdRule &self, const py::args &args);
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_backward(const phi::distributed::SpmdRule &self, const py::args &args);
 
 void BindAutoParallel(py::module *m) {
@@ -180,6 +181,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::RToSReshardFunction>(
       *m, "RToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::RToSReshardFunctionCrossMesh>(
+      *m, "RToSReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SToRReshardFunction>(
@@ -703,7 +708,7 @@ static void prepare_ctx(phi::distributed::InferSpmdContext *ctx,
     parse_single_pyobject(obj, ctx, i);
   }
 }
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
   VLOG(6) << "infer_forward ";
   phi::distributed::InferSpmdContext ctx;
@@ -711,7 +716,7 @@ infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
   return self.InferForward(ctx);
 }
 
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_backward(const phi::distributed::SpmdRule &self, const py::args &args) {
   VLOG(6) << "infer_backward ";
   phi::distributed::InferSpmdContext ctx;

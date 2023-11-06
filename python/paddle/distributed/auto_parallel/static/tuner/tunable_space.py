@@ -143,9 +143,7 @@ def _deserialize_tunable_variable(state):
         or "state" not in state
     ):
         raise ValueError(
-            "Expect state to be a python dict containing class_name and state as keys, but found {}".format(
-                state
-            )
+            f"Expect state to be a python dict containing class_name and state as keys, but found {state}"
         )
 
     cls_name = state["class_name"]

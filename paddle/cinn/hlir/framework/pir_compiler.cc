@@ -25,7 +25,7 @@ namespace framework {
 
 // TODO(Aurelius84): Need abstract this logic to implement Proxy for
 // the co-existance with GraphCompiler.
-std::unique_ptr<Program> PIRCompiler::Build() {
+std::unique_ptr<Program> PirCompiler::Build() {
   m_builder_.Clear();
   // NOTE(Aurelius84): Currently only support each op for one group
   std::vector<pir::GroupPtr> groups;
@@ -38,7 +38,7 @@ std::unique_ptr<Program> PIRCompiler::Build() {
   return std::move(Build(groups));
 }
 
-std::vector<pir::CUDAJITInfo> PIRCompiler::BuildCUDAJITInfo(
+std::vector<pir::CUDAJITInfo> PirCompiler::BuildCUDAJITInfo(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<pir::CUDAJITInfo> vec_res;
 
@@ -78,7 +78,7 @@ std::vector<pir::CUDAJITInfo> PIRCompiler::BuildCUDAJITInfo(
   return vec_res;
 }
 
-std::unique_ptr<Program> PIRCompiler::Build(
+std::unique_ptr<Program> PirCompiler::Build(
     const std::vector<pir::GroupPtr>& groups) {
   auto op_lowerer = CreateOpLowerer<pir::GroupPtr>(target_);
 
@@ -111,7 +111,7 @@ std::unique_ptr<Program> PIRCompiler::Build(
   return std::make_unique<Program>(scope_, std::move(instructions));
 }
 
-void PIRCompiler::ProcessFunction(
+void PirCompiler::ProcessFunction(
     const std::vector<ir::LoweredFunc>& lowered_funcs) {
   for (auto&& func : lowered_funcs) {
     for (auto&& arg : func->args) {
@@ -136,18 +136,18 @@ void PIRCompiler::ProcessFunction(
   }
 }
 
-std::vector<std::unique_ptr<Instruction>> PIRCompiler::BuildInstructions(
+std::vector<std::unique_ptr<Instruction>> PirCompiler::BuildInstructions(
     const std::vector<pir::GroupPtr>& groups) {
   std::vector<std::unique_ptr<Instruction>> instructions;
   for (int idx = 0; idx < groups.size(); ++idx) {
-    auto& fn_name = groups[idx]->fn_name;
+    auto fn_name = groups[idx]->FuncName();
     auto instr =
         std::unique_ptr<Instruction>(new Instruction(target_,
                                                      scope_.get(),
                                                      groups[idx]->input_names,
                                                      groups[idx]->output_names,
                                                      fn_name));
-    VLOG(1) << "Lookup kernel name: " << fn_name;
+    VLOG(4) << "Lookup kernel name: " << fn_name;
     auto* fn_ptr = compiler_->Lookup(fn_name);
     CHECK(fn_ptr);
     instr->SetLoweredFunc(reinterpret_cast<void*>(fn_ptr), fn_name);

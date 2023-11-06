@@ -433,6 +433,7 @@ class PyCodeGen:
         self._f_globals = frame.f_globals
         self._instructions = []
         self.disable_eval_frame = disable_eval_frame
+        self.hooks = []
         if self.disable_eval_frame:
             self.gen_disable_eval_frame()
 
@@ -493,16 +494,21 @@ class PyCodeGen:
         Returns:
             CodeType: The generated code object.
         """
+        for hook in self.hooks:
+            hook()
+        self.hooks.clear()
+
         self.insert_prefix_instructions()
         modify_instrs(self._instructions)
         modify_vars(self._instructions, self._code_options)
         new_code = gen_new_opcode(
             self._instructions, self._code_options, PYCODE_ATTRIBUTES
         )
+
         return new_code
 
     def gen_resume_fn_at(
-        self, index: int, stack_size: int = 0
+        self, index: int, stack_size: int
     ) -> tuple[None | types.FunctionType, OrderedSet[str]]:
         """
         Generates a resume function at the specified index in the instruction list.
@@ -515,6 +521,7 @@ class PyCodeGen:
             tuple: The resume function object and the inputs to the function.
 
         """
+
         self._instructions = get_instructions(self._origin_code)
         # TODO(dev): could give an example code here?
         if self._instructions[index].opname == 'RETURN_VALUE':
@@ -522,6 +529,7 @@ class PyCodeGen:
         inputs = analysis_inputs(self._instructions, index)
         fn_name = ResumeFnNameFactory().next()
         stack_arg_str = fn_name + '_stack_{}'
+
         self._instructions = (
             [
                 gen_instr('LOAD_FAST', argval=stack_arg_str.format(i))
@@ -538,13 +546,12 @@ class PyCodeGen:
             + list(inputs)
             + [
                 var_name
-                for var_name in self._origin_code.co_varnames
+                for var_name in self._code_options['co_varnames']
                 if var_name not in inputs
             ]
         )
 
         self.update_code_name(fn_name, is_resumed_fn=True)
-
         new_code = self.gen_pycode()
         if len(new_code.co_freevars) + len(new_code.co_cellvars) > 0:
             raise FallbackError("Break graph in closure is not support.")
@@ -1019,12 +1026,6 @@ class PyCodeGen:
     def gen_get_iter(self):
         self._add_instr("GET_ITER")
 
-    def add_pure_instructions(self, instructions):
-        """
-        add instructions and do nothing.
-        """
-        self._instructions.extend(instructions)
-
     def _add_instr(self, *args, **kwargs):
         instr = gen_instr(*args, **kwargs)
         self._instructions.append(instr)
@@ -1062,8 +1063,17 @@ class PyCodeGen:
             ):
                 has_null_variable = True
                 self._frame.f_locals[instr.argval].reconstruct(self)
+            elif (
+                instr.opname == 'LOAD_GLOBAL'
+                and instr.argval in self._frame.f_globals.keys()
+                and isinstance(
+                    self._frame.f_globals[instr.argval], NullVariable
+                )
+            ):
+                has_null_variable = True
+                self._frame.f_globals[instr.argval].reconstruct(self)
             else:
-                self.add_pure_instructions([instr])
+                self.extend_instrs([instr])
 
         if has_null_variable:
             new_code = self.gen_pycode()
