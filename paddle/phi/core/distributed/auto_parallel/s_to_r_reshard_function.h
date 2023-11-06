@@ -14,6 +14,7 @@
 
 #pragma once
 #include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
 
 namespace phi {
 namespace distributed {
@@ -23,6 +24,17 @@ class SToRReshardFunction final : public ReshardFunction {
   SToRReshardFunction() = default;
   ~SToRReshardFunction() = default;
 
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
+
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
+
+class SToRReshardFunctionCrossMesh final : public ReshardFunction {
+ public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
 
