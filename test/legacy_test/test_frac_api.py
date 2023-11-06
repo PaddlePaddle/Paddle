@@ -18,7 +18,8 @@ import numpy as np
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def ref_frac(x):
@@ -40,15 +41,13 @@ class TestFracAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
-        with program_guard(Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
             input = paddle.static.data('X', self.x_np.shape, self.x_np.dtype)
             out = paddle.frac(input)
-            place = base.CPUPlace()
-            if base.core.is_compiled_with_cuda():
-                place = base.CUDAPlace(0)
-            exe = base.Executor(place)
+            exe = base.Executor(self.place)
             (res,) = exe.run(feed={'X': self.x_np}, fetch_list=[out])
         out_ref = ref_frac(self.x_np)
         np.testing.assert_allclose(out_ref, res, rtol=1e-05)
@@ -101,6 +100,7 @@ class TestFracError(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_error(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
