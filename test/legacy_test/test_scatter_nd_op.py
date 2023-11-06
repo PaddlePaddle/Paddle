@@ -21,6 +21,7 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -430,49 +431,41 @@ class TestScatterNdOpAPI(unittest.TestCase):
             np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
-
-class TestScatterNdOpStaticAPI(unittest.TestCase):
-    @test_with_pir_api
-    def test_static_graph(self):
-        if not base.core.is_compiled_with_cuda():
-            return
-
-        shape = [2, 3, 4]
-        x = np.arange(int(np.prod(shape))).reshape(shape)
-        index = np.array([[0, 0, 2], [0, 1, 2]])
-        val = np.array([-1, -3])
-
-        paddle.enable_static()
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-            index_t = paddle.static.data(
-                name="index", dtype=index.dtype, shape=index.shape
-            )
-            val_t = paddle.static.data(
-                name="val", dtype=val.dtype, shape=val.shape
-            )
-            gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            cpu_exe = paddle.static.Executor(paddle.CPUPlace())
-            out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
-            gpu_value = gpu_exe.run(
-                feed={
-                    'x': x,
-                    'index': index,
-                    'val': val,
-                },
-                fetch_list=[out_t],
-            )
-            cpu_value = cpu_exe.run(
-                feed={
-                    'x': x,
-                    'index': index,
-                    'val': val,
-                },
-                fetch_list=[out_t],
-            )
+        @switch_to_static_graph
+        @test_with_pir_api
+        def test_static_graph():
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape
+                )
+                val_t = paddle.static.data(
+                    name="val", dtype=val.dtype, shape=val.shape
+                )
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                cpu_exe = paddle.static.Executor(paddle.CPUPlace())
+                out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
+                gpu_value = gpu_exe.run(
+                    feed={
+                        'x': x,
+                        'index': index,
+                        'val': val,
+                    },
+                    fetch_list=[out_t],
+                )
+                cpu_value = cpu_exe.run(
+                    feed={
+                        'x': x,
+                        'index': index,
+                        'val': val,
+                    },
+                    fetch_list=[out_t],
+                )
             np.testing.assert_array_equal(gpu_value, cpu_value)
+
+        test_static_graph()
 
 
 # Test Raise Error
