@@ -94,6 +94,7 @@ pir::Type BuildDtypeTransferOutputType(pir::Type type,
 pir::OpResult AddDtypeTransferOp(pir::Value in,
                                  pir::Block* block,
                                  const phi::KernelKey& kernel_key,
+                                 const phi::Place& origin_place,
                                  const phi::Place& out_place,
                                  const phi::DataType& src_dtype,
                                  const phi::DataType& dst_dtype) {
@@ -130,7 +131,7 @@ pir::OpResult AddDtypeTransferOp(pir::Value in,
                                    "DenseTensorType and SelectedRowsType"));
   }
   if (kernel_backend == phi::Backend::UNDEFINED) {
-    kernel_backend = phi::Backend::CPU;
+    kernel_backend = paddle::experimental::ParseBackend(origin_place);
   }
 
   phi::KernelKey cast_kernel_key(kernel_backend, kernel_layout, src_dtype);

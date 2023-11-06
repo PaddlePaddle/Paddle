@@ -37,6 +37,7 @@ const phi::DataType GetKernelTypeforVar(
 pir::OpResult AddDtypeTransferOp(pir::Value in,
                                  pir::Block* block,
                                  const phi::KernelKey& kernel_key,
+                                 const phi::Place& origin_place,
                                  const phi::Place& out_place,
                                  const phi::DataType& src_dtype,
                                  const phi::DataType& dst_dtype);

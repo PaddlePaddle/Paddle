@@ -1334,6 +1334,7 @@ std::vector<pir::Value> BuildOpInputList(
           new_in = pir::AddDtypeTransferOp(new_in,
                                            block,
                                            kernel_key,
+                                           place,
                                            out_place,
                                            kernel_dtype_for_var,
                                            expected_kernel_key.dtype());
