@@ -18,6 +18,7 @@
 
 #include <unordered_map>
 
+#include "paddle/cinn/adt/generate_map_expr.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/manual_op.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_attribute.h"
 #include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
@@ -25,8 +26,11 @@
 #include "paddle/cinn/hlir/dialect/runtime/ir/jit_kernel_op.h"
 #include "paddle/cinn/hlir/dialect/runtime/ir/runtime_dialect.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
+#include "paddle/cinn/runtime/flags.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_dialect.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr);
 
 namespace cinn {
 namespace dialect {
@@ -147,8 +151,14 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
+        VLOG(1) << "Begin TryGenerateMapExprFromGroup";
+        adt::TryGenerateMapExprFromGroup(group);
         auto group1 =
             std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
+        if (FLAGS_cinn_enable_map_expr) {
+          group1->set_map_expr_ctx(group->mut_map_expr_ctx());
+        }
+        VLOG(1) << "Begin BuildCUDAJITInfo";
         auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
