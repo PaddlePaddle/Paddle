@@ -103,6 +103,7 @@
 #endif
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/fusion/conv2d_fuse_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
@@ -731,6 +732,7 @@ bool AnalysisPredictor::PrepareExecutor() {
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
+      pm.AddPass(::pir::CreateConv2dFusePass());
       pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
       pm.AddPass(::pir::CreateDeadCodeEliminationPass());
       pm.Run(pir_program_.get());
