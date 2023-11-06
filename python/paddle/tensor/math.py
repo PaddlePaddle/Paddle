@@ -6026,7 +6026,7 @@ def heaviside(x, y, name=None):
             [[0.        , 0.20000000, 1.        ],
              [0.        , 1.        , 0.30000001]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.heaviside(x, y)
     else:
         op_type = 'elementwise_heaviside'
