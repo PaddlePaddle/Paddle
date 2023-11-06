@@ -103,9 +103,9 @@ class DependencyBuilder {
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-class NewIrDependencyBuilder : public DependencyBuilder {
+class PirDependencyBuilder : public DependencyBuilder {
  public:
-  NewIrDependencyBuilder();
+  PirDependencyBuilder();
 
   // build op dependencies and return the mapping from op to its downstream-op
   // set
@@ -114,7 +114,7 @@ class NewIrDependencyBuilder : public DependencyBuilder {
 
   void BuildDownstreamMap();
 
-  void ShareDependencyFrom(const NewIrDependencyBuilder& src);
+  void ShareDependencyFrom(const PirDependencyBuilder& src);
 
  private:
   std::vector<paddle::framework::InstructionBase*> instructions_;  // not_owned
