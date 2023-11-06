@@ -144,7 +144,7 @@ class TestPir(unittest.TestCase):
         )
 
     def test_dp_with_fused_linear(self):
-        self.enable_new_ir(False)
+        self.enable_pir(False)
         engine_dp_prog = self.get_engine(
             "dp",
             name="dp_prog_fuse_linear",
@@ -154,10 +154,10 @@ class TestPir(unittest.TestCase):
             self.dataset, 3, batch_size=self.batch_size, log_freq=1
         )
 
-        self.enable_new_ir(True)
+        self.enable_pir(True)
         engine_dp_ir = self.get_engine(
             "dp",
-            name="dp_newir_fuse_linear",
+            name="dp_pir_fuse_linear",
             use_sharding=True,
             fuse_passes_list=['fused_gemm_epilogue_pass'],
         )
