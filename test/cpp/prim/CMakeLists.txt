@@ -33,7 +33,7 @@ endif()
 
 if(NOT WIN32)
   cc_test(
-    test_vjp_new_ir
+    test_vjp_pir
     SRCS test_vjp.cc
     DEPS pir_adaptor op_dialect_vjp pir)
 endif()

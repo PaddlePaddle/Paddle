@@ -25,6 +25,11 @@ cc_library(
   SRCS inplace_pass.cc
   DEPS op_dialect)
 
+cc_library(
+  replace_fetch_with_shadow_output_pass
+  SRCS replace_fetch_with_shadow_output_pass.cc
+  DEPS pd_op_dialect pir)
+
 if(WITH_CINN)
   cc_library(
     pd_build_cinn_pass

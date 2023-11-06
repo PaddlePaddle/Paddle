@@ -44,6 +44,7 @@ set(PYBIND_DEPS
     program_translator
     pd_inplace_pass
     fusion_passes
+    replace_fetch_with_shadow_output_pass
     pir
     new_profiler
     jit_layer
@@ -52,6 +53,10 @@ set(PYBIND_DEPS
     static_tensor_operants
     type_info
     auto_parallel)
+
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pd_build_cinn_pass op_with_group_merge_pass)
+endif()
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)
