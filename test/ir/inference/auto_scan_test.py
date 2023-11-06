@@ -748,9 +748,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
             if not skip_baseline:
                 # baseline: gpu run, we only test float32
                 gpu_config = self.create_inference_config(use_trt=False)
-                prog_config = prog_config.set_input_type(
-                    np.float16
-                ).set_input_type(np.float32)
                 baseline_result = self.run_test_config(
                     model,
                     params,
