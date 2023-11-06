@@ -266,7 +266,7 @@ class TestDistAPI(unittest.TestCase):
             )
             exe = base.Executor(place)
             out = exe.run(
-                base.default_main_program(),
+                main_program,
                 feed={'x': x_i, 'y': y_i},
                 fetch_list=[result],
             )
