@@ -28,12 +28,12 @@ def convert_out_size_to_list(out_size):
         out_size = [0]
     elif isinstance(out_size, (int, np.int32, np.int64)):
         out_size = [out_size]
-    elif isinstance(out_size, Variable):
+    elif isinstance(out_size, (Variable, paddle.pir.OpResult)):
         out_size.stop_gradient = True
         if convert_dtype(out_size.dtype) == 'int64':
             out_size = paddle.cast(out_size, 'int32')
     else:
-        raise TypeError("Out_size only supports Variable or int.")
+        out_size = [int(out_size)]
     return out_size
 
 
