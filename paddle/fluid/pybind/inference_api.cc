@@ -765,12 +765,11 @@ void BindAnalysisConfig(py::module *m) {
       .def(py::init<const std::string &, const std::string &>())
       .def("summary", &AnalysisConfig::Summary)
       .def("set_model",
-           (void (AnalysisConfig::*)(const std::string &)) &
+           (void(AnalysisConfig::*)(const std::string &)) &
                AnalysisConfig::SetModel)
-      .def(
-          "set_model",
-          (void (AnalysisConfig::*)(const std::string &, const std::string &)) &
-              AnalysisConfig::SetModel)
+      .def("set_model",
+           (void(AnalysisConfig::*)(const std::string &, const std::string &)) &
+               AnalysisConfig::SetModel)
       .def("set_prog_file", &AnalysisConfig::SetProgFile)
       .def("set_params_file", &AnalysisConfig::SetParamsFile)
       .def("model_dir", &AnalysisConfig::model_dir)

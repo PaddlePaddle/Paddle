@@ -135,7 +135,7 @@ static void AppendActivation(const OneDNNContext& dev_ctx,
 
   post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
 }
-// This is a PR for oneDNN default
+
 template <typename T,
           typename TForward,
           typename TBackward = onednn_dummy_primitive,
