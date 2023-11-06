@@ -25,11 +25,12 @@
 
 namespace {
 
-class DeadCodeElimination : public pir::RewritePattern {
+class DeadCodeEliminationPattern : public pir::RewritePattern {
  public:
-  DeadCodeElimination(pir::IrContext* context,
-                      pir::PatternBenefit benefit = 1,
-                      const std::vector<std::string>& generated_names = {})
+  DeadCodeEliminationPattern(
+      pir::IrContext* context,
+      pir::PatternBenefit benefit = 1,
+      const std::vector<std::string>& generated_names = {})
       : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names) {
   }
 
@@ -63,7 +64,7 @@ class DeadCodeEliminationPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<DeadCodeElimination>(context);
+    ps.Add<DeadCodeEliminationPattern>(context);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
