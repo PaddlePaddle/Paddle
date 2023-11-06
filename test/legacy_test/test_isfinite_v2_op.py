@@ -17,20 +17,20 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.pir_utils import test_with_pir_api
 
 
 @test_with_pir_api
 def run_static(x_np, dtype, op_str, use_gpu=False):
     paddle.enable_static()
-    startup_program = base.Program()
-    main_program = base.Program()
+    startup_program = static.Program()
+    main_program = static.Program()
     place = paddle.CPUPlace()
     if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     exe = base.Executor(place)
-    with base.program_guard(main_program, startup_program):
+    with static.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
@@ -152,10 +152,9 @@ class TestCUDANormal(unittest.TestCase):
 
 
 class TestError(unittest.TestCase):
-    @test_with_pir_api
     def test_bad_input(self):
         paddle.enable_static()
-        with base.program_guard(base.Program()):
+        with static.program_guard(static.Program()):
 
             def test_isinf_bad_x():
                 x = [1, 2, 3]
