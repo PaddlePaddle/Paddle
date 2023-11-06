@@ -115,8 +115,8 @@ const phi::DDim &Tensor::strides() const {
     return static_cast<phi::DenseTensor *>(impl_.get())->strides();
   } else if (is_dist_tensor()) {
     return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->strides();
+        ->value()
+        .strides();
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Only support strides operation on DenseTensor and DistTensor now."));
@@ -135,13 +135,9 @@ void Tensor::reshape(const std::vector<int64_t> &shape) {
          "the tensor to remain constant.";
   if (is_dense_tensor()) {
     static_cast<phi::DenseTensor *>(impl_.get())->Resize(phi::make_ddim(shape));
-  } else if (is_dist_tensor()) {
-    static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->Resize(phi::make_ddim(shape));
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
-        "Only support reshape operation on DenseTensor and DistTensor now."));
+        "Only support reshape operation on DenseTensor now."));
   }
 }
 
@@ -217,10 +213,6 @@ T *Tensor::mutable_data() {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())
         ->mutable_data<T>(place());
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->mutable_data<T>(place());
   }
   return nullptr;
 }
@@ -259,10 +251,6 @@ T *Tensor::mutable_data(const Place &place) {
          "an illegal state.";
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->mutable_data<T>(place);
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->mutable_data<T>(place);
   }
   return nullptr;
 }
@@ -286,10 +274,6 @@ template <typename T>
 const T *Tensor::data() const {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->data<T>();
   } else if (is_selected_rows()) {
     return static_cast<phi::SelectedRows *>(impl_.get())->value().data<T>();
   }
@@ -320,10 +304,6 @@ template <typename T>
 T *Tensor::data() {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->data<T>();
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->data<T>();
   } else if (is_selected_rows()) {
     return static_cast<phi::SelectedRows *>(impl_.get())
         ->mutable_value()
@@ -353,10 +333,6 @@ template PADDLE_API phi::dtype::complex<double>
 const void *Tensor::data() const {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->data();
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->data();
   } else if (is_selected_rows()) {
     return static_cast<phi::SelectedRows *>(impl_.get())->value().data();
   }
@@ -366,10 +342,6 @@ const void *Tensor::data() const {
 void *Tensor::data() {
   if (is_dense_tensor()) {
     return static_cast<phi::DenseTensor *>(impl_.get())->data();
-  } else if (is_dist_tensor()) {
-    return static_cast<phi::distributed::DistTensor *>(impl_.get())
-        ->unsafe_mutable_value()
-        ->data();
   } else if (is_selected_rows()) {
     return static_cast<phi::SelectedRows *>(impl_.get())
         ->mutable_value()
@@ -468,8 +440,8 @@ void Tensor::bump_inplace_version() {
   } else if (is_dist_tensor()) {
     auto &inplace_version_counter =
         static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->unsafe_mutable_value()
-            ->InplaceVersionCounter();
+            ->value()
+            .InplaceVersionCounter();
     inplace_version_counter.Bump();
   } else {
     PADDLE_THROW(
@@ -486,8 +458,8 @@ uint32_t Tensor::current_inplace_version() {
   } else if (is_dist_tensor()) {
     auto &inplace_version_counter =
         static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->unsafe_mutable_value()
-            ->InplaceVersionCounter();
+            ->value()
+            .InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
     LOG_FIRST_N(WARNING, 1) << "current_inplace_version is only supported on "
@@ -505,8 +477,8 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
     } else if (is_dist_tensor()) {
       auto &inplace_version_counter =
           static_cast<phi::distributed::DistTensor *>(impl_.get())
-              ->unsafe_mutable_value()
-              ->InplaceVersionCounter();
+              ->value()
+              .InplaceVersionCounter();
       return inplace_version_counter.SetInplaceVersionToZero();
     }
   }
