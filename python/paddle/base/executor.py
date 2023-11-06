@@ -598,6 +598,8 @@ def _to_name_str(var):
             return str(id(var))
         elif isinstance(var, OpResult):
             return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 

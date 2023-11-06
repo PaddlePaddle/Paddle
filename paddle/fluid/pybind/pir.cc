@@ -806,8 +806,8 @@ void BindType(py::module *m) {
 }
 
 void BindAttribute(py::module *m) {
-  py::class_<Type> ir_type(*m, "Attribute", py::module_local());
-  ir_type.def("__str__", [](Attribute &self) {
+  py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
+  ir_attr.def("__str__", [](Attribute &self) {
     std::ostringstream print_stream;
     print_stream << self;
     return print_stream.str();
