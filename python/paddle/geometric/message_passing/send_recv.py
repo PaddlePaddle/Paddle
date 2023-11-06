@@ -22,11 +22,7 @@ from paddle.base.data_feeder import (
 )
 from paddle.base.framework import Variable
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import (
-    in_dynamic_mode,
-    in_dynamic_or_pir_mode,
-    in_pir_mode,
-)
+from paddle.framework import in_dynamic_or_pir_mode
 
 from .utils import (
     convert_out_size_to_list,
@@ -131,12 +127,8 @@ def send_u_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.send_u_recv(
-            x, src_index, dst_index, reduce_op.upper(), out_size
-        )
-    elif in_pir_mode():
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
@@ -320,18 +312,8 @@ def send_ue_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out_size = convert_out_size_to_list(out_size)
-        return _C_ops.send_ue_recv(
-            x,
-            y,
-            src_index,
-            dst_index,
-            message_op.upper(),
-            reduce_op.upper(),
-            out_size,
-        )
-    elif in_pir_mode():
         return _C_ops.send_ue_recv(
             x,
             y,
