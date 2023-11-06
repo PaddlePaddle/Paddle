@@ -1,6 +1,6 @@
 set(PATTERN_REWRITE_TEST_DEPS
-    pd_constant_folding_pass transform_general_functions gtest pd_op_dialect
-    pir)
+    pd_constant_folding_pass fusion_passes transform_general_functions gtest
+    pd_op_dialect pir)
 
 if(WITH_DISTRIBUTE)
   set(PATTERN_REWRITE_TEST_DEPS ${PATTERN_REWRITE_TEST_DEPS} fleet_executor
