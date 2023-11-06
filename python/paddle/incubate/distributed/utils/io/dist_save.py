@@ -65,7 +65,7 @@ def save(state_dict, path, **configs):
                 If str, the format must be as num+'G/M/K', for example, 3G, 2K, 10M, etc. Default is 3G.
 
     Returns:
-        None  
+        None
 
     Examples:
 
