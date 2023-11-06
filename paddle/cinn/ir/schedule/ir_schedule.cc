@@ -2109,7 +2109,7 @@ void ScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
         CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
             << "loops is not the same order with tensor!";
       } else {
-        CHECK(iter.As<IntImm>());
+        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
         CHECK_EQ(iter.as_int32(), 0);
       }
     }
@@ -2638,6 +2638,13 @@ void IRSchedule::SetBuffer(Expr& block,
                          {{"block", std::vector<Expr>({block})}},
                          {{"memory_type", memory_type}, {"fixed", fixed}},
                          {}));
+}
+
+Expr IRSchedule::AddUnitLoop(const Expr& block) {
+  Expr ret = impl_->AddUnitLoop(block);
+  trace_.Append(ScheduleDesc::Step(
+      "AddUnitLoop", {{"block", std::vector<Expr>({block})}}, {}, {ret}));
+  return ret;
 }
 
 Expr IRSchedule::Reorder(const std::vector<Expr>& loops) {

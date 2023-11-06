@@ -242,7 +242,7 @@ def acos(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.98231316, 1.77215421, 1.47062886, 1.26610363])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acos(x)
     else:
         check_variable_and_dtype(
@@ -289,7 +289,7 @@ def acosh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 1.76274717, 2.06343699, 2.29243159])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.acosh(x)
     else:
         check_variable_and_dtype(
@@ -336,7 +336,7 @@ def asin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
@@ -383,7 +383,7 @@ def asinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(
@@ -430,7 +430,7 @@ def atan(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.38050640, -0.19739556,  0.09966865,  0.29145682])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atan(x)
     else:
         check_variable_and_dtype(
@@ -477,7 +477,7 @@ def atanh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.42364895, -0.20273255,  0.10033534,  0.30951962])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.atanh(x)
     else:
         check_variable_and_dtype(
@@ -1010,7 +1010,7 @@ def sinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41075233, -0.20133601,  0.10016675,  0.30452031])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.sinh(x)
     else:
         check_variable_and_dtype(

@@ -1679,9 +1679,7 @@ class Engine:
                     )
                 if spec.name is None:
                     raise ValueError(
-                        "Requires Input[{}].name != None, but receive `None` with {}.".format(
-                            i, spec
-                        )
+                        f"Requires Input[{i}].name != None, but receive `None` with {spec}."
                     )
                 if self._acc_steps > 1:
                     shape = list(spec.shape)
