@@ -306,6 +306,123 @@ void AdamwInferMeta(const MetaTensor& param,
                 master_param_outs);
 }
 
+void AdanInferMeta(const MetaTensor& param,
+                   const MetaTensor& grad,
+                   const MetaTensor& learning_rate,
+                   const MetaTensor& pre_grad,
+                   const MetaTensor& moment1,
+                   const MetaTensor& moment3,
+                   const MetaTensor& beta1_pow,
+                   const MetaTensor& beta2_pow,
+                   const MetaTensor& beta3_pow,
+                   const MetaTensor& moment2,
+                   const MetaTensor& master_param,
+                   const Scalar& beta1,
+                   const Scalar& beta2,
+                   const Scalar& beta3,
+                   const Scalar& epsilon,
+                   const Scalar& weight_decay,
+                   bool no_prox,
+                   bool multi_precision,
+                   bool use_global_beta_pow,
+                   bool vanilla,
+                   MetaTensor* param_out,
+                   MetaTensor* pre_grad_out,
+                   MetaTensor* moment1_out,
+                   MetaTensor* moment3_out,
+                   MetaTensor* beta1_pow_out,
+                   MetaTensor* beta2_pow_out,
+                   MetaTensor* beta3_pow_out,
+                   MetaTensor* moment2_out,
+                   MetaTensor* master_param_outs) {
+  auto lr_dims = learning_rate.dims();
+  PADDLE_ENFORCE_EQ(
+      phi::product(lr_dims),
+      1,
+      errors::InvalidArgument(
+          "The number of LearningRate shall be 1, but received %d. Maybe "
+          "the Input variable LearningRate has not "
+          "been initialized. You may need to confirm "
+          "if you put exe.run(startup_program) "
+          "after optimizer.minimize function.",
+          phi::product(lr_dims)));
+  auto beta1_pow_dims = beta1_pow.dims();
+  VLOG(3) << "dims of Beta1Pow : [" << beta1_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta1_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta1 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta1_pow_dims)));
+  auto beta2_pow_dims = beta2_pow.dims();
+  VLOG(3) << "dims of Beta2Pow : [" << beta2_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta2_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta2 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta2_pow_dims)));
+  auto beta3_pow_dims = beta3_pow.dims();
+  VLOG(3) << "dims of Beta3Pow : [" << beta3_pow_dims << "]";
+  PADDLE_ENFORCE_GE(phi::product(beta3_pow_dims),
+                    1,
+                    errors::InvalidArgument(
+                        "The size of Beta3 power accumulator should be greater "
+                        "than 0, but received %d.",
+                        phi::product(beta3_pow_dims)));
+
+  auto param_dims = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment1.dims(),
+      errors::InvalidArgument(
+          "Param and Moment1 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment1 dims: [%s].",
+          param_dims,
+          moment1.dims()));
+  // vanilla mode
+  if (!vanilla) {
+    PADDLE_ENFORCE_EQ(
+        param_dims,
+        moment2.dims(),
+        errors::InvalidArgument(
+            "Param and Moment2 input of AdamOp should have same dimension. But "
+            "received Param dims: [%s], Moment2 dims: [%s].",
+            param_dims,
+            moment2.dims()));
+  }
+  PADDLE_ENFORCE_EQ(
+      param_dims,
+      moment3.dims(),
+      errors::InvalidArgument(
+          "Param and Moment3 input of AdamOp should have same dimension. But "
+          "received Param dims: [%s], Moment3 dims: [%s].",
+          param_dims,
+          moment3.dims()));
+  param_out->set_dims(param_dims);
+  param_out->set_dtype(param.dtype());
+
+  pre_grad_out->set_dims(param_dims);
+  pre_grad_out->set_dtype(grad.dtype());
+
+  moment1_out->set_dims(param_dims);
+  moment1_out->set_dtype(moment1.dtype());
+  // vanilla mode
+  if (!vanilla) {
+    moment2_out->set_dims(param_dims);
+    moment2_out->set_dtype(moment2.dtype());
+  }
+  moment3_out->set_dims(param_dims);
+  moment3_out->set_dtype(moment3.dtype());
+
+  beta1_pow_out->set_dims(beta1_pow_dims);
+  beta1_pow_out->set_dtype(beta1_pow.dtype());
+  beta2_pow_out->set_dims(beta2_pow_dims);
+  beta2_pow_out->set_dtype(beta2_pow.dtype());
+  beta3_pow_out->set_dims(beta3_pow_dims);
+  beta3_pow_out->set_dtype(beta3_pow.dtype());
+}
+
 void AddNInferMeta(const std::vector<const MetaTensor*>& x,
                    MetaTensor* out,
                    MetaConfig config) {
