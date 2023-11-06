@@ -727,7 +727,7 @@ class TestMobileNet(Dy2StTestBase):
         )
 
     @test_pir_only
-    def test_mobile_net_new_ir(self):
+    def test_mobile_net_pir(self):
         # MobileNet-V1
         self.assert_same_loss("MobileNetV1")
         # MobileNet-V2

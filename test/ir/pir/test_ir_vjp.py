@@ -31,18 +31,18 @@ def get_ir_program():
         x.stop_gradient = False
         paddle.tanh(x)
         paddle.tensor.fill_constant(shape=[4, 4], dtype='float32', value=2.0)
-    newir_program = pir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
 class TestTanhVjp(unittest.TestCase):
     def test_tanh_vjp1(self):
-        newir_program = get_ir_program()
-        tanh_op = newir_program.global_block().ops[-2]
-        fill_constant_op = newir_program.global_block().ops[-1]
+        pir_program = get_ir_program()
+        tanh_op = pir_program.global_block().ops[-2]
+        fill_constant_op = pir_program.global_block().ops[-1]
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
-        with paddle.pir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(pir_program):
             grad_outs = call_vjp(
                 tanh_op,
                 [[tanh_op.operand_source(0)]],
@@ -71,15 +71,15 @@ class TestTanhVjp(unittest.TestCase):
             .name(),
             "pd_op.full",
         )
-        self.assertEqual(len(newir_program.global_block().ops), 4)
+        self.assertEqual(len(pir_program.global_block().ops), 4)
 
     def test_tanh_vjp2(self):
-        newir_program = get_ir_program()
-        tanh_op = newir_program.global_block().ops[-2]
-        fill_constant_op = newir_program.global_block().ops[-1]
+        pir_program = get_ir_program()
+        tanh_op = pir_program.global_block().ops[-2]
+        fill_constant_op = pir_program.global_block().ops[-1]
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
-        with paddle.pir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(pir_program):
             grad_outs = call_vjp(
                 tanh_op,
                 [[tanh_op.operand_source(0)]],
@@ -101,12 +101,12 @@ class TestMeanVjp(unittest.TestCase):
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
-        newir_program = pir.translate_to_new_ir(main_program.desc)
-        fill_constant_op = newir_program.global_block().ops[-1]
-        mean_op = newir_program.global_block().ops[-2]
+        pir_program = pir.translate_to_pir(main_program.desc)
+        fill_constant_op = pir_program.global_block().ops[-1]
+        mean_op = pir_program.global_block().ops[-2]
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[False]]
-        with paddle.pir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(pir_program):
             grad_outs = call_vjp(
                 mean_op,
                 [[mean_op.operand_source(0)]],
@@ -135,7 +135,7 @@ class TestMeanVjp(unittest.TestCase):
                 .name(),
                 "pd_op.full",
             )
-            self.assertEqual(len(newir_program.global_block().ops), 4)
+            self.assertEqual(len(pir_program.global_block().ops), 4)
 
     def test_mean_vjp2(self):
         main_program, start_program = (
@@ -147,12 +147,12 @@ class TestMeanVjp(unittest.TestCase):
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
-        newir_program = pir.translate_to_new_ir(main_program.desc)
-        fill_constant_op = newir_program.global_block().ops[-1]
-        mean_op = newir_program.global_block().ops[-2]
+        pir_program = pir.translate_to_pir(main_program.desc)
+        fill_constant_op = pir_program.global_block().ops[-1]
+        mean_op = pir_program.global_block().ops[-2]
         out_grads = [[fill_constant_op.result(0)]]
         stop_gradients = [[True]]
-        with paddle.pir.core.program_guard(newir_program):
+        with paddle.pir.core.program_guard(pir_program):
             grad_outs = call_vjp(
                 mean_op,
                 [[mean_op.operand_source(0)]],
@@ -174,9 +174,9 @@ class TesthasVjp(unittest.TestCase):
             x.stop_gradient = False
             paddle.mean(x, axis=[0, 1])
             paddle.tensor.fill_constant(shape=[1], dtype='float32', value=2.0)
-        newir_program = pir.translate_to_new_ir(main_program.desc)
-        fill_constant_op = newir_program.global_block().ops[-1]
-        mean_op = newir_program.global_block().ops[-2]
+        pir_program = pir.translate_to_pir(main_program.desc)
+        fill_constant_op = pir_program.global_block().ops[-1]
+        mean_op = pir_program.global_block().ops[-2]
         self.assertEqual(has_vjp(fill_constant_op), False)
         self.assertEqual(has_vjp(mean_op), True)
 

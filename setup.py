@@ -1424,7 +1424,7 @@ def get_setup_parameters():
         'paddle.framework',
         'paddle.jit',
         'paddle.jit.dy2static',
-        'paddle.jit.newir_dy2static',
+        'paddle.jit.pir_dy2static',
         'paddle.jit.sot',
         'paddle.jit.sot.opcode_translator',
         'paddle.jit.sot.opcode_translator.executor',

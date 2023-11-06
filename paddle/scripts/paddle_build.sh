@@ -626,7 +626,7 @@ EOF
 
 
 function run_mac_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -776,7 +776,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -1254,7 +1254,7 @@ EOF
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -4093,7 +4093,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_OPTEST=True
+        export FLAGS_PIR_OPTEST=True
         parallel_test
         check_coverage
         ;;

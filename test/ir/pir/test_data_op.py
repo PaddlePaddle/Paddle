@@ -36,8 +36,8 @@ def data():
     return out
 
 
-class TestNewIr(unittest.TestCase):
-    def test_with_new_ir(self):
+class TestPir(unittest.TestCase):
+    def test_with_pir(self):
         paddle.enable_static()
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)

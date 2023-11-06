@@ -751,7 +751,7 @@ class TestTrain(Dy2StTestBase):
             return np.array(loss_data)
 
     @test_pir_only
-    def test_train_new_ir(self):
+    def test_train_pir(self):
         static_res = self.train_bmn(self.args, self.place, to_static=True)
         dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
         np.testing.assert_allclose(

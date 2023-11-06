@@ -547,13 +547,13 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-NewIrDependencyBuilder::NewIrDependencyBuilder() {
+PirDependencyBuilder::PirDependencyBuilder() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
 
-const std::map<size_t, std::set<size_t>>& NewIrDependencyBuilder::Build(
+const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
     std::vector<paddle::framework::InstructionBase*> instructions) {
   if (is_build_) {
     return *op_downstream_map_;
@@ -590,7 +590,7 @@ const std::map<size_t, std::set<size_t>>& NewIrDependencyBuilder::Build(
   return *op_downstream_map_;
 }
 
-void NewIrDependencyBuilder::BuildDownstreamMap() {
+void PirDependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
       std::map<size_t, std::list<size_t>>();  // # map from variable id to read
                                               //  write op id.
@@ -664,8 +664,8 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
   }
 }
 
-void NewIrDependencyBuilder::ShareDependencyFrom(
-    const NewIrDependencyBuilder& src) {
+void PirDependencyBuilder::ShareDependencyFrom(
+    const PirDependencyBuilder& src) {
   std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
   is_build_ = true;
 }

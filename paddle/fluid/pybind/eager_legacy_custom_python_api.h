@@ -60,9 +60,9 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
   }
 }
 
-static PyObject *newir_eager_api_run_program(PyObject *self,
-                                             PyObject *args,
-                                             PyObject *kwargs) {
+static PyObject *pir_eager_api_run_program(PyObject *self,
+                                           PyObject *args,
+                                           PyObject *kwargs) {
   PyThreadState *tstate = nullptr;
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
@@ -72,14 +72,14 @@ static PyObject *newir_eager_api_run_program(PyObject *self,
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     framework::AttributeMap attrs;
     // TODO(zengjinle): support CUDA Graph on eager mode
-    VLOG(1) << "Start NewIR ConstructAttrMapFromPyArgs";
+    VLOG(1) << "Start Pir ConstructAttrMapFromPyArgs";
 
     ConstructAttrMapForRunProgram(
         "run_program", args, 5, PyTuple_GET_SIZE(args), attrs);
 
-    VLOG(1) << "Finish NewIR ConstructAttrMapFromPyArgs";
+    VLOG(1) << "Finish Pir ConstructAttrMapFromPyArgs";
     tstate = PyEval_SaveThread();
-    newir_run_program_ad_func(X, Params, Out, OutScope, attrs);
+    pir_run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
     Py_RETURN_NONE;
@@ -107,8 +107,8 @@ static PyMethodDef CustomEagerMethods[] = {
      (PyCFunction)(void (*)(void))eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
-    {"newir_run_program",
-     (PyCFunction)(void (*)(void))newir_eager_api_run_program,
+    {"pir_run_program",
+     (PyCFunction)(void (*)(void))pir_eager_api_run_program,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for run_program in dygraph."},
     {nullptr, nullptr, 0, nullptr}};
