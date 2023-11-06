@@ -201,7 +201,7 @@ bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
   return a_shard->get_axis() == b_shard->get_axis();
 }
 
-bool AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
+void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
                        const std::vector<std::vector<int64_t>>& tensor_shapes,
                        const std::vector<std::string>& axis_names,
                        const std::set<int64_t>& skip_mesh_dims,

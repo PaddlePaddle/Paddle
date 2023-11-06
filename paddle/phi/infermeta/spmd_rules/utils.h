@@ -93,7 +93,7 @@ TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim);
 bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
                     const std::shared_ptr<PlacementStatus>& b);
 
-bool AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs,
+void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs,
                        const std::vector<std::vector<int64_t>>& tensor_shapes,
                        const std::vector<std::string>& axis_names,
                        const std::set<int64_t>& skip_mesh_dims,
