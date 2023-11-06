@@ -306,11 +306,10 @@ class FCMKLDNNHandler
     if (phi::funcs::is_int8<T_in>()) {
       auto src_0_md = residual->mem_desc().reshape(dims);
       auto src_1_md = dnnl::memory::desc(
-          dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
+          {1, 1}, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
       auto dst_md = dnnl::memory::desc(
           dims, dnnl::memory::data_type::f32, dnnl::memory::format_tag::ab);
-      std::vector<float> src_data(phi::product(residual->dims()),
-                                  1.f / scale_data);
+      std::vector<float> src_data{1.f / scale_data};
 
       dnnl::memory src_0_mem =
           dnnl::memory(src_0_md, this->dev_ctx_.GetEngine());
