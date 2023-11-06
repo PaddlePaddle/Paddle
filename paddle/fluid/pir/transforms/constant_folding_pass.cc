@@ -167,11 +167,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       output_types.push_back(op->result_type(i));
     }
 
-    // NOTE(liuyuanle): Must be a deep copy for builder.Build
-    auto op_info = op->info();
-    auto op_attributes = op->attributes();
     auto* temp_op =
-        builder.Build(op_inputs, op_attributes, output_types, op_info);
+        builder.Build(op_inputs, op->attributes(), output_types, op->info());
 
     // TODO(liuyuanle): Support multiple output.
     // for (uint32_t i = 0; i < op->num_results(); i++) {
