@@ -32,7 +32,6 @@
 #include <utility>
 #include <vector>
 
-#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle_infer_declare.h"  // NOLINT
 /*! \file */
 // Here we include some header files with relative paths, for that in deploy,
@@ -40,6 +39,7 @@
 #include "paddle_api.h"           // NOLINT
 #include "paddle_pass_builder.h"  // NOLINT
 #ifdef PADDLE_WITH_DNNL
+#include "paddle/phi/backends/cpu/cpu_info.h"
 #include "paddle_mkldnn_quantizer_config.h"  // NOLINT
 #endif
 
