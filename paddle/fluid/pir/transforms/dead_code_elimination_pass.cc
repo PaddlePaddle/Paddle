@@ -38,11 +38,7 @@ class DeadCodeElimination : public pir::RewritePattern {
         op->isa<paddle::dialect::ShadowOutputOp>())
       return false;
 
-    bool use_empty = true;
-    for (uint32_t i = 0; i < op->num_results(); ++i) {
-      use_empty &= op->result(i).use_empty();
-    }
-    return use_empty;
+    return op->use_empty();
   }
 
   void Rewrite(pir::Operation* op,
@@ -57,7 +53,7 @@ class DeadCodeElimination : public pir::RewritePattern {
               .dyn_cast<pir::StrAttribute>()
               .AsString());
     }
-    rewriter.eraseOp(op);
+    rewriter.EraseOp(op);
   }
 };
 
