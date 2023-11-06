@@ -70,24 +70,8 @@ PD_REGISTER_KERNEL(tril_triu,
                    phi::TrilTriuKernel,
                    int,
                    float,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(tril,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::TrilKernel,
-                   int,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
-PD_REGISTER_KERNEL(triu,
-                   XPU,
-                   ALL_LAYOUT,
-                   phi::TriuKernel,
-                   int,
-                   float,
-                   phi::dtype::float16,
-                   phi::dtype::complex<float>,
-                   phi::dtype::complex<double>) {}
+                   phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    tril, XPU, ALL_LAYOUT, phi::TrilKernel, int, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(
+    triu, XPU, ALL_LAYOUT, phi::TriuKernel, int, float, phi::dtype::float16) {}
