@@ -25,10 +25,10 @@ gather_srcs(
   compile_error.cc
   group_scheduler.cc)
 
-# TODO(Aurelius84): pir_compiler depends on dialect and could
+# TODO(Aurelius84): pir_compiler depends on op_dialect_vjp and could
 # not found under CINN_ONLY mode
 if(NOT CINN_ONLY)
-  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi dialect)
+  cinn_cc_library(pir_compiler SRCS pir_compiler.cc DEPS cinnapi op_dialect_vjp)
 endif()
 
 if(WITH_CUDA)

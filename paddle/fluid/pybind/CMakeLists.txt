@@ -39,7 +39,7 @@ set(PYBIND_DEPS
     phi_utils
     phi
     pir_adaptor
-    dialect
+    op_dialect_vjp
     program_translator
     pd_inplace_pass
     fusion_passes

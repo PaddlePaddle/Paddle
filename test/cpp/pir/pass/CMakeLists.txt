@@ -4,6 +4,6 @@ cc_test_old(
   pass_manager_test.cc
   DEPS
   pir
-  dialect
+  op_dialect_vjp
   phi
   gtest)

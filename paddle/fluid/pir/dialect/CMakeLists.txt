@@ -189,22 +189,33 @@ add_custom_command(
 
 add_custom_target(ops_api_gen ALL DEPENDS ${ops_api_source_file})
 
-# target_include_directories(dialect INTERFACE ${PD_DIALECT_BINARY_DIR})
+#Note(risemeup1):compile some *.cc files which do not depend on primitive_vjp_experimental into op_dialect.a/lib
+file(GLOB_RECURSE op_dialect_srcs "*.cc")
+list(REMOVE_ITEM op_dialect_srcs
+     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
+     ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc)
 
-set(DIALECT_DEPS phi phi_utils pir type_info primitive_vjp_experimental)
-
-file(GLOB_RECURSE DIALECT_CPP_SOURCES "*.cc")
-
-set(DIALECT_CPP_SOURCES
-    ${DIALECT_CPP_SOURCES} ${op_source_file} ${api_source_file}
-    ${op_decomp_source_file} ${op_vjp_source_file})
+set(op_dialect_srcs ${op_dialect_srcs} ${op_source_file} ${api_source_file})
+set(op_dialect_deps phi phi_utils pir type_info)
 
 cc_library(
-  dialect
-  SRCS ${DIALECT_CPP_SOURCES}
-  DEPS ${DIALECT_DEPS})
+  op_dialect
+  SRCS ${op_dialect_srcs}
+  DEPS ${op_dialect_deps})
+
+#Note(risemeup1):compile some *.cc files which depend on primitive_vjp_experimental into op_dialect_vjp.a/lib
+set(op_dialect_vjp_srcs
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_decomp.cc
+    ${CMAKE_CURRENT_SOURCE_DIR}/operator/ir/manual_op_vjp.cc
+    ${op_decomp_source_file} ${op_vjp_source_file})
+set(op_dialect_vjp_deps op_dialect primitive_vjp_experimental)
+
+cc_library(
+  op_dialect_vjp
+  SRCS ${op_dialect_vjp_sources}
+  DEPS ${op_dialect_vjp_deps})
 
 if((CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
-  set_target_properties(dialect PROPERTIES COMPILE_FLAGS
-                                           "-Wno-maybe-uninitialized")
+  set_target_properties(op_dialect PROPERTIES COMPILE_FLAGS
+                                              "-Wno-maybe-uninitialized")
 endif()

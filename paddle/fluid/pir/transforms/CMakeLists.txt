@@ -8,12 +8,12 @@ cc_library(
 cc_library(
   transform_general_functions
   SRCS transform_general_functions.cc
-  DEPS dialect)
+  DEPS op_dialect)
 
 cc_library(
   pd_op_to_kernel_pass
   SRCS pd_op_to_kernel_pass.cc
-  DEPS dialect)
+  DEPS op_dialect op_dialect_vjp)
 
 cc_library(
   pd_constant_folding_pass
@@ -23,11 +23,11 @@ cc_library(
 cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
-  DEPS dialect)
+  DEPS op_dialect)
 
 if(WITH_CINN)
   cc_library(
     pd_build_cinn_pass
     SRCS build_cinn_pass.cc
-    DEPS dialect cinn_op_dialect pir cinnapi)
+    DEPS op_dialect_vjp cinn_op_dialect pir cinnapi)
 endif()

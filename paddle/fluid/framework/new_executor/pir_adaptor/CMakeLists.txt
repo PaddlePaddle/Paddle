@@ -4,4 +4,4 @@ file(GLOB PIR_ADAPTOR_SRCS "*.cc")
 cc_library(
   pir_adaptor
   SRCS ${PIR_ADAPTOR_SRCS}
-  DEPS program_translator dialect)
+  DEPS program_translator op_dialect)

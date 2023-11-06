@@ -5,7 +5,7 @@ cc_test_old(
   DEPS
   pd_op_to_kernel_pass
   program_translator
-  dialect
+  op_dialect
   pir
   phi
   gtest)
