@@ -63,7 +63,7 @@ class TestPredictorRunWithTensor(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def init_predictor(self):
-        paddle.set_flags({'FLAGS_enable_new_ir_in_executor': True})
+        paddle.set_flags({'FLAGS_enable_pir_in_executor': True})
         config = Config(
             os.path.join(
                 self.temp_dir.name,
