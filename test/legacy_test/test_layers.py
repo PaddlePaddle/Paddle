@@ -34,6 +34,7 @@ from paddle.incubate.layers.nn import (
     rank_attention,
     shuffle_batch,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.tensor import random
 
 
@@ -497,6 +498,7 @@ class TestLayer(LayerTest):
 
             self.assertRaises(TypeError, test_type)
 
+    @test_with_pir_api
     def test_bilinear_tensor_product(self):
         inp_np_x = np.array([[1, 2, 3]]).astype('float32')
         inp_np_y = np.array([[4, 5, 6]]).astype('float32')
