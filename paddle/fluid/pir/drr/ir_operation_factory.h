@@ -46,9 +46,13 @@ class OperationFactory {
       const pir::AttributeMap& attrs,
       pir::PatternRewriter& rewriter) const {  // NOLINT
     auto iter = op_creator_map.find(op_name);
-    IR_ENFORCE(iter != op_creator_map.end(),
-               "The create function for op: (%s) is not found.",
-               op_name);
+    PADDLE_ENFORCE_NE(
+        iter,
+        op_creator_map.end(),
+        phi::errors::NotFound(
+            "The op to be created is not found."
+            "Suggest fix: Place check if the op named %s has been registered.",
+            op_name));
     return iter->second(inputs, attrs, rewriter);
   }
 
