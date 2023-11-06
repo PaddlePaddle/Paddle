@@ -248,7 +248,6 @@ def silu(x):
     return res if not is_amp else cast(res, dtype)
 
 
-# @register_decomp('pd_op.softmax')
 def softmax(x, axis):
     """define composite rule of op softmax"""
     is_amp = False
