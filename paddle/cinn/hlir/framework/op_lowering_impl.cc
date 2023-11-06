@@ -29,7 +29,7 @@
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
 PD_DECLARE_bool(cinn_new_group_scheduler);
 PD_DECLARE_bool(cinn_enable_map_expr);
-PD_DECLARE_bool(cinn_map_expr_enable_schedule);
+PD_DECLARE_bool(cinn_enable_map_expr_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -111,13 +111,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
     bool apply_group_schedule,
     bool apply_pass,
     std::vector<ir::Tensor>* group_func_arg_tensors) {
-  if (!FLAGS_cinn_map_expr_enable_schedule) {
-    do_op_schedule = false;
-    apply_group_schedule = false;
-    apply_pass = true;
-  }
-  VLOG(1) << "FLAGS_cinn_map_expr_enable_schedule = "
-          << FLAGS_cinn_map_expr_enable_schedule;
+  VLOG(1) << "FLAGS_cinn_enable_map_expr_schedule = "
+          << FLAGS_cinn_enable_map_expr_schedule;
   VLOG(1) << "do_op_schedule = " << do_op_schedule;
   VLOG(1) << "apply_group_schedule = " << apply_group_schedule;
   VLOG(1) << "apply_pass = " << apply_pass;
@@ -152,6 +147,11 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
     bool apply_group_schedule,
     bool apply_pass,
     ScheduleDetermineFunction schedule_determine_func) {
+  if (FLAGS_cinn_enable_map_expr && FLAGS_cinn_enable_map_expr_schedule) {
+    apply_op_schedule = false;
+    apply_group_schedule = false;
+    apply_pass = true;
+  }
   // 1.Do compute, lower and schedule for each op.
   VLOG(3) << "group->fused_sub_groups.size() is : "
           << group->fused_sub_groups.size();
