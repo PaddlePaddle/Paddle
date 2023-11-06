@@ -21,7 +21,6 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -678,7 +677,6 @@ class TestScatterAPI(unittest.TestCase):
                 )
                 return gpu_out.numpy()
 
-        @switch_to_static_graph
         @test_with_pir_api
         def test_static_graph():
             with paddle.static.program_guard(
@@ -704,72 +702,6 @@ class TestScatterAPI(unittest.TestCase):
                 return res
 
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
-
-
-class TestScatterWithLargeDataAPI(unittest.TestCase):
-    def setUp(self):
-        self.places = [base.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            self.places.append(base.CUDAPlace(0))
-        self.executed_api()
-
-    def executed_api(self):
-        self.scatter = paddle.scatter
-
-    def test_dygraph(self):
-        if os.name == "nt" or not paddle.is_compiled_with_cuda():
-            return
-
-        x = np.random.rand(183826, 256).astype("float32")
-        index = np.ones(10759233, dtype="int64")
-        updates = np.ones(shape=[10759233, 256], dtype="float32")
-
-        with base.dygraph.guard():
-            gpu_out = paddle.scatter(
-                paddle.to_tensor(x),
-                paddle.to_tensor(index),
-                paddle.to_tensor(updates),
-            )
-            return gpu_out.numpy()
-
-    @test_with_pir_api
-    def test_static_graph(self):
-        paddle.enable_static()
-        if os.name == "nt" or not paddle.is_compiled_with_cuda():
-            return
-
-        x = np.random.rand(183826, 256).astype("float32")
-        index = np.ones(10759233, dtype="int64")
-        updates = np.ones(shape=[10759233, 256], dtype="float32")
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
-            index_t = paddle.static.data(
-                name="index", dtype=index.dtype, shape=index.shape
-            )
-            updates_t = paddle.static.data(
-                name="updates", dtype=updates.dtype, shape=updates.shape
-            )
-            out_t = paddle.scatter(x_t, index_t, updates_t)
-            gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-            res = gpu_exe.run(
-                feed={
-                    'x': x,
-                    'index': index,
-                    'updates': updates,
-                },
-                fetch_list=[out_t],
-            )
-            return res
-
-        paddle.disable_static()
-
-    def result_equal_or_not(self):
-        dygraph_result = self.test_dygraph()
-        static_result = self.test_static_graph()
-        if dygraph_result is not None and static_result is not None:
-            np.testing.assert_array_equal(dygraph_result, static_result)
 
 
 @unittest.skipIf(

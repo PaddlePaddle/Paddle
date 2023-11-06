@@ -21,7 +21,6 @@ from utils import static_guard
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -431,7 +430,6 @@ class TestScatterNdOpAPI(unittest.TestCase):
             np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
-        @switch_to_static_graph
         @test_with_pir_api
         def test_static_graph():
             with paddle.static.program_guard(
