@@ -34,7 +34,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -190,7 +190,7 @@ class InterpreterCoreInfoCache {
   static InterpreterCoreInfoCache& Instance();
 
   bool Has(int64_t program_id, const framework::Scope* scope, bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
       program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     }
@@ -201,7 +201,7 @@ class InterpreterCoreInfoCache {
   InterpreterCoreInfo::CacheValue& GetMutable(int64_t program_id,
                                               const framework::Scope* scope,
                                               bool is_grad) {
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       int64_t scope_i = reinterpret_cast<std::uintptr_t>(scope);
       program_id += 0x9e3779b9 + (program_id << 6) + (scope_i >> 2);
     }

@@ -45,7 +45,7 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
-_PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE = {
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
     core.DataType.BFLOAT16: 'uint16',
@@ -92,8 +92,8 @@ def convert_dtype(dtype):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
     if isinstance(dtype, core.DataType):
-        if dtype in _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE:
-            return _PADDLE_NEW_IR_DTYPE_2_NUMPY_DTYPE[dtype]
+        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
