@@ -66,6 +66,8 @@
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
   output : Tensor(out)
+  infer_meta :
+    func : UnchangedInferMeta
   kernel:
     func: get_tensor_from_selected_rows {selected_rows -> dense}
 
