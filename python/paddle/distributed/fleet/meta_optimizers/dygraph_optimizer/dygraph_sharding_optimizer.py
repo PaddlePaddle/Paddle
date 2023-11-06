@@ -477,6 +477,7 @@ class DygraphShardingOptimizerV2:
                 parameters,
                 comm_group,
                 act=HOOK_ACTION.REDUCE_SCATTER,
+                release_grads=self.pp_release_grads,
             )
             self._comm_buffer_list.append(buffer)
 
@@ -501,6 +502,10 @@ class DygraphShardingOptimizerV2:
         for p in self._parameter_list:
             clear_grad_func(p)
 
+        if self.pp_release_grads and not self.pp_overlap:
+            for comm_buffer in self._comm_buffer_list:
+                comm_buffer._clear_grad_storage()
+
     def filter_parameters(self, parameter_list, hcg):
 
         parameter_list = [
@@ -515,6 +520,10 @@ class DygraphShardingOptimizerV2:
         # TODO merge grad / nrank with dp
         with framework.no_grad():
             for comm_buffer in self._comm_buffer_list:
+                if self.pp_release_grads and comm_buffer.grad_storage is None:
+                    for param in comm_buffer.params:
+                        comm_buffer._copy_grad_to_buffer(param)
+
                 comm_buffer._comm_grads()
                 comm_buffer.scale_and_split_grads()
 

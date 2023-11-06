@@ -352,7 +352,7 @@ class FusedCommBuffer:
         if self.grad_storage is None:
             assert self._params_step_dict[param.name] == 0
 
-            self.grad_storage = paddle.empty(
+            self.grad_storage = paddle.zeros(
                 [self.buffer_size], dtype=self._dtype
             )
 
@@ -374,9 +374,7 @@ class FusedCommBuffer:
         grad_var.stop_gradient = True
         grad_var.flatten_()
 
-        if self._params_step_dict[param.name] == 0:
-            paddle.assign(grad_var, tmp_var)
-
+        tmp_var.add_(grad_var)
         tmp_var.get_tensor()._set_dims(param.shape)
 
         if self.use_main_grad:
