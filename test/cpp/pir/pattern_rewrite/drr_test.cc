@@ -18,7 +18,6 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
-#include "paddle/fluid/pir/drr/api/drr_base_pass.h"
 #include "paddle/fluid/pir/drr/api/drr_pattern_base.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
@@ -186,17 +185,19 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(relu_op_second.out(), "out", 0);
 }
 
-class DrrPatternRewritePass : public pir::drr::DrrBasePass {
+class DrrPatternRewritePass : public pir::PatternPass {
  public:
-  DrrPatternRewritePass() : pir::drr::DrrBasePass("DrrPatternRewritePass", 1) {}
+  DrrPatternRewritePass() : pir::PatternPass("DrrPatternRewritePass", 1) {}
 
-  void DrrPassInitialize(pir::RewritePatternSet *ps,
-                         pir::IrContext *context) override {
-    ps->Add(RemoveRedundentReshapePattern().Build(context));
-    ps->Add(RemoveRedundentTransposePattern().Build(context));
-    ps->Add(RemoveRedundentCastPattern().Build(context));
-    ps->Add(RemoveUselessCastPattern().Build(context));
-    ps->Add(FoldExpandToConstantPattern().Build(context));
+  pir::RewritePatternSet InitializePatterns(pir::IrContext *context) override {
+    pir::RewritePatternSet ps(context);
+    ps.Add(RemoveRedundentReshapePattern().Build(context));
+    ps.Add(RemoveRedundentTransposePattern().Build(context));
+    ps.Add(RemoveRedundentCastPattern().Build(context));
+    ps.Add(RemoveUselessCastPattern().Build(context));
+    ps.Add(FoldExpandToConstantPattern().Build(context));
+
+    return ps;
   }
 };
 

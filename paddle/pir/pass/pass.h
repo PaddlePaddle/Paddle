@@ -18,8 +18,10 @@
 #include <string>
 #include <vector>
 
+#include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
+#include "paddle/pir/pattern_rewrite/pattern_rewrite_driver.h"
 
 namespace pir {
 
@@ -103,6 +105,38 @@ class IR_API Pass {
 
   friend class PassManager;
   friend class detail::PassAdaptor;
+};
+
+class PatternPass : public Pass {
+ public:
+  PatternPass(const std::string& name = "PatternPass",
+              uint8_t opt_level = 1,
+              const std::vector<std::string>& dependents = {})
+      : Pass(name, opt_level, dependents) {}
+
+ protected:
+  virtual RewritePatternSet InitializePatterns(IrContext* context) {
+    return RewritePatternSet(context);
+  }
+
+  bool Initialize(IrContext* context) override {
+    patterns_ = FrozenRewritePatternSet(std::move(InitializePatterns(context)));
+    return true;
+  }
+
+  void Run(Operation* op) override {
+    GreedyRewriteConfig cfg;
+    cfg.use_top_down_traversal = true;
+    cfg.max_iterations = 10;
+    ApplyPatternsGreedily(op->region(0), patterns_, cfg);
+  }
+
+  bool CanApplyOn(Operation* op) const override {
+    return op->isa<pir::ModuleOp>() && op->num_regions() > 0;
+  }
+
+ private:
+  FrozenRewritePatternSet patterns_;
 };
 
 }  // namespace pir
