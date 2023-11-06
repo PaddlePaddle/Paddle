@@ -12,24 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "paddle/pir/dialect/control_flow/ir/cf_type.h"
 
-#include "paddle/pir/core/dialect.h"
-
-namespace pir {
-class ControlFlowDialect : public Dialect {
- public:
-  explicit ControlFlowDialect(IrContext *context)
-      : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
-    initialize();
-  }
-  static const char *name() { return "cf"; }
-  void PrintType(pir::Type type, std::ostream &os) const override;
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;  // NOLINT
- private:
-  void initialize();
-};
-
-}  // namespace pir
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::StackType)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::InletType)
+IR_DEFINE_EXPLICIT_TYPE_ID(pir::OutletType)

@@ -1,3 +1,4 @@
+
 // Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,22 +15,27 @@
 
 #pragma once
 
-#include "paddle/pir/core/dialect.h"
+#include "paddle/pir/core/type.h"
+#include "paddle/pir/core/type_base.h"
 
 namespace pir {
-class ControlFlowDialect : public Dialect {
+class IR_API StackType : public Type::TypeBase<StackType, Type, TypeStorage> {
  public:
-  explicit ControlFlowDialect(IrContext *context)
-      : Dialect(name(), context, TypeId::get<ControlFlowDialect>()) {
-    initialize();
-  }
-  static const char *name() { return "cf"; }
-  void PrintType(pir::Type type, std::ostream &os) const override;
-  void PrintOperation(pir::Operation *op,
-                      pir::IrPrinter &printer) const override;  // NOLINT
- private:
-  void initialize();
+  using Base::Base;
+};
+
+class IR_API InletType : public Type::TypeBase<InletType, Type, TypeStorage> {
+ public:
+  using Base::Base;
+};
+
+class IR_API OutletType : public Type::TypeBase<OutletType, Type, TypeStorage> {
+ public:
+  using Base::Base;
 };
 
 }  // namespace pir
-IR_DECLARE_EXPLICIT_TYPE_ID(pir::ControlFlowDialect)
+
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::StackType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::InletType)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::OutletType)
