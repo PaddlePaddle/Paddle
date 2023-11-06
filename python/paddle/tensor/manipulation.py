@@ -30,6 +30,7 @@ from ..base.data_feeder import (
 from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
+    _current_expected_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -3517,7 +3518,18 @@ def broadcast_to(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
+
     if in_dynamic_mode():
+        return _C_ops.expand(x, shape)
+    elif in_pir_mode():
+        place = _current_expected_place()
+        if isinstance(shape, (list, tuple)):
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils.get_int_tensor_list(shape, place)
+        elif isinstance(shape, paddle.pir.OpResult):
+            shape.stop_gradient = True
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -3636,6 +3648,8 @@ def expand(x, shape, name=None):
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils._convert_to_tensor_list(shape)
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -5080,7 +5094,7 @@ def index_add(x, index, axis, value, name=None):
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
@@ -5216,7 +5230,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
              [0., 0., 1.],
              [0., 1., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
     helper = LayerHelper("index_put", **locals())
