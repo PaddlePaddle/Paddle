@@ -14,6 +14,7 @@
 
 import itertools
 import warnings
+from functools import reduce
 
 import numpy as np
 
@@ -480,7 +481,7 @@ def _setitem_impl_(var, item, value):
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
-                "but received {}.".format(slice_item)
+                f"but received {slice_item}."
             )
 
         axes.append(dim)
@@ -492,9 +493,7 @@ def _setitem_impl_(var, item, value):
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
             raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".format(
-                    item
-                )
+                f"Valid index accept int or slice or ellipsis or list, but received {item}."
             )
         return slice_info.set_item(var, value)
     attrs = {
@@ -1047,7 +1046,7 @@ def get_tensor_with_basic_indexing(
         )
         attrs['infer_flags'] = infer_flags
 
-        from . import in_dynamic_or_pir_mode
+        from . import in_dynamic_or_pir_mode, in_pir_mode
 
         if in_dynamic_or_pir_mode():
             if "StartsTensorList" in inputs.keys():
@@ -1067,6 +1066,13 @@ def get_tensor_with_basic_indexing(
                 if len(decrease_axes) > 0:
                     out = paddle._C_ops.squeeze(out, decrease_axes)
             else:
+                if in_pir_mode():
+                    if isinstance(st, (list, tuple)):
+                        if paddle.utils._contain_var(st):
+                            st = paddle.utils.get_int_tensor_list(st)
+                    if isinstance(end, (list, tuple)):
+                        if paddle.utils._contain_var(end):
+                            end = paddle.utils.get_int_tensor_list(end)
                 out = paddle._C_ops.slice(
                     x,
                     axes,

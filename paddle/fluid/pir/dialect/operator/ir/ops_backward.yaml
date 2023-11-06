@@ -19,7 +19,7 @@
   optional: linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln1_out, ln1_mean, ln1_variance, ln2_scale, ln2_bias, ln2_mean, ln2_variance, dropout2_out, ln1_scale_grad, ln1_bias_grad, ln2_scale_grad, ln2_bias_grad,  linear2_bias_grad
 
 - backward_op : set_value_grad
-  args : (Tensor out_grad, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  args : (Tensor out_grad, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(x_grad), Tensor(values_grad)
   infer_meta:
     func: SetValueGradInferMeta

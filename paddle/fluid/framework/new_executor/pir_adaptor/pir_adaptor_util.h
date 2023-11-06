@@ -56,9 +56,11 @@ class ValueExecutionInfo {
 
   Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, std::string var_name);
+  void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+  void Rename(pir::Value value,
+              const std::string& new_name,
+              const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
@@ -379,6 +381,7 @@ void BuildPhiContext(pir::Operation* op,
   }
 
   // EmplaceBackOutputs
+  VLOG(8) << "ctx->EmplaceBackOutput: ";
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
     if (!IsInvalid(out_ptr)) {
@@ -399,11 +402,15 @@ void BuildPhiContext(pir::Operation* op,
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::DenseTensor>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type()
                    .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
           &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
+      VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
     } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
       auto& variable_array =
@@ -423,6 +430,8 @@ void BuildPhiContext(pir::Operation* op,
               variable_array[i]->Type()));
         }
       }
+      VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
+              << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
       PADDLE_THROW(

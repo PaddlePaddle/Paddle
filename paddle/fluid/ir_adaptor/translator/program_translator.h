@@ -18,6 +18,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -49,13 +50,24 @@ class ConditionBlockCombination {
  public:
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
+
   const std::string& CondVarName() const;
-  int TrueBlockId() const;
-  int FalseBlockId() const;
-  size_t OutputSize() const;
-  std::vector<::paddle::framework::VarDesc*> OutputVars() const;
+
+  std::vector<std::vector<::paddle::framework::VarDesc*>> OutputVars() const;
+
+  size_t MainOutputSize() const;
+
   std::vector<std::string> TrueBlockOutputVarNames() const;
+
+  std::vector<::paddle::framework::OpDesc*> TrueBlockInitOps() const;
+
+  int TrueBlockId() const;
+
   std::vector<std::string> FalseBlockOutputVarNames() const;
+
+  std::vector<::paddle::framework::OpDesc*> FalseBlockInitOps() const;
+
+  int FalseBlockId() const;
 
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
@@ -68,9 +80,10 @@ class TranslationContext {
   using Key = std::string;
   using Value = VariableDefiningInfo;
   using ValueList = std::vector<Value>;
-  using Conatiner = std::unordered_map<Key, ValueList>;
+  using Container = std::unordered_map<Key, ValueList>;
 
   TranslationContext() {}
+  explicit TranslationContext(TranslationContext* parent) : parent_(parent) {}
   ~TranslationContext() {}
 
   const Value& operator[](const Key& key) const;
@@ -80,12 +93,16 @@ class TranslationContext {
 
   void PushValue(const Key& key, const Value& value);
   void PopValue(const Key& key);
+  TranslationContext* CreateInnerContext();
 
-  Conatiner::const_iterator begin() const { return container_.begin(); }
-  Conatiner::const_iterator end() const { return container_.end(); }
+  Container::const_iterator begin() const { return container_.begin(); }
+  Container::const_iterator end() const { return container_.end(); }
 
  private:
-  Conatiner container_;
+  Container container_;
+  TranslationContext* parent_ = nullptr;
+  std::vector<std::unique_ptr<TranslationContext>>
+      sons_;  // used to seperate different block
 };
 
 class ProgramTranslator {
@@ -100,7 +117,8 @@ class ProgramTranslator {
 
   void Translate();
 
-  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
+  std::unordered_map<std::string, std::vector<pir::OpResult>>
+  VarDesc2OpResult();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned
@@ -121,23 +139,31 @@ class ProgramTranslator {
 
   static const std::unordered_set<std::string> unsupported_ops;
 
-  void TranslateBlock(const BlockDesc& src_block,
-                      uint64_t start_id,
-                      uint64_t end_id,
-                      pir::Block* dest_block,
-                      bool for_cond_block = false,
-                      std::vector<std::string> skip_cond_assign = {});
-  void TranslateGeneralOperation(const OpDesc* src_op, pir::Block* dest_block);
+  void TranslateBlock(
+      const BlockDesc& src_block,
+      uint64_t start_id,
+      uint64_t end_id,
+      TranslationContext* translation_ctx,
+      pir::Block* dst_block,
+      bool for_cond_block = false,
+      const std::vector<std::string>& cond_sub_block_outputs = {},
+      const std::vector<::paddle::framework::OpDesc*>& cond_init_ops = {});
+  void TranslateGeneralOperation(const OpDesc* src_op,
+                                 TranslationContext* translation_ctx,
+                                 pir::Block* dst_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
-  void InsertOperationToSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
   void SetIsPersisableAttributeForAllValue(const BlockDesc& block);
 
   /// Translate methods for control flow ops.
   pir::Operation* TranslateCondIfOperation(
-      const ConditionBlockCombination& cond_ops, pir::Block* dest_block);
-  void TranslateWhileOperation(const OpDesc* op, pir::Block* dest_block);
+      const ConditionBlockCombination& cond_ops,
+      TranslationContext* translation_ctx,
+      pir::Block* dst_block);
+  void TranslateWhileOperation(const OpDesc* op,
+                               TranslationContext* translation_ctx,
+                               pir::Block* dst_block);
 };
 
 }  // namespace translator

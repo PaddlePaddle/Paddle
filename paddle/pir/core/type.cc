@@ -31,4 +31,6 @@ bool Type::IsIntOrIndex() const {
          isa<Int16Type>() || isa<Int32Type>() || isa<Int64Type>();
 }
 
+bool Type::IsIndex() const { return isa<IndexType>(); }
+
 }  // namespace pir

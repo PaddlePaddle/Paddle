@@ -626,7 +626,7 @@ EOF
 
 
 function run_mac_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=mac
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -776,7 +776,7 @@ EOF
 }
 
 function run_linux_cpu_test() {
-    export FLAGS_NEW_IR_OPTEST=True
+    export FLAGS_PIR_OPTEST=True
     export FLAGS_CI_PIPELINE=py3
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -988,6 +988,7 @@ function run_sot_test() {
     export COST_MODEL=False
     export MIN_GRAPH_SIZE=0
     export SOT_LOG_LEVEL=0
+    export FLAGS_cudnn_deterministic=True
 
     # Install PaddlePaddle
     $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
@@ -1253,7 +1254,7 @@ EOF
             if [ "${APPROVALS}" == "FALSE" ]; then
                 echo "=========================================================================================="
                 echo "This PR make the release inference library size growth exceeds 20 M."
-                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (For NewIR) qingqing01 or yuanlehome) approval for this PR.\n"
+                echo "Then you must have one RD (vivienfanghuagood (Recommend), Aurelius84 (ForPir) qingqing01 or yuanlehome) approval for this PR.\n"
                 echo "=========================================================================================="
                 exit 6
             fi
@@ -1406,6 +1407,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
+
+        exit 102
         disable_ut_quickly='disable_ut'
     fi
 }
@@ -3379,24 +3382,16 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
-        tar --use-compress-program="pigz -1" -cpPf build.tar.gz ${PADDLE_ROOT}/build
+        cp -r ${PADDLE_ROOT}/build /tmp/
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
-        #NOTE(risemeup1):remove build directory of develop branch to avoid conflict with pr branch,we only need whl package of develop branch
         rm -rf ${PADDLE_ROOT}/build
-        if [ -e "${PADDLE_ROOT}/build.tar.gz" ]; then
-            tar  --use-compress-program="pigz -1" -xpf build.tar.gz 
-        else
-            echo "build.tar.gz of pr branch not exist"
-            exit 123
-        fi
-        
+        mv /tmp/build ${PADDLE_ROOT}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
@@ -4098,7 +4093,7 @@ function main() {
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
-        export FLAGS_NEW_IR_OPTEST=True
+        export FLAGS_PIR_OPTEST=True
         parallel_test
         check_coverage
         ;;

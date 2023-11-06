@@ -83,7 +83,7 @@ def quanter(class_name):
     Examples:
         .. code-block:: python
 
-            >>> # doctest: +SKIP
+            >>> # doctest: +SKIP('need 2 file to run example')
             >>> # Given codes in ./customized_quanter.py
             >>> from paddle.quantization import quanter
             >>> from paddle.quantization import BaseQuanter

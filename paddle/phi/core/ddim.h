@@ -227,7 +227,7 @@ std::vector<T> vectorize(const DDim& ddim) {
   return result;
 }
 
-int64_t product(const DDim& ddim);
+TEST_API int64_t product(const DDim& ddim);
 
 bool contain_unknown_dim(const DDim& ddim);
 

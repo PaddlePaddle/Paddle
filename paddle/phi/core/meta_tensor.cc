@@ -124,7 +124,13 @@ void MetaTensor::set_dtype(DataType dtype) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->dtype = dtype;
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    // skip, DistTensor no need to set dtype
+    // For pipeline parallelism, DistTensor holds an uninitialized DenseTensor,
+    // But kernel launch needs to get it's placement, dtype and layout.
+    VLOG(3) << "DistTensor set dtype: " << dtype;
+    DenseTensorUtils::GetMutableMeta(
+        static_cast<phi::distributed::DistTensor*>(tensor_)
+            ->unsafe_mutable_value())
+        ->dtype = dtype;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting dtype for `%s`.", tensor_->type_info().name()));
@@ -158,7 +164,11 @@ void MetaTensor::set_layout(DataLayout layout) {
     DenseTensorUtils::GetMutableMeta(static_cast<SparseCsrTensor*>(tensor_))
         ->layout = layout;
   } else if (phi::distributed::DistTensor::classof(tensor_)) {
-    // skip, DistTensor no need to set dtype
+    VLOG(3) << "DistTensor set layout: " << layout;
+    DenseTensorUtils::GetMutableMeta(
+        static_cast<phi::distributed::DistTensor*>(tensor_)
+            ->unsafe_mutable_value())
+        ->layout = layout;
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "Unsupported settting layout for `%s`.", tensor_->type_info().name()));

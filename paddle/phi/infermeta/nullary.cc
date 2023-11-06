@@ -16,6 +16,24 @@ limitations under the License. */
 
 namespace phi {
 
+void ArangeInferMeta(const Scalar& start,
+                     const Scalar& end,
+                     const Scalar& step,
+                     DataType dtype,
+                     MetaTensor* out) {
+  if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
+    double start_value = start.to<double>();
+    double end_value = end.to<double>();
+    double step_value = step.to<double>();
+    int numel =
+        static_cast<int>(std::ceil((end_value - start_value) / step_value));
+    out->set_dims(phi::make_ddim(std::vector<int64_t>(1, numel)));
+  } else {
+    out->set_dims({-1});
+  }
+  out->set_dtype(dtype);
+}
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {
@@ -41,13 +59,11 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  CreateInferMetaBase({static_cast<int64_t>(data.GetData().size())},
-                      dtype,
-                      DataLayout::NCHW,
-                      out);
+  CreateInferMetaBase(
+      {static_cast<int64_t>(shape.size())}, dtype, DataLayout::NCHW, out);
 }
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
