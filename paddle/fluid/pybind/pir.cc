@@ -42,6 +42,7 @@
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/program.h"
@@ -64,6 +65,7 @@ namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
+using pir::Attribute;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -803,6 +805,15 @@ void BindType(py::module *m) {
       });
 }
 
+void BindAttribute(py::module *m) {
+  py::class_<Type> ir_type(*m, "Attribute", py::module_local());
+  ir_type.def("__str__", [](Attribute &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
+}
+
 Operation *BuildOpFrom(
     Operation *to_copy_op,
     std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
@@ -1471,6 +1482,7 @@ void BindPir(pybind11::module *module) {
   BindOpOperand(&ir_module);
   BindOpResult(&ir_module);
   BindType(&ir_module);
+  BindAttribute(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
