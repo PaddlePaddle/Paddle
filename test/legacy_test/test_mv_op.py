@@ -18,6 +18,7 @@ import numpy as np
 from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 
@@ -30,10 +31,10 @@ class TestMVOp(OpTest):
         self.outputs = {'Out': np.dot(self.x, self.vec)}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Vec'], 'Out')
+        self.check_grad(['X', 'Vec'], 'Out', check_pir=True)
 
     def init_config(self):
         self.x = np.random.random((2, 100)).astype("float64")
@@ -55,6 +56,7 @@ class TestMVAPI(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_graph(self):
         for x_stop_gradient in [False, True]:
             for vec_stop_gradient in [False, True]:
@@ -90,6 +92,7 @@ class TestMVAPI(unittest.TestCase):
 
 
 class TestMVError(unittest.TestCase):
+    @test_with_pir_api
     def test_input(self):
         def test_shape():
             paddle.enable_static()
