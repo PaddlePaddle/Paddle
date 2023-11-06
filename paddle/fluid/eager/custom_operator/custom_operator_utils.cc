@@ -534,9 +534,8 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
 
     if (rank_is_in_current_mesh) {
       auto* dev_ctx = phi::DeviceContextPool::Instance().Get(x.at(0).place());
-      auto dist_input_x =
-          paddle::experimental::ReshardApiInputToReplicatedKernelInput(
-              dev_ctx, x, spmd_info.first[0]);
+      auto dist_input_x = paddle::experimental::ReshardApiInputToKernelInput(
+          dev_ctx, x, spmd_info.first[0]);
       for (size_t i = 0; i < x.size(); ++i) {
         all_inputs->at(i).set_impl(
             std::make_shared<phi::DenseTensor>(dist_input_x[i]->value()));
