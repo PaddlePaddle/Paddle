@@ -352,7 +352,7 @@ class FCMKLDNNHandler
       return memory_p;
     } else {
       auto residual_md = residual->mem_desc().reshape(dims);
-      auto residual_md = residual->mem_desc().reshape(dims);
+      void* residual_ptr = const_cast<void*>(residual->data());
       auto memory_p = std::make_shared<dnnl::memory>(
           residual_md, this->dev_ctx_.GetEngine());
       memory_p->set_data_handle(residual_ptr);
