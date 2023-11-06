@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base, static
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 
 class TestDiffOp(unittest.TestCase):
@@ -78,7 +77,6 @@ class TestDiffOp(unittest.TestCase):
         self.setUp()
         self.func_dygraph()
 
-    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         places = [base.CPUPlace()]
@@ -121,7 +119,6 @@ class TestDiffOp(unittest.TestCase):
                 )
                 self.assertTrue((fetches[0] == self.output).all(), True)
 
-    # @test_with_pir_api
     def func_grad(self):
         for place in self.places:
             x = paddle.to_tensor(self.input, place=place, stop_gradient=False)
@@ -240,7 +237,6 @@ class TestDiffOpPreAppendAxis(TestDiffOp):
 
 
 class TestDiffOpFp16(TestDiffOp):
-    @test_with_pir_api
     def test_fp16_with_gpu(self):
         paddle.enable_static()
         if paddle.base.core.is_compiled_with_cuda():
