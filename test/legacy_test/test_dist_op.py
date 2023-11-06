@@ -246,8 +246,8 @@ class TestDistAPI(unittest.TestCase):
     @test_with_pir_api
     def test_api(self):
         self.init_data_type()
-        main_program = base.Program()
-        startup_program = base.Program()
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
         with base.program_guard(main_program, startup_program):
             x = paddle.static.data(
                 name='x', shape=[2, 3, 4, 5], dtype=self.data_type
