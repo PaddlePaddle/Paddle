@@ -280,7 +280,7 @@ SpmdInfo LayerNormInferSpmdReverse(const DistMetaTensor& x,
 
 std::tuple<std::vector<std::string>, std::string> BuildLayerNormGradEinsum(
     int64_t input_rank, int64_t begin_norm_axis) {
-  return {{}, ""};
+  return {std::vector<std::string>(), ""};
 }
 
 SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
