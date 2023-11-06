@@ -1651,7 +1651,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         output_size = _convert_to_tensor_list(output_size)
 
     if in_dynamic_or_pir_mode():
-        if in_dygraph_mode():
+        if in_dynamic_mode():
             x = x._use_gpudnn(False)
         return _C_ops.pool2d(
             x,
