@@ -174,10 +174,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl allgather compute", platform::TracerEventType::Communication, 1);
-  }
+  std::string event_name = "xccl allgather compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -186,7 +183,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       in_tensor_maybe_partial,
       CommType::ALLGATHER,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
@@ -195,10 +193,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     const AllreduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl allreduce compute", platform::TracerEventType::Communication, 1);
-  }
+  std::string event_name = "xccl allreduce compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -211,7 +206,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
       in_tensor,
       CommType::ALLREDUCE,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
@@ -230,10 +226,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   // simply be covered by static checks. Factors are set to 0 here to skip the
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_xccl_dynamic_check.
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl alltoall compute", platform::TracerEventType::Communication, 1);
-  }
+
+  std::string event_name = "xccl alltoall compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -277,7 +271,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
       in_tensor,
       CommType::ALLTOALL,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Barrier(
@@ -310,18 +305,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     bool use_calc_stream) {
   std::vector<phi::DenseTensor> in_wrapper{in_tensor};
   std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl broadcast compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> bcast_root_vec{opts.source_rank +
-                                              opts.source_root};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        broadcast_info{
-            {"bcast_root", {bcast_root_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> bcast_type;
-    phi::RecordCommInfoSupplement("meta_info ", broadcast_info, bcast_type);
-  }
+  int root = opts.source_rank + opts.source_root;
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      broadcast_info{
+          {"bcast_root", {{root}}},
+      };
+  std::string event_name = "xccl broadcast compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
@@ -331,7 +320,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       in_tensor,
       CommType::BROADCAST,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name,
+      broadcast_info);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
@@ -340,20 +331,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  phi::RecordEvent* xccl_record_event = nullptr;
-  if (phi::RecordEvent::IsEnabled()) {
-    xccl_record_event = new phi::RecordEvent(
-        "xccl reduce compute", platform::TracerEventType::Communication, 1);
-    std::pair<const char*, std::vector<std::string>> reduce_type{
-        "Reduce type",
-        {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
-    const std::vector<int64_t> root_rank_vec{opts.root_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        reduce_info{
-            {"reduce root rank", {{opts.root_rank}}},
-        };
-    phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
-  }
+  const std::vector<int64_t> root_rank_vec{opts.root_rank};
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      reduce_info{
+          {"reduce root rank", {{opts.root_rank}}},
+      };
+  std::string reduce_op_name =
+      paddle::distributed::ToXCCLRedString(opts.reduce_op);
+  std::string event_name = "xccl reduce " + reduce_op_name + " compute";
   std::shared_ptr<ProcessGroup::Task> task = RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -366,10 +351,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       in_tensor,
       CommType::REDUCE,
       sync_op,
-      use_calc_stream);
-  if (xccl_record_event != nullptr) {
-    delete xccl_record_event;
-  }
+      use_calc_stream,
+      event_name,
+      reduce_info);
   return task;
 }
 
@@ -379,17 +363,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
     const ReduceScatterOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event("xccl reducescatter compute",
-                                       platform::TracerEventType::Communication,
-                                       1);
-    std::pair<const char*, std::vector<std::string>> reduce_type{
-        "Reduce type",
-        {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        reduce_info;
-    phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
-  }
+  std::string reduce_op_name =
+      paddle::distributed::ToXCCLRedString(opts.reduce_op);
+  std::string event_name = "xccl reduce" + reduce_op_name + " scatter compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -402,7 +378,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
       in_tensor,
       CommType::REDUCE_SCATTER,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
@@ -418,16 +395,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       /*cur_rank*/ rank_,
       size_,
       phi::AllocationType::CUSTOM);
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl scatter compute", platform::TracerEventType::Communication, 1);
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        scatter_info{
-            {"scatter_root_rank", {{opts.root_rank}}},
-        };
-    std::pair<const char*, std::vector<std::string>> scatter_type;
-    phi::RecordCommInfoSupplement("meta_info ", scatter_info, scatter_type);
-  }
+  std::string event_name = "xccl scatter compute";
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      scatter_info{
+          {"scatter root rank", {{opts.root_rank}}},
+      };
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -456,7 +428,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       in_tensor,
       CommType::SCATTER,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name,
+      scatter_info);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
@@ -513,19 +487,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       comm_context->Send(in_tensor, in_tensor.numel(), opts.root_rank, stream);
     }
   };
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl gather compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> root_rank_vec{opts.root_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        gather_info{
-            {"gather_root_rank", {root_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> gather_type;
-    phi::RecordCommInfoSupplement("meta_info ", gather_info, gather_type);
-  }
-  return RunFnInXCCLEnv(
-      gather_func, in_tensor, CommType::GATHER, sync_op, use_calc_stream);
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      gather_info{
+          {"gather_root_rank", {{opts.root_rank}}},
+      };
+  std::string event_name = "xccl gather compute";
+  return RunFnInXCCLEnv(gather_func,
+                        in_tensor,
+                        CommType::GATHER,
+                        sync_op,
+                        use_calc_stream,
+                        event_name,
+                        gather_info);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
@@ -541,17 +515,12 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     partial_tensor = GetPartialTensor(*tensor, offset, numel);
     tensor = &partial_tensor;
   }
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl recv compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> src_rank_vec{src_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        recv_info{
-            {"recv_src_rank", {src_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> recv_type;
-    phi::RecordCommInfoSupplement("meta_info ", recv_info, recv_type);
-  }
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      recv_info{
+          {"recv_src_rank", {{src_rank}}},
+      };
+
+  std::string event_name = "xccl recv compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -560,7 +529,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
       *tensor,
       CommType::RECV,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name,
+      recv_info);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
@@ -573,17 +544,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(tensor, offset, numel) : tensor;
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl send compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> dst_rank_vec{dst_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        send_info{
-            {"send_dst_rank", {dst_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> dst_type;
-    phi::RecordCommInfoSupplement("meta_info ", send_info, dst_type);
-  }
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      send_info{
+          {"send_dst_rank", {{dst_rank}}},
+      };
+  std::string event_name = "xccl send compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -595,7 +560,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
       tensor_maybe_partial,
       CommType::SEND,
       sync_op,
-      use_calc_stream);
+      use_calc_stream,
+      event_name,
+      send_info);
 }
 
 std::shared_ptr<ProcessGroupCustom::XCCLTask> ProcessGroupCustom::CreateTask(
@@ -672,7 +639,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
     const phi::DenseTensor& tensor,
     CommType comm_type,
     bool sync_op,
-    bool use_calc_stream) {
+    bool use_calc_stream,
+    const std::string& event_name,
+    const std::vector<
+        std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo) {
   const auto& place = tensor.place();
   const auto& key = GetKeyFromPlace(place);
 
@@ -694,22 +664,26 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
       use_calc_stream ? *calc_ctx->GetStream() : *comm_ctx->GetStream();
 
   // build CommInfoSupplement for record_event
-  platform::RecordEvent record_event(
-      "communicate", platform::TracerEventType::Communication, 1);
+  phi::RecordEvent* xccl_record_event = nullptr;
+  if (phi::RecordEvent::IsEnabled()) {
+    xccl_record_event = new phi::RecordEvent(
+        event_name, platform::TracerEventType::Communication, 1);
+    const std::vector<int64_t> size_vec{tensor.numel()};
+    const std::vector<int64_t> dtype_vec{static_cast<int>(tensor.dtype())};
 
-  std::pair<const char*, std::vector<std::string>> dtypes{
-      "input", {phi::DataTypeToString(tensor.dtype())}};
-
-  const std::vector<int64_t> size_vec{tensor.numel()};
-  const std::vector<int64_t> dtype_vec{static_cast<int>(tensor.dtype())};
-
-  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-      comm_info{
-          {"communicate data amount", {size_vec}},
-          {"current communicate group", {comm_group_}},
-          {"current rank", {{static_cast<int64_t>(rank_)}}},
-      };
-  phi::RecordCommInfoSupplement("meta_info ", comm_info, dtypes);
+    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+        comm_infos{
+            {"communicate data amount", {size_vec}},
+            {"current communicate group", {comm_group_}},
+            {"current rank", {{static_cast<int64_t>(rank_)}}},
+        };
+    for (auto& comm_info_ : CommInfo) {
+      comm_infos.push_back(std::move(comm_info_));
+    }
+    std::pair<const char*, std::vector<std::string>> dtypes{
+        "input", {phi::DataTypeToString(tensor.dtype())}};
+    phi::RecordCommInfoSupplement("meta_info ", comm_infos, dtypes);
+  }
 
   fn(xccl_stream);
 
@@ -718,6 +692,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
       memory::RecordStream(tensor.Holder(), xccl_stream.raw_stream());
     }
     task->UpdateWaitChain(*comm_ctx);
+  }
+  if (xccl_record_event != nullptr) {
+    delete xccl_record_event;
   }
 
   return task;
@@ -814,7 +791,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
     std::vector<phi::DenseTensor>& inputs,
     std::vector<phi::DenseTensor>& outputs,
     Fn fn,
-    CommType op_type) {
+    CommType op_type,
+    const std::string& event_name,
+    const std::vector<
+        std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo) {
   const auto places = GetPlaceList(inputs);
   const auto key = GetKeyFromPlaces(places);
 
@@ -839,19 +819,20 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
 
       // build CommInfoSupplement for record_event
       platform::RecordEvent record_event(
-          "communicate", platform::TracerEventType::Communication, 1);
+          event_name, platform::TracerEventType::Communication, 1);
       const std::vector<int64_t> size_vec{inputs[i].numel()};
-      const std::vector<int64_t> dtype_vec{static_cast<int>(inputs[i].dtype())};
-
       std::pair<const char*, std::vector<std::string>> dtypes{
           "input", {phi::DataTypeToString(inputs[i].dtype())}};
       std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-          comm_info{
+          comm_infos{
               {"communicate data amount", {size_vec}},
               {"current communicate group", {comm_group_}},
               {"current rank", {{static_cast<int64_t>(rank_)}}},
           };
-      phi::RecordCommInfoSupplement("meta_info ", comm_info, dtypes);
+      for (auto& comm_info_ : CommInfo) {
+        comm_infos.push_back(std::move(comm_info_));
+      }
+      phi::RecordCommInfoSupplement("meta_info ", comm_infos, dtypes);
 
       fn(inputs[i],
          outputs[i],
@@ -881,7 +862,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
     std::vector<phi::DenseTensor>& tensors,
     Fn fn,
     int dst_rank,
-    CommType op_type) {
+    CommType op_type,
+    const std::string& event_name,
+    const std::vector<
+        std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo) {
   const auto places = GetPlaceList(tensors);
   const auto key = GetKeyFromPlaces(places);
 
@@ -906,20 +890,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
 
       // build CommInfoSupplement for record_event
       platform::RecordEvent record_event(
-          "communicate", platform::TracerEventType::Communication, 1);
+          event_name, platform::TracerEventType::Communication, 1);
 
       std::pair<const char*, std::vector<std::string>> dtypes{
           "input", {phi::DataTypeToString(tensors[i].dtype())}};
       const std::vector<int64_t> size_vec{tensors[i].numel()};
 
       std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-          comm_info{
+          comm_infos{
               {"communicate data amount", {size_vec}},
               {"current communicate group", {comm_group_}},
               {"current rank", {{static_cast<int64_t>(rank_)}}},
           };
-
-      phi::RecordCommInfoSupplement("meta_info ", comm_info, dtypes);
+      for (auto& comm_info_ : CommInfo) {
+        comm_infos.push_back(std::move(comm_info_));
+      }
+      phi::RecordCommInfoSupplement("meta_info ", comm_infos, dtypes);
 
       fn(tensors[i],
          places_to_ctx_.at(key)[i]->xccl_comm(),
@@ -952,18 +938,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl allreduce compute", platform::TracerEventType::Communication, 1);
-
-    std::pair<const char*, std::vector<std::string>> reduce_type{
-        "ALLReduce type",
-        {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
-
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        reduce_info;
-    phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
-  }
+  std::string reduce_op_name =
+      paddle::distributed::ToXCCLRedString(opts.reduce_op);
+  std::string event_name = "xccl allreduce " + reduce_op_name + " compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -978,7 +955,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
             paddle::distributed::ToXCCLRedType(opts.reduce_op),
             stream);
       },
-      CommType::ALLREDUCE);
+      CommType::ALLREDUCE,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
@@ -989,19 +967,13 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl broadcast compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> bcast_root_vec{
-        static_cast<int64_t>(opts.source_rank) * in_tensors.size() +
-        static_cast<int64_t>(opts.source_root)};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        broadcast_info{
-            {"bcast_root", {bcast_root_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> bcast_type;
-    phi::RecordCommInfoSupplement("meta_info ", broadcast_info, bcast_type);
-  }
+
+  int root = opts.source_rank * in_tensors.size() + opts.source_root;
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      broadcast_info{
+          {"bcast_root", {{root}}},
+      };
+  std::string event_name = "xccl broadcast compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1014,7 +986,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
         auto comm_context = this->GetCommContext();
         comm_context->Broadcast(&output, input, root, stream);
       },
-      CommType::BROADCAST);
+      CommType::BROADCAST,
+      event_name,
+      broadcast_info);
 }
 
 inline void CheckTensorsInDifferentDevices(
@@ -1048,18 +1022,13 @@ inline void CheckTensorsInDifferentDevices(
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
     std::vector<phi::DenseTensor>& tensors, int dst_rank) {
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl send compute", platform::TracerEventType::Communication, 1);
 
-    const std::vector<int64_t> dst_rank_vec{dst_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        send_info{
-            {"send_dst_rank", {dst_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> dst_type;
-    phi::RecordCommInfoSupplement("meta_info ", send_info, dst_type);
-  }
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      send_info{
+          {"send_dst_rank", {{dst_rank}}},
+      };
+
+  std::string event_name = "xccl send compute";
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& input,
@@ -1070,24 +1039,22 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
         comm_context->Send(input, input.numel(), dst_rank, stream);
       },
       dst_rank,
-      CommType::SEND);
+      CommType::SEND,
+      event_name,
+      send_info);
   return task;
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
     std::vector<phi::DenseTensor>& tensors, int src_rank) {
   CheckTensorsInDifferentDevices(tensors, static_cast<size_t>(GetSize()));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl recv compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> src_rank_vec{src_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        recv_info{
-            {"recv_src_rank", {src_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> recv_type;
-    phi::RecordCommInfoSupplement("meta_info ", recv_info, recv_type);
-  }
+
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      recv_info{
+          {"recv_src_rank", {{src_rank}}},
+      };
+
+  std::string event_name = "xccl recv compute";
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& output,
@@ -1098,7 +1065,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
         comm_context->Recv(&output, output.numel(), src_rank, stream);
       },
       src_rank,
-      CommType::RECV);
+      CommType::RECV,
+      event_name,
+      recv_info);
   return task;
 }
 
@@ -1113,10 +1082,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All outputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl allgather compute", platform::TracerEventType::Communication, 1);
-  }
+
+  std::string event_name = "xccl allgather compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1127,7 +1094,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
         auto comm_context = this->GetCommContext();
         comm_context->AllGather(&output, input, stream);
       },
-      CommType::ALLGATHER);
+      CommType::ALLGATHER,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
@@ -1141,10 +1109,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl alltoall compute", platform::TracerEventType::Communication, 1);
-  }
+  std::string event_name = "xccl alltoall compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1181,31 +1146,28 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
             comm_context->GetXcclComm(),
             stream);
       },
-      CommType::ALLTOALL);
+      CommType::ALLTOALL,
+      event_name);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     std::vector<phi::DenseTensor>& in_tensors,
     std::vector<phi::DenseTensor>& out_tensors,
     const ReduceOptions& opts) {
+  std::string reduce_op_name =
+      paddle::distributed::ToXCCLRedString(opts.reduce_op);
   PADDLE_ENFORCE_EQ(
       CheckTensorsInCustomPlace(in_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl reduce compute", platform::TracerEventType::Communication, 1);
-    std::pair<const char*, std::vector<std::string>> reduce_type{
-        "Reduce type",
-        {std::string(paddle::distributed::ToXCCLRedString(opts.reduce_op))}};
-    const std::vector<int64_t> root_rank_vec{opts.root_rank};
 
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        reduce_info{
-            {"reduce_root_rank", {root_rank_vec}},
-        };
-    phi::RecordCommInfoSupplement("meta_info ", reduce_info, reduce_type);
-  }
+  const std::vector<int64_t> root_rank_vec{opts.root_rank};
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      reduce_info{
+          {"reduce_root_rank", {{opts.root_rank}}},
+      };
+
+  std::string event_name = "xccl reduce " + reduce_op_name + " compute";
 
   return Collective(
       in_tensors,
@@ -1221,7 +1183,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
                              opts.root_rank,
                              stream);
       },
-      CommType::REDUCE);
+      CommType::REDUCE,
+      event_name,
+      reduce_info);
 }
 
 std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
@@ -1236,17 +1200,11 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  if (phi::RecordEvent::IsEnabled()) {
-    platform::RecordEvent record_event(
-        "xccl scatter compute", platform::TracerEventType::Communication, 1);
-    const std::vector<int64_t> root_rank_vec{opts.root_rank};
-    std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
-        scatter_info{
-            {"scatter_root_rank", {root_rank_vec}},
-        };
-    std::pair<const char*, std::vector<std::string>> scatter_type;
-    phi::RecordCommInfoSupplement("meta_info ", scatter_info, scatter_type);
-  }
+  std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
+      scatter_info{
+          {"scatter_root_rank", {{opts.root_rank}}},
+      };
+  std::string event_name = "xccl scatter compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1271,7 +1229,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
           comm_context->Recv(&output, count, opts.root_rank, stream);
         }
       },
-      CommType::SCATTER);
+      CommType::SCATTER,
+      event_name,
+      scatter_info);
 }
 
 std::shared_ptr<ProcessGroupCustom>

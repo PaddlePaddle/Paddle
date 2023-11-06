@@ -229,7 +229,11 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       const phi::DenseTensor& tensor,
       CommType comm_type,
       bool sync_op,
-      bool use_calc_stream);
+      bool use_calc_stream,
+      const std::string& event_name,
+      const std::vector<
+          std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo =
+          {});
 
   // TODO(sunyilun): methods below will be removed later
   std::shared_ptr<ProcessGroupCustom::XCCLTask> CreateTask(
@@ -243,14 +247,22 @@ class ProcessGroupCustom final : public ProcessGroupWithStream {
       std::vector<phi::DenseTensor>& inputs,   // NOLINT
       std::vector<phi::DenseTensor>& outputs,  // NOLINT
       Fn fn,
-      CommType op_type);
+      CommType op_type,
+      const std::string& event_name,
+      const std::vector<
+          std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo =
+          {});
 
   template <typename Fn>
   std::shared_ptr<ProcessGroup::Task> PointToPoint(
       std::vector<phi::DenseTensor>& tensors,  // NOLINT
       Fn fn,
       int dst_rank,
-      CommType op_type);
+      CommType op_type,
+      const std::string& event_name,
+      const std::vector<
+          std::pair<const char*, std::vector<std::vector<int64_t>>>>& CommInfo =
+          {});
 
   void CreateXCCLManagerCache(const std::string& places_key,
                               const std::vector<Place>& places);
