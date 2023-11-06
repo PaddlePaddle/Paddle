@@ -234,6 +234,7 @@
     func : FusionRepeatedFCReluInferMeta
   kernel :
     func : fusion_repeated_fc_relu
+    data_type: x
   intermediate : relu_out
 
 - op : fusion_seqconv_eltadd_relu
@@ -264,6 +265,7 @@
     func : FusionSquaredMatSubInferMeta
   kernel :
     func : fusion_squared_mat_sub
+    data_type : x
   intermediate : squared_x, squared_y, squared_xy
 
 - op : fusion_transpose_flatten_concat

@@ -2261,6 +2261,7 @@ void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
   }
   out->set_dims({i_dims[0], w_dims[sz - 1][1]});
   out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void FusionSquaredMatSubInferMeta(const MetaTensor& x,
@@ -2295,9 +2296,13 @@ void FusionSquaredMatSubInferMeta(const MetaTensor& x,
                                    x_dims[1],
                                    y_dims[0]));
   squared_x->set_dims(x_dims);
+  squared_x->set_dtype(x.dtype());
   squared_y->set_dims(y_dims);
+  squared_y->set_dtype(x.dtype());
   squared_xy->set_dims({x_dims[0], y_dims[1]});
+  squared_xy->set_dtype(x.dtype());
   out->set_dims({x_dims[0], y_dims[1]});
+  out->set_dtype(x.dtype());
 }
 
 void FusionGRUInferMeta(const MetaTensor& x,
