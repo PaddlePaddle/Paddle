@@ -19,11 +19,12 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm
 
@@ -35,21 +36,19 @@ l2_decay = 1e-4
 # NOTE: Reduce batch_size from 8 to 2 to avoid unittest timeout.
 batch_size = 2
 epoch_num = 1
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 
 
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 
 def optimizer_setting(parameter_list=None):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=base_lr,
         momentum=momentum_rate,
-        regularization=paddle.regularizer.L2Decay(l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
@@ -133,11 +132,7 @@ class BottleneckBlock(paddle.nn.Layer):
             short = self.short(inputs)
 
         y = paddle.add(x=short, y=conv2)
-
-        layer_helper = fluid.layer_helper.LayerHelper(
-            self.full_name(), act='relu'
-        )
-        return layer_helper.append_activation(y)
+        return paddle.nn.functional.relu(y)
 
 
 class ResNet(paddle.nn.Layer):
@@ -148,9 +143,7 @@ class ResNet(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             depth = [3, 4, 6, 3]
@@ -192,7 +185,7 @@ class ResNet(paddle.nn.Layer):
         self.out = paddle.nn.Linear(
             self.pool2d_avg_output,
             class_dim,
-            weight_attr=fluid.param_attr.ParamAttr(
+            weight_attr=base.param_attr.ParamAttr(
                 initializer=paddle.nn.initializer.Uniform(-stdv, stdv)
             ),
         )
@@ -220,6 +213,27 @@ def reader_decorator(reader):
     return __reader__
 
 
+class TransedFlowerDataSet(paddle.io.Dataset):
+    def __init__(self, flower_data, length):
+        self.img = []
+        self.label = []
+        self.flower_data = flower_data()
+        self._generate(length)
+
+    def _generate(self, length):
+        for i, data in enumerate(self.flower_data):
+            if i >= length:
+                break
+            self.img.append(data[0])
+            self.label.append(data[1])
+
+    def __getitem__(self, idx):
+        return self.img[idx], self.label[idx]
+
+    def __len__(self):
+        return len(self.img)
+
+
 class ResNetHelper:
     def __init__(self):
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -238,20 +252,18 @@ class ResNetHelper:
         """
         Tests model decorated by `dygraph_to_static_output` in static graph mode. For users, the model is defined in dygraph mode and trained in static graph mode.
         """
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             np.random.seed(SEED)
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
 
-            train_reader = paddle.batch(
+            dataset = TransedFlowerDataSet(
                 reader_decorator(paddle.dataset.flowers.train(use_xmap=False)),
-                batch_size=batch_size,
-                drop_last=True,
+                batch_size * (10 + 1),
             )
-            data_loader = fluid.io.DataLoader.from_generator(
-                capacity=5, iterable=True
+            data_loader = paddle.io.DataLoader(
+                dataset, batch_size=batch_size, drop_last=True
             )
-            data_loader.set_sample_list_generator(train_reader)
 
             resnet = ResNet()
             if to_static:
@@ -315,33 +327,31 @@ class ResNetHelper:
                                 resnet.state_dict(),
                                 self.dy_state_dict_save_path + '.pdparams',
                             )
-                        # avoid dataloader throw abort signaal
-                        data_loader._reset()
                         break
 
         return total_loss.numpy()
 
     def predict_dygraph(self, data):
         paddle.jit.enable_to_static(False)
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             resnet = ResNet()
 
             model_dict = paddle.load(self.dy_state_dict_save_path + '.pdparams')
             resnet.set_dict(model_dict)
             resnet.eval()
 
-            pred_res = resnet(fluid.dygraph.to_variable(data))
+            pred_res = resnet(base.dygraph.to_variable(data))
 
             return pred_res.numpy()
 
     def predict_static(self, data):
         paddle.enable_static()
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(
+        ] = paddle.static.io.load_inference_model(
             self.model_save_dir,
             executor=exe,
             model_filename=self.model_filename,
@@ -357,7 +367,7 @@ class ResNetHelper:
         return pred_res[0]
 
     def predict_dygraph_jit(self, data):
-        with fluid.dygraph.guard(place):
+        with base.dygraph.guard(place):
             resnet = paddle.jit.load(self.model_save_prefix)
             resnet.eval()
 
@@ -376,7 +386,7 @@ class ResNetHelper:
         return out
 
 
-class TestResnet(unittest.TestCase):
+class TestResnet(Dy2StTestBase):
     def setUp(self):
         self.resnet_helper = ResNetHelper()
 
@@ -400,17 +410,24 @@ class TestResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='predictor_pre:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'predictor_pre:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
+        )
+
+    @test_pir_only
+    def test_resnet_pir(self):
+        static_loss = self.train(to_static=True)
+        dygraph_loss = self.train(to_static=False)
+        np.testing.assert_allclose(
+            static_loss,
+            dygraph_loss,
+            rtol=1e-05,
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_resnet(self):
@@ -420,25 +437,9 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
         self.verify_predict()
-
-    def test_resnet_composite_backward(self):
-        core._set_prim_backward_enabled(True)
-        static_loss = self.train(to_static=True)
-        core._set_prim_backward_enabled(False)
-        dygraph_loss = self.train(to_static=True)
-        np.testing.assert_allclose(
-            static_loss,
-            dygraph_loss,
-            rtol=1e-05,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
-        )
 
     def test_resnet_composite_forward_backward(self):
         core._set_prim_all_enabled(True)
@@ -449,18 +450,16 @@ class TestResnet(unittest.TestCase):
             static_loss,
             dygraph_loss,
             rtol=1e-02,
-            err_msg='static_loss: {} \n dygraph_loss: {}'.format(
-                static_loss, dygraph_loss
-            ),
+            err_msg=f'static_loss: {static_loss} \n dygraph_loss: {dygraph_loss}',
         )
 
     def test_in_static_mode_mkldnn(self):
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
+        base.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            if paddle.fluid.core.is_compiled_with_mkldnn():
+            if paddle.base.core.is_compiled_with_mkldnn():
                 self.resnet_helper.train(to_static=True)
         finally:
-            fluid.set_flags({'FLAGS_use_mkldnn': False})
+            base.set_flags({'FLAGS_use_mkldnn': False})
 
 
 if __name__ == '__main__':

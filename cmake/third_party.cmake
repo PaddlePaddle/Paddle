@@ -247,6 +247,14 @@ if(NOT DEFINED WITH_MKLDNN)
   endif()
 endif()
 
+if(WIN32)
+  if(MSVC)
+    if(MSVC_VERSION LESS 1920)
+      set(WITH_MKLDNN OFF)
+    endif()
+  endif()
+endif()
+
 if(WIN32
    OR APPLE
    OR NOT WITH_GPU
@@ -269,7 +277,7 @@ if(WITH_CINN)
     add_definitions(-DCINN_WITH_MKL_CBLAS)
   endif()
   if(WITH_MKLDNN)
-    add_definitions(-DCINN_WITH_MKLDNN)
+    add_definitions(-DCINN_WITH_DNNL)
   endif()
   include(cmake/cinn/version.cmake)
   if(NOT EXISTS ${CMAKE_BINARY_DIR}/cmake/cinn/config.cmake)
@@ -375,6 +383,10 @@ if(WITH_GPU)
   if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
     include(external/cub) # download cub
     list(APPEND third_party_deps extern_cub)
+  elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
+         OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+    include(external/cccl)
+    list(APPEND third_party_deps extern_cccl)
   endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
@@ -548,10 +560,15 @@ if(WITH_GPU
     list(APPEND third_party_deps extern_cutlass)
     set(WITH_CUTLASS ON)
   endif()
-  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.2)
-    include(external/flashattn)
-    list(APPEND third_party_deps extern_flashattn)
-    set(WITH_FLASHATTN ON)
+  if(${CMAKE_CUDA_COMPILER_VERSION} GREATER_EQUAL 11.4)
+    foreach(arch ${NVCC_ARCH_BIN})
+      if(${arch} GREATER_EQUAL 80)
+        include(external/flashattn)
+        list(APPEND third_party_deps extern_flashattn)
+        set(WITH_FLASHATTN ON)
+        break()
+      endif()
+    endforeach()
   endif()
 endif()
 

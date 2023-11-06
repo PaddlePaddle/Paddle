@@ -42,7 +42,7 @@ namespace interpreter {
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   size_t count = 0;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     count += pair.second.size();
   }
   return count;
@@ -50,7 +50,7 @@ size_t CountDownstreamMap(
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   std::ostringstream oss;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     oss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
@@ -144,7 +144,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
 
       auto is_read = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Inputs()) {
+        for (auto const& pair : inst.Inputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -155,7 +155,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       };
 
       auto is_write = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Outputs()) {
+        for (auto const& pair : inst.Outputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -381,10 +381,8 @@ void DependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
 
   VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
   VLOG(8) << "Add dependency from "
-          << instructions_->at(prior_op_idx).OpBase()->Type() << "("
-          << prior_op_idx << ") to "
-          << instructions_->at(posterior_op_idx).OpBase()->Type() << "("
-          << posterior_op_idx << ")";
+          << "prior_op_idx(" << prior_op_idx << ") to "
+          << "posterior_op_idx(" << posterior_op_idx << ")";
 }
 
 void DependencyBuilder::BuildDownstreamMap() {
@@ -404,22 +402,6 @@ void DependencyBuilder::BuildDownstreamMap() {
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     op2dependences[op_idx] = std::set<size_t>();
   }
-
-  auto update_var_min_rw_op =
-      [](const std::map<size_t, std::set<size_t>>& op2dependences,
-         std::map<size_t, std::list<size_t>>* var2min_rw_op,
-         size_t cur_op,
-         size_t rw_var) {
-        // rw_var is inputs or outputs of cur_op
-        // this function update the var2min_rw_op set .
-        if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
-          (*var2min_rw_op)[rw_var] = std::list<size_t>();
-        }
-        for (auto dep_op : op2dependences.at(cur_op)) {
-          var2min_rw_op->at(rw_var).remove(dep_op);
-        }
-        var2min_rw_op->at(rw_var).push_back(cur_op);
-      };
 
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     remove_duplicate.clear();
@@ -485,7 +467,7 @@ void DependencyBuilder::BuildDownstreamMap() {
       for (auto var : item.second) {
         if (remove_duplicate.count(var) ==
             0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+          UpdateVarMinRwOp(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }
     }
@@ -546,22 +528,45 @@ void DependencyBuilder::ShrinkDownstreamMap() {
           << StringizeDownstreamMap(*op_downstream_map_);
 }
 
+void DependencyBuilder::UpdateVarMinRwOp(
+    const std::map<size_t, std::set<size_t>>& op2dependences,
+    std::map<size_t, std::list<size_t>>* var2min_rw_op,
+    size_t cur_op,
+    size_t rw_var) {
+  // rw_var is inputs or outputs of cur_op
+  // this function update the var2min_rw_op set .
+  if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
+    (*var2min_rw_op)[rw_var] = std::list<size_t>();
+  }
+  for (auto dep_op : op2dependences.at(cur_op)) {
+    var2min_rw_op->at(rw_var).remove(dep_op);
+  }
+  var2min_rw_op->at(rw_var).push_back(cur_op);
+}
+
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
-    const std::vector<std::unique_ptr<paddle::framework::InstructionBase>>&
-        instructions) {
+PirDependencyBuilder::PirDependencyBuilder() {
+  is_build_ = false;
+  op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
+  op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
+}
+
+const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
+    std::vector<paddle::framework::InstructionBase*> instructions) {
   if (is_build_) {
-    return op_downstream_map_;
+    return *op_downstream_map_;
   }
 
-  instructions_ = &instructions;
-  op_num_ = instructions_->size();
+  std::tie(op_downstream_map_, op_happens_before_) = GetDependency();
+
+  instructions_ = instructions;
+  op_num_ = instructions_.size();
 
   ops_before_.assign(op_num_, {});
   ops_behind_.assign(op_num_, {});
-  op_happens_before_.assign(op_num_, std::vector<bool>(op_num_, false));
+  op_happens_before_->assign(op_num_, std::vector<bool>(op_num_, false));
 
   BuildDownstreamMap();
   VLOG(6) << "Finish BuildDownstreamMap";
@@ -576,16 +581,16 @@ const std::map<size_t, std::set<size_t>>& IrDependencyBuilder::Build(
   // TODO(zhangbo): Add dependency for special op ？
 
   VLOG(6) << "Finish build dependency";
-  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
+  VLOG(8) << "downstream count: " << CountDownstreamMap(*op_downstream_map_);
   VLOG(8) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(op_downstream_map_);
+          << StringizeDownstreamMap(*op_downstream_map_);
 
   is_build_ = true;
 
-  return op_downstream_map_;
+  return *op_downstream_map_;
 }
 
-void IrDependencyBuilder::BuildDownstreamMap() {
+void PirDependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
       std::map<size_t, std::list<size_t>>();  // # map from variable id to read
                                               //  write op id.
@@ -604,27 +609,11 @@ void IrDependencyBuilder::BuildDownstreamMap() {
     op2dependences[op_idx] = std::set<size_t>();
   }
 
-  auto update_var_min_rw_op =
-      [](const std::map<size_t, std::set<size_t>>& op2dependences,
-         std::map<size_t, std::list<size_t>>* var2min_rw_op,
-         size_t cur_op,
-         size_t rw_var) {
-        // rw_var is inputs or outputs of cur_op
-        // this function update the var2min_rw_op set .
-        if (var2min_rw_op->find(rw_var) == var2min_rw_op->end()) {
-          (*var2min_rw_op)[rw_var] = std::list<size_t>();
-        }
-        for (auto dep_op : op2dependences.at(cur_op)) {
-          var2min_rw_op->at(rw_var).remove(dep_op);
-        }
-        var2min_rw_op->at(rw_var).push_back(cur_op);
-      };
-
   for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
     remove_duplicate.clear();
     // step1: update the op2dependences structure
     for (auto& item :
-         instructions_->at(op_idx)->Inputs()) {  // for all inputs(read only)
+         instructions_.at(op_idx)->Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
         if (var2recent_write_op.count(var))
           op2dependences[op_idx].insert(var2recent_write_op[var]);
@@ -632,7 +621,7 @@ void IrDependencyBuilder::BuildDownstreamMap() {
     }
 
     for (auto& item :
-         instructions_->at(op_idx)->Outputs()) {  // for all write vars
+         instructions_.at(op_idx)->Outputs()) {  // for all write vars
       for (auto var : item.second) {
         if (var2min_rw_op.count(var)) {
           for (auto dep_op : var2min_rw_op[var]) {
@@ -644,7 +633,7 @@ void IrDependencyBuilder::BuildDownstreamMap() {
 
     // step2: update 2 var2xxxx data structure
     for (auto& item :
-         instructions_->at(op_idx)->Outputs()) {  // for all write vars
+         instructions_.at(op_idx)->Outputs()) {  // for all write vars
       for (auto var : item.second) {
         var2recent_write_op[var] = op_idx;
         var2min_rw_op[var] = {static_cast<size_t>(op_idx)};
@@ -653,11 +642,11 @@ void IrDependencyBuilder::BuildDownstreamMap() {
     }
 
     for (auto& item :
-         instructions_->at(op_idx)->Inputs()) {  // for all inputs(read only)
+         instructions_.at(op_idx)->Inputs()) {  // for all inputs(read only)
       for (auto var : item.second) {
         if (remove_duplicate.count(var) ==
             0) {  // var in input list and in output list, so remove it.
-          update_var_min_rw_op(op2dependences, &var2min_rw_op, op_idx, var);
+          UpdateVarMinRwOp(op2dependences, &var2min_rw_op, op_idx, var);
         }
       }
     }
@@ -675,116 +664,10 @@ void IrDependencyBuilder::BuildDownstreamMap() {
   }
 }
 
-void IrDependencyBuilder::AddDownstreamOp(size_t prior_op_idx,
-                                          size_t posterior_op_idx) {
-  PADDLE_ENFORCE_EQ(
-      OpHappensBefore(posterior_op_idx, prior_op_idx),
-      false,
-      phi::errors::Unavailable(
-          "Can not add dependency %d->%d because %d is run before %d",
-          prior_op_idx,
-          posterior_op_idx,
-          posterior_op_idx,
-          prior_op_idx));
-
-  std::set<size_t>& downstream_ops = op_downstream_map_[prior_op_idx];
-  // NOTE(Ruibiao): Here the downstream map shrinking is best-effort, therefore
-  // ShrinkDownstreamMap after BuildDownstreamMap is still helpful. For example,
-  // a->c will not be shrinked in the following case: AddDownstreamOp(a, b) ->
-  // AddDownstreamOp(a, c) -> AddDownstreamOp(b, c), it should be shrinked by
-  // ShrinkDownstreamMap.
-  for (size_t op_idx : downstream_ops) {
-    if (OpHappensBefore(op_idx, posterior_op_idx)) {
-      VLOG(7) << "Find dependencies " << prior_op_idx << "->" << op_idx << "->"
-              << posterior_op_idx << ", skip adding " << prior_op_idx << "->"
-              << posterior_op_idx;
-      return;
-    }
-  }
-  downstream_ops.insert(posterior_op_idx);
-
-  std::vector<size_t> prior_of_prior = ops_before_[prior_op_idx];
-  std::vector<size_t> posterior_of_posterior = ops_behind_[posterior_op_idx];
-
-  auto update_op_happen_before = [this](size_t prior_op_idx,
-                                        size_t posterior_op_idx) {
-    if (!op_happens_before_[prior_op_idx][posterior_op_idx]) {
-      op_happens_before_[prior_op_idx][posterior_op_idx] = true;
-      ops_before_[posterior_op_idx].push_back(prior_op_idx);
-      ops_behind_[prior_op_idx].push_back(posterior_op_idx);
-    }
-  };
-
-  update_op_happen_before(prior_op_idx, posterior_op_idx);
-
-  // All ops before prior-op are also before posterior-op
-  for (size_t op_idx : prior_of_prior) {
-    update_op_happen_before(op_idx, posterior_op_idx);
-  }
-
-  // All ops after posterior-op are also after prior-op
-  for (size_t op_idx : posterior_of_posterior) {
-    update_op_happen_before(prior_op_idx, op_idx);
-  }
-
-  VLOG(8) << prior_op_idx << "->" << posterior_op_idx;
-  VLOG(8) << "Add dependency from " << instructions_->at(prior_op_idx)->Name()
-          << "(" << prior_op_idx << ") to "
-          << instructions_->at(posterior_op_idx)->Name() << "("
-          << posterior_op_idx << ")";
-}
-
-void IrDependencyBuilder::ShrinkDownstreamMap() {
-  // remove unnecessary downstream ops
-  // for example, a->b->c
-  // a: b, c
-  // b: c
-  // =>
-  // a: b
-  // b: c
-
-  // shrink, find the downstream op that has no other op in the
-  // downstream list happens before it
-  for (size_t i = 0; i < op_num_; ++i) {
-    if (op_downstream_map_.find(i) == op_downstream_map_.end()) {
-      continue;
-    }
-
-    std::set<size_t> minumum_nexts;
-    for (size_t item : op_downstream_map_.at(i)) {
-      bool not_after_any = true;
-      // find the op that is not executed after any
-      for (size_t other_item : op_downstream_map_.at(i)) {
-        if (OpHappensBefore(other_item, item)) {
-          VLOG(8) << "happens_before: " << other_item << "->" << item
-                  << ", so skip " << item;
-          not_after_any = false;
-          break;
-        }
-      }
-      if (not_after_any) {
-        VLOG(8) << "downstream op of " << i << ": " << item;
-        minumum_nexts.insert(item);
-      }
-    }
-    // NOTE(Ruibiao): op_happens_before will not be changed when shrink
-    // dowstream map
-    op_downstream_map_.at(i) = minumum_nexts;
-  }
-  VLOG(8) << "Finish shrink downstream map";
-  VLOG(8) << "downstream count: " << CountDownstreamMap(op_downstream_map_);
-  VLOG(8) << "downstream_map: " << std::endl
-          << StringizeDownstreamMap(op_downstream_map_);
-}
-
-void IrDependencyBuilder::AddDependencyForSequentialRun() {
-  size_t dependence_op_idx = ULLONG_MAX;
-  for (size_t op_idx = 0; op_idx < op_num_; ++op_idx) {
-    if (dependence_op_idx != ULLONG_MAX) {
-      AddDownstreamOp(dependence_op_idx, op_idx);
-    }
-    dependence_op_idx = op_idx;
-  }
+void PirDependencyBuilder::ShareDependencyFrom(
+    const PirDependencyBuilder& src) {
+  std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
+  is_build_ = true;
 }
 
 }  // namespace interpreter

@@ -14,10 +14,10 @@
 import numpy as np
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.core import VarDesc
-from paddle.fluid.dygraph import no_grad
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
+from paddle.base import core
+from paddle.base.core import VarDesc
+from paddle.base.dygraph import no_grad
+from paddle.base.framework import convert_np_dtype_to_dtype_
 from paddle.framework import in_dynamic_mode
 from paddle.incubate.nn import functional as incubate_f
 from paddle.nn import Layer
@@ -66,7 +66,7 @@ def _to_dtype(t, dtype):
         t_used = t
 
     if dtype is not None and dtype != t_used.dtype:
-        with paddle.fluid.framework._dygraph_place_guard(place=t_used.place):
+        with paddle.base.framework._dygraph_place_guard(place=t_used.place):
             t_casted = t_used.cast(dtype=dtype)
     else:
         t_casted = t_used
@@ -100,14 +100,17 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            # input: [batch_size, seq_len, embed_dim]
-            x = paddle.rand((2, 4, 128))
-            # residual: [batch_size, seq_len, embed_dim]
-            residual = paddle.rand((2, 4, 128))
-            fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
-            output = fused_bias_dropout_residual_ln(x, residual)  # [2, 4, 128]
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> # input: [batch_size, seq_len, embed_dim]
+            >>> x = paddle.rand((2, 4, 128))
+            >>> # residual: [batch_size, seq_len, embed_dim]
+            >>> residual = paddle.rand((2, 4, 128))
+            >>> fused_bias_dropout_residual_ln = paddle.incubate.nn.FusedBiasDropoutResidualLayerNorm(128)
+            >>> output = fused_bias_dropout_residual_ln(x, residual)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -122,7 +125,7 @@ class FusedBiasDropoutResidualLayerNorm(Layer):
         super().__init__()
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         self._dtype = self._helper.get_default_dtype()
         self._bias_attr = bias_attr
@@ -259,14 +262,17 @@ class FusedMultiHeadAttention(Layer):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            # input: [batch_size, sequence_length, embed_dim]
-            query = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, num_heads, query_len, query_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(128, 2)
-            output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> # input: [batch_size, sequence_length, embed_dim]
+            >>> query = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, num_heads, query_len, query_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> multi_head_attn = paddle.incubate.nn.FusedMultiHeadAttention(128, 2)
+            >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -297,12 +303,10 @@ class FusedMultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
 
         self.normalize_before = normalize_before
@@ -545,15 +549,16 @@ class FusedFeedForward(Layer):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn import FusedFeedForward
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.incubate.nn import FusedFeedForward
+            >>> paddle.device.set_device('gpu')
 
-            fused_feedforward_layer = FusedFeedForward(8, 8)
-            x = paddle.rand((1, 8, 8))
-            out = fused_feedforward_layer(x)
-            print(out.shape)
-            # [1, 8, 8]
+            >>> fused_feedforward_layer = FusedFeedForward(8, 8)
+            >>> x = paddle.rand((1, 8, 8))
+            >>> out = fused_feedforward_layer(x)
+            >>> print(out.shape)
+            [1, 8, 8]
     """
 
     def __init__(
@@ -580,9 +585,7 @@ class FusedFeedForward(Layer):
         super().__init__()
         assert (
             d_model > 0
-        ), "Expected d_model to be greater than 0, but received {}".format(
-            d_model
-        )
+        ), f"Expected d_model to be greater than 0, but received {d_model}"
         assert (
             dim_feedforward > 0
         ), "Expected dim_feedforward to be greater than 0, but received {}".format(
@@ -768,16 +771,19 @@ class FusedTransformerEncoderLayer(Layer):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn import FusedTransformerEncoderLayer
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.incubate.nn import FusedTransformerEncoderLayer
+            >>> paddle.device.set_device('gpu')
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, n_head, src_len, src_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
-            enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, n_head, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> encoder_layer = FusedTransformerEncoderLayer(128, 2, 512)
+            >>> enc_output = encoder_layer(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
 
     """
 
@@ -799,19 +805,15 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super().__init__()
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
         attn_dropout_rate = (
             dropout_rate if attn_dropout_rate is None else attn_dropout_rate
@@ -973,25 +975,27 @@ class FusedTransformer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Transformer
+            >>> import paddle
+            >>> from paddle.nn import Transformer
 
-            # src: [batch_size, tgt_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # tgt: [batch_size, src_len, d_model]
-            dec_input = paddle.rand((2, 6, 128))
-            # src_mask: [batch_size, n_head, src_len, src_len]
-            enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
-            dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
-            # memory_mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 6, 4))
-            transformer = Transformer(128, 2, 4, 4, 512)
-            output = transformer(enc_input,
-                                 dec_input,
-                                 enc_self_attn_mask,
-                                 dec_self_attn_mask,
-                                 cross_attn_mask)  # [2, 6, 128]
+            >>> # src: [batch_size, tgt_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # tgt: [batch_size, src_len, d_model]
+            >>> dec_input = paddle.rand((2, 6, 128))
+            >>> # src_mask: [batch_size, n_head, src_len, src_len]
+            >>> enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
+            >>> # memory_mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
+            >>> transformer = Transformer(128, 2, 4, 4, 512)
+            >>> output = transformer(enc_input,
+            ...                      dec_input,
+            ...                      enc_self_attn_mask,
+            ...                      dec_self_attn_mask,
+            ...                      cross_attn_mask)
+            >>> print(output.shape)
+            [2, 6, 128]
     """
 
     def __init__(
@@ -1026,37 +1030,38 @@ class FusedMultiTransformer(Layer):
 
     .. code-block:: python
 
-        if pre_layer_norm:
-            out = layer_norm(x)
-            out = qkv_linear(out) + qkv_bias
-        else:
-            out = qkv_linear(x) + qkv_bias
-        out = transpose(out, perm=[2, 0, 3, 1, 4])
-        # extract q, k and v from out.
-        q = out[0:1, ::]
-        k = out[1:2, ::]
-        v = out[2:3, ::]
-        out = q * k^t
-        out = attn_mask + out
-        out = softmax(out)
-        out = dropout(out)
-        out = out * v
-        out = transpose(out, perm=[0, 2, 1, 3])
-        out = linear(out)
-        if pre_layer_norm:
-            out = x + dropout(out + bias)
-        else:
-            out = layer_norm(x + dropout(out + bias))
+        >>> # doctest: +SKIP('This is not an example')
+        >>> if pre_layer_norm:
+        ...     out = layer_norm(x)
+        ...     out = qkv_linear(out) + qkv_bias
+        ... else:
+        ...     out = qkv_linear(x) + qkv_bias
+        >>> out = transpose(out, perm=[2, 0, 3, 1, 4])
+        >>> # extract q, k and v from out.
+        >>> q = out[0:1, ::]
+        >>> k = out[1:2, ::]
+        >>> v = out[2:3, ::]
+        >>> out = q * k^t
+        >>> out = attn_mask + out
+        >>> out = softmax(out)
+        >>> out = dropout(out)
+        >>> out = out * v
+        >>> out = transpose(out, perm=[0, 2, 1, 3])
+        >>> out = linear(out)
+        >>> if pre_layer_norm:
+        ...     out = x + dropout(out + bias)
+        ... else:
+        ...     out = layer_norm(x + dropout(out + bias))
 
-        residual = out;
-        if pre_layer_norm:
-            out = ffn_layer_norm(out)
-        out = ffn1_linear(out)
-        out = dropout(activation(out + ffn1_bias))
-        out = ffn2_linear(out)
-        out = residual + dropout(out + ffn2_bias)
-        if not pre_layer_norm:
-            out = ffn_layer_norm(out)
+        >>> residual = out;
+        >>> if pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
+        >>> out = ffn1_linear(out)
+        >>> out = dropout(activation(out + ffn1_bias))
+        >>> out = ffn2_linear(out)
+        >>> out = residual + dropout(out + ffn2_bias)
+        >>> if not pre_layer_norm:
+        ...     out = ffn_layer_norm(out)
 
     Parameters:
         embed_dim (int): The expected feature size in the input and output.
@@ -1166,16 +1171,19 @@ class FusedMultiTransformer(Layer):
 
         .. code-block:: python
 
-            # required: gpu
-            import paddle
-            from paddle.incubate.nn import FusedMultiTransformer
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle
+            >>> from paddle.incubate.nn import FusedMultiTransformer
+            >>> paddle.device.set_device('gpu')
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, 1, src_len, src_len]
-            attn_mask = paddle.rand((2, 1, 4, 4))
-            encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
-            enc_output = encoder_layers(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, 1, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 1, 4, 4))
+            >>> encoder_layers = FusedMultiTransformer(128, 2, 512, num_layers=1)
+            >>> enc_output = encoder_layers(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -1209,12 +1217,10 @@ class FusedMultiTransformer(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
-        assert (
-            num_heads > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            num_heads
+        assert num_heads > 0, (
+            "Expected nhead to be greater than 0, " f"but received {num_heads}"
         )
         assert (
             dim_feedforward > 0

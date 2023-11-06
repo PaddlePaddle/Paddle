@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 
 
@@ -52,8 +52,8 @@ class TestGradientScale(unittest.TestCase):
         startup_program = paddle.static.Program()
         strategy = fleet.DistributedStrategy()
         strategy.gradient_scale_configs = {'scale_strategy': 'sum'}
-        with fluid.program_guard(main_program, startup_program):
-            with fluid.unique_name.guard():
+        with base.program_guard(main_program, startup_program):
+            with base.unique_name.guard():
                 input_x = paddle.static.data(
                     name="x", shape=[None, 32], dtype='float32'
                 )
@@ -63,7 +63,7 @@ class TestGradientScale(unittest.TestCase):
                 cost = self.mlp(input_x=input_x, input_y=input_y)
                 output_name = cost.name
                 optimizer = fleet.distributed_optimizer(
-                    fluid.optimizer.Adam(), strategy
+                    paddle.optimizer.Adam(), strategy
                 )
                 optimizer.minimize(cost)
 

@@ -5,6 +5,9 @@ gather_srcs(
   SRCS
   ir.cc
   ir_base.cc
+  ir_visitor.cc
+  ir_printer.cc
+  ir_mutator.cc
   function_definition.cc
   buffer.cc
   function_base.cc
@@ -14,7 +17,8 @@ gather_srcs(
   module.cc
   lowered_func.cc
   intrinsic_ops.cc
-  layout.cc)
+  layout.cc
+  schedule_block_graph.cc)
 
 add_subdirectory(op)
 add_subdirectory(test)

@@ -24,11 +24,11 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "glog/logging.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
+#include "paddle/utils/flags.h"
 
-DEFINE_string(infer_model, "", "Directory of the inference model.");
+PD_DEFINE_string(infer_model, "", "Directory of the inference model.");
 
 using paddle_infer::Config;
 using paddle_infer::CreatePredictor;
@@ -70,7 +70,7 @@ void inference(std::string model_path,
 }
 
 int main(int argc, char *argv[]) {
-  ::GFLAGS_NAMESPACE::ParseCommandLineFlags(&argc, &argv, true);
+  ::paddle::flags::ParseCommandLineFlags(&argc, &argv);
   std::vector<float> ipu_result;
   std::vector<float> cpu_result;
   inference(FLAGS_infer_model, true, &ipu_result);

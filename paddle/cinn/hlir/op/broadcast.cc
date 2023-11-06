@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -25,8 +26,6 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/layout.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -124,6 +123,32 @@ std::vector<Type> InferDtypeForBroadcast(const std::vector<Type> &inputs_type,
       << "The input's type size is 0! Please check again.";
   std::vector<Type> res{inputs_type[0]};
   return res;
+}
+
+void GenerateEquationsForBroadcast(cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() == 2)
+      << "The inputs is " << ctx->GetInTensorsRanks().size()
+      << "! Please check again.";
+  CHECK(ctx->GetOutTensorsRanks().size() == 1)
+      << "The output is " << ctx->GetOutTensorsRanks().size()
+      << "! Please check again.";
+  std::uint64_t out_tensor_ranks = ctx->GetOutTensorsRanks().at(0);
+  std::uint64_t in_tensor0_ranks = ctx->GetInTensorsRanks().at(0);
+  std::uint64_t in_tensor1_ranks = ctx->GetInTensorsRanks().at(1);
+  int offset0 = out_tensor_ranks - in_tensor0_ranks;
+  for (std::size_t i = 0; i < in_tensor0_ranks; ++i) {
+    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i + offset0),
+                   ctx->GetInDimTuple(0)->at(i)));
+  }
+  int offset1 = out_tensor_ranks - in_tensor1_ranks;
+  for (std::size_t i = 0; i < in_tensor1_ranks; ++i) {
+    ctx->Equal(ctx->GetInIteratorTuple(1)->at(i),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i + offset1),
+                   ctx->GetInDimTuple(1)->at(i)));
+  }
 }
 
 std::vector<Type> InferDtypeForBroadcastCmp(
@@ -242,6 +267,24 @@ std::vector<shape_t> InferShapeForBroadcastTo(
       << "broadcast_axes's size should be no more than out_shape's size";
 
   return {out_shape};
+}
+
+void GenerateEquationsForBroadcastTo(
+    cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() == 1)
+      << "The inputs is " << ctx->GetInTensorsRanks().size()
+      << "! Please check again.";
+  CHECK(ctx->GetOutTensorsRanks().size() == 1)
+      << "The output is " << ctx->GetOutTensorsRanks().size()
+      << "! Please check again.";
+  std::size_t out_tensor_rank = ctx->GetOutTensorsRanks().at(0);
+  int start_axis = out_tensor_rank - ctx->GetInTensorsRanks().at(0);
+  for (std::size_t i = start_axis; i < out_tensor_rank; ++i) {
+    ctx->Equal(ctx->GetInIteratorTuple(0)->at(i - start_axis),
+               ctx->GetBroadcastedInputIterator(
+                   ctx->GetOutIteratorTuple(0)->at(i),
+                   ctx->GetInDimTuple(0)->at(i - start_axis)));
+  }
 }
 
 std::vector<std::vector<std::string>> InferLayoutForBroadcastTo(
@@ -403,21 +446,23 @@ StrategyForBinary(logical_right_shift, LogicalRightShift);
 }  // namespace cinn
 
 CINN_REGISTER_HELPER(broadcast_ops) {
-#define CINN_REGISTER_BINARY(op__, op_stragegy__)                        \
-  CINN_REGISTER_OP(op__)                                                 \
-      .describe(#op__ " function")                                       \
-      .set_num_inputs(1)                                                 \
-      .set_num_outputs(1)                                                \
-      .set_attr<cinn::hlir::framework::StrategyFunction>(                \
-          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)    \
-      .set_attr("infershape",                                            \
-                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))  \
-      .set_attr("inferdtype",                                            \
-                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))  \
-      .set_attr("inferlayout",                                           \
-                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast)) \
-      .set_attr<cinn::hlir::framework::OpPatternKind>(                   \
-          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast) \
+#define CINN_REGISTER_BINARY(op__, op_stragegy__)                              \
+  CINN_REGISTER_OP(op__)                                                       \
+      .describe(#op__ " function")                                             \
+      .set_num_inputs(1)                                                       \
+      .set_num_outputs(1)                                                      \
+      .set_attr<cinn::hlir::framework::StrategyFunction>(                      \
+          "CINNStrategy", cinn::hlir::op::StrategyFor##op_stragegy__)          \
+      .set_attr("infershape",                                                  \
+                MakeOpFunction(cinn::hlir::op::InferShapeForBroadcast))        \
+      .set_attr("inferdtype",                                                  \
+                MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))        \
+      .set_attr("generate_equations",                                          \
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcast)) \
+      .set_attr("inferlayout",                                                 \
+                MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcast))       \
+      .set_attr<cinn::hlir::framework::OpPatternKind>(                         \
+          "OpPattern", cinn::hlir::framework::OpPatternKind::kBroadcast)       \
       .set_support_level(4);
 
 #define CINN_REGISTER_BINARY_CMP(op__, op_stragegy__)                      \
@@ -478,6 +523,8 @@ CINN_REGISTER_HELPER(broadcast_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForBroadcastTo))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForBroadcast))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForBroadcastTo))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForBroadcastTo))

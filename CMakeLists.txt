@@ -254,6 +254,7 @@ option(WITH_BRPC_RDMA "Use brpc rdma as the rpc protocal" OFF)
 option(ON_INFER "Turn on inference optimization and inference-lib generation"
        ON)
 option(WITH_CPP_DIST "Install PaddlePaddle C++ distribution" OFF)
+option(WITH_GFLAGS "Compile PaddlePaddle with gflags support" OFF)
 ################################ Internal Configurations #######################################
 option(WITH_NV_JETSON "Compile PaddlePaddle with NV JETSON" OFF)
 option(WITH_PROFILER "Compile PaddlePaddle with GPU profiler and gperftools"
@@ -309,6 +310,9 @@ option(WITH_CUDNN_FRONTEND
 option(WITH_CUDNN_DSO "Compile PaddlePaddle with cuDNN dynamic-link libraries"
        OFF)
 option(WITH_SHARED_IR "Compile PaddlePaddle with SHARED LIB of IR" ON)
+option(WITH_NVCC_LAZY
+       "Compile PaddlePaddle with nvcc lazy mode, used for CI-Inference only."
+       ON)
 
 if(WITH_RECORD_BUILDTIME)
   set_property(
@@ -582,6 +586,13 @@ include(flags) # set paddle compile flags
 
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
+  message(
+    WARNING
+      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
+  )
+  set(WITH_SHARED_PHI
+      ON
+      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})
@@ -597,10 +608,14 @@ if(WITH_CINN)
   add_definitions(-DPADDLE_WITH_CINN)
 
   if(CINN_ONLY)
+    add_definitions(-DCINN_WITH_ONLY)
     if(WITH_PYTHON)
       add_subdirectory(python)
     endif()
     add_subdirectory(test)
+    if(NOT WITH_GFLAGS)
+      add_subdirectory(paddle/utils)
+    endif()
     return()
   endif()
 endif()

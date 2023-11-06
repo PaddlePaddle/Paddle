@@ -57,9 +57,9 @@ PHI_DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
 
-DECLARE_int32(pserver_timeout_ms);
-DECLARE_int32(heter_world_size);
-DECLARE_int32(switch_send_recv_timeout_s);
+PD_DECLARE_int32(pserver_timeout_ms);
+PD_DECLARE_int32(heter_world_size);
+PD_DECLARE_int32(switch_send_recv_timeout_s);
 
 using MultiVarMsg = MultiVariableMessage;
 using VarMsg = VariableMessage;
@@ -216,8 +216,8 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
     // get microID from request
     // deserialize variable to micro scope
     // Push to heter worker's task_queue
-    std::unique_ptr<paddle::framework::Scope> local_scope_ptr(
-        new paddle::framework::Scope());
+    std::unique_ptr<::paddle::framework::Scope> local_scope_ptr(
+        new ::paddle::framework::Scope());
     auto& local_scope = *(local_scope_ptr.get());
     platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
     platform::CPUPlace cpu_place;
@@ -257,7 +257,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
       auto* minibatch_scope = &(scope_->NewScope());
       (*mini_scopes_)[minibatch_index] = minibatch_scope;
       (*micro_scopes_)[minibatch_index].reset(
-          new std::vector<paddle::framework::Scope*>{});
+          new std::vector<::paddle::framework::Scope*>{});
       for (int i = 0; i < num_microbatch_; i++) {
         auto* micro_scope = &(minibatch_scope->NewScope());
         (*((*micro_scopes_)[minibatch_index])).push_back(micro_scope);
@@ -300,7 +300,7 @@ class SendAndRecvVariableHandler final : public ServiceHandlerBase {
 
  public:
   using shard_type = SparseTableShard<std::string, ValueInSwitch>;
-  std::shared_ptr<paddle::framework::Scope> local_scope_ptr;  // for switch
+  std::shared_ptr<::paddle::framework::Scope> local_scope_ptr;  // for switch
   std::unordered_map<uint32_t, std::unordered_map<std::string, uint32_t>>
       vars_ready_flag;
   std::unique_ptr<shard_type[]> _local_shards;
@@ -344,7 +344,7 @@ class HeterService : public PsService {
                   std::placeholders::_3);
 
     service_handler_.local_scope_ptr =
-        std::make_shared<paddle::framework::Scope>();
+        std::make_shared<::paddle::framework::Scope>();
   }
 
   virtual ~HeterService() {}
@@ -613,7 +613,7 @@ class HeterServer {
 
   void SetLocalScope() {
     request_handler_->local_scope_ptr =
-        std::make_shared<paddle::framework::Scope>();
+        std::make_shared<::paddle::framework::Scope>();
   }
 
   void SetInterEndpoint(const std::string& endpoint) {

@@ -74,11 +74,11 @@ size_t PaddlePassBuilder::GetPassIndex(const std::string &pass_type) {
 }
 
 void PaddlePassBuilder::InsertPass(size_t idx, const std::string &pass_type) {
-  passes_.insert(std::begin(passes_) + idx, pass_type);
+  passes_.insert(std::begin(passes_) + idx, pass_type);  // NOLINT
 }
 
 void PaddlePassBuilder::DeletePass(size_t idx) {
-  passes_.erase(std::begin(passes_) + idx);
+  passes_.erase(std::begin(passes_) + idx);  // NOLINT
 }
 
 void PaddlePassBuilder::AppendAnalysisPass(const std::string &pass) {
@@ -89,23 +89,24 @@ void PaddlePassBuilder::ClearPasses() { passes_.clear(); }
 
 const std::vector<std::string> kTRTSubgraphPasses({
   "trt_support_nhwc_pass",
-      "adaptive_pool2d_convert_global_pass",          //
-      "trt_map_ops_to_matrix_multiply_pass",          //
-      "shuffle_channel_detect_pass",                  //
-      "quant_conv2d_dequant_fuse_pass",               //
-      "delete_quant_dequant_op_pass",                 //
-      "delete_quant_dequant_filter_op_pass",          //
-      "trt_delete_weight_dequant_linear_op_pass",     //
-      "delete_quant_dequant_linear_op_pass",          //
-      "identity_op_clean_pass",                       //
-      "add_support_int8_pass",                        //
-      "simplify_with_basic_ops_pass",                 //
-      "trt_embedding_eltwise_layernorm_fuse_pass",    //
-      "preln_embedding_eltwise_layernorm_fuse_pass",  //
-      "trt_multihead_matmul_fuse_pass_v2",            //
-      "trt_multihead_matmul_fuse_pass_v3",            //
-      "multihead_matmul_roformer_fuse_pass",          //
-      "constant_folding_pass",                        //
+      "adaptive_pool2d_convert_global_pass",                      //
+      "trt_map_ops_to_matrix_multiply_pass",                      //
+      "shuffle_channel_detect_pass",                              //
+      "quant_conv2d_dequant_fuse_pass",                           //
+      "delete_quant_dequant_op_pass",                             //
+      "delete_quant_dequant_filter_op_pass",                      //
+      "trt_delete_weight_dequant_linear_op_pass",                 //
+      "delete_quant_dequant_linear_op_pass",                      //
+      "identity_op_clean_pass",                                   //
+      "add_support_int8_pass",                                    //
+      "simplify_with_basic_ops_pass",                             //
+      "trt_prompt_tuning_embedding_eltwise_layernorm_fuse_pass",  //
+      "trt_embedding_eltwise_layernorm_fuse_pass",                //
+      "preln_embedding_eltwise_layernorm_fuse_pass",              //
+      "trt_multihead_matmul_fuse_pass_v2",                        //
+      "trt_multihead_matmul_fuse_pass_v3",                        //
+      "multihead_matmul_roformer_fuse_pass",                      //
+      "constant_folding_pass",                                    //
 #ifdef PADDLE_WITH_TENSORRT
 #if !IS_TRT_VERSION_GE(8610)
       "trt_flash_multihead_matmul_fuse_pass",  //
@@ -268,11 +269,11 @@ GpuPassStrategy::GpuPassStrategy() : PassStrategy({}) {
         "conv_elementwise_add_fuse_pass",      //
 #endif                                         //
         "transpose_flatten_concat_fuse_pass",  //
-        "identity_op_clean_pass",              //
         "conv2d_fusion_layout_transfer_pass",  //
         "transfer_layout_elim_pass",
         "auto_mixed_precision_pass",  //
-        "inplace_op_var_pass",        // should be the last pass.
+        "identity_op_clean_pass",  // should be after auto_mixed_precision_pass.
+        "inplace_op_var_pass",     // should be the last pass.
   });
 
   use_gpu_ = true;
@@ -346,7 +347,7 @@ void CpuPassStrategy::EnableCUDNN() { LOG(ERROR) << "CPU not support cuDNN"; }
 
 void CpuPassStrategy::EnableMKLDNN() {
 // TODO(Superjomn) Consider the way to mix CPU with GPU.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_) {
     passes_.insert(passes_.begin(), "mkldnn_placement_pass");
 
@@ -391,9 +392,9 @@ void CpuPassStrategy::EnableMKLDNN() {
 }
 
 void CpuPassStrategy::EnableMkldnnQuantizer() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_quantizer_) {
-    passes_.push_back("cpu_quantize_placement_pass");
+    passes_.emplace_back("cpu_quantize_placement_pass");
   }
   use_mkldnn_quantizer_ = true;
 #else
@@ -402,14 +403,14 @@ void CpuPassStrategy::EnableMkldnnQuantizer() {
 }
 
 void CpuPassStrategy::EnableMkldnnBfloat16() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_bfloat16_) {
-    passes_.push_back("fc_mkldnn_pass");
-    passes_.push_back("fc_act_mkldnn_fuse_pass");
+    passes_.emplace_back("fc_mkldnn_pass");
+    passes_.emplace_back("fc_act_mkldnn_fuse_pass");
 
-    passes_.push_back("cpu_bfloat16_placement_pass");
-    passes_.push_back("cpu_bfloat16_pass");
-    passes_.push_back("cpu_quantize_squash_pass");
+    passes_.emplace_back("cpu_bfloat16_placement_pass");
+    passes_.emplace_back("cpu_bfloat16_pass");
+    passes_.emplace_back("cpu_quantize_squash_pass");
   }
   use_mkldnn_bfloat16_ = true;
 #else
@@ -418,63 +419,63 @@ void CpuPassStrategy::EnableMkldnnBfloat16() {
 }
 
 void CpuPassStrategy::EnableMkldnnInt8() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!use_mkldnn_int8_) {
     passes_.clear();
-    passes_.push_back("simplify_with_basic_ops_pass");
-    passes_.push_back("quant_dequant_mkldnn_pass");
-    passes_.push_back("mkldnn_placement_pass");
-    passes_.push_back("constant_folding_pass");
-    passes_.push_back("squeeze2_transpose2_onednn_fuse_pass");
-    passes_.push_back("layer_norm_fuse_pass");
-    passes_.push_back("attention_lstm_fuse_pass");
-    passes_.push_back("seqconv_eltadd_relu_fuse_pass");
-    passes_.push_back("fc_lstm_fuse_pass");
-    passes_.push_back("mul_lstm_fuse_pass");
-    passes_.push_back("fc_gru_fuse_pass");
-    passes_.push_back("mul_gru_fuse_pass");
-    passes_.push_back("multi_gru_fuse_pass");
-    passes_.push_back("multi_gru_seq_fuse_pass");
-    passes_.push_back("seq_concat_fc_fuse_pass");
-    passes_.push_back("gpu_cpu_squeeze2_matmul_fuse_pass");
-    passes_.push_back("gpu_cpu_reshape2_matmul_fuse_pass");
-    passes_.push_back("gpu_cpu_flatten2_matmul_fuse_pass");
-    passes_.push_back("matmul_v2_scale_fuse_pass");
-    passes_.push_back("squared_mat_sub_fuse_pass");
-    passes_.push_back("is_test_pass");
-    passes_.push_back("gpu_cpu_map_matmul_v2_to_mul_pass");
-    passes_.push_back("gpu_cpu_map_matmul_v2_to_matmul_pass");
-    passes_.push_back("matmul_scale_fuse_pass");
-    passes_.push_back("gpu_cpu_map_matmul_to_mul_pass");
-    passes_.push_back("repeated_fc_relu_fuse_pass");
-    passes_.push_back("depthwise_conv_mkldnn_pass");
-    passes_.push_back("conv_bn_fuse_pass");
-    passes_.push_back("conv_eltwiseadd_bn_fuse_pass");
-    passes_.push_back("conv_affine_channel_mkldnn_fuse_pass");
-    passes_.push_back("conv_transpose_bn_fuse_pass");
-    passes_.push_back("conv_transpose_eltwiseadd_bn_fuse_pass");
-    passes_.push_back("conv_bias_mkldnn_fuse_pass");
-    passes_.push_back("conv_transpose_bias_mkldnn_fuse_pass");
-    passes_.push_back("conv_elementwise_add_mkldnn_fuse_pass");
-    passes_.push_back("conv_activation_mkldnn_fuse_pass");
-    passes_.push_back("fc_fuse_pass");
-    passes_.push_back("repeated_fc_relu_fuse_pass");
-    passes_.push_back("fc_mkldnn_pass");
-    passes_.push_back("fc_act_mkldnn_fuse_pass");
-    passes_.push_back("matmul_transpose_reshape_mkldnn_fuse_pass");
-    passes_.push_back("batch_norm_act_fuse_pass");
-    passes_.push_back("softplus_activation_onednn_fuse_pass");
-    passes_.push_back("compute_propagate_scales_mkldnn_pass");
-    passes_.push_back("scale_matmul_fuse_pass");
-    passes_.push_back("reshape_transpose_matmul_mkldnn_fuse_pass");
-    passes_.push_back("matmul_elementwise_add_mkldnn_fuse_pass");
-    passes_.push_back("operator_scale_onednn_fuse_pass");
-    passes_.push_back("operator_unsqueeze2_onednn_fuse_pass");
-    passes_.push_back("operator_reshape2_onednn_fuse_pass");
-    passes_.push_back("cpu_quantize_placement_pass");
-    passes_.push_back("cpu_quantize_pass");
-    passes_.push_back("cpu_quantize_squash_pass");
-    passes_.push_back("quant_transpose2_dequant_onednn_fuse_pass");
+    passes_.emplace_back("simplify_with_basic_ops_pass");
+    passes_.emplace_back("quant_dequant_mkldnn_pass");
+    passes_.emplace_back("mkldnn_placement_pass");
+    passes_.emplace_back("constant_folding_pass");
+    passes_.emplace_back("squeeze2_transpose2_onednn_fuse_pass");
+    passes_.emplace_back("layer_norm_fuse_pass");
+    passes_.emplace_back("attention_lstm_fuse_pass");
+    passes_.emplace_back("seqconv_eltadd_relu_fuse_pass");
+    passes_.emplace_back("fc_lstm_fuse_pass");
+    passes_.emplace_back("mul_lstm_fuse_pass");
+    passes_.emplace_back("fc_gru_fuse_pass");
+    passes_.emplace_back("mul_gru_fuse_pass");
+    passes_.emplace_back("multi_gru_fuse_pass");
+    passes_.emplace_back("multi_gru_seq_fuse_pass");
+    passes_.emplace_back("seq_concat_fc_fuse_pass");
+    passes_.emplace_back("gpu_cpu_squeeze2_matmul_fuse_pass");
+    passes_.emplace_back("gpu_cpu_reshape2_matmul_fuse_pass");
+    passes_.emplace_back("gpu_cpu_flatten2_matmul_fuse_pass");
+    passes_.emplace_back("matmul_v2_scale_fuse_pass");
+    passes_.emplace_back("squared_mat_sub_fuse_pass");
+    passes_.emplace_back("is_test_pass");
+    passes_.emplace_back("gpu_cpu_map_matmul_v2_to_mul_pass");
+    passes_.emplace_back("gpu_cpu_map_matmul_v2_to_matmul_pass");
+    passes_.emplace_back("matmul_scale_fuse_pass");
+    passes_.emplace_back("gpu_cpu_map_matmul_to_mul_pass");
+    passes_.emplace_back("repeated_fc_relu_fuse_pass");
+    passes_.emplace_back("depthwise_conv_mkldnn_pass");
+    passes_.emplace_back("conv_bn_fuse_pass");
+    passes_.emplace_back("conv_eltwiseadd_bn_fuse_pass");
+    passes_.emplace_back("conv_affine_channel_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_transpose_bn_fuse_pass");
+    passes_.emplace_back("conv_transpose_eltwiseadd_bn_fuse_pass");
+    passes_.emplace_back("conv_bias_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_transpose_bias_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_elementwise_add_mkldnn_fuse_pass");
+    passes_.emplace_back("conv_activation_mkldnn_fuse_pass");
+    passes_.emplace_back("fc_fuse_pass");
+    passes_.emplace_back("repeated_fc_relu_fuse_pass");
+    passes_.emplace_back("fc_mkldnn_pass");
+    passes_.emplace_back("fc_act_mkldnn_fuse_pass");
+    passes_.emplace_back("matmul_transpose_reshape_mkldnn_fuse_pass");
+    passes_.emplace_back("batch_norm_act_fuse_pass");
+    passes_.emplace_back("softplus_activation_onednn_fuse_pass");
+    passes_.emplace_back("compute_propagate_scales_mkldnn_pass");
+    passes_.emplace_back("scale_matmul_fuse_pass");
+    passes_.emplace_back("reshape_transpose_matmul_mkldnn_fuse_pass");
+    passes_.emplace_back("matmul_elementwise_add_mkldnn_fuse_pass");
+    passes_.emplace_back("operator_scale_onednn_fuse_pass");
+    passes_.emplace_back("operator_unsqueeze2_onednn_fuse_pass");
+    passes_.emplace_back("operator_reshape2_onednn_fuse_pass");
+    passes_.emplace_back("cpu_quantize_placement_pass");
+    passes_.emplace_back("cpu_quantize_pass");
+    passes_.emplace_back("cpu_quantize_squash_pass");
+    passes_.emplace_back("quant_transpose2_dequant_onednn_fuse_pass");
   }
   use_mkldnn_int8_ = true;
 #else
@@ -483,7 +484,7 @@ void CpuPassStrategy::EnableMkldnnInt8() {
 }
 
 void CpuPassStrategy::DisableMkldnnFcPasses() {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!disable_mkldnn_fc_passes_) {
     EraseFcMkldnnPasses();
   }
@@ -497,7 +498,7 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
   std::vector<std::string> fc_passes_to_erase(
       {"fc_mkldnn_pass", "fc_act_mkldnn_fuse_pass"});
   for (const auto &pass : fc_passes_to_erase) {
-    int idx = GetPassIndex(pass);
+    int idx = static_cast<int>(GetPassIndex(pass));
     if (idx != -1) {
       passes_.erase(std::begin(passes_) + idx);
     }
@@ -506,15 +507,19 @@ void CpuPassStrategy::EraseFcMkldnnPasses() {
 
 XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
   passes_.assign({
+      "delete_quant_dequant_linear_op_pass",
+      "delete_weight_dequant_linear_op_pass",
       "delete_assign_op_pass",
       "delete_dropout_op_pass",
       "delete_concat_op_pass",
+      "gather_squeeze_pass",
       "delete_repeated_ops_pass",
       "identity_op_clean_pass",
       "fused_continuous_same_ops_pass",
       "reshape_unstack_concat_fuse_pass",
       "delete_op_device_pass",
       "constant_folding_pass",
+      "cast_embedding_trans_ids_to_int32_pass",
       "delete_elementwise_mul_op_pass",
       "generate_sequence_xpu_fuse_pass",
       "embedding_with_eltwise_add_xpu_fuse_pass",
@@ -525,10 +530,14 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "one_beam_size_fuse_pass",
       "fold_interp_outsize_fuse_pass",
       "fold_two_squeeze2_fuse_pass",
-      "redundant_onnx_ops_elimination_pass",
+      // "conv1d_xpu_fuse_pass",
+      "duplicated_transpose_fuse_pass",
+      "conv2d_bias_fuse_pass",
+      "redundant_unsqueeze_squeeze_elimination_pass",
       "reduce_ops_fuse_pass",
       "delete_cast_op_pass",
       "xpu_delete_cast_op_pass",
+      "conv2d_trans_filter_dilations_nxn_to_1x1_pass",
       "stack_fuse_pass",
       "fused_multi_transformer_xpu_pass",
       "relu6_fuse_pass",
@@ -542,13 +551,21 @@ XpuPassStrategy::XpuPassStrategy() : PassStrategy({}) {
       "fc_xpu_fuse_pass",
       "conv2d_xpu_fuse_pass",
       "conv2d_transpose_xpu_fuse_pass",
+      "squeeze_excitation_fuse_pass",
       "add_activation_xpu_fuse_pass",
       "add_layernorm_xpu_fuse_pass",
+      "layer_norm_act_xpu_fuse_pass",
+      "fast_layernorm_xpu_fuse_pass",
+      "bn_act_xpu_fuse_pass",
       "yolo_box_xpu_fuse_pass",
+      "fast_where_xpu_fuse_pass",
+      "elementwise_mul_add_fuse_pass",
       "link_xpu_op_max_pass",
-      "delete_isolated_node_pass",
       // "auto_mixed_precision_pass",
       "cast_mixed_precision_op_fuse_pass",
+      "xpu_quantize_op_pass",
+      "xpu_quantize_squash_pass",
+      "delete_isolated_node_pass",
       "inplace_op_var_pass",
   });
   use_xpu_ = true;

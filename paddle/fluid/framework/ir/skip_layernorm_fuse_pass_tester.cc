@@ -39,11 +39,11 @@ TEST(SkipLayerNormFusePass, basic) {
   graph->Set(kEmbEltwiseLayernormPass, new bool(true));
   graph->Set(kMultiheadMatmulPass, new bool(true));
   auto pass = PassRegistry::Instance().Get("skip_layernorm_fuse_pass");
-  int num_nodes_before = graph->Nodes().size();
+  int num_nodes_before = static_cast<int>(graph->Nodes().size());
   VLOG(3) << DebugString(graph);
 
   graph.reset(pass->Apply(graph.release()));
-  int num_nodes_after = graph->Nodes().size();
+  int num_nodes_after = static_cast<int>(graph->Nodes().size());
   int num_fused_nodes_after = GetNumOpNodes(graph, "skip_layernorm");
   VLOG(3) << DebugString(graph);
 

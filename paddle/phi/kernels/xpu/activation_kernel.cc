@@ -416,6 +416,23 @@ void SwishKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
+void EluKernel(const Context& dev_ctx,
+               const DenseTensor& x,
+               float alpha,
+               DenseTensor* out) {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+  dev_ctx.template Alloc<T>(out);
+  // template<typename T> int elu(Context* ctx, const T* x, T* y, int64_t len,
+  // float alpha = 1.0f, const float* max_x = nullptr, float* max_y = nullptr)
+  int r = xpu::elu(dev_ctx.x_context(),
+                   reinterpret_cast<const XPUType*>(x.data<T>()),
+                   reinterpret_cast<XPUType*>(out->data<T>()),
+                   x.numel(),
+                   alpha);
+  PADDLE_ENFORCE_XDNN_SUCCESS(r, "elu");
+}
+
+template <typename T, typename Context>
 void Relu6Kernel(const Context& dev_ctx,
                  const DenseTensor& x,
                  DenseTensor* out) {
@@ -546,9 +563,16 @@ PD_REGISTER_KERNEL(
 PD_REGISTER_KERNEL(
     silu, XPU, ALL_LAYOUT, phi::SiluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+    elu, XPU, ALL_LAYOUT, phi::EluKernel, float, phi::dtype::float16) {}
 PD_REGISTER_KERNEL(
-    swish, XPU, ALL_LAYOUT, phi::SwishKernel, float, phi::dtype::float16) {}
+    sigmoid, XPU, ALL_LAYOUT, phi::SigmoidKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(swish,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SwishKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 PD_REGISTER_KERNEL(hardsigmoid,
                    XPU,
                    ALL_LAYOUT,
@@ -561,8 +585,13 @@ PD_REGISTER_KERNEL(leaky_relu,
                    phi::LeakyReluKernel,
                    float,
                    phi::dtype::float16) {}
-PD_REGISTER_KERNEL(
-    sqrt, XPU, ALL_LAYOUT, phi::SqrtKernel, float, phi::dtype::float16) {}
+PD_REGISTER_KERNEL(sqrt,
+                   XPU,
+                   ALL_LAYOUT,
+                   phi::SqrtKernel,
+                   float,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16) {}
 
 PD_REGISTER_KERNEL(
     tanh, XPU, ALL_LAYOUT, phi::TanhKernel, float, phi::dtype::float16) {}

@@ -23,7 +23,7 @@ import numpy as np
 
 import paddle
 import paddle.vision.transforms as T
-from paddle import Model, fluid
+from paddle import Model, base
 from paddle.nn.layer.loss import CrossEntropyLoss
 from paddle.static import InputSpec
 from paddle.vision.datasets import MNIST
@@ -31,7 +31,7 @@ from paddle.vision.models import LeNet
 
 
 @unittest.skipIf(
-    not fluid.is_compiled_with_cuda(), 'CPU testing is not supported'
+    not base.is_compiled_with_cuda(), 'CPU testing is not supported'
 )
 class TestHapiWithAmp(unittest.TestCase):
     def get_model(self, amp_config):
@@ -100,7 +100,7 @@ class TestHapiWithAmp(unittest.TestCase):
         lenet_amp_path = os.path.join(temp_dir.name, './lenet_amp')
         model.save(lenet_amp_path)
 
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             paddle.seed(2021)
             new_model = self.get_model(amp_level)
             train_dataset = MNIST(mode='train', transform=transform)
@@ -143,7 +143,7 @@ class TestHapiWithAmp(unittest.TestCase):
             {"level": "O1", "use_fp16_guard": True},
             "O3",
         ]
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
         paddle.set_device('gpu')
         net = LeNet()
@@ -170,7 +170,7 @@ class TestHapiWithAmp(unittest.TestCase):
     def test_static_check_input(self):
         paddle.enable_static()
         amp_configs = {"level": "O2", "use_pure_fp16": True}
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             self.skipTest('module not tested when ONLY_CPU compling')
         paddle.set_device('gpu')
 

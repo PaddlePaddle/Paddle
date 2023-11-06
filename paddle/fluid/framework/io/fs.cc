@@ -60,7 +60,7 @@ static std::shared_ptr<FILE> fs_open_internal(const std::string& path,
                                               bool is_pipe,
                                               const std::string& mode,
                                               size_t buffer_size,
-                                              int* err_no = 0) {
+                                              int* err_no = nullptr) {
   std::shared_ptr<FILE> fp = nullptr;
 
   if (!is_pipe) {
@@ -179,7 +179,7 @@ std::vector<std::string> localfs_list(const std::string& path) {
   std::vector<std::string> list;
 
   while (reader.getline(&*pipe)) {
-    list.push_back(reader.get());
+    list.emplace_back(reader.get());
   }
 
   return list;
@@ -399,13 +399,12 @@ void hdfs_mv(const std::string& src, const std::string& dest) {
 }
 
 int fs_select_internal(const std::string& path) {
-  if (fs_begin_with_internal(path, "hdfs:")) {
+  if (fs_begin_with_internal(path, "hdfs:") ||
+      fs_begin_with_internal(path, "afs:")) {
     return 1;
-  } else if (fs_begin_with_internal(path, "afs:")) {
-    return 1;
+  } else {
+    return 0;
   }
-
-  return 0;
 }
 
 std::shared_ptr<FILE> fs_open_read(const std::string& path,

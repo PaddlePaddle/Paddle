@@ -2,21 +2,24 @@ add_subdirectory(garbage_collector)
 add_subdirectory(instruction)
 add_subdirectory(interpreter)
 add_subdirectory(workqueue)
+add_subdirectory(pir_adaptor)
 
 set(STANDALONE_EXECUTOR_SRCS
     feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc new_ir_interpreter.cc)
+    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
     interpreter
     interpretercore_garbage_collector
     workqueue
-    pd_dialect
+    pd_op_dialect
     pd_op_to_kernel_pass
-    phi_kernel_adaptor
+    pir_adaptor
     program_translator
     instruction_base
-    ir)
+    pd_inplace_pass
+    pir
+    plan)
 
 cc_library(
   standalone_executor

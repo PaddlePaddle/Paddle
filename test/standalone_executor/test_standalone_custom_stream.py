@@ -17,7 +17,7 @@ import unittest
 from test_standalone_executor import build_program
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 paddle.enable_static()
 

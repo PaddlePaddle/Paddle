@@ -29,6 +29,23 @@ random.seed(0)
 np.random.seed(0)
 
 
+class TransedMnistDataSet(paddle.io.Dataset):
+    def __init__(self, mnist_data):
+        self.mnist_data = mnist_data
+
+    def __getitem__(self, idx):
+        img = (
+            np.array(self.mnist_data[idx][0])
+            .astype('float32')
+            .reshape(1, 28, 28)
+        )
+        batch = img / 127.5 - 1.0
+        return {"x": batch}
+
+    def __len__(self):
+        return len(self.mnist_data)
+
+
 class TestPostTrainingQuantization(unittest.TestCase):
     def setUp(self):
         self.download_path = 'int8/download'
@@ -42,22 +59,14 @@ class TestPostTrainingQuantization(unittest.TestCase):
         try:
             os.system("mkdir -p " + self.int8_model_path)
         except Exception as e:
-            print(
-                "Failed to create {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to create {self.int8_model_path} due to {str(e)}")
             sys.exit(-1)
 
     def tearDown(self):
         try:
             os.system(f"rm -rf {self.int8_model_path}")
         except Exception as e:
-            print(
-                "Failed to delete {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to delete {self.int8_model_path} due to {str(e)}")
 
     def cache_unzipping(self, target_folder, zip_path):
         cmd = f'tar xf {zip_path} -C {target_folder}'
@@ -132,28 +141,30 @@ class TestPostTrainingQuantization(unittest.TestCase):
         is_optimize_model=False,
         batch_size=10,
         batch_nums=10,
-        is_data_loader=False,
     ):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        val_reader = paddle.dataset.mnist.train()
 
-        def val_data_generator():
-            batches = []
-            for data in val_reader():
-                batches.append(data[0].reshape(1, 28, 28))
-                if len(batches) == batch_size:
-                    batches = np.asarray(batches)
-                    yield {"x": batches}
-                    batches = []
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=None
+        )
+        train_dataset = TransedMnistDataSet(train_dataset)
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=batch_size
+        )
+        val_data_generator = paddle.io.DataLoader(
+            train_dataset,
+            batch_sampler=BatchSampler,
+            places=paddle.static.cpu_places(),
+        )
 
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
             model_filename='model.pdmodel',
             params_filename='model.pdiparams',
-            sample_generator=val_reader if not is_data_loader else None,
-            data_loader=val_data_generator if is_data_loader else None,
+            sample_generator=None,
+            data_loader=val_data_generator,
             batch_size=batch_size,
             batch_nums=batch_nums,
             algo=algo,
@@ -183,7 +194,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
         batch_size=10,
         infer_iterations=10,
         quant_iterations=5,
-        is_data_loader=False,
     ):
         origin_model_path = self.download_model(data_url, data_md5, model_name)
 
@@ -210,7 +220,6 @@ class TestPostTrainingQuantization(unittest.TestCase):
             is_optimize_model,
             batch_size,
             quant_iterations,
-            is_data_loader=is_data_loader,
         )
 
         print(
@@ -442,7 +451,6 @@ class TestPostTrainingAbsMaxForWhile(TestPostTrainingQuantization):
             batch_size,
             infer_iterations,
             quant_iterations,
-            is_data_loader=True,
         )
 
 

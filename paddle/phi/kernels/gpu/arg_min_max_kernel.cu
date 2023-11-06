@@ -106,9 +106,6 @@ void ComputeFullArg(const phi::GPUContext& dev_ctx,
       block_size = 32;
     else if (col > 8)
       block_size = 16;
-#ifdef __HIPCC__
-    block_size = std::min(block_size, 256);
-#endif
     return block_size;
   };
 
@@ -212,9 +209,9 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
                            const Scalar& axis,
                            bool keepdims,
                            bool flatten,
-                           int dtype,
+                           DataType dtype,
                            DenseTensor* out) {
-  if (dtype < 0) {
+  if (dtype == DataType::UNDEFINED) {
     phi::VisitDataTypeTiny(
         phi::DataType::INT64,
         VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
@@ -222,7 +219,7 @@ void ArgMinMaxOpCUDAKernel(const Context& dev_ctx,
     return;
   }
   phi::VisitDataTypeTiny(
-      phi::TransToPhiDataType(dtype),
+      dtype,
       VisitDataCudaArgMinMaxFunctor<Context, T, Reducer>(
           dev_ctx, x, axis.to<int64_t>(), keepdims, flatten, out));
 }
@@ -233,7 +230,7 @@ void ArgMinKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out) {
   ArgMinMaxOpCUDAKernel<Context, T, cub::ArgMin>(
       dev_ctx, x, axis, keepdims, flatten, dtype, out);
@@ -245,7 +242,7 @@ void ArgMaxKernel(const Context& dev_ctx,
                   const Scalar& axis,
                   bool keepdims,
                   bool flatten,
-                  int dtype,
+                  DataType dtype,
                   DenseTensor* out) {
   ArgMinMaxOpCUDAKernel<Context, T, cub::ArgMax>(
       dev_ctx, x, axis, keepdims, flatten, dtype, out);

@@ -41,7 +41,7 @@ static std::vector<platform::Place> CreatePlaces(size_t num, bool use_cuda) {
   result.reserve(num);
   for (size_t i = 0; i < num; ++i) {
     if (use_cuda) {
-      result.emplace_back(platform::CUDAPlace(i));
+      result.emplace_back(platform::CUDAPlace(static_cast<int>(i)));
     } else {
       result.emplace_back(platform::CPUPlace());
     }
@@ -98,14 +98,14 @@ class ReferenceCountPassTestHelper {
     details::ExecutionStrategy exec_strategy;
     exec_strategy.use_device_ = use_cuda ? p::kCUDA : p::kCPU;
 
-    executor_.reset(new ParallelExecutor(CreatePlaces(1, use_cuda),
-                                         {},
-                                         "",
-                                         &scope_,
-                                         {},
-                                         exec_strategy,
-                                         build_strategy,
-                                         &graph_));
+    executor_ = std::make_unique<ParallelExecutor>(CreatePlaces(1, use_cuda),
+                                                   std::vector<std::string>(),
+                                                   "",
+                                                   &scope_,
+                                                   std::vector<Scope *>(),
+                                                   exec_strategy,
+                                                   build_strategy,
+                                                   &graph_);
 
     auto ref_cnt_pass =
         ir::PassRegistry::Instance().Get("reference_count_pass");
@@ -123,6 +123,7 @@ class ReferenceCountPassTestHelper {
   std::vector<OperatorBase *> LastLivedOps(const std::string &name) const {
     auto &ops = last_live_ops_of_vars_[0].at(name).ops();
     std::vector<OperatorBase *> ret;
+    ret.reserve(ops.size());
     for (auto *op : ops) {
       ret.emplace_back(op->GetOp());
     }

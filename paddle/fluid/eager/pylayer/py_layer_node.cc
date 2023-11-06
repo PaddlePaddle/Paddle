@@ -27,7 +27,7 @@
 #include "pybind11/pytypes.h"
 
 namespace egr {
-GradNodePyLayer::~GradNodePyLayer() {
+GradNodePyLayer::~GradNodePyLayer() {  // NOLINT
   pybind11::gil_scoped_acquire gil;
   Py_XDECREF(ctx_);
 }
@@ -56,7 +56,7 @@ GradNodePyLayer::operator()(
                         grads.size(),
                         ctx->forward_output_tensor_is_duplicable.size()));
 
-  auto backward_args = PyTuple_New(grads.size());
+  auto backward_args = PyTuple_New(static_cast<Py_ssize_t>(grads.size()));
   for (size_t i = 0; i < grads.size(); i++) {
     if (ctx->forward_output_tensor_is_duplicable[i]) {
       PyObject* pylist = PyList_New((Py_ssize_t)grads[i].size());

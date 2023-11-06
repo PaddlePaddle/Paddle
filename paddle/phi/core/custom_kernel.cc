@@ -16,9 +16,6 @@
 
 #include "glog/logging.h"
 
-static std::vector<std::string> gpu_exclusive_kernels({"sync_batch_norm",
-                                                       "sync_batch_norm_grad"});
-
 namespace phi {
 
 void CustomKernelMap::RegisterCustomKernel(const std::string& name,
@@ -44,16 +41,6 @@ void CustomKernelMap::RegisterCustomKernels() {
   }
   auto& kernels = KernelFactory::Instance().kernels();
   for (auto& pair : kernels_) {
-    if (kernels.find(pair.first) == kernels.cend()) {
-      if (std::find(gpu_exclusive_kernels.cbegin(),
-                    gpu_exclusive_kernels.cend(),
-                    pair.first) == gpu_exclusive_kernels.cend()) {
-        PADDLE_THROW(phi::errors::InvalidArgument(
-            "The kernel %s is not ready for custom kernel registering.",
-            pair.first));
-      }
-    }
-
     for (auto& info_pair : pair.second) {
       PADDLE_ENFORCE_EQ(
           kernels[pair.first].find(info_pair.first),

@@ -15,6 +15,7 @@
 #include "paddle/phi/kernels/funcs/jit/kernel_key.h"
 
 #include <xxhash.h>  // XXH64: 13.8 GB/s
+#include <array>
 
 namespace phi {
 namespace jit {
@@ -31,28 +32,28 @@ int64_t JitCodeKey<int64_t>(const int64_t& d) {
 
 template <>
 int64_t JitCodeKey<gru_attr_t>(const gru_attr_t& attr) {
-  return XXH64(&attr, sizeof(gru_attr_t), 0);
+  return static_cast<int64_t>(XXH64(&attr, sizeof(gru_attr_t), 0));
 }
 
 template <>
 int64_t JitCodeKey<lstm_attr_t>(const lstm_attr_t& attr) {
-  int keys[5] = {attr.d,
-                 static_cast<int>(attr.act_gate),
-                 static_cast<int>(attr.act_cand),
-                 static_cast<int>(attr.act_cell),
-                 static_cast<int>(attr.use_peephole)};
-  return XXH64(keys, sizeof(int) * 5, 0);
+  std::array<int, 5> keys = {attr.d,
+                             static_cast<int>(attr.act_gate),
+                             static_cast<int>(attr.act_cand),
+                             static_cast<int>(attr.act_cell),
+                             static_cast<int>(attr.use_peephole)};
+  return static_cast<int64_t>(XXH64(keys.data(), sizeof(int) * 5, 0));
 }
 
 template <>
 int64_t JitCodeKey<seq_pool_attr_t>(const seq_pool_attr_t& attr) {
-  int keys[2] = {attr.w, static_cast<int>(attr.type)};
-  return XXH64(keys, sizeof(int) * 2, 0);
+  std::array<int, 2> keys = {attr.w, static_cast<int>(attr.type)};
+  return static_cast<int64_t>(XXH64(keys.data(), sizeof(int) * 2, 0));
 }
 
 template <>
 int64_t JitCodeKey<matmul_attr_t>(const matmul_attr_t& attr) {
-  return XXH64(&attr, sizeof(int) * 3, 0);  // m, n, k
+  return static_cast<int64_t>(XXH64(&attr, sizeof(int) * 3, 0));  // m, n, k
 }
 
 template <>

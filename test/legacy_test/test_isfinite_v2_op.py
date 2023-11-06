@@ -17,18 +17,18 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def run_static(x_np, dtype, op_str, use_gpu=False):
     paddle.enable_static()
-    startup_program = fluid.Program()
-    main_program = fluid.Program()
+    startup_program = base.Program()
+    main_program = base.Program()
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
-    exe = fluid.Executor(place)
-    with fluid.program_guard(main_program, startup_program):
+    exe = base.Executor(place)
+    with base.program_guard(main_program, startup_program):
         x = paddle.static.data(name='x', shape=x_np.shape, dtype=dtype)
         res = getattr(paddle.tensor, op_str)(x)
         exe.run(startup_program)
@@ -40,7 +40,7 @@ def run_static(x_np, dtype, op_str, use_gpu=False):
 
 def run_dygraph(x_np, op_str, use_gpu=True):
     place = paddle.CPUPlace()
-    if use_gpu and fluid.core.is_compiled_with_cuda():
+    if use_gpu and base.core.is_compiled_with_cuda():
         place = paddle.CUDAPlace(0)
     paddle.disable_static(place)
     x = paddle.to_tensor(x_np)
@@ -49,9 +49,9 @@ def run_dygraph(x_np, op_str, use_gpu=True):
 
 
 def run_eager(x_np, op_str, use_gpu=True):
-    with paddle.fluid.dygraph.guard():
+    with paddle.base.dygraph.guard():
         place = paddle.CPUPlace()
-        if use_gpu and fluid.core.is_compiled_with_cuda():
+        if use_gpu and base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
 
         x = paddle.to_tensor(x_np)
@@ -68,7 +68,7 @@ def np_data_generator(
         for i, v in enumerate(sv_list):
             x_np[i] = v
     ori_shape = x_np.shape
-    x_np = x_np.reshape((np.product(ori_shape),))
+    x_np = x_np.reshape((np.prod(ori_shape),))
     np.random.shuffle(x_np)
     x_np = x_np.reshape(ori_shape)
     result_np = getattr(np, op_str)(x_np)
@@ -152,7 +152,7 @@ class TestCUDANormal(unittest.TestCase):
 class TestError(unittest.TestCase):
     def test_bad_input(self):
         paddle.enable_static()
-        with fluid.program_guard(fluid.Program()):
+        with base.program_guard(base.Program()):
 
             def test_isinf_bad_x():
                 x = [1, 2, 3]

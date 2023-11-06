@@ -97,9 +97,9 @@ static void CalcGridLocations(const CPUContext& ctx,
                               std::string padding_mode,
                               DenseTensor* grid_x,
                               DenseTensor* grid_y) {
-  const int n = grid.dims()[0];
-  const int out_h = grid.dims()[1];
-  const int out_w = grid.dims()[2];
+  const int n = static_cast<int>(grid.dims()[0]);
+  const int out_h = static_cast<int>(grid.dims()[1]);
+  const int out_w = static_cast<int>(grid.dims()[2]);
 
   // split grid with shape (n, h, w, 2) into (x, y) by the 3rd Dim
   grid_x->Resize({n, out_h, out_w});
@@ -130,10 +130,10 @@ static void Calc3DGridLocations(const CPUContext& ctx,
                                 DenseTensor* grid_x,
                                 DenseTensor* grid_y,
                                 DenseTensor* grid_z) {
-  const int n = grid.dims()[0];
-  const int out_d = grid.dims()[1];
-  const int out_h = grid.dims()[2];
-  const int out_w = grid.dims()[3];
+  const int n = static_cast<int>(grid.dims()[0]);
+  const int out_d = static_cast<int>(grid.dims()[1]);
+  const int out_h = static_cast<int>(grid.dims()[2]);
+  const int out_w = static_cast<int>(grid.dims()[3]);
 
   // split grid with shape (n, d, h, w, 3) into (x, y, z) by the 3rd Dim
   grid_x->Resize({n, out_d, out_h, out_w});
@@ -165,10 +165,10 @@ static void BilinearInter(const CPUContext& ctx,
                           DenseTensor* grid_y,
                           DenseTensor* out) {
   auto& place = *ctx.eigen_device();
-  const int n = grid_x->dims()[0];
-  const int out_h = grid_x->dims()[1];
-  const int out_w = grid_x->dims()[2];
-  const int c = input.dims()[1];
+  const int n = static_cast<int>(grid_x->dims()[0]);
+  const int out_h = static_cast<int>(grid_x->dims()[1]);
+  const int out_w = static_cast<int>(grid_x->dims()[2]);
+  const int c = static_cast<int>(input.dims()[1]);
 
   DenseTensor x_w, x_e, y_n, y_s;
   DenseTensor d_w, d_e, d_n, d_s;
@@ -224,11 +224,11 @@ static void Bilinear3DInter(const CPUContext& ctx,
                             DenseTensor* grid_z,
                             DenseTensor* out) {
   auto& place = *ctx.eigen_device();
-  const int n = grid_x->dims()[0];
-  const int out_d = grid_x->dims()[1];
-  const int out_h = grid_x->dims()[2];
-  const int out_w = grid_x->dims()[3];
-  const int c = input.dims()[1];
+  const int n = static_cast<int>(grid_x->dims()[0]);
+  const int out_d = static_cast<int>(grid_x->dims()[1]);
+  const int out_h = static_cast<int>(grid_x->dims()[2]);
+  const int out_w = static_cast<int>(grid_x->dims()[3]);
+  const int c = static_cast<int>(input.dims()[1]);
 
   // get corner pixel values from (x, y, z)
   // for 4d, we used north-east-south-west
@@ -313,12 +313,12 @@ void GridSampleKernel(const Context& dev_ctx,
                       bool align_corners,
                       DenseTensor* out) {
   if (x.dims().size() == 4) {
-    const int n = grid.dims()[0];
-    const int out_h = grid.dims()[1];
-    const int out_w = grid.dims()[2];
-    const int c = x.dims()[1];
-    const int in_h = x.dims()[2];
-    const int in_w = x.dims()[3];
+    const int n = static_cast<int>(grid.dims()[0]);
+    const int out_h = static_cast<int>(grid.dims()[1]);
+    const int out_w = static_cast<int>(grid.dims()[2]);
+    const int c = static_cast<int>(x.dims()[1]);
+    const int in_h = static_cast<int>(x.dims()[2]);
+    const int in_w = static_cast<int>(x.dims()[3]);
 
     out->Resize(phi::make_ddim({n, c, out_h, out_w}));
     dev_ctx.template Alloc<T>(out);
@@ -344,14 +344,14 @@ void GridSampleKernel(const Context& dev_ctx,
       GetGridPointValue<T>(x, out, grid_x, grid_y);
     }
   } else {
-    const int n = grid.dims()[0];
-    const int out_d = grid.dims()[1];
-    const int out_h = grid.dims()[2];
-    const int out_w = grid.dims()[3];
-    const int c = x.dims()[1];
-    const int in_d = x.dims()[2];
-    const int in_h = x.dims()[3];
-    const int in_w = x.dims()[4];
+    const int n = static_cast<int>(grid.dims()[0]);
+    const int out_d = static_cast<int>(grid.dims()[1]);
+    const int out_h = static_cast<int>(grid.dims()[2]);
+    const int out_w = static_cast<int>(grid.dims()[3]);
+    const int c = static_cast<int>(x.dims()[1]);
+    const int in_d = static_cast<int>(x.dims()[2]);
+    const int in_h = static_cast<int>(x.dims()[3]);
+    const int in_w = static_cast<int>(x.dims()[4]);
 
     out->Resize(phi::make_ddim({n, c, out_d, out_h, out_w}));
     dev_ctx.template Alloc<T>(out);

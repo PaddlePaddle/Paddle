@@ -184,9 +184,13 @@ void FusedDropoutAddGradInferMeta(const MetaTensor& seed_offset,
                                   MetaTensor* x_grad,
                                   MetaTensor* y_grad);
 
-void FusedRopeGradInferMeta(const MetaTensor& dout_q,
+void FusedRopeGradInferMeta(const MetaTensor& sin,
+                            const MetaTensor& cos,
+                            const MetaTensor& position_ids,
+                            const MetaTensor& dout_q,
                             const MetaTensor& dout_k,
                             const MetaTensor& dout_v,
+                            bool use_neox_rotary_style,
                             MetaTensor* dq,
                             MetaTensor* dk,
                             MetaTensor* dv);
@@ -441,6 +445,14 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad);
 
+void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& weight,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& weight_scale,
+                                   const MetaTensor& out_grad,
+                                   const std::string& weight_dtype,
+                                   MetaTensor* x_grad);
+
 void YoloLossGradInferMeta(const MetaTensor& x,
                            const MetaTensor& gt_box,
                            const MetaTensor& gt_label,
@@ -472,6 +484,11 @@ void IndexPutGradInferMeta(const MetaTensor& x,
                            const MetaTensor& value,
                            const MetaTensor& out_grad,
                            bool accumulate,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad);
+
+void SetValueGradInferMeta(const MetaTensor& out_grad,
+                           const MetaTensor& values,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 }  // namespace phi

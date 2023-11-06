@@ -18,8 +18,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 from paddle.incubate.asp import ASPHelper
 
 paddle.enable_static()
@@ -27,8 +27,8 @@ paddle.enable_static()
 
 class TestASPStaticPruningBase(unittest.TestCase):
     def setUp(self):
-        self.main_program = fluid.Program()
-        self.startup_program = fluid.Program()
+        self.main_program = base.Program()
+        self.startup_program = base.Program()
 
         def build_model():
             img = paddle.static.data(
@@ -49,7 +49,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
             )
             return img, label, prediction
 
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             self.img, self.label, self.predict = build_model()
 
         self.set_config()
@@ -62,12 +62,12 @@ class TestASPStaticPruningBase(unittest.TestCase):
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         self.__pruning_and_checking(exe, place, False)
 
     def test_training_pruning(self):
-        with fluid.program_guard(self.main_program, self.startup_program):
+        with base.program_guard(self.main_program, self.startup_program):
             loss = paddle.mean(
                 paddle.nn.functional.cross_entropy(
                     input=self.predict,
@@ -77,14 +77,14 @@ class TestASPStaticPruningBase(unittest.TestCase):
                 )
             )
             optimizer = paddle.incubate.asp.decorate(
-                fluid.optimizer.SGD(learning_rate=0.01)
+                paddle.optimizer.SGD(learning_rate=0.01)
             )
             optimizer.minimize(loss, self.startup_program)
 
         place = paddle.CPUPlace()
         if core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         self.__pruning_and_checking(exe, place, True)
 
@@ -96,7 +96,7 @@ class TestASPStaticPruningBase(unittest.TestCase):
         for param in self.main_program.global_block().all_parameters():
             if ASPHelper._is_supported_layer(self.main_program, param.name):
                 mat = np.array(
-                    fluid.global_scope().find_var(param.name).get_tensor()
+                    base.global_scope().find_var(param.name).get_tensor()
                 )
                 if (len(param.shape) == 4 and param.shape[1] < 4) or (
                     len(param.shape) == 2 and param.shape[0] < 4

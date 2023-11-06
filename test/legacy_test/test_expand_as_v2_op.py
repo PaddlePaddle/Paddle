@@ -15,11 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestExpandAsBasic(OpTest):
@@ -48,10 +49,10 @@ class TestExpandAsBasic(OpTest):
         pass
 
     def test_check_output(self):
-        self.check_output(check_prim=True)
+        self.check_output(check_prim=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', check_prim=True)
+        self.check_grad(['X'], 'Out', check_prim=True, check_pir=True)
 
 
 class TestExpandAs_ZeroDim1(TestExpandAsBasic):
@@ -104,11 +105,11 @@ class TestExpandAsBasicBFP16OP(TestExpandAsBasic):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True
+            paddle.CUDAPlace(0), ['X'], 'Out', check_prim=True, check_pir=True
         )
 
 
@@ -242,7 +243,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
         self.outputs = {'Out': convert_float_to_uint16(output)}
 
     def test_check_output(self):
-        self.check_output_with_place(place=paddle.CUDAPlace(0))
+        self.check_output_with_place(place=paddle.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
         pass
@@ -250,7 +251,7 @@ class TestExpandAsOpRank5BFP16OP(TestExpandAsOpRank5):
 
 class TestExpandAsV2Error(unittest.TestCase):
     def test_errors(self):
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
+        with base.program_guard(base.Program(), base.Program()):
             x1 = paddle.static.data(name='x1', shape=[-1, 4], dtype="uint8")
             x2 = paddle.static.data(name='x2', shape=[-1, 4], dtype="int32")
             self.assertRaises(TypeError, paddle.tensor.expand_as, x1, x2)
@@ -261,26 +262,28 @@ class TestExpandAsV2Error(unittest.TestCase):
 
 # Test python API
 class TestExpandAsV2API(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
-        input1 = np.random.random([12, 14]).astype("float32")
-        input2 = np.random.random([2, 12, 14]).astype("float32")
-        x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
+        with paddle.static.program_guard(paddle.static.Program()):
+            input1 = np.random.random([12, 14]).astype("float32")
+            input2 = np.random.random([2, 12, 14]).astype("float32")
+            x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
 
-        y = paddle.static.data(
-            name='target_tensor',
-            shape=[2, 12, 14],
-            dtype="float32",
-        )
+            y = paddle.static.data(
+                name='target_tensor',
+                shape=[2, 12, 14],
+                dtype="float32",
+            )
 
-        out_1 = paddle.expand_as(x, y=y)
+            out_1 = paddle.expand_as(x, y=y)
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
-        res_1 = exe.run(
-            fluid.default_main_program(),
-            feed={"x": input1, "target_tensor": input2},
-            fetch_list=[out_1],
-        )
-        assert np.array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
+            exe = base.Executor(place=base.CPUPlace())
+            res_1 = exe.run(
+                paddle.static.default_main_program(),
+                feed={"x": input1, "target_tensor": input2},
+                fetch_list=[out_1],
+            )
+            np.testing.assert_array_equal(res_1[0], np.tile(input1, (2, 1, 1)))
 
 
 if __name__ == "__main__":

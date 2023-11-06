@@ -33,7 +33,7 @@ constexpr int INFTIME = 10000;  // 10 seconds
 std::unique_ptr<MasterDaemon> MasterDaemon::start(SocketType socket,
                                                   int nranks,
                                                   int timeout) {
-  VLOG(4) << ("begin to run start");
+  VLOG(8) << ("begin to run start");
   return std::make_unique<MasterDaemon>(socket, nranks, timeout);
 }
 
@@ -43,8 +43,8 @@ MasterDaemon::MasterDaemon(SocketType socket, int nranks, int timeout)
   _background_thread = std::thread{&MasterDaemon::run, this};
 }
 
-MasterDaemon::~MasterDaemon() {
-  VLOG(4) << ("begin to destruct MasterDaemon");
+MasterDaemon::~MasterDaemon() {  // NOLINT
+  VLOG(8) << ("begin to destruct MasterDaemon");
   StopByControlFd();
   _background_thread.join();
   tcputils::close_socket(_listen_socket);
@@ -70,7 +70,7 @@ void MasterDaemon::_do_add(SocketType socket) {
   std::string new_value_str = std::to_string(new_value);
   _store[key] =
       std::vector<uint8_t>(new_value_str.begin(), new_value_str.end());
-  VLOG(4) << "TCPStore: new value (" << new_value << ") for key (" << key
+  VLOG(8) << "TCPStore: new value (" << new_value << ") for key (" << key
           << ") " << GetSockName(socket);
   tcputils::send_value<int64_t>(socket, new_value);
   _notify_waiting_sockets(key);
@@ -78,7 +78,7 @@ void MasterDaemon::_do_add(SocketType socket) {
 
 void MasterDaemon::_do_set(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
-  VLOG(4) << "MasterDaemon::_do_set key(" << key << ") " << GetSockName(socket);
+  VLOG(8) << "MasterDaemon::_do_set key(" << key << ") " << GetSockName(socket);
 
   auto value = tcputils::receive_vector<uint8_t>(socket);
   _store[key] = value;
@@ -89,7 +89,7 @@ void MasterDaemon::_notify_waiting_sockets(const std::string& key) {
   if (_waiting_sockets.find(key) != _waiting_sockets.end()) {
     for (auto waiting_socket : _waiting_sockets.at(key)) {
       auto reply = ReplyType::STOP_WAIT;
-      VLOG(3) << "TCPStore: notify the socket: " << GetSockName(waiting_socket)
+      VLOG(7) << "TCPStore: notify the socket: " << GetSockName(waiting_socket)
               << " that key: " << key << " is ready.";
       tcputils::send_value<ReplyType>(waiting_socket, reply);
     }
@@ -99,7 +99,7 @@ void MasterDaemon::_notify_waiting_sockets(const std::string& key) {
 
 void MasterDaemon::_do_get(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
-  VLOG(4) << "MasterDaemon::_do_get key(" << key << ") " << GetSockName(socket);
+  VLOG(8) << "MasterDaemon::_do_get key(" << key << ") " << GetSockName(socket);
 
   auto iter = _store.find(key);
   PADDLE_ENFORCE_NE(
@@ -108,6 +108,19 @@ void MasterDaemon::_do_get(SocketType socket) {
       phi::errors::InvalidArgument("Key %s not found in TCPStore.", key));
   std::vector<uint8_t> value = iter->second;
   tcputils::send_vector<uint8_t>(socket, value);
+}
+
+void MasterDaemon::_do_check(SocketType socket) {
+  std::string key = tcputils::receive_string(socket);
+  VLOG(4) << "MasterDaemon::_do_check key(" << key << ") "
+          << GetSockName(socket);
+
+  auto iter = _store.find(key);
+  if (iter != _store.end()) {
+    tcputils::send_value<ReplyType>(socket, ReplyType::READY);
+  } else {
+    tcputils::send_value<ReplyType>(socket, ReplyType::NOT_READY);
+  }
 }
 
 #ifndef _WIN32
@@ -125,7 +138,7 @@ void MasterDaemon::CloseControlFd() {
   }
 }
 void MasterDaemon::StopByControlFd() {
-  VLOG(4) << ("begin to run StopByControlFd");
+  VLOG(8) << ("begin to run StopByControlFd");
   if (_control_fd[1] != -1) {
     PADDLE_ENFORCE_NE(
         ::write(_control_fd[1], "\0", 1),
@@ -149,7 +162,7 @@ void MasterDaemon::StopByControlFd() { SetEvent(ghStopEvent_); }
 
 void MasterDaemon::_do_wait(SocketType socket) {
   std::string key = tcputils::receive_string(socket);
-  VLOG(4) << "MasterDaemon::_do_wait key(" << key << ") "
+  VLOG(8) << "MasterDaemon::_do_wait key(" << key << ") "
           << GetSockName(socket);
 
   auto iter = _store.find(key);
@@ -158,7 +171,7 @@ void MasterDaemon::_do_wait(SocketType socket) {
     _waiting_sockets[key].emplace_back(socket);
   } else {
     auto reply = ReplyType::STOP_WAIT;
-    VLOG(3) << "TCPStore: wait reply (" << static_cast<int>(reply)
+    VLOG(7) << "TCPStore: wait reply (" << static_cast<int>(reply)
             << ") for key (" << key << ").";
     tcputils::send_value<ReplyType>(socket, reply);
   }
@@ -172,16 +185,16 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
   for (size_t i = 1; i < fds.size(); i++) {
 #else
   // 0: listen socket, 1:controller pipe, so loop from 2.
-  for (size_t i = 2; i < fds.size(); i++) {
+  for (uint i = 2; i < fds.size(); i++) {
 #endif
     try {
       if (fds[i].revents == 0) {
         continue;
       }
 
-      VLOG(4) << "Plan to receive command from " << GetSockName(fds[i].fd);
+      VLOG(8) << "Plan to receive command from " << GetSockName(fds[i].fd);
       Command command = tcputils::receive_value<Command>(fds[i].fd);
-      VLOG(3) << "TCPStore: recv command: " << static_cast<int>(command) << ".";
+      VLOG(7) << "TCPStore: recv command: " << static_cast<int>(command) << ".";
 
       switch (command) {
         case Command::ADD:
@@ -190,6 +203,9 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
         case Command::GET:
           _do_get(fds[i].fd);
           break;
+        case Command::CHECK:
+          _do_check(fds[i].fd);
+          break;
         case Command::SET:
           _do_set(fds[i].fd);
           break;
@@ -197,7 +213,7 @@ void MasterDaemon::ProcessCommands(std::vector<struct pollfd>* p_fds) {
           _do_wait(fds[i].fd);
           break;
         default:
-          VLOG(4) << "Unknown command: " << static_cast<int>(command)
+          VLOG(8) << "Unknown command: " << static_cast<int>(command)
                   << " from addr info:" << GetSockName(fds[i].fd);
       }
     } catch (const std::exception& ex) {
@@ -243,8 +259,8 @@ void MasterDaemon::run() {
 
   bool finished = false;
   while (!finished) {
-    for (size_t i = 0; i < fds.size(); i++) {
-      fds[i].revents = 0;
+    for (auto& item : fds) {
+      item.revents = 0;
     }
 
     VLOG(9) << "begin to poll fds_size:"
@@ -272,7 +288,7 @@ void MasterDaemon::run() {
       }
       VLOG(0)
           << "receive shutdown event and so quit from MasterDaemon run loop";
-      finished = true;
+      finished = true;  // NOLINT
       break;
     }
 #endif
@@ -345,14 +361,16 @@ TCPStore::TCPStore(std::string host,
                    bool is_master,
                    size_t num_workers,
                    int timeout)
-    : Store(timeout), _is_master(is_master), _num_workers(num_workers) {
+    : Store(timeout),
+      _is_master(is_master),
+      _num_workers(static_cast<int>(num_workers)) {
   _timeout = timeout;
   PADDLE_ENFORCE_GT(
       timeout, 0, phi::errors::InvalidArgument("timeout must >= %d", timeout));
 
-  VLOG(3) << "input timeout" << timeout << ", member timeout:" << _timeout;
+  VLOG(7) << "input timeout" << timeout << ", member timeout:" << _timeout;
   if (_is_master) {
-    _server = detail::TCPServer::create(port, num_workers, timeout);
+    _server = detail::TCPServer::create(port, this->_num_workers, timeout);
   }
 
   _client = detail::TCPClient::connect(host, port);
@@ -366,12 +384,12 @@ void TCPStore::waitWorkers() {
   add(_init_key, 1);
 
   if (_is_master) {
-    VLOG(3) << paddle::string::Sprintf("_timeout:%d", _timeout);
+    VLOG(7) << paddle::string::Sprintf("_timeout:%d", _timeout);
     auto begin = std::chrono::steady_clock::now();
     do {
       auto value = get(_init_key);
       int completed = std::stoi(std::string(value.begin(), value.end()));
-      VLOG(3) << completed << " worker ready, total " << _num_workers
+      VLOG(7) << completed << " worker ready, total " << _num_workers
               << ", _timeout:" << _timeout;
       if (completed >= _num_workers) {
         break;
@@ -395,18 +413,18 @@ void TCPStore::waitWorkers() {
       }
     } while (true);
   }
-  VLOG(3) << "TCPStore initialized.";
+  VLOG(7) << "TCPStore initialized.";
 }
 
 int64_t TCPStore::add(const std::string& key, int64_t value) {
-  VLOG(3) << "TCPStore add.";
+  VLOG(7) << "TCPStore add.";
   _client->send_command_for_key(Command::ADD, _key_prefix + key);
   _client->send_value<std::int64_t>(value);
   return _client->receive_value<std::int64_t>();
 }
 
 void TCPStore::set(const std::string& key, const std::vector<uint8_t>& value) {
-  VLOG(3) << "TCPStore set.";
+  VLOG(7) << "TCPStore set.";
   _client->send_command_for_key(Command::SET, _key_prefix + key);
   _client->send_vector<uint8_t>(value);
 }
@@ -414,13 +432,24 @@ void TCPStore::set(const std::string& key, const std::vector<uint8_t>& value) {
 std::vector<uint8_t> TCPStore::get(const std::string& key) {
   wait(key);
   _client->send_command_for_key(Command::GET, _key_prefix + key);
-  VLOG(3) << "TCPStore get.";
+  VLOG(7) << "TCPStore get.";
   return _client->receive_vector<uint8_t>();
 }
 
+bool TCPStore::check(const std::string& key) {
+  _client->send_command_for_key(Command::CHECK, _key_prefix + key);
+  VLOG(3) << "TCPStore check.";
+  auto response = _client->receive_value<ReplyType>();
+  if (response == ReplyType::READY) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
 void TCPStore::wait(const std::string& key) {
-  ReplyType reply;
-  VLOG(3) << "TCPStore wait.";
+  ReplyType reply;  // NOLINT
+  VLOG(7) << "TCPStore wait.";
   _client->send_command_for_key(Command::WAIT, _key_prefix + key);
   reply = _client->receive_value<ReplyType>();
   PADDLE_ENFORCE_EQ(
@@ -429,7 +458,7 @@ void TCPStore::wait(const std::string& key) {
       phi::errors::InvalidArgument("Stop_waiting response is expected"));
 }
 
-TCPStore::~TCPStore() { VLOG(3) << "TCPStore destructure"; }
+TCPStore::~TCPStore() { VLOG(7) << "TCPStore destructure"; }
 
 }  // namespace distributed
 }  // namespace phi

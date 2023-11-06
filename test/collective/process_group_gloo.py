@@ -19,7 +19,7 @@ from copy import deepcopy
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestProcessGroupFp32(unittest.TestCase):
@@ -37,10 +37,10 @@ class TestProcessGroupFp32(unittest.TestCase):
         nranks = paddle.distributed.ParallelEnv().nranks
         rank = paddle.distributed.ParallelEnv().local_rank
         is_master = True if rank == 0 else False
-        store = paddle.fluid.core.TCPStore(
+        store = paddle.base.core.TCPStore(
             "127.0.0.1", 6272, is_master, nranks, 30
         )
-        pg = paddle.fluid.core.ProcessGroupGloo.create(store, rank, nranks)
+        pg = paddle.base.core.ProcessGroupGloo.create(store, rank, nranks)
 
         # test allreduce sum
         # rank 0
@@ -76,11 +76,11 @@ class TestProcessGroupFp32(unittest.TestCase):
         if rank == 0:
             task = pg.allreduce(tensor_x, core.ReduceOp.MAX)
             task.wait()
-            assert np.array_equal(tensor_x, max_result)
+            np.testing.assert_array_equal(tensor_x, max_result)
         else:
             task = pg.allreduce(tensor_y, core.ReduceOp.MAX)
             task.wait()
-            assert np.array_equal(tensor_y, max_result)
+            np.testing.assert_array_equal(tensor_y, max_result)
 
         print("test allreduce max api ok")
 
@@ -95,10 +95,10 @@ class TestProcessGroupFp32(unittest.TestCase):
         broadcast_result = paddle.assign(tensor_x)
         if rank == 0:
             task = pg.broadcast(tensor_x, 0)
-            assert np.array_equal(broadcast_result, tensor_x)
+            np.testing.assert_array_equal(broadcast_result, tensor_x)
         else:
             task = pg.broadcast(tensor_y, 0)
-            assert np.array_equal(broadcast_result, tensor_y)
+            np.testing.assert_array_equal(broadcast_result, tensor_y)
         print("test broadcast api ok")
 
         # test send_recv
@@ -116,11 +116,11 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = pg.send(tensor_x, pg.size() - 1, True)
         elif pg.rank() == pg.size() - 1:
             task = pg.recv(tensor_y_1, 0, True)
-            assert np.array_equal(send_recv_result_1, tensor_y_1)
+            np.testing.assert_array_equal(send_recv_result_1, tensor_y_1)
 
         if pg.rank() == 0:
             task = pg.recv(tensor_x, pg.size() - 1, True)
-            assert np.array_equal(send_recv_result_2, tensor_x)
+            np.testing.assert_array_equal(send_recv_result_2, tensor_x)
         elif pg.rank() == pg.size() - 1:
             task = pg.send(tensor_y_2, 0, True)
         print("test send_recv api ok")
@@ -159,8 +159,8 @@ class TestProcessGroupFp32(unittest.TestCase):
         out_2 = paddle.slice(
             tensor_out, [0], [out_shape[0] // 2], [out_shape[0]]
         )
-        assert np.array_equal(tensor_x, out_1)
-        assert np.array_equal(tensor_y, out_2)
+        np.testing.assert_array_equal(tensor_x, out_1)
+        np.testing.assert_array_equal(tensor_y, out_2)
         print("test allgather api ok\n")
 
         # test Reduce
@@ -178,7 +178,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             task = pg.reduce(tensor_y, 0)
             task.wait()
         if pg.rank() == 0:
-            assert np.array_equal(tensor_x, sum_result)
+            np.testing.assert_array_equal(tensor_x, sum_result)
         print("test reduce sum api ok\n")
 
         # test Scatter
@@ -199,9 +199,9 @@ class TestProcessGroupFp32(unittest.TestCase):
         out1 = paddle.slice(tensor_x, [0], [0], [self.shape[0]])
         out2 = paddle.slice(tensor_x, [0], [self.shape[0]], [self.shape[0] * 2])
         if pg.rank() == 0:
-            assert np.array_equal(tensor_y, out1)
+            np.testing.assert_array_equal(tensor_y, out1)
         else:
-            assert np.array_equal(tensor_y, out2)
+            np.testing.assert_array_equal(tensor_y, out2)
         print("test scatter api ok\n")
 
         # test Gather
@@ -219,7 +219,7 @@ class TestProcessGroupFp32(unittest.TestCase):
             if pg.rank() == root:
                 task = pg.gather(tensor_y[root], tensor_x, root, True)
                 task.wait()
-                assert np.array_equal(tensor_x, tensor_y)
+                np.testing.assert_array_equal(tensor_x, tensor_y)
             else:
                 task = pg.gather(tensor_y[pg.rank()], tensor_x, root, True)
                 task.wait()

@@ -21,7 +21,7 @@ import numpy as np
 from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import Interpreter
 
-from paddle import fluid
+from paddle import base
 
 enable_gpu = sys.argv.pop()
 model_dir = sys.argv.pop()
@@ -39,11 +39,13 @@ class TestLoadResnetModel(unittest.TestCase):
         self.x_shape = [1, 160, 7, 7]
 
     def get_paddle_inference_result(self, data):
-        config = fluid.core.AnalysisConfig(self.model_dir)
+        config = base.core.AnalysisConfig(
+            self.model_dir + ".pdmodel", self.model_dir + ".pdiparams"
+        )
         config.disable_gpu()
         config.switch_ir_optim(False)
-        self.paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(data)
+        self.paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(data)
         results = self.paddle_predictor.run([data])
         return results[0].as_ndarray()
 
@@ -51,11 +53,11 @@ class TestLoadResnetModel(unittest.TestCase):
         np.random.seed(0)
         x_data = np.random.random(self.x_shape).astype("float32")
         self.executor = Interpreter(["resnet_input"], [self.x_shape])
-        self.executor.load_paddle_model(self.model_dir, self.target, False)
+        self.executor.load_paddle_model(self.model_dir, self.target, True)
         a_t = self.executor.get_tensor("resnet_input")
         a_t.from_numpy(x_data, self.target)
 
-        out = self.executor.get_tensor("relu_0.tmp_0")
+        out = self.executor.get_tensor("save_infer_model/scale_0.tmp_0")
         out.from_numpy(np.zeros(out.shape(), dtype='float32'), self.target)
 
         self.executor.run()

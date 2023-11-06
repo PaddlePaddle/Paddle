@@ -34,6 +34,16 @@ SPMDRuleBase::InferForward(const std::vector<DistTensorSpec>& input_specs,
 }
 
 std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& input_specs,
+                            const std::vector<DistTensorSpec>& output_specs,
+                            const paddle::framework::AttributeMap& attrs) {
+  PADDLE_THROW(
+      phi::errors::Unimplemented("InferBackward should be called from a "
+                                 "derived class of SPMDRuleBase !"));
+}
+
+// deprecated
+std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
 SPMDRuleBase::InferBackward(const std::vector<DistTensorSpec>& output_specs,
                             const paddle::framework::AttributeMap& attrs) {
   PADDLE_THROW(
@@ -47,7 +57,7 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
     const bool merge_conflicts) {
   std::unordered_map<std::string, int64_t> axis_to_dim_map;
   std::unordered_map<int64_t, std::string> dim_to_axis_map;
-  int64_t merge_dim;
+  int64_t merge_dim = 0;
 
   for (auto& pair : tensor_axes_to_dim_pairs) {
     for (size_t i = 0; i < pair.second.size(); ++i) {
@@ -203,27 +213,32 @@ GetAxesDimsMappingPair(const std::vector<std::string>& tensor_axes,
   std::vector<std::pair<std::string, std::vector<int64_t>>> res;
   size_t ntensor = specs.size();
   for (size_t i = 0; i < ntensor; ++i) {
-    res.emplace_back(std::pair<std::string, std::vector<int64_t>>(
-        tensor_axes[i], specs[i].dims_mapping()));
+    res.emplace_back(tensor_axes[i], specs[i].dims_mapping());
   }
   return res;
 }
 
 std::vector<int64_t> GetDimsMappingForAxes(
     const std::string& axes,
-    const std::unordered_map<std::string, int64_t>& axis_to_dim_map) {
+    const std::unordered_map<std::string, int64_t>& axis_to_dim_map,
+    const bool unsharded_miss_axis) {
   std::vector<int64_t> dims_mapping;
-  for (int64_t i = 0, n = axes.size(); i < n; i++) {
+  for (int64_t i = 0, n = static_cast<int64_t>(axes.size()); i < n; i++) {
     std::string axis = axes.substr(i, 1);
     if (axis == "1") {
       dims_mapping.emplace_back(-1);
     } else {
       auto iter = axis_to_dim_map.find(axis);
       if (iter == axis_to_dim_map.end()) {
-        phi::errors::InvalidArgument(
-            "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        if (unsharded_miss_axis) {
+          dims_mapping.emplace_back(-1);
+        } else {
+          phi::errors::InvalidArgument(
+              "Tensor axis [%s] of not in axis_to_dim_map.", axis);
+        }
+      } else {
+        dims_mapping.emplace_back(iter->second);
       }
-      dims_mapping.emplace_back(iter->second);
     }
   }
   return dims_mapping;

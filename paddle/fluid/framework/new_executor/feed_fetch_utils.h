@@ -18,12 +18,33 @@
 
 #include "paddle/fluid/framework/new_executor/interpreter/plan.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 
-void SetColAttrForFetchOps(const interpreter::Job& job,
-                           std::shared_ptr<ProgramDesc> program_desc);
+void SetColAttrForFeedFetchOps(std::shared_ptr<ProgramDesc> program_desc,
+                               const int64_t micro_batch_num,
+                               const int64_t micro_batch_id);
+
+void SplitFeedTensors(const std::vector<std::string>& feed_names,
+                      const int64_t micro_batch_num,
+                      Scope* scope,
+                      std::vector<std::vector<phi::DenseTensor>>* out);
+
+void FetchTensors(const std::vector<std::string>& job_fetch_names,
+                  const std::vector<std::string>& fetch_var_names,
+                  const int64_t micro_batch_id,
+                  Scope* scope,
+                  FetchUnmergedList* fetch_list);
+
+void MergeFetchTensors(const FetchUnmergedList& fetch_list,
+                       const int64_t micro_batch_num,
+                       FetchList* out);
+
+void MergeTensors(const std::vector<const phi::DenseTensor*>& tensors,
+                  const platform::Place dst_place,
+                  phi::DenseTensor* target);
 
 }  // namespace framework
 }  // namespace paddle

@@ -289,8 +289,7 @@ class StreamSafeCUDAAllocTest : public ::testing::Test {
   void MultiThreadMultiStreamRun() {
     std::vector<std::thread> threads;
     for (size_t i = 0; i < stream_num_; ++i) {
-      threads.push_back(
-          std::thread(&StreamSafeCUDAAllocTest::SingleStreamRun, this, i));
+      threads.emplace_back(&StreamSafeCUDAAllocTest::SingleStreamRun, this, i);
     }
     for (size_t i = 0; i < stream_num_; ++i) {
       threads[i].join();
@@ -413,7 +412,7 @@ TEST_F(StreamSafeCUDAAllocTest, CUDAMutilThreadMutilStreamTest) {
   CheckResult();
 }
 
-#ifdef PADDLE_WITH_CUDA
+#if (defined(PADDLE_WITH_CUDA) && (CUDA_VERSION >= 11000))
 TEST_F(StreamSafeCUDAAllocTest, CUDAGraphTest) {
   MultiStreamRun();
   CUDAGraphRun();

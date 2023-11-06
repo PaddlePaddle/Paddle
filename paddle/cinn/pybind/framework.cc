@@ -20,6 +20,7 @@
 #include "paddle/cinn/common/cinn_value.h"
 #include "paddle/cinn/frontend/interpreter.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/instruction.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -27,8 +28,6 @@
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/pybind/bind.h"
 #include "paddle/cinn/runtime/flags.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn::pybind {
 
@@ -64,41 +63,23 @@ void BindFramework(pybind11::module *m) {
              }
 
              ir::LoweredFunc func;
-             if (FLAGS_cinn_ir_schedule) {
-               std::string output_name = "out";
-               temp_inputs.emplace_back(output_name);
-               std::vector<std::string> input_output_names;
-               for (const auto &input : inputs) {
-                 input_output_names.push_back(input->name);
-               }
-               input_output_names.push_back(output_name);
-               std::vector<ir::LoweredFunc> funcs =
-                   hlir::framework::GetFuncFromImpl(
-                       impl,
-                       common::CINNValuePack{temp_inputs},
-                       res,
-                       input_output_names,
-                       key,
-                       target);
-               CHECK_EQ(funcs.size(), 1U);
-               func = funcs[0];
-             } else {
-               common::CINNValuePack C =
-                   impl->fcompute(common::CINNValuePack{temp_inputs});
-               poly::StageMap stages = C.back();
-               // make sure all the tensors in the stages before schedule
-               // launch.
-               for (int i = 0; i < C->size() - 1; i++) {
-                 ir::Expr temp = C[i];
-                 stages->InsertLazily(temp.as_tensor_ref());
-               }
-               C = impl->fschedule(C);
-               for (int i = 0; i < C->size() - 1; i++) {
-                 ir::Expr temp = C[i];
-                 res.push_back(temp.as_tensor_ref());
-               }
-               func = Lower(key, stages, res);
+             std::string output_name = "out";
+             temp_inputs.emplace_back(output_name);
+             std::vector<std::string> input_output_names;
+             for (const auto &input : inputs) {
+               input_output_names.push_back(input->name);
              }
+             input_output_names.push_back(output_name);
+             std::vector<ir::LoweredFunc> funcs =
+                 hlir::framework::GetFuncFromImpl(
+                     impl,
+                     common::CINNValuePack{temp_inputs},
+                     res,
+                     input_output_names,
+                     key,
+                     target);
+             CHECK_EQ(funcs.size(), 1U);
+             func = funcs[0];
              return func;
            });
 
@@ -231,5 +212,23 @@ void BindFramework(pybind11::module *m) {
               CINN_NOT_IMPLEMENTED
             }
           });
+
+  py::class_<Instruction> instruction(*m, "Instruction");
+  instruction
+      .def(py::init<const Target &,
+                    Scope *,
+                    const std::vector<std::string> &,
+                    const std::vector<std::string> &,
+                    const std::string &>())
+      .def("run",
+           [](Instruction &self,
+              backends::Compiler &compiler,
+              const std::string fn_name,
+              std::map<std::string, cinn_pod_value_t> &name_to_pod) {
+             auto fn_ptr = compiler.Lookup(fn_name);
+             self.Finalize();
+             self.SetLoweredFunc(fn_ptr);
+             self.Run(&name_to_pod);
+           });
 }
 }  // namespace cinn::pybind

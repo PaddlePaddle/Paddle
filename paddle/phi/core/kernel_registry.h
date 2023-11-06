@@ -14,20 +14,11 @@
 
 #pragma once
 
-#include <cstring>
-#include <string>
-#include <type_traits>
 #include <typeindex>
 #include <typeinfo>
-#include <vector>
 
 #include "paddle/phi/core/custom_kernel.h"
-#include "paddle/phi/core/enforce.h"
-#include "paddle/phi/core/extended_tensor.h"
-#include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/kernel_utils.h"
-#include "paddle/phi/core/macros.h"
-#include "paddle/phi/core/type_defs.h"
 
 namespace phi {
 
@@ -37,6 +28,10 @@ namespace phi {
 
 template <typename Func>
 struct KernelArgsParseFunctor;
+
+void SetKernelArgsDef(const std::vector<std::type_index>& args_type,
+                      const KernelKey& default_key,
+                      KernelArgsDef* args_def);
 
 template <typename Return_, typename... Args_>
 struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
@@ -50,214 +45,9 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
     // TODO(chenweihang): The fluid Tensor's default layout is NCHW,
     // it is not same as kernel's layout, we should fix this error on
     // fluid Tensor
-    auto default_tensor_layout = phi::DataLayout::NCHW;
-    if (default_key.layout() != phi::DataLayout::ANY) {
-      default_tensor_layout = default_key.layout();
-    }
+
     auto args_type = ParseArgType(Indices{});
-    for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const CPUContext&))
-#if defined(PADDLE_WITH_MKLDNN)
-          || arg_type == std::type_index(typeid(const OneDNNContext&))
-#endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-          || arg_type == std::type_index(typeid(const GPUContext&))
-#elif defined(PADDLE_WITH_XPU) && !defined(PADDLE_WITH_XPU_KP)
-          || arg_type == std::type_index(typeid(const XPUContext&))
-#elif defined(PADDLE_WITH_XPU) && defined(PADDLE_WITH_XPU_KP)
-          || arg_type == std::type_index(typeid(const KPSContext&))
-#endif
-#if defined(PADDLE_WITH_CUSTOM_DEVICE)
-          || arg_type == std::type_index(typeid(const CustomContext&))) {
-#else
-      ) {
-#endif
-        // do nothing, skip context arg now
-      } else if (arg_type == std::type_index(typeid(const DenseTensor&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const paddle::optional<DenseTensor>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type ==
-                 std::type_index(typeid(const paddle::optional<
-                                        std::vector<const DenseTensor*>>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const paddle::optional<SelectedRows>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const std::vector<const DenseTensor*>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type ==
-                 std::type_index(typeid(const phi::ExtendedTensor&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const std::vector<const ExtendedTensor*>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const std::vector<const SelectedRows*>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const std::vector<const TensorBase*>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 const std::vector<const TensorArray*>&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(const SelectedRows&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(const StringTensor&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(const SparseCooTensor&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 paddle::optional<const SparseCooTensor&>))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(const SparseCsrTensor&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(
-                                 paddle::optional<const SparseCsrTensor&>))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(const TensorArray&))) {
-        args_def->AppendInput(default_key.backend(),
-                              default_tensor_layout,
-                              default_key.dtype(),
-                              arg_type);
-      } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type ==
-                 std::type_index(typeid(std::vector<DenseTensor*>))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(SelectedRows*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(TensorArray*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(SparseCooTensor*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(SparseCsrTensor*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(StringTensor*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(ExtendedTensor*))) {
-        args_def->AppendOutput(default_key.backend(),
-                               default_tensor_layout,
-                               default_key.dtype(),
-                               arg_type);
-      } else if (arg_type == std::type_index(typeid(bool))) {
-        args_def->AppendAttribute(AttributeType::BOOL);
-      } else if (arg_type == std::type_index(typeid(int))) {
-        args_def->AppendAttribute(AttributeType::INT32);
-      } else if (arg_type == std::type_index(typeid(int64_t))) {
-        args_def->AppendAttribute(AttributeType::INT64);
-      } else if (arg_type == std::type_index(typeid(float))) {
-        args_def->AppendAttribute(AttributeType::FLOAT32);
-      } else if (arg_type == std::type_index(typeid(double))) {
-        args_def->AppendAttribute(AttributeType::FLOAT64);
-      } else if (arg_type == std::type_index(typeid(std::string))) {
-        args_def->AppendAttribute(AttributeType::STRING);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<bool>&))) {
-        args_def->AppendAttribute(AttributeType::BOOLS);
-      } else if (arg_type == std::type_index(typeid(const std::vector<int>&))) {
-        args_def->AppendAttribute(AttributeType::INT32S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<int64_t>&))) {
-        args_def->AppendAttribute(AttributeType::INT64S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<float>&))) {
-        args_def->AppendAttribute(AttributeType::FLOAT32S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<double>&))) {
-        args_def->AppendAttribute(AttributeType::FLOAT64S);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<std::string>&))) {
-        args_def->AppendAttribute(AttributeType::STRINGS);
-      } else if (arg_type == std::type_index(typeid(const Scalar&))) {
-        args_def->AppendAttribute(AttributeType::SCALAR);
-      } else if (arg_type ==
-                 std::type_index(typeid(const std::vector<Scalar>&))) {
-        args_def->AppendAttribute(AttributeType::SCALARS);
-      } else if (arg_type == std::type_index(typeid(const IntArray&))) {
-        args_def->AppendAttribute(AttributeType::INT_ARRAY);
-      } else if (arg_type == std::type_index(typeid(DataType))) {
-        args_def->AppendAttribute(AttributeType::DATA_TYPE);
-      } else if (arg_type == std::type_index(typeid(DataLayout))) {
-        args_def->AppendAttribute(AttributeType::DATA_LAYOUT);
-      } else if (arg_type == std::type_index(typeid(Place))) {
-        args_def->AppendAttribute(AttributeType::PLACE);
-      } else {
-        PADDLE_THROW(phi::errors::Unavailable(
-            "Unsupported kernel argument type `%s`.", arg_type.name()));
-      }
-    }
+    SetKernelArgsDef(args_type, default_key, args_def);
   }
 
  private:
@@ -1401,6 +1191,14 @@ struct KernelRegistrar {
                                             meta_kernel_fn,        \
                                             BACKEND_LIST)
 
+#define PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE_EXCEPT_CUSTOM(    \
+    kernel_name, layout, meta_kernel_fn)                           \
+  _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(::phi::RegType::INNER, \
+                                            kernel_name,           \
+                                            layout,                \
+                                            meta_kernel_fn,        \
+                                            BACKEND_LIST_EXCEPT_CUSTOM)
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #define _DEVICE GPU,
 #elif defined(PADDLE_WITH_XPU)
@@ -1415,6 +1213,7 @@ struct KernelRegistrar {
 #endif
 
 #define BACKEND_LIST _DEVICE _CUSTOM CPU
+#define BACKEND_LIST_EXCEPT_CUSTOM _DEVICE CPU
 
 #define _PD_REGISTER_KERNEL_FOR_ALL_BACKEND_DTYPE(                            \
     reg_type, kernel_name, layout, meta_kernel_fn, ...)                       \

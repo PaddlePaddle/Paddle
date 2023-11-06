@@ -26,6 +26,7 @@ limitations under the License. */
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 #include "paddle/phi/core/selected_rows.h"
 #include "paddle/phi/core/sparse_coo_tensor.h"
@@ -34,9 +35,6 @@ limitations under the License. */
 #include "paddle/phi/core/tensor_base.h"
 #include "paddle/phi/core/tensor_meta.h"
 #include "paddle/phi/core/tensor_utils.h"
-#ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#endif
 
 namespace paddle {
 
@@ -49,6 +47,14 @@ using DefaultAllocator = experimental::DefaultAllocator;
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl)
     : impl_(std::move(tensor_impl)) {
+  PADDLE_ENFORCE_NOT_NULL(
+      impl_,
+      phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
+}
+
+Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
+               std::shared_ptr<AbstractAutogradMeta> autograd_meta)
+    : impl_(std::move(tensor_impl)), autograd_meta_(std::move(autograd_meta)) {
   PADDLE_ENFORCE_NOT_NULL(
       impl_,
       phi::errors::InvalidArgument("TensorImpl with nullptr is not supported"));
@@ -89,7 +95,7 @@ Tensor::Tensor(const Place &place, const std::vector<int64_t> &shape) {
 
 Tensor::Tensor(std::shared_ptr<phi::TensorBase> tensor_impl,
                const std::string &name)
-    : impl_(std::move(tensor_impl)), name_(std::move(name)) {}
+    : impl_(std::move(tensor_impl)), name_(name) {}
 
 /* Part 2: Dimension, DataType and DataLayout methods */
 
@@ -102,6 +108,19 @@ const phi::DDim &Tensor::dims() const { return impl_->dims(); }
 std::vector<int64_t> Tensor::shape() const {
   const auto &dims = impl_->dims();
   return phi::vectorize<int64_t>(dims);
+}
+
+const phi::DDim &Tensor::strides() const {
+  if (is_dense_tensor()) {
+    return static_cast<phi::DenseTensor *>(impl_.get())->strides();
+  } else if (is_dist_tensor()) {
+    return static_cast<phi::distributed::DistTensor *>(impl_.get())
+        ->unsafe_mutable_value()
+        ->strides();
+  } else {
+    PADDLE_THROW(phi::errors::Unimplemented(
+        "Only support strides operation on DenseTensor now."));
+  }
 }
 
 void Tensor::reshape(const std::vector<int64_t> &shape) {
@@ -132,11 +151,7 @@ bool Tensor::is_dense_tensor() const {
   return phi::DenseTensor::classof(impl_.get());
 }
 bool Tensor::is_dist_tensor() const {
-#ifdef PADDLE_WITH_DISTRIBUTE
   return phi::distributed::DistTensor::classof(impl_.get());
-#else
-  return false;
-#endif
 }
 bool Tensor::is_selected_rows() const {
   return phi::SelectedRows::classof(impl_.get());
@@ -394,14 +409,9 @@ void Tensor::reset() {
 
 /* Part 6: Operator overloading */
 
-Tensor &Tensor::operator=(const Tensor &x) & {
-  impl_ = x.impl_;
-  autograd_meta_ = x.autograd_meta_;
-  name_ = x.name_;
-  return *this;
-}
+Tensor &Tensor::operator=(const Tensor &x) & = default;
 
-Tensor &Tensor::operator=(Tensor &&x) & {
+Tensor &Tensor::operator=(Tensor &&x) &noexcept {
   impl_ = std::move(x.impl_);
   autograd_meta_ = std::move(x.autograd_meta_);
   name_ = std::move(x.name_);

@@ -104,7 +104,7 @@ KernelType to_kerneltype(const std::string& act) {
 
 template <>
 void pack_weights<float>(const float* src, float* dst, int n, int k) {
-  int block, rest;
+  int block = 0, rest = 0;
   const auto groups = packed_groups(n, k, &block, &rest);
   std::for_each(groups.begin(), groups.end(), [&](int i) {
     PADDLE_ENFORCE_GT(i,
@@ -125,7 +125,7 @@ void pack_weights<float>(const float* src, float* dst, int n, int k) {
                         sum * block,
                         n));
 
-  const int block_len = sizeof(float) * block;
+  const int block_len = static_cast<int>(sizeof(float)) * block;
   int n_offset = 0;
 
   for (size_t g = 0; g < groups.size(); ++g) {

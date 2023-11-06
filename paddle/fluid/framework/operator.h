@@ -47,6 +47,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flat_hash_map.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -64,6 +65,8 @@ PHI_DECLARE_int32(inner_op_parallelism);
 
 namespace paddle {
 namespace framework {
+
+constexpr char kFakeVarName[] = "Fake_var";
 
 /// If a variable is a empty variable, that name will be used.
 constexpr char kEmptyVarName[] = "@EMPTY@";
@@ -230,6 +233,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   std::vector<DDim> GetOutputsDim(const std::string& name) const;
 
+  bool HasRuntimeAttributes() const;
+
  protected:
   DDim GetDim(Variable* var) const;
 
@@ -266,7 +271,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
  * should always construct a proto message OpDesc and call
  * OpRegistry::CreateOp(op_desc) to get an Operator instance.
  */
-class OperatorBase {
+class TEST_API OperatorBase {
  public:
   OperatorBase(const std::string& type,
                const VariableNameMap& inputs,

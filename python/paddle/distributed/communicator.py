@@ -53,12 +53,12 @@ class Communicator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                prog = paddle.static.Program()
-                comm = paddle.distributed.communicator.Communicator(prog)
-                comm.start()
-                comm.stop()
+                >>> prog = paddle.static.Program()
+                >>> comm = paddle.distributed.communicator.Communicator(prog)
+                >>> comm.start()
+                >>> comm.stop()
         """
         # set all recv op to not_run mode
 
@@ -136,12 +136,12 @@ class Communicator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                prog = paddle.static.Program()
-                comm = paddle.distributed.communicator.Communicator(prog)
-                comm.start()
-                comm.stop()
+                >>> prog = paddle.static.Program()
+                >>> comm = paddle.distributed.communicator.Communicator(prog)
+                >>> comm.start()
+                >>> comm.stop()
         """
         if self.communicator_ is None:
             print('you must call init_with_ctx first to init comm before start')
@@ -158,12 +158,12 @@ class Communicator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                prog = paddle.static.Program()
-                comm = paddle.distributed.communicator.Communicator(prog)
-                comm.start()
-                comm.stop()
+                >>> prog = paddle.static.Program()
+                >>> comm = paddle.distributed.communicator.Communicator(prog)
+                >>> comm.start()
+                >>> comm.stop()
         """
         if self.communicator_ is None:
             print('you must call init_with_ctx first to init comm before stop')
@@ -180,11 +180,11 @@ class Communicator:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                prog = paddle.static.Program()
-                comm = paddle.distributed.communicator.Communicator(prog)
-                comm.is_running()
+                >>> prog = paddle.static.Program()
+                >>> comm = paddle.distributed.communicator.Communicator(prog)
+                >>> comm.is_running()
         """
         if self.communicator_ is None:
             print('you must call init_with_ctx first to init comm before stop')
@@ -229,14 +229,12 @@ class FLCommunicator(Communicator):  # only for coordinator
             self.communicator_.start_coordinator(
                 self_endpoint, trainer_endpoints
             )
-        return
 
     def save_fl_strategy(self, mp):
         if self.communicator_ is not None:
             self.communicator_.save_fl_strategy(mp)
         else:
             raise ValueError("self.communicator_ is null")
-        return
 
     def query_fl_clients_info(self):
         info_mp = {}

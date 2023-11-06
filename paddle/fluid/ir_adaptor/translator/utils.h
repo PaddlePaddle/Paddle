@@ -15,27 +15,89 @@
 #pragma once
 
 #include <string>
-#include <string_view>
+#include <vector>
+
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/ir_adaptor/translator/program_translator.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/operation.h"
+#include "paddle/pir/core/program.h"
+
+namespace paddle {
+namespace dialect {
+struct PdOpSig {
+  std::string name;
+  std::vector<std::string> inputs;
+  std::vector<std::string> outputs;
+  PdOpSig() = default;
+  PdOpSig(const PdOpSig& input_info) = default;
+
+  PdOpSig(const std::string& name,
+          const std::vector<std::string>& inputs,
+          const std::vector<std::string>& outputs)
+      : name(name), inputs(inputs), outputs(outputs) {}
+};
+
+bool HaveOpToMultiKernelsMap(std::string op_name);
+
+const std::vector<PdOpSig>& LegacyOpToPdOpsMapping(std::string op_name);
+
+}  // namespace dialect
+}  // namespace paddle
 
 namespace paddle {
 namespace translator {
 
-static std::string UnderscoreToCamelCase(std::string str) {
-  std::string camel_case;
-  bool next_upper = true;
-  for (char c : str) {
-    if (c == '_') {
-      next_upper = true;
-    } else {
-      if (next_upper) {
-        camel_case += toupper(c);
-        next_upper = false;
-      } else {
-        camel_case += c;
-      }
-    }
+pir::Operation* InsertSliceOperationForTarget(
+    pir::IrContext* ctx,
+    TranslationContext* param_map,
+    pir::Block* block,
+    const VariableDefiningInfo& defining_info,
+    const std::string& arg_name);
+
+std::ostream& operator<<(std::ostream& os,
+                         const std::vector<std::string>& vec_str);
+
+std::vector<std::string> CheckUnregisteredOperation(
+    pir::IrContext* ctx, const framework::ProgramDesc& legacy_program);
+
+inline DataType VarTypeToDataType(
+    ::paddle::framework::proto::VarType_Type var_type) {
+  switch (var_type) {
+    case paddle::framework::proto::VarType_Type::VarType_Type_BOOL:
+      return DataType::BOOL;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT16:
+      return DataType::INT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT32:
+      return DataType::INT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT64:
+      return DataType::INT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP16:
+      return DataType::FLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP32:
+      return DataType::FLOAT32;
+    case paddle::framework::proto::VarType_Type::VarType_Type_FP64:
+      return DataType::FLOAT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_SIZE_T:
+      return DataType::UINT64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_UINT8:
+      return DataType::UINT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_INT8:
+      return DataType::INT8;
+    case paddle::framework::proto::VarType_Type::VarType_Type_BF16:
+      return DataType::BFLOAT16;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX64:
+      return DataType::COMPLEX64;
+    case paddle::framework::proto::VarType_Type::VarType_Type_COMPLEX128:
+      return DataType::COMPLEX128;
+    case paddle::framework::proto::VarType_Type::VarType_Type_PSTRING:
+      return DataType::PSTRING;
+    default:
+      PADDLE_THROW(phi::errors::Unimplemented(
+          "Unsupported proto::VarType_Type `%s` when casting it into DataType.",
+          var_type));
   }
-  return camel_case;
 }
 
 }  // namespace translator

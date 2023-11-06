@@ -15,16 +15,16 @@
 import unittest
 
 import numpy as np
-from eager_op_test import skip_check_grad_ci
 from get_test_cover_info import (
     XPUOpTestWrapper,
     create_test_class,
     get_xpu_op_support_types,
 )
+from op_test import skip_check_grad_ci
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -48,13 +48,20 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
             """
 
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [13, 17]).astype(self.dtype),
+                    'Y': np.random.randint(1, 100, [13, 17]).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
+                    'Y': np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
         def test_check_output(self):
             if paddle.is_compiled_with_xpu():
@@ -95,170 +102,315 @@ class XPUTestElementwiseDivOp(XPUOpTestWrapper):
 
     class TestElementwiseDivOp_ZeroDim1(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, []).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, []).astype(self.dtype),
+                    'Y': np.random.randint(1, 100, []).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(-1, 1, []).astype(self.dtype),
+                    'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
     class TestElementwiseDivOp_ZeroDim2(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
-                'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [13, 17]).astype(self.dtype),
+                    'Y': np.random.randint(1, 100, []).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(-1, 1, [13, 17]).astype(self.dtype),
+                    'Y': np.random.uniform(-1, 1, []).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
     @skip_check_grad_ci(
         reason="[skip shape check] Use y_shape(1) to test broadcast."
     )
     class TestElementwiseDivOp_scalar(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [20, 3, 4]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [1]).astype(self.dtype),
-            }
-            self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [20, 3, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [1]).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [20, 3, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [1]).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] / self.inputs['Y']}
 
     class TestElementwiseDivOp_Vector(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [100]).astype(self.dtype),
+                    'Y': np.random.randint(1, 100, [100]).astype(self.dtype),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                    'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
     class TestElementwiseDivOp_broadcast_0(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [100, 3, 4]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [100, 3, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': self.inputs['X']
+                    // self.inputs['Y'].reshape(100, 1, 1)
+                }
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [100, 3, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(
+                        self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
+                    )
+                }
 
             self.attrs = {'axis': 0}
-            self.outputs = {
-                'Out': np.divide(
-                    self.inputs['X'], self.inputs['Y'].reshape(100, 1, 1)
-                )
-            }
 
     class TestElementwiseDivOp_broadcast_1(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 100, 4]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 100, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': self.inputs['X']
+                    // self.inputs['Y'].reshape(1, 100, 1)
+                }
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 100, 4]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(
+                        self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
+                    )
+                }
 
             self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.divide(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 100, 1)
-                )
-            }
 
     class TestElementwiseDivOp_broadcast_2(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
-            }
-
-            self.outputs = {
-                'Out': np.divide(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
-                )
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 3, 100]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': self.inputs['X']
+                    // self.inputs['Y'].reshape(1, 1, 100)
+                }
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [100]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(
+                        self.inputs['X'], self.inputs['Y'].reshape(1, 1, 100)
+                    )
+                }
 
     class TestElementwiseDivOp_broadcast_3(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 10, 12, 5]).astype(
-                    self.dtype
-                ),
-                'Y': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 10, 12, 5]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [10, 12]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': self.inputs['X']
+                    // self.inputs['Y'].reshape(1, 10, 12, 1)
+                }
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 10, 12, 5]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
+                }
+                self.outputs = {
+                    'Out': np.divide(
+                        self.inputs['X'], self.inputs['Y'].reshape(1, 10, 12, 1)
+                    )
+                }
 
             self.attrs = {'axis': 1}
-            self.outputs = {
-                'Out': np.divide(
-                    self.inputs['X'], self.inputs['Y'].reshape(1, 10, 12, 1)
-                )
-            }
 
     class TestElementwiseDivOp_broadcast_4(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 3, 50]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [2, 1, 50]).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 3, 50]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [2, 1, 50]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 3, 50]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [2, 1, 50]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
     class TestElementwiseDivOp_broadcast_5(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 3, 4, 20]).astype(
-                    self.dtype
-                ),
-                'Y': np.random.uniform(0.1, 1, [2, 3, 1, 20]).astype(
-                    self.dtype
-                ),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 3, 4, 20]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [2, 3, 1, 20]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 3, 4, 20]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [2, 3, 1, 20]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
     class TestElementwiseDivOp_commonuse_1(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [1, 1, 100]).astype(self.dtype),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [2, 3, 100]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [1, 1, 100]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [2, 3, 100]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [1, 1, 100]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
     class TestElementwiseDivOp_commonuse_2(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [30, 3, 1, 5]).astype(
-                    self.dtype
-                ),
-                'Y': np.random.uniform(0.1, 1, [30, 1, 4, 1]).astype(
-                    self.dtype
-                ),
-            }
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [30, 3, 1, 5]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.randint(1, 100, [30, 1, 4, 1]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [30, 3, 1, 5]).astype(
+                        self.dtype
+                    ),
+                    'Y': np.random.uniform(0.1, 1, [30, 1, 4, 1]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
     class TestElementwiseDivOp_xsize_lessthan_ysize(ElementwiseDivOp):
         def init_input_output(self):
-            self.inputs = {
-                'X': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
-                'Y': np.random.uniform(0.1, 1, [2, 3, 10, 12]).astype(
-                    self.dtype
-                ),
-            }
+            if self.dtype == np.int32 or self.dtype == np.int64:
+                self.inputs = {
+                    'X': np.random.randint(1, 100, [10, 12]).astype(self.dtype),
+                    'Y': np.random.randint(1, 100, [2, 3, 10, 12]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {'Out': self.inputs['X'] // self.inputs['Y']}
+            else:
+                self.inputs = {
+                    'X': np.random.uniform(0.1, 1, [10, 12]).astype(self.dtype),
+                    'Y': np.random.uniform(0.1, 1, [2, 3, 10, 12]).astype(
+                        self.dtype
+                    ),
+                }
+                self.outputs = {
+                    'Out': np.divide(self.inputs['X'], self.inputs['Y'])
+                }
 
             self.attrs = {'axis': 2}
 
-            self.outputs = {
-                'Out': np.divide(self.inputs['X'], self.inputs['Y'])
-            }
-
     class TestElementwiseDivBroadcast(unittest.TestCase):
         def test_shape_with_batch_sizes(self):
-            with fluid.program_guard(fluid.Program()):
+            with base.program_guard(base.Program()):
                 x_var = paddle.static.data(
                     name='x', dtype='float32', shape=[None, 3, None, None]
                 )
                 one = 2.0
                 out = one / x_var
-                exe = fluid.Executor(fluid.XPUPlace(0))
+                exe = base.Executor(base.XPUPlace(0))
                 x = np.random.uniform(0.1, 0.6, (1, 3, 32, 32)).astype(
                     'float32'
                 )

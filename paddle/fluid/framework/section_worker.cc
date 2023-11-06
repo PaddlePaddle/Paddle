@@ -10,7 +10,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-#include <float.h>
+#include <cfloat>
 
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -25,8 +25,8 @@ uint64_t SectionWorker::batch_id_(0);
 
 void SectionWorker::Initialize(const TrainerDesc &desc) {
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
-  program_.reset(
-      new ProgramDesc(desc.section_param().section_config().program_desc()));
+  program_ = std::make_unique<ProgramDesc>(
+      desc.section_param().section_config().program_desc());
   for (auto &op_desc : program_->Block(0).AllOps()) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
@@ -231,7 +231,8 @@ void SectionWorker::TrainFiles() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (platform::is_gpu_place(place_)) {
       if (IsFastEagerDeletionModeEnabled()) {
-        gc.reset(new UnsafeFastGPUGarbageCollector(place_, max_memory_size));
+        gc = std::make_unique<UnsafeFastGPUGarbageCollector>(place_,
+                                                             max_memory_size);
       }
     }
 #endif

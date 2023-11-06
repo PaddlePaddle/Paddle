@@ -29,15 +29,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using std::bad_cast;
-using std::codecvt_utf8;
-using std::endl;
-using std::exception;
 using std::ifstream;
 using std::int64_t;
-using std::min;
-using std::runtime_error;
-using std::shared_ptr;
 using std::size_t;
 using std::string;
 using std::unordered_map;
@@ -100,7 +93,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   }
   std::wstring cache_text = L"";
   auto PushCacheText = [&]() {
-    if (cache_text != L"") {
+    if (!cache_text.empty()) {
       res->emplace_back(cache_text);
       cache_text = L"";
     }
@@ -138,13 +131,13 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
                                   vector<int64_t>* token_ids) const {
   size_t len = text.size();
   if (len > max_input_chars_per_word_) {
-    token_ids->emplace_back(std::move(unk_token_id_));
+    token_ids->emplace_back(unk_token_id_);
     return;
   }
 
   auto it = vocab_->find(text);
   if (it != vocab_->end()) {
-    token_ids->emplace_back(std::move(it->second));
+    token_ids->emplace_back(it->second);
     return;
   }
 
@@ -153,11 +146,11 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   while (start < len) {
     size_t end = len;
     std::wstring cur_substr;
-    int64_t cur_substr_id;
+    int64_t cur_substr_id = 0;
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
-        sub = L"##" + sub;
+        sub.insert(0, L"##");
       }
       auto it = vocab_->find(sub);
       if (it != vocab_->end()) {
@@ -169,15 +162,15 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
     }
 
     if (cur_substr.empty()) {
-      token_ids->emplace_back(std::move(unk_token_id_));
+      token_ids->emplace_back(unk_token_id_);
       return;
     } else {
       start = end;
-      wordpiece_ids.emplace_back(std::move(cur_substr_id));
+      wordpiece_ids.emplace_back(cur_substr_id);
     }
   }
   for (auto& token_id : wordpiece_ids) {
-    token_ids->emplace_back(std::move(token_id));
+    token_ids->emplace_back(token_id);
   }
 }
 
@@ -226,9 +219,9 @@ void BertTokenizer::Tokenize(const string& text,
       if (IsChineseChar(w_token[0])) {
         auto vocab_it = vocab_->find(w_token);
         if (vocab_it != vocab_->end()) {
-          split_token_ids->emplace_back(std::move(vocab_it->second));
+          split_token_ids->emplace_back(vocab_it->second);
         } else {
-          split_token_ids->emplace_back(std::move(unk_token_id_));
+          split_token_ids->emplace_back(unk_token_id_);
         }
       } else {
         word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
@@ -245,32 +238,32 @@ void BertTokenizer::BuildInputsWithSpecialTokens(
     vector<int64_t>* inputs,
     const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     inputs->clear();
     inputs->resize(token_ids_0.size() + 2);
-    inputs->at(0) = std::move(cls_token_id_);
+    inputs->at(0) = cls_token_id_;
     size_t i = 1;
     for (auto& token_id : token_ids_0) {
-      inputs->at(i) = std::move(token_id);
+      inputs->at(i) = token_id;
       ++i;
     }
-    inputs->at(i) = std::move(sep_token_id_);
+    inputs->at(i) = sep_token_id_;
   } else {
     inputs->clear();
     inputs->resize(token_ids_0.size() + token_ids_1.size() + 3);
-    inputs->at(0) = std::move(cls_token_id_);
+    inputs->at(0) = cls_token_id_;
     size_t i = 1;
     for (auto& token_id : token_ids_0) {
-      inputs->at(i) = std::move(token_id);
+      inputs->at(i) = token_id;
       ++i;
     }
-    inputs->at(i) = std::move(sep_token_id_);
+    inputs->at(i) = sep_token_id_;
     ++i;
     for (auto& token_id : token_ids_1) {
-      inputs->at(i) = std::move(token_id);
+      inputs->at(i) = token_id;
       ++i;
     }
-    inputs->at(i) = std::move(sep_token_id_);
+    inputs->at(i) = sep_token_id_;
   }
 }
 
@@ -286,7 +279,7 @@ void BertTokenizer::CreateTokenTypeIdsFromSequences(
     vector<int64_t>* token_type_ids,
     const vector<int64_t>& token_ids_0,
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
-  if (token_ids_1.size() == 0) {
+  if (token_ids_1.empty()) {
     vector<int64_t> tmp(token_ids_0.size() + 2, 0);
     token_type_ids->swap(tmp);
   } else {
@@ -304,7 +297,7 @@ void BertTokenizer::TruncateSequence(
     const size_t num_tokens_to_remove /* = 0 */,
     const size_t stride /* = 0 */) const {
   for (size_t i = 0; i < num_tokens_to_remove; i++) {
-    if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
+    if ((pair_ids->empty()) || (ids->size() > pair_ids->size())) {
       ids->pop_back();
     } else {
       pair_ids->pop_back();
@@ -326,7 +319,7 @@ int BertTokenizer::Encode(
   if (!is_split_into_words) {
     Tokenize(text, &ids);
     if (ids.empty()) return 0;
-    if (text_pair != "") {
+    if (!text_pair.empty()) {
       Tokenize(text_pair, &pair_ids);
       if (pair_ids.empty()) return 0;
     }
@@ -340,15 +333,15 @@ int BertTokenizer::Encode(
       wstring token = unicode_text.substr(i, 1);
       auto it = vocab_->find(token);
       if (it != vocab_->end()) {
-        ids.emplace_back(std::move(it->second));
+        ids.emplace_back(it->second);
       } else {
-        ids.emplace_back(std::move(unk_token_id_));
+        ids.emplace_back(unk_token_id_);
       }
     }
   }
 
   bool pair = false;
-  if (pair_ids.size() != 0) {
+  if (!pair_ids.empty()) {
     pair = true;
   }
 
@@ -390,7 +383,7 @@ int BertTokenizer::Encode(
   }
 
   if (needs_to_be_padded) {
-    int64_t difference = max_seq_len - seq_len;
+    int64_t difference = static_cast<int64_t>(max_seq_len - seq_len);
     size_t pad_start = max_seq_len - 1 - difference;
     encoded_inputs->at("token_type_ids").resize(max_seq_len);
     for (size_t i = max_seq_len - 1; i > pad_start; i--) {

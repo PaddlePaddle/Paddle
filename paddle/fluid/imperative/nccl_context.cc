@@ -69,8 +69,8 @@ void NCCLParallelContext::Init() {
 
   if (strategy_.local_rank_ == 0) {
     // generate the unique ncclid on the root worker
-    for (size_t i = 0; i < nccl_ids.size(); ++i) {
-      platform::dynload::ncclGetUniqueId(&nccl_ids[i]);
+    for (auto &nccl_id : nccl_ids) {
+      platform::dynload::ncclGetUniqueId(&nccl_id);
     }
   } else {
     // FIXME(wangxi): gloo will use rank0 endpoint, so not create socket server
@@ -80,7 +80,7 @@ void NCCLParallelContext::Init() {
   }
   BcastNCCLId(nccl_ids, 0, server_fd);
 
-  int gpu_id = place_.device;
+  int gpu_id = place_.device;  // NOLINT
   for (int ring_id = 0; ring_id < strategy_.nrings_; ring_id++) {
     VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
             << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
@@ -115,7 +115,7 @@ void NCCLParallelContext::InitWithRingID(int ring_id) {
   }
   BcastNCCLId(nccl_ids, 0, server_fd);
 
-  int gpu_id = place_.device;
+  int gpu_id = place_.device;  // NOLINT
   VLOG(0) << "init nccl context nranks: " << strategy_.nranks_
           << " local rank: " << strategy_.local_rank_ << " gpu id: " << gpu_id
           << " ring id: " << ring_id;

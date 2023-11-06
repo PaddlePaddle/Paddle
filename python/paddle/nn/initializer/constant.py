@@ -14,8 +14,12 @@
 
 from paddle import _C_ops
 
-from ...fluid import core, framework
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework
+from ...base.framework import (
+    _current_expected_place,
+    in_dygraph_mode,
+    in_dynamic_or_pir_mode,
+)
 
 # TODO: define the initializers of Constant in neural network
 from .initializer import Initializer
@@ -48,19 +52,34 @@ class ConstantInitializer(Initializer):
         Returns:
             The initialization op
         """
+        import paddle
+
         block = self._check_block(block)
 
-        assert isinstance(var, (framework.Variable, framework.EagerParamBase))
-        assert isinstance(block, framework.Block)
+        assert isinstance(
+            var,
+            (
+                framework.Variable,
+                framework.EagerParamBase,
+                paddle.pir.OpResult,
+                paddle.pir.core.ParameterMeta,
+            ),
+        )
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             place = _current_expected_place()
             if self._force_cpu:
                 place = core.CPUPlace()
-            _C_ops.full_(
-                var, var.shape, str(float(self._value)), var.dtype, place
-            )
-            return None
+            if in_dygraph_mode():
+                _C_ops.full_(
+                    var, var.shape, float(self._value), var.dtype, place
+                )
+                return None
+            else:
+                return _C_ops.full(
+                    var.shape, float(self._value), var.dtype, place
+                )
         else:
             op = block.append_op(
                 type="fill_constant",
@@ -88,18 +107,20 @@ class Constant(ConstantInitializer):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
 
-            data = paddle.rand([30, 10, 2], dtype='float32')
-            linear = nn.Linear(2,
-                                4,
-                                weight_attr=nn.initializer.Constant(value=2.0))
-            res = linear(data)
-            print(linear.weight)
-            # Tensor(shape=[2, 4], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-            #        [[2., 2., 2., 2.],
-            #         [2., 2., 2., 2.]])
+            >>> paddle.seed(2023)
+            >>> data = paddle.rand([30, 10, 2], dtype='float32')
+            >>> linear = nn.Linear(2,
+            ...                     4,
+            ...                     weight_attr=nn.initializer.Constant(value=2.0))
+            >>> res = linear(data)
+            >>> print(linear.weight)
+            Parameter containing:
+            Tensor(shape=[2, 4], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[2., 2., 2., 2.],
+             [2., 2., 2., 2.]])
 
     """
 

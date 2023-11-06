@@ -31,7 +31,7 @@ namespace nvinfer1 {
 class ITensor;
 }  // namespace nvinfer1
 
-DECLARE_bool(profile);
+PD_DECLARE_bool(profile);
 
 namespace paddle {
 namespace inference {

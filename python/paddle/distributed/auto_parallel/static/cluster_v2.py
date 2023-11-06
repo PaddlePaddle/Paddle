@@ -58,14 +58,15 @@ class DeviceMesh(core.DeviceMesh):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.distributed as dist
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> import paddle.distributed as dist
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            mesh = dist.DeviceMesh([[2, 4, 5], [0, 1, 3]])
-            assert mesh.shape == [2, 3]
-            assert mesh.device_ids == [2, 4, 5, 0, 1, 3]
+            >>> mesh = dist.DeviceMesh([[2, 4, 5], [0, 1, 3]])
+            >>> assert mesh.shape == [2, 3]
+            >>> assert mesh.device_ids == [2, 4, 5, 0, 1, 3]
 
     """
 

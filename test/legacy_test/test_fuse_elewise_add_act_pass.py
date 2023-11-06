@@ -21,8 +21,8 @@ from simple_nets import fc_with_batchnorm, init_data, simple_fc_net
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class TestMNIST(TestParallelExecutorBase):
@@ -36,9 +36,9 @@ class TestMNIST(TestParallelExecutorBase):
         img, label = init_data()
 
         def _optimizer(learning_rate=1e-6):
-            optimizer = fluid.optimizer.SGD(
+            optimizer = paddle.optimizer.SGD(
                 learning_rate=learning_rate,
-                regularization=paddle.regularizer.L2Decay(1e-6),
+                weight_decay=paddle.regularizer.L2Decay(1e-6),
             )
             return optimizer
 
@@ -103,7 +103,7 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             Out2 = F.relu(Out1)
             prediction = paddle.tensor.math._add_with_axis(Y, Out2, axis=1)
             loss = paddle.mean(prediction)
-            sgd = fluid.optimizer.SGD(learning_rate=0.001)
+            sgd = paddle.optimizer.SGD(learning_rate=0.001)
             sgd.minimize(loss)
         return X, Y, loss
 
@@ -111,23 +111,23 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
         paddle.seed(1)
         numpy.random.seed(1)
         paddle.framework.random._manual_program_seed(1)
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
+        main_program = base.Program()
+        startup_program = base.Program()
         X, Y, loss = self.build_program(main_program, startup_program)
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         x = numpy.random.random(size=(3, 3)).astype('float32')
         y = numpy.random.random(size=(3, 3)).astype('float32')
         label = numpy.random.random(size=(3, 3)).astype('float32')
 
         # open fused_pass
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.fuse_elewise_add_act_ops = True
         compiled_prog_fused = paddle.static.CompiledProgram(
             main_program, build_strategy=build_strategy
         )
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             loss_data_fused = exe.run(
                 compiled_prog_fused,
@@ -136,13 +136,13 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
             )
 
         # close fused_pass
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.fuse_elewise_add_act_ops = False
         compiled_prog = paddle.static.CompiledProgram(
             main_program, build_strategy=build_strategy
         )
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.scope_guard(scope):
             exe.run(startup_program)
             loss_data = exe.run(
                 compiled_prog, feed={"X": x, "Y": y}, fetch_list=[loss.name]
@@ -151,12 +151,12 @@ class TestFuseActElewiseAddInplaceGradPass(unittest.TestCase):
         self.assertEqual(loss_data_fused, loss_data)
 
     def test_fuse_act_add_grad_pass_cpu(self):
-        place = fluid.CPUPlace()
+        place = base.CPUPlace()
         self.check(place)
 
     def test_fuse_act_add_grad_pass_cuda(self):
-        if fluid.core.is_compiled_with_cuda():
-            place = fluid.CUDAPlace(0)
+        if base.core.is_compiled_with_cuda():
+            place = base.CUDAPlace(0)
             self.check(place)
 
 

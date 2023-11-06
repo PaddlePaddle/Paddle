@@ -21,27 +21,14 @@
 
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_mutator.h"
 #include "paddle/cinn/ir/schedule/schedule_desc.h"
 #include "paddle/cinn/ir/tensor.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
+#include "paddle/cinn/utils/error.h"
 #include "paddle/cinn/utils/random_engine.h"
 
 namespace cinn {
 namespace ir {
-
-/**
- *  \brief Indicates the level of printing error message in the current Schedule
- */
-enum class ScheduleErrorMessageLevel : int32_t {
-  /** \brief  Print an error message in short mode.
-   * Short mode shows which and where the schedule error happens*/
-  kGeneral = 0,
-  /** \brief Print an error message in detailed mode.
-   * Detailed mode shows which and where the schedule error happens, and the
-   * schedule input parameters.
-   */
-  kDetailed = 1,
-};
 
 /**
  * A struct representing a module that contains Expr. This struct is only used
@@ -85,8 +72,8 @@ class IRSchedule {
   explicit IRSchedule(const ModuleExpr& modexpr,
                       utils::LinearRandomEngine::StateType rand_seed = -1,
                       bool debug_flag = false,
-                      ScheduleErrorMessageLevel err_msg_level =
-                          ScheduleErrorMessageLevel::kGeneral);
+                      utils::ErrorMessageLevel err_msg_level =
+                          utils::ErrorMessageLevel::kGeneral);
   IRSchedule(ir::ModuleExpr&& mod_expr,
              ScheduleDesc&& trace,
              utils::LinearRandomEngine::StateType rand_seed = -1);
@@ -257,7 +244,7 @@ class IRSchedule {
    */
   void SyncThreads(const Expr& ir_node, bool after_node = true);
 
-  /*!
+  /**
    * \brief Set a tensor's buffer type(memory_type)
    * \param block The ScheduleBlockRealize corresponding to an unique tensor.
    * \param memory_type The memory type we want to set. Should be "local",
@@ -266,6 +253,13 @@ class IRSchedule {
   void SetBuffer(Expr& block,  // NOLINT
                  const std::string& memory_type,
                  bool fixed = false);  // NOLINT
+
+  /**
+   * \brief Create a new unit loop on top of the block.
+   * @param block The block to be added the new loop.
+   * @return The new unit loop.
+   */
+  Expr AddUnitLoop(const Expr& block);
 
   /**
    * \brief Reorder the loops in the order of vector.
@@ -393,6 +387,46 @@ class IRSchedule {
    * \endcode
    */
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
+
+  /**
+   * \brief Factorize the reduction block by the given loop. The block will be
+   * split into two blocks: reduction-factorized block and write-back block.
+   * @param rf_loop the reduce loop to be factorized.
+   * @param rf_axis The position where the new dimension is placed in the new rf
+   * tensor.
+   * @return The new created rf tensor.
+   *
+   * For example, input the block:
+   * \code
+   * for (i, 0, 10)      // serial loop
+   *   B_init[i] = 0
+   *   for (j, 0, 20)    // reduce loop
+   *      for (k, 0, 30) // reduce loop
+   *         B[i] = B[i] + A[i, j, k]
+   * \endcode
+   *
+   * If the rf loop is j and rf_axis is 0, the transformation is
+   * divided into 2 steps:
+   * 1. get the rf block where the reduce loop j is transformed to the
+   * serial loop with no accumalation and a new rf tensor is created.
+   * The axis j will be placed in the rf_axis of the new rf_tensor.
+   * The rf_block is as follows:
+   * \code
+   * for (i, 0, 10)   // serial loop
+   *   for (j, 0, 20) //  rf loop j is transformed to the serial loop
+   *     rf_B_init[j, i] = 0
+   *     for (k, 0, 30)  // reduce loop.
+   *       rf_B[j, i] = rf_B[j, i] + A[i, j, k]
+   * \endcode
+   * 2. do reduction of the rf loop j to get the final result block:
+   * \code
+   *   for (i, 0, 10)     // serial loop
+   *      B_init[i] = 0
+   *      for (j, 0, 20)  // rf reduction loop
+   *        B[i] = B[i] + rf_B[j, i]
+   * \endcode
+   */
+  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
 
   /*!
    * \brief Annotate a block with a key-value pair to set as its attribute

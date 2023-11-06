@@ -21,7 +21,7 @@ import numpy as np
 from cinn.common import DefaultHostTarget, DefaultNVGPUTarget
 from cinn.frontend import Interpreter
 
-from paddle import fluid
+from paddle import base
 
 assert len(sys.argv) == 1 + 2 + 1  # model and enable_gpu count
 enable_gpu = sys.argv.pop()
@@ -113,11 +113,11 @@ class TestLoadPaddleModel_FC(unittest.TestCase):
         self.model_dir = naive_model_dir
 
     def get_paddle_inference_result(self, model_dir, data):
-        config = fluid.core.AnalysisConfig(model_dir)
+        config = base.core.AnalysisConfig(model_dir)
         config.disable_gpu()
         config.switch_ir_optim(False)
-        self.paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(data)
+        self.paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(data)
         results = self.paddle_predictor.run([data])
 
         return results[0].as_ndarray()
@@ -156,11 +156,11 @@ class TestLoadPaddleModel_MultiFC(unittest.TestCase):
         self.model_dir = multi_fc_model_dir
 
     def get_paddle_inference_result(self, model_dir, data):
-        config = fluid.core.AnalysisConfig(model_dir)
+        config = base.core.AnalysisConfig(model_dir)
         config.disable_gpu()
         config.switch_ir_optim(False)
-        self.paddle_predictor = fluid.core.create_paddle_predictor(config)
-        data = fluid.core.PaddleTensor(data)
+        self.paddle_predictor = base.core.create_paddle_predictor(config)
+        data = base.core.PaddleTensor(data)
         results = self.paddle_predictor.run([data])
 
         return results[0].as_ndarray()

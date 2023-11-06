@@ -15,15 +15,15 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
-from paddle import fluid
-from paddle.jit import to_static
+from paddle import base
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def dygraph_decorated_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -31,9 +31,9 @@ def dygraph_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def jit_decorated_func(x):
-    x = fluid.dygraph.to_variable(x)
+    x = base.dygraph.to_variable(x)
     if paddle.mean(x) > 0:
         x_v = x - 1
     else:
@@ -41,28 +41,29 @@ def jit_decorated_func(x):
     return x_v
 
 
-@paddle.jit.to_static
+@paddle.jit.to_static(full_graph=True)
 def decorated_call_decorated(x):
     return jit_decorated_func(x)
 
 
 class DoubleDecorated:
     @classmethod
-    @to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func1(self, x):
         return dygraph_decorated_func(x)
 
     @classmethod
-    @paddle.jit.to_static
+    @paddle.jit.to_static(full_graph=True)
     def double_decorated_func2(self, x):
         return jit_decorated_func(x)
 
 
-class TestFullNameDecorator(unittest.TestCase):
+class TestFullNameDecorator(Dy2StTestBase):
+    @test_ast_only
     def test_run_success(self):
         x = np.ones([1, 2]).astype("float32")
         answer = np.zeros([1, 2]).astype("float32")
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np.testing.assert_allclose(
                 dygraph_decorated_func(x).numpy(), answer, rtol=1e-05
             )

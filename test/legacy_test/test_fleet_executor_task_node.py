@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
+from paddle.base import core
 from paddle.distributed.fleet.fleet_executor_utils import TaskNode
-from paddle.fluid import core
 
 paddle.enable_static()
 

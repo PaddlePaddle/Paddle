@@ -36,7 +36,7 @@
 #include "paddle/cinn/utils/sized_multi_set.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_bool(auto_schedule_use_cost_model);
+PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
 namespace auto_schedule {
@@ -134,7 +134,7 @@ std::vector<SearchState> EvolutionarySearch::GetTopKCandidatesFromDatabase(
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
   for (auto&& record : records) {
     ir::IRSchedule ir_sch(
-        optim::IRCopy(task_registry->Get(task_key)->module_expr),
+        ir::ir_utils::IRCopy(task_registry->Get(task_key)->module_expr),
         utils::ForkRandomState(&rand_seed_));
     ir::ScheduleDesc::ReplayWithProto(record.trace, &ir_sch);
     results.emplace_back(SearchState(std::move(ir_sch), record.predicted_cost));
@@ -181,9 +181,9 @@ SearchState EvolutionarySearch::CrossOver(const SearchState& state1,
 
   for (size_t i = 0; i < father_exprs.size(); ++i) {
     if (utils::SampleUniformInt(0, 2, &rand_seed_) == 0) {
-      cross_over_exprs.push_back(optim::IRCopy(father_exprs[i]));
+      cross_over_exprs.push_back(ir::ir_utils::IRCopy(father_exprs[i]));
     } else {
-      cross_over_exprs.push_back(optim::IRCopy(mother_exprs[i]));
+      cross_over_exprs.push_back(ir::ir_utils::IRCopy(mother_exprs[i]));
     }
   }
   auto res = SearchState(ir::IRSchedule(ir::ModuleExpr(cross_over_exprs),
@@ -216,12 +216,12 @@ SearchState EvolutionarySearch::Mutate(
   // ir_schedule
   const auto& task_key = tune_task_.serialized_key;
   InitialTaskRegistry* task_registry = InitialTaskRegistry::Global();
-  ir::IRSchedule new_ir_sch(
-      optim::IRCopy(task_registry->Get(task_key)->module_expr),
+  ir::IRSchedule pir_sch(
+      ir::ir_utils::IRCopy(task_registry->Get(task_key)->module_expr),
       utils::ForkRandomState(rand_seed));
-  new_trace.Replay(&new_ir_sch, true);
-  ApplyPostScheduleRules(&new_ir_sch, post_schedule_rules_);
-  auto res = SearchState(std::move(new_ir_sch));
+  new_trace.Replay(&pir_sch, true);
+  ApplyPostScheduleRules(&pir_sch, post_schedule_rules_);
+  auto res = SearchState(std::move(pir_sch));
 
   VLOG(5) << JoinStatesDebugString(
       "EvolutionarySearch::Mutate", {state, res}, /*verbose=*/VLOG_IS_ON(6));

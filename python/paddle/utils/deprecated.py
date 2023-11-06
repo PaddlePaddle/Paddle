@@ -55,7 +55,7 @@ def deprecated(update_to="", since="", reason="", level=0):
         assert isinstance(reason, str), 'type of "reason" must be str.'
         assert isinstance(level, int) and level >= 0 and level < 3, (
             'type of "level" must be int and must be one of 0, 1, 2. But '
-            'received: {}.'.format(level)
+            f'received: {level}.'
         )
 
         _since = since.strip()
@@ -92,9 +92,7 @@ def deprecated(update_to="", since="", reason="", level=0):
 
             if level == 2:
                 raise RuntimeError(
-                    'API "{}.{}" has been deprecated.'.format(
-                        func.__module__, func.__name__
-                    )
+                    f'API "{func.__module__}.{func.__name__}" has been deprecated.'
                 )
 
             warningmsg = "\033[93m\nWarning:\n%s \033[0m" % (msg)

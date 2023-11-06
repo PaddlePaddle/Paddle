@@ -23,8 +23,8 @@ from get_test_cover_info import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -260,11 +260,11 @@ class XPUTestBatchNormOp(XPUOpTestWrapper):
 
         def test_global_stats(self):
             for p in self.places:
-                with fluid.dygraph.guard(p):
+                with base.dygraph.guard(p):
                     x = paddle.randn([2, 6, 6, 4])
                     net1 = paddle.nn.BatchNorm(
                         6,
-                        param_attr=fluid.ParamAttr(
+                        param_attr=base.ParamAttr(
                             initializer=paddle.nn.initializer.Constant(1.0)
                         ),
                         use_global_stats=self.use_global_stats,

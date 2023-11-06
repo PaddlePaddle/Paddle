@@ -20,6 +20,7 @@ import unittest
 
 import numpy as np
 import transformer_util as util
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 from transformer_dygraph_model import (
     CrossEntropyCriterion,
     Transformer,
@@ -27,25 +28,24 @@ from transformer_dygraph_model import (
 )
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 trainer_count = 1
-place = (
-    fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() else fluid.CPUPlace()
-)
+place = base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
 SEED = 10
 STEP_NUM = 10
 
 
+@compare_legacy_with_pir
 def train_static(args, batch_generator):
     paddle.enable_static()
     paddle.seed(SEED)
     paddle.framework.random._manual_program_seed(SEED)
-    train_prog = fluid.Program()
-    startup_prog = fluid.Program()
+    train_prog = base.Program()
+    startup_prog = base.Program()
 
-    with fluid.program_guard(train_prog, startup_prog):
-        with fluid.unique_name.guard():
+    with base.program_guard(train_prog, startup_prog):
+        with base.unique_name.guard():
             # define input and reader
             input_field_names = (
                 util.encoder_data_input_fields
@@ -63,10 +63,14 @@ def train_static(args, batch_generator):
             ]
             input_field = util.InputField(input_slots)
             # Define DataLoader
-            data_loader = fluid.io.DataLoader.from_generator(
-                input_field.feed_list, capacity=60
+            data_loader = paddle.io.DataLoader(
+                batch_generator,
+                feed_list=input_field.feed_list,
+                return_list=False,
+                batch_size=None,
+                places=place,
             )
-            data_loader.set_batch_generator(batch_generator, places=place)
+
             # define model
             transformer = Transformer(
                 args.src_vocab_size,
@@ -117,7 +121,7 @@ def train_static(args, batch_generator):
     step_idx = 0
     total_batch_num = 0
     avg_loss = []
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
     exe.run(startup_prog)
     for pass_id in range(args.epoch):
         batch_id = 0
@@ -178,13 +182,16 @@ def train_static(args, batch_generator):
 
 
 def train_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         if SEED is not None:
             paddle.seed(SEED)
             paddle.framework.random._manual_program_seed(SEED)
         # define data loader
-        train_loader = fluid.io.DataLoader.from_generator(capacity=10)
-        train_loader.set_batch_generator(batch_generator, places=place)
+
+        train_loader = paddle.io.DataLoader(
+            batch_generator, batch_size=None, places=place
+        )
+
         # define model
         transformer = Transformer(
             args.src_vocab_size,
@@ -317,13 +324,14 @@ def train_dygraph(args, batch_generator):
 
 
 def predict_dygraph(args, batch_generator):
-    with fluid.dygraph.guard(place):
+    with base.dygraph.guard(place):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
         # define data loader
-        test_loader = fluid.io.DataLoader.from_generator(capacity=10)
-        test_loader.set_batch_generator(batch_generator, places=place)
+        test_loader = paddle.io.DataLoader(
+            batch_generator, batch_size=None, places=place
+        )
 
         # define model
         transformer = Transformer(
@@ -411,9 +419,10 @@ def predict_dygraph(args, batch_generator):
         return seq_ids, seq_scores
 
 
+@compare_legacy_with_pir
 def predict_static(args, batch_generator):
-    test_prog = fluid.Program()
-    with fluid.program_guard(test_prog):
+    test_prog = base.Program()
+    with base.program_guard(test_prog):
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
 
@@ -433,8 +442,13 @@ def predict_static(args, batch_generator):
 
         input_field = util.InputField(input_slots)
         feed_list = input_field.feed_list
-        loader = fluid.io.DataLoader.from_generator(
-            feed_list=feed_list, capacity=10
+
+        loader = paddle.io.DataLoader(
+            batch_generator,
+            feed_list=feed_list,
+            return_list=False,
+            batch_size=None,
+            places=place,
         )
 
         # define model
@@ -470,7 +484,7 @@ def predict_static(args, batch_generator):
     test_prog = test_prog.clone(for_test=True)
 
     # define the executor and program for training
-    exe = fluid.Executor(place)
+    exe = base.Executor(place)
 
     util.load(
         test_prog, os.path.join(args.save_static_model_path, "transformer"), exe
@@ -513,7 +527,7 @@ def predict_static(args, batch_generator):
     return seq_ids, seq_scores
 
 
-class TestTransformer(unittest.TestCase):
+class TestTransformer(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -533,6 +547,14 @@ class TestTransformer(unittest.TestCase):
         )
         args.output_file = os.path.join(self.temp_dir.name, args.output_file)
         batch_generator = util.get_feed_data_reader(args, mode)
+        if mode == 'train':
+            batch_generator = util.TransedWMT16TrainDataSet(
+                batch_generator, args.batch_size * (args.epoch + 1)
+            )
+        else:
+            batch_generator = util.TransedWMT16TestDataSet(
+                batch_generator, args.batch_size * (args.epoch + 1)
+            )
         return args, batch_generator
 
     def _test_train(self):

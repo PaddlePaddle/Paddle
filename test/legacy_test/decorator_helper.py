@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
+from paddle import base
 
 __all__ = ['many_times', 'prog_scope']
 
@@ -31,11 +31,11 @@ def many_times(times):
 def prog_scope():
     def __impl__(fn):
         def __fn__(*args, **kwargs):
-            prog = fluid.Program()
-            startup_prog = fluid.Program()
-            scope = fluid.core.Scope()
-            with fluid.scope_guard(scope):
-                with fluid.program_guard(prog, startup_prog):
+            prog = base.Program()
+            startup_prog = base.Program()
+            scope = base.core.Scope()
+            with base.scope_guard(scope):
+                with base.program_guard(prog, startup_prog):
                     fn(*args, **kwargs)
 
         return __fn__

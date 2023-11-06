@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed.fleet import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -40,16 +40,16 @@ class TestSparseLoadProgram(unittest.TestCase):
         self.strategy.a_sync = True
 
     def net(self):
-        train_program = fluid.Program()
-        startup_program = fluid.Program()
-        scope = fluid.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(train_program, startup_program):
-                with fluid.unique_name.guard():
+        train_program = base.Program()
+        startup_program = base.Program()
+        scope = base.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(train_program, startup_program):
+                with base.unique_name.guard():
                     inputs = paddle.static.data(
                         'input', shape=[None, 1], dtype="int64"
                     )
-                    emb = fluid.layers.embedding(
+                    emb = paddle.static.nn.embedding(
                         inputs, is_sparse=True, size=[10000, 128]
                     )
                     fc1 = paddle.static.nn.fc(
@@ -63,9 +63,9 @@ class TestSparseLoadProgram(unittest.TestCase):
 class TestSparseLoadProgramSGD(TestSparseLoadProgram):
     def test_server_init(self):
         scope, train_program, startup_program, loss = self.net()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(train_program, startup_program):
-                optimizer = fluid.optimizer.SGD(1e-3)
+        with base.scope_guard(scope):
+            with base.program_guard(train_program, startup_program):
+                optimizer = paddle.optimizer.SGD(1e-3)
                 optimizer = fleet.distributed_optimizer(
                     optimizer, self.strategy
                 )

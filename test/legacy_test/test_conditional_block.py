@@ -17,18 +17,17 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.executor import Executor
-from paddle.fluid.layers.control_flow import ConditionalBlock
+from paddle import base
+from paddle.base import core
+from paddle.static import Executor, append_backward
+from paddle.static.nn.control_flow import ConditionalBlock
 
 
 class ConditionalBlockTest(unittest.TestCase):
     def test_forward(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             data = paddle.static.data(name='X', shape=[-1, 1], dtype='float32')
             data.stop_gradient = False
             cond = ConditionalBlock(inputs=[data])
@@ -57,9 +56,9 @@ class ConditionalBlockTest(unittest.TestCase):
 
 class TestConditionalBlockOpInferShape(unittest.TestCase):
     def test_infer_shape(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             global_block = main_program.global_block()
             sub_block = main_program._create_block()
             main_program._rollback()
@@ -83,4 +82,5 @@ class TestConditionalBlockOpInferShape(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

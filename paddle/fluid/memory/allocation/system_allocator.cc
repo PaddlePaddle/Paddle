@@ -52,7 +52,7 @@ namespace detail {
 void* AlignedMalloc(size_t size) {
   void* p = nullptr;
   size_t alignment = 32ul;
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // refer to https://github.com/01org/mkl-dnn/blob/master/include/dnnl.hpp
   // memory alignment
   alignment = 4096ul;
@@ -114,7 +114,7 @@ void CPUAllocator::Free(void* p, size_t size, size_t index) {
 #ifdef _WIN32
   _aligned_free(p);
 #else
-  free(p);
+  free(p);  // NOLINT
 #endif
 }
 

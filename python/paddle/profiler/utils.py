@@ -18,8 +18,8 @@ from contextlib import ContextDecorator, contextmanager
 from typing import Any
 from warnings import warn
 
-from paddle.fluid import core
-from paddle.fluid.core import TracerEventType, _RecordEvent
+from paddle.base import core
+from paddle.base.core import TracerEventType, _RecordEvent
 
 _is_profiler_used = False
 _has_optimizer_wrapped = False
@@ -49,20 +49,21 @@ class RecordEvent(ContextDecorator):
         .. code-block:: python
             :name: code-example1
 
-            import paddle
-            import paddle.profiler as profiler
-            # method1: using context manager
-            with profiler.RecordEvent("record_add"):
-                data1 = paddle.randn(shape=[3])
-                data2 = paddle.randn(shape=[3])
-                result = data1 + data2
-            # method2: call begin() and end()
-            record_event = profiler.RecordEvent("record_add")
-            record_event.begin()
-            data1 = paddle.randn(shape=[3])
-            data2 = paddle.randn(shape=[3])
-            result = data1 + data2
-            record_event.end()
+            >>> import paddle
+            >>> import paddle.profiler as profiler
+            >>> # method1: using context manager
+            >>> paddle.seed(2023)
+            >>> with profiler.RecordEvent("record_add"):
+            ...     data1 = paddle.randn(shape=[3])
+            ...     data2 = paddle.randn(shape=[3])
+            ...     result = data1 + data2
+            >>> # method2: call begin() and end()
+            >>> record_event = profiler.RecordEvent("record_add")
+            >>> record_event.begin()
+            >>> data1 = paddle.randn(shape=[3])
+            >>> data2 = paddle.randn(shape=[3])
+            >>> result = data1 + data2
+            >>> record_event.end()
 
     Note:
         RecordEvent will take effect only when :ref:`Profiler <api_paddle_profiler_Profiler>` is on and at the state of `RECORD`.
@@ -93,14 +94,15 @@ class RecordEvent(ContextDecorator):
             .. code-block:: python
                 :name: code-example2
 
-                import paddle
-                import paddle.profiler as profiler
-                record_event = profiler.RecordEvent("record_sub")
-                record_event.begin()
-                data1 = paddle.randn(shape=[3])
-                data2 = paddle.randn(shape=[3])
-                result = data1 - data2
-                record_event.end()
+                >>> import paddle
+                >>> import paddle.profiler as profiler
+                >>> record_event = profiler.RecordEvent("record_sub")
+                >>> record_event.begin()
+                >>> paddle.seed(2023)
+                >>> data1 = paddle.randn(shape=[3])
+                >>> data2 = paddle.randn(shape=[3])
+                >>> result = data1 - data2
+                >>> record_event.end()
         """
         if not _is_profiler_used:
             return
@@ -116,7 +118,7 @@ class RecordEvent(ContextDecorator):
             self.event = _RecordEvent(self.name, self.event_type)
 
     def end(self):
-        r'''
+        r"""
         Record the time of ending.
 
         Examples:
@@ -124,15 +126,16 @@ class RecordEvent(ContextDecorator):
             .. code-block:: python
                 :name: code-example3
 
-                import paddle
-                import paddle.profiler as profiler
-                record_event = profiler.RecordEvent("record_mul")
-                record_event.begin()
-                data1 = paddle.randn(shape=[3])
-                data2 = paddle.randn(shape=[3])
-                result = data1 * data2
-                record_event.end()
-        '''
+                >>> import paddle
+                >>> import paddle.profiler as profiler
+                >>> record_event = profiler.RecordEvent("record_mul")
+                >>> record_event.begin()
+                >>> paddle.seed(2023)
+                >>> data1 = paddle.randn(shape=[3])
+                >>> data2 = paddle.randn(shape=[3])
+                >>> result = data1 * data2
+                >>> record_event.end()
+        """
         if self.event:
             self.event.end()
 
@@ -150,16 +153,18 @@ def load_profiler_result(filename: str):
     Examples:
         .. code-block:: python
 
-            # required: gpu
-            import paddle.profiler as profiler
-            with profiler.Profiler(
-                    targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
-                    scheduler = (3, 10)) as p:
-                for iter in range(10):
-                    #train()
-                    p.step()
-            p.export('test_export_protobuf.pb', format='pb')
-            profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
+            >>> # doctest: +REQUIRES(env:GPU)
+            >>> import paddle.profiler as profiler
+            >>> import paddle
+            >>> paddle.device.set_device('gpu')
+            >>> with profiler.Profiler(
+            ...         targets=[profiler.ProfilerTarget.CPU, profiler.ProfilerTarget.GPU],
+            ...         scheduler = (3, 10)) as p:
+            ...     for iter in range(10):
+            ...         #train()
+            ...         p.step()
+            >>> p.export('test_export_protobuf.pb', format='pb')
+            >>> profiler_result = profiler.load_profiler_result('test_export_protobuf.pb')
     """
     return core.load_profiler_result(filename)
 
@@ -197,15 +202,17 @@ def wrap_optimizers():
 
 @contextmanager
 def _nvprof_range(iter_id, start, end, exit_after_prof=True):
-    '''
+    """
     A range profiler interface (not public yet).
     Examples:
         .. code-block:: python
-            model = Model()
-            for i in range(max_iter):
-                paddle.fluid.profiler._nvprof_range(i, 10, 20):
-                    out = model(in)
-    '''
+
+            >>> import paddle
+            >>> model = Model()
+            >>> for i in range(max_iter):
+            ...     with paddle.profiler.utils._nvprof_range(i, 10, 20):
+            ...         out = model(in)
+    """
     if start >= end:
         yield
         return

@@ -70,9 +70,9 @@ Layer Deserializer::operator()(const std::string& path,
 
   Layer layer = Layer(params_dict, attrs_dict, info_map, place);
 
-  for (auto it = info_map.begin(); it != info_map.end(); ++it) {
-    const std::string& func_name = it->first;
-    auto& info = it->second;
+  for (auto& map_item : info_map) {
+    const std::string& func_name = map_item.first;
+    auto& info = map_item.second;
     VLOG(3) << "Add function type: " << FLAGS_jit_engine_type
             << " Function name: " << func_name;
     if (FLAGS_jit_engine_type == "New") {
@@ -100,13 +100,13 @@ void Deserializer::ReadTensorData(
   std::ifstream fin(file_name, std::ios::binary);
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto& dev_ctx = *pool.Get(place);
-  for (auto it = var_name.begin(); it != var_name.end(); it++) {
-    VLOG(3) << "load Tensor: " << *it;
+  for (const auto& item : var_name) {
+    VLOG(3) << "load Tensor: " << item;
     Variable v;
     // TODO(dev): Support framework::Vocab
     DenseTensor* dense_tesnor = v.GetMutable<DenseTensor>();
     framework::DeserializeFromStream(fin, dense_tesnor, dev_ctx);
-    (*params_dict)[*it] = std::make_shared<Variable>(v);
+    (*params_dict)[item] = std::make_shared<Variable>(v);
   }
 }
 
@@ -128,7 +128,7 @@ framework::ProgramDesc Deserializer::LoadProgram(const std::string& file_name) {
   fin.seekg(0, std::ios::end);
   std::string buffer(fin.tellg(), ' ');
   fin.seekg(0, std::ios::beg);
-  fin.read(&buffer[0], buffer.size());
+  fin.read(&buffer[0], buffer.size());  // NOLINT
   fin.close();
   return framework::ProgramDesc(buffer);
 }

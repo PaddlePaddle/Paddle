@@ -18,7 +18,8 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_api);
 
 namespace phi {
 class DenseTensor;
@@ -36,12 +37,11 @@ void SetFeedVariable(Scope* scope,
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.
   VLOG(3) << "SetFeedVariable name=" << var_name << " index=" << index;
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     // shared data with input tensor
-    auto inner_var_name = var_name + "_" + std::to_string(index);
-    auto feed_ele = scope->Var(inner_var_name);
+    auto feed_ele = scope->Var(var_name);
     if (!feed_ele->IsType<phi::DenseTensor>()) {
-      VLOG(3) << "Reset " << inner_var_name << " to phi::DenseTensor";
+      VLOG(3) << "Reset " << var_name << " to phi::DenseTensor";
       feed_ele->Clear();
     }
     auto val = feed_ele->GetMutable<phi::DenseTensor>();

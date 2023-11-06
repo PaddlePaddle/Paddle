@@ -12,21 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.backward import append_backward
-from paddle.fluid.framework import Program, program_guard
+from paddle import base
+from paddle.base import core
+from paddle.base.backward import append_backward
+from paddle.base.framework import Program, program_guard
+
+sys.path.append("../dygraph_to_static")
+from dygraph_to_static_utils_new import compare_legacy_with_pir
 
 paddle.enable_static()
 
 
 class TestApiWhileLoop(unittest.TestCase):
+    @compare_legacy_with_pir
     def test_var_tuple(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -45,16 +50,17 @@ class TestApiWhileLoop(unittest.TestCase):
             out = paddle.static.nn.while_loop(cond, body, (i,))
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         res = exe.run(main_program, fetch_list=out)
         np.testing.assert_allclose(
             np.asarray(res[0]), np.full(1, 10, np.int64), rtol=1e-05
         )
 
+    # @compare_legacy_with_pir
     def test_var_list(self):
         def cond(i, mem):
             return paddle.less_than(i, ten)
@@ -81,16 +87,17 @@ class TestApiWhileLoop(unittest.TestCase):
             data_one = np.ones(10).astype('float32')
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         res = exe.run(main_program, feed={'mem': data}, fetch_list=out)
         for i in range(10):
             data = np.add(data, data_one)
         np.testing.assert_allclose(np.asarray(res[1]), data, rtol=1e-05)
 
+    @compare_legacy_with_pir
     def test_var_dict(self):
         def cond(i, ten, test_dict, test_list, test_list_dict):
             return paddle.less_than(i, ten)
@@ -144,11 +151,11 @@ class TestApiWhileLoop(unittest.TestCase):
                 cond, body, [i, ten, test_dict, test_list, test_list_dict]
             )
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         res = exe.run(
             main_program,
             fetch_list=[
@@ -175,6 +182,7 @@ class TestApiWhileLoop(unittest.TestCase):
 
 
 class TestApiWhileLoop_Nested(unittest.TestCase):
+    # @compare_legacy_with_pir
     def test_nested_net(self):
         def external_cond(i, j, init, sums):
             return paddle.less_than(i, loop_len1)
@@ -228,11 +236,11 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
             data_sums = np.zeros([3, 3]).astype('float32')
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         res = exe.run(
             main_program, feed={'init': data, 'sums': data_sums}, fetch_list=out
         )
@@ -245,6 +253,7 @@ class TestApiWhileLoop_Nested(unittest.TestCase):
 
 
 class TestApiWhileLoop_Backward(unittest.TestCase):
+    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward(self):
         def cond(i, x):
             return paddle.less_than(i, eleven)
@@ -256,7 +265,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
             eleven = paddle.tensor.fill_constant(
@@ -273,11 +282,11 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
@@ -292,6 +301,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
         np.testing.assert_allclose(np.asarray(res[0]), data, rtol=1e-05)
         np.testing.assert_allclose(np.asarray(res[1]), i_grad, rtol=1e-05)
 
+    # TODO(zhangbo): Support while grad exe for pir
     def test_while_loop_backward2(self):
         def cond(i, x):
             return i < 3
@@ -303,7 +313,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             i = paddle.static.data(name='i', shape=[1], dtype='float32')
             i.stop_gradient = False
             x = paddle.static.data(name='x', shape=[1], dtype='float32')
@@ -314,11 +324,11 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
             append_backward(mean)
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         feed_i = np.ones(1).astype('float32')
         feed_x = np.ones(1).astype('float32')
@@ -337,6 +347,7 @@ class TestApiWhileLoop_Backward(unittest.TestCase):
 
 
 class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
+    # TODO(zhangbo): Support while grad exe for pir
     def test_nested_net_with_backward_and_lodtensor(self):
         def external_cond(i, j, x, mem_array):
             return paddle.less_than(i, array_len)
@@ -367,7 +378,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             d0 = paddle.static.data(name='d0', shape=[10], dtype='float32')
             d1 = paddle.static.data(name='d1', shape=[10], dtype='float32')
             d2 = paddle.static.data(name='d2', shape=[10], dtype='float32')
@@ -403,11 +414,11 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
             append_backward(mean)
 
             place = (
-                fluid.CUDAPlace(0)
+                base.CUDAPlace(0)
                 if core.is_compiled_with_cuda()
-                else fluid.CPUPlace()
+                else base.CPUPlace()
             )
-            exe = fluid.Executor(place)
+            exe = base.Executor(place)
 
             d = []
             for i in range(3):
@@ -425,6 +436,7 @@ class TestApiWhileLoop_NestedWithBackwardAndLoDTensorArray(unittest.TestCase):
 
 
 class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
+    # @compare_legacy_with_pir
     def test_with_switch_case(self):
         def cond(i):
             return paddle.less_than(i, ten)
@@ -450,7 +462,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
         main_program = Program()
         startup_program = Program()
-        with fluid.program_guard(main_program, startup_program):
+        with base.program_guard(main_program, startup_program):
             i = paddle.tensor.fill_constant(shape=[1], dtype='int64', value=1)
             ten = paddle.tensor.fill_constant(
                 shape=[1], dtype='int64', value=10
@@ -462,11 +474,11 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
             out = paddle.static.nn.while_loop(cond, body, [i])
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
         res = exe.run(main_program, fetch_list=out)
 
         data = np.asarray([25]).astype('int64')
@@ -474,6 +486,7 @@ class TestApiWhileLoopWithSwitchCase(unittest.TestCase):
 
 
 class TestApiWhileLoop_Error(unittest.TestCase):
+    @compare_legacy_with_pir
     def test_error(self):
         def cond_returns_constant(i):
             return 1
@@ -642,6 +655,7 @@ class TestApiWhileLoop_Error(unittest.TestCase):
 
 
 class TestApiWhileLoopSliceInBody(unittest.TestCase):
+    # @compare_legacy_with_pir
     def test_var_slice(self):
         def cond(z, i):
             return i + 1 <= x_shape[0]
@@ -655,17 +669,17 @@ class TestApiWhileLoopSliceInBody(unittest.TestCase):
         startup_program = Program()
         with program_guard(main_program, startup_program):
             x = paddle.static.data(name='x', shape=[-1, 5], dtype='int32')
-            z = paddle.tensor.fill_constant([1], 'int32', 0)
+            z = paddle.tensor.fill_constant([], 'int32', 0)
             x_shape = paddle.shape(x)
-            i = paddle.tensor.fill_constant([1], 'int32', 0)
+            i = paddle.tensor.fill_constant([], 'int32', 0)
             z, _ = paddle.static.nn.while_loop(cond, body, [z, i])
 
         place = (
-            fluid.CUDAPlace(0)
+            base.CUDAPlace(0)
             if core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            else base.CPUPlace()
         )
-        exe = fluid.Executor(place)
+        exe = base.Executor(place)
 
         np_x = np.array([1, 2, 3, 4, 5], dtype='int32')
         res = exe.run(main_program, feed={'x': np_x}, fetch_list=[z])

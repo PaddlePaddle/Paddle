@@ -37,7 +37,7 @@ FetchAsyncOpHandle::FetchAsyncOpHandle(ir::Node *node,
       local_exec_scopes_(local_exec_scopes),
       return_merged_(return_merged) {}
 
-FetchAsyncOpHandle::~FetchAsyncOpHandle() {}
+FetchAsyncOpHandle::~FetchAsyncOpHandle() = default;
 
 void FetchAsyncOpHandle::RecordWaitEventOnCtx(
     platform::DeviceContext *waited_ctx) {
@@ -174,7 +174,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
 
   // for 0D tensor, can't concat eath tensor. So stack 0D and concat 1+D tensor
   if (rank == 0) {
-    int src_lodtensor_size = src_lodtensors.size();
+    int src_lodtensor_size = static_cast<int>(src_lodtensors.size());
     new_dim = phi::make_ddim(std::vector<int>({src_lodtensor_size}));
   } else {
     bool find_first_dims = false;
@@ -211,7 +211,7 @@ void FetchAsyncOpHandle::FetchMergedLodTensor(
     if (rank == 0) {
       end = begin + 1;
     } else {
-      end = begin + src->dims()[0];
+      end = static_cast<int>(begin + src->dims()[0]);
     }
 
     if (end == begin) {
@@ -232,8 +232,8 @@ void FetchAsyncOpHandle::RunImpl() {
   auto &scopes = *local_exec_scopes_;
   std::vector<Variable *> src_vars;
   src_vars.reserve(inputs_.size());
-  for (size_t i = 0; i < inputs_.size(); ++i) {
-    auto *var_handle = static_cast<VarHandle *>(inputs_[i]);
+  for (auto &input : inputs_) {
+    auto *var_handle = static_cast<VarHandle *>(input);
     auto &scope = scopes.at(var_handle->scope_idx());
     auto *var = scope->FindVar(var_handle->name());
     PADDLE_ENFORCE_NOT_NULL(
@@ -249,8 +249,8 @@ void FetchAsyncOpHandle::RunImpl() {
       // to lodtensor type
       std::vector<const phi::DenseTensor *> src_lodtensors;
       src_lodtensors.reserve(src_vars.size());
-      for (size_t i = 0; i < src_vars.size(); ++i) {
-        src_lodtensors.emplace_back(&src_vars[i]->Get<phi::DenseTensor>());
+      for (auto src_var : src_vars) {
+        src_lodtensors.emplace_back(&src_var->Get<phi::DenseTensor>());
       }
 
       phi::DenseTensor dst_lodtensor;
@@ -260,9 +260,9 @@ void FetchAsyncOpHandle::RunImpl() {
       // to lodtensorarray type
       std::vector<const LoDTensorArray *> src_lodtensor_arrays;
       src_lodtensor_arrays.reserve(src_vars.size());
-      for (size_t i = 0; i < src_vars.size(); ++i) {
+      for (auto src_var : src_vars) {
         src_lodtensor_arrays.emplace_back(
-            &src_vars[i]->Get<framework::LoDTensorArray>());
+            &src_var->Get<framework::LoDTensorArray>());
       }
 
       LoDTensorArray dst_lodtensor_array;
@@ -271,8 +271,8 @@ void FetchAsyncOpHandle::RunImpl() {
       for (size_t i = 0; i < dst_lodtensor_array.size(); ++i) {
         std::vector<const phi::DenseTensor *> src_lodtensors;
         src_lodtensors.reserve(src_lodtensor_arrays.size());
-        for (size_t j = 0; j < src_lodtensor_arrays.size(); ++j) {
-          src_lodtensors.emplace_back(&(*src_lodtensor_arrays[j])[i]);
+        for (auto *src_lodtensor_array : src_lodtensor_arrays) {
+          src_lodtensors.emplace_back(&(*src_lodtensor_array)[i]);
         }
         FetchMergedLodTensor(src_lodtensors, &dst_lodtensor_array[i]);
       }
@@ -283,14 +283,14 @@ void FetchAsyncOpHandle::RunImpl() {
     auto &dst_tensors = val.at(offset_);
     dst_tensors.reserve(src_vars.size());
 
-    for (size_t i = 0; i < src_vars.size(); ++i) {
-      if (src_vars[i]->IsType<phi::DenseTensor>()) {
-        auto &t = src_vars[i]->Get<phi::DenseTensor>();
+    for (auto src_var : src_vars) {
+      if (src_var->IsType<phi::DenseTensor>()) {
+        auto &t = src_var->Get<phi::DenseTensor>();
         phi::DenseTensor item;
         TransData(&t, &item, *dev_ctxes_[t.place()]);
         dst_tensors.emplace_back(std::move(item));
       } else {
-        auto &t = src_vars[i]->Get<framework::LoDTensorArray>();
+        auto &t = src_var->Get<framework::LoDTensorArray>();
         LoDTensorArray item;
         item.resize(t.size());
         for (size_t j = 0; j < t.size(); ++j) {

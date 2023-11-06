@@ -17,9 +17,9 @@ limitations under the License. */
 
 #include <thread>  // NOLINT
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/inference/api/api_impl.h"
+#include "paddle/utils/flags.h"
 #include "test/cpp/inference/test_helper.h"
 
 #ifdef __clang__
@@ -28,10 +28,10 @@ limitations under the License. */
 #define ACC_DIFF 1e-3
 #endif
 
-DEFINE_string(word2vec_dirname,
-              "",
-              "Directory of the word2vec inference model.");
-DEFINE_string(book_dirname, "", "Directory of the book inference model.");
+PD_DEFINE_string(word2vec_dirname,
+                 "",
+                 "Directory of the word2vec inference model.");
+PD_DEFINE_string(book_dirname, "", "Directory of the book inference model.");
 
 namespace paddle {
 
@@ -67,11 +67,11 @@ NativeConfig GetConfig() {
   return config;
 }
 
-void MainWord2Vec(const paddle::PaddlePlace& place) {
+void MainWord2Vec(const ::paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
   auto predictor = CreatePaddlePredictor<NativeConfig>(config);
-  config.use_gpu = paddle::gpu_place_used(place);
-  config.use_xpu = paddle::xpu_place_used(place);
+  config.use_gpu = ::paddle::gpu_place_used(place);
+  config.use_xpu = ::paddle::xpu_place_used(place);
 
   phi::DenseTensor first_word, second_word, third_word, fourth_word;
   framework::LoD lod{{0, 1}};
@@ -105,7 +105,7 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
   cpu_feeds.push_back(&fourth_word);
 
   framework::FetchType output1;
-  std::vector<paddle::framework::FetchType*> cpu_fetchs1;
+  std::vector<::paddle::framework::FetchType*> cpu_fetchs1;
   cpu_fetchs1.push_back(&output1);
 
   TestInference<platform::CPUPlace>(config.model_dir, cpu_feeds, cpu_fetchs1);
@@ -118,12 +118,12 @@ void MainWord2Vec(const paddle::PaddlePlace& place) {
   }
 }
 
-void MainImageClassification(const paddle::PaddlePlace& place) {
+void MainImageClassification(const ::paddle::PaddlePlace& place) {
   int batch_size = 2;
   bool repeat = false;
   NativeConfig config = GetConfig();
-  config.use_gpu = paddle::gpu_place_used(place);
-  config.use_xpu = paddle::xpu_place_used(place);
+  config.use_gpu = ::paddle::gpu_place_used(place);
+  config.use_xpu = ::paddle::xpu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -163,10 +163,10 @@ void MainImageClassification(const paddle::PaddlePlace& place) {
   }
 }
 
-void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
+void MainThreadsWord2Vec(const ::paddle::PaddlePlace& place) {
   NativeConfig config = GetConfig();
-  config.use_gpu = paddle::gpu_place_used(place);
-  config.use_xpu = paddle::xpu_place_used(place);
+  config.use_gpu = ::paddle::gpu_place_used(place);
+  config.use_xpu = ::paddle::xpu_place_used(place);
   auto main_predictor = CreatePaddlePredictor<NativeConfig>(config);
 
   // prepare inputs data and reference results
@@ -186,7 +186,7 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
 
     // get reference result of each job
     std::vector<phi::DenseTensor*> ref_feeds;
-    std::vector<paddle::framework::FetchType*> ref_fetches(1, &refs[i]);
+    std::vector<::paddle::framework::FetchType*> ref_fetches(1, &refs[i]);
     for (auto& word : jobs[i]) {
       ref_feeds.push_back(&word);
     }
@@ -225,12 +225,12 @@ void MainThreadsWord2Vec(const paddle::PaddlePlace& place) {
   }
 }
 
-void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
+void MainThreadsImageClassification(const ::paddle::PaddlePlace& place) {
   constexpr int num_jobs = 4;  // each job run 1 batch
   constexpr int batch_size = 1;
   NativeConfig config = GetConfig();
-  config.use_gpu = paddle::gpu_place_used(place);
-  config.use_xpu = paddle::xpu_place_used(place);
+  config.use_gpu = ::paddle::gpu_place_used(place);
+  config.use_xpu = ::paddle::xpu_place_used(place);
   config.model_dir =
       FLAGS_book_dirname + "/image_classification_resnet.inference.model";
 
@@ -280,53 +280,53 @@ void MainThreadsImageClassification(const paddle::PaddlePlace& place) {
 }
 
 TEST(inference_api_native, word2vec_cpu) {
-  MainWord2Vec(paddle::PaddlePlace::kCPU);
+  MainWord2Vec(::paddle::PaddlePlace::kCPU);
 }
 TEST(inference_api_native, word2vec_cpu_threads) {
-  MainThreadsWord2Vec(paddle::PaddlePlace::kCPU);
+  MainThreadsWord2Vec(::paddle::PaddlePlace::kCPU);
 }
 TEST(inference_api_native, image_classification_cpu) {
-  MainImageClassification(paddle::PaddlePlace::kCPU);
+  MainImageClassification(::paddle::PaddlePlace::kCPU);
 }
 TEST(inference_api_native, image_classification_cpu_threads) {
-  MainThreadsImageClassification(paddle::PaddlePlace::kCPU);
+  MainThreadsImageClassification(::paddle::PaddlePlace::kCPU);
 }
 
 #ifdef PADDLE_WITH_XPU
 TEST(inference_api_native, word2vec_xpu) {
-  MainWord2Vec(paddle::PaddlePlace::kXPU);
+  MainWord2Vec(::paddle::PaddlePlace::kXPU);
 }
 TEST(inference_api_native, image_classification_xpu) {
-  MainImageClassification(paddle::PaddlePlace::kXPU);
+  MainImageClassification(::paddle::PaddlePlace::kXPU);
 }
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 TEST(inference_api_native, word2vec_gpu) {
-  MainWord2Vec(paddle::PaddlePlace::kGPU);
+  MainWord2Vec(::paddle::PaddlePlace::kGPU);
 }
 // Turn off temporarily for the unstable result.
 // TEST(inference_api_native, word2vec_gpu_threads) {
-//   MainThreadsWord2Vec(paddle::PaddlePlace::kGPU);
+//   MainThreadsWord2Vec(::paddle::PaddlePlace::kGPU);
 // }
 TEST(inference_api_native, image_classification_gpu) {
-  MainImageClassification(paddle::PaddlePlace::kGPU);
+  MainImageClassification(::paddle::PaddlePlace::kGPU);
 }
 // Turn off temporarily for the unstable result.
 // TEST(inference_api_native, image_classification_gpu_threads) {
-//   MainThreadsImageClassification(paddle::PaddlePlace::kGPU);
+//   MainThreadsImageClassification(::paddle::PaddlePlace::kGPU);
 // }
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(inference_api_native, image_classification_cpu_onednn) {
   FLAGS_use_mkldnn = true;
-  MainImageClassification(paddle::PaddlePlace::kCPU);
+  MainImageClassification(::paddle::PaddlePlace::kCPU);
 }
 
 TEST(inference_api_native, word2vec_cpu_onednn) {
   FLAGS_use_mkldnn = true;
-  MainWord2Vec(paddle::PaddlePlace::kCPU);
+  MainWord2Vec(::paddle::PaddlePlace::kCPU);
 }
 #endif
 

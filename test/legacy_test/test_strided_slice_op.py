@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -594,9 +594,9 @@ class TestStridedSliceAPI(unittest.TestCase):
         out_6 = x[minus_3:3:1, 0:100:2, :, minus_1:2:minus_1]
         out_7 = x[minus_1, 0:100:2, :, -1:2:-1]
 
-        exe = fluid.Executor(place=fluid.CPUPlace())
+        exe = base.Executor(place=base.CPUPlace())
         res_1, res_2, res_3, res_4, res_5, res_6, res_7 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={
                 "x": input,
                 'starts': np.array([-3, 0, 2]).astype("int32"),
@@ -605,13 +605,13 @@ class TestStridedSliceAPI(unittest.TestCase):
             },
             fetch_list=[out_1, out_2, out_3, out_4, out_5, out_6, out_7],
         )
-        assert np.array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
-        assert np.array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
-        assert np.array_equal(res_5, input[-3:3, 0:100:2, -1:2:-1, :])
-        assert np.array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
-        assert np.array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
+        np.testing.assert_array_equal(res_1, input[-3:3, 0:100, 2:-1, :])
+        np.testing.assert_array_equal(res_2, input[-3:3, 0:100, :, 2:-1])
+        np.testing.assert_array_equal(res_3, input[-3:3, 0:100, :, 2:-1])
+        np.testing.assert_array_equal(res_4, input[-3:3, 0:100, 2:-1, :])
+        np.testing.assert_array_equal(res_5, input[-3:3, 0:100:2, -1:2:-1, :])
+        np.testing.assert_array_equal(res_6, input[-3:3, 0:100:2, :, -1:2:-1])
+        np.testing.assert_array_equal(res_7, input[-1, 0:100:2, :, -1:2:-1])
 
     def test_dygraph_op(self):
         x = paddle.zeros(shape=[3, 4, 5, 6], dtype="float32")
@@ -629,7 +629,7 @@ class TestStridedSliceAPI(unittest.TestCase):
         "Cannot use CUDAPinnedPlace in CPU only version",
     )
     def test_cuda_pinned_place(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             x = paddle.to_tensor(
                 np.random.randn(2, 10), place=paddle.CUDAPinnedPlace()
             )
@@ -760,7 +760,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
     def test_strided_slice_tensor_array_cuda_pinned_place(self):
         if paddle.device.is_compiled_with_cuda():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
 
                 class Simple(paddle.nn.Layer):
                     def __init__(self):
@@ -971,7 +971,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
 
 
 @unittest.skipIf(
-    not fluid.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
+    not base.core.is_compiled_with_cuda(), "core is not compiled with CUDA"
 )
 class TestStridedSliceFloat16(unittest.TestCase):
     def init_test_case(self):

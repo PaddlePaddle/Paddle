@@ -37,8 +37,8 @@ void BatchNormKernel(const Context& ctx,
                      const DenseTensor& x,
                      const DenseTensor& mean,
                      const DenseTensor& variance,
-                     const DenseTensor& scale,
-                     const DenseTensor& bias,
+                     const paddle::optional<DenseTensor>& scale,
+                     const paddle::optional<DenseTensor>& bias,
                      bool is_test,
                      float momentum,
                      float epsilon,
@@ -72,10 +72,10 @@ void BatchNormKernel(const Context& ctx,
           "The size of input X's dimensions should be less than 6."
           "But received: the size of input X's dimensionss is [%d]",
           x_dims.size()));
-  const int N = x_dims[0];
-  const int C = (data_layout == DataLayout::kNCHW ? x_dims[1]
-                                                  : x_dims[x_dims.size() - 1]);
-  const int sample_size = x.numel() / N / C;
+  const int N = static_cast<int>(x_dims[0]);
+  const int C = static_cast<int>(
+      data_layout == DataLayout::kNCHW ? x_dims[1] : x_dims[x_dims.size() - 1]);
+  const int sample_size = static_cast<int>(x.numel() / N / C);
 
   // alloc memory
   ctx.template Alloc<T>(y);
@@ -167,11 +167,27 @@ void BatchNormKernel(const Context& ctx,
   //   ((x - est_mean) * (inv_var) * scale + bias
   //   formula transform ====>
   //   (x * inv_var * scale) + (bias - est_mean * inv_var * scale)
-  ConstEigenVectorArrayMap<T> scale_arr(scale.data<T>(), C);
-  ConstEigenVectorArrayMap<T> bias_arr(bias.data<T>(), C);
-  Eigen::Array<T, Eigen::Dynamic, 1> new_scale = inv_std * scale_arr;
-  Eigen::Array<T, Eigen::Dynamic, 1> new_bias =
-      bias_arr - mean_arr * inv_std * scale_arr;
+  auto* Scale = scale.get_ptr();
+  auto* Bias = bias.get_ptr();
+  Eigen::Array<T, Eigen::Dynamic, 1> new_scale(C);
+  Eigen::Array<T, Eigen::Dynamic, 1> new_bias(C);
+  if (Scale && Bias) {
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = bias_arr - mean_arr * inv_std * scale_arr;
+  } else if (Scale) {
+    ConstEigenVectorArrayMap<T> scale_arr(Scale->data<T>(), C);
+    new_scale = inv_std * scale_arr;
+    new_bias = -(mean_arr * inv_std * scale_arr);
+  } else if (Bias) {
+    ConstEigenVectorArrayMap<T> bias_arr(Bias->data<T>(), C);
+    new_scale = inv_std;
+    new_bias = bias_arr - mean_arr * inv_std;
+  } else {
+    new_scale = inv_std;
+    new_bias = -(mean_arr * inv_std);
+  }
 
   switch (data_layout) {
     case DataLayout::kNCHW: {

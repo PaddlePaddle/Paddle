@@ -44,13 +44,19 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : adagrad_
+- op : adadelta_ (adadelta)
+  inputs :
+    {param : Param, grad: Grad, avg_squared_grad : AvgSquaredGrad, avg_squared_update : AvgSquaredUpdate, learning_rate : LearningRate, master_param : MasterParam }
+  outputs :
+    {param_out : ParamOut, moment_out : AvgSquaredGradOut, inf_norm_out : AvgSquaredUpdateOut, master_param_out : MasterParamOut}
+
+- op : adagrad_ (adagrad)
   inputs :
     { param : Param, grad : Grad, moment : Moment, learning_rate : LearningRate, master_param : MasterParam }
   outputs :
     { param_out : ParamOut, moment_out : MomentOut, master_param_out : MasterParamOut }
 
-- op : adam_
+- op : adam_ (adam)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -67,13 +73,13 @@
       tensor_name : EpsilonTensor
   manual_signature : [adam_]
 
-- op : adamax_
+- op : adamax_ (adamax)
   inputs :
     {param : Param, grad: Grad, learning_rate : LearningRate, moment : Moment, inf_norm : InfNorm, beta1_pow : Beta1Pow, master_param : MasterParam}
   outputs :
     {param_out : ParamOut, moment_out : MomentOut, inf_norm_out : InfNormOut, master_param_out : MasterParamOut}
 
-- op : adamw_
+- op : adamw_ (adamw)
   inputs :
     {param: Param, grad: Grad, learning_rate: LearningRate, moment1: Moment1, moment2: Moment2, beta1_pow: Beta1Pow, beta2_pow: Beta2Pow, master_param: MasterParam, skip_update: SkipUpdate}
   outputs :
@@ -213,7 +219,6 @@
 - op : argmax(arg_max)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -224,7 +229,6 @@
 - op : argmin(arg_min)
   inputs :
     x : X
-    axis : axis
   outputs :
     out : Out
   scalar:
@@ -354,6 +358,7 @@
     attrs : [bool use_mkldnn = false]
 
 - op : bilinear (bilinear_tensor_product)
+  backward: bilinear_grad (bilinear_tensor_product_grad)
   inputs :
     {x : X, y : Y,weight: Weight, bias: Bias}
   outputs :
@@ -424,6 +429,19 @@
     out : Out
   drop_empty_grad : [input_grad]
 
+- op : c_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op : c_embedding
+  backward : c_embedding_grad
+  inputs :
+    {weight : W, x : Ids}
+  outputs :
+    out : Out
+
 - op : cast
   inputs :
     x : X
@@ -446,7 +464,7 @@
   outputs :
     out : Out
 
-- op : check_finite_and_unscale_
+- op : check_finite_and_unscale_(check_finite_and_unscale)
   inputs :
     {x : X, scale: Scale}
   outputs :
@@ -649,18 +667,6 @@
   outputs :
     {softmax : Softmax, loss : Loss}
 
-- op : cummax
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
-- op : cummin
-  inputs :
-    { x : x }
-  outputs :
-    { out : out, indices : indices }
-
 - op : cumprod
   backward : cumprod_grad
   inputs :
@@ -804,6 +810,7 @@
   backward : dropout_grad
   inputs :
     x : X
+    seed_tensor : Seed
   outputs :
     out : Out
     mask : Mask
@@ -980,8 +987,8 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
-- op : exponential_
-  backward : exponential__grad
+- op : exponential_ (exponential)
+  backward : exponential__grad (exponential_grad)
   inputs :
     x : X
   outputs :
@@ -1028,9 +1035,6 @@
 
 - op : feed
   outputs: {out: Out}
-
-- op : feed_with_place
-  outputs: {out: out}
 
 - op : fft_c2c
   inputs: {x: X}
@@ -1177,14 +1181,195 @@
       data_type : float
       support_tensor : true
 
+- op : fused_attention
+  backward: fused_attention_grad
+  inputs:
+    x: X
+    ln_scale: LnScale
+    ln_bias: LnBias
+    qkv_weight: QKVW
+    qkv_bias: QKVBias
+    cache_kv: CacheKV
+    src_mask: SrcMask
+    out_linear_weight: OutLinearW
+    out_linear_bias: OutLinearBias
+    ln_scale_2: Ln2Scale
+    ln_bias_2: Ln2Bias
+  outputs:
+    ln_mean: LnMean
+    ln_var: LnVariance
+    ln_out: LnOut
+    qkv_out: QKVOut
+    qkv_bias_out: QKVBiasOut
+    transpose_out_2: TransposeOut2
+    qk_out: QKOut
+    qktv_out: QKTVOut
+    softmax_out: SoftmaxOut
+    attn_dropout_mask_out: AttnDropoutMaskOut
+    attn_dropout_out: AttnDropoutOut
+    src_mask_out: SrcMaskOut
+    fmha_out: FMHAOut
+    out_linear_out: OutLinearOut
+    dropout_mask_out: DropoutMaskOut
+    ln_mean_2: Ln2Mean
+    ln_var_2: Ln2Variance
+    bias_dropout_residual_out: BiasDropoutResidualOut
+    cache_kv_out: CacheKVOut
+    out: Y
+
+- op : fused_batch_norm_act
+  backward : fused_batch_norm_act_grad
+  inputs:
+    x : X
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
+
+- op : fused_bn_add_activation_ (fused_bn_add_activation)
+  backward : fused_bn_add_activation_grad
+  inputs:
+    x : X
+    z : Z
+    mean : Mean
+    variance : Variance
+    scale : Scale
+    bias : Bias
+  outputs :
+    out : Y
+    mean_out: MeanOut
+    variance_out: VarianceOut
+    saved_mean: SavedMean
+    saved_variance: SavedVariance
+    reserve_space: ReserveSpace
+
 - op : fused_conv2d
   extra :
     attrs : [bool use_cudnn = false, float fuse_alpha = 0.0f, float fuse_beta = 0.0f, float Scale_in = 1.0f,
              float Scale_out = 1.0f, float Scale_in_eltwise = 1.0f, 'float[] Scale_weights = {1.0f}']
 
+- op : fused_embedding_eltwise_layernorm
+  inputs :
+    ids : Ids
+    embs : Embs
+    bias : Bias
+    scale : Scale
+  outputs :
+    out : Out
+
+- op : fused_fc_elementwise_layernorm
+  inputs :
+    x : X
+    w : W
+    y : Y
+    bias0 : Bias0
+    scale : Scale
+    bias1 : Bias1
+  outputs :
+    out : Out
+    mean : Mean
+    variance : Variance
+
+- op : fused_feedforward
+  backward: fused_feedforward_grad
+  inputs:
+    x: X
+    dropout1_seed: Dropout1Seed
+    dropout2_seed: Dropout2Seed
+    linear1_weight: Linear1Weight
+    linear1_bias: Linear1Bias
+    linear2_weight: Linear2Weight
+    linear2_bias: Linear2Bias
+    ln1_scale: Ln1Scale
+    ln1_bias: Ln1Bias
+    ln2_scale: Ln2Scale
+    ln2_bias: Ln2Bias
+  attrs:
+    dropout1_seed_val: dropout1_seed
+    dropout2_seed_val: dropout2_seed
+    dropout1_prob: dropout1_rate
+    dropout2_prob: dropout2_rate
+  outputs:
+    out: Out
+    dropout1_mask: Dropout1Mask
+    dropout2_mask: Dropout2Mask
+    ln1_mean: Ln1Mean
+    ln1_variance: Ln1Variance
+    ln2_mean: Ln2Mean
+    ln2_variance: Ln2Variance
+    linear1_out: Linear1Out
+    ln1_out: Ln1Out
+    dropout1_out: Dropout1Out
+    dropout2_out: Dropout2Out
+
+- op : fused_gemm_epilogue
+  inputs:
+    {x : X, y : Y, bias : Bias}
+  outputs :
+    {out : Out, reserve_space: ReserveSpace}
+
+- op : fused_gemm_epilogue_grad
+  inputs:
+    {x : X, y : Y, reserve_space: ReserveSpace, out_grad : DOut}
+  outputs :
+    {x_grad : DX, y_grad : DY, bias_grad : DBias}
+
 - op : fused_transpose
   extra :
     attrs : [str data_format = "AnyLayout"]
+
+- op : fusion_gru
+  inputs :
+    x : X
+    h0 : H0
+    weight_x : WeightX
+    weight_h : WeightH
+    bias : Bias
+  outputs :
+    reordered_h0 : ReorderedH0
+    xx : XX
+    batched_input : BatchedInput
+    batched_out : BatchedOut
+    hidden : Hidden
+  attrs :
+    scale_data : Scale_data
+    shift_data : Shift_data
+    scale_weights : Scale_weights
+
+- op : fusion_seqconv_eltadd_relu
+  inputs :
+    x : X
+    filter : Filter
+    bias : Bias
+  outputs :
+    out : Out
+    col_mat : ColMat
+  attrs :
+    context_length : contextLength
+    context_start : contextStart
+    context_stride : contextStride
+
+- op : fusion_seqexpand_concat_fc
+  inputs :
+    x : X
+    fc_weight : FCWeight
+    fc_bias : FCBias
+  outputs :
+    out : Out
+    fc_out : FCOut
+
+- op : fusion_transpose_flatten_concat
+  inputs :
+    x : X
+  outputs :
+    out : Out
 
 - op : gather
   backward : gather_grad
@@ -1240,6 +1425,10 @@
     {pre_nms_top_n : pre_nms_topN, post_nms_top_n : post_nms_topN}
 
 - op : grad_add
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    {out : Out}
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
@@ -1348,30 +1537,6 @@
   outputs :
     {out : Out, residual : Residual}
 
-- op : i0
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i0e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
-- op : i1e
-  inputs :
-    {x : x}
-  outputs :
-    out : out
-
 - op : imag
   backward : imag_grad
   inputs :
@@ -1404,11 +1569,6 @@
     out : Out
   attrs :
     axis : dim
-
-- op : inplace_abn
-  backward : inplace_abn_grad
-  extra :
-    attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
 
 - op : instance_norm
   inputs :
@@ -1494,7 +1654,7 @@
   outputs :
     out : Out
 
-- op : lamb_
+- op : lamb_ (lamb)
   inputs :
     {param : Param, grad : Grad, learning_rate : LearningRate, moment1 : Moment1, moment2 : Moment2, beta1_pow : Beta1Pow, beta2_pow : Beta2Pow, master_param : MasterParam, skip_update : SkipUpdate}
   outputs :
@@ -1720,6 +1880,10 @@
 
 - op : matmul_with_flatten (mul)
   backward : matmul_with_flatten_grad (mul_grad)
+  inputs :
+    {x : X, y : Y}
+  outputs :
+    out : Out
   extra :
     attrs : [bool use_mkldnn = false, float scale_x = 1.0f, 'float[] scale_y = {1.0f}',
              float scale_out = 1.0f, bool force_fp32_output = false]
@@ -1838,7 +2002,7 @@
       data_type : float
       support_tensor : true
 
-- op : merged_momentum_
+- op : merged_momentum_ (merged_momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1899,7 +2063,7 @@
   outputs :
     {out : Out, indices : Indices}
 
-- op : momentum_
+- op : momentum_ (momentum)
   inputs :
     {param : Param, grad : Grad, velocity : Velocity, learning_rate : LearningRate, master_param : MasterParam}
   outputs :
@@ -1918,6 +2082,14 @@
     {bboxes : BBoxes, scores : Scores, rois_num : RoisNum}
   outputs :
     {out : Out, index : Index, nms_rois_num : NmsRoisNum}
+
+- op : multihead_matmul
+  inputs :
+    {input : Input, w : W, bias : Bias, bias_qk : BiasQK}
+  outputs :
+    out : Out
+  attrs :
+    {transpose_q : transpose_Q,  transpose_k : transpose_K, transpose_v : transpose_V}
 
 - op : multinomial
   inputs :
@@ -1979,12 +2151,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : nextafter
-  inputs :
-    {x : x, y : y}
-  outputs :
-    out : out
 
 - op : nll_loss
   backward : nll_loss_grad
@@ -2052,6 +2218,17 @@
   outputs :
     out : Out
 
+- op : pad
+  backward : pad_grad, pad_double_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  scalar:
+    pad_value:
+      data_type : float
+      support_tensor : true
+
 - op : pad2d
   backward : pad2d_grad
   extra :
@@ -2084,17 +2261,18 @@
   outputs :
     out : Out
 
-- op : poisson
+- op : pixel_unshuffle
+  backward : pixel_unshuffle_grad
   inputs :
     x : X
   outputs :
     out : Out
 
-- op : polygamma
+- op : poisson
   inputs :
-    x : x
+    x : X
   outputs :
-    out : out
+    out : Out
 
 - op : pool2d
   backward : pool2d_grad, pool2d_double_grad
@@ -2201,6 +2379,11 @@
   attrs :
     {axis : Axis, reduce : Reduce}
 
+- op : pylayer
+  backward : pylayer_grad
+  extra :
+    attrs : ['str[] skip_eager_deletion_vars = {}']
+
 - op : qr
   backward : qr_grad
   inputs :
@@ -2290,6 +2473,24 @@
   attrs :
     repeats : Repeats
 
+- op : repeat_interleave
+  backward : repeat_interleave_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {repeats : Repeats, axis : dim}
+
+- op : repeat_interleave_with_tensor_index
+  backward : repeat_interleave_with_tensor_index_grad
+  inputs :
+    {x : X, repeats: RepeatTensor}
+  outputs:
+    out : Out
+  attrs:
+    axis : dim
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:
@@ -2316,7 +2517,7 @@
       support_tensor : true
   manual_signature : [reverse]
 
-- op : rmsprop_
+- op : rmsprop_ (rmsprop)
   inputs :
     {param: Param, mean_square: MeanSquare, mean_grad: MeanGrad, learning_rate: LearningRate, grad: Grad, moment: Moment, master_param: MasterParam}
   outputs :
@@ -2373,6 +2574,10 @@
   extra :
     attrs : [bool use_mkldnn = false, bool use_cudnn = false]
 
+- op : save_combine
+  inputs :
+    {x : X}
+
 - op : scale
   backward : scale_grad
   inputs :
@@ -2407,6 +2612,8 @@
     out : Out
 
 - op : seed
+  outputs :
+    out : Out
   extra :
     attrs : [bool deterministic = false, str rng_name = "", bool force_cpu = false]
 
@@ -2454,7 +2661,7 @@
   extra :
     attrs : [str data_format = "AnyLayout"]
 
-- op : sgd_
+- op : sgd_ (sgd)
   inputs :
     {param : Param, learning_rate : LearningRate, grad : Grad, master_param : MasterParam}
   outputs :
@@ -2464,7 +2671,7 @@
   extra :
     attrs : [bool use_mkldnn=false]
 
-- op : shaddow_output
+- op : shadow_output
   inputs: {x: x}
   outputs: {out: out}
 
@@ -2574,7 +2781,7 @@
     softmax : GetSoftmaxExpectedKernelType
     softmax_grad : GetSoftmaxGradExpectedKernelType
   extra :
-    attrs : [str data_format = "AnyLayout", bool use_cudnn=false, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
+    attrs : [str data_format = "AnyLayout", bool use_cudnn = true, bool use_mkldnn = false, str mkldnn_data_type = "float32", bool is_test = false]
 
 - op : softplus
   backward : softplus_grad, softplus_double_grad
@@ -2617,6 +2824,7 @@
     out : Out
 
 - op : split
+  backward : split_grad
   inputs:
     x : X
   outputs:
@@ -2624,6 +2832,7 @@
   int_array:
       sections :
           data_type : int
+          support_tensor : true
   scalar :
       axis :
         data_type : int
@@ -2760,7 +2969,7 @@
   inputs :
     {x : X, scale : Scale, bias : Bias, mean : Mean, variance : Variance}
   outputs :
-    {y : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
+    {out : Y, mean_out : MeanOut, variance_out : VarianceOut, saved_mean : SavedMean, saved_variance : SavedVariance, reserve_space : ReserveSpace}
   backward : sync_batch_norm_grad
   extra :
     attrs : [bool use_mkldnn = false, bool fuse_with_relu = false]
@@ -2855,10 +3064,6 @@
   outputs :
     out : Out
 
-- op : tril_indices
-  outputs :
-    out : out
-
 - op : tril_triu
   backward : tril_triu_grad
   inputs :
@@ -2874,10 +3079,6 @@
     output : Out
   extra :
     attrs : [bool use_mkldnn = false]
-
-- op : triu_indices
-  outputs :
-    out : out
 
 - op : trunc
   inputs :
@@ -2945,6 +3146,8 @@
     {x : X, indices: Indices}
   outputs :
     out : Out
+  attrs :
+   padding : paddings
   int_array :
     output_size:
       data_type : int
@@ -2979,7 +3182,7 @@
   outputs :
     out : Y
 
-- op : update_loss_scaling_
+- op : update_loss_scaling_(update_loss_scaling)
   inputs :
     {x : X, found_infinite : FoundInfinite, prev_loss_scaling : PrevLossScaling, in_good_steps : InGoodSteps, in_bad_steps : InBadSteps}
   outputs :
@@ -3003,12 +3206,6 @@
     {logits : Logits, label : Label, logits_length : LogitsLength, labels_length : LabelLength}
   outputs :
     {warpctcgrad : WarpCTCGrad, loss : Loss}
-
-- op : warprnnt
-  inputs :
-    {input : input, label : label,  input_lengths : input_lengths, label_lengths : label_lengths}
-  outputs :
-    {loss : loss, warprnntgrad : warprnntgrad}
 
 - op : where
   backward : where_grad
@@ -3038,11 +3235,87 @@
     yolo_loss : GetYoloLossExpectedKernelType
     yolo_loss_grad : GetYoloLossExpectedKernelType
 
-- op: fetch
+- op: c_allgather
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_max
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_allreduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_broadcast
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: c_identity
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_reduce_sum
+  inputs :
+    x : X
+  outputs :
+    out: Out
+
+- op: c_sync_calc_stream
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: c_sync_comm_stream
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: channel_shuffle
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out}
+
+- op: dpsgd
+  inputs:
+    {param: Param,grad: Grad,learning_rate: LearningRate}
+  outputs:
+    param_out : ParamOut
+
+- op: fetch (fetch_v2)
   inputs: {x: X}
   outputs: {out: Out}
 
 - op: full_batch_size_like (fill_constant_batch_size_like)
+  inputs:
+    {input: Input}
+  outputs:
+    {out: Out}
+
+- op: get_tensor_from_selected_rows
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: logspace
+  inputs:
+    {start: Start, stop: Stop, num: Num, base: Base}
+  outputs:
+    {out: Out}
 
 - op: lu
   backward: lu_grad
@@ -3053,16 +3326,82 @@
   attrs:
     pivot : pivots
 
+- op: memcpy
+  inputs:
+    x: X
+  outputs:
+    out: Out
+
+- op: memcpy_d2h
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
+- op: recv_v2
+  outputs :
+    out : Out
+
 - op: reindex_graph (graph_reindex)
   inputs :
     {x : X, neighbors : Neighbors, count : Count, hashtable_value : HashTable_Value, hashtable_index : HashTable_Index}
   outputs :
     {reindex_src : Reindex_Src, reindex_dst : Reindex_Dst, out_nodes : Out_Nodes}
 
+- op: rrelu
+  inputs:
+    {x: X}
+  outputs:
+    {out: Out, noise: Noise}
+
+- op: send_v2
+  inputs :
+    x : X
+
+- op: set_value
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
+- op: set_value_with_tensor
+  backward: set_value_grad
+  inputs:
+    x : Input
+  outputs:
+    out: Out
+  int_array:
+    starts:
+      data_type : int64_t
+      tensors_name : StartsTensorList
+    ends:
+      data_type : int64_t
+      tensors_name : EndsTensorList
+    steps:
+      data_type : int64_t
+      tensors_name : StepsTensorList
+
+- op: share_data
+  inputs :
+    x : X
+  outputs :
+    out : Out
+
 - op: sigmoid_cross_entropy_with_logits
   backward: sigmoid_cross_entropy_with_logits_grad
   inputs :
-    {x: X, label: Label, pos_weight : pos_weight}
+    {x: X, label: Label}
   outputs :
     out : Out
 
@@ -3077,5 +3416,11 @@
   backward: temporal_shift_grad
   inputs :
     x : X
+  outputs :
+    out : Out
+
+- op: write_to_array
+  inputs :
+    {x: X, i: I}
   outputs :
     out : Out

@@ -16,8 +16,8 @@ import numpy as np
 
 from paddle import _C_ops
 
-from ...fluid import core, framework, unique_name
-from ...fluid.framework import _current_expected_place, in_dygraph_mode
+from ...base import core, framework, unique_name
+from ...base.framework import _current_expected_place, in_dygraph_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -36,29 +36,29 @@ class Bilinear(Initializer):
 
         .. code-block:: python
 
-            import math
+            >>> import math
 
-            import paddle
-            import paddle.nn as nn
-            from paddle.regularizer import L2Decay
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> from paddle.regularizer import L2Decay
 
-            factor = 2
-            C = 2
-            B = 8
-            H = W = 32
-            w_attr = paddle.ParamAttr(learning_rate=0.,
-                                      regularizer=L2Decay(0.),
-                                      initializer=nn.initializer.Bilinear())
-            data = paddle.rand([B, 3, H, W], dtype='float32')
-            conv_up = nn.Conv2DTranspose(3,
-                                         out_channels=C,
-                                         kernel_size=2 * factor - factor % 2,
-                                         padding=int(
-                                             math.ceil((factor - 1) / 2.)),
-                                         stride=factor,
-                                         weight_attr=w_attr,
-                                         bias_attr=False)
-            x = conv_up(data)
+            >>> factor = 2
+            >>> C = 2
+            >>> B = 8
+            >>> H = W = 32
+            >>> w_attr = paddle.ParamAttr(learning_rate=0.,
+            ...                           regularizer=L2Decay(0.),
+            ...                           initializer=nn.initializer.Bilinear())
+            >>> data = paddle.rand([B, 3, H, W], dtype='float32')
+            >>> conv_up = nn.Conv2DTranspose(3,
+            ...                              out_channels=C,
+            ...                              kernel_size=2 * factor - factor % 2,
+            ...                              padding=int(
+            ...                                  math.ceil((factor - 1) / 2.)),
+            ...                              stride=factor,
+            ...                              weight_attr=w_attr,
+            ...                              bias_attr=False)
+            >>> x = conv_up(data)
 
     Where, `out_channels=C` and `groups=C` means this is channel-wise transposed
     convolution. The filter shape will be (C, 1, K, K) where K is `kernel_size`,

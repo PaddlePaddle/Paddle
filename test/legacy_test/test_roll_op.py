@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestRollOp(OpTest):
@@ -169,7 +169,7 @@ class TestRollAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
             )
@@ -183,7 +183,7 @@ class TestRollAPI(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
             x.desc.set_need_check_feed(False)
             z = paddle.roll(x, shifts=1, axis=0)
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x}, fetch_list=[z.name], return_numpy=False
             )
@@ -195,8 +195,8 @@ class TestRollAPI(unittest.TestCase):
     def test_dygraph_api(self):
         self.input_data()
         # case 1:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1)
             np_z = z.numpy()
         expect_out = np.array(
@@ -205,8 +205,8 @@ class TestRollAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
         # case 2:
-        with fluid.dygraph.guard():
-            x = fluid.dygraph.to_variable(self.data_x)
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_x)
             z = paddle.roll(x, shifts=1, axis=0)
             np_z = z.numpy()
         expect_out = np.array(
@@ -222,7 +222,7 @@ class TestRollAPI(unittest.TestCase):
                 x = paddle.static.data(name='x', shape=[-1, 3], dtype='float32')
                 x.desc.set_need_check_feed(False)
                 z = paddle.roll(x, shifts=1, axis=10)
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 (res,) = exe.run(
                     feed={'x': self.data_x},
                     fetch_list=[z.name],
@@ -232,7 +232,7 @@ class TestRollAPI(unittest.TestCase):
         self.assertRaises(ValueError, test_axis_out_range)
 
     def test_shifts_as_tensor_dygraph(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             x = paddle.arange(9).reshape([3, 3])
             shape = paddle.shape(x)
             shifts = shape // 2
@@ -250,12 +250,12 @@ class TestRollAPI(unittest.TestCase):
             out = paddle.roll(x, shifts=shifts, axis=axes)
             expected_out = np.array([[8, 6, 7], [2, 0, 1], [5, 3, 4]])
 
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = base.Executor(base.CPUPlace())
             [out_np] = exe.run(fetch_list=[out])
             np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 
             if paddle.is_compiled_with_cuda():
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = base.Executor(base.CPUPlace())
                 [out_np] = exe.run(fetch_list=[out])
                 np.testing.assert_allclose(out_np, expected_out, rtol=1e-05)
 

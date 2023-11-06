@@ -13,7 +13,7 @@
 # limitations under the License.
 import warnings
 
-from ..fluid import framework
+from ..base import framework
 from .optimizer import Optimizer
 
 __all__ = []
@@ -53,7 +53,7 @@ class Adagrad(Optimizer):
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization.
             It canbe a float value as coeff of L2 regularization or
             :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
-            If a parameter has set regularizer using :ref:`api_paddle_fluid_param_attr_aramAttr` already,
+            If a parameter has set regularizer using :ref:`api_paddle_base_param_attr_aramAttr` already,
             the regularization setting here in optimizer will be ignored for this parameter.
             Otherwise, the regularization setting here in optimizer will take effect.
             Default None, meaning there is no regularization.
@@ -70,38 +70,38 @@ class Adagrad(Optimizer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            inp = paddle.rand(shape=[10, 10])
-            linear = paddle.nn.Linear(10, 10)
-            out = linear(inp)
-            loss = paddle.mean(out)
-            adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
-                    parameters=linear.parameters())
-            out.backward()
-            adagrad.step()
-            adagrad.clear_grad()
+            >>> inp = paddle.rand(shape=[10, 10])
+            >>> linear = paddle.nn.Linear(10, 10)
+            >>> out = linear(inp)
+            >>> loss = paddle.mean(out)
+            >>> adagrad = paddle.optimizer.Adagrad(learning_rate=0.1,
+            ...         parameters=linear.parameters())
+            >>> out.backward()
+            >>> adagrad.step()
+            >>> adagrad.clear_grad()
 
-            #Note that the learning_rate of linear_2 is 0.01.
-            linear_1 = paddle.nn.Linear(10, 10)
-            linear_2 = paddle.nn.Linear(10, 10)
-            inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
-            out = linear_1(inp)
-            out = linear_2(out)
-            loss = paddle.mean(out)
-            adagrad = paddle.optimizer.Adagrad(
-                learning_rate=0.1,
-                parameters=[{
-                    'params': linear_1.parameters()
-                }, {
-                    'params': linear_2.parameters(),
-                    'weight_decay': 0.001,
-                    'learning_rate': 0.1,
-                }],
-                weight_decay=0.01)
-            out.backward()
-            adagrad.step()
-            adagrad.clear_grad()
+            >>> # Note that the learning_rate of linear_2 is 0.01.
+            >>> linear_1 = paddle.nn.Linear(10, 10)
+            >>> linear_2 = paddle.nn.Linear(10, 10)
+            >>> inp = paddle.uniform(shape=[10, 10], min=-0.1, max=0.1)
+            >>> out = linear_1(inp)
+            >>> out = linear_2(out)
+            >>> loss = paddle.mean(out)
+            >>> adagrad = paddle.optimizer.Adagrad(
+            ...     learning_rate=0.1,
+            ...     parameters=[{
+            ...         'params': linear_1.parameters()
+            ...     }, {
+            ...         'params': linear_2.parameters(),
+            ...         'weight_decay': 0.001,
+            ...         'learning_rate': 0.1,
+            ...     }],
+            ...     weight_decay=0.01)
+            >>> out.backward()
+            >>> adagrad.step()
+            >>> adagrad.clear_grad()
 
     """
     _moment_acc_str = "moment"

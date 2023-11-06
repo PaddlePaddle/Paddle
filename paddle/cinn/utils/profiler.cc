@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/utils/profiler.h"
 
-#include <gflags/gflags.h>
+#include "paddle/utils/flags.h"
 
 #ifdef CINN_WITH_NVTX
 #include <nvToolsExt.h>
@@ -27,7 +27,7 @@
 #endif
 #include <chrono>
 
-DECLARE_int32(cinn_profiler_state);
+PD_DECLARE_int32(cinn_profiler_state);
 
 namespace cinn {
 namespace utils {

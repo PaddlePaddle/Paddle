@@ -28,8 +28,8 @@ static const int MAX_PORT = 65535;
 namespace paddle {
 namespace distributed {
 
-DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
-DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
+PD_DEFINE_uint64(total_fl_client_size, 100, "supported total fl client size");
+PD_DEFINE_uint32(coordinator_wait_all_clients_max_time, 60, "uint32: s");
 
 void CoordinatorService::FLService(
     ::google::protobuf::RpcController* controller,
@@ -62,10 +62,10 @@ int32_t CoordinatorClient::Initialize(
     const std::vector<std::string>& trainer_endpoints) {
   brpc::ChannelOptions options;
   options.protocol = "baidu_std";
-  options.timeout_ms = paddle::distributed::FLAGS_pserver_timeout_ms;
+  options.timeout_ms = ::paddle::distributed::FLAGS_pserver_timeout_ms;
   options.connection_type = "pooled";
   options.connect_timeout_ms =
-      paddle::distributed::FLAGS_pserver_connect_timeout_ms;
+      ::paddle::distributed::FLAGS_pserver_connect_timeout_ms;
   options.max_retry = 3;
 
   std::string server_ip_port;
@@ -109,17 +109,17 @@ int32_t CoordinatorClient::Initialize(
   }
   for (size_t i = 0; i < trainer_endpoints.size(); i++) {
     std::vector<std::string> addr =
-        paddle::string::Split(trainer_endpoints[i], ':');
+        ::paddle::string::Split(trainer_endpoints[i], ':');
     fl_client_list[i].ip = addr[0];
     fl_client_list[i].port = std::stol(addr[1]);
     fl_client_list[i].rank = i;  // TO CHECK
   }
   std::string fl_client_ip_port;
-  for (size_t i = 0; i < fl_client_list.size(); ++i) {
-    fl_client_ip_port.assign(fl_client_list[i].ip);
+  for (auto& fl_client : fl_client_list) {
+    fl_client_ip_port.assign(fl_client.ip);
     fl_client_ip_port.append(":");
-    fl_client_ip_port.append(std::to_string(fl_client_list[i].port));
-    uint32_t rank = fl_client_list[i].rank;
+    fl_client_ip_port.append(std::to_string(fl_client.port));
+    uint32_t rank = fl_client.rank;
     VLOG(0) << "fl-ps > coordinator connect to fl_client: " << rank;
     _fl_client_channels[rank].reset(new brpc::Channel());
     if (_fl_client_channels[rank]->Init(
@@ -127,7 +127,7 @@ int32_t CoordinatorClient::Initialize(
       LOG(ERROR) << "CoordinatorClient connect to FLClient:"
                  << fl_client_ip_port << " Failed! Try again.";
       std::string int_ip_port =
-          GetIntTypeEndpoint(fl_client_list[i].ip, fl_client_list[i].port);
+          GetIntTypeEndpoint(fl_client.ip, fl_client.port);
       if (_fl_client_channels[rank]->Init(int_ip_port.c_str(), "", &options) !=
           0) {
         LOG(ERROR) << "CoordinatorClient connect to PSClient:" << int_ip_port
@@ -152,7 +152,7 @@ int32_t CoordinatorClient::StartClientService() {
     LOG(ERROR) << "fl-ps > coordinator server endpoint not set";
     return -1;
   }
-  auto addr = paddle::string::Split(_endpoint, ':');
+  auto addr = ::paddle::string::Split(_endpoint, ':');
   std::string ip = addr[0];
   std::string port = addr[1];
   std::string rank = addr[2];

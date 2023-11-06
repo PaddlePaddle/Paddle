@@ -23,13 +23,17 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_utils.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
 #include "paddle/fluid/framework/details/nccl_op_handle.h"
 #include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/phi/core/distributed/nccl_comm_context.h"
+#include "paddle/phi/core/flags.h"
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 #include "paddle/fluid/platform/flags.h"
-DECLARE_bool(convert_all_blocks);
+PD_DECLARE_bool(convert_all_blocks);
 PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir,
                               "",
                               "FLAGS_print_sub_graph_dir is used "
@@ -160,7 +164,7 @@ std::vector<ir::Node *> TopologySortOperations(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<ir::NodeComp>(adj_list, adj.first, &visited, &ret);
     }
@@ -275,7 +279,7 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   // build in_degree
   for (auto *node : graph.Nodes()) {
     if (node->IsOp()) {
-      in_degree[node] += node->inputs.size();
+      in_degree[node] += static_cast<int>(node->inputs.size());
     } else if (node->IsVar() && node->inputs.empty()) {
       // put all the inputs of the whole graph ready.
       set_out_ops_ready(node);
@@ -291,10 +295,9 @@ std::vector<ir::Node *> TopologyDfsSortOperations(const Graph &graph) {
   }
 
   // traverse the graph
-  int num_ops = op_queue.size();
+  int num_ops = static_cast<int>(op_queue.size());
   while (num_ops) {
-    for (auto it = op_queue.begin(); it != op_queue.end(); it++) {
-      auto *&cur_op = *it;
+    for (auto cur_op : op_queue) {
       if (!cur_op || in_degree[cur_op] > 0) continue;
       // visit this node
       // put all the output var of this op valid.
@@ -446,7 +449,7 @@ std::vector<ir::Node *> TopologySortGraphByDescOrder(const Graph &graph) {
                         "Generated graph shouldn't contain cycle."));
   std::unordered_set<ir::Node *> visited;
   std::vector<ir::Node *> ret;
-  for (auto adj : adj_list) {
+  for (auto const &adj : adj_list) {
     if (visited.find(adj.first) == visited.end()) {
       SortHelper<DescOrderComparator>(adj_list, adj.first, &visited, &ret);
     }
@@ -499,6 +502,7 @@ static OpDesc *ReplaceScaleLossGradOp(const Node &node, OpDesc *desc) {
   // TODO(Ruibiao) : Set OpDeviceAttrName when needed
 
   std::vector<std::string> output_names;
+  output_names.reserve(node.outputs.size());
   for (auto out : node.outputs) {
     output_names.emplace_back(out->Name());
   }
@@ -565,9 +569,16 @@ void ReplaceAllReduceOp(const Node &node,
   all_reduce_op_desc.SetType("c_allreduce_sum");
   all_reduce_op_desc.SetInput("X", {all_reduce_var_name});
   all_reduce_op_desc.SetOutput("Out", {all_reduce_var_name});
-
-  int ring_id = platform::NCCLCommContext::Instance().GetRingId(
-      dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
+  int ring_id = -1;
+  if (FLAGS_dynamic_static_unified_comm) {
+    ring_id = phi::distributed::CommContextManager::GetInstance().GetRingId(
+        dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
+    VLOG(3) << "New CommContextManager gets ring_id: " << ring_id;
+  } else {
+    ring_id = platform::NCCLCommContext::Instance().GetRingId(
+        dynamic_cast<details::NCCLOpHandleBase *>(&op_handle)->GetComm());
+    VLOG(3) << "Old NCCLCommContext gets ring_id: " << ring_id;
+  }
   all_reduce_op_desc.SetAttr("ring_id", ring_id);
   all_reduce_op_desc.SetAttr("use_calc_stream", false);
   all_reduce_op_desc.SetAttr(OpProtoAndCheckerMaker::OpRoleAttrName(),
@@ -637,7 +648,7 @@ void UpdateControlOpSkipEagerDeletionVars(const Node &node,
     auto origin_program = graph.OriginProgram();
     auto &block = origin_program.Block(graph_idx);
     for (size_t j = 0; j < block.OpSize(); ++j) {
-      auto *op = block.Op(j);
+      auto *op = block.Op(static_cast<int>(j));
       if (op->Type() == control_type &&
           op->HasAttr("skip_eager_deletion_vars")) {
         if (op->InputArgumentNames() == node.Op()->InputArgumentNames() &&
@@ -705,10 +716,18 @@ static void GetGraphOpDesc(const std::vector<Node *> &nodes,
         ops->emplace_back(depend_desc);
         VLOG(4) << "add depend op";
       }
-      if (n->Name() == "while" || n->Name() == "while_grad" ||
-          n->Name() == "conditional_block" ||
-          n->Name() == "conditional_block_grad" || n->Name() == "recurrent" ||
-          n->Name() == "recurrent_grad") {
+
+      const std::unordered_set<std::string> control_flow_ops = {
+          "while",
+          "while_grad",
+          "conditional_block",
+          "conditional_block_grad",
+          "recurrent",
+          "recurrent_grad",
+          "pylayer",
+          "pylayer_grad"};
+
+      if (control_flow_ops.count(n->Name())) {
         VLOG(1) << "Update control op attr: skip_eager_deletion_vars";
         UpdateControlOpSkipEagerDeletionVars(*n, graph, graph_idx, n->Name());
       }
@@ -723,7 +742,7 @@ template <class T = Node *>
 static void GetGraphVarDesc(const Graph &graph,
                             const std::unordered_set<T> &nodes,
                             std::vector<proto::VarDesc> *vars) {
-  for (T node : nodes) {
+  for (T const &node : nodes) {
     if (node->IsVar() && node->Var() &&
         node->GetVarNodeBlockId() == graph.GetBlockId()) {
       vars->emplace_back(*node->Var()->Proto());
@@ -816,10 +835,10 @@ void GraphToProgram(const Graph &graph,
       if (idx == kRootBlockIndex) continue;
 
       if (static_cast<int>(idx) < program_pb.blocks_size()) {
-        block = program_pb.mutable_blocks(idx);
+        block = program_pb.mutable_blocks(idx);  // NOLINT
       } else {
         block = program_pb.add_blocks();
-        block->set_idx(idx);
+        block->set_idx(idx);  // NOLINT
         block->set_parent_idx(kRootBlockIndex);
       }
 

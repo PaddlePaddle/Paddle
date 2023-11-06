@@ -18,9 +18,9 @@ from typing import Optional
 import numpy as np
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
-# from eager_op_test import OpTest
+# from op_test import OpTest
 
 
 def np_nan_to_num(
@@ -79,15 +79,15 @@ class TestNanToNum(unittest.TestCase):
             exe = paddle.static.Executor(self.place)
             res = exe.run(feed={'X': x_np}, fetch_list=[out1, out2, out3, out4])
 
-        self.assertTrue(np.allclose(out1_np, res[0]))
-        self.assertTrue(np.allclose(out2_np, res[1]))
-        self.assertTrue(np.allclose(out3_np, res[2]))
-        self.assertTrue(np.allclose(out4_np, res[3]))
+        np.testing.assert_allclose(out1_np, res[0])
+        np.testing.assert_allclose(out2_np, res[1])
+        np.testing.assert_allclose(out3_np, res[2])
+        np.testing.assert_allclose(out4_np, res[3])
 
     def test_dygraph(self):
         paddle.disable_static(place=self.place)
 
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # NOTE(tiancaishaonvjituizi): float64 input fails the test
             x_np = np.array([[1, np.nan, -2], [np.inf, 0, -np.inf]]).astype(
                 np.float32
@@ -97,23 +97,23 @@ class TestNanToNum(unittest.TestCase):
 
             out_tensor = paddle.nan_to_num(x_tensor)
             out_np = np_nan_to_num(x_np)
-            self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
 
             out_tensor = paddle.nan_to_num(x_tensor, 1.0, None, None)
             out_np = np_nan_to_num(x_np, 1, None, None)
-            self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
 
             out_tensor = paddle.nan_to_num(x_tensor, 1.0, 2.0, None)
             out_np = np_nan_to_num(x_np, 1, 2, None)
-            self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
 
             out_tensor = paddle.nan_to_num(x_tensor, 1.0, None, -10.0)
             out_np = np_nan_to_num(x_np, 1, None, -10)
-            self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
 
             out_tensor = paddle.nan_to_num(x_tensor, 1.0, 100.0, -10.0)
             out_np = np_nan_to_num(x_np, 1, 100, -10)
-            self.assertTrue(np.allclose(out_tensor.numpy(), out_np))
+            np.testing.assert_allclose(out_tensor.numpy(), out_np)
 
         paddle.enable_static()
 
@@ -128,7 +128,7 @@ class TestNanToNum(unittest.TestCase):
         dx = paddle.grad(y, x_tensor)[0].numpy()
 
         np_grad = np_nan_to_num_grad(x_np, np.ones_like(x_np))
-        self.assertTrue(np.allclose(np_grad, dx))
+        np.testing.assert_allclose(np_grad, dx)
 
         paddle.enable_static()
 

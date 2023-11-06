@@ -19,7 +19,7 @@ import numpy as np
 from test_dist_fleet_base import FleetDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -37,8 +37,8 @@ margin = 0.1
 sample_rate = 1
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 
 def fake_simnet_reader():
@@ -68,17 +68,17 @@ def get_acc(cos_q_nt, cos_q_pt, batch_size):
 
 
 def get_loss(cos_q_pt, cos_q_nt):
+    fill_shape = [-1, 1]
+    fill_shape[0] = paddle.shape(cos_q_pt)[0].item()
+
     loss_op1 = paddle.subtract(
-        fluid.layers.fill_constant_batch_size_like(
-            input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
-        ),
+        paddle.full(shape=fill_shape, fill_value=margin, dtype='float32'),
         cos_q_pt,
     )
     loss_op2 = paddle.add(loss_op1, cos_q_nt)
+    fill_shape[0] = paddle.shape(cos_q_pt)[0].item()
     loss_op3 = paddle.maximum(
-        fluid.layers.fill_constant_batch_size_like(
-            input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
-        ),
+        paddle.full(shape=fill_shape, fill_value=0.0, dtype='float32'),
         loss_op2,
     )
     avg_cost = paddle.mean(loss_op3)
@@ -111,7 +111,7 @@ def train_network(
 
     reader = None
     if is_pyreader:
-        reader = fluid.io.PyReader(
+        reader = base.io.PyReader(
             feed_list=datas,
             capacity=64,
             iterable=False,
@@ -123,7 +123,7 @@ def train_network(
         input=q,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
         ),
@@ -139,7 +139,7 @@ def train_network(
     q_fc = paddle.static.nn.fc(
         x=q_ss,
         size=hid_dim,
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__q_fc__",
             learning_rate=base_lr,
@@ -151,7 +151,7 @@ def train_network(
         input=pt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
             learning_rate=emb_lr,
@@ -168,11 +168,11 @@ def train_network(
     pt_fc = paddle.static.nn.fc(
         x=pt_ss,
         size=hid_dim,
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__fc__",
         ),
-        bias_attr=fluid.ParamAttr(name="__fc_b__"),
+        bias_attr=base.ParamAttr(name="__fc_b__"),
     )
 
     # embedding
@@ -180,7 +180,7 @@ def train_network(
         input=nt,
         is_distributed=is_distributed,
         size=[dict_dim, emb_dim],
-        param_attr=fluid.ParamAttr(
+        param_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__emb__",
         ),
@@ -196,11 +196,11 @@ def train_network(
     nt_fc = paddle.static.nn.fc(
         x=nt_ss,
         size=hid_dim,
-        weight_attr=fluid.ParamAttr(
+        weight_attr=base.ParamAttr(
             initializer=paddle.nn.initializer.Constant(value=0.01),
             name="__fc__",
         ),
-        bias_attr=fluid.ParamAttr(name="__fc_b__"),
+        bias_attr=base.ParamAttr(name="__fc_b__"),
     )
     cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
     cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
@@ -235,7 +235,7 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
         with open(model_filename, "rb") as f:
             program_desc_str = f.read()
 
-        program = fluid.Program.parse_from_string(program_desc_str)
+        program = base.Program.parse_from_string(program_desc_str)
         with open(os.path.join(dirname, "__model__.proto"), "w") as wn:
             wn.write(str(program))
 
@@ -246,8 +246,8 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
             fleet(Fleet api): the fleet object of Parameter Server, define distribute training role
         """
 
-        exe = fluid.Executor(fluid.CPUPlace())
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(base.CPUPlace())
+        exe.run(base.default_startup_program())
         fleet.init_worker()
         batch_size = 4
         # reader
@@ -259,17 +259,15 @@ class TestDistSimnetBow2x2(FleetDistRunnerBase):
                 pass_start = time.time()
                 while True:
                     loss_val = exe.run(
-                        program=fluid.default_main_program(),
+                        program=base.default_main_program(),
                         fetch_list=[self.avg_cost.name],
                     )
                     loss_val = np.mean(loss_val)
-                    message = "TRAIN ---> pass: {} loss: {}\n".format(
-                        epoch_id, loss_val
-                    )
+                    message = f"TRAIN ---> pass: {epoch_id} loss: {loss_val}\n"
                     fleet.util.print_on_rank(message, 0)
 
                 pass_time = time.time() - pass_start
-            except fluid.core.EOFException:
+            except base.core.EOFException:
                 self.reader.reset()
 
     def do_dataset_training(self, fleet):

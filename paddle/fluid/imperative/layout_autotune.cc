@@ -25,35 +25,35 @@ namespace imperative {
 
 LayoutAutoTune::LayoutAutoTune() {
   const auto& op_info = paddle::framework::OpInfoMap::Instance().map();
-  for (auto it = op_info.begin(); it != op_info.end(); it++) {
+  for (const auto& info : op_info) {
     // only when op was not in Lightly、Heavily or Agnostic Set
-    if (IsLightlyLayoutSensitive(it->first) ||
-        IsHeavilyLayoutSensitive(it->first) || IsLayoutAgnostic(it->first)) {
-      VLOG(4) << "Already exists in Layout OP: " << it->first;
+    if (IsLightlyLayoutSensitive(info.first) ||
+        IsHeavilyLayoutSensitive(info.first) || IsLayoutAgnostic(info.first)) {
+      VLOG(4) << "Already exists in Layout OP: " << info.first;
       continue;
     }
 
     // only record forwrd operators
-    if (it->first.find("_grad") != std::string::npos) {
+    if (info.first.find("_grad") != std::string::npos) {
       continue;
     }
 
-    auto* attr_checker = it->second.Checker();
+    auto* attr_checker = info.second.Checker();
     bool layout_agnostic = true;
     if (attr_checker) {
       auto attrs = attr_checker->GetDefaultAttrMap();
       // Attribute name is fuzzy matched, such as start and start_axis.
       for (auto& attr : attrs) {
         auto attr_name = attr.first;
-        VLOG(6) << "OP: " << it->first << " Attr Name: " << attr_name;
+        VLOG(6) << "OP: " << info.first << " Attr Name: " << attr_name;
         if (attr_name.find("axis") != std::string::npos ||
             attr_name.find("axes") != std::string::npos ||
             attr_name.find("dim") != std::string::npos ||
             attr_name.find("start") != std::string::npos ||
             attr_name.find("end") != std::string::npos) {
-          VLOG(4) << "Lightly layout sensitive OP: " << it->first;
+          VLOG(4) << "Lightly layout sensitive OP: " << info.first;
           layout_agnostic = false;
-          lightly_layout_sensitive_ops_.emplace(it->first);
+          lightly_layout_sensitive_ops_.emplace(info.first);
           break;
         }
       }
@@ -61,23 +61,23 @@ LayoutAutoTune::LayoutAutoTune() {
       if ((attrs.find("data_format") != attrs.end() ||
            attrs.find("data_layout") != attrs.end()) &&
           layout_agnostic == true) {
-        VLOG(4) << "Heavily layout sensitive OP: " << it->first;
-        heavily_layout_sensitive_ops_.emplace(it->first);
-        layout_agnostic = false;
+        VLOG(4) << "Heavily layout sensitive OP: " << info.first;
+        heavily_layout_sensitive_ops_.emplace(info.first);
+        layout_agnostic = false;  // NOLINT
         continue;
       }
     }
 
     // some normalization operators such as instance_norm and layer_norm
     // do not have data_format attr, but are layout sensitive.
-    if (it->first.find("norm") != std::string::npos && layout_agnostic) {
-      lightly_layout_sensitive_ops_.emplace(it->first);
+    if (info.first.find("norm") != std::string::npos && layout_agnostic) {
+      lightly_layout_sensitive_ops_.emplace(info.first);
       continue;
     }
 
     if (layout_agnostic) {
-      VLOG(4) << "Layout agnostic_ops: " << it->first;
-      layout_agnostic_ops_.emplace(it->first);
+      VLOG(4) << "Layout agnostic_ops: " << info.first;
+      layout_agnostic_ops_.emplace(info.first);
     }
   }
 
@@ -159,7 +159,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
     const paddle::imperative::NameVarMap<VarType>& outs,
     paddle::framework::AttributeMap* attrs,
     const std::shared_ptr<imperative::Tracer>& tracer) {
-  if (!tracer->UseLayoutAutoTune()) {
+  if (!tracer->UseLayoutAutoTune() ||
+      op_type.find("_grad") != std::string::npos) {
     return ins;
   }
   // When layout autotuning is enabled, the tuner will check the desired layout.
@@ -191,7 +192,8 @@ paddle::imperative::NameVarMap<VarType> AutoTuneLayout(
           (conv_in_type == framework::proto::VarType::FP32);
       bool is_tune_fp16 =
           (PADDLE_GET_CONST(std::string, (*attrs)["data_format"]) == "NCHW") &&
-          (conv_in_type == framework::proto::VarType::FP16);
+          (conv_in_type == framework::proto::VarType::FP16 ||
+           conv_in_type == framework::proto::VarType::BF16);
       if (is_tune_fp32) {
         LayoutAutoTune::Instance().SetDesiredLayout(DataLayout::NCHW);
         LayoutAutoTune::Instance().SetDefaultLayout(DataLayout::NHWC);

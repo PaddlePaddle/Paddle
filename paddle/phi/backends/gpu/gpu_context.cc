@@ -66,7 +66,7 @@ class EigenGpuStreamDevice : public Eigen::StreamInterface {
   EigenGpuStreamDevice() : scratch_(nullptr), semaphore_(nullptr) {
     Eigen::initializeDeviceProp();
   }
-  ~EigenGpuStreamDevice() override {}
+  ~EigenGpuStreamDevice() override = default;
 
   void Reinitialize(gpuStream_t cuda_stream,
                     Allocator* allocator,
@@ -333,7 +333,7 @@ struct GPUContext::Impl {
   void InitEigenDevice() {
     PD_CHECK(allocator_ != nullptr,
              "the allocator for eigen device is nullptr.");
-    eigen_stream_.reset(new internal::EigenGpuStreamDevice());
+    eigen_stream_ = std::make_unique<internal::EigenGpuStreamDevice>();
     eigen_stream_->Reinitialize(stream(), allocator_, place_);
     eigen_device_ = new Eigen::GpuDevice(eigen_stream_.get());
   }
@@ -686,7 +686,7 @@ struct GPUContext::Impl {
   void AddStreamCallback(const std::function<void()>& callback) const {
     // NOTE(zhiqiu): better use threadpool here, otherwise "std::async" may
     // launch too many threads and result in thread oversubscription.
-    auto* callback_func = new std::function<void()>(std::move(callback));
+    auto* callback_func = new std::function<void()>(callback);
     auto* func = new std::function<void()>([this, callback_func] {
       std::lock_guard<std::mutex> lock(stream_call_back_mtx_);
       VLOG(4) << "Stream callback";
@@ -814,9 +814,9 @@ struct GPUContext::Impl {
 
 thread_local AttributeMap GPUContext::Impl::dnn_attrs_ = {};
 
-GPUContext::GPUContext(GPUContext&&) = default;
+GPUContext::GPUContext(GPUContext&&) = default;  // NOLINT
 
-GPUContext& GPUContext::operator=(GPUContext&&) = default;
+GPUContext& GPUContext::operator=(GPUContext&&) = default;  // NOLINT
 
 GPUContext::GPUContext(const GPUPlace& place, bool init, int stream_priority)
     : DeviceContext(), impl_(std::make_unique<Impl>(place)) {
@@ -919,17 +919,17 @@ ncclComm_t GPUContext::nccl_comm() const { return impl_->GetNcclComm(); }
 void GPUContext::set_nccl_comm(ncclComm_t comm) { impl_->SetNcclComm(comm); }
 
 void GPUContext::Init() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->Init();
 }
 
 void GPUContext::SetStream(gpuStream_t stream) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetStream(stream);
 }
 
 void GPUContext::SetCUDAStream(CUDAStream* stream, bool clear) {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->SetCUDAStream(stream, clear);
 }
 
@@ -1006,7 +1006,7 @@ void GPUContext::PartialInitWithoutAllocator(int stream_priority) {
 }
 
 void GPUContext::PartialInitWithAllocator() {
-  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());
+  impl_->allocator_ = const_cast<Allocator*>(&this->GetAllocator());  // NOLINT
   impl_->PartialInitWithAllocator();
 }
 

@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def channel_shuffle_np(x, groups, data_format="NCHW"):
@@ -107,21 +107,21 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
 
             res_2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
             )
 
-            assert np.allclose(res_1, self.out_1_np)
-            assert np.allclose(res_2, self.out_2_np)
+            np.testing.assert_allclose(res_1[0], self.out_1_np)
+            np.testing.assert_allclose(res_2[0], self.out_2_np)
 
     # same test between layer and functional in this op.
     def test_static_graph_layer(self):
@@ -147,21 +147,21 @@ class TestChannelShuffleAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             res_1 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_1_np},
                 fetch_list=out_1,
                 use_prune=True,
             )
 
             res_2 = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x2": self.x_2_np},
                 fetch_list=out_2,
                 use_prune=True,
             )
 
-            assert np.allclose(res_1, out_1_np)
-            assert np.allclose(res_2, out_2_np)
+            np.testing.assert_allclose(res_1[0], out_1_np)
+            np.testing.assert_allclose(res_2[0], out_2_np)
 
     def run_dygraph(self, groups, data_format):
         n, c, h, w = 2, 9, 4, 4
@@ -211,28 +211,28 @@ class TestChannelShuffleAPI(unittest.TestCase):
 class TestChannelShuffleError(unittest.TestCase):
     def test_error_functional(self):
         def error_input():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3)
 
         self.assertRaises(ValueError, error_input)
 
         def error_groups_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), 3.33)
 
         self.assertRaises(TypeError, error_groups_1)
 
         def error_groups_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(paddle.to_tensor(x), -1)
 
         self.assertRaises(ValueError, error_groups_2)
 
         def error_data_format():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 channel_shuffle = F.channel_shuffle(
                     paddle.to_tensor(x), 3, "WOW"
@@ -242,7 +242,7 @@ class TestChannelShuffleError(unittest.TestCase):
 
     def test_error_layer(self):
         def error_input_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3)
                 cs(paddle.to_tensor(x))
@@ -250,21 +250,21 @@ class TestChannelShuffleError(unittest.TestCase):
         self.assertRaises(ValueError, error_input_layer)
 
         def error_groups_layer_1():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3.33)
 
         self.assertRaises(TypeError, error_groups_layer_1)
 
         def error_groups_layer_2():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(-1)
 
         self.assertRaises(ValueError, error_groups_layer_2)
 
         def error_data_format_layer():
-            with paddle.fluid.dygraph.guard():
+            with paddle.base.dygraph.guard():
                 x = np.random.random([2, 9, 4, 4]).astype("float64")
                 cs = paddle.nn.ChannelShuffle(3, "MEOW")
 

@@ -15,9 +15,9 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
-from paddle.fluid import core
+from paddle.base import core
 
 np.random.random(123)
 
@@ -47,12 +47,10 @@ class TestFusedMultiHeadMatmulOp_biasqk2(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (
-            np.random.random((self.batch_size, h, w)).astype("float32") - 0.5
-        )
-        self.WQ = np.random.random((w, w)).astype("float32")
-        self.KQ = np.random.random((w, w)).astype("float32")
-        self.VQ = np.random.random((w, w)).astype("float32")
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
+        self.WQ = np.eye(w).astype("float32")
+        self.KQ = np.eye(w).astype("float32")
+        self.VQ = np.eye(w).astype("float32")
         self.CombinedW = np.hstack((self.WQ, self.KQ, self.VQ)).reshape(
             (w, 3, w)
         )
@@ -154,12 +152,10 @@ class TestFusedMultiheadMatmulOp(OpTest):
         self.config()
         h = self.seq_len
         w = self.head_number * self.size_per_head
-        self.Input = (
-            np.random.random((self.batch_size, h, w)).astype("float32") - 0.5
-        )
-        self.WQ = np.random.random((w, w)).astype("float32")
-        self.KQ = np.random.random((w, w)).astype("float32")
-        self.VQ = np.random.random((w, w)).astype("float32")
+        self.Input = np.random.random((self.batch_size, h, w)).astype("float32")
+        self.WQ = np.eye(w).astype("float32")
+        self.KQ = np.eye(w).astype("float32")
+        self.VQ = np.eye(w).astype("float32")
         self.CombinedW = np.hstack((self.WQ, self.KQ, self.VQ)).reshape(
             (w, 3, w)
         )

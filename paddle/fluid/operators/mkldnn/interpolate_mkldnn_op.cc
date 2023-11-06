@@ -19,11 +19,7 @@ namespace paddle {
 namespace operators {
 
 using dnnl::memory;
-using dnnl::primitive;
-using dnnl::reorder;
 using dnnl::resampling_forward;
-using dnnl::stream;
-using phi::DataLayout;
 using OneDNNMemoryFormat = dnnl::memory::format_tag;
 
 template <typename T = float>
@@ -70,7 +66,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
 
     auto list_new_size_tensor = ctx.MultiInput<phi::DenseTensor>("SizeTensor");
     auto out_size = ctx.Input<phi::DenseTensor>("OutSize");
-    if (list_new_size_tensor.size() > 0) {
+    if (!list_new_size_tensor.empty()) {
       auto new_size = get_new_shape(list_new_size_tensor);
       if (new_size.size() == out_dims.size()) {
         out_dims = new_size;
@@ -97,7 +93,7 @@ class InterpolateOneDNNKernel : public framework::OpKernel<T> {
           scale.push_back(scale[0]);
         } else {  // v2
           std::vector<float> scale_attr = ctx.Attr<std::vector<float>>("scale");
-          if (scale_attr.size() > 0) {
+          if (!scale_attr.empty()) {
             scale.resize(3, scale_attr[0]);
             std::copy(scale_attr.begin(), scale_attr.end(), scale.begin());
           }

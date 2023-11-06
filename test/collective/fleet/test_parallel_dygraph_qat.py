@@ -18,7 +18,7 @@ import subprocess
 import time
 import unittest
 
-from paddle import fluid
+from paddle import base
 from paddle.distributed.utils.launch_utils import (
     TrainerProc,
     find_free_ports,
@@ -107,8 +107,8 @@ def start_local_trainers(
 class TestMultipleGpus(unittest.TestCase):
     def run_2gpu(self, target_file_name, eager_mode=True):
         if (
-            not fluid.core.is_compiled_with_cuda()
-            or fluid.core.get_cuda_device_count() == 0
+            not base.core.is_compiled_with_cuda()
+            or base.core.get_cuda_device_count() == 0
         ):
             return
 

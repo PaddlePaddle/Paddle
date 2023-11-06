@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle import fluid
-from paddle.fluid.framework import Variable
+from paddle import base
+from paddle.base.framework import Variable
 
 
 def cyclic_reader(reader):
@@ -45,5 +45,5 @@ class FeedDataReader:
         return feed_data
 
     def get_next(self, exe, program):
-        assert isinstance(exe, fluid.Executor), "exe must be Executor"
+        assert isinstance(exe, base.Executor), "exe must be Executor"
         return self._feed_executor()

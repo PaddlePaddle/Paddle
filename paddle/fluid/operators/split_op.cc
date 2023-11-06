@@ -65,18 +65,18 @@ class SplitOp : public framework::OperatorWithKernel {
     if (ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
       Variable *var =
           PADDLE_GET_CONST(Variable *, ctx->GetInputVarPtrs("AxisTensor")[0]);
-      axis_final = std::move(framework::MakePhiScalarFromVar(*var));
+      axis_final = framework::MakePhiScalarFromVar(*var);
     } else if (!ctx->IsRuntime() && ctx->HasInput("AxisTensor")) {
-      axis_final = std::move(phi::Scalar(-1));
+      axis_final = phi::Scalar(-1);
       axis_final.SetFromTensor(true);
     } else {
-      axis_final = std::move(phi::Scalar(axis));
+      axis_final = phi::Scalar(axis);
     }
 
     // Construct sections_final
     if (ctx->IsRuntime() && ctx->HasInputs("SectionsTensorList")) {
       int sections_tensor_list_size =
-          ctx->GetInputVarPtrs("SectionsTensorList").size();
+          static_cast<int>(ctx->GetInputVarPtrs("SectionsTensorList").size());
       const paddle::small_vector<framework::InferShapeVarPtr,
                                  phi::kInputSmallVectorSize>
           &sections_varptr_list = ctx->GetInputVarPtrs("SectionsTensorList");
@@ -94,7 +94,7 @@ class SplitOp : public framework::OperatorWithKernel {
     } else {
       sections_final = std::move(phi::IntArray(sections));
     }
-    if (sections.size() > 0) {
+    if (!sections.empty()) {
       if (ctx->IsRuntime()) {
         phi::SplitInferMeta(
             x, sections_final, axis_final, out_ptr, {true, false});
@@ -117,7 +117,7 @@ class SplitOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
       // OneDNN uses blocking format, which cannot be always supported with
       // reorders, because if blocked dimension is not divisible by 8 or

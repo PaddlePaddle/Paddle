@@ -330,25 +330,25 @@ DeviceMesh DeviceMesh::from_proto(const DeviceMeshProto &proto) {
   mesh.name_ = proto.name();
 
   mesh.shape_.resize(proto.shape_size());
-  for (int64_t i = 0; i < proto.shape_size(); ++i) {
+  for (int i = 0; i < proto.shape_size(); ++i) {
     mesh.shape_[i] = proto.shape(i);
   }
 
   mesh.device_ids_.resize(proto.device_ids_size());
-  for (int64_t i = 0; i < proto.device_ids_size(); ++i) {
+  for (int i = 0; i < proto.device_ids_size(); ++i) {
     mesh.device_ids_[i] = proto.device_ids(i);
   }
 
   mesh.dim_names_.resize(proto.dim_names_size());
-  for (int64_t i = 0; i < proto.dim_names_size(); ++i) {
+  for (int i = 0; i < proto.dim_names_size(); ++i) {
     mesh.dim_names_[i] = proto.dim_names(i);
   }
 
-  for (int64_t i = 0; i < proto.devices_size(); ++i) {
+  for (int i = 0; i < proto.devices_size(); ++i) {
     mesh.add_device(Device::from_proto(proto.devices(i)));
   }
 
-  for (int64_t i = 0; i < proto.links_size(); ++i) {
+  for (int i = 0; i < proto.links_size(); ++i) {
     mesh.add_link(Link::from_proto(proto.links(i)));
   }
 

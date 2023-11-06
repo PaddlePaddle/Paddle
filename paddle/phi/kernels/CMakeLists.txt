@@ -44,6 +44,10 @@ if(APPLE OR WIN32)
   list(REMOVE_ITEM kernel_cu "fusion/gpu/fusion_group_kernel.cu")
 endif()
 
+if(NOT WITH_DGC)
+  list(REMOVE_ITEM kernel_cu "gpu/dgc_kernel.cu")
+endif()
+
 if(DEFINED REDUCE_INFERENCE_LIB_SIZE)
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cc$")
   list(FILTER kernel_cu EXCLUDE REGEX ".*_grad_kernel\\.cu$")
@@ -65,6 +69,13 @@ if(WITH_CUTLASS)
       --cuda_arch "${NVCC_ARCH_BIN}"
     RESULT_VARIABLE memory_efficient_attention_gen_res)
 
+  execute_process(
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${PADDLE_SOURCE_DIR}/paddle/phi/kernels/fusion/cutlass/memory_efficient_attention/generate_variable_forward_kernels.py
+      --cuda_arch "${NVCC_ARCH_BIN}"
+    RESULT_VARIABLE memory_efficient_attention_gen_res)
+
   if(NOT memory_efficient_attention_gen_res EQUAL 0)
     message(
       FATAL_ERROR
@@ -72,13 +83,32 @@ if(WITH_CUTLASS)
     )
   endif()
 
+  execute_process(
+    COMMAND
+      ${CMAKE_COMMAND} -E make_directory
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen"
+    COMMAND ${PYTHON_EXECUTABLE} generic_mixed_gemm_kernelLauncher.py
+            --cuda_arch "${NVCC_ARCH_BIN}"
+    WORKING_DIRECTORY
+      "${CMAKE_CURRENT_SOURCE_DIR}/fusion/cutlass/cutlass_kernels/fpA_intB_gemm"
+  )
+
   file(
     GLOB cutlass_cu
     RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
-    "fusion/cutlass/conv2d/generated/*.cu" "fusion/cutlass/conv2d/*.cu"
+    "fusion/cutlass/conv2d/generated/*.cu"
+    "fusion/cutlass/conv2d/*.cu"
     "fusion/cutlass/*.cu"
-    "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu")
+    "fusion/cutlass/memory_efficient_attention/autogen/impl/*.cu"
+    "fusion/cutlass/memory_efficient_attention/autogen_variable/impl/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/autogen/*.cu"
+    "fusion/cutlass/cutlass_kernels/fpA_intB_gemm/*.cu")
   list(APPEND kernel_cu ${cutlass_cu})
+endif()
+
+if(NOT WITH_CUDNN_FRONTEND)
+  list(REMOVE_ITEM kernel_cu
+       "fusion/gpu/fused_scale_bias_relu_conv_bnstats_kernel.cu")
 endif()
 
 set(cc_search_pattern
@@ -95,6 +125,7 @@ set(cc_search_pattern
     "strings/*.cc"
     "strings/cpu/*.cc"
     "fusion/*.cc"
+    "stride/*.cc"
     "fusion/cpu/*.cc")
 
 if(WITH_MKLDNN)

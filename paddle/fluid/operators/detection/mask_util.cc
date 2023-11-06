@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/detection/mask_util.h"
 
-#include <math.h>
-#include <stdlib.h>
+#include <cmath>
+#include <cstdlib>
 
 #include "paddle/fluid/memory/memory.h"
 
@@ -42,30 +42,33 @@ void Decode(const uint32_t* cnts, int m, uint8_t* mask) {
 
 typedef uint32_t uint;
 void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
-  int j, m = 0;
+  int j = 0, m = 0;
   double scale = 5;
-  int *x, *y, *u, *v;
-  uint *a, *b;
+  int *x = nullptr, *y = nullptr, *u = nullptr, *v = nullptr;
+  uint *a = nullptr, *b = nullptr;
   platform::CPUPlace cpu;
   auto xptr = memory::Alloc(cpu, sizeof(int) * (k + 1) * 2);
   x = reinterpret_cast<int*>(xptr->ptr());
   y = x + (k + 1);
 
-  for (j = 0; j < k; j++) x[j] = static_cast<int>(scale * xy[j * 2 + 0] + .5);
+  for (j = 0; j < k; j++)
+    x[j] = static_cast<int>(std::lround(scale * xy[j * 2 + 0]));
   x[k] = x[0];
-  for (j = 0; j < k; j++) y[j] = static_cast<int>(scale * xy[j * 2 + 1] + .5);
+  for (j = 0; j < k; j++)
+    y[j] = static_cast<int>(std::lround(scale * xy[j * 2 + 1]));
   y[k] = y[0];
   for (j = 0; j < k; j++) {
-    m += UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1;
+    m += static_cast<int>(UMax(abs(x[j] - x[j + 1]), abs(y[j] - y[j + 1])) + 1);
   }
   auto vptr = memory::Alloc(cpu, sizeof(int) * m * 2);
   u = reinterpret_cast<int*>(vptr->ptr());
   v = u + m;
   m = 0;
   for (j = 0; j < k; j++) {
-    int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], dx, dy, t, d;
-    int flip;
-    double s;
+    int xs = x[j], xe = x[j + 1], ys = y[j], ye = y[j + 1], dx = 0, dy = 0,
+        t = 0, d = 0;
+    int flip = 0;
+    double s = NAN;
     dx = abs(xe - xs);
     dy = abs(ys - ye);
     flip = (dx >= dy && xs > xe) || (dx < dy && ys > ye);
@@ -82,7 +85,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dx; d++) {
         t = flip ? dx - d : d;
         u[m] = t + xs;
-        v[m] = static_cast<int>(ys + s * t + .5);
+        v[m] = static_cast<int>(std::lround(ys + s * t));
         m++;
       }
     } else {
@@ -90,7 +93,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
       for (d = 0; d <= dy; d++) {
         t = flip ? dy - d : d;
         v[m] = t + ys;
-        u[m] = static_cast<int>(xs + s * t + .5);
+        u[m] = static_cast<int>(std::lround(xs + s * t));
         m++;
       }
     }
@@ -98,7 +101,7 @@ void Poly2Mask(const float* xy, int k, int h, int w, uint8_t* mask) {
   /* get points along y-boundary and downsample */
   k = m;
   m = 0;
-  double xd, yd;
+  double xd = NAN, yd = NAN;
   auto xyptr = memory::Alloc(cpu, sizeof(int) * k * 2);
   x = reinterpret_cast<int*>(xyptr->ptr());
   y = x + k;
@@ -167,12 +170,12 @@ void Poly2Boxes(const std::vector<std::vector<std::vector<float>>>& polys,
     float y0 = std::numeric_limits<float>::max();
     float y1 = std::numeric_limits<float>::min();
     // each list may have more than one polys
-    for (size_t j = 0; j < polys[i].size(); ++j) {
-      for (size_t k = 0; k < polys[i][j].size() / 2; ++k) {
-        x0 = std::min(x0, polys[i][j][2 * k]);
-        x1 = std::max(x1, polys[i][j][2 * k]);
-        y0 = std::min(y0, polys[i][j][2 * k + 1]);
-        y1 = std::max(y1, polys[i][j][2 * k + 1]);
+    for (const auto& item : polys[i]) {
+      for (size_t k = 0; k < item.size() / 2; ++k) {
+        x0 = std::min(x0, item[2 * k]);
+        x1 = std::max(x1, item[2 * k]);
+        y0 = std::min(y0, item[2 * k + 1]);
+        y1 = std::max(y1, item[2 * k + 1]);
       }
     }
     boxes[i * 4] = x0;
@@ -191,19 +194,30 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
   w = std::max(w, static_cast<float>(1.));
   h = std::max(h, static_cast<float>(1.));
 
-  uint8_t* msk = nullptr;
+  // short-circuit for case "polygons.size() == 1"
   if (polygons.size() == 1UL) {
-    msk = mask;
-  } else {
-    msk = reinterpret_cast<uint8_t*>(
-        malloc(M * M * polygons.size() * sizeof(uint8_t)));
-  }
-  for (size_t i = 0; i < polygons.size(); ++i) {
-    int k = polygons[i].size() / 2;
+    int k = static_cast<int>(polygons[0].size() / 2);
     std::vector<float> p;
     for (int j = 0; j < k; ++j) {
-      float pw = (polygons[i][2 * j] - box[0]) * M / w;
-      float ph = (polygons[i][2 * j + 1] - box[1]) * M / h;
+      float pw = (polygons[0][2 * j] - box[0]) * M / w;      // NOLINT
+      float ph = (polygons[0][2 * j + 1] - box[1]) * M / h;  // NOLINT
+      p.push_back(pw);
+      p.push_back(ph);
+    }
+    Poly2Mask(p.data(), k, M, M, mask);
+
+    return;
+  }
+
+  uint8_t* msk = reinterpret_cast<uint8_t*>(
+      malloc(M * M * polygons.size() * sizeof(uint8_t)));  // NOLINT
+
+  for (size_t i = 0; i < polygons.size(); ++i) {
+    int k = static_cast<int>(polygons[i].size() / 2);
+    std::vector<float> p;
+    for (int j = 0; j < k; ++j) {
+      float pw = (polygons[i][2 * j] - box[0]) * M / w;      // NOLINT
+      float ph = (polygons[i][2 * j + 1] - box[1]) * M / h;  // NOLINT
       p.push_back(pw);
       p.push_back(ph);
     }
@@ -211,19 +225,17 @@ void Polys2MaskWrtBox(const std::vector<std::vector<float>>& polygons,
     Poly2Mask(p.data(), k, M, M, msk_i);
   }
 
-  if (polygons.size() > 1UL) {
-    for (size_t i = 0; i < polygons.size(); ++i) {
-      uint8_t* msk_i = msk + i * M * M;
-      for (int j = 0; j < M * M; ++j) {
-        if (i == 0) {
-          mask[j] = msk_i[j];
-        } else {
-          mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
-        }
+  for (size_t i = 0; i < polygons.size(); ++i) {
+    uint8_t* msk_i = msk + i * M * M;
+    for (int j = 0; j < M * M; ++j) {
+      if (i == 0) {
+        mask[j] = msk_i[j];
+      } else {
+        mask[j] = (mask[j] + msk_i[j]) > 0 ? 1 : 0;
       }
     }
-    free(msk);
   }
+  free(msk);  // NOLINT
 }
 
 }  // namespace operators

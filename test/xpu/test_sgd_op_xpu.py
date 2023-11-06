@@ -24,8 +24,8 @@ from op import Operator
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 class XPUTestSgdOp(XPUOpTestWrapper):
@@ -76,13 +76,13 @@ class TestSGDOpWithLargeInput(unittest.TestCase):
 
         cost = paddle.nn.functional.square_error_cost(input=out, label=label)
         avg_cost = paddle.mean(cost)
-        sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+        sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
         sgd_optimizer.minimize(avg_cost)
 
         place = paddle.XPUPlace(0)
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        result = exe.run(fluid.default_main_program(), fetch_list=[avg_cost])
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
+        result = exe.run(base.default_main_program(), fetch_list=[avg_cost])
 
 
 class TestSparseSGDOp(unittest.TestCase):

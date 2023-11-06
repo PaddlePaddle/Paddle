@@ -53,13 +53,13 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     auto &rank_table = rank_table_var->Get<framework::LoDRankTable>();
 
     auto &rank_items = rank_table.items();
-    int dst_num_rows =
+    int dst_num_rows = static_cast<int>(
         std::lower_bound(rank_items.begin(),
                          rank_items.end(),
                          offset,
                          [](const framework::LoDRankTable::TableItem &a,
                             size_t b) { return a.length > b; }) -
-        rank_items.begin();
+        rank_items.begin());
 
     auto *out_var = scope.FindVar(Output("Out"));
     PADDLE_ENFORCE_NOT_NULL(
@@ -71,7 +71,7 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     size_t height = dst_num_rows;
 
     // do shrink for the top level LoD
-    if (x_tensor.lod().size() > 0 &&
+    if (!x_tensor.lod().empty() &&
         x_tensor.lod()[0].size() > static_cast<size_t>(dst_num_rows)) {
       auto lod_offset = framework::GetSubLoDAndAbsoluteOffset(
           x_tensor.lod(), 0, dst_num_rows, 0);
@@ -83,8 +83,10 @@ class ShrinkRNNMemoryOp : public ArrayOp {
     if (dst_num_rows != 0) {
       out_tensor.mutable_data(place, x_tensor.dtype());
       auto dev_ctx = platform::DeviceContextPool::Instance().Get(place);
-      framework::TensorCopy(
-          x_tensor.Slice(0, height), place, *dev_ctx, &out_tensor);
+      framework::TensorCopy(x_tensor.Slice(0, static_cast<int64_t>(height)),
+                            place,
+                            *dev_ctx,
+                            &out_tensor);
     }
   }
 };

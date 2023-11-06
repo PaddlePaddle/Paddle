@@ -15,6 +15,7 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle.jit import to_static
@@ -49,7 +50,7 @@ class NetWithParameterListIter(NetWithParameterList):
         return out
 
 
-class TestParameterList(unittest.TestCase):
+class TestParameterList(Dy2StTestBase):
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -74,14 +75,10 @@ class TestParameterList(unittest.TestCase):
 
         return loss
 
+    @test_legacy_and_pir
     def test_parameter_list(self):
         static_loss = self.train(False, to_static=True)
         dygraph_loss = self.train(False, to_static=False)
-        np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
-
-    def test_parameter_list_iter(self):
-        static_loss = self.train(True, to_static=True)
-        dygraph_loss = self.train(True, to_static=False)
         np.testing.assert_allclose(dygraph_loss, static_loss, rtol=1e-05)
 
 
@@ -105,7 +102,7 @@ class NetWithRawParamList(paddle.nn.Layer):
         return out
 
 
-class TestRawParameterList(unittest.TestCase):
+class TestRawParameterList(Dy2StTestBase):
     def setUp(self):
         self.seed = 2021
         self.iter_num = 5
@@ -131,6 +128,7 @@ class TestRawParameterList(unittest.TestCase):
 
         return loss
 
+    @test_legacy_and_pir
     def test_parameter_list(self):
         static_loss = self.train(to_static=True)
         dygraph_loss = self.train(to_static=False)

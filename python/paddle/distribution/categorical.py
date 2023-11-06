@@ -15,9 +15,9 @@
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import check_type, convert_dtype
+from paddle.base.framework import Variable
 from paddle.distribution import distribution
-from paddle.fluid.data_feeder import check_type, convert_dtype
-from paddle.fluid.layers import tensor
 from paddle.framework import in_dynamic_mode
 from paddle.tensor import multinomial
 
@@ -64,14 +64,12 @@ class Categorical(distribution.Distribution):
             >>> cat = Categorical(x)
             >>> cat2 = Categorical(y)
 
-            >>> # doctest: +SKIP
             >>> paddle.seed(1000) # on CPU device
             >>> print(cat.sample([2,3]))
             Tensor(shape=[2, 3], dtype=int64, place=Place(cpu), stop_gradient=True,
             [[0, 1, 5],
             [3, 4, 5]])
 
-            >>> # doctest: -SKIP
             >>> print(cat.entropy())
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             1.77528250)
@@ -100,7 +98,7 @@ class Categorical(distribution.Distribution):
             check_type(
                 logits,
                 'logits',
-                (np.ndarray, tensor.Variable, list, tuple),
+                (np.ndarray, Variable, list, tuple),
                 'Categorical',
             )
 

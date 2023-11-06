@@ -23,9 +23,10 @@ from get_test_cover_info import (
 )
 from op_test_xpu import XPUOpTest
 from test_attribute_var import UnittestBase
+from utils import static_guard
 
 import paddle
-from paddle.fluid import Program, program_guard
+from paddle.base import Program, program_guard
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -101,7 +102,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
     class TestPadOpError(unittest.TestCase):
         def test_errors(self):
-            with paddle.fluid.framework._static_guard():
+            with static_guard():
                 with program_guard(Program(), Program()):
                     input_data = np.random.random((2, 2)).astype("float32")
 
@@ -123,7 +124,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
             )
 
         def test_static(self):
-            with paddle.fluid.framework._static_guard():
+            with static_guard():
                 main_prog = Program()
                 starup_prog = Program()
                 with program_guard(main_prog, starup_prog):
@@ -182,7 +183,7 @@ class XPUTestPadOp(XPUOpTestWrapper):
 
     class TestPaddingValueTensor3(unittest.TestCase):
         def test_static(self):
-            with paddle.fluid.framework._static_guard():
+            with static_guard():
                 np_x = np.random.random((16, 16)).astype('float32')
                 main_prog = Program()
                 starup_prog = Program()

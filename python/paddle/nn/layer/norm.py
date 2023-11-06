@@ -35,9 +35,15 @@ import numpy as np
 from paddle import _C_ops, in_dynamic_mode
 from paddle.device import get_all_custom_device_type
 
-from ...fluid import dygraph_utils
-from ...fluid.data_feeder import check_variable_and_dtype
-from ...framework import ParamAttr, _global_flags, get_default_dtype, no_grad
+from ...base import dygraph_utils
+from ...base.data_feeder import check_variable_and_dtype
+from ...framework import (
+    ParamAttr,
+    _global_flags,
+    get_default_dtype,
+    in_dynamic_or_pir_mode,
+    no_grad,
+)
 from .. import functional as F
 from ..functional import batch_norm, instance_norm, layer_norm
 from ..initializer import Constant, Normal
@@ -109,9 +115,7 @@ class _InstanceNormBase(Layer):
         )
 
     def extra_repr(self):
-        return 'num_features={}, epsilon={}'.format(
-            self._num_features, self._epsilon
-        )
+        return f'num_features={self._num_features}, epsilon={self._epsilon}'
 
 
 class InstanceNorm1D(_InstanceNormBase):
@@ -165,14 +169,18 @@ class InstanceNorm1D(_InstanceNormBase):
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 2, 3))
+            >>> instance_norm = paddle.nn.InstanceNorm1D(2)
+            >>> instance_norm_out = instance_norm(x)
 
-          x = paddle.rand((2, 2, 3))
-          instance_norm = paddle.nn.InstanceNorm1D(2)
-          instance_norm_out = instance_norm(x)
-
-          print(instance_norm_out)
-
+            >>> print(instance_norm_out)
+            Tensor(shape=[2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[ 1.32132232, -0.22444785, -1.09687424],
+              [ 1.29506636, -0.15688568, -1.13818073]],
+             [[-0.27764025,  1.33961368, -1.06197333],
+              [ 0.44484580, -1.38489723,  0.94005162]]])
     """
 
     def __init__(
@@ -198,9 +206,7 @@ class InstanceNorm1D(_InstanceNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -255,13 +261,22 @@ class InstanceNorm2D(_InstanceNormBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 2, 2, 3))
+            >>> instance_norm = paddle.nn.InstanceNorm2D(2)
+            >>> instance_norm_out = instance_norm(x)
 
-            x = paddle.rand((2, 2, 2, 3))
-            instance_norm = paddle.nn.InstanceNorm2D(2)
-            instance_norm_out = instance_norm(x)
-
-            print(instance_norm_out)
+            >>> print(instance_norm_out)
+            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[ 1.26652932, -0.60229748, -1.65705574],
+               [ 1.06272733,  0.24229208, -0.31219524]],
+              [[-0.85414171,  0.31684181, -1.42204332],
+               [ 1.00412714, -0.43966094,  1.39487720]]],
+             [[[ 0.83324969,  1.25046813, -0.79470295],
+               [-1.38446140,  0.81851846, -0.72307163]],
+              [[-0.33560610,  0.95346332,  0.45585334],
+               [-0.53483474,  1.20336461, -1.74224067]]]])
     """
 
     def __init__(
@@ -342,13 +357,30 @@ class InstanceNorm3D(_InstanceNormBase):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 2, 2, 2, 3))
+            >>> instance_norm = paddle.nn.InstanceNorm3D(2)
+            >>> instance_norm_out = instance_norm(x)
 
-            x = paddle.rand((2, 2, 2, 2, 3))
-            instance_norm = paddle.nn.InstanceNorm3D(2)
-            instance_norm_out = instance_norm(x)
-
-            print(instance_norm_out.numpy)
+            >>> print(instance_norm_out)
+            Tensor(shape=[2, 2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[[ 0.60520107, -0.67670596, -1.40020907],
+                [ 0.46540472, -0.09736639, -0.47771260]],
+               [[-0.74365318,  0.63718963, -1.41333199],
+                [ 1.44764769, -0.25489071,  1.90842640]]],
+              [[[ 1.09773374,  1.49568439, -0.45503727],
+                [-1.01755965,  1.08368278, -0.38671401]],
+               [[-0.62252384,  0.60490805,  0.13109155],
+                [-0.81222630,  0.84286022, -1.96189928]]]],
+             [[[[ 0.28014541,  0.91674680,  1.71797717],
+                [-0.52062720, -0.74274176, -0.86439967]],
+               [[ 0.25707796, -1.23866379,  1.64422870],
+                [-1.48577297, -0.13187379,  0.16790220]]],
+              [[[-1.49266160,  1.57909954,  0.46455818],
+                [-0.14981404,  1.46959865,  0.24957968]],
+               [[ 0.25134835, -0.03276967, -0.30318922],
+                [ 0.76263177, -1.11345232, -1.68492818]]]]])
     """
 
     def __init__(
@@ -410,13 +442,38 @@ class GroupNorm(Layer):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
+            >>> group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
+            >>> group_norm_out = group_norm(x)
 
-            x = paddle.arange(48, dtype="float32").reshape((2, 6, 2, 2))
-            group_norm = paddle.nn.GroupNorm(num_channels=6, num_groups=6)
-            group_norm_out = group_norm(x)
-
-            print(group_norm_out)
+            >>> print(group_norm_out)
+            Tensor(shape=[2, 6, 2, 2], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]]],
+             [[[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]],
+              [[-1.34163547, -0.44721183],
+               [ 0.44721183,  1.34163547]]]])
     """
 
     def __init__(
@@ -511,7 +568,11 @@ class GroupNorm(Layer):
                 "Mean": mean_out,
                 "Variance": variance_out,
             },
-            attrs={"epsilon": self._epsilon, "groups": self._num_groups},
+            attrs={
+                "epsilon": self._epsilon,
+                "groups": self._num_groups,
+                "data_layout": self._data_format,
+            },
         )
 
         return self._helper.append_activation(group_norm_out, None)
@@ -571,13 +632,22 @@ class LayerNorm(Layer):
 
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 2, 2, 3))
+            >>> layer_norm = paddle.nn.LayerNorm(x.shape[1:])
+            >>> layer_norm_out = layer_norm(x)
 
-          x = paddle.rand((2, 2, 2, 3))
-          layer_norm = paddle.nn.LayerNorm(x.shape[1:])
-          layer_norm_out = layer_norm(x)
-
-          print(layer_norm_out)
+            >>> print(layer_norm_out)
+            Tensor(shape=[2, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[ 0.60520101, -0.67670590, -1.40020895],
+               [ 0.46540466, -0.09736638, -0.47771254]],
+              [[-0.74365306,  0.63718957, -1.41333175],
+               [ 1.44764745, -0.25489068,  1.90842617]]],
+             [[[ 1.09773350,  1.49568415, -0.45503747],
+               [-1.01755989,  1.08368254, -0.38671425]],
+              [[-0.62252408,  0.60490781,  0.13109133],
+               [-0.81222653,  0.84285998, -1.96189952]]]])
     """
 
     def __init__(
@@ -624,9 +694,7 @@ class LayerNorm(Layer):
         )
 
     def extra_repr(self):
-        return 'normalized_shape={}, epsilon={}'.format(
-            self._normalized_shape, self._epsilon
-        )
+        return f'normalized_shape={self._normalized_shape}, epsilon={self._epsilon}'
 
 
 class _BatchNormBase(Layer):
@@ -659,46 +727,25 @@ class _BatchNormBase(Layer):
         param_shape = [num_features]
 
         # create parameter
-        if weight_attr is False:
-            self.weight = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(1.0),
-            )
-            self.weight.stop_gradient = True
-        else:
+        if weight_attr is not False:
             self.weight = self.create_parameter(
                 attr=self._weight_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 default_initializer=Constant(1.0),
             )
-            self.weight.stop_gradient = (
-                self._weight_attr is not None
-                and self._weight_attr.learning_rate == 0.0
-            )
 
-        if bias_attr is False:
-            self.bias = self.create_parameter(
-                attr=None,
-                shape=param_shape,
-                dtype=self._dtype,
-                default_initializer=Constant(0.0),
-                is_bias=True,
-            )
-            self.bias.stop_gradient = True
         else:
+            self.weight = None
+        if bias_attr is not False:
             self.bias = self.create_parameter(
                 attr=self._bias_attr,
                 shape=param_shape,
                 dtype=self._dtype,
                 is_bias=True,
             )
-            self.bias.stop_gradient = (
-                self._bias_attr is not None
-                and self._bias_attr.learning_rate == 0.0
-            )
+        else:
+            self.bias = None
 
         moving_mean_name = None
         moving_variance_name = None
@@ -826,8 +873,8 @@ class BatchNorm(Layer):
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
 
-    When use_global_stats = True, the :math:`\\mu_{\\beta}`
-    and :math:`\\sigma_{\\beta}^{2}` are not the statistics of one mini-batch.
+    When use_global_stats = True, the :math:`\mu_{\beta}`
+    and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
     pre-trained model. Calculated as follows:
 
@@ -887,17 +934,17 @@ class BatchNorm(Layer):
     Examples:
         .. code-block:: python
 
-          import paddle.fluid as fluid
-          import paddle.nn as nn
-          from paddle.fluid.dygraph.base import to_variable
-          import numpy as np
+            >>> import paddle.base as base
+            >>> import paddle.nn as nn
+            >>> from paddle.base.dygraph.base import to_variable
+            >>> import numpy as np
 
 
-          x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
-          with fluid.dygraph.guard():
-              x = to_variable(x)
-              batch_norm = nn.layer.norm.BatchNorm(10)
-              hidden1 = batch_norm(x)
+            >>> x = np.random.random(size=(3, 10, 3, 7)).astype('float32')
+            >>> with base.dygraph.guard():
+            ...     x = to_variable(x)
+            ...     batch_norm = nn.layer.norm.BatchNorm(10)
+            ...     hidden1 = batch_norm(x)
     """
 
     def __init__(
@@ -924,10 +971,6 @@ class BatchNorm(Layer):
         self._act = act
         self._use_mkldnn = _global_flags()["FLAGS_use_mkldnn"]
 
-        assert (
-            bias_attr is not False
-        ), "bias_attr should not be False in batch_norm."
-
         if dtype == "float16":
             self._dtype = "float32"
         else:
@@ -936,25 +979,24 @@ class BatchNorm(Layer):
         param_shape = [num_channels]
 
         # create parameter
-        self.weight = self.create_parameter(
-            attr=self._param_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            default_initializer=Constant(1.0),
-        )
-        self.weight.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
-
-        self.bias = self.create_parameter(
-            attr=self._bias_attr,
-            shape=param_shape,
-            dtype=self._dtype,
-            is_bias=True,
-        )
-        self.bias.stop_gradient = (
-            use_global_stats and self._param_attr.learning_rate == 0.0
-        )
+        if param_attr is not False:
+            self.weight = self.create_parameter(
+                attr=self._param_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+        else:
+            self.weight = None
+        if bias_attr is not False:
+            self.bias = self.create_parameter(
+                attr=self._bias_attr,
+                shape=param_shape,
+                dtype=self._dtype,
+                is_bias=True,
+            )
+        else:
+            self.bias = None
 
         self._mean = self.create_parameter(
             attr=ParamAttr(
@@ -1014,7 +1056,7 @@ class BatchNorm(Layer):
         self._trainable_statistics = trainable_statistics
 
     def forward(self, input):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             batch_norm_out, t1, t2, t3, t4, _ = _C_ops.batch_norm(
                 input,
                 self._mean,
@@ -1030,9 +1072,13 @@ class BatchNorm(Layer):
             )
             if self._act is None:
                 return batch_norm_out
-            return dygraph_utils._append_activation_in_dygraph(
-                batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
-            )
+            if in_dynamic_mode():
+                return dygraph_utils._append_activation_in_dygraph(
+                    batch_norm_out, act=self._act, use_mkldnn=self._use_mkldnn
+                )
+            else:
+                act_op = getattr(_C_ops, self._act)
+                return act_op(input)
         else:
             # create output
             # mean and mean_out share the same memory
@@ -1113,6 +1159,9 @@ class BatchNorm1D(_BatchNormBase):
         \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \
         \mu_{\beta})^2 \qquad &//\ mini-batch\ variance \\
 
+    - :math:`x` : mini-batch data
+    - :math:`m` : the size of the mini-batch data
+
     When use_global_stats = True, the :math:`\mu_{\beta}`
     and :math:`\sigma_{\beta}^{2}` are not the statistics of one mini-batch.
     They are global or running statistics (moving_mean and moving_variance). It usually got from the
@@ -1161,13 +1210,16 @@ class BatchNorm1D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 1, 3))
+            >>> batch_norm = paddle.nn.BatchNorm1D(1)
+            >>> batch_norm_out = batch_norm(x)
 
-          x = paddle.rand((2, 1, 3))
-          batch_norm = paddle.nn.BatchNorm1D(1)
-          batch_norm_out = batch_norm(x)
-
-          print(batch_norm_out)
+            >>> print(batch_norm_out)
+            Tensor(shape=[2, 1, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[ 1.26652932, -0.60229754, -1.65705597]],
+             [[ 1.06272745,  0.24229205, -0.31219530]]])
     """
 
     def __init__(
@@ -1205,9 +1257,7 @@ class BatchNorm1D(_BatchNormBase):
     def _check_input_dim(self, input):
         if len(input.shape) != 2 and len(input.shape) != 3:
             raise ValueError(
-                'expected 2D or 3D input (got {}D input)'.format(
-                    len(input.shape)
-                )
+                f'expected 2D or 3D input (got {len(input.shape)}D input)'
             )
 
 
@@ -1273,13 +1323,18 @@ class BatchNorm2D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 1, 2, 3))
+            >>> batch_norm = paddle.nn.BatchNorm2D(1)
+            >>> batch_norm_out = batch_norm(x)
 
-          x = paddle.rand((2, 1, 2, 3))
-          batch_norm = paddle.nn.BatchNorm2D(1)
-          batch_norm_out = batch_norm(x)
-
-          print(batch_norm_out)
+            >>> print(batch_norm_out)
+            Tensor(shape=[2, 1, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[ 0.60520101, -0.67670590, -1.40020895],
+               [ 0.46540475, -0.09736633, -0.47771257]]],
+             [[[-0.74365312,  0.63718963, -1.41333187],
+               [ 1.44764757, -0.25489068,  1.90842628]]]])
     """
 
     def _check_data_format(self, input):
@@ -1359,13 +1414,22 @@ class BatchNorm3D(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-          import paddle
+            >>> import paddle
+            >>> paddle.seed(100)
+            >>> x = paddle.rand((2, 1, 2, 2, 3))
+            >>> batch_norm = paddle.nn.BatchNorm3D(1)
+            >>> batch_norm_out = batch_norm(x)
 
-          x = paddle.rand((2, 1, 2, 2, 3))
-          batch_norm = paddle.nn.BatchNorm3D(1)
-          batch_norm_out = batch_norm(x)
-
-          print(batch_norm_out)
+            >>> print(batch_norm_out)
+            Tensor(shape=[2, 1, 2, 2, 3], dtype=float32, place=Place(cpu), stop_gradient=False,
+            [[[[[ 0.28011751, -0.95211101, -1.64757574],
+                [ 0.14573872, -0.39522290, -0.76082933]],
+               [[-1.01646376,  0.31086648, -1.66019011],
+                [ 1.08991623, -0.54664266,  1.53283834]]]],
+             [[[[ 1.33958006,  1.71585774, -0.12862551],
+                [-0.66051245,  1.32629418, -0.06402326]],
+               [[-0.28699064,  0.87359405,  0.42558217],
+                [-0.46636176,  1.09858704, -1.55342245]]]]])
     """
 
     def __init__(
@@ -1481,23 +1545,22 @@ class SyncBatchNorm(_BatchNormBase):
     Examples:
         .. code-block:: python
 
-            # required: gpu
+            >>> # doctest: +REQUIRES(env:GPU)
 
-            import paddle
-            import paddle.nn as nn
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> paddle.device.set_device('gpu')
+            >>> x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
 
-            x = paddle.to_tensor([[[[0.3, 0.4], [0.3, 0.07]], [[0.83, 0.37], [0.18, 0.93]]]]).astype('float32')
-
-            if paddle.is_compiled_with_cuda():
-                sync_batch_norm = nn.SyncBatchNorm(2)
-                hidden1 = sync_batch_norm(x)
-                print(hidden1)
-                # Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
-                #        [[[[ 0.26824948,  1.09363246],
-                #           [ 0.26824948, -1.63013160]],
-
-                #          [[ 0.80956620, -0.66528702],
-                #           [-1.27446556,  1.13018656]]]])
+            >>> if paddle.is_compiled_with_cuda():
+            ...     sync_batch_norm = nn.SyncBatchNorm(2)
+            ...     hidden1 = sync_batch_norm(x)
+            ...     print(hidden1)
+            Tensor(shape=[1, 2, 2, 2], dtype=float32, place=Place(gpu:0), stop_gradient=False,
+            [[[[ 0.26824948,  1.09363246],
+               [ 0.26824948, -1.63013160]],
+              [[ 0.80956620, -0.66528702],
+               [-1.27446556,  1.13018656]]]])
 
     """
 
@@ -1521,6 +1584,24 @@ class SyncBatchNorm(_BatchNormBase):
             None,
             name,
         )
+        param_shape = [num_features]
+        if weight_attr is False:
+            self.weight = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(1.0),
+            )
+            self.weight.stop_gradient = True
+        if bias_attr is False:
+            self.bias = self.create_parameter(
+                attr=None,
+                shape=param_shape,
+                dtype=self._dtype,
+                default_initializer=Constant(0.0),
+                is_bias=True,
+            )
+            self.bias.stop_gradient = True
 
     def _check_data_format(self):
         if self._data_format in ['NCHW', 'NCDHW', 'NC', 'NCL']:
@@ -1621,11 +1702,16 @@ class SyncBatchNorm(_BatchNormBase):
         Examples:
             .. code-block:: python
 
-                import paddle
-                import paddle.nn as nn
+                >>> import paddle
+                >>> import paddle.nn as nn
 
-                model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
-                sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+                >>> model = nn.Sequential(nn.Conv2D(3, 5, 3), nn.BatchNorm2D(5))
+                >>> sync_model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
+                >>> print(sync_model)
+                Sequential(
+                    (0): Conv2D(3, 5, kernel_size=[3, 3], data_format=NCHW)
+                    (1): SyncBatchNorm(num_features=5, momentum=0.9, epsilon=1e-05)
+                )
 
         """
         layer_output = layer
@@ -1700,14 +1786,15 @@ class LocalResponseNorm(Layer):
 
     Examples:
 
-    .. code-block:: python
+        .. code-block:: python
 
-        import paddle
+            >>> import paddle
 
-        x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
-        m = paddle.nn.LocalResponseNorm(size=5)
-        y = m(x)
-        print(y.shape)  # [3, 3, 112, 112]
+            >>> x = paddle.rand(shape=(3, 3, 112, 112), dtype="float32")
+            >>> m = paddle.nn.LocalResponseNorm(size=5)
+            >>> y = m(x)
+            >>> print(y.shape)
+            [3, 3, 112, 112]
     """
 
     def __init__(
@@ -1740,9 +1827,7 @@ class LocalResponseNorm(Layer):
         return out
 
     def extra_repr(self):
-        main_str = 'size={}, alpha={}, beta={}, k={}'.format(
-            self.size, self.alpha, self.beta, self.k
-        )
+        main_str = f'size={self.size}, alpha={self.alpha}, beta={self.beta}, k={self.k}'
         if self.data_format != 'NCHW':
             main_str += f', data_format={self.data_format}'
         if self.name is not None:
@@ -1797,15 +1882,14 @@ class SpectralNorm(Layer):
         None
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-            import paddle
-            x = paddle.rand((2,8,32,32))
-
-            spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
-            spectral_norm_out = spectral_norm(x)
-
-            print(spectral_norm_out.shape) # [2, 8, 32, 32]
+            >>> import paddle
+            >>> x = paddle.rand((2,8,32,32))
+            >>> spectral_norm = paddle.nn.SpectralNorm(x.shape, dim=1, power_iters=2)
+            >>> spectral_norm_out = spectral_norm(x)
+            >>> print(spectral_norm_out.shape)
+            [2, 8, 32, 32]
 
     """
 
@@ -1830,7 +1914,7 @@ class SpectralNorm(Layer):
         assert dim < len(self._weight_shape), (
             "The input `dim` should be less than the "
             "length of `weight_shape`, but received dim="
-            "{}".format(dim)
+            f"{dim}"
         )
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h

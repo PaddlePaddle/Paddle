@@ -17,8 +17,8 @@ import math
 
 import numpy as np
 
-from ...fluid.framework import default_main_program, in_dygraph_mode
-from ...fluid.lazy_init import lazy_init_helper
+from ...base.framework import default_main_program, in_dygraph_mode
+from .lazy_init import lazy_init_helper
 
 __all__ = []
 
@@ -42,7 +42,7 @@ class Initializer:
         return self._lazy_init(param, block)
 
     def forward(self, param, block=None):
-        """Add corresponding initialization operations to the network"""
+        """Add corresponding initialization operations to the network."""
         raise NotImplementedError()
 
     def _lazy_init(self, param, block=None):
@@ -81,10 +81,10 @@ class Initializer:
         convolutions.
 
         Args:
-            var: variable for which fan_in and fan_out have to be computed
+            var: variable for which fan_in and fan_out have to be computed.
 
         Returns:
-            tuple of two integers (fan_in, fan_out)
+            tuple of two integers (fan_in, fan_out).
         """
         shape = var.shape
         if not shape or len(shape) == 0:
@@ -124,10 +124,17 @@ def calculate_gain(nonlinearity, param=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            gain = paddle.nn.initializer.calculate_gain('tanh') # 5.0 / 3
-            gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0) # 1.0 = math.sqrt(2.0 / (1+param^2))
-            initializer = paddle.nn.initializer.Orthogonal(gain)
+            >>> import paddle
+
+            >>> gain = paddle.nn.initializer.calculate_gain('tanh')
+            >>> print(gain)
+            1.6666666666666667
+            >>> # 5.0 / 3
+            >>> gain = paddle.nn.initializer.calculate_gain('leaky_relu', param=1.0)
+            >>> print(gain)
+            1.0
+            >>> # math.sqrt(2.0 / (1+param^2))
+            >>> initializer = paddle.nn.initializer.Orthogonal(gain)
 
     """
     if param is None:
@@ -153,7 +160,5 @@ def calculate_gain(nonlinearity, param=None):
         return recommended_gain[nonlinearity]
     else:
         raise ValueError(
-            "nonlinearity function {} is not suppported now.".format(
-                nonlinearity
-            )
+            f"nonlinearity function {nonlinearity} is not suppported now."
         )

@@ -36,7 +36,7 @@ namespace ir {
 bool HasOutVarName(Node* op_node, std::string name) {
   auto* op_desc = op_node->Op();
   auto outputs = op_desc->Outputs();
-  for (auto iter : outputs) {
+  for (auto const& iter : outputs) {
     auto out_names = iter.second;
     if (std::count(out_names.begin(), out_names.end(), name) > 0) {
       return true;
@@ -122,6 +122,10 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
                      Graph* graph) {
     VLOG(4) << "handle DeleteRepeatedOps";
     GET_IR_NODE_FROM_SUBGRAPH(in_var, in_var, pattern);
+    // in_var node may be deleted by the previous detected subgraph
+    if (graph->Nodes().count(in_var) == 0) {
+      return;
+    }
 
     std::vector<std::string> invalid_out_ops{
         "while", "conditional_block", "fetch"};
@@ -151,7 +155,7 @@ void DeleteRepeatedOpsPass::DeleteRepeatedOps(
       }
     }
 
-    for (auto iter : ops_map) {
+    for (auto const& iter : ops_map) {
       auto ops = iter.second;
       auto* first_op_out = ops[0]->outputs[0];
       auto first_op_out_name = first_op_out->Name();
@@ -225,6 +229,17 @@ std::string GenAddAttrKey(Node* add_op_node) {
   return x_name + "_" + y_name + "_axis_" + std::to_string(axis);
 }
 
+std::string GenTranspose2AttrKey(Node* transpose_op_node) {
+  auto transpose_op_desc = transpose_op_node->Op();
+  auto axis = transpose_op_desc->GetAttrIfExists<std::vector<int>>("axis");
+  std::string attr_key;
+  attr_key += "axis_";
+  for (auto x : axis) {
+    attr_key += std::to_string(x) + "_";
+  }
+  return attr_key;
+}
+
 std::string GenScaleAttrKey(Node* scale_op_node) {
   auto scale_op_desc = scale_op_node->Op();
   auto scale = scale_op_desc->GetAttrIfExists<float>("scale");
@@ -274,6 +289,7 @@ void DeleteRepeatedOpsPass::ApplyImpl(ir::Graph* graph) const {
     DeleteRepeatedOps(graph, "gather", GenGatherAttrKey);
     DeleteRepeatedOps(graph, "squeeze2", GenSqueeze2AttrKey);
     DeleteRepeatedOps(graph, "unsqueeze2", GenSqueeze2AttrKey);
+    DeleteRepeatedOps(graph, "transpose2", GenTranspose2AttrKey);
     LOG(INFO) << "Round " << repeat_time++
               << ": delete op counts: " << delete_op_count;
     total_delete_op_count += delete_op_count;

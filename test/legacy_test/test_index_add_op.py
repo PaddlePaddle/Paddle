@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle.fluid import Program, core
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def compute_index_add_ref(
@@ -93,10 +94,10 @@ class TestIndexAddOp(OpTest):
         self.add_value_shape = (3, 3)
 
     def test_check_output(self):
-        self.check_output(atol=1e-2)
+        self.check_output(atol=1e-2, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'AddValue'], 'Out')
+        self.check_grad(['X', 'AddValue'], 'Out', check_pir=True)
 
 
 class TestIndexAddFP16Op(TestIndexAddOp):
@@ -156,10 +157,12 @@ class TestIndexAddBF16Op(OpTest):
         self.dtype = np.uint16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad_with_place(self.place, ['X', 'AddValue'], 'Out')
+        self.check_grad_with_place(
+            self.place, ['X', 'AddValue'], 'Out', check_pir=True
+        )
 
 
 class TestIndexAddAPI(unittest.TestCase):
@@ -290,15 +293,16 @@ class TestIndexAddAPI(unittest.TestCase):
                 "Index": self.index_np,
                 "AddValue": self.add_value_np,
             },
-            fetch_list=[out.name],
+            fetch_list=[out],
             return_numpy=False,
         )
         return res
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for device in self.place:
-            with paddle.static.program_guard(Program()):
+            with paddle.static.program_guard(paddle.static.Program()):
                 out = self.run_static(device)
             ref_out = compute_index_add_ref(
                 self.axis,

@@ -23,7 +23,7 @@ import warnings
 import numpy as np
 
 import paddle
-from paddle.fluid import (
+from paddle.base import (
     CompiledProgram,
     Program,
     Variable,
@@ -32,10 +32,9 @@ from paddle.fluid import (
     program_guard,
     unique_name,
 )
-from paddle.fluid.executor import Executor, global_scope
-from paddle.fluid.framework import Parameter, dygraph_not_support, static_only
-from paddle.fluid.io import append_fetch_ops, prepend_feed_ops
-from paddle.fluid.log_helper import get_logger
+from paddle.base.executor import Executor, global_scope
+from paddle.base.framework import Parameter, dygraph_not_support, static_only
+from paddle.base.log_helper import get_logger
 from paddle.framework.io_utils import (
     _clone_var_in_block_,
     _load_program_scope,
@@ -111,7 +110,7 @@ def _get_valid_program(program=None):
         )
     if not isinstance(program, Program):
         raise TypeError(
-            "The type of input program is invalid, expected type is fluid.Program, but received %s"
+            "The type of input program is invalid, expected type is base.Program, but received %s"
             % type(program)
         )
     return program
@@ -138,7 +137,57 @@ def _clone_var_in_block(block, var):
         )
 
 
-def normalize_program(program, feed_vars, fetch_vars):
+def prepend_feed_ops(
+    inference_program, feed_target_names, feed_holder_name='feed'
+):
+    if len(feed_target_names) == 0:
+        return
+
+    global_block = inference_program.global_block()
+    feed_var = global_block.create_var(
+        name=feed_holder_name,
+        type=core.VarDesc.VarType.FEED_MINIBATCH,
+        persistable=True,
+    )
+
+    for i, name in enumerate(feed_target_names):
+        if not global_block.has_var(name):
+            raise ValueError(
+                "The feeded_var_names[{i}]: '{name}' doesn't exist in pruned inference program. "
+                "Please check whether '{name}' is a valid feed_var name, or remove it from feeded_var_names "
+                "if '{name}' is not involved in the target_vars calculation.".format(
+                    i=i, name=name
+                )
+            )
+        out = global_block.var(name)
+        global_block._prepend_op(
+            type='feed',
+            inputs={'X': [feed_var]},
+            outputs={'Out': [out]},
+            attrs={'col': i},
+        )
+
+
+def append_fetch_ops(
+    inference_program, fetch_target_names, fetch_holder_name='fetch'
+):
+    global_block = inference_program.global_block()
+    fetch_var = global_block.create_var(
+        name=fetch_holder_name,
+        type=core.VarDesc.VarType.FETCH_LIST,
+        persistable=True,
+    )
+
+    for i, name in enumerate(fetch_target_names):
+        global_block.append_op(
+            type='fetch',
+            inputs={'X': [name]},
+            outputs={'Out': [fetch_var]},
+            attrs={'col': i},
+        )
+
+
+def normalize_program(program, feed_vars, fetch_vars, **kwargs):
     """
 
     Normalize/Optimize a program according to feed_vars and fetch_vars.
@@ -147,6 +196,8 @@ def normalize_program(program, feed_vars, fetch_vars):
         program(Program): Specify a program you want to optimize.
         feed_vars(Tensor | list[Tensor]): Variables needed by inference.
         fetch_vars(Tensor | list[Tensor]): Variables returned by inference.
+        kwargs: Supported keys including ``skip_prune_program``.
+            - skip_prune_program(bool): whether to skip prunning program. Defaults to False.
 
     Returns:
         Program: Normalized/Optimized program.
@@ -154,30 +205,30 @@ def normalize_program(program, feed_vars, fetch_vars):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # normalize main program.
-            program = paddle.static.default_main_program()
-            normalized_program = paddle.static.normalize_program(program, [image], [predict])
+            >>> program = paddle.static.default_main_program()
+            >>> normalized_program = paddle.static.normalize_program(program, [image], [predict])
 
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`"
+            "program type must be `base.Program`, but received `%s`"
             % type(program)
         )
     if not isinstance(feed_vars, list):
@@ -200,8 +251,7 @@ def normalize_program(program, feed_vars, fetch_vars):
         op._set_attr(device_attr_name, "")
         if op.type == 'auc':
             warnings.warn(
-                "Be sure that you have set auc states to 0 "
-                "before saving inference model."
+                "Be sure that you have set auc states to 0 before saving inference model."
             )
             break
 
@@ -224,14 +274,31 @@ def normalize_program(program, feed_vars, fetch_vars):
         op.desc.set_is_target(False)
         if op.type == "feed" or op.type == "fetch":
             remove_op_idx.append(i)
+
+        if op.type == "pylayer":
+            sub_blocks_ids = op._blocks_attr_ids("blocks")
+            if len(sub_blocks_ids) > 1:
+                # pylayer op ``blocks`` attr contains forward block id and backward block id
+                backward_block_id = sub_blocks_ids[-1]
+                # remove backward block
+                copy_program.blocks.pop(backward_block_id)
+                # update attrs ``blocks``
+                reserverd_blocks = []
+                for block_id in sub_blocks_ids[:-1]:
+                    reserverd_blocks.append(copy_program.block(block_id))
+                op._update_desc_attr("blocks", reserverd_blocks)
+
     for idx in remove_op_idx[::-1]:
         global_block._remove_op(idx)
     copy_program.desc.flush()
 
     feed_var_names = [var.name for var in feed_vars]
-    copy_program = copy_program._prune_with_input(
-        feeded_var_names=feed_var_names, targets=fetch_vars
-    )
+
+    skip_prune_program = kwargs.get('skip_prune_program', False)
+    if not skip_prune_program:
+        copy_program = copy_program._prune_with_input(
+            feeded_var_names=feed_var_names, targets=fetch_vars
+        )
     copy_program = copy_program._inference_optimize(prune_read_op=True)
     fetch_var_names = [var.name for var in fetch_vars]
     prepend_feed_ops(copy_program, feed_var_names)
@@ -260,27 +327,26 @@ def serialize_program(feed_vars, fetch_vars, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
-
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # serialize the default main program to bytes.
-            serialized_program = paddle.static.serialize_program([image], [predict])
+            >>> serialized_program = paddle.static.serialize_program([image], [predict])
 
             # deserialize bytes to program
-            deserialized_program = paddle.static.deserialize_program(serialized_program)
+            >>> deserialized_program = paddle.static.deserialize_program(serialized_program)
 
     """
     # verify feed_vars
@@ -320,28 +386,27 @@ def serialize_persistables(feed_vars, fetch_vars, executor, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> paddle.enable_static()
 
-            paddle.enable_static()
-
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # serialize parameters to bytes.
-            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
 
             # deserialize bytes to parameters.
-            main_program = paddle.static.default_main_program()
-            deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
+            >>> main_program = paddle.static.default_main_program()
+            >>> deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
 
     """
     # verify feed_vars
@@ -415,21 +480,24 @@ def save_to_file(path, content):
     Examples:
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            path_prefix = "./infer_model"
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> path_prefix = "./infer_model"
+
             # 用户自定义网络，此处用 softmax 回归为例。
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
-            loss = paddle.nn.functional.cross_entropy(predict, label)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+
             # 序列化参数
-            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+
             # 将序列化之后的参数保存到文件
-            params_path = path_prefix + ".params"
-            paddle.static.save_to_file(params_path, serialized_params)
+            >>> params_path = path_prefix + ".params"
+            >>> paddle.static.save_to_file(params_path, serialized_params)
     """
 
     if not isinstance(content, bytes):
@@ -469,26 +537,26 @@ def save_inference_model(
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # Feed data and train process
 
             # Save inference model. Note we don't save label and loss in this example
-            paddle.static.save_inference_model(path_prefix, [image], [predict], exe)
+            >>> paddle.static.save_inference_model(path_prefix, [image], [predict], exe)
 
             # In this example, the save_inference_mode inference will prune the default
             # main program according to the network's input node (img) and output node(predict).
@@ -520,16 +588,29 @@ def save_inference_model(
 
     program = _get_valid_program(kwargs.get('program', None))
     clip_extra = kwargs.get('clip_extra', True)
-    program = normalize_program(program, feed_vars, fetch_vars)
+    program = normalize_program(
+        program,
+        feed_vars,
+        fetch_vars,
+        skip_prune_program=kwargs.get('skip_prune_program', False),
+    )
+
     # serialize and save program
     legacy_format = kwargs.get('legacy_format', False)
     program_bytes = _serialize_program(
         program._remove_training_info(clip_extra=clip_extra),
         legacy_format=legacy_format,
     )
+
     save_to_file(model_path, program_bytes)
 
     vars = list(filter(is_persistable, program.list_vars()))
+
+    if len(list(vars)) == 0:
+        warnings.warn(
+            "no variable in your model, please ensure there are any variables in your model to save"
+        )
+
     if len(vars) > 0:
         save_dirname = os.path.dirname(params_path)
         params_filename = os.path.basename(params_path)
@@ -557,27 +638,27 @@ def deserialize_program(data):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # serialize the default main program to bytes.
-            serialized_program = paddle.static.serialize_program([image], [predict])
+            >>> serialized_program = paddle.static.serialize_program([image], [predict])
 
             # deserialize bytes to program
-            deserialized_program = paddle.static.deserialize_program(serialized_program)
+            >>> deserialized_program = paddle.static.deserialize_program(serialized_program)
 
     """
     program = Program.parse_from_string(data)
@@ -606,34 +687,34 @@ def deserialize_persistables(program, data, executor):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            path_prefix = "./infer_model"
+            >>> path_prefix = "./infer_model"
 
             # User defined network, here a softmax regession example
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
 
-            loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
 
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
 
             # serialize parameters to bytes.
-            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
 
             # deserialize bytes to parameters.
-            main_program = paddle.static.default_main_program()
-            deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
+            >>> main_program = paddle.static.default_main_program()
+            >>> deserialized_params = paddle.static.deserialize_persistables(main_program, serialized_params, exe)
 
 
     """
     if not isinstance(program, Program):
         raise TypeError(
-            "program type must be `fluid.Program`, but received `%s`"
+            "program type must be `base.Program`, but received `%s`"
             % type(program)
         )
     # load params to a tmp program
@@ -680,7 +761,7 @@ def deserialize_persistables(program, data, executor):
     for var in check_vars:
         if not isinstance(var, Parameter):
             continue
-        var_tmp = paddle.fluid.global_scope().find_var(var.name)
+        var_tmp = paddle.base.global_scope().find_var(var.name)
         assert var_tmp is not None, "can't not find var: " + var.name
         new_shape = (np.array(var_tmp.get_tensor())).shape
         assert var.name in origin_shape_map, var.name + " MUST in var list."
@@ -708,23 +789,27 @@ def load_from_file(path):
 
         .. code-block:: python
 
-            import paddle
-            paddle.enable_static()
-            path_prefix = "./infer_model"
+            >>> import paddle
+            >>> paddle.enable_static()
+            >>> path_prefix = "./infer_model"
+
             # 用户自定义网络，此处用 softmax 回归为例。
-            image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
-            label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
-            predict = paddle.static.nn.fc(image, 10, activation='softmax')
-            loss = paddle.nn.functional.cross_entropy(predict, label)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(paddle.static.default_startup_program())
+            >>> image = paddle.static.data(name='img', shape=[None, 28, 28], dtype='float32')
+            >>> label = paddle.static.data(name='label', shape=[None, 1], dtype='int64')
+            >>> predict = paddle.static.nn.fc(image, 10, activation='softmax')
+            >>> loss = paddle.nn.functional.cross_entropy(predict, label)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(paddle.static.default_startup_program())
+
             # 序列化参数
-            serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+            >>> serialized_params = paddle.static.serialize_persistables([image], [predict], exe)
+
             # 将序列化之后的参数保存到文件
-            params_path = path_prefix + ".params"
-            paddle.static.save_to_file(params_path, serialized_params)
+            >>> params_path = path_prefix + ".params"
+            >>> paddle.static.save_to_file(params_path, serialized_params)
+
             # 从文件加载序列化之后的参数
-            serialized_params_copy = paddle.static.load_from_file(params_path)
+            >>> serialized_params_copy = paddle.static.load_from_file(params_path)
     """
     with open(path, 'rb') as f:
         data = f.read()
@@ -762,33 +847,33 @@ def load_inference_model(path_prefix, executor, **kwargs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import numpy as np
+            >>> import paddle
+            >>> import numpy as np
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
             # Build the model
-            startup_prog = paddle.static.default_startup_program()
-            main_prog = paddle.static.default_main_program()
-            with paddle.static.program_guard(main_prog, startup_prog):
-                image = paddle.static.data(name="img", shape=[64, 784])
-                w = paddle.create_parameter(shape=[784, 200], dtype='float32')
-                b = paddle.create_parameter(shape=[200], dtype='float32')
-                hidden_w = paddle.matmul(x=image, y=w)
-                hidden_b = paddle.add(hidden_w, b)
-            exe = paddle.static.Executor(paddle.CPUPlace())
-            exe.run(startup_prog)
+            >>> startup_prog = paddle.static.default_startup_program()
+            >>> main_prog = paddle.static.default_main_program()
+            >>> with paddle.static.program_guard(main_prog, startup_prog):
+            ...     image = paddle.static.data(name="img", shape=[64, 784])
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32')
+            ...     hidden_w = paddle.matmul(x=image, y=w)
+            ...     hidden_b = paddle.add(hidden_w, b)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> exe.run(startup_prog)
 
             # Save the inference model
-            path_prefix = "./infer_model"
-            paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
+            >>> path_prefix = "./infer_model"
+            >>> paddle.static.save_inference_model(path_prefix, [image], [hidden_b], exe)
 
-            [inference_program, feed_target_names, fetch_targets] = (
-                paddle.static.load_inference_model(path_prefix, exe))
-            tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
-            results = exe.run(inference_program,
-                          feed={feed_target_names[0]: tensor_img},
-                          fetch_list=fetch_targets)
+            >>> [inference_program, feed_target_names, fetch_targets] = (
+            ...     paddle.static.load_inference_model(path_prefix, exe))
+            >>> tensor_img = np.array(np.random.random((64, 784)), dtype=np.float32)
+            >>> results = exe.run(inference_program,
+            ...               feed={feed_target_names[0]: tensor_img},
+            ...               fetch_list=fetch_targets)
 
             # In this example, the inference program was saved in file
             # "./infer_model.pdmodel" and parameters were saved in file
@@ -832,7 +917,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
     else:
         # check and norm path_prefix
         path_prefix = _normalize_path_prefix(path_prefix)
-
+        dir_path = os.path.dirname(path_prefix)
+        if not os.path.isdir(dir_path):
+            raise ValueError(f"There is no directory named {dir_path}")
         # set model_path and params_path in new way,
         # path_prefix represents a file path without suffix in this case.
         if not kwargs:
@@ -863,10 +950,9 @@ def load_inference_model(path_prefix, executor, **kwargs):
                     params_path = os.path.join(path_prefix, params_filename)
             _logger.warning(
                 "The old way to load inference model is deprecated. Please specify path_prefix."
-                " model path: {}, params path: {}".format(
-                    model_path, params_path
-                )
+                f" model path: {model_path}, params path: {params_path}"
             )
+
         program_bytes = load_from_file(model_path)
 
         # deserialize bytes to program
@@ -876,6 +962,7 @@ def load_inference_model(path_prefix, executor, **kwargs):
         if len(vars) > 0:
             load_dirname = os.path.dirname(params_path)
             params_filename = os.path.basename(params_path)
+
             load_vars(
                 executor,
                 dirname=load_dirname,
@@ -941,36 +1028,40 @@ def save_vars(
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(main_prog, startup_prog):
-                data = paddle.static.data(name="img", shape=[64, 784])
-                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
-                hidden_w = paddle.matmul(x=data, y=w)
-                hidden_b = paddle.add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup_prog)
+            >>> paddle.enable_static()
+            >>> main_prog = static.Program()
+            >>> startup_prog = static.Program()
+            >>> with static.program_guard(main_prog, startup_prog):
+            ...     data = paddle.static.data(name="img", shape=[64, 784])
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            ...     hidden_w = paddle.matmul(x=data, y=w)
+            ...     hidden_b = paddle.add(hidden_w, b)
+            >>> place = static.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(startup_prog)
 
             # The first usage: use `vars` to set the saved variables.
-            var_list = [w, b]
-            path = "./my_paddle_vars"
-            fluid.io.save_vars(executor=exe, dirname=path, vars=var_list,
-                            filename="vars_file")
+            >>> var_list = [w, b]
+            >>> path = "./my_paddle_vars"
+
             # w and b will be save in a file named "var_file".
+            >>> paddle.static.io.save_vars(executor=exe, dirname=path, vars=var_list,
+            ...                 filename="vars_file")
 
             # The second usage: use `predicate` to select the saved variable.
-            def name_has_fc(var):
-                res = "fc" in var.name
-                return res
-            param_path = "./my_paddle_model"
-            fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
+            >>> def name_has_fc(var):
+            ...     res = "fc" in var.name
+            ...     return res
+            >>> param_path = "./my_paddle_model"
+
             # all variables whose names contain "fc " are saved.
+            >>> paddle.static.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog, vars=None, predicate = name_has_fc)
+
+
     """
     save_to_memory = False
     if dirname is None and filename is None:
@@ -1094,41 +1185,43 @@ def load_vars(
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.fluid as fluid
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
-            main_prog = fluid.Program()
-            startup_prog = fluid.Program()
-            with fluid.program_guard(main_prog, startup_prog):
-                data = paddle.static.data(name="img", shape=[64, 784])
-                w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-                b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
-                hidden_w = paddle.matmul(x=data, y=w)
-                hidden_b = paddle.add(hidden_w, b)
-            place = fluid.CPUPlace()
-            exe = fluid.Executor(place)
-            exe.run(startup_prog)
+            >>> paddle.enable_static()
+            >>> main_prog = static.Program()
+            >>> startup_prog = static.Program()
+            >>> with static.program_guard(main_prog, startup_prog):
+            ...     data = paddle.static.data(name="img", shape=[64, 784])
+            ...     w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            ...     b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            ...     hidden_w = paddle.matmul(x=data, y=w)
+            ...     hidden_b = paddle.add(hidden_w, b)
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(startup_prog)
 
             # The first usage: using `vars` to specify the variables.
-            path = "./my_paddle_vars"
-            var_list = [w, b]
-            fluid.io.save_vars(executor=exe, dirname=path, vars=var_list,
-                               filename="vars_file")
-            fluid.io.load_vars(executor=exe, dirname=path, vars=var_list,
-                               filename="vars_file")
+            >>> path = "./my_paddle_vars"
+            >>> var_list = [w, b]
+            >>> paddle.static.io.save_vars(executor=exe, dirname=path, vars=var_list,
+            ...                    filename="vars_file")
+            >>> paddle.static.io.load_vars(executor=exe, dirname=path, vars=var_list,
+            ...                    filename="vars_file")
+
             # w and b will be loaded, and they are supposed to
             # be saved in the same file named 'var_file' in the path "./my_paddle_vars".
 
             # The second usage: using the `predicate` function to select variables
-            param_path = "./my_paddle_model"
-            def name_has_fc(var):
-                res = "fc" in var.name
-                return res
-            fluid.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog,
-                              vars=None, predicate=name_has_fc)
-            fluid.io.load_vars(executor=exe, dirname=param_path, main_program=main_prog,
-                               vars=None, predicate=name_has_fc)
+            >>> param_path = "./my_paddle_model"
+            >>> def name_has_fc(var):
+            ...     res = "fc" in var.name
+            ...     return res
+            >>> paddle.static.io.save_vars(executor=exe, dirname=param_path, main_program=main_prog,
+            ...                    vars=None, predicate=name_has_fc)
+            >>> paddle.static.io.load_vars(executor=exe, dirname=param_path, main_program=main_prog,
+            ...                    vars=None, predicate=name_has_fc)
+
             # Load All variables in the `main_program` whose name includes "fc".
             # And all the variables are supposed to be saved in separate files.
 
@@ -1139,12 +1232,15 @@ def load_vars(
     else:
         vars_from_memory = True
 
+    if filename == '':
+        filename = None
+
     if vars is None:
         if main_program is None:
             main_program = default_main_program()
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                "The type of input main_program is invalid, expected type is base.Program, but received %s"
                 % type(main_program)
             )
 
@@ -1164,7 +1260,7 @@ def load_vars(
 
         if not isinstance(main_program, Program):
             raise TypeError(
-                "The type of input main_program is invalid, expected type is fluid.Program, but received %s"
+                "The type of input main_program is invalid, expected type is base.Program, but received %s"
                 % type(main_program)
             )
 
@@ -1220,9 +1316,7 @@ def load_vars(
             var_path = os.path.join(dirname, new_var.name)
             if not os.path.exists(var_path):
                 raise ValueError(
-                    "SelectedRows var {} can not find at {}".format(
-                        new_var.name, var_path
-                    )
+                    f"SelectedRows var {new_var.name} can not find at {var_path}"
                 )
 
             if os.path.isfile(var_path):
@@ -1289,7 +1383,7 @@ def load_vars(
         for each_var in check_vars:
             if not isinstance(each_var, Parameter):
                 continue
-            var_temp = paddle.fluid.global_scope().find_var(each_var.name)
+            var_temp = paddle.base.global_scope().find_var(each_var.name)
             assert var_temp is not None, "can't not find var: " + each_var.name
             new_shape = (np.array(var_temp.get_tensor())).shape
             assert each_var.name in orig_para_shape, (
@@ -1328,21 +1422,21 @@ def save(program, model_path, protocol=4, **configs):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+            >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
+            >>> y = static.nn.fc(x, 10)
+            >>> z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> prog = static.default_main_program()
 
-            static.save(prog, "./temp")
+            >>> static.save(prog, "./temp")
     """
 
     base_name = os.path.basename(model_path)
@@ -1357,9 +1451,7 @@ def save(program, model_path, protocol=4, **configs):
 
     if not isinstance(protocol, int):
         raise ValueError(
-            "The 'protocol' MUST be `int`, but received {}".format(
-                type(protocol)
-            )
+            f"The 'protocol' MUST be `int`, but received {type(protocol)}"
         )
 
     if protocol < 2 or protocol > 4:
@@ -1433,22 +1525,22 @@ def load(program, model_path, executor=None, var_list=None):
      Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+            >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
+            >>> y = static.nn.fc(x, 10)
+            >>> z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> prog = static.default_main_program()
 
-            static.save(prog, "./temp")
-            static.load(prog, "./temp")
+            >>> static.save(prog, "./temp")
+            >>> static.load(prog, "./temp")
     """
 
     assert executor is None or isinstance(executor, Executor)
@@ -1464,7 +1556,7 @@ def load(program, model_path, executor=None, var_list=None):
     parameter_file_name = model_prefix + ".pdparams"
 
     if not os.path.exists(parameter_file_name):
-        # model file save by fluid.save not found, try to load model file saved with
+        # model file save by base.save not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
@@ -1557,30 +1649,30 @@ def load(program, model_path, executor=None, var_list=None):
         t = global_scope().find_var(var.name).get_tensor()
         p = t._place()
         if p.is_cpu_place():
-            place = paddle.fluid.CPUPlace()
+            place = paddle.base.CPUPlace()
         elif p.is_cuda_pinned_place():
-            place = paddle.fluid.CUDAPinnedPlace()
+            place = paddle.base.CUDAPinnedPlace()
         elif p.is_xpu_place():
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.XPUPlace(p.xpu_device_id())
+            place = paddle.base.XPUPlace(p.xpu_device_id())
         elif p.is_custom_place():
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.CustomPlace(
+            place = paddle.base.CustomPlace(
                 paddle.device.get_device().split(':')[0], p.custom_device_id()
             )
         else:
-            p = paddle.fluid.core.Place()
+            p = paddle.base.core.Place()
             p.set_place(t._place())
-            place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+            place = paddle.base.CUDAPlace(p.gpu_device_id())
 
         t.set(ndarray, place)
 
     parameter_list = list(filter(is_parameter, program.list_vars()))
 
     if executor:
-        paddle.fluid.core._create_loaded_parameter(
+        paddle.base.core._create_loaded_parameter(
             parameter_list, global_scope(), executor._default_executor
         )
     with open(parameter_file_name, 'rb') as f:
@@ -1593,9 +1685,7 @@ def load(program, model_path, executor=None, var_list=None):
     for v in parameter_list:
         assert (
             v.name in load_dict
-        ), "Can not find [{}] in model file [{}]".format(
-            v.name, parameter_file_name
-        )
+        ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
         set_var(v, load_dict[v.name])
 
     optimizer_var_list = list(
@@ -1609,7 +1699,7 @@ def load(program, model_path, executor=None, var_list=None):
         ), f"Optimizer file [{opt_file_name}] not exits"
 
         if executor:
-            paddle.fluid.core._create_loaded_parameter(
+            paddle.base.core._create_loaded_parameter(
                 optimizer_var_list, global_scope(), executor._default_executor
             )
 
@@ -1618,9 +1708,7 @@ def load(program, model_path, executor=None, var_list=None):
         for v in optimizer_var_list:
             assert (
                 v.name in load_dict
-            ), "Can not find [{}] in model file [{}]".format(
-                v.name, opt_file_name
-            )
+            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
             set_var(v, load_dict[v.name])
 
 
@@ -1642,36 +1730,34 @@ def set_program_state(program, state_dict):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+            >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
+            >>> y = static.nn.fc(x, 10)
+            >>> z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> prog = static.default_main_program()
 
-            static.save(prog, "./temp")
-            program_state = static.load_program_state("./temp")
+            >>> static.save(prog, "./temp")
+            >>> program_state = static.load_program_state("./temp")
 
-            static.set_program_state(prog, program_state)
+            >>> static.set_program_state(prog, program_state)
     """
     state_dict = _pack_loaded_dict(state_dict)
     parameter_list = list(filter(is_persistable, program.list_vars()))
 
     used_para_list = {}
     for para in parameter_list:
-        var_temp = paddle.fluid.global_scope().find_var(para.name)
+        var_temp = paddle.base.global_scope().find_var(para.name)
         assert (
             var_temp is not None
-        ), "Variable [ {} ] Not found, Please make sure run startup program".format(
-            para.name
-        )
+        ), f"Variable [ {para.name} ] Not found, Please make sure run startup program"
         if para.name in state_dict:
             # set value from state dict
             orig_para_np = np.array(var_temp.get_tensor())
@@ -1694,17 +1780,17 @@ def set_program_state(program, state_dict):
 
             # assert ten_place.is_gpu_place() or ten_place.is_cpu_place(), \
             #    "Place not support, only support CPUPlace and GPUPlace, now is {}".format(str(ten_place))
-            py_place = paddle.fluid.CPUPlace()
+            py_place = paddle.base.CPUPlace()
             if ten_place.is_cuda_pinned_place():
-                place = paddle.fluid.CUDAPinnedPlace()
+                place = paddle.base.CUDAPinnedPlace()
             elif ten_place.is_gpu_place():
-                p = paddle.fluid.core.Place()
+                p = paddle.base.core.Place()
                 p.set_place(ten_place)
-                py_place = paddle.fluid.CUDAPlace(p.gpu_device_id())
+                py_place = paddle.base.CUDAPlace(p.gpu_device_id())
             elif ten_place.is_xpu_place():
-                p = paddle.fluid.core.Place()
+                p = paddle.base.core.Place()
                 p.set_place(ten_place)
-                py_place = paddle.fluid.XPUPlace(p.xpu_device_id())
+                py_place = paddle.base.XPUPlace(p.xpu_device_id())
 
             ten.set(new_para_np, py_place)
 
@@ -1732,14 +1818,14 @@ def get_program_persistable_vars(program):
         list: The list contains all persistable vars in the program
     Examples:
         .. code-block:: python
-            import paddle
-            import paddle.static.io as io
-            import paddle.fluid as fluid
-            paddle.enable_static()
-            data = paddle.static.data(name="img", shape=[64, 784])
-            w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
-            b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
-            list_para  = io.get_program_persistable_vars(  fluid.default_main_program() )
+
+            >>> import paddle
+            >>> import paddle.static.io as io
+            >>> paddle.enable_static()
+            >>> data = paddle.static.data(name="img", shape=[64, 784])
+            >>> w = paddle.create_parameter(shape=[784, 200], dtype='float32', name='fc_w')
+            >>> b = paddle.create_parameter(shape=[200], dtype='float32', name='fc_b')
+            >>> list_para  = io.get_program_persistable_vars(  paddle.static.default_main_program() )
     """
     return list(filter(is_persistable, program.list_vars()))
 
@@ -1763,22 +1849,22 @@ def load_program_state(model_path, var_list=None):
 
         .. code-block:: python
 
-            import paddle
-            import paddle.static as static
+            >>> import paddle
+            >>> import paddle.static as static
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            x = static.data(name="x", shape=[10, 10], dtype='float32')
-            y = static.nn.fc(x, 10)
-            z = static.nn.fc(y, 10)
+            >>> x = static.data(name="x", shape=[10, 10], dtype='float32')
+            >>> y = static.nn.fc(x, 10)
+            >>> z = static.nn.fc(y, 10)
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
-            prog = static.default_main_program()
+            >>> place = paddle.CPUPlace()
+            >>> exe = static.Executor(place)
+            >>> exe.run(static.default_startup_program())
+            >>> prog = static.default_main_program()
 
-            static.save(prog, "./temp")
-            program_state = static.load_program_state("./temp")
+            >>> static.save(prog, "./temp")
+            >>> program_state = static.load_program_state("./temp")
     """
     model_prefix = model_path
     if model_prefix.endswith(".pdparams"):
@@ -1790,7 +1876,7 @@ def load_program_state(model_path, var_list=None):
 
     parameter_file_name = model_prefix + ".pdparams"
     if not os.path.exists(parameter_file_name):
-        # model file saved with fluid.save is not found, try to load model file saved with
+        # model file saved with base.save is not found, try to load model file saved with
         # [save_vars, save_params, save_persistables]
         _logger.debug(
             "{} not found, try to load model file saved with [ save_params, save_persistables, save_vars ]".format(
@@ -1857,8 +1943,8 @@ def load_program_state(model_path, var_list=None):
                         warnings.warn(error_str % filenames, RuntimeWarning)
                 return False
 
-            place = paddle.fluid.CPUPlace()
-            exe = paddle.fluid.Executor(place)
+            place = paddle.base.CPUPlace()
+            exe = paddle.base.Executor(place)
 
             loaded_var_list = []
 
@@ -1898,7 +1984,7 @@ def load_program_state(model_path, var_list=None):
             res_dict = {}
             for var in loaded_var_list:
                 res_dict[var.name] = np.asarray(
-                    paddle.fluid.global_scope().find_var(var.name).get_tensor()
+                    paddle.base.global_scope().find_var(var.name).get_tensor()
                 )
 
             return res_dict

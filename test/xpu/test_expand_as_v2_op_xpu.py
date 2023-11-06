@@ -23,7 +23,7 @@ from get_test_cover_info import (
 from op_test_xpu import XPUOpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 np.random.seed(10)
@@ -141,13 +141,13 @@ class TestExpandAsV2API(unittest.TestCase):
 
         out_1 = paddle.expand_as(x, y=y)
 
-        exe = fluid.Executor(place=fluid.XPUPlace(0))
+        exe = base.Executor(place=base.XPUPlace(0))
         res_1 = exe.run(
-            fluid.default_main_program(),
+            base.default_main_program(),
             feed={"x": x_np, "target_tensor": y_np},
             fetch_list=[out_1],
         )
-        assert np.array_equal(res_1[0], np.tile(x_np, (2, 1, 1)))
+        np.testing.assert_array_equal(res_1[0], np.tile(x_np, (2, 1, 1)))
 
 
 support_types = get_xpu_op_support_types('expand_as_v2')

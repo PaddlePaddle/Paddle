@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class DotOp(OpTest):
@@ -30,14 +30,14 @@ class DotOp(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_rocm():
@@ -45,12 +45,10 @@ class DotOp(OpTest):
                 ['X', 'Y'],
                 'Out',
                 user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                check_pir=True,
             )
         else:
-            self.check_grad(
-                ['X', 'Y'],
-                'Out',
-            )
+            self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_rocm():
@@ -59,13 +57,10 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set("X"),
                 user_defined_grads=[self.inputs['X']],
+                check_pir=True,
             )
         else:
-            self.check_grad(
-                ['Y'],
-                'Out',
-                no_grad_set=set("X"),
-            )
+            self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
     def test_check_grad_ingore_y(self):
         if core.is_compiled_with_rocm():
@@ -74,13 +69,10 @@ class DotOp(OpTest):
                 'Out',
                 no_grad_set=set('Y'),
                 user_defined_grads=[self.inputs['Y']],
+                check_pir=True,
             )
         else:
-            self.check_grad(
-                ['X'],
-                'Out',
-                no_grad_set=set('Y'),
-            )
+            self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [121]).astype(self.dtype)
@@ -129,13 +121,13 @@ class DotOpBatch(DotOp):
         self.out = np.sum(self.x * self.y, axis=1)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out')
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestDotOpError(unittest.TestCase):
@@ -164,17 +156,17 @@ class TestDotOpError(unittest.TestCase):
 
 class TestDygraph(unittest.TestCase):
     def test_dygraph(self):
-        with fluid.dygraph.guard():
-            x1 = fluid.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
-            y1 = fluid.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
+        with base.dygraph.guard():
+            x1 = base.dygraph.to_variable(np.array([1, 3]).astype(np.float32))
+            y1 = base.dygraph.to_variable(np.array([2, 5]).astype(np.float32))
             np.testing.assert_allclose(
                 paddle.dot(x1, y1).numpy(), np.array([17]), rtol=1e-05
             )
 
-            x1 = fluid.dygraph.to_variable(
+            x1 = base.dygraph.to_variable(
                 np.array([[1, 3], [3, 5]]).astype(np.float32)
             )
-            y1 = fluid.dygraph.to_variable(
+            y1 = base.dygraph.to_variable(
                 np.array([[2, 5], [6, 8]]).astype(np.float32)
             )
             np.testing.assert_array_equal(
@@ -182,102 +174,36 @@ class TestDygraph(unittest.TestCase):
             )
 
 
-class TestComplexDotOp(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
-
-    def init_base_dtype(self):
-        self.dtype = np.float64
+class TestComplex64DotOp(DotOp):
+    def init_dtype(self):
+        self.dtype = np.complex64
 
     def init_input_output(self):
-        self.x = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.y = np.random.random(100).astype(
-            self.dtype
-        ) + 1j * np.random.random(100).astype(self.dtype)
-        self.out = np.dot(self.x, self.y)
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+        shape = 100
+        self.x = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
+        self.y = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
+        self.out = np.dot(self.x, self.y).astype(self.dtype)
 
 
-class TestComplexDotOp2D(OpTest):
-    def setUp(self):
-        self.op_type = "dot"
-        self.python_api = paddle.dot
-        self.init_base_dtype()
-        self.init_input_output()
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
-        }
-        self.outputs = {'Out': self.out}
-
-    def init_base_dtype(self):
-        self.dtype = np.float64
-
+class TestComplex64DotOp2D(TestComplex64DotOp):
     def init_input_output(self):
-        self.x = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
-        self.y = np.random.random((2, 100)).astype(
-            self.dtype
-        ) + 1j * np.random.random((2, 100)).astype(self.dtype)
+        shape = (2, 100)
+        self.x = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
+        self.y = (
+            np.random.random(shape) + 1j * np.random.random(shape)
+        ).astype(self.dtype)
         self.out = np.diag(np.dot(self.x, self.y.T)).reshape(-1)
 
-    def test_check_output(self):
-        self.check_output()
 
-    def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-        )
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-        )
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-        )
+class TestComplex128DotOp(TestComplex64DotOp):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 @unittest.skipIf(
@@ -291,8 +217,8 @@ class TestDotFP16Op(OpTest):
         self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(self.y),
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
         }
         self.outputs = {'Out': self.out}
         self.attrs = {}
@@ -304,20 +230,22 @@ class TestDotFP16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(place, atol=0.125)
+                self.check_output_with_place(place, atol=0.125, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_grad_with_place(place, ['X', 'Y'], 'Out')
+                self.check_grad_with_place(
+                    place, ['X', 'Y'], 'Out', check_pir=True
+                )
 
     def test_check_grad_ingore_x(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ['Y'], 'Out', no_grad_set=set("X")
+                    place, ['Y'], 'Out', no_grad_set=set("X"), check_pir=True
                 )
 
     def test_check_grad_ingore_y(self):
@@ -325,7 +253,7 @@ class TestDotFP16Op(OpTest):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_grad_with_place(
-                    place, ['X'], 'Out', no_grad_set=set("Y")
+                    place, ['X'], 'Out', no_grad_set=set("Y"), check_pir=True
                 )
 
     def init_input_output(self):
@@ -376,7 +304,7 @@ class TestDotBF16Op(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_bfloat16_supported(place):
-                self.check_output_with_place(place, atol=0.5)
+                self.check_output_with_place(place, atol=0.5, check_pir=True)
 
     def test_check_grad_normal(self):
         if core.is_compiled_with_cuda():
@@ -387,6 +315,7 @@ class TestDotBF16Op(OpTest):
                     ['X', 'Y'],
                     'Out',
                     user_defined_grads=[self.inputs['Y'], self.inputs['X']],
+                    check_pir=True,
                 )
 
     def test_check_grad_ingore_x(self):
@@ -399,6 +328,7 @@ class TestDotBF16Op(OpTest):
                     'Out',
                     no_grad_set=set("X"),
                     user_defined_grads=[self.inputs['X']],
+                    check_pir=True,
                 )
 
     def test_check_grad_ingore_y(self):
@@ -411,6 +341,7 @@ class TestDotBF16Op(OpTest):
                     'Out',
                     no_grad_set=set("Y"),
                     user_defined_grads=[self.inputs['Y']],
+                    check_pir=True,
                 )
 
     def init_input_output(self):
@@ -448,6 +379,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                         self.y / self.y.shape[0],
                         self.x / self.x.shape[0],
                     ],
+                    check_pir=True,
                 )
 
     def test_check_grad_ingore_x(self):
@@ -460,6 +392,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     'Out',
                     no_grad_set=set("X"),
                     user_defined_grads=[self.x / self.x.shape[0]],
+                    check_pir=True,
                 )
 
     def test_check_grad_ingore_y(self):
@@ -472,6 +405,7 @@ class DotBF16OpBatch(TestDotBF16Op):
                     'Out',
                     no_grad_set=set("Y"),
                     user_defined_grads=[self.y / self.y.shape[0]],
+                    check_pir=True,
                 )
 
 

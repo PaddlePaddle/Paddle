@@ -18,11 +18,13 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/infershape_utils.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/fluid/ir/interface/infermeta.h"
+#include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
+#include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/phi/core/utils/rw_lock.h"
 
 #define SCOPE_VARS_READER_LOCK AutoRDLock auto_lock(&vars_lock_);
@@ -167,6 +169,9 @@ struct OpFuncNode {
   // TODO(zhiqiu): Better make it unique_ptr
   std::shared_ptr<OperatorBase> operator_base_{nullptr};
   std::string execution_stream_{kDefaultStream};
+  bool force_record_event_{false};
+  std::vector<std::string> events_to_wait_;
+  std::string event_to_record_{"default"};
 
   OpFuncType type_;
   OpKernelComputeFunc kernel_func_;
@@ -178,6 +183,9 @@ struct OpFuncNode {
   phi::InferMetaContext infer_meta_context_;
   std::string phi_op_name_;
   paddle::dialect::InferMetaInterface::Concept* infer_meta_interface_{nullptr};
+
+  bool fluid_op{false};
+  std::shared_ptr<RuntimeContext> runtime_ctx_{nullptr};
 };
 
 class Instruction {
@@ -209,8 +217,16 @@ class Instruction {
     events_to_wait_.emplace_back(instr_id, event, waiter_type);
   }
 
+  void AddEventToWait(const EventInter* event_inter) {
+    events_to_wait_.push_back(*event_inter);
+  }
+
   const std::vector<EventInter>& EventsToWait() const {
     return events_to_wait_;
+  }
+
+  const std::shared_ptr<EventInter>& EventToRecord() const {
+    return event_to_record_;
   }
 
   void AddNextInstrInDifferentThread(size_t id) {
@@ -248,15 +264,19 @@ class Instruction {
   const std::vector<size_t>& GCCheckVars() const;
 
   void ResetContext(const VariableValueMap& in_vars,
-                    const VariableValueMap& out_vars);
+                    const VariableValueMap& out_vars,
+                    const std::string& op_name);
 
   void ResetContextWithScope(const VariableValueMap& in_vars,
                              const VariableValueMap& out_vars,
-                             const framework::Scope& scope);
+                             const framework::Scope& scope,
+                             const std::string& op_name);
 
   std::shared_ptr<RuntimeContext> InnerRuntimeContext() const;
 
   std::shared_ptr<RuntimeInferShapeContext> InnerInferShapeContext() const;
+
+  const phi::InferMetaContext* InnerCompatInferMetaContext() const;
 
   std::shared_ptr<ExecutionContext> InnerExecutionContext() const;
 
@@ -276,6 +296,8 @@ class Instruction {
 
   const OpFuncNode* OpFunc() const { return &op_func_node_; }
 
+  bool can_use_infermeta_ctx_ = false;
+
  private:
   bool is_artificial_;  // Instruction is artificial means that it is only used
                         // to assist scheduling and no need to be executed.
@@ -293,6 +315,7 @@ class Instruction {
 
   std::shared_ptr<RuntimeContext> runtime_ctx_;
   std::shared_ptr<RuntimeInferShapeContext> infershape_ctx_;
+  paddle::framework::CompatInferMetaContext compat_infermeta_ctx_;
   std::shared_ptr<ExecutionContext> execution_ctx_;
 
   std::vector<size_t> gc_check_vars_;

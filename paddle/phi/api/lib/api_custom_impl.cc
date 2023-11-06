@@ -28,7 +28,10 @@ limitations under the License. */
 #include "paddle/phi/infermeta/multiary.h"
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
-
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 namespace paddle {
 namespace experimental {
 
@@ -57,7 +60,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 
   bool is_sr_kernel = true;
   for (auto& input : x) {
-    if (phi::DenseTensor::classof(input.impl().get())) {
+    if (phi::DenseTensor::classof(input.impl().get()) ||
+        phi::distributed::DistTensor::classof(input.impl().get())) {
       is_sr_kernel = false;
       break;
     }
@@ -98,12 +102,89 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
 
     (*kernel_fn)(*dev_ctx, input_x, kernel_out);
   } else {
+#ifdef PADDLE_WITH_DISTRIBUTE
+    bool run_auto_parallel = AllInputsAreDistTensor(x);
+    bool rank_is_in_current_mesh = true;
+    if (run_auto_parallel) {
+      auto mesh =
+          std::static_pointer_cast<phi::distributed::DistTensor>(x[0].impl())
+              ->dist_attr()
+              .process_mesh();
+      rank_is_in_current_mesh = phi::distributed::IsCurRankInMesh(mesh);
+
+      std::vector<const phi::TensorBase*> input_x(x.size());
+      for (size_t i = 0; i < input_x.size(); ++i) {
+        input_x[i] = x[i].impl().get();
+      }
+
+      auto meta_dist_input_x = MakeDistMetaTensor(input_x);
+      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
+          meta_dist_input_x);
+
+      auto dist_out = SetKernelDistOutput(&api_output);
+      auto dense_out = dist_out->unsafe_mutable_value();
+      if (!rank_is_in_current_mesh) {
+        *dense_out = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(
+                nullptr, 0, phi::distributed::GetDefaultPlace()),
+            phi::DenseTensorMeta());
+      }
+
+      phi::MetaTensor meta_dist_out(dist_out);
+      auto x_meta_vec = MakeMetaTensor(input_x);
+      std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
+      for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+        x_metas[i] = &x_meta_vec[i];
+      }
+      phi::AddNInferMeta(x_metas, &meta_dist_out);
+      if (rank_is_in_current_mesh) {
+        auto dist_input_x =
+            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[0]);
+        dist_input_x = PrepareDataForDistTensor(
+            dist_input_x,
+            GetKernelInputArgDef(kernel.InputAt(0), kernel_backend),
+            {},
+            kernel_result.is_stride_kernel);
+        std::vector<const phi::TensorBase*> input_x(dist_input_x.size());
+        for (size_t i = 0; i < dist_input_x.size(); ++i) {
+          input_x[i] = dist_input_x[i]->unsafe_mutable_value();
+        }
+
+        auto x_meta_vec = MakeMetaTensor(input_x);
+        std::vector<const phi::MetaTensor*> x_metas(x_meta_vec.size());
+        for (size_t i = 0; i < x_meta_vec.size(); ++i) {
+          x_metas[i] = &x_meta_vec[i];
+        }
+        phi::MetaTensor meta_dense_out(dense_out);
+        phi::AddNInferMeta(x_metas, &meta_dense_out);
+
+        using kernel_signature =
+            void (*)(const phi::DeviceContext&,
+                     const std::vector<const phi::TensorBase*>&,
+                     phi::DenseTensor*);
+        auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
+        (*kernel_fn)(*dev_ctx, input_x, dense_out);
+      }
+      PADDLE_ENFORCE_EQ(paddle::holds_alternative<
+                            std::vector<phi::distributed::TensorDistAttr>>(
+                            spmd_info.first[0]),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "Arg must be a vector of TensorDistAttr"));
+
+      auto current_process_mesh =
+          paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
+      SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
+      return api_output;
+    }
+#endif
     std::vector<const phi::TensorBase*> input_x(x.size());
     std::vector<std::shared_ptr<phi::DenseTensor>> temp_dense_tensots;
     temp_dense_tensots.reserve(x.size());
     for (size_t i = 0; i < input_x.size(); ++i) {
       if (phi::DenseTensor::classof(x[i].impl().get())) {
-        temp_dense_tensots.push_back(PrepareData(x[i], kernel.InputAt(0), {}));
+        temp_dense_tensots.push_back(
+            PrepareData(x[i], kernel.InputAt(0), {}, false));
         input_x[i] = temp_dense_tensots.back().get();
       } else {
         input_x[i] = x[i].impl().get();
@@ -167,9 +248,9 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
-    auto input_weight = PrepareData(weight, kernel.InputAt(1), {});
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, false);
+    auto input_weight = PrepareData(weight, kernel.InputAt(1), {}, false);
+    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {}, false);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);
@@ -222,9 +303,9 @@ void embedding_grad_impl(const Tensor& x,
     auto* dev_ctx = GetDeviceContextByBackend(
         kernel_result.has_fallback_cpu ? Backend::CPU : kernel_key.backend());
 
-    auto input_x = PrepareData(x, kernel.InputAt(0), {});
+    auto input_x = PrepareData(x, kernel.InputAt(0), {}, false);
     auto input_weight = TensorToSelectedRows(weight);
-    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {});
+    auto input_out_grad = PrepareData(out_grad, kernel.InputAt(2), {}, false);
 
     if (sparse) {
       auto* kernel_out = SetSelectedRowsKernelOutput(weight_grad);

@@ -19,10 +19,10 @@ import numpy as np
 
 import paddle
 from paddle import _legacy_C_ops
-from paddle.fluid import backward, core, framework, unique_name
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.fluid.framework import OpProtoHolder
+from paddle.base import backward, core, framework, unique_name
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.base.framework import OpProtoHolder
 from paddle.framework import in_dynamic_mode
 from paddle.jit.dy2static.partial_program import (
     LazyInitialized,
@@ -336,7 +336,6 @@ class _ProgramHolder:
         # input, output, persistable, double_grads var info
         self._input_descs = []
         self._output_descs = []
-        self._double_grad_descs = []
         self._persistable_names = []
         self._grad_var_names = {}
 
@@ -347,15 +346,11 @@ class _ProgramHolder:
         self._suffix_varname_dict = None
         # forward program
         self._infer_program_desc = self._preprocess(program_desc)
-        # forward + backward program
-        self._train_program_desc = self._append_backward_desc(
-            self._infer_program_desc
-        )
 
     # forward:
     @switch_to_static_graph
     def _create_forward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         end_op_index = self._infer_program_desc.block(0).op_size()
         if end_op_index > 0:
             return add_build_strategy_for(whole_program, 0, end_op_index)
@@ -369,7 +364,7 @@ class _ProgramHolder:
     # backward
     @switch_to_static_graph
     def _create_backward_train_program(self):
-        whole_program = _build_program_by_desc(self._train_program_desc)
+        whole_program = _build_program_by_desc(self.train_program)
         start_op_index = self._infer_program_desc.block(0).op_size() + len(
             self._output_descs
         )
@@ -389,9 +384,9 @@ class _ProgramHolder:
     def infer_program(self):
         return self._infer_program_desc
 
-    @property
+    @LazyInitialized
     def train_program(self):
-        return self._train_program_desc
+        return self._append_backward_desc(self._infer_program_desc)
 
     @property
     def forward_program(self):
@@ -412,10 +407,6 @@ class _ProgramHolder:
     @property
     def persistable_names(self):
         return self._persistable_names
-
-    @property
-    def double_grad_descs(self):
-        return self._double_grad_descs
 
     @property
     def scope(self):
@@ -469,12 +460,6 @@ class _ProgramHolder:
         for op_idx in reversed(ops_to_remove):
             root_block._remove_op(op_idx, op_idx + 1)
 
-        for i in range(program_desc.num_blocks()):
-            block_desc = program_desc.block(i)
-            for var_desc in block_desc.all_vars():
-                if "@GRAD" in var_desc.name():
-                    self._double_grad_descs.append(var_desc)
-
         # 2. Input processing, reverse feed vars
         self._input_descs.reverse()
 
@@ -516,6 +501,11 @@ class _ProgramHolder:
 
     @switch_to_static_graph
     def _append_scale_to_output(self, program):
+        # 0. scale don't support bool output, we skip append scale for it
+        for out_desc in self._output_descs:
+            if out_desc.dtype() == core.VarDesc.VarType.BOOL:
+                return
+
         # 1. append scale & save var
         scale_output_vars = []
         with framework.program_guard(program):
@@ -898,6 +888,7 @@ def _valid_vars(vars):
 def _run_dygraph(instance, input, program_holder):
     # 1. prepare inputs, outputs, attrs
     input_vars = []
+    input_var_names = []
     for i, value in enumerate(input):
         if not isinstance(value, (np.ndarray, core.eager.Tensor)):
             raise TypeError(
@@ -918,6 +909,7 @@ def _run_dygraph(instance, input, program_holder):
             # NOTE: we changed var name here,
             # but it may be an important name set by user
             var.name = program_holder.input_descs[i].name()
+        input_var_names.append(var.name)
         input_vars.append(var)
     if instance._input_args_names is None:
         instance._input_args_names = [
@@ -951,17 +943,6 @@ def _run_dygraph(instance, input, program_holder):
     # hold forward variables
     tmp_scope_vec = [program_holder.scope]
 
-    double_grad_vars = []
-    for var_desc in program_holder.double_grad_descs:
-        var = core.eager.Tensor(
-            dtype=var_desc.dtype(),
-            dims=var_desc.shape(),
-            name=var_desc.name(),
-            type=var_desc.type(),
-            persistable=False,
-        )
-        double_grad_vars.append(var)
-
     # 2. run program by op
     trace_program = (
         program_holder.infer_program
@@ -986,6 +967,8 @@ def _run_dygraph(instance, input, program_holder):
         instance._is_test,
         'program_id',
         paddle.utils._hash_with_id(trace_program, instance),
+        'x_names',
+        input_var_names,
     ]
     if not instance._is_test:
         attrs.extend(
@@ -1006,17 +989,21 @@ def _run_dygraph(instance, input, program_holder):
             (
                 'forward_global_block',
                 forward_program.block(0),
-                'backward_global_block',
-                program_holder.backward_program.block(0),
             )
         )
+        if not instance._is_test:
+            attrs.extend(
+                (
+                    'backward_global_block',
+                    program_holder.backward_program.block(0),
+                )
+            )
 
     _legacy_C_ops.run_program(
         _valid_vars(input_vars),
         _valid_vars(persistable_vars),
         _valid_vars(output_vars),
         tmp_scope_vec,
-        _valid_vars(double_grad_vars),
         None,
         *attrs,
     )
@@ -1051,7 +1038,6 @@ def _run_static_graph(input, program_holder, trace_program):
         trace_program, exclude=param_var_names
     )
     trace_program.flush()
-    output_names = [var.name() for var in program_holder.output_descs]
     # append blocks from 'trace_program'
     _append_block(
         main_program,
@@ -1312,87 +1298,86 @@ class TranslatedLayer(layers.Layer):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+            >>> BATCH_SIZE = 16
+            >>> BATCH_NUM = 4
+            >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> # define a random dataset
+            >>> class RandomDataset(paddle.io.Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...
+            ...     @paddle.jit.to_static
+            ...     def forward(self, x):
+            ...         return self._linear(x)
+            ...
+            >>> def train(layer, loader, loss_fn, opt):
+            ...     for epoch_id in range(EPOCH_NUM):
+            ...         for batch_id, (image, label) in enumerate(loader()):
+            ...             out = layer(image)
+            ...             loss = loss_fn(out, label)
+            ...             loss.backward()
+            ...             opt.step()
+            ...             opt.clear_grad()
+            ...             print("Epoch {} batch {}: loss = {}".format(
+            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+            ...
+            >>> # 1. train & save model.
+            >>> # create network
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.CrossEntropyLoss()
+            >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+            >>> # create data loader
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            >>> loader = paddle.io.DataLoader(dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2
+            ... )
+            >>> # train
+            >>> train(layer, loader, loss_fn, adam)
 
-                def __len__(self):
-                    return self.num_samples
+            >>> # save
+            >>> model_path = "linear.example.model"
+            >>> paddle.jit.save(layer, model_path)
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            >>> # 2. load model as TranslatedLayer
+            >>> # load
+            >>> translated_layer = paddle.jit.load(model_path)
 
-                @paddle.jit.to_static
-                def forward(self, x):
-                    return self._linear(x)
+            >>> # inference
+            >>> translated_layer.eval()
+            >>> x = paddle.randn([1, IMAGE_SIZE], 'float32')
+            >>> pred = translated_layer(x)
 
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-                        print("Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
-
-            # 1. train & save model.
-
-            # create network
-            layer = LinearNet()
-            loss_fn = nn.CrossEntropyLoss()
-            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-
-            # train
-            train(layer, loader, loss_fn, adam)
-
-            # save
-            model_path = "linear.example.model"
-            paddle.jit.save(layer, model_path)
-
-            # 2. load model as TranslatedLayer
-
-            # load
-            translated_layer = paddle.jit.load(model_path)
-
-            # inference
-            translated_layer.eval()
-            x = paddle.randn([1, IMAGE_SIZE], 'float32')
-            pred = translated_layer(x)
-
-            # fine-tune
-            translated_layer.train()
-            adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
-            train(translated_layer, loader, loss_fn, adam)
+            >>> # fine-tune
+            >>> translated_layer.train()
+            >>> adam = opt.Adam(learning_rate=0.001, parameters=translated_layer.parameters())
+            >>> train(translated_layer, loader, loss_fn, adam)
 
     """
 
@@ -1523,76 +1508,76 @@ class TranslatedLayer(layers.Layer):
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+                >>> import numpy as np
+                >>> import paddle
+                >>> from paddle import nn
+                >>> import paddle.optimizer as opt
 
-                BATCH_SIZE = 16
-                BATCH_NUM = 4
-                EPOCH_NUM = 4
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
 
-                IMAGE_SIZE = 784
-                CLASS_NUM = 10
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
 
-                # define a random dataset
-                class RandomDataset(paddle.io.Dataset):
-                    def __init__(self, num_samples):
-                        self.num_samples = num_samples
+                >>> # define a random dataset
+                >>> class RandomDataset(paddle.io.Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
+                ...
+                >>> class LinearNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                ...
+                ...     @paddle.jit.to_static
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> def train(layer, loader, loss_fn, opt):
+                ...     for epoch_id in range(EPOCH_NUM):
+                ...         for batch_id, (image, label) in enumerate(loader()):
+                ...             out = layer(image)
+                ...             loss = loss_fn(out, label)
+                ...             loss.backward()
+                ...             opt.step()
+                ...             opt.clear_grad()
+                ...             print("Epoch {} batch {}: loss = {}".format(
+                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
+                ...
+                >>> # create network
+                >>> layer = LinearNet()
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+                >>> # create data loader
+                >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                >>> loader = paddle.io.DataLoader(dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
+                >>> # train
+                >>> train(layer, loader, loss_fn, adam)
 
-                    def __getitem__(self, idx):
-                        image = np.random.random([IMAGE_SIZE]).astype('float32')
-                        label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                        return image, label
+                >>> # save
+                >>> model_path = "linear.example.model"
+                >>> paddle.jit.save(layer, model_path)
 
-                    def __len__(self):
-                        return self.num_samples
+                >>> # load
+                >>> translated_layer = paddle.jit.load(model_path)
 
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
-
-                    @paddle.jit.to_static
-                    def forward(self, x):
-                        return self._linear(x)
-
-                def train(layer, loader, loss_fn, opt):
-                    for epoch_id in range(EPOCH_NUM):
-                        for batch_id, (image, label) in enumerate(loader()):
-                            out = layer(image)
-                            loss = loss_fn(out, label)
-                            loss.backward()
-                            opt.step()
-                            opt.clear_grad()
-                            print("Epoch {} batch {}: loss = {}".format(
-                                epoch_id, batch_id, np.mean(loss.numpy())))
-
-                # create network
-                layer = LinearNet()
-                loss_fn = nn.CrossEntropyLoss()
-                adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
-
-                # create data loader
-                dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-                loader = paddle.io.DataLoader(dataset,
-                    batch_size=BATCH_SIZE,
-                    shuffle=True,
-                    drop_last=True,
-                    num_workers=2)
-
-                # train
-                train(layer, loader, loss_fn, adam)
-
-                # save
-                model_path = "linear.example.model"
-                paddle.jit.save(layer, model_path)
-
-                # load
-                translated_layer = paddle.jit.load(model_path)
-
-                # get program
-                program = translated_layer.program()
+                >>> # get program
+                >>> program = translated_layer.program()
         """
         # 1. get program holder
         program_holder = self._get_program_holder(method_name)

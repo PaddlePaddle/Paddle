@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestEmbeddingIdStopGradientBase(unittest.TestCase):
@@ -26,9 +26,9 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
         self.iteration = 10
 
     def get_places(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         return places
 
@@ -43,12 +43,12 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
         paddle.seed(1)
         paddle.framework.random._manual_program_seed(1)
 
-        startup_program = fluid.Program()
-        main_program = fluid.Program()
+        startup_program = base.Program()
+        main_program = base.Program()
 
-        scope = fluid.Scope()
-        with fluid.program_guard(main_program, startup_program):
-            with fluid.scope_guard(scope):
+        scope = base.Scope()
+        with base.program_guard(main_program, startup_program):
+            with base.scope_guard(scope):
                 x_1 = paddle.static.data(name='x1', shape=[4, 1], dtype='int64')
                 x_2 = paddle.static.data(name='x2', shape=[4, 1], dtype='int64')
                 x = paddle.concat([x_1, x_2], axis=-1)
@@ -62,10 +62,10 @@ class TestEmbeddingIdStopGradientBase(unittest.TestCase):
                     x, size=[10, 32], dtype='float32'
                 )
                 avg_cost = paddle.mean(emb, name='mean_loss')
-                optim = fluid.optimizer.SGD(learning_rate=0.001)
+                optim = paddle.optimizer.SGD(learning_rate=0.001)
                 optim.minimize(avg_cost)
 
-                exe = fluid.Executor(place)
+                exe = base.Executor(place)
                 exe.run(startup_program)
 
                 x1_data = np.random.randint(0, 9, x_1.shape).astype('int64')

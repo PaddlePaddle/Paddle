@@ -264,7 +264,8 @@ void ConvCudnnKernelImplV8(const DenseTensor* input_tensor,
   if (plan_cache.FindPlan(op_graph, handle)) {
     const cudnn_frontend::ExecutionPlan* cached_plan = nullptr;
     int64_t workspace_size = 0;
-    plan_cache.GetPlan(op_graph, &cached_plan, &workspace_size, handle);
+    plan_cache.GetPlanAndWorkspaceSize(
+        op_graph, &cached_plan, &workspace_size, handle);
     helper::ExecutePlan(handle,
                         &workspace_handle,
                         input_data,

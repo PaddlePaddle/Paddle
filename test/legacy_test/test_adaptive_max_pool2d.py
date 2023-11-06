@@ -15,12 +15,12 @@
 import unittest
 
 import numpy as np
-from eager_op_test import check_out_dtype
+from op_test import check_out_dtype
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -144,20 +144,75 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
+            np.testing.assert_allclose(res_1, self.res_1_np)
 
-            assert np.allclose(res_2, self.res_2_np)
+            np.testing.assert_allclose(res_2, self.res_2_np)
 
-            assert np.allclose(res_3, self.res_3_np)
+            np.testing.assert_allclose(res_3, self.res_3_np)
 
-            # assert np.allclose(res_4, self.res_4_np)
+            # np.testing.assert_allclose(res_4, self.res_4_np)
 
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(res_5, self.res_5_np)
+
+    def test_static_graph_return_mask(self):
+        for use_cuda in (
+            [False, True] if core.is_compiled_with_cuda() else [False]
+        ):
+            place = paddle.CUDAPlace(0) if use_cuda else paddle.CPUPlace()
+            paddle.enable_static()
+            x = paddle.static.data(
+                name="x", shape=[2, 3, 7, 7], dtype="float32"
+            )
+
+            out_1 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[3, 3], return_mask=True
+            )
+
+            out_2 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=5, return_mask=True
+            )
+
+            out_3 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[2, 5], return_mask=True
+            )
+
+            # out_4 = paddle.nn.functional.adaptive_max_pool2d(
+            #    x=x, output_size=[3, 3], data_format="NHWC"), return_mask=True
+
+            out_5 = paddle.nn.functional.adaptive_max_pool2d(
+                x=x, output_size=[None, 3], return_mask=True
+            )
+
+            exe = paddle.static.Executor(place=place)
+            [
+                res_1,
+                mask_1,
+                res_2,
+                mask_2,
+                res_3,
+                mask_3,
+                res_5,
+                mask_5,
+            ] = exe.run(
+                base.default_main_program(),
+                feed={"x": self.x_np},
+                fetch_list=[out_1, out_2, out_3, out_5],
+            )
+
+            self.assertEqual(res_1.shape, mask_1.shape)
+
+            self.assertEqual(res_2.shape, mask_2.shape)
+
+            self.assertEqual(res_3.shape, mask_3.shape)
+
+            # self.assertEqual(res_4.shape, mask_4.shape)
+
+            self.assertEqual(res_5.shape, mask_5.shape)
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -184,15 +239,15 @@ class TestAdaptiveMaxPool2DAPI(unittest.TestCase):
                 x=x, output_size=[None, 3]
             )
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
 
-            assert np.allclose(out_2.numpy(), self.res_2_np)
+            np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
 
-            assert np.allclose(out_3.numpy(), self.res_3_np)
+            np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            # assert np.allclose(out_4.numpy(), self.res_4_np)
+            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
-            assert np.allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
 
 class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
@@ -250,20 +305,20 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
 
             exe = paddle.static.Executor(place=place)
             [res_1, res_2, res_3, res_5] = exe.run(
-                fluid.default_main_program(),
+                base.default_main_program(),
                 feed={"x": self.x_np},
                 fetch_list=[out_1, out_2, out_3, out_5],
             )
 
-            assert np.allclose(res_1, self.res_1_np)
+            np.testing.assert_allclose(res_1, self.res_1_np)
 
-            assert np.allclose(res_2, self.res_2_np)
+            np.testing.assert_allclose(res_2, self.res_2_np)
 
-            assert np.allclose(res_3, self.res_3_np)
+            np.testing.assert_allclose(res_3, self.res_3_np)
 
-            # assert np.allclose(res_4, self.res_4_np)
+            # np.testing.assert_allclose(res_4, self.res_4_np)
 
-            assert np.allclose(res_5, self.res_5_np)
+            np.testing.assert_allclose(res_5, self.res_5_np)
 
     def test_dynamic_graph(self):
         for use_cuda in (
@@ -291,15 +346,15 @@ class TestAdaptiveMaxPool2DClassAPI(unittest.TestCase):
             )
             out_5 = adaptive_max_pool(x=x)
 
-            assert np.allclose(out_1.numpy(), self.res_1_np)
+            np.testing.assert_allclose(out_1.numpy(), self.res_1_np)
 
-            assert np.allclose(out_2.numpy(), self.res_2_np)
+            np.testing.assert_allclose(out_2.numpy(), self.res_2_np)
 
-            assert np.allclose(out_3.numpy(), self.res_3_np)
+            np.testing.assert_allclose(out_3.numpy(), self.res_3_np)
 
-            # assert np.allclose(out_4.numpy(), self.res_4_np)
+            # np.testing.assert_allclose(out_4.numpy(), self.res_4_np)
 
-            assert np.allclose(out_5.numpy(), self.res_5_np)
+            np.testing.assert_allclose(out_5.numpy(), self.res_5_np)
 
 
 class TestOutDtype(unittest.TestCase):

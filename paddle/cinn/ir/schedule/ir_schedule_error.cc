@@ -14,59 +14,24 @@
 
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {
 
 std::string IRScheduleErrorHandler::GeneralErrorMessage() const {
-  return this->err_msg_;
+  std::ostringstream os;
+  os << "[IRScheduleError] An error occurred in the scheduel primitive < "
+     << this->primitive_ << " >. " << std::endl;
+  os << indent_str_ << "[Error info] " << this->err_msg_;
+  return os.str();
 }
 
 std::string IRScheduleErrorHandler::DetailedErrorMessage() const {
   std::ostringstream os;
   os << GeneralErrorMessage();
-  os << "[Expr info] The Expr of current schedule is: "
+  os << indent_str_ << "[Expr info] The Expr of current schedule is:\n"
      << this->module_expr_.GetExprs() << std::endl;
-  return os.str();
-}
-
-std::string IRScheduleErrorHandler::FormatErrorMessage(
-    const std::string& primitive,
-    const ScheduleErrorMessageLevel& err_msg_level) const {
-  std::ostringstream os;
-  std::string err_msg = err_msg_level == ScheduleErrorMessageLevel::kDetailed
-                            ? DetailedErrorMessage()
-                            : GeneralErrorMessage();
-
-  os << "[IRScheduleError] An error occurred in the scheduel primitive <"
-     << primitive << ">. " << std::endl;
-  os << "[Error info] " << err_msg;
-  return os.str();
-}
-
-std::string NegativeFactorErrorMessage(const int64_t& factor,
-                                       const size_t& idx) {
-  std::ostringstream os;
-  os << "The params in factors of Split should be positive. However, the "
-        "factor at position "
-     << idx << " is " << factor << std::endl;
-  return os.str();
-}
-
-std::string InferFactorErrorMessage() {
-  std::ostringstream os;
-  os << "The params in factors of Split should not be less than -1 or have "
-        "more than one -1!"
-     << std::endl;
-  return os.str();
-}
-
-std::string FactorProductErrorMessage() {
-  std::ostringstream os;
-  os << "In Split, the factors' product should be not larger than or equal "
-        "to original loop's extent!"
-     << std::endl;
   return os.str();
 }
 

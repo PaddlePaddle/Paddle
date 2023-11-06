@@ -21,7 +21,7 @@ SparseCooTensor::SparseCooTensor() {
   this->SetMember(non_zero_indices, non_zero_elements, {1}, true);
 }
 
-SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) {
+SparseCooTensor::SparseCooTensor(SparseCooTensor&& other) noexcept {
   this->non_zero_elements_ = other.non_zero_elements_;
   this->non_zero_indices_ = other.non_zero_indices_;
   this->coalesced_ = other.coalesced_;
@@ -50,18 +50,22 @@ SparseCooTensor::SparseCooTensor(DenseTensor&& non_zero_indices,
   meta_.dtype = non_zero_elements.dtype();
 }
 
-SparseCooTensor::SparseCooTensor(const SparseCooTensor& other)
-    : non_zero_indices_(other.non_zero_indices_),
-      non_zero_elements_(other.non_zero_elements_) {
+SparseCooTensor::SparseCooTensor(const SparseCooTensor& other) {
+  this->non_zero_indices_ = other.non_zero_indices_;
+  this->non_zero_elements_ = other.non_zero_elements_;
   this->coalesced_ = other.coalesced_;
   set_meta(other.meta());
 }
 
-SparseCooTensor SparseCooTensor::operator=(const SparseCooTensor& other) {
-  this->non_zero_elements_ = other.non_zero_elements_;
-  this->non_zero_indices_ = other.non_zero_indices_;
-  this->coalesced_ = other.coalesced_;
-  set_meta(other.meta());
+SparseCooTensor& SparseCooTensor::operator=(const SparseCooTensor& other) {
+  if (this != &other) {
+    this->non_zero_elements_ = other.non_zero_elements_;
+    this->non_zero_indices_ = other.non_zero_indices_;
+    this->coalesced_ = other.coalesced_;
+    set_meta(other.meta());
+    return *this;
+  }
+
   return *this;
 }
 
@@ -147,7 +151,7 @@ void SparseCooTensor::SetMember(const DenseTensor& non_zero_indices,
 }
 
 int32_t SparseCooTensor::sparse_dim() const {
-  return non_zero_indices_.dims()[0];
+  return static_cast<int32_t>(non_zero_indices_.dims()[0]);
 }
 
 int32_t SparseCooTensor::dense_dim() const {

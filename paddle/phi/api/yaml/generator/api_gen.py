@@ -66,7 +66,7 @@ class ForwardAPI(BaseAPI):
                     input_tensor_code = (
                         input_tensor_code
                         + f"""
-{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag});"""
+{code_indent}  auto {PREFIX_TENSOR_NAME}{input_name} = PrepareData({input_name}, kernel.InputAt(0), {trans_flag}, kernel_result.is_stride_kernel);"""
                     )
                 else:
                     # do nothing
@@ -274,7 +274,10 @@ class ForwardAPI(BaseAPI):
                     output_create = (
                         output_create
                         + f"""
-{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});"""
+{code_indent}  auto kernel_out_{i} = {set_out_func}({self.outputs['out_size_expr'][i]}, {get_out_code});
+{code_indent}  if (kernel_result.has_fallback_cpu) {{
+{code_indent}    TransDataBackend(kernel_out_{i}, actual_kernel_backend, kernel_out_{i});
+{code_indent}  }}"""
                     )
 
                 else:
@@ -305,9 +308,7 @@ class ForwardAPI(BaseAPI):
                         )
         else:
             raise ValueError(
-                "{} : Output error: the output should not be empty.".format(
-                    self.api
-                )
+                f"{self.api} : Output error: the output should not be empty."
             )
 
         return kernel_output, output_names, output_create
@@ -360,7 +361,7 @@ def source_include(header_file_path):
 #include <memory>
 
 #include "glog/logging.h"
-#include "gflags/gflags.h"
+#include "paddle/utils/flags.h"
 
 #include "paddle/phi/api/lib/api_custom_impl.h"
 #include "paddle/phi/api/lib/api_gen_utils.h"
@@ -379,8 +380,13 @@ def source_include(header_file_path):
 #include "paddle/phi/api/profiler/event_tracing.h"
 #include "paddle/phi/api/profiler/supplement_tracing.h"
 
-DECLARE_bool(conv2d_disable_cudnn);
-DECLARE_int32(low_precision_op_list);
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#endif
+
+PD_DECLARE_bool(conv2d_disable_cudnn);
+PD_DECLARE_int32(low_precision_op_list);
 """
 
 
@@ -403,6 +409,9 @@ def declare_extension_api():
     return """
 namespace paddle {
 PD_DECLARE_API(from_blob);
+#ifdef PADDLE_WITH_DISTRIBUTE
+PD_DECLARE_API(reshard);
+#endif
 }  // namespace paddle
 """
 

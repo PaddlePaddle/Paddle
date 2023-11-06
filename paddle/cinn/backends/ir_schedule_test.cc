@@ -24,8 +24,8 @@
 #include "paddle/cinn/backends/codegen_c_x86.h"
 #include "paddle/cinn/backends/codegen_cuda_dev.h"
 #include "paddle/cinn/cinn.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/remove_schedule_block.h"
@@ -177,7 +177,7 @@ void TestSplitThrow() {
   std::vector<Expr> vec_ast{ast_expr};
   ir::ModuleExpr mod_expr(vec_ast);
   ir::IRSchedule ir_sch(
-      mod_expr, -1, false, ir::ScheduleErrorMessageLevel::kGeneral);
+      mod_expr, -1, false, utils::ErrorMessageLevel::kGeneral);
   auto fused = ir_sch.Fuse("B", {0, 1});
   // statement that cause the exception
   auto splited = ir_sch.Split(fused, {-1, -1});
@@ -196,7 +196,7 @@ void TestSplitThrow() {
   auto source_code = codegen.Compile(module, CodeGenC::OutputKind::CImpl);
 }
 TEST(IrSchedule, split_throw) {
-  ASSERT_THROW(TestSplitThrow(), ir::enforce::EnforceNotMet);
+  ASSERT_THROW(TestSplitThrow(), utils::enforce::EnforceNotMet);
 }
 
 TEST(IrSchedule, reorder1) {
@@ -794,10 +794,8 @@ void test_simple_compute_at(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-      {
         B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
         C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
-      }
       };
     };
   };
@@ -869,10 +867,8 @@ void test_compute_at0(void* _args, int32_t num_args)
   for (int32_t i_j_fused_1 = 0; i_j_fused_1 < 2; i_j_fused_1 += 1) {
     for (int32_t i_j_fused_2 = 0; i_j_fused_2 < 1024; i_j_fused_2 += 1) {
       if ((((1024 * i_j_fused_1) + i_j_fused_2) < 1280)) {
-      {
         B[((1024 * i_j_fused_1) + i_j_fused_2)] = A[((1024 * i_j_fused_1) + i_j_fused_2)];
         C[((1024 * i_j_fused_1) + i_j_fused_2)] = B[((1024 * i_j_fused_1) + i_j_fused_2)];
-      }
       };
     };
   };
@@ -2312,6 +2308,270 @@ void test_rfactor(void* _args, int32_t num_args)
 }
 )ROC";
   ASSERT_EQ(utils::Trim(target_code), utils::Trim(source_code));
+}
+
+TEST(IrSchedule, factorize_reduction) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N, K});
+  Var j(4, "j0");
+  Var k(5, "k0");
+  auto B = Compute(
+      {M},
+      [&](Var i) {
+        return lang::ReduceSum(A(i, j, k), {j, k});
+      },
+      "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 3U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 0);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[vj0, i0_0] = 0.00000000f
+          }
+          serial for (k0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, i2 = axis.bind(j0, i, k0)
+              B_rf[vj0, i0_0] = (B_rf[vj0, i0_0] + A[i0_0, vj0, i2])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[vj0, i0_0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
+}
+
+TEST(IrSchedule, factorize_reduction1) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N, K});
+  Var j(4, "j0");
+  Var k(5, "k0");
+  auto B = Compute(
+      {M},
+      [&](Var i) {
+        return lang::ReduceSum(A(i, j, k), {j, k});
+      },
+      "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 3U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(loops[1], 1);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[i0_0, vj0] = 0.00000000f
+          }
+          serial for (k0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, i2 = axis.bind(j0, i, k0)
+              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, vj0, i2])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[i0_0, vj0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
+}
+
+TEST(IrSchedule, factorize_reduction2) {
+  Context::Global().ResetNameId();
+  Expr M(3);
+  Expr N(4);
+  Expr K(5);
+
+  Target target = common::DefaultHostTarget();
+
+  Placeholder<float> A("A", {M, N * K});
+  Var j(4 * 5, "j0");
+  auto B = Compute(
+      {M}, [&](Var i) { return lang::ReduceSum(A(i, j), {j}); }, "B");
+
+  auto stages = CreateStages({A, B});
+  auto func = cinn::lang::LowerVec("test_factorize_reduction",
+                                   stages,
+                                   {A, B},
+                                   {},
+                                   {},
+                                   nullptr,
+                                   target,
+                                   true);
+  CHECK(!func.empty());
+  auto ast_expr = func[0]->body;
+  std::vector<Expr> vec_ast{ast_expr};
+  ir::ModuleExpr mod_expr(vec_ast);
+  ir::IRSchedule ir_sch(mod_expr);
+  auto loops = ir_sch.GetLoops("B");
+  CHECK_EQ(loops.size(), 2U);
+  auto splited_loops = ir_sch.Split(loops[1], {4, 5});
+  CHECK_EQ(splited_loops.size(), 2U);
+  auto new_rf_tensor = ir_sch.FactorizeReduction(splited_loops[0], 1);
+  auto* new_rf_tensor_ref = new_rf_tensor.As<ir::_Tensor_>();
+  CHECK(new_rf_tensor_ref);
+  CHECK(new_rf_tensor_ref->buffer.defined());
+  func[0]->temp_bufs.push_back(new_rf_tensor_ref->buffer);
+  func[0]->PrepareBufferCastExprs();
+  std::string origin = utils::GetStreamCnt(func[0]);
+  LOG(INFO) << origin;
+  EXPECT_EQ(origin, utils::Trim(R"ROC(
+function test_factorize_reduction (_A, _B)
+{
+  ScheduleBlock(root)
+  {
+    {
+      serial for (i, 0, 3)
+      {
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B_rf__reduce_init)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B_rf__reduce_init[i0_0, vj0] = 0.00000000f
+          }
+          serial for (j0_0, 0, 5)
+          {
+            ScheduleBlock(B_rf)
+            {
+              vj0, i0_0, vj0_0 = axis.bind(j0, i, j0_0)
+              B_rf[i0_0, vj0] = (B_rf[i0_0, vj0] + A[i0_0, ((5 * vj0) + vj0_0)])
+            }
+          }
+        }
+      }
+      serial for (i, 0, 3)
+      {
+        ScheduleBlock(B__reduce_init)
+        {
+          i0_0 = axis.bind(i)
+          B__reduce_init[i0_0] = 0.00000000f
+        }
+        serial for (j0, 0, 4)
+        {
+          ScheduleBlock(B)
+          {
+            vj0, i0_0 = axis.bind(j0, i)
+            B[i0_0] = (B[i0_0] + B_rf[i0_0, vj0])
+          }
+        }
+      }
+    }
+  }
+}
+)ROC"));
 }
 
 TEST(IrSchedule, compute_inline1) {

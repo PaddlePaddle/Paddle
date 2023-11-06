@@ -15,64 +15,77 @@
 
 # Temporary disable isort to avoid circular import
 # This can be removed after the circular import is resolved
-# isort: skip_file
 from __future__ import annotations
 
+import inspect
 import os
 import pickle
+import sys
+import threading
+import types
 import warnings
 from collections import OrderedDict
-import inspect
-import threading
+from contextlib import contextmanager
 from typing import Any
 
 import paddle
-from paddle.fluid import core, dygraph
-from paddle.fluid.compiler import (
+from paddle.base import core, dygraph
+from paddle.base.compiler import (
     BuildStrategy,
     CompiledProgram,
     ExecutionStrategy,
 )
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.dygraph.base import (
+from paddle.base.data_feeder import check_type
+from paddle.base.dygraph.base import (
     program_desc_tracing_guard,
     switch_to_static_graph,
 )
-from .dy2static import logging_utils
-from .dy2static.convert_call_func import (
-    ConversionOptions,
-    add_ignore_module,
-)
-from .dy2static.program_translator import (
-    ProgramTranslator,
-    StaticFunction,
-    unwrap_decorators,
-)
-from paddle.jit.translated_layer import (
-    TranslatedLayer,
-    INFER_MODEL_SUFFIX,
-    INFER_PARAMS_SUFFIX,
-    INFER_PARAMS_INFO_SUFFIX,
-    INFER_PROPERTY_SUFFIX,
-)
-from paddle.nn import Layer
-from paddle.fluid.executor import Executor, scope_guard
-from paddle.fluid.framework import (
+from paddle.base.executor import Executor, scope_guard
+from paddle.base.framework import (
     Block,
+    EagerParamBase,
+    Parameter,
     Program,
     Variable,
-    Parameter,
-    EagerParamBase,
-)
-from paddle.fluid.framework import (
     _current_expected_place,
     _dygraph_guard,
     _dygraph_tracer,
+    dygraph_only,
 )
-from paddle.fluid.framework import dygraph_only
-from paddle.fluid.wrapped_decorator import wrap_decorator
-from paddle.fluid.io import save_inference_model
+from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import in_dynamic_mode
+from paddle.nn import Layer
+from paddle.static.io import save_inference_model
+from paddle.utils.environments import (
+    BooleanEnvironmentVariable,
+    EnvironmentVariableGuard,
+)
+
+from .dy2static import logging_utils
+from .dy2static.convert_call_func import ConversionOptions, add_ignore_module
+from .dy2static.program_translator import (
+    ASTStaticFunction,
+    ProgramTranslator,
+    StaticFunction,
+    SymbolicStaticFunction,
+    convert_to_static,
+    unwrap_decorators,
+)
+from .translated_layer import (
+    INFER_MODEL_SUFFIX,
+    INFER_PARAMS_INFO_SUFFIX,
+    INFER_PARAMS_SUFFIX,
+    INFER_PROPERTY_SUFFIX,
+    TranslatedLayer,
+)
+
+ENV_ENABLE_SOT = BooleanEnvironmentVariable("ENABLE_FALL_BACK", True)
+
+
+@contextmanager
+def sot_mode_guard(value: bool):
+    with EnvironmentVariableGuard(ENV_ENABLE_SOT, value):
+        yield
 
 
 def create_program_from_desc(program_desc):
@@ -91,7 +104,7 @@ def _extract_vars(inputs, result_list, err_tag='inputs'):
             _extract_vars(var, result_list, err_tag)
     else:
         raise TypeError(
-            "The type of 'each element of {}' in paddle.jit.TracedLayer.trace must be fluid.Variable, but received {}.".format(
+            "The type of 'each element of {}' in paddle.jit.api.TracedLayer.trace must be base.Variable, but received {}.".format(
                 err_tag, type(inputs)
             )
         )
@@ -126,29 +139,29 @@ def _dygraph_to_static_func_(dygraph_func):
     Examples:
         .. code-block:: python
 
-          import paddle
-          import paddle.fluid as fluid
-          import numpy as np
-          from paddle.jit.api import dygraph_to_static_func
+            >>> # doctest: +SKIP('`paddle.jit.dygraph_to_static_func` can not run in xdoctest')
+            >>> import paddle
+            >>> from paddle.jit.api import dygraph_to_static_func
 
-          @dygraph_to_static_func
-          def func(x):
-              if paddle.mean(x) < 0:
-                  x_v = x - 1
-              else:
-                  x_v = x + 1
+            >>> @dygraph_to_static_func
+            ... def func(x):
+            ...     if paddle.mean(x) < 0:
+            ...         x_v = x - 1
+            ...     else:
+            ...         x_v = x + 1
+            ...
+            ...     return x_v
+            ...
+            >>> paddle.enable_static()
+            >>> x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
 
-               return x_v
-
-          x = paddle.full(shape=[3, 3], fill_value=0, dtype='float64')
-
-          x_v = func(x)
-          exe = fluid.Executor(fluid.CPUPlace())
-          out = exe.run(fetch_list=[x_v])
-          print(out[0])
-          # [[1. 1. 1.]
-          #  [1. 1. 1.]
-          #  [1. 1. 1.]]
+            >>> x_v = func(x)
+            >>> exe = paddle.static.Executor(paddle.CPUPlace())
+            >>> out = exe.run(fetch_list=[x_v])
+            >>> print(out[0])
+            [[1. 1. 1.]
+             [1. 1. 1.]
+             [1. 1. 1.]]
 
     """
 
@@ -162,7 +175,7 @@ def _dygraph_to_static_func_(dygraph_func):
                 "We will just return dygraph output."
             )
             return dygraph_func(*args, **kwargs)
-        static_func = program_translator.get_func(dygraph_func)
+        static_func = convert_to_static(dygraph_func)
         return static_func(*args, **kwargs)
 
     return __impl__
@@ -202,18 +215,16 @@ def ignore_module(modules: list[Any]):
     Examples:
         .. code-block:: python
 
-            import scipy
-            import astor
+            >>> import scipy
+            >>> import astor
 
-            import paddle
-            from paddle.jit import ignore_module
-
-            modules = [
-               scipy,
-               astor
-            ]
-
-            ignore_module(modules)
+            >>> import paddle
+            >>> from paddle.jit import ignore_module
+            >>> modules = [
+            ...     scipy,
+            ...     astor,
+            ... ]
+            >>> ignore_module(modules)
 
     """
     add_ignore_module(modules)
@@ -222,9 +233,7 @@ def ignore_module(modules: list[Any]):
 def _check_and_set_backend(backend, build_strategy):
     if backend not in ['CINN', None]:
         raise ValueError(
-            "The backend of to_static should be 'CINN' or None, but received {}.".format(
-                backend
-            )
+            f"The backend of to_static should be 'CINN' or None, but received {backend}."
         )
     if backend == 'CINN':
         build_strategy.build_cinn_pass = True
@@ -238,24 +247,28 @@ def to_static(
     **kwargs,
 ):
     """
-    Converts imperative dygraph APIs into declarative function APIs. Decorator
+    Converts dynamic graph APIs into static graph function APIs. Decorator
     @to_static handles the Program and Executor of static graph mode and returns
-    the result as dygraph Tensor(s). Users could use the returned dygraph
-    Tensor(s) to do imperative training, inference, or other operations. If the
-    decorated function calls other imperative function, the called one will be
-    converted into declarative function as well.
+    the result as dynamic graph Tensor(s). Users could use the returned dynamic
+    graph Tensor(s) to do dynamic graph training, inference, or other operations.
+    If the decorated function calls other dynamic graph function, the called one
+    will be converted into static graph function as well.
+
     Args:
-        function (callable): callable imperative function.
-        input_spec(list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to specific the shape/dtype/name
-            information of each input Tensor.
-        build_strategy(BuildStrategy|None): This argument is used to compile the
+        function (callable): Callable dynamic graph function. If it used as a
+            decorator, the decorated function will be parsed as this parameter.
+        input_spec (list[InputSpec]|tuple[InputSpec]): list/tuple of InputSpec to
+            specific the shape/dtype/name information of each input Tensor.
+        build_strategy (BuildStrategy|None): This argument is used to compile the
             converted program with the specified options, such as operators' fusion
             in the computational graph and memory optimization during the execution
             of the computational graph. For more information about build_strategy,
             please refer to :code:`paddle.static.BuildStrategy`. The default is None.
-        backend(str, Optional): Specifies compilation backend, which can be `CINN` or None. When backend is `CINN`, CINN compiler will be used to speed up training and inference.
-        kwargs: Support keys including `property`, set `property` to True if the fucntion is python property.
-
+        backend(str, Optional): Specifies compilation backend, which can be `CINN` or
+            None. When backend is `CINN`, CINN compiler will be used to speed up
+            training and inference.
+        kwargs: Support keys including `property`, set `property` to True if the function
+            is python property.
 
     Returns:
         Tensor(s): containing the numerical result.
@@ -263,35 +276,56 @@ def to_static(
     Examples:
         .. code-block:: python
 
-            import paddle
-            from paddle.jit import to_static
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+            >>> import paddle
+            >>> from paddle.jit import to_static
 
-            @to_static
-            def func(x):
-                if paddle.mean(x) < 0:
-                    x_v = x - 1
-                else:
-                    x_v = x + 1
-                return x_v
-
-            x = paddle.ones([1, 2], dtype='float32')
-            x_v = func(x)
-            print(x_v) # [[2. 2.]]
+            >>> @to_static
+            >>> def func(x):
+            ...     if paddle.mean(x) < 0:
+            ...         x_v = x - 1
+            ...     else:
+            ...         x_v = x + 1
+            ...     return x_v
+            ...
+            >>> x = paddle.ones([1, 2], dtype='float32')
+            >>> x_v = func(x)
+            >>> print(x_v)
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 2.]])
 
     """
     property = kwargs.get("property", False)
+    full_graph = kwargs.get("full_graph", None)
 
     def decorated(python_func):
         """
-        Decorates a python function into a StaticFunction object.
+        Decorates a python function into a ASTStaticFunction object.
         """
+
+        nonlocal full_graph
+        if full_graph is None:
+            flag = ENV_ENABLE_SOT.get()
+            full_graph = not flag
+
+        if sys.version_info >= (3, 12) and not full_graph:
+            warnings.warn(
+                "full_graph=False is not supported in Python 3.12+. Set full_graph=True automatically"
+            )
+            full_graph = True
+
+        StaticClass = {
+            False: SymbolicStaticFunction,
+            True: ASTStaticFunction,
+        }[full_graph]
+
         # Step 1. unwrap the function if it is already decorated.
         _, python_func = unwrap_decorators(python_func)
 
         # Step 2. copy some attributes from original python function.
         static_layer = copy_decorator_attrs(
             original_func=python_func,
-            decorated_obj=StaticFunction(
+            decorated_obj=StaticClass(
                 function=python_func,
                 input_spec=input_spec,
                 build_strategy=build_strategy,
@@ -343,24 +377,27 @@ def not_to_static(func=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+            >>> import paddle
 
-            @paddle.jit.not_to_static
-            def func_not_to_static(x):
-                res = x - 1
-                return res
+            >>> @paddle.jit.not_to_static
+            ... def func_not_to_static(x):
+            ...     res = x - 1
+            ...     return res
 
-            @paddle.jit.to_static
-            def func(x):
-                if paddle.mean(x) < 0:
-                    out = func_not_to_static(x)
-                else:
-                    out = x + 1
-                return out
-
-            x = paddle.ones([1, 2], dtype='float32')
-            out = func(x)
-            print(out) # [[2. 2.]]
+            >>> @paddle.jit.to_static
+            ... def func(x):
+            ...     if paddle.mean(x) < 0:
+            ...         out = func_not_to_static(x)
+            ...     else:
+            ...         out = x + 1
+            ...     return out
+            ...
+            >>> x = paddle.ones([1, 2], dtype='float32')
+            >>> out = func(x)
+            >>> print(out)
+            Tensor(shape=[1, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[2., 2.]])
     """
     if func is None:
         return not_to_static
@@ -393,6 +430,12 @@ class _SaveLoadConfig:
 
         # if True, multi `StaticFunction` will share params in one file.
         self.combine_params = False
+
+        # when need to save a prune model, use input_names_after_prune to specify the inputs left after pruning
+        self.input_names_after_prune = None
+
+        # in the scene of llm-inference, prunning program can cause unexpectable result, an option to skip prune is necessary
+        self.skip_prune_program = False
 
     @property
     def output_spec(self):
@@ -467,11 +510,13 @@ class _SaveLoadConfig:
 
 def _parse_save_configs(configs):
     supported_configs = [
-        'output_spec',
+        "output_spec",
         "with_hook",
         "combine_params",
         "clip_extra",
         "skip_forward",
+        "input_names_after_prune",
+        "skip_prune_program",
     ]
 
     # input check
@@ -484,11 +529,15 @@ def _parse_save_configs(configs):
 
     # construct inner config
     inner_config = _SaveLoadConfig()
-    inner_config.output_spec = configs.get('output_spec', None)
-    inner_config.with_hook = configs.get('with_hook', False)
+    inner_config.output_spec = configs.get("output_spec", None)
+    inner_config.with_hook = configs.get("with_hook", False)
     inner_config.combine_params = configs.get("combine_params", False)
     inner_config.clip_extra = configs.get("clip_extra", True)
     inner_config.skip_forward = configs.get("skip_forward", False)
+    inner_config.input_names_after_prune = configs.get(
+        "input_names_after_prune", None
+    )
+    inner_config.skip_prune_program = configs.get("skip_prune_program", False)
 
     return inner_config
 
@@ -512,7 +561,7 @@ def _parse_load_config(configs):
     return inner_config
 
 
-def _get_input_var_names(inputs, input_spec):
+def _get_input_var_names(inputs, input_spec, input_names_after_prune):
     name_none_error = (
         "The %s's name is None. "
         "When using jit.save, please set InputSepc's name in "
@@ -525,6 +574,14 @@ def _get_input_var_names(inputs, input_spec):
         "in input_spec is the same as the name of InputSpec in "
         "`to_static` decorated on the Layer.forward method."
     )
+    if input_names_after_prune is not None:
+        input_spec = [
+            x
+            for x in input_spec
+            if isinstance(x, paddle.static.InputSpec)
+            and x.name in input_names_after_prune
+        ]
+
     result_list = []
     input_var_names = [
         var.name
@@ -606,11 +663,10 @@ def _get_output_vars(outputs, output_spec, with_hook=False):
 # 1. Expected cases:
 #   - paddle.jit.save
 #   - paddle.static.save_inference_model
-#   - paddle.fluid.io.save_inference_model
 # 2. Error cases:
 #   - paddle.save: no .pdmodel for prefix
 #   - paddle.static.save: no .pdiparams but .pdparams exists
-#   - paddle.fluid.io.save_params/save_persistables: no __model__
+#   - paddle.base.io.save_params/save_persistables: no __model__
 # TODO(chenweihang): polish error message in above error cases
 def _build_load_path_and_config(path, config):
     # NOTE(chenweihang): If both [prefix save format] and [directory save format] exist,
@@ -620,9 +676,9 @@ def _build_load_path_and_config(path, config):
     directory_format_exist = os.path.isdir(path)
     if prefix_format_exist and directory_format_exist:
         raise ValueError(
-            "The {}.pdmodel and {} directory exist at the same time, "
+            f"The {path}.pdmodel and {path} directory exist at the same time, "
             "don't know which one to load, please make sure that the specified target "
-            "of ``path`` is unique.".format(path, path)
+            "of ``path`` is unique."
         )
     elif not prefix_format_exist and not directory_format_exist:
         raise ValueError(
@@ -688,34 +744,37 @@ def _register_save_pre_hook(hook):
     Examples:
         .. code-block:: python
 
-            import numpy as np
-            import paddle
+            >>> # doctest: +SKIP('`paddle.jit.api.to_static` can not run in xdoctest')
+            >>> import numpy as np
+            >>> import paddle
 
-            IMAGE_SIZE = 256
-            CLASS_NUM = 10
+            >>> IMAGE_SIZE = 256
+            >>> CLASS_NUM = 10
 
-            class LinearNet(paddle.nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            >>> class LinearNet(paddle.nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = paddle.nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...
+            ...     def forward(self, x):
+            ...         return self._linear(x)
+            ...
+            >>> saving_count = 0
+            >>> def save_pre_hook(layer, input_spec, configs):
+            ...     global saving_count
+            ...     saving_count += 1
+            ...
+            >>> remove_handler = paddle.jit.api._register_save_pre_hook(save_pre_hook)
 
-                def forward(self, x):
-                    return self._linear(x)
+            >>> layer = LinearNet()
+            >>> paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            >>> print(saving_count)
+            1
 
-            saving_count = 0
-            def save_pre_hook(layer, input_spec, configs):
-                global saving_count
-                saving_count += 1
-
-            remove_handler = paddle.jit.register_save_pre_hook(save_pre_hook)
-
-            layer = LinearNet()
-            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
-            # saving_count == 1
-
-            remove_handler.remove()
-            paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
-            # saving_count == 1
+            >>> remove_handler.remove()
+            >>> paddle.jit.save(layer, "/tmp", [paddle.static.InputSpec(shape=[-1, IMAGE_SIZE])])
+            >>> print(saving_count)
+            1
     """
     global _save_pre_hooks_lock
     global _save_pre_hooks
@@ -778,7 +837,6 @@ def _save_property(filename: str, property_vals: list[tuple[Any, str]]):
                 meta.set_strings(key, val)
         else:
             raise ValueError(f"Note support val type: {type(val)}")
-        return
 
     with open(filename, 'wb') as f:
         meta = paddle.framework.core.Property()
@@ -834,95 +892,97 @@ def save(layer, path, input_spec=None, **configs):
     Examples:
         .. code-block:: python
 
-            # example 1: save layer
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
+            >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+            >>> # example 1: save layer
+            >>> import numpy as np
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> import paddle.optimizer as opt
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+            >>> BATCH_SIZE = 16
+            >>> BATCH_NUM = 4
+            >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+            >>> IMAGE_SIZE = 784
+            >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+            >>> # define a random dataset
+            >>> class RandomDataset(paddle.io.Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+            ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+            >>> class LinearNet(nn.Layer):
+            ...     def __init__(self):
+            ...         super().__init__()
+            ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            ...
+            ...     @paddle.jit.to_static
+            ...     def forward(self, x):
+            ...         return self._linear(x)
 
-                def __len__(self):
-                    return self.num_samples
+            >>> def train(layer, loader, loss_fn, opt):
+            ...     for epoch_id in range(EPOCH_NUM):
+            ...         for batch_id, (image, label) in enumerate(loader()):
+            ...             out = layer(image)
+            ...             loss = loss_fn(out, label)
+            ...             loss.backward()
+            ...             opt.step()
+            ...             opt.clear_grad()
+            ...             print("Epoch {} batch {}: loss = {}".format(
+            ...                 epoch_id, batch_id, np.mean(loss.numpy())))
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+            >>> # 1. train & save model.
 
-                @paddle.jit.to_static
-                def forward(self, x):
-                    return self._linear(x)
+            >>> # create network
+            >>> layer = LinearNet()
+            >>> loss_fn = nn.CrossEntropyLoss()
+            >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-                        print("Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
+            >>> # create data loader
+            >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+            >>> loader = paddle.io.DataLoader(dataset,
+            ...     batch_size=BATCH_SIZE,
+            ...     shuffle=True,
+            ...     drop_last=True,
+            ...     num_workers=2
+            ... )
 
-            # 1. train & save model.
+            >>> # train
+            >>> train(layer, loader, loss_fn, adam)
 
-            # create network
-            layer = LinearNet()
-            loss_fn = nn.CrossEntropyLoss()
-            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+            >>> # save
+            >>> path = "example_model/linear"
+            >>> paddle.jit.save(layer, path)
 
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-
-            # train
-            train(layer, loader, loss_fn, adam)
-
-            # save
-            path = "example_model/linear"
-            paddle.jit.save(layer, path)
-
-            # example 2: save function
-            import paddle
-            from paddle.static import InputSpec
+            >>> # example 2: save function
+            >>> import paddle
+            >>> from paddle.static import InputSpec
 
 
-            def save_function():
-                @paddle.jit.to_static
-                def fun(inputs):
-                    return paddle.tanh(inputs)
+            >>> def save_function():
+            ...     @paddle.jit.to_static
+            ...     def fun(inputs):
+            ...         return paddle.tanh(inputs)
+            ...
+            ...     path = 'test_jit_save_load_function_1/func'
+            ...     inps = paddle.rand([3, 6])
+            ...     origin = fun(inps)
+            ...
+            ...     paddle.jit.save(fun, path)
+            ...     load_func = paddle.jit.load(path)
+            ...
+            ...     load_result = load_func(inps)
+            ...     print((load_result - origin).abs().max() < 1e-10)
 
-                path = 'test_jit_save_load_function_1/func'
-                inps = paddle.rand([3, 6])
-                origin = fun(inps)
-
-                paddle.jit.save(fun, path)
-                load_func = paddle.jit.load(path)
-
-                load_result = load_func(inps)
-                print((load_result - origin).abs().max() < 1e-10)
-
-            save_function()
+            >>> save_function()
     """
 
     # 1. input build & check
@@ -1026,7 +1086,9 @@ def save(layer, path, input_spec=None, **configs):
     concrete_program = None
     for attr_func in functions:
         if isinstance(layer, Layer):
-            static_func = getattr(inner_layer, attr_func, None)
+            static_func = get_ast_static_function(
+                getattr(inner_layer, attr_func, None)
+            )
             if isinstance(static_func, StaticFunction):
                 if static_func.is_property:
                     # property method to be exported
@@ -1059,7 +1121,9 @@ def save(layer, path, input_spec=None, **configs):
                         input_spec, inner_input_spec
                     )
                 static_forward = to_static(
-                    inner_layer.forward, input_spec=inner_input_spec
+                    inner_layer.forward,
+                    input_spec=inner_input_spec,
+                    full_graph=True,
                 )
                 concrete_program = (
                     static_forward.concrete_program_specify_input_spec(
@@ -1075,32 +1139,35 @@ def save(layer, path, input_spec=None, **configs):
         else:
             # When layer is a function
             if isinstance(attr_func, StaticFunction):
-                if attr_func.is_property:
+                static_func = get_ast_static_function(attr_func)
+
+                if static_func.is_property:
                     # property method to be exported
-                    immediate_val = attr_func()
-                    property_vals.append((immediate_val, attr_func))
+                    immediate_val = static_func()
+                    property_vals.append((immediate_val, static_func))
                     continue
 
                 concrete_program = (
-                    attr_func.concrete_program_specify_input_spec(
+                    static_func.concrete_program_specify_input_spec(
                         inner_input_spec, is_prim_infer=is_prim_infer
                     )
                 )
             else:
+                static_func = get_ast_static_function(attr_func)
                 if inner_input_spec:
                     inner_input_spec = paddle.utils.pack_sequence_as(
                         input_spec, inner_input_spec
                     )
                 static_function = to_static(
-                    attr_func, input_spec=inner_input_spec
+                    static_func,
+                    input_spec=inner_input_spec,
+                    full_graph=True,
                 )
                 concrete_program = static_function.concrete_program
 
                 if static_function._class_instance is None:
                     warnings.warn(
-                        '`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'.format(
-                            layer
-                        )
+                        f'`jit.save` will only save the `Program`, not the parameters. If you have to save the parameters, please make sure that {layer} is a member function of `paddle.nn.Layer` and the saved parameters are in `state_dict`'
                     )
 
         # when save multi `StaticFunction`, all `StaticFunction` share params.
@@ -1108,9 +1175,9 @@ def save(layer, path, input_spec=None, **configs):
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
-            if attr_func._class_instance:
+            if static_func._class_instance:
                 dygraph_state_dict = (
-                    attr_func._class_instance.to_static_state_dict()
+                    static_func._class_instance.to_static_state_dict()
                 )
 
         if dygraph_state_dict:
@@ -1167,7 +1234,9 @@ def save(layer, path, input_spec=None, **configs):
         #   - the input_spec length < len((concrete_program.inputs) - 1
         #   - the input_spec's name should be in concrete_program.inputs
         input_var_names = _get_input_var_names(
-            concrete_program.inputs, inner_input_spec
+            concrete_program.inputs,
+            inner_input_spec,
+            configs.input_names_after_prune,
         )
 
         # NOTE(chenweihang): [ Get output variables ]
@@ -1188,24 +1257,27 @@ def save(layer, path, input_spec=None, **configs):
         if 'forward' == attr_func or not isinstance(layer, Layer):
             model_filename = file_prefix + INFER_MODEL_SUFFIX
             params_filename = file_prefix + INFER_PARAMS_SUFFIX
+            path_prefix = file_prefix
         else:
             model_filename = file_prefix + '.' + attr_func + INFER_MODEL_SUFFIX
             params_filename = (
                 file_prefix + '.' + attr_func + INFER_PARAMS_SUFFIX
             )
-
+            file_prefix = file_prefix + '.' + attr_func
+        file_prefix = os.path.join(model_path, file_prefix)
         with scope_guard(scope):
+            input_vars = [
+                concrete_program.main_program.global_block().var(name)
+                for name in input_var_names
+            ]
             save_inference_model(
-                dirname=model_path,
-                feeded_var_names=input_var_names,
-                target_vars=output_vars,
+                path_prefix=file_prefix,
+                feed_vars=input_vars,
+                fetch_vars=output_vars,
                 executor=Executor(_current_expected_place()),
-                main_program=concrete_program.main_program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
-                export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only,
+                program=concrete_program.main_program.clone(),
                 clip_extra=configs.clip_extra,
+                skip_prune_program=configs.skip_prune_program,
             )
 
         if combine_params:
@@ -1277,7 +1349,7 @@ def load(path, **configs):
     :api_attr: imperative
 
     Load model saved by ``paddle.jit.save`` or ``paddle.static.save_inference_model`` or
-    paddle 1.x API ``paddle.fluid.io.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
+    paddle 1.x API ``paddle.static.save_inference_model`` as ``paddle.jit.TranslatedLayer``,
     then performing inference or fine-tune training.
 
     .. note::
@@ -1307,193 +1379,204 @@ def load(path, **configs):
     Examples:
         1. Load model saved by ``paddle.jit.save`` then performing inference and fine-tune training.
 
-        .. code-block:: python
-            :name: code-example1
+            .. code-block:: python
+                :name: code-example1
 
-            import numpy as np
-            import paddle
-            import paddle.nn as nn
-            import paddle.optimizer as opt
+                >>> # doctest: +SKIP('`paddle.jit.to_static` can not run in xdoctest')
+                >>> import numpy as np
+                >>> import paddle
+                >>> import paddle.nn as nn
+                >>> import paddle.optimizer as opt
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+                >>> # define a random dataset
+                >>> class RandomDataset(paddle.io.Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+                >>> class LinearNet(nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                ...
+                ...     @paddle.jit.to_static
+                ...     def forward(self, x):
+                ...         return self._linear(x)
+                ...
+                >>> def train(layer, loader, loss_fn, opt):
+                ...     for epoch_id in range(EPOCH_NUM):
+                ...         for batch_id, (image, label) in enumerate(loader()):
+                ...             out = layer(image)
+                ...             loss = loss_fn(out, label)
+                ...             loss.backward()
+                ...             opt.step()
+                ...             opt.clear_grad()
+                ...             print("Epoch {} batch {}: loss = {}".format(
+                ...                 epoch_id, batch_id, np.mean(loss.numpy())))
 
-                def __len__(self):
-                    return self.num_samples
+                >>> # 1. train & save model.
 
-            class LinearNet(nn.Layer):
-                def __init__(self):
-                    super().__init__()
-                    self._linear = nn.Linear(IMAGE_SIZE, CLASS_NUM)
+                >>> # create network
+                >>> layer = LinearNet()
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
 
-                @paddle.jit.to_static
-                def forward(self, x):
-                    return self._linear(x)
+                >>> # create data loader
+                >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                >>> loader = paddle.io.DataLoader(
+                ...     dataset,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
 
-            def train(layer, loader, loss_fn, opt):
-                for epoch_id in range(EPOCH_NUM):
-                    for batch_id, (image, label) in enumerate(loader()):
-                        out = layer(image)
-                        loss = loss_fn(out, label)
-                        loss.backward()
-                        opt.step()
-                        opt.clear_grad()
-                        print("Epoch {} batch {}: loss = {}".format(
-                            epoch_id, batch_id, np.mean(loss.numpy())))
+                >>> # train
+                >>> train(layer, loader, loss_fn, adam)
 
-            # 1. train & save model.
+                >>> # save
+                >>> path = "example_model/linear"
+                >>> paddle.jit.save(layer, path)
 
-            # create network
-            layer = LinearNet()
-            loss_fn = nn.CrossEntropyLoss()
-            adam = opt.Adam(learning_rate=0.001, parameters=layer.parameters())
+                >>> # 2. load model
 
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(dataset,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
+                >>> # load
+                >>> loaded_layer = paddle.jit.load(path)
 
-            # train
-            train(layer, loader, loss_fn, adam)
+                >>> # inference
+                >>> loaded_layer.eval()
+                >>> x = paddle.randn([1, IMAGE_SIZE], 'float32')
+                >>> pred = loaded_layer(x)
 
-            # save
-            path = "example_model/linear"
-            paddle.jit.save(layer, path)
-
-            # 2. load model
-
-            # load
-            loaded_layer = paddle.jit.load(path)
-
-            # inference
-            loaded_layer.eval()
-            x = paddle.randn([1, IMAGE_SIZE], 'float32')
-            pred = loaded_layer(x)
-
-            # fine-tune
-            loaded_layer.train()
-            adam = opt.Adam(learning_rate=0.001, parameters=loaded_layer.parameters())
-            train(loaded_layer, loader, loss_fn, adam)
+                >>> # fine-tune
+                >>> loaded_layer.train()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=loaded_layer.parameters())
+                >>> train(loaded_layer, loader, loss_fn, adam)
 
 
-        2. Load model saved by ``paddle.fluid.io.save_inference_model`` then performing and fine-tune training.
+        2. Load model saved by ``paddle.static.save_inference_model`` then performing and fine-tune training.
 
-        .. code-block:: python
-            :name: code-example2
+            .. code-block:: python
+                :name: code-example2
 
-            import numpy as np
-            import paddle
-            import paddle.static as static
-            import paddle.nn as nn
-            import paddle.optimizer as opt
-            import paddle.nn.functional as F
+                >>> # doctest: +SOLO('can not use multiprocessing testing `DataLoader`')
+                >>> import numpy as np
+                >>> import paddle
+                >>> import paddle.static as static
+                >>> import paddle.nn as nn
+                >>> import paddle.optimizer as opt
+                >>> import paddle.nn.functional as F
 
-            BATCH_SIZE = 16
-            BATCH_NUM = 4
-            EPOCH_NUM = 4
+                >>> BATCH_SIZE = 16
+                >>> BATCH_NUM = 4
+                >>> EPOCH_NUM = 4
 
-            IMAGE_SIZE = 784
-            CLASS_NUM = 10
+                >>> IMAGE_SIZE = 784
+                >>> CLASS_NUM = 10
 
-            # define a random dataset
-            class RandomDataset(paddle.io.Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
+                >>> # define a random dataset
+                >>> class RandomDataset(paddle.io.Dataset):
+                ...     def __init__(self, num_samples):
+                ...         self.num_samples = num_samples
+                ...
+                ...     def __getitem__(self, idx):
+                ...         image = np.random.random([IMAGE_SIZE]).astype('float32')
+                ...         label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
+                ...         return image, label
+                ...
+                ...     def __len__(self):
+                ...         return self.num_samples
 
-                def __getitem__(self, idx):
-                    image = np.random.random([IMAGE_SIZE]).astype('float32')
-                    label = np.random.randint(0, CLASS_NUM - 1, (1, )).astype('int64')
-                    return image, label
+                >>> paddle.enable_static()
 
-                def __len__(self):
-                    return self.num_samples
+                >>> image = static.data(name='image', shape=[None, 784], dtype='float32')
+                >>> label = static.data(name='label', shape=[None, 1], dtype='int64')
+                >>> pred = static.nn.fc(x=image, size=10, activation='softmax')
+                >>> loss = F.cross_entropy(input=pred, label=label)
+                >>> avg_loss = paddle.mean(loss)
 
-            paddle.enable_static()
+                >>> optimizer = paddle.optimizer.SGD(learning_rate=0.001)
+                >>> optimizer.minimize(avg_loss)
 
-            image = static.data(name='image', shape=[None, 784], dtype='float32')
-            label = static.data(name='label', shape=[None, 1], dtype='int64')
-            pred = static.nn.fc(x=image, size=10, activation='softmax')
-            loss = F.cross_entropy(input=pred, label=label)
-            avg_loss = paddle.mean(loss)
+                >>> place = paddle.CPUPlace()
+                >>> exe = static.Executor(place)
+                >>> exe.run(static.default_startup_program())
 
-            optimizer = paddle.optimizer.SGD(learning_rate=0.001)
-            optimizer.minimize(avg_loss)
+                >>> # create data loader
+                >>> dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
+                >>> loader = paddle.io.DataLoader(dataset,
+                ...     feed_list=[image, label],
+                ...     places=place,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     return_list=False,
+                ...     num_workers=2
+                ... )
 
-            place = paddle.CPUPlace()
-            exe = static.Executor(place)
-            exe.run(static.default_startup_program())
+                >>> # 1. train and save inference model
+                >>> for data in loader():
+                ...     exe.run(
+                ...         static.default_main_program(),
+                ...         feed=data,
+                ...         fetch_list=[avg_loss]
+                ...     )
 
-            # create data loader
-            dataset = RandomDataset(BATCH_NUM * BATCH_SIZE)
-            loader = paddle.io.DataLoader(dataset,
-                feed_list=[image, label],
-                places=place,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                return_list=False,
-                num_workers=2)
+                >>> model_path = "fc.example.model"
+                >>> paddle.static.save_inference_model(
+                ...     model_path,
+                ...     [image],
+                ...     [pred],
+                ...     exe
+                ... )
 
-            # 1. train and save inference model
-            for data in loader():
-                exe.run(
-                    static.default_main_program(),
-                    feed=data,
-                    fetch_list=[avg_loss])
+                >>> # 2. load model
 
-            model_path = "fc.example.model"
-            paddle.fluid.io.save_inference_model(
-                model_path, ["image"], [pred], exe)
+                >>> # enable dygraph mode
+                >>> paddle.disable_static(place)
 
-            # 2. load model
+                >>> # load
+                >>> fc = paddle.jit.load(model_path)
 
-            # enable dygraph mode
-            paddle.disable_static(place)
+                >>> # inference
+                >>> fc.eval()
+                >>> x = paddle.randn([1, IMAGE_SIZE], 'float32')
+                >>> pred = fc(x)
 
-            # load
-            fc = paddle.jit.load(model_path)
-
-            # inference
-            fc.eval()
-            x = paddle.randn([1, IMAGE_SIZE], 'float32')
-            pred = fc(x)
-
-            # fine-tune
-            fc.train()
-            loss_fn = nn.CrossEntropyLoss()
-            adam = opt.Adam(learning_rate=0.001, parameters=fc.parameters())
-            loader = paddle.io.DataLoader(dataset,
-                places=place,
-                batch_size=BATCH_SIZE,
-                shuffle=True,
-                drop_last=True,
-                num_workers=2)
-            for epoch_id in range(EPOCH_NUM):
-                for batch_id, (image, label) in enumerate(loader()):
-                    out = fc(image)
-                    loss = loss_fn(out, label)
-                    loss.backward()
-                    adam.step()
-                    adam.clear_grad()
-                    print("Epoch {} batch {}: loss = {}".format(
-                        epoch_id, batch_id, np.mean(loss.numpy())))
+                >>> # fine-tune
+                >>> fc.train()
+                >>> loss_fn = nn.CrossEntropyLoss()
+                >>> adam = opt.Adam(learning_rate=0.001, parameters=fc.parameters())
+                >>> loader = paddle.io.DataLoader(dataset,
+                ...     places=place,
+                ...     batch_size=BATCH_SIZE,
+                ...     shuffle=True,
+                ...     drop_last=True,
+                ...     num_workers=2
+                ... )
+                >>> for epoch_id in range(EPOCH_NUM):
+                ...     for batch_id, (image, label) in enumerate(loader()):
+                ...         out = fc(image)
+                ...         loss = loss_fn(out, label)
+                ...         loss.backward()
+                ...         adam.step()
+                ...         adam.clear_grad()
+                ...         print("Epoch {} batch {}: loss = {}".format(
+                ...             epoch_id, batch_id, np.mean(loss.numpy())))
     """
     # 1. construct correct config
     config = _parse_load_config(configs)
@@ -1612,34 +1695,34 @@ class TracedLayer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class ExampleLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._fc = paddle.nn.Linear(3, 10)
+                >>> class ExampleLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._fc = paddle.nn.Linear(3, 10)
+                ...
+                ...     def forward(self, input):
+                ...         return self._fc(input)
 
-                    def forward(self, input):
-                        return self._fc(input)
 
+                >>> layer = ExampleLayer()
+                >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
 
-                layer = ExampleLayer()
-                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
-                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                >>> # run the static graph model using Executor inside
+                >>> out_static_graph = static_layer([in_var])
 
-                # run the static graph model using Executor inside
-                out_static_graph = static_layer([in_var])
+                >>> print(len(out_static_graph)) # 1
+                >>> print(out_static_graph[0].shape) # (2, 10)
 
-                print(len(out_static_graph)) # 1
-                print(out_static_graph[0].shape) # (2, 10)
-
-                # save the static graph model for inference
-                static_layer.save_inference_model('./saved_infer_model')
+                >>> # save the static graph model for inference
+                >>> static_layer.save_inference_model('./saved_infer_model')
 
         """
         assert isinstance(
             layer, Layer
-        ), "The type of 'layer' in paddle.jit.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
+        ), "The type of 'layer' in paddle.jit.api.TracedLayer.trace must be paddle.nn.Layer, but received {}.".format(
             type(layer)
         )
         outs, prog, feed, fetch, parameters = _trace(layer, inputs)
@@ -1662,40 +1745,40 @@ class TracedLayer:
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                class ExampleLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._fc = paddle.nn.Linear(3, 10)
+                >>> class ExampleLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._fc = paddle.nn.Linear(3, 10)
+                ...
+                ...     def forward(self, input):
+                ...         return self._fc(input)
 
-                    def forward(self, input):
-                        return self._fc(input)
+                >>> layer = ExampleLayer()
+                >>> in_var = paddle.uniform(shape=[2, 3], dtype='float32')
 
-                layer = ExampleLayer()
-                in_var = paddle.uniform(shape=[2, 3], dtype='float32')
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
 
-                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
+                >>> build_strategy = paddle.static.BuildStrategy()
+                >>> build_strategy.enable_inplace = True
 
-                build_strategy = paddle.static.BuildStrategy()
-                build_strategy.enable_inplace = True
+                >>> exec_strategy = paddle.static.ExecutionStrategy()
+                >>> exec_strategy.num_threads = 2
 
-                exec_strategy = paddle.static.ExecutionStrategy()
-                exec_strategy.num_threads = 2
-
-                static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
-                out_static_graph = static_layer([in_var])
+                >>> static_layer.set_strategy(build_strategy=build_strategy, exec_strategy=exec_strategy)
+                >>> out_static_graph = static_layer([in_var])
 
         """
         assert self._compiled_program is None, "Cannot set strategy after run"
         assert isinstance(
             build_strategy, (type(None), BuildStrategy)
-        ), "The type of 'build_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.BuildStrategy, but received {}.".format(
+        ), "The type of 'build_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.BuildStrategy, but received {}.".format(
             type(build_strategy)
         )
         assert isinstance(
             exec_strategy, (type(None), ExecutionStrategy)
-        ), "The type of 'exec_strategy' in paddle.jit.TracedLayer.set_strategy must be fluid.ExecutionStrategy, but received {}.".format(
+        ), "The type of 'exec_strategy' in paddle.jit.api.TracedLayer.set_strategy must be base.ExecutionStrategy, but received {}.".format(
             type(exec_strategy)
         )
         self._build_strategy = build_strategy
@@ -1765,45 +1848,48 @@ class TracedLayer:
         Examples:
             .. code-block:: python
 
-                import numpy as np
-                import paddle
+                >>> import numpy as np
+                >>> import paddle
 
-                class ExampleLayer(paddle.nn.Layer):
-                    def __init__(self):
-                        super().__init__()
-                        self._fc = paddle.nn.Linear(3, 10)
+                >>> class ExampleLayer(paddle.nn.Layer):
+                ...     def __init__(self):
+                ...         super().__init__()
+                ...         self._fc = paddle.nn.Linear(3, 10)
+                ...
+                ...     def forward(self, input):
+                ...         return self._fc(input)
 
-                    def forward(self, input):
-                        return self._fc(input)
+                >>> save_dirname = './saved_infer_model'
+                >>> in_np = np.random.random([2, 3]).astype('float32')
+                >>> in_var = paddle.to_tensor(in_np)
+                >>> layer = ExampleLayer()
 
-                save_dirname = './saved_infer_model'
-                in_np = np.random.random([2, 3]).astype('float32')
-                in_var = paddle.to_tensor(in_np)
-                layer = ExampleLayer()
+                >>> out_dygraph, static_layer = paddle.jit.api.TracedLayer.trace(layer, inputs=[in_var])
+                >>> static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
 
-                out_dygraph, static_layer = paddle.jit.TracedLayer.trace(layer, inputs=[in_var])
-                static_layer.save_inference_model(save_dirname, feed=[0], fetch=[0])
+                >>> paddle.enable_static()
+                >>> place = paddle.CPUPlace()
+                >>> exe = paddle.static.Executor(place)
+                >>> program, feed_vars, fetch_vars = paddle.static.load_inference_model(
+                ...     save_dirname,
+                ...     exe
+                ... )
 
-                paddle.enable_static()
-                place = paddle.CPUPlace()
-                exe = paddle.static.Executor(place)
-                program, feed_vars, fetch_vars = paddle.static.load_inference_model(save_dirname,
-                                                    exe)
-
-                fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
-                print(fetch.shape) # (2, 10)
+                >>> fetch, = exe.run(program, feed={feed_vars[0]: in_np}, fetch_list=fetch_vars)
+                >>> print(fetch.shape)
+                [2, 10]
         """
         check_type(
             path,
             "path",
             str,
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         check_type(
             feed,
             "feed",
             (type(None), list),
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         if isinstance(feed, list):
             for f in feed:
@@ -1811,13 +1897,13 @@ class TracedLayer:
                     f,
                     "each element of feed",
                     int,
-                    "paddle.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.api.TracedLayer.save_inference_model",
                 )
         check_type(
             fetch,
             "fetch",
             (type(None), list),
-            "paddle.jit.TracedLayer.save_inference_model",
+            "paddle.jit.api.TracedLayer.save_inference_model",
         )
         if isinstance(fetch, list):
             for f in fetch:
@@ -1825,7 +1911,7 @@ class TracedLayer:
                     f,
                     "each element of fetch",
                     int,
-                    "paddle.jit.TracedLayer.save_inference_model",
+                    "paddle.jit.api.TracedLayer.save_inference_model",
                 )
         clip_extra = kwargs.get('clip_extra', True)
         # path check
@@ -1850,24 +1936,50 @@ class TracedLayer:
         with scope_guard(self._scope):
             feeded_var_names = get_feed_fetch(self._feed_names, feed)
             target_var_names = get_feed_fetch(self._fetch_names, fetch)
+            feed_vars = []
+            for name in feeded_var_names:
+                feed_var = self._program.global_block().vars.get(name, None)
+                assert feed_var is not None, f"{name} cannot be found"
+                feed_vars.append(feed_var)
             target_vars = []
             for name in target_var_names:
                 target_var = self._program.global_block().vars.get(name, None)
                 assert target_var is not None, f"{name} cannot be found"
                 target_vars.append(target_var)
-
-            model_filename = file_prefix + INFER_MODEL_SUFFIX
-            params_filename = file_prefix + INFER_PARAMS_SUFFIX
-
             legacy_format = kwargs.get('legacy_format', False)
+            file_prefix = os.path.join(dirname, file_prefix)
             save_inference_model(
-                dirname=dirname,
-                feeded_var_names=feeded_var_names,
-                target_vars=target_vars,
+                path_prefix=file_prefix,
+                feed_vars=feed_vars,
+                fetch_vars=target_vars,
                 executor=self._exe,
-                main_program=self._program.clone(),
-                model_filename=model_filename,
-                params_filename=params_filename,
+                program=self._program.clone(),
                 clip_extra=clip_extra,
                 legacy_format=legacy_format,
             )
+
+
+def get_ast_static_function(function):
+    if isinstance(function, SymbolicStaticFunction):
+        if function._class_instance:
+            dygraph_function = types.MethodType(
+                function._dygraph_function, function._class_instance
+            )
+        else:
+            dygraph_function = function._dygraph_function
+
+        if function._function_spec._input_spec is None:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function.last_call_input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+        else:
+            ast_static_function = ASTStaticFunction(
+                dygraph_function,
+                function._function_spec._input_spec,
+                **function._kwargs,
+            )
+            return ast_static_function
+    return function

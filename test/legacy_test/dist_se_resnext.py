@@ -17,13 +17,13 @@ import math
 from test_dist_base import TestDistRunnerBase, runtime_main
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
 # Fix seed for test
-fluid.default_startup_program().random_seed = 1
-fluid.default_main_program().random_seed = 1
+base.default_startup_program().random_seed = 1
+base.default_main_program().random_seed = 1
 
 train_parameters = {
     "input_size": [3, 224, 224],
@@ -47,9 +47,7 @@ class SE_ResNeXt:
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
         if layers == 50:
             cardinality = 32
             reduction_ratio = 16
@@ -120,7 +118,7 @@ class SE_ResNeXt:
             x=drop,
             size=class_dim,
             activation='softmax',
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
         )
@@ -173,7 +171,7 @@ class SE_ResNeXt:
             groups=groups,
             act=None,
             # avoid pserver CPU init differs from GPU
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             bias_attr=False,
@@ -186,7 +184,7 @@ class SE_ResNeXt:
         squeeze = paddle.static.nn.fc(
             x=pool,
             size=num_channels // reduction_ratio,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='relu',
@@ -195,7 +193,7 @@ class SE_ResNeXt:
         excitation = paddle.static.nn.fc(
             x=squeeze,
             size=num_channels,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.05)
             ),
             activation='sigmoid',
@@ -218,7 +216,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         model = SE_ResNeXt(layers=50)
         out = model.net(input=image, class_dim=102)
         cost = paddle.nn.functional.cross_entropy(
-            input=out, label=label, reduction='none', use_softmax=False
+            input=out, label=label, reduction='none', use_softmax=True
         )
 
         avg_cost = paddle.mean(x=cost)
@@ -226,7 +224,7 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         acc_top5 = paddle.static.accuracy(input=out, label=label, k=5)
 
         # Evaluator
-        test_program = fluid.default_main_program().clone(for_test=True)
+        test_program = base.default_main_program().clone(for_test=True)
 
         # Optimization
         total_images = 6149  # flowers
@@ -238,17 +236,17 @@ class DistSeResneXt2x2(TestDistRunnerBase):
         lr = [base_lr * (0.1**i) for i in range(len(bd) + 1)]
 
         if not use_dgc:
-            optimizer = fluid.optimizer.Momentum(
-                learning_rate=fluid.layers.piecewise_decay(
+            optimizer = paddle.optimizer.Momentum(
+                learning_rate=paddle.optimizer.lr.PiecewiseDecay(
                     boundaries=bd, values=lr
                 ),
                 momentum=0.9,
-                regularization=paddle.regularizer.L2Decay(1e-4),
+                weight_decay=paddle.regularizer.L2Decay(1e-4),
             )
         else:
             optimizer = (
                 paddle.distributed.fleet.meta_optimizers.DGCMomentumOptimizer(
-                    learning_rate=fluid.layers.piecewise_decay(
+                    learning_rate=paddle.optimizer.lr.piecewise_decay(
                         boundaries=bd, values=lr
                     ),
                     momentum=0.9,

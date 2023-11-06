@@ -20,7 +20,7 @@ import numpy as np
 
 import paddle
 from paddle import nn
-from paddle.fluid import core
+from paddle.base import core
 from paddle.framework import in_dynamic_mode
 
 
@@ -397,7 +397,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[{debug_info}] The number of bf16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+                f"[{debug_info}] The number of bf16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
         for op_type, expected_value in expected_fp16_calls.items():
             # print(f"[FP16] op_type={op_type}, value={value}")
@@ -408,7 +408,7 @@ class AmpTestBase(unittest.TestCase):
             self.assertEqual(
                 actual_value,
                 expected_value,
-                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but recieved {actual_value}.",
+                f"[debug_info] The number of fp16 calls of operator < {op_type} > is expected to be {expected_value}, but received {actual_value}.",
             )
 
     def run_program(

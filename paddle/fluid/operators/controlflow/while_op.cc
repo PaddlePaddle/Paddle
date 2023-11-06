@@ -19,16 +19,12 @@
 #include "paddle/fluid/operators/controlflow/control_flow_op_helper.h"
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 #include "paddle/fluid/platform/flags.h"
 
-PADDLE_DEFINE_EXPORTED_bool(
-    cache_inference_while_scope,
-    false,
-    "Cache the scope of the while op to avoid repeated creation of the scope "
-    "for each iteration and improve inference performance.");
+PHI_DECLARE_bool(cache_inference_while_scope);
 
 namespace paddle {
 namespace framework {
@@ -53,40 +49,6 @@ static std::string GetSkipEagerDeletionVarsDebugString(
     str.push_back(' ');
   }
   return str;
-}
-
-static void TransferVariablePlace(const framework::Scope *scope,
-                                  const std::string &var_name,
-                                  const phi::Place &dst_place,
-                                  const platform::DeviceContext &dev_ctx) {
-  framework::Variable *var = scope->FindVar(var_name);
-  if (var == nullptr) {
-    VLOG(4) << "[TransferVariablePlace]"
-            << "lost in_var: " << var_name;
-    return;
-  }
-  if (var->Type() != framework::proto::VarType::LOD_TENSOR) {
-    VLOG(10) << "[TransferVariablePlace]" << var_name << " type changed:"
-             << framework::TransToPhiDataType(
-                    framework::ToVarType(var->Type()));
-    return;
-  }
-  phi::DenseTensor *t = var->GetMutable<phi::DenseTensor>();
-  if (t->place() == dst_place) {
-    VLOG(10) << "[TransferVariablePlace]"
-             << "no need transfer: " << var_name;
-    return;
-  }
-
-  phi::DenseTensor *new_t = new phi::DenseTensor;
-  framework::TensorCopy(*t, dst_place, new_t);
-  dev_ctx.Wait();
-
-  t->set_meta(new_t->meta());
-  t->ResetHolder(new_t->Holder());
-
-  VLOG(4) << "[TransferVariablePlace]" << var_name
-          << " place: " << new_t->place();
 }
 
 }  // namespace
@@ -116,7 +78,7 @@ class WhileOp : public framework::OperatorBase {
             cond.numel(),
             ".\n"));
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // Executor on being destroyed clears oneDNN cache and resets
     // registered model data layout. This is unwanted for nested
     // Executors (executors declared inside control ops)
@@ -162,7 +124,7 @@ class WhileOp : public framework::OperatorBase {
     auto step_scopes =
         scope.FindVar(Output(kStepScopes))->GetMutable<StepScopeVar>();
 
-    if (step_scopes->size() > 0) {
+    if (!step_scopes->empty()) {
       platform::DeviceContextPool::Instance().Get(dev_place)->Wait();
       for (auto &s : *step_scopes) {
         if (scope.HasKid(s)) {

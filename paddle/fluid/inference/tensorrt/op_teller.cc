@@ -35,7 +35,7 @@ namespace tensorrt {
 
 // Just tell by the op_types.
 struct SimpleOpTypeSetTeller : public Teller {
-  SimpleOpTypeSetTeller() {
+  SimpleOpTypeSetTeller() {  // NOLINT
 #if IS_TRT_VERSION_GE(7130)
     // use TensorRT plugin
     teller_set.insert("group_norm");
@@ -86,7 +86,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
     std::unordered_set<std::string> control_set = {"conditional_block",
@@ -98,37 +99,6 @@ struct SimpleOpTypeSetTeller : public Teller {
 
     if (feed_fetch_set.find(op_type) != feed_fetch_set.end()) {
       return false;
-    }
-
-    // Dont.t allow fp64!
-    {
-      auto inputs = desc.Inputs();
-      for (auto iter : inputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
-
-      auto outputs = desc.Outputs();
-      for (auto iter : outputs) {
-        for (auto var_name : iter.second) {
-          auto* block = desc.Block();
-          if (block) {
-            auto* var_desc = block->FindVar(var_name);
-            auto dtype = var_desc->GetDataType();
-            if (dtype == framework::proto::VarType::FP64) {
-              return false;
-            }
-          }
-        }
-      }
     }
 
     // do not support the op which is labeled the `skip_quant`
@@ -359,7 +329,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #else
           LOG(INFO)
               << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TenroRT.";
+                 "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
         }
@@ -425,7 +395,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto start_var_name = desc.Input("Start")[0];
       auto* start_var_desc = block->FindVar(start_var_name);
       auto start_dtype = start_var_desc->GetDataType();
-      if (start_dtype == framework::proto::VarType::FP32) {
+      if (start_dtype == framework::proto::VarType::FP32 ||
+          start_dtype == framework::proto::VarType::FP64) {
         return false;
       }
 #endif
@@ -751,7 +722,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       auto x_dtype = x_var_desc->GetDataType();
 
       if (!(x_dtype == framework::proto::VarType::FP32 ||
-            x_dtype == framework::proto::VarType::FP16)) {
+            x_dtype == framework::proto::VarType::FP16 ||
+            x_dtype == framework::proto::VarType::FP64)) {
         return false;
       }
 
@@ -948,7 +920,6 @@ struct SimpleOpTypeSetTeller : public Teller {
           return false;
         }
       }
-
       if (resize_inputs.find("OutSize") != resize_inputs.end()) {
         if (!with_dynamic_shape) {
           VLOG(3) << "Static shape don't support the OutSize for op_type "
@@ -973,18 +944,11 @@ struct SimpleOpTypeSetTeller : public Teller {
         return false;
       }
 
-      auto align_corners =
-          PADDLE_GET_CONST(bool, desc.GetAttr("align_corners"));
-      if (align_corners != false) {
-        VLOG(3)
-            << "The bilinear_interp_v2 only supports align_corners with false.";
-        return false;
-      }
-
       bool has_scale_input_size =
           (resize_inputs.find("Scale") != resize_inputs.end());
 
-      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+      if (!has_scale_input_size ||
+          (has_scale_input_size && desc.Input("Scale").size() != 1)) {
         const std::vector<float> scale =
             PADDLE_GET_CONST(std::vector<float>, desc.GetAttr("scale"));
         if (scale.size() <= 1) {
@@ -1229,16 +1193,18 @@ struct SimpleOpTypeSetTeller : public Teller {
       const auto x_shape = x_var_desc->GetShape();
       auto dtype = x_var_desc->GetDataType();
       if (!with_dynamic_shape) {
-        // At present, only support float32 or float16 into trt.
+        // At present, only support float32 or float16 or float64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
+              dtype == framework::proto::VarType::FP64 ||
               dtype == framework::proto::VarType::FP16)) {
           return false;
         }
       } else {
-        // At present, only support float32 or float16 or int32 or int64 into
-        // trt.
+        // At present, only support float32 or float16 or float64 or int32 or
+        // int64 into trt.
         if (!(dtype == framework::proto::VarType::FP32 ||
               dtype == framework::proto::VarType::FP16 ||
+              dtype == framework::proto::VarType::FP64 ||
               dtype == framework::proto::VarType::INT32 ||
               dtype == framework::proto::VarType::INT64)) {
           return false;
@@ -1339,15 +1305,19 @@ struct SimpleOpTypeSetTeller : public Teller {
         return true;
       }
 #endif
-      if (dtype != -1 && dtype != 2 && dtype != 5) {
-        VLOG(3) << "the fill_any_like only supports int32 and float32 by "
-                   "trt8.4 below";
+      if (dtype != -1 && dtype != 2 && dtype != 3 && dtype != 5 && dtype != 6) {
+        VLOG(3)
+            << "the fill_any_like only supports int32/int64/float32/float64 by"
+               "trt8.4 below";
         return false;
       }
       if (dtype == -1) {
         if (input_type != framework::proto::VarType::INT32 &&
-            input_type != framework::proto::VarType::FP32) {
-          VLOG(3) << "the fill_any_like only supports int32 and float32 by "
+            input_type != framework::proto::VarType::INT64 &&
+            input_type != framework::proto::VarType::FP32 &&
+            input_type != framework::proto::VarType::FP64) {
+          VLOG(3) << "the fill_any_like only supports "
+                     "int32/int64/float32/float64 by"
                      "trt8.4 below";
           return false;
         }
@@ -2245,13 +2215,19 @@ struct SimpleOpTypeSetTeller : public Teller {
       } else {
 #if IS_TRT_VERSION_GE(7000)
         if (dtype != framework::proto::VarType::INT32 &&
-            dtype != framework::proto::VarType::FP32) {
-          VLOG(3) << "reduce op input data type must be int32 or float32";
+            dtype != framework::proto::VarType::INT64 &&
+            dtype != framework::proto::VarType::FP32 &&
+            dtype != framework::proto::VarType::FP64) {
+          VLOG(3) << "reduce op input data type must be int32 or int64 or "
+                     "float32 or "
+                     "float64";
           return false;
         }
 #else
-        if (dtype != framework::proto::VarType::FP32) {
-          VLOG(3) << "reduce op input data type must be float32 using TensorRT "
+        if (dtype != framework::proto::VarType::FP32 &&
+            dtype != framework::proto::VarType::FP64) {
+          VLOG(3) << "reduce op input data type must be float32 or float64 "
+                     "using TensorRT "
                      "< 7.0";
           return false;
         }
@@ -2746,6 +2722,27 @@ struct SimpleOpTypeSetTeller : public Teller {
       }
 #endif
     }
+    if (op_type == "quantize_linear" || op_type == "dequantize_linear") {
+#if !IS_TRT_VERSION_GE(8000)
+      VLOG(3) << "quantize / dequantize linear is not supported when TensorRT "
+                 "< 8.0";
+      return false;
+#else
+      return true;
+#endif
+    }
+
+    if (op_type == "flip") {
+      if (!with_dynamic_shape) {
+        VLOG(3) << "the flip does not support "
+                   "static shape yet";
+        return false;
+      }
+#if !IS_TRT_VERSION_GE(7220)
+      VLOG(3) << "flip is not supported when TensorRT below 7.2.2";
+      return false;
+#endif
+    }
 
     if (use_no_calib_int8) {
       return int8_teller_set.count(op_type);
@@ -2874,6 +2871,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu6",
       "hard_sigmoid",
       "clip",
+      "prompt_tuning_emb_eltwise_layernorm",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
       "multihead_matmul_roformer",
@@ -2917,7 +2915,11 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip",
+      "quantize_linear",
+      "dequantize_linear",
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3037,6 +3039,7 @@ struct SimpleOpTypeSetTeller : public Teller {
       "relu6",
       "hard_sigmoid",
       "clip",
+      "prompt_tuning_emb_eltwise_layernorm",
       "fused_embedding_eltwise_layernorm",
       "multihead_matmul",
       "multihead_matmul_roformer",
@@ -3081,15 +3084,20 @@ struct SimpleOpTypeSetTeller : public Teller {
       "grid_sampler",
       "cumsum",
       "unbind",
-      "assign"};
+      "assign",
+      "flip",
+      "quantize_linear",
+      "dequantize_linear",
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {
  public:
-  GenericPluginTeller() {}
+  GenericPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
@@ -3128,10 +3136,11 @@ struct GenericPluginTeller : public Teller {
 
 struct CustomPluginTeller : public Teller {
  public:
-  CustomPluginTeller() {}
+  CustomPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
 
@@ -3154,7 +3163,8 @@ struct CustomPluginTeller : public Teller {
 
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
-                    bool with_dynamic_shape) {
+                    bool with_dynamic_shape,
+                    bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
@@ -3164,24 +3174,33 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       desc.HasAttr("skip_quant"))
     return false;
   auto& default_teller = GetDefaultTeller();
-  if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*default_teller)(desc,
+                        use_no_calib_int8,
+                        with_dynamic_shape,
+                        use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
   }
   auto& generic_plugin_teller = GetGenericPluginTeller();
-  if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*generic_plugin_teller)(desc,
+                               use_no_calib_int8,
+                               with_dynamic_shape,
+                               use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
-  if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*custom_plugin_teller)(desc,
+                              use_no_calib_int8,
+                              with_dynamic_shape,
+                              use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
   return false;
 }
 
-OpTeller::OpTeller() {
+OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);

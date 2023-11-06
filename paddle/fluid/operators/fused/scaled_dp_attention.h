@@ -25,7 +25,7 @@
 #include <new>
 #include <string>
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "dnnl.hpp"  //NOLINT
 #endif
 
@@ -153,7 +153,7 @@ void sgemm(const float* A,
            int k,
            bool transa,
            bool transb) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   int lda = (transa ? m : k);
   int ldb = (transb ? k : n);
   int ldc = n;
@@ -227,7 +227,6 @@ void softmax_sum_max(float* AB,
                      float refac,
                      int m,
                      int k) {
-  assert(k % 16 == 0);
   float max_val = std::numeric_limits<float>::lowest();
   __m512 vrefac = _mm512_set1_ps(refac);
   for (int i = 0; i < m; ++i) {
@@ -290,7 +289,6 @@ void update_out_blk(float* output,
                     float* max,
                     int m,
                     int n) {
-  assert(n % 16 == 0);
   for (int i = 0; i < m; ++i) {
     const float* buf = exp_ABC + i * n;
     float* outbuf = output + i * n;
@@ -298,10 +296,12 @@ void update_out_blk(float* output,
     merr = vexp(merr);
     __m512 vfac = _mm512_set1_ps(pre_sum[i] / sum[i]);
     for (int off = 0; off < n; off += 16) {
-      __m512 vout = _mm512_loadu_ps(outbuf + off);
-      __m512 vabc = _mm512_loadu_ps(buf + off);
+      int remain = n - off;
+      __mmask16 mask = (remain >= 16 ? 0xffff : (1 << remain) - 1);
+      __m512 vout = _mm512_maskz_loadu_ps(mask, outbuf + off);
+      __m512 vabc = _mm512_maskz_loadu_ps(mask, buf + off);
       __m512 vupt = vout * merr * vfac + vabc;
-      _mm512_storeu_ps(outbuf + off, vupt);
+      _mm512_mask_storeu_ps(outbuf + off, mask, vupt);
     }
     pre_sum[i] = sum[i];
     pre_max[i] = max[i];
@@ -348,8 +348,6 @@ void scaled_dp_attention(const float* query,
   int iblk = std::min(512, itsize / 1);
   int oblk = std::min(512, otsize / 1);
   float refac = scale;
-  assert(itsize % iblk == 0);
-  assert(otsize % oblk == 0);
 
 #ifdef PADDLE_WITH_MKLML
   int nth = omp_get_max_threads();

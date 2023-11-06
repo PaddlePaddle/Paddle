@@ -94,7 +94,7 @@ TEST(pstring, func) {
   CHECK_EQ(copy_nchar_str, "AAAAA");
 
   // Test Move Ctor
-  pstring move_nchar_str(std::move(nchar_str));
+  pstring move_nchar_str(nchar_str);
   CHECK_EQ(move_nchar_str, "AAAAA");
   pstring std_str(std::string("BBBB"));
   CHECK_EQ(std_str, "BBBB");
@@ -145,8 +145,8 @@ TEST(pstring, func) {
   CHECK_EQ(oss1.str(), long_str);
 
   // Test iterator
-  for (auto it = long_str.begin(); it != long_str.end(); ++it) {
-    oss2 << *it;
+  for (auto str_item : long_str) {
+    oss2 << str_item;
   }
   CHECK_EQ(oss2.str(), long_str);
 

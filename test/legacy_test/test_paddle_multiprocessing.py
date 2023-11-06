@@ -198,7 +198,7 @@ class TestMultiprocessingCpu(TestMultiprocessingBase):
 
 class TestMultiprocessingGpu(TestMultiprocessingBase):
     @unittest.skipIf(
-        not paddle.fluid.core.is_compiled_with_cuda(),
+        not paddle.base.core.is_compiled_with_cuda(),
         "core is not compiled with CUDA",
     )
     def func_test_pass_tensor(self):

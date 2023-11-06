@@ -18,7 +18,7 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
+from paddle import base
 
 
 class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
@@ -33,18 +33,18 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
         relu_image = F.relu(image)
         loss = paddle.mean(relu_image)
 
-        build_strategy = fluid.BuildStrategy()
+        build_strategy = base.BuildStrategy()
         build_strategy.enable_inplace = True
         build_strategy.memory_optimize = True
 
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
+        exe = base.Executor(place)
+        exe.run(base.default_startup_program())
 
-        compiled_prog = fluid.CompiledProgram(
-            fluid.default_main_program(), build_strategy=build_strategy
+        compiled_prog = base.CompiledProgram(
+            base.default_main_program(), build_strategy=build_strategy
         )
 
-        image_tensor = fluid.LoDTensor()
+        image_tensor = base.LoDTensor()
         np_image = np.random.uniform(
             low=-10, high=10, size=self.image_shape
         ).astype('float32')
@@ -57,14 +57,14 @@ class TestMemoryReuseExcludeFeedVar(unittest.TestCase):
             np.testing.assert_array_equal(np.array(image_tensor), np_image)
 
     def test_main(self):
-        places = [fluid.CPUPlace()]
-        if fluid.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
 
         for p in places:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
-                with fluid.unique_name.guard():
-                    with fluid.scope_guard(fluid.Scope()):
+            with base.program_guard(base.Program(), base.Program()):
+                with base.unique_name.guard():
+                    with base.scope_guard(base.Scope()):
                         self.main_impl(p)
 
 

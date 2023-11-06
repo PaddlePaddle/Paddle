@@ -20,9 +20,9 @@
 #include "paddle/cinn/backends/codegen_c.h"
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/lowered_func.h"
 #include "paddle/cinn/ir/module.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/packed_func.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 
@@ -54,7 +54,7 @@ class CodeGenCUDA_Dev : public CodeGenC {
   //! Compile on NVRTC.
   std::string Compile(const ir::Module& module, bool for_nvrtc = true);
 
-  std::string Compile(const ir::LoweredFunc& func);
+  void Compile(const ir::LoweredFunc& func);
 
   /**
    * \brief Print a function argument in CUDA syntax. Currently, just some

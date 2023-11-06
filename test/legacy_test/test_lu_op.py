@@ -19,11 +19,11 @@ import unittest
 import numpy as np
 import scipy
 import scipy.linalg
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def scipy_lu(A, pivot):
@@ -32,7 +32,7 @@ def scipy_lu(A, pivot):
         return scipy.linalg.lu(A, permute_l=not pivot)
     else:
         preshape = shape[:-2]
-        batchsize = np.product(shape) // (shape[-2] * shape[-1])
+        batchsize = np.prod(shape) // (shape[-2] * shape[-1])
         PP = []
         PL = []
         PU = []
@@ -57,7 +57,7 @@ def Pmat_to_perm(Pmat_org, cut):
     shape = Pmat.shape
     rows = shape[-2]
     cols = shape[-1]
-    batchsize = max(1, np.product(shape[:-2]))
+    batchsize = max(1, np.prod(shape[:-2]))
     P = Pmat.reshape(batchsize, rows, cols)
     permmat = []
     for b in range(batchsize):
@@ -85,7 +85,7 @@ def Pmat_to_perm(Pmat_org, cut):
 
 def perm_to_Pmat(perm, dim):
     pshape = perm.shape
-    bs = int(np.product(perm.shape[:-1]).item())
+    bs = int(np.prod(perm.shape[:-1]).item())
     perm = perm.reshape((bs, pshape[-1]))
     oneslst = []
     for i in range(bs):
@@ -195,15 +195,16 @@ class TestLUAPI(unittest.TestCase):
                 np_dtype = np.float32
             elif dtype == "float64":
                 np_dtype = np.float64
+            np.random.seed(1024)
             a = np.random.rand(*shape).astype(np_dtype)
             m = a.shape[-2]
             n = a.shape[-1]
             min_mn = min(m, n)
             pivot = True
 
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
                 paddle.disable_static(place)
                 batch_size = a.size // (a.shape[-1] * a.shape[-2])
@@ -252,11 +253,11 @@ class TestLUAPI(unittest.TestCase):
             pivot = True
 
             places = []
-            places = [fluid.CPUPlace()]
+            places = [base.CPUPlace()]
             if core.is_compiled_with_cuda():
-                places.append(fluid.CUDAPlace(0))
+                places.append(base.CUDAPlace(0))
             for place in places:
-                with fluid.program_guard(fluid.Program(), fluid.Program()):
+                with base.program_guard(base.Program(), base.Program()):
                     batch_size = a.size // (a.shape[-1] * a.shape[-2])
                     sP, sl, sU = scipy_lu(a, pivot)
                     sL = np.tril(sl, -1)
@@ -281,9 +282,9 @@ class TestLUAPI(unittest.TestCase):
                         name="input", shape=shape, dtype=dtype
                     )
                     lu, p = paddle.linalg.lu(x, pivot=pivot)
-                    exe = fluid.Executor(place)
+                    exe = base.Executor(place)
                     fetches = exe.run(
-                        fluid.default_main_program(),
+                        base.default_main_program(),
                         feed={"input": a},
                         fetch_list=[lu, p],
                     )
@@ -309,7 +310,7 @@ class TestLUAPI(unittest.TestCase):
 
 class TestLUAPIError(unittest.TestCase):
     def test_errors(self):
-        with paddle.fluid.dygraph.guard():
+        with paddle.base.dygraph.guard():
             # The size of input in lu should not be 0.
             def test_0_size():
                 array = np.array([], dtype=np.float32)

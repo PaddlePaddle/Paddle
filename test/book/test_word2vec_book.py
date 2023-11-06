@@ -21,23 +21,21 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
 
 def get_place(target):
     if target == "cuda":
-        return fluid.CUDAPlace(0)
+        return base.CUDAPlace(0)
     elif target == "xpu":
-        return fluid.XPUPlace(0)
+        return base.XPUPlace(0)
     elif target == "cpu":
-        return fluid.CPUPlace()
+        return base.CPUPlace()
     else:
         raise ValueError(
-            "Target `{}` is not on the support list: `cuda`, `xpu` and `cpu`.".format(
-                target
-            )
+            f"Target `{target}` is not on the support list: `cuda`, `xpu` and `cpu`."
         )
 
 
@@ -58,28 +56,28 @@ def train(
     IS_SPARSE = is_sparse
 
     def __network__(words):
-        embed_first = fluid.layers.embedding(
+        embed_first = paddle.static.nn.embedding(
             input=words[0],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_second = fluid.layers.embedding(
+        embed_second = paddle.static.nn.embedding(
             input=words[1],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_third = fluid.layers.embedding(
+        embed_third = paddle.static.nn.embedding(
             input=words[2],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
             is_sparse=IS_SPARSE,
             param_attr='shared_w',
         )
-        embed_forth = fluid.layers.embedding(
+        embed_forth = paddle.static.nn.embedding(
             input=words[3],
             size=[dict_size, EMBED_SIZE],
             dtype='float32',
@@ -123,7 +121,7 @@ def train(
     else:
         raise NotImplementedError()
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.001)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.001)
     if use_bf16:
         sgd_optimizer = paddle.static.amp.bf16.decorate_bf16(
             sgd_optimizer,
@@ -134,21 +132,21 @@ def train(
             use_pure_bf16=pure_bf16,
         )
 
-    sgd_optimizer.minimize(avg_cost, fluid.default_startup_program())
+    sgd_optimizer.minimize(avg_cost, base.default_startup_program())
 
     train_reader = paddle.batch(
         paddle.dataset.imikolov.train(word_dict, N), BATCH_SIZE
     )
 
     place = get_place(target)
-    exe = fluid.Executor(place)
-    feeder = fluid.DataFeeder(
+    exe = base.Executor(place)
+    feeder = base.DataFeeder(
         feed_list=[first_word, second_word, third_word, forth_word, next_word],
         place=place,
     )
 
     def train_loop(main_program):
-        exe.run(fluid.default_startup_program())
+        exe.run(base.default_startup_program())
         if pure_bf16:
             sgd_optimizer.amp_init(exe.place)
 
@@ -159,9 +157,9 @@ def train(
                 )
                 if avg_cost_np[0] < 5.0:
                     if save_dirname is not None and not pure_bf16:
-                        fluid.io.save_inference_model(
+                        paddle.static.io.save_inference_model(
                             save_dirname,
-                            ['firstw', 'secondw', 'thirdw', 'forthw'],
+                            [first_word, second_word, third_word, forth_word],
                             [predict_word],
                             exe,
                         )
@@ -172,7 +170,7 @@ def train(
         raise AssertionError(f"Cost is too large {avg_cost_np[0]:2.2}")
 
     if is_local:
-        train_loop(fluid.default_main_program())
+        train_loop(base.default_main_program())
     else:
         port = os.getenv("PADDLE_PSERVER_PORT", "6174")
         pserver_ips = os.getenv("PADDLE_PSERVER_IPS")  # ip,ip...
@@ -202,18 +200,19 @@ def infer(target, save_dirname=None):
         return
 
     place = get_place(target)
-    exe = fluid.Executor(place)
-    inference_scope = fluid.core.Scope()
-    with fluid.scope_guard(inference_scope):
-        # Use fluid.io.load_inference_model to obtain the inference program desc,
+    exe = base.Executor(place)
+    inference_scope = base.core.Scope()
+    with base.scope_guard(inference_scope):
+        # Use paddle.static.io.load_inference_model to obtain the inference program desc,
         # the feed_target_names (the names of variables that will be fed
         # data using feed operators), and the fetch_targets (variables that
         # we want to obtain data from using fetch operators).
+
         [
             inference_program,
             feed_target_names,
             fetch_targets,
-        ] = fluid.io.load_inference_model(save_dirname, exe)
+        ] = paddle.static.io.load_inference_model(save_dirname, exe)
 
         word_dict = paddle.dataset.imikolov.build_dict()
         dict_size = len(word_dict)
@@ -228,16 +227,16 @@ def infer(target, save_dirname=None):
         recursive_seq_lens = [[1]]
         base_shape = [1]
         # The range of random integers is [low, high]
-        first_word = fluid.create_random_int_lodtensor(
+        first_word = base.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
         )
-        second_word = fluid.create_random_int_lodtensor(
+        second_word = base.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
         )
-        third_word = fluid.create_random_int_lodtensor(
+        third_word = base.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
         )
-        fourth_word = fluid.create_random_int_lodtensor(
+        fourth_word = base.create_random_int_lodtensor(
             recursive_seq_lens, base_shape, place, low=0, high=dict_size - 1
         )
 
@@ -261,25 +260,26 @@ def infer(target, save_dirname=None):
         )
 
         def to_infer_tensor(lod_tensor):
-            infer_tensor = fluid.core.PaddleTensor()
+            infer_tensor = base.core.PaddleTensor()
             infer_tensor.lod = lod_tensor.lod()
-            infer_tensor.data = fluid.core.PaddleBuf(np.array(lod_tensor))
+            infer_tensor.data = base.core.PaddleBuf(np.array(lod_tensor))
             infer_tensor.shape = lod_tensor.shape()
-            infer_tensor.dtype = fluid.core.PaddleDType.INT64
+            infer_tensor.dtype = base.core.PaddleDType.INT64
             return infer_tensor
 
         infer_inputs = [first_word, second_word, third_word, fourth_word]
         infer_inputs = [to_infer_tensor(t) for t in infer_inputs]
 
-        infer_config = fluid.core.NativeConfig()
-        infer_config.model_dir = save_dirname
+        infer_config = base.core.NativeConfig()
+        infer_config.prog_file = save_dirname + ".pdmodel"
+        infer_config.param_file = save_dirname + ".pdiparams"
         if target == "cuda":
             infer_config.use_gpu = True
             infer_config.device = 0
             infer_config.fraction_of_gpu_memory = 0.15
         elif target == "xpu":
             infer_config.use_xpu = True
-        compiled_program = fluid.compiler.CompiledProgram(inference_program)
+        compiled_program = base.compiler.CompiledProgram(inference_program)
         compiled_program._with_inference_optimize(infer_config)
         assert compiled_program._is_inference is True
         infer_outputs = exe.run(compiled_program, feed=infer_inputs)
@@ -290,17 +290,17 @@ def infer(target, save_dirname=None):
 
 
 def main(target, is_sparse, is_parallel, use_bf16, pure_bf16):
-    if target == "cuda" and not fluid.core.is_compiled_with_cuda():
+    if target == "cuda" and not base.core.is_compiled_with_cuda():
         return
-    if target == "xpu" and not fluid.core.is_compiled_with_xpu():
+    if target == "xpu" and not base.core.is_compiled_with_xpu():
         return
 
-    if use_bf16 and not fluid.core.is_compiled_with_mkldnn():
+    if use_bf16 and not base.core.is_compiled_with_mkldnn():
         return
 
     temp_dir = tempfile.TemporaryDirectory()
     if not is_parallel:
-        save_dirname = os.path.join(temp_dir.name, "word2vec.inference.model")
+        save_dirname = os.path.join(temp_dir.name, "word2vec_inference_model")
     else:
         save_dirname = None
 
@@ -347,15 +347,15 @@ def inject_test_method(
     )
 
     def __impl__(*args, **kwargs):
-        prog = fluid.Program()
-        startup_prog = fluid.Program()
-        scope = fluid.core.Scope()
-        with fluid.scope_guard(scope):
-            with fluid.program_guard(prog, startup_prog):
+        prog = base.Program()
+        startup_prog = base.Program()
+        scope = base.core.Scope()
+        with base.scope_guard(scope):
+            with base.program_guard(prog, startup_prog):
                 main(target, is_sparse, is_parallel, use_bf16, pure_bf16)
 
     if (
-        not fluid.core.is_compiled_with_cuda() or target == "cuda"
+        not base.core.is_compiled_with_cuda() or target == "cuda"
     ) and is_sparse:
         fn = __impl__
     else:

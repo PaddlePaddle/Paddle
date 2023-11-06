@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.jit.api import to_static
 
 SEED = 2020
@@ -53,7 +54,7 @@ class Linear(paddle.nn.Layer):
         )
         self.act = paddle.nn.ReLU()
 
-    @to_static
+    # @to_static
     def forward(self, x):
         pre = self.fc(x)
         pre = self.act(pre)
@@ -61,7 +62,7 @@ class Linear(paddle.nn.Layer):
         return pre, loss
 
 
-class TestPool2D(unittest.TestCase):
+class TestPool2D(Dy2StTestBase):
     def setUp(self):
         self.dygraph_class = Pool2D
         self.data = np.random.random((1, 2, 4, 4)).astype('float32')
@@ -69,15 +70,16 @@ class TestPool2D(unittest.TestCase):
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             dy_layer = self.dygraph_class()
-            x = fluid.dygraph.to_variable(self.data)
+            x = base.dygraph.to_variable(self.data)
             prediction = dy_layer(x)
             if isinstance(prediction, (list, tuple)):
                 prediction = prediction[0]
 
             return prediction.numpy()
 
+    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 
@@ -92,9 +94,7 @@ class TestPool2D(unittest.TestCase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg='dygraph_res is {}\n static_res is \n{}'.format(
-                dygraph_res, static_res
-            ),
+            err_msg=f'dygraph_res is {dygraph_res}\n static_res is \n{static_res}',
         )
 
 

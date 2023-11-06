@@ -16,10 +16,10 @@
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_mode, in_dynamic_or_pir_mode
 
+from ..base.data_feeder import check_type, check_variable_and_dtype
 from ..common_ops_import import Variable
-from ..fluid.data_feeder import check_type, check_variable_and_dtype
 from ..framework import LayerHelper, core
 from .math import _get_reduce_axis_with_tensor
 from .search import where
@@ -56,30 +56,34 @@ def mean(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[[1., 2., 3., 4.],
-                                   [5., 6., 7., 8.],
-                                   [9., 10., 11., 12.]],
-                                  [[13., 14., 15., 16.],
-                                   [17., 18., 19., 20.],
-                                   [21., 22., 23., 24.]]])
-            out1 = paddle.mean(x)
-            # 12.5
-            out2 = paddle.mean(x, axis=-1)
-            # [[ 2.5  6.5 10.5]
-            #  [14.5 18.5 22.5]]
-            out3 = paddle.mean(x, axis=-1, keepdim=True)
-            # [[[ 2.5]
-            #   [ 6.5]
-            #   [10.5]]
-            #  [[14.5]
-            #   [18.5]
-            #   [22.5]]]
-            out4 = paddle.mean(x, axis=[0, 2])
-            # [ 8.5 12.5 16.5]
+            >>> x = paddle.to_tensor([[[1., 2., 3., 4.],
+            ...                        [5., 6., 7., 8.],
+            ...                        [9., 10., 11., 12.]],
+            ...                       [[13., 14., 15., 16.],
+            ...                        [17., 18., 19., 20.],
+            ...                        [21., 22., 23., 24.]]])
+            >>> out1 = paddle.mean(x)
+            >>> print(out1.numpy())
+            12.5
+            >>> out2 = paddle.mean(x, axis=-1)
+            >>> print(out2.numpy())
+            [[ 2.5  6.5 10.5]
+             [14.5 18.5 22.5]]
+            >>> out3 = paddle.mean(x, axis=-1, keepdim=True)
+            >>> print(out3.numpy())
+            [[[ 2.5]
+              [ 6.5]
+              [10.5]]
+             [[14.5]
+              [18.5]
+              [22.5]]]
+            >>> out4 = paddle.mean(x, axis=[0, 2])
+            >>> print(out4.numpy())
+            [ 8.5 12.5 16.5]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mean(x, axis, keepdim)
     else:
         reduce_all, axis = _get_reduce_axis_with_tensor(axis, x)
@@ -136,13 +140,15 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
-            out1 = paddle.var(x)
-            # 2.66666667
-            out2 = paddle.var(x, axis=1)
-            # [1.         4.33333333]
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
+            >>> out1 = paddle.var(x)
+            >>> print(out1.numpy())
+            2.6666667
+            >>> out2 = paddle.var(x, axis=1)
+            >>> print(out2.numpy())
+            [1.         4.3333335]
     """
     if not in_dynamic_mode():
         check_variable_and_dtype(
@@ -153,8 +159,8 @@ def var(x, axis=None, unbiased=True, keepdim=False, name=None):
     out = paddle.sum(paddle.pow((x - u), 2), axis, keepdim=keepdim, name=name)
 
     dtype = x.dtype
-    n = paddle.cast(paddle.numel(x), paddle.int64) / paddle.cast(
-        paddle.numel(out), paddle.int64
+    n = paddle.cast(paddle.numel(x), "int64") / paddle.cast(
+        paddle.numel(out), "int64"
     )
     n = n.astype(dtype)
     if unbiased:
@@ -201,18 +207,21 @@ def std(x, axis=None, unbiased=True, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
-            out1 = paddle.std(x)
-            # 1.63299316
-            out2 = paddle.std(x, unbiased=False)
-            # 1.49071205
-            out3 = paddle.std(x, axis=1)
-            # [1.       2.081666]
+            >>> x = paddle.to_tensor([[1.0, 2.0, 3.0], [1.0, 4.0, 5.0]])
+            >>> out1 = paddle.std(x)
+            >>> print(out1.numpy())
+            1.6329932
+            >>> out2 = paddle.std(x, unbiased=False)
+            >>> print(out2.numpy())
+            1.490712
+            >>> out3 = paddle.std(x, axis=1)
+            >>> print(out3.numpy())
+            [1.       2.081666]
 
     """
-    if not in_dynamic_mode():
+    if not in_dynamic_or_pir_mode():
         check_variable_and_dtype(
             x, 'x', ['float16', 'float32', 'float64'], 'std'
         )
@@ -225,7 +234,7 @@ def numel(x, name=None):
     Returns the number of elements for a tensor, which is a 0-D int64 Tensor with shape [].
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64.
+        x (Tensor): The input Tensor, it's data type can be bool, float16, float32, float64, int32, int64, complex64, complex128.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -235,14 +244,16 @@ def numel(x, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
-            numel = paddle.numel(x) # 140
+            >>> x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
+            >>> numel = paddle.numel(x)
+            >>> print(numel.numpy())
+            140
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.numel(x)
     else:
         if not isinstance(x, Variable):
@@ -263,7 +274,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     the average value of both elements in the middle is calculated as the median.
 
     Args:
-        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, float32, float64.
+        x (Tensor): The input Tensor, it's data type can be int32, int64, float16, bfloat16, float32, float64.
         axis (None|int|list|tuple, optional):
             The axis along which to perform median calculations ``axis`` should be int or list of int.
             ``axis`` should be in range [-D, D), where D is the dimensions of ``x`` .
@@ -283,20 +294,24 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
+            >>> import paddle
+            >>> x = paddle.to_tensor([[float('nan'), 2. , 3. ], [0. , 1. , 2. ]])
 
-            y1 = x.nanmedian()
-            # y1 is 2.
+            >>> y1 = x.nanmedian()
+            >>> print(y1.numpy())
+            2.0
 
-            y2 = x.nanmedian(0)
-            # y2 is [0., 1.5, 2.5]
+            >>> y2 = x.nanmedian(0)
+            >>> print(y2.numpy())
+            [0.  1.5 2.5]
 
-            y3 = x.nanmedian(0, keepdim=True)
-            # y3 is [[0.,  1.5, 2.5]]
+            >>> y3 = x.nanmedian(0, keepdim=True)
+            >>> print(y3.numpy())
+            [[0.  1.5 2.5]]
 
-            y4 = x.nanmedian((0, 1))
-            # y4 is 2.
+            >>> y4 = x.nanmedian((0, 1))
+            >>> print(y4.numpy())
+            2.0
     """
     if not isinstance(x, Variable):
         raise TypeError("In median, the input x should be a Tensor.")
@@ -317,7 +332,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
         check_variable_and_dtype(
             x,
             'X',
-            ['int32', 'int64', 'float16', 'float32', 'float64'],
+            ['int32', 'int64', 'float16', 'float32', 'float64', 'uint16'],
             'nanmedian',
         )
 
@@ -358,29 +373,34 @@ def median(x, axis=None, keepdim=False, name=None):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.arange(12).reshape([3, 4])
-            # Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
-            #        [[0 , 1 , 2 , 3 ],
-            #         [4 , 5 , 6 , 7 ],
-            #         [8 , 9 , 10, 11]])
+            >>> x = paddle.arange(12).reshape([3, 4])
+            >>> print(x)
+            Tensor(shape=[3, 4], dtype=int64, place=Place(cpu), stop_gradient=True,
+            [[0 , 1 , 2 , 3 ],
+             [4 , 5 , 6 , 7 ],
+             [8 , 9 , 10, 11]])
 
-            y1 = paddle.median(x)
-            # Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        5.50000000)
+            >>> y1 = paddle.median(x)
+            >>> print(y1)
+            Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+            5.50000000)
 
-            y2 = paddle.median(x, axis=0)
-            # Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [4., 5., 6., 7.])
+            >>> y2 = paddle.median(x, axis=0)
+            >>> print(y2)
+            Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [4., 5., 6., 7.])
 
-            y3 = paddle.median(x, axis=1)
-            # Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [1.50000000, 5.50000000, 9.50000000])
+            >>> y3 = paddle.median(x, axis=1)
+            >>> print(y3)
+            Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [1.50000000, 5.50000000, 9.50000000])
 
-            y4 = paddle.median(x, axis=0, keepdim=True)
-            # Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[4., 5., 6., 7.]])
+            >>> y4 = paddle.median(x, axis=0, keepdim=True)
+            >>> print(y4)
+            Tensor(shape=[1, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[4., 5., 6., 7.]])
 
     """
     if not isinstance(x, Variable):
@@ -605,35 +625,40 @@ def quantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
-            # Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
-            #        [[0., 1.],
-            #         [2., 3.],
-            #         [4., 5.],
-            #         [6., 7.]])
+            >>> y = paddle.arange(0, 8 ,dtype="float32").reshape([4, 2])
+            >>> print(y)
+            Tensor(shape=[4, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0., 1.],
+             [2., 3.],
+             [4., 5.],
+             [6., 7.]])
 
-            y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
-            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        3.50000000)
+            >>> y1 = paddle.quantile(y, q=0.5, axis=[0, 1])
+            >>> print(y1)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            3.50000000)
 
-            y2 = paddle.quantile(y, q=0.5, axis=1)
-            # Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [0.50000000, 2.50000000, 4.50000000, 6.50000000])
+            >>> y2 = paddle.quantile(y, q=0.5, axis=1)
+            >>> print(y2)
+            Tensor(shape=[4], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [0.50000000, 2.50000000, 4.50000000, 6.50000000])
 
-            y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
-            # Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [[1.80000000, 2.80000000],
-            #         [3.        , 4.        ]])
+            >>> y3 = paddle.quantile(y, q=[0.3, 0.5], axis=0)
+            >>> print(y3)
+            Tensor(shape=[2, 2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[1.80000000, 2.80000000],
+             [3.        , 4.        ]])
 
-            y[0,0] = float("nan")
-            y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
-            # Tensor(shape=[4, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [[nan       ],
-            #         [2.80000000],
-            #         [4.80000000],
-            #         [6.80000000]])
+            >>> y[0,0] = float("nan")
+            >>> y4 = paddle.quantile(y, q=0.8, axis=1, keepdim=True)
+            >>> print(y4)
+            Tensor(shape=[4, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[nan       ],
+             [2.80000000],
+             [4.80000000],
+             [6.80000000]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=False)
@@ -668,37 +693,42 @@ def nanquantile(x, q, axis=None, keepdim=False):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            x = paddle.to_tensor(
-                [[0, 1, 2, 3, 4],
-                    [5, 6, 7, 8, 9]],
-                dtype="float32")
-            x[0,0] = float("nan")
+            >>> x = paddle.to_tensor(
+            ...     [[0, 1, 2, 3, 4],
+            ...      [5, 6, 7, 8, 9]],
+            ...     dtype="float32")
+            >>> x[0,0] = float("nan")
 
-            y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
-            # Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        5.)
+            >>> y1 = paddle.nanquantile(x, q=0.5, axis=[0, 1])
+            >>> print(y1)
+            Tensor(shape=[], dtype=float64, place=Place(cpu), stop_gradient=True,
+            5.)
 
-            y2 = paddle.nanquantile(x, q=0.5, axis=1)
-            # Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [2.50000000, 7.        ])
+            >>> y2 = paddle.nanquantile(x, q=0.5, axis=1)
+            >>> print(y2)
+            Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [2.50000000, 7.        ])
 
-            y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
-            # Tensor(shape=[2, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [[5.        , 2.50000000, 3.50000000, 4.50000000, 5.50000000],
-            #         [5.        , 3.50000000, 4.50000000, 5.50000000, 6.50000000]])
+            >>> y3 = paddle.nanquantile(x, q=[0.3, 0.5], axis=0)
+            >>> print(y3)
+            Tensor(shape=[2, 5], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[5.        , 2.50000000, 3.50000000, 4.50000000, 5.50000000],
+             [5.        , 3.50000000, 4.50000000, 5.50000000, 6.50000000]])
 
-            y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
-            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [[3.40000000],
-            #         [8.20000000]])
+            >>> y4 = paddle.nanquantile(x, q=0.8, axis=1, keepdim=True)
+            >>> print(y4)
+            Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[3.40000000],
+             [8.20000000]])
 
-            nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
-            y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
-            # Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
-            #        [[nan],
-            #         [nan]])
+            >>> nan = paddle.full(shape=[2, 3], fill_value=float("nan"))
+            >>> y5 = paddle.nanquantile(nan, q=0.8, axis=1, keepdim=True)
+            >>> print(y5)
+            Tensor(shape=[2, 1], dtype=float64, place=Place(cpu), stop_gradient=True,
+            [[nan],
+             [nan]])
 
     """
     return _compute_quantile(x, q, axis=axis, keepdim=keepdim, ignore_nan=True)

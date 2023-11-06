@@ -37,26 +37,26 @@ class Dataset:
 
         .. code-block:: python
 
-            import numpy as np
-            from paddle.io import Dataset
+            >>> import numpy as np
+            >>> from paddle.io import Dataset
 
-            # define a random dataset
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __getitem__(self, idx):
-                    image = np.random.random([784]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            dataset = RandomDataset(10)
-            for i in range(len(dataset)):
-                print(dataset[i])
-
+            >>> # define a random dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([784]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> dataset = RandomDataset(10)
+            >>> for i in range(len(dataset)):
+            ...     image, label = dataset[i]
+            ...     # do something
     """
 
     def __init__(self):
@@ -95,23 +95,24 @@ class IterableDataset(Dataset):
         .. code-block:: python
             :name: code-example1
 
-            import numpy as np
-            from paddle.io import IterableDataset
+            >>> import numpy as np
+            >>> from paddle.io import IterableDataset
 
-            # define a random dataset
-            class RandomDataset(IterableDataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __iter__(self):
-                    for i in range(self.num_samples):
-                        image = np.random.random([784]).astype('float32')
-                        label = np.random.randint(0, 9, (1, )).astype('int64')
-                        yield image, label
-
-            dataset = RandomDataset(10)
-            for img, lbl in dataset:
-                print(img, lbl)
+            >>> # define a random dataset
+            >>> class RandomDataset(IterableDataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __iter__(self):
+            ...         for i in range(self.num_samples):
+            ...             image = np.random.random([784]).astype('float32')
+            ...             label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...             yield image, label
+            ...
+            >>> dataset = RandomDataset(10)
+            >>> for img, label in dataset:
+            ...     # do something
+            ...     ...
 
     When :attr:`num_workers > 0`, each worker has a different copy of the dataset object and
     will yield whole dataset samples, which means samples in dataset will be repeated in
@@ -125,87 +126,113 @@ class IterableDataset(Dataset):
         .. code-block:: python
             :name: code-example2
 
-            import math
-            import paddle
-            import numpy as np
-            from paddle.io import IterableDataset, DataLoader, get_worker_info
+            >>> import math
+            >>> import paddle
+            >>> import numpy as np
+            >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            class SplitedIterableDataset(IterableDataset):
-                def __init__(self, start, end):
-                    self.start = start
-                    self.end = end
-
-                def __iter__(self):
-                    worker_info = get_worker_info()
-                    if worker_info is None:
-                        iter_start = self.start
-                        iter_end = self.end
-                    else:
-                        per_worker = int(
-                            math.ceil((self.end - self.start) / float(
-                                worker_info.num_workers)))
-                        worker_id = worker_info.id
-                        iter_start = self.start + worker_id * per_worker
-                        iter_end = min(iter_start + per_worker, self.end)
-
-                    for i in range(iter_start, iter_end):
-                        yield np.array([i])
-
-            dataset = SplitedIterableDataset(start=2, end=9)
-            dataloader = DataLoader(
-                dataset,
-                num_workers=2,
-                batch_size=1,
-                drop_last=True)
-
-            for data in dataloader:
-                print(data)
-                # outputs: [2, 5, 3, 6, 4, 7]
+            >>> class SplitedIterableDataset(IterableDataset):
+            ...     def __init__(self, start, end):
+            ...         self.start = start
+            ...         self.end = end
+            ...
+            ...     def __iter__(self):
+            ...         worker_info = get_worker_info()
+            ...         if worker_info is None:
+            ...             iter_start = self.start
+            ...             iter_end = self.end
+            ...         else:
+            ...             per_worker = int(
+            ...                 math.ceil((self.end - self.start) / float(
+            ...                     worker_info.num_workers)))
+            ...             worker_id = worker_info.id
+            ...             iter_start = self.start + worker_id * per_worker
+            ...             iter_end = min(iter_start + per_worker, self.end)
+            ...
+            ...         for i in range(iter_start, iter_end):
+            ...             yield np.array([i])
+            ...
+            >>> dataset = SplitedIterableDataset(start=2, end=9)
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True)
+            ...
+            >>> for data in dataloader:
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[2]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[3]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[4]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[5]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[6]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[7]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[8]])
 
     splitting data copy in each worker by :code:`worker_init_fn`
 
         .. code-block:: python
             :name: code-example3
 
-            import math
-            import paddle
-            import numpy as np
-            from paddle.io import IterableDataset, DataLoader, get_worker_info
+            >>> import math
+            >>> import paddle
+            >>> import numpy as np
+            >>> from paddle.io import IterableDataset, DataLoader, get_worker_info
 
-            class RangeIterableDataset(IterableDataset):
-                def __init__(self, start, end):
-                    self.start = start
-                    self.end = end
+            >>> class RangeIterableDataset(IterableDataset):
+            ...     def __init__(self, start, end):
+            ...         self.start = start
+            ...         self.end = end
+            ...
+            ...     def __iter__(self):
+            ...         for i in range(self.start, self.end):
+            ...             yield np.array([i])
+            ...
+            >>> dataset = RangeIterableDataset(start=2, end=9)
 
-                def __iter__(self):
-                    for i in range(self.start, self.end):
-                        yield np.array([i])
-
-            dataset = RangeIterableDataset(start=2, end=9)
-
-            def worker_init_fn(worker_id):
-                worker_info = get_worker_info()
-
-                dataset = worker_info.dataset
-                start = dataset.start
-                end = dataset.end
-                num_per_worker = int(
-                    math.ceil((end - start) / float(worker_info.num_workers)))
-
-                worker_id = worker_info.id
-                dataset.start = start + worker_id * num_per_worker
-                dataset.end = min(dataset.start + num_per_worker, end)
-
-            dataloader = DataLoader(
-                dataset,
-                num_workers=2,
-                batch_size=1,
-                drop_last=True,
-                worker_init_fn=worker_init_fn)
-
-            for data in dataloader:
-                print(data)
-            # outputs: [2, 5, 3, 6, 4, 7]
+            >>> def worker_init_fn(worker_id):
+            ...     worker_info = get_worker_info()
+            ...
+            ...     dataset = worker_info.dataset
+            ...     start = dataset.start
+            ...     end = dataset.end
+            ...     num_per_worker = int(
+            ...         math.ceil((end - start) / float(worker_info.num_workers)))
+            ...
+            ...     worker_id = worker_info.id
+            ...     dataset.start = start + worker_id * num_per_worker
+            ...     dataset.end = min(dataset.start + num_per_worker, end)
+            ...
+            >>> dataloader = DataLoader(
+            ...     dataset,
+            ...     num_workers=2,
+            ...     batch_size=1,
+            ...     drop_last=True,
+            ...     worker_init_fn=worker_init_fn)
+            ...
+            >>> for data in dataloader:
+            ...     print(data) # doctest: +SKIP("The output depends on the environment.")
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[2]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[3]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[4]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[5]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[6]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[7]])
+            Tensor(shape=[1, 1], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[8]])
 
     """
 
@@ -249,22 +276,21 @@ class TensorDataset(Dataset):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.io import TensorDataset
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.io import TensorDataset
 
 
-            input_np = np.random.random([2, 3, 4]).astype('float32')
-            input = paddle.to_tensor(input_np)
-            label_np = np.random.random([2, 1]).astype('int32')
-            label = paddle.to_tensor(label_np)
+            >>> input_np = np.random.random([2, 3, 4]).astype('float32')
+            >>> input = paddle.to_tensor(input_np)
+            >>> label_np = np.random.random([2, 1]).astype('int32')
+            >>> label = paddle.to_tensor(label_np)
 
-            dataset = TensorDataset([input, label])
+            >>> dataset = TensorDataset([input, label])
 
-            for i in range(len(dataset)):
-                input, label = dataset[i]
-                print(input, label)
-
+            >>> for i in range(len(dataset)):
+            ...     input, label = dataset[i]
+            ...     # do something
     """
 
     def __init__(self, tensors):
@@ -309,32 +335,28 @@ class ComposeDataset(Dataset):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.io import Dataset, ComposeDataset
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.io import Dataset, ComposeDataset
 
 
-            # define a random dataset
-            class RandomDataset(Dataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __getitem__(self, idx):
-                    image = np.random.random([32]).astype('float32')
-                    label = np.random.randint(0, 9, (1, )).astype('int64')
-                    return image, label
-
-                def __len__(self):
-                    return self.num_samples
-
-            dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
-            for i in range(len(dataset)):
-                image1, label1, image2, label2 = dataset[i]
-                print(image1)
-                print(label1)
-                print(image2)
-                print(label2)
-
+            >>> # define a random dataset
+            >>> class RandomDataset(Dataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __getitem__(self, idx):
+            ...         image = np.random.random([32]).astype('float32')
+            ...         label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...         return image, label
+            ...
+            ...     def __len__(self):
+            ...         return self.num_samples
+            ...
+            >>> dataset = ComposeDataset([RandomDataset(10), RandomDataset(10)])
+            >>> for i in range(len(dataset)):
+            ...     image1, label1, image2, label2 = dataset[i]
+            ...     # do something
     """
 
     def __init__(self, datasets):
@@ -379,25 +401,26 @@ class ChainDataset(IterableDataset):
 
         .. code-block:: python
 
-            import numpy as np
-            import paddle
-            from paddle.io import IterableDataset, ChainDataset
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle.io import IterableDataset, ChainDataset
 
 
-            # define a random dataset
-            class RandomDataset(IterableDataset):
-                def __init__(self, num_samples):
-                    self.num_samples = num_samples
-
-                def __iter__(self):
-                    for i in range(10):
-                        image = np.random.random([32]).astype('float32')
-                        label = np.random.randint(0, 9, (1, )).astype('int64')
-                        yield image, label
-
-            dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
-            for image, label in iter(dataset):
-                print(image, label)
+            >>> # define a random dataset
+            >>> class RandomDataset(IterableDataset):
+            ...     def __init__(self, num_samples):
+            ...         self.num_samples = num_samples
+            ...
+            ...     def __iter__(self):
+            ...         for i in range(10):
+            ...             image = np.random.random([32]).astype('float32')
+            ...             label = np.random.randint(0, 9, (1, )).astype('int64')
+            ...             yield image, label
+            ...
+            >>> dataset = ChainDataset([RandomDataset(10), RandomDataset(10)])
+            >>> for image, label in iter(dataset):
+            ...     # do something
+            ...     ...
 
     """
 
@@ -411,8 +434,7 @@ class ChainDataset(IterableDataset):
 
     def __iter__(self):
         for dataset in self.datasets:
-            for sample in dataset:
-                yield sample
+            yield from dataset
 
 
 class Subset(Dataset):
@@ -430,18 +452,18 @@ class Subset(Dataset):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.io import Subset
+            >>> import paddle
+            >>> from paddle.io import Subset
 
-            # example 1:
-            a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
-            print(list(a))
-            # [1, 3]
+            >>> # example 1:
+            >>> a = paddle.io.Subset(dataset=range(1, 4), indices=[0, 2])
+            >>> print(list(a))
+            [1, 3]
 
-            # example 2:
-            b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
-            print(list(b))
-            # [2, 2]
+            >>> # example 2:
+            >>> b = paddle.io.Subset(dataset=range(1, 4), indices=[1, 1])
+            >>> print(list(b))
+            [2, 2]
     """
 
     def __init__(self, dataset, indices):
@@ -472,31 +494,30 @@ def random_split(dataset, lengths, generator=None):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.io import random_split
+            >>> import paddle
 
-            a_list = paddle.io.random_split(range(10), [3, 7])
-            print(len(a_list))
-            # 2
+            >>> paddle.seed(2023)
+            >>> a_list = paddle.io.random_split(range(10), [3, 7])
+            >>> print(len(a_list))
+            2
 
-            for idx, v in enumerate(a_list[0]):
-                print(idx, v)
+            >>> # output of the first subset
+            >>> for idx, v in enumerate(a_list[0]):
+            ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
+            0 7
+            1 6
+            2 5
 
-            # output of the first subset
-            # 0 1
-            # 1 3
-            # 2 9
-
-            for idx, v in enumerate(a_list[1]):
-                print(idx, v)
-            # output of the second subset
-            # 0 5
-            # 1 7
-            # 2 8
-            # 3 6
-            # 4 0
-            # 5 2
-            # 6 4
+            >>> # output of the second subset
+            >>> for idx, v in enumerate(a_list[1]):
+            ...     print(idx, v) # doctest: +SKIP("The output depends on the environment.")
+            0 1
+            1 9
+            2 4
+            3 2
+            4 0
+            5 3
+            6 8
     """
     # Cannot verify that dataset is Sized
     if sum(lengths) != len(dataset):  # type: ignore
@@ -528,8 +549,12 @@ def _accumulate(iterable, fn=lambda x, y: x + y):
 
         .. code-block:: python
 
-            _accumulate([1,2,3,4,5]) --> 1 3 6 10 15
-            _accumulate([1,2,3,4,5], operator.mul) --> 1 2 6 24 120
+            >>> list(_accumulate([1, 2, 3, 4, 5]))
+            [1, 3, 6, 10, 15]
+
+            >>> import operator
+            >>> list(_accumulate([1, 2, 3, 4, 5], operator.mul))
+            [1, 2, 6, 24, 120]
     """
 
     it = iter(iterable)

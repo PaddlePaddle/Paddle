@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import Program, core, program_guard
+from paddle import base
+from paddle.base import Program, core, program_guard
 
 
 class TestMemcpy_FillConstant(unittest.TestCase):
@@ -72,8 +72,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': pinned_var},
             attrs={'dst_place_type': 2},
         )
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0)
+        exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
         )
@@ -88,8 +88,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
             outputs={'Out': gpu_var},
             attrs={'dst_place_type': 1},
         )
-        place = fluid.CUDAPlace(0)
-        exe = fluid.Executor(place)
+        place = base.CUDAPlace(0)
+        exe = base.Executor(place)
         gpu_, pinned_ = exe.run(
             main_program, feed={}, fetch_list=[gpu_var.name, pinned_var.name]
         )
@@ -144,8 +144,8 @@ class TestMemcpy_FillConstant(unittest.TestCase):
                 outputs={'Out': gpu_var},
                 attrs={'dst_place_type': 1},
             )
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             gpu_, pinned_ = exe.run(
                 main_program,
                 feed={},
@@ -187,7 +187,7 @@ class TestMemcpyOPError(unittest.TestCase):
             name="selected_row_0",
             dtype="float32",
             persistable=False,
-            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            type=base.core.VarDesc.VarType.SELECTED_ROWS,
             stop_gradient=True,
         )
         main_program.global_block().append_op(
@@ -207,8 +207,8 @@ class TestMemcpyOPError(unittest.TestCase):
                 outputs={'Out': pinned_var},
                 attrs={'dst_place_type': 2},
             )
-            place = fluid.CUDAPlace(0)
-            exe = fluid.Executor(place)
+            place = base.CUDAPlace(0)
+            exe = base.Executor(place)
             selected_row_var_, pinned_ = exe.run(
                 main_program,
                 feed={},

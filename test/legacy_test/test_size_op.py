@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 def size_wrapper(input):
@@ -64,9 +64,9 @@ class TestLargeTensor(TestSizeOp):
 
 class TestSizeAPI(unittest.TestCase):
     def test_size_static(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
             shape1 = [2, 1, 4, 5]
             shape2 = [1, 4, 5]
             x_1 = paddle.static.data(shape=shape1, dtype='int32', name='x_1')
@@ -83,10 +83,10 @@ class TestSizeAPI(unittest.TestCase):
                 },
                 fetch_list=[out_1, out_2],
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res_1, np.array(np.size(input_1)).astype("int64")
             )
-            assert np.array_equal(
+            np.testing.assert_array_equal(
                 res_2, np.array(np.size(input_2)).astype("int64")
             )
 
@@ -98,14 +98,14 @@ class TestSizeAPI(unittest.TestCase):
         x_2 = paddle.to_tensor(input_2)
         out_1 = paddle.numel(x_1)
         out_2 = paddle.numel(x_2)
-        assert np.array_equal(out_1.numpy().item(0), np.size(input_1))
-        assert np.array_equal(out_2.numpy().item(0), np.size(input_2))
+        np.testing.assert_array_equal(out_1.numpy().item(0), np.size(input_1))
+        np.testing.assert_array_equal(out_2.numpy().item(0), np.size(input_2))
         paddle.enable_static()
 
     def test_error(self):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        main_program = base.Program()
+        startup_program = base.Program()
+        with base.program_guard(main_program, startup_program):
 
             def test_x_type():
                 shape = [1, 4, 5]

@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.distributed import fleet
 from paddle.distributed.fleet.base import role_maker
 
@@ -161,7 +161,7 @@ class TestFleetDygraph(unittest.TestCase):
     def test_dygraph_method(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
-        a = fluid.dygraph.to_variable(value)
+        a = base.dygraph.to_variable(value)
         layer = paddle.nn.Linear(13, 5)
         adam = paddle.optimizer.Adam(
             learning_rate=0.01, parameters=layer.parameters()
@@ -216,8 +216,8 @@ class TestFleetBaseSingleError(unittest.TestCase):
 
         # in non_distributed mode(use `python` to launch), raise error if has multi cards
         if (
-            fluid.core.is_compiled_with_cuda()
-            and fluid.core.get_cuda_device_count() > 1
+            base.core.is_compiled_with_cuda()
+            and base.core.get_cuda_device_count() > 1
         ):
             self.assertRaises(ValueError, test_single_error)
         else:

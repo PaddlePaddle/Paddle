@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 
 class TestPyReader(unittest.TestCase):
@@ -37,11 +37,11 @@ class TestPyReader(unittest.TestCase):
             return reader
 
         for return_list in [True, False]:
-            with fluid.program_guard(fluid.Program(), fluid.Program()):
+            with base.program_guard(base.Program(), base.Program()):
                 image = paddle.static.data(
                     name='image', shape=[-1, 784, 784], dtype='float32'
                 )
-                reader = fluid.io.PyReader(
+                reader = base.io.PyReader(
                     feed_list=[image],
                     capacity=4,
                     iterable=True,
@@ -53,11 +53,11 @@ class TestPyReader(unittest.TestCase):
                     paddle.batch(
                         user_defined_reader, batch_size=self.batch_size
                     ),
-                    fluid.core.CPUPlace(),
+                    base.core.CPUPlace(),
                 )
                 # definition of network is omitted
-                executor = fluid.Executor(fluid.core.CPUPlace())
-                executor.run(fluid.default_main_program())
+                executor = base.Executor(base.core.CPUPlace())
+                executor.run(base.default_main_program())
 
                 for _ in range(self.epoch_num):
                     for data in reader():
@@ -66,13 +66,13 @@ class TestPyReader(unittest.TestCase):
                         else:
                             executor.run(feed=data)
 
-            with fluid.dygraph.guard():
-                batch_py_reader = fluid.io.PyReader(capacity=2)
+            with base.dygraph.guard():
+                batch_py_reader = base.io.PyReader(capacity=2)
                 user_defined_reader = reader_creator_random_image(784, 784)
                 batch_py_reader.decorate_sample_generator(
                     user_defined_reader,
                     batch_size=self.batch_size,
-                    places=fluid.core.CPUPlace(),
+                    places=base.core.CPUPlace(),
                 )
 
                 for epoch in range(self.epoch_num):

@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/index_put_kernel.h"
+#include <array>
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/kernels/cast_kernel.h"
@@ -75,7 +76,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
 
   int64_t is_single_val_tensor = (value.numel() == 1) ? 0 : INT64_MAX;
 
-  const int64_t* pd_indices[7];
+  std::array<const int64_t*, 7> pd_indices;
   for (size_t i = 0; i < indices.size(); ++i) {
     pd_indices[i] = indices[i]->data<int64_t>();
   }
@@ -83,7 +84,7 @@ void LaunchIndexPutKernel(const Context& dev_ctx,
   index_put_kernel<T>(numel,
                       x_data,
                       val_data,
-                      pd_indices,
+                      pd_indices.data(),
                       x_stride,
                       x_dims,
                       is_single_val_tensor,
@@ -133,7 +134,8 @@ void IndexPutKernel(const Context& dev_ctx,
   std::vector<DenseTensor> range_tensor_v;
   const DenseTensor* ptr_value = nullptr;
 
-  for (int i = int_indices_v.size(); i < x.dims().size(); ++i) {
+  for (int i = static_cast<int>(int_indices_v.size()); i < x.dims().size();
+       ++i) {
     range_tensor_v.emplace_back(funcs::GetRangeTensor<int64_t, Context>(
         dev_ctx, x.dims()[i], phi::DataType::INT64));
   }
@@ -169,4 +171,11 @@ PD_REGISTER_KERNEL(index_put,
                    double,
                    int,
                    int64_t,
-                   bool) {}
+                   bool,
+                   int16_t,
+                   uint8_t,
+                   int8_t,
+                   phi::dtype::float16,
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

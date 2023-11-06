@@ -1,4 +1,5 @@
 add_subdirectory(benchmark)
+add_subdirectory(framework)
 if(WITH_CINN)
   add_subdirectory(cinn)
 endif()
@@ -20,7 +21,6 @@ add_subdirectory(nccl)
 if(WITH_PSCORE)
   add_subdirectory(pscore)
 endif()
-add_subdirectory(prim_ops)
 add_subdirectory(reader)
 add_subdirectory(reduce_ops)
 # TODO(gouzil): enable this after the bug is fixed. windows: Exit code 0xc000007b, pr: #53470
@@ -41,8 +41,13 @@ endif()
 cc_test(
   test_common_infer_shape_functions
   SRCS test_common_infer_shape_functions.cc
-  DEPS common_infer_shape_functions ${COMMON_OP_DEPS} activation_op
-       elementwise_add_op phi generated_static_op)
+  DEPS common_infer_shape_functions
+       ${COMMON_OP_DEPS}
+       activation_op
+       generated_op
+       elementwise_add_op
+       phi
+       generated_static_op)
 cc_test(
   gather_test
   SRCS gather_test.cc
@@ -120,17 +125,7 @@ if(WITH_CINN)
     ${COMMON_OP_DEPS}
     python)
 else()
-  cc_test_old(
-    op_debug_string_test
-    SRCS
-    op_debug_string_test.cc
-    DEPS
-    executor
-    fleet_executor
-    recurrent_op_helper
-    recurrent_op
-    elementwise_add_op
-    ${COMMON_OP_DEPS})
+  paddle_test(op_debug_string_test SRCS op_debug_string_test.cc)
 endif()
 
 if(WITH_GPU)
@@ -138,4 +133,10 @@ if(WITH_GPU)
     copy_cross_scope_test
     SRCS copy_cross_scope_test.cc
     DEPS op_registry copy_cross_scope_op scope device_context enforce executor)
+endif()
+
+if(WITH_ONNXRUNTIME AND WIN32)
+  # Copy onnxruntime for some c++ test in Windows, since the test will
+  # be build only in CI, so suppose the generator in Windows is Ninja.
+  copy_onnx(op_debug_string_test)
 endif()

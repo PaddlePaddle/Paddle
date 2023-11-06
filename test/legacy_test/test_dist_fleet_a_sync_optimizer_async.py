@@ -37,11 +37,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "TRAINER"
         from paddle.distributed import fleet
 
-        main_program = paddle.fluid.Program()
-        startup_program = paddle.fluid.Program()
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
 
-        paddle.fluid.framework.switch_main_program(main_program)
-        paddle.fluid.framework.switch_startup_program(startup_program)
+        paddle.base.framework.switch_main_program(main_program)
+        paddle.base.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
@@ -54,11 +54,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         strategy.a_sync = False
         strategy.a_sync_configs = {"launch_barrier": False}
 
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        prog = paddle.fluid.default_main_program()
+        prog = paddle.base.default_main_program()
         self.assertEqual(prog.global_block().ops[-1].type, "send_barrier")
 
         sends = 0
@@ -75,11 +75,11 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         os.environ["TRAINING_ROLE"] = "PSERVER"
         from paddle.distributed import fleet
 
-        main_program = paddle.fluid.Program()
-        startup_program = paddle.fluid.Program()
+        main_program = paddle.base.Program()
+        startup_program = paddle.base.Program()
 
-        paddle.fluid.framework.switch_main_program(main_program)
-        paddle.fluid.framework.switch_startup_program(startup_program)
+        paddle.base.framework.switch_main_program(main_program)
+        paddle.base.framework.switch_startup_program(startup_program)
 
         fleet.init(role_maker.PaddleCloudRoleMaker())
 
@@ -91,7 +91,7 @@ class TestFleetGradientMergeMetaOptimizer(unittest.TestCase):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.a_sync = True
         strategy.a_sync_configs = {"launch_barrier": False}
-        optimizer = paddle.fluid.optimizer.SGD(learning_rate=0.01)
+        optimizer = paddle.optimizer.SGD(learning_rate=0.01)
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 

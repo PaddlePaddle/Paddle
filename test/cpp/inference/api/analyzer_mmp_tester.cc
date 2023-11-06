@@ -18,8 +18,8 @@
 #include "test/cpp/inference/api/tester_helper.h"
 
 // Here add missing commands
-DEFINE_string(infer_model2, "", "model path");
-DEFINE_string(infer_model3, "", "model path");
+PD_DEFINE_string(infer_model2, "", "model path");
+PD_DEFINE_string(infer_model3, "", "model path");
 
 namespace paddle {
 namespace inference {
@@ -100,16 +100,16 @@ void compare(bool use_mkldnn = false) {
       xx2_output.begin(),
       [](const float& l, const float& r) { return fabs(l - r) < 1e-4; });
 
-  PADDLE_ENFORCE_EQ(
-      result,
-      true,
-      paddle::platform::errors::Fatal("Results of model run independently "
-                                      "differs from results of the same model "
-                                      "run as a sequence of models"));
+  PADDLE_ENFORCE_EQ(result,
+                    true,
+                    ::paddle::platform::errors::Fatal(
+                        "Results of model run independently "
+                        "differs from results of the same model "
+                        "run as a sequence of models"));
 }
 
 TEST(Analyzer_mmp, compare) { compare(); }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 TEST(Analyzer_mmp, compare_mkldnn) { compare(true /* use_mkldnn */); }
 #endif
 

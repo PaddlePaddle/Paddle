@@ -74,6 +74,18 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_static_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
+        # test static computation graph: 1-d int32 array
+        x_data = np.random.rand(50).astype(np.int32)
+        y_data = np.random.rand(50).astype(np.int32)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test static computation graph: 1-d int64 array
+        x_data = np.random.rand(50).astype(np.int64)
+        y_data = np.random.rand(50).astype(np.int64)
+        res = self._run_static_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
         # test dynamic computation graph: 3-d array
         x_data = np.random.rand(5, 10, 10).astype(np.float64)
         y_data = np.random.rand(2, 10).astype(np.float64)
@@ -112,6 +124,18 @@ class TestMultiplyApi(unittest.TestCase):
         res = self._run_dynamic_graph_case(x_data, y_data)
         np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
 
+        # test dynamic computation graph: 3-d int32 array
+        x_data = np.random.rand(5, 10, 10).astype(np.int32)
+        y_data = np.random.rand(2, 10).astype(np.int32)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
+        # test dynamic computation graph: 3-d int64 array
+        x_data = np.random.rand(5, 10, 10).astype(np.int64)
+        y_data = np.random.rand(2, 10).astype(np.int64)
+        res = self._run_dynamic_graph_case(x_data, y_data)
+        np.testing.assert_allclose(res, np.outer(x_data, y_data), rtol=1e-05)
+
 
 class TestMultiplyError(unittest.TestCase):
     def test_errors(self):
@@ -123,37 +147,23 @@ class TestMultiplyError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.outer, x, y)
 
         np.random.seed(7)
-        # test dynamic computation graph: dtype can not be int8
-        paddle.disable_static()
-        x_data = np.random.randn(200).astype(np.int8)
-        y_data = np.random.randn(200).astype(np.int8)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        self.assertRaises(RuntimeError, paddle.outer, x, y)
-
-        # test dynamic computation graph: dtype must be same
-        x_data = np.random.randn(200).astype(np.float32)
-        y_data = np.random.randn(200).astype(np.float64)
-        x = paddle.to_tensor(x_data)
-        y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.outer, x, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float64)
         y_data = np.random.randn(200).astype(np.float64)
         y = paddle.to_tensor(y_data)
-        self.assertRaises(ValueError, paddle.outer, x_data, y)
+        self.assertRaises(TypeError, paddle.outer, x_data, y)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
         x = paddle.to_tensor(x_data)
-        self.assertRaises(ValueError, paddle.outer, x, y_data)
+        self.assertRaises(TypeError, paddle.outer, x, y_data)
 
         # test dynamic computation graph: dtype must be Tensor type
         x_data = np.random.randn(200).astype(np.float32)
         y_data = np.random.randn(200).astype(np.float32)
-        self.assertRaises(ValueError, paddle.outer, x_data, y_data)
+        self.assertRaises(TypeError, paddle.outer, x_data, y_data)
 
 
 if __name__ == '__main__':

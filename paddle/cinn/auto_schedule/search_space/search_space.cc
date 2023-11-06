@@ -34,7 +34,7 @@
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/runtime/flags.h"
 
-DECLARE_bool(auto_schedule_use_cost_model);
+PD_DECLARE_bool(auto_schedule_use_cost_model);
 
 namespace cinn {
 namespace auto_schedule {

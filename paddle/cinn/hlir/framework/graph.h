@@ -26,6 +26,11 @@
 #include "paddle/cinn/hlir/framework/node.h"
 
 namespace cinn {
+
+namespace adt {
+class MapExprCtx;
+}  // namespace adt
+
 namespace hlir {
 namespace framework {
 
@@ -59,6 +64,8 @@ class Graph : public cinn::common::Graph {
   std::vector<std::vector<Node*>> groups;
   struct Group {
     Group() = default;
+    Group(const Group&) = delete;
+    Group(Group&&) = delete;
 
     explicit Group(const Graph* graph) : graph_(graph) {}
 
@@ -109,7 +116,7 @@ class Graph : public cinn::common::Graph {
       }
     };
 
-    std::vector<Node*> CollectNodes() {
+    std::vector<Node*> CollectNodes() const {
       if (fused_sub_groups.size()) {
         std::vector<Node*> tmp_nodes;
         for (auto& group : fused_sub_groups) {
@@ -144,8 +151,8 @@ class Graph : public cinn::common::Graph {
       return node_set;
     }
 
-    std::unordered_set<NodeData*> GetInputNodeDatas();
-    std::unordered_set<NodeData*> GetOutputNodeDatas();
+    std::unordered_set<NodeData*> GetInputNodeDatas() const;
+    std::unordered_set<NodeData*> GetOutputNodeDatas() const;
 
     std::string GetFuncName() { return "fn_" + group_id + unique_id; }
 
@@ -180,6 +187,17 @@ class Graph : public cinn::common::Graph {
 
     hlir::framework::OpPatternKind kind() const { return op_pattern_kind; }
 
+    adt::MapExprCtx* mut_map_expr_ctx() { return map_expr_ctx_.get(); }
+
+    const adt::MapExprCtx& map_expr_ctx() const {
+      return *CHECK_NOTNULL(map_expr_ctx_);
+    }
+
+    void set_map_expr_ctx(
+        const std::shared_ptr<adt::MapExprCtx>& map_expr_ctx) {
+      map_expr_ctx_ = map_expr_ctx;
+    }
+
    private:
     // input groups
     std::unordered_set<std::shared_ptr<Group>,
@@ -191,6 +209,7 @@ class Graph : public cinn::common::Graph {
                        SharedGroupHasher,
                        SharedGroupComparator>
         consumer_groups_;
+    std::shared_ptr<adt::MapExprCtx> map_expr_ctx_;
   };
   std::vector<std::shared_ptr<Group>> fusion_groups;
 
@@ -283,9 +302,6 @@ class Graph : public cinn::common::Graph {
       const std::vector<std::vector<Node*>>& groups,
       const std::unordered_set<std::string>& fetch_var_ids = {});
 
-  void SaveSourceCode(const std::string& code);
-  void SavePTXCode(const std::string& ptx);
-
  private:
   std::string DebugGroupedGraph(
       const std::vector<std::vector<Node*>>& groups,
@@ -300,9 +316,6 @@ class Graph : public cinn::common::Graph {
       const std::unordered_set<std::string>& fetch_var_ids = {});
 
   std::vector<std::vector<Node*>> FusionGroupsToGroups();
-
-  std::string viz_path_;
-  static std::atomic_size_t viz_count_;
 
   CINN_DISALLOW_COPY_AND_ASSIGN(Graph);
 };

@@ -37,6 +37,19 @@ InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
   }
 }
 
+InterpreterCoreEventGarbageCollector::InterpreterCoreEventGarbageCollector(
+    const std::vector<std::unique_ptr<InstructionBase>>& vec_instruction) {
+  WorkQueueOptions options(/*name*/ "GarbageCollector",
+                           /*num_threads*/ 1,
+                           /*allow_spinning*/ true,
+                           /*track_task*/ false);
+  queue_ = CreateSingleThreadedWorkQueue(options);
+  for (auto& instruc : vec_instruction) {
+    gc_event_.emplace_back(instruc->DeviceContext().GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
+}
+
 InterpreterCoreEventGarbageCollector::~InterpreterCoreEventGarbageCollector() {
   queue_.reset(nullptr);
 }
@@ -53,6 +66,18 @@ void InterpreterCoreEventGarbageCollector::Add(Variable* var,
   Add(var, &gc_event_.at(instr.Id()), &instr.DeviceContext());
 }
 
+void InterpreterCoreEventGarbageCollector::Add(Variable* var,
+                                               const InstructionBase* instr) {
+  PADDLE_ENFORCE_LT(instr->Id(),
+                    gc_event_.size(),
+                    platform::errors::OutOfRange(
+                        "The index should be less than the size of gc event "
+                        ", but got index is %d and size is %d",
+                        instr->Id(),
+                        gc_event_.size()));
+  Add(var, &gc_event_.at(instr->Id()), &instr->DeviceContext());
+}
+
 void InterpreterCoreEventGarbageCollector::Add(
     Variable* var,
     platform::DeviceEvent* event,
@@ -63,9 +88,10 @@ void InterpreterCoreEventGarbageCollector::Add(
 
   if (var->IsType<phi::DenseTensor>()) {
     Add(var->GetMutable<phi::DenseTensor>()->MoveMemoryHolder(), event, ctx);
-  } else if (var->IsType<
-                 operators::reader::
-                     OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {
+  } else if (
+      var->IsType<
+          operators::reader::
+              OrderedMultiDeviceLoDTensorBlockingQueueHolder>()) {  // NOLINT
     // TODO(xiongkun03) in old executor, this type of variable is not support
     // eager deletion. so we just leave it here ?
   } else if (var->IsType<LoDRankTable>()) {
@@ -107,7 +133,7 @@ void InterpreterCoreEventGarbageCollector::Add(
   } else {
     {  // lock guard
       std::lock_guard<memory::SpinLock> guard(spinlock_);
-      cur_memory_size_ += garbage->size();
+      cur_memory_size_ += static_cast<int64_t>(garbage->size());
       garbages_->push_back(std::move(garbage));
       events_[ctx] = event;
 

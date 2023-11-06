@@ -28,7 +28,7 @@ static void AppendProposals(DenseTensor* dst,
   auto* out_data = dst->data();
   auto* to_add_data = src.data();
   size_t size_of_t = SizeOf(src.dtype());
-  offset *= size_of_t;
+  offset *= static_cast<int64_t>(size_of_t);
   std::memcpy(
       reinterpret_cast<void*>(reinterpret_cast<uintptr_t>(out_data) + offset),
       to_add_data,
@@ -52,13 +52,7 @@ void ClipTiledBoxes(const phi::CPUContext& ctx,
   T im_h =
       is_scale ? round(im_info_data[0] / im_info_data[2]) : im_info_data[0];
   for (int64_t i = 0; i < input_boxes.numel(); ++i) {
-    if (i % 4 == 0) {
-      out_data[i] =
-          std::max(std::min(input_boxes_data[i], im_w - offset), zero);
-    } else if (i % 4 == 1) {
-      out_data[i] =
-          std::max(std::min(input_boxes_data[i], im_h - offset), zero);
-    } else if (i % 4 == 2) {
+    if ((i % 4 == 0) || (i % 4 == 2)) {
       out_data[i] =
           std::max(std::min(input_boxes_data[i], im_w - offset), zero);
     } else {
@@ -367,7 +361,7 @@ void GenerateProposalsKernel(const Context& ctx,
     AppendProposals(rpn_roi_probs, num_proposals, nscores);
     num_proposals += proposals.dims()[0];
     lod0.push_back(num_proposals);
-    tmp_num.push_back(proposals.dims()[0]);
+    tmp_num.push_back(static_cast<int>(proposals.dims()[0]));
   }
   if (rpn_rois_num != nullptr) {
     rpn_rois_num->Resize(phi::make_ddim({num}));

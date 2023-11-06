@@ -17,6 +17,7 @@ import tempfile
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_ast_only
 
 import paddle
 from paddle import nn
@@ -44,7 +45,7 @@ class Net(nn.Layer):
         return x
 
 
-class TestLstm(unittest.TestCase):
+class TestLstm(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -69,7 +70,7 @@ class TestLstm(unittest.TestCase):
         static_out = self.run_lstm(to_static=True)
         np.testing.assert_allclose(dygraph_out, static_out, rtol=1e-05)
 
-    def test_save_in_eval(self, with_training=True):
+    def save_in_eval(self, with_training: bool):
         paddle.jit.enable_to_static(True)
         net = Net(12, 2)
         x = paddle.randn((2, 10, 12))
@@ -100,9 +101,7 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             static_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, static_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{static_out}',
         )
         # switch back into train mode.
         net.train()
@@ -111,13 +110,16 @@ class TestLstm(unittest.TestCase):
             dygraph_out.numpy(),
             train_out.numpy(),
             rtol=1e-05,
-            err_msg='dygraph_out is {}\n static_out is \n{}'.format(
-                dygraph_out, train_out
-            ),
+            err_msg=f'dygraph_out is {dygraph_out}\n static_out is \n{train_out}',
         )
 
+    @test_ast_only
     def test_save_without_training(self):
-        self.test_save_in_eval(with_training=False)
+        self.save_in_eval(with_training=False)
+
+    @test_ast_only
+    def test_save_with_training(self):
+        self.save_in_eval(with_training=True)
 
 
 class LinearNet(nn.Layer):
@@ -133,7 +135,7 @@ class LinearNet(nn.Layer):
         return y
 
 
-class TestSaveInEvalMode(unittest.TestCase):
+class TestSaveInEvalMode(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 
@@ -172,13 +174,11 @@ class TestSaveInEvalMode(unittest.TestCase):
             eval_out.numpy(),
             infer_out.numpy(),
             rtol=1e-05,
-            err_msg='eval_out is {}\n infer_out is \n{}'.format(
-                eval_out, infer_out
-            ),
+            err_msg=f'eval_out is {eval_out}\n infer_out is \n{infer_out}',
         )
 
 
-class TestEvalAfterSave(unittest.TestCase):
+class TestEvalAfterSave(Dy2StTestBase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
 

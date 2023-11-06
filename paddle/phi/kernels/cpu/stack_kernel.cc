@@ -41,8 +41,8 @@ void StackKernel(const Context& dev_ctx,
 
   int pre = 1, post = 1;
   auto& dim = x[0]->dims();
-  for (auto i = 0; i < axis; ++i) pre *= dim[i];
-  for (auto i = axis; i < dim.size(); ++i) post *= dim[i];
+  for (auto i = 0; i < axis; ++i) pre *= static_cast<int>(dim[i]);
+  for (auto i = axis; i < dim.size(); ++i) post *= static_cast<int>(dim[i]);
 
   auto x_data_arr = x_datas.data();
 
@@ -64,12 +64,15 @@ PD_REGISTER_KERNEL(stack,
                    CPU,
                    ALL_LAYOUT,
                    phi::StackKernel,
+                   bool,
                    float,
                    double,
-                   bool,
-                   int64_t,
                    int,
-                   uint8_t,
                    int8_t,
+                   int64_t,
+                   int16_t,
+                   uint8_t,
                    phi::dtype::float16,
-                   phi::dtype::bfloat16) {}
+                   phi::dtype::bfloat16,
+                   phi::dtype::complex<float>,
+                   phi::dtype::complex<double>) {}

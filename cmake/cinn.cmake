@@ -60,7 +60,7 @@ if(WITH_MKL)
   add_definitions(-DCINN_WITH_MKL_CBLAS)
 endif()
 if(WITH_MKLDNN)
-  add_definitions(-DCINN_WITH_MKLDNN)
+  add_definitions(-DCINN_WITH_DNNL)
 endif()
 
 if(WITH_GPU)
@@ -114,10 +114,6 @@ include(cmake/cinn/core.cmake)
 include(cmake/cinn/nvrtc.cmake)
 include(cmake/cinn/nvtx.cmake)
 
-if(CINN_ONLY)
-  link_libraries(gflags)
-endif()
-
 set(LINK_FLAGS
     "-Wl,--version-script ${CMAKE_CURRENT_SOURCE_DIR}/cmake/cinn/export.map"
     CACHE INTERNAL "")
@@ -167,6 +163,10 @@ cinn_cc_library(
   ${jitify_deps})
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+if(NOT CINN_ONLY)
+  target_link_libraries(cinnapi pd_op_dialect phi)
+  add_dependencies(cinnapi pd_op_dialect phi)
+endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
 
@@ -177,6 +177,11 @@ if(WITH_MKL)
     target_link_libraries(cinnapi ${MKLDNN_LIB})
     add_dependencies(cinnapi ${MKLDNN_PROJECT})
   endif()
+endif()
+
+if(CINN_ONLY)
+  target_link_libraries(cinnapi ${flags_dep})
+  add_dependencies(cinnapi ${flags_dep})
 endif()
 
 if(WITH_GPU)
@@ -216,6 +221,10 @@ function(gen_cinncore LINKTYPE)
     ginac)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
+  if(NOT CINN_ONLY)
+    target_link_libraries(${CINNCORE_TARGET} pd_op_dialect phi)
+    add_dependencies(${CINNCORE_TARGET} pd_op_dialect phi)
+  endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)
   target_link_libraries(${CINNCORE_TARGET} ${PYTHON_LIBRARIES})
@@ -227,6 +236,11 @@ function(gen_cinncore LINKTYPE)
       target_link_libraries(${CINNCORE_TARGET} ${MKLDNN_LIB})
       add_dependencies(${CINNCORE_TARGET} ${MKLDNN_PROJECT})
     endif()
+  endif()
+
+  if(CINN_ONLY)
+    target_link_libraries(${CINNCORE_TARGET} ${flags_dep})
+    add_dependencies(${CINNCORE_TARGET} ${flags_dep})
   endif()
 
   if(WITH_GPU)
@@ -254,6 +268,9 @@ set(PUBLISH_LIBS ON)
 if(PUBLISH_LIBS)
   set(core_includes
       "${core_includes};paddle/cinn/runtime/cuda/cinn_cuda_runtime_source.cuh")
+  set(core_includes
+      "${core_includes};paddle/utils/flags.h;paddle/utils/flags_native.h;paddle/utils/test_macros.h"
+  )
   foreach(header ${core_includes})
     get_filename_component(prefix ${header} DIRECTORY)
     file(COPY ${header}
@@ -318,12 +335,8 @@ set(CINN_LIB "${CINN_LIB_LOCATION}/${CINN_LIB_NAME}")
 # Add CINN's dependencies header files
 ######################################
 
-# Add absl
-set(ABSL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/absl/include")
-include_directories(${ABSL_INCLUDE_DIR})
-
 # Add isl
-set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/dist/third_party/isl/include")
+set(ISL_INCLUDE_DIR "${CMAKE_BINARY_DIR}/third_party/install/isl/include")
 include_directories(${ISL_INCLUDE_DIR})
 
 # Add LLVM

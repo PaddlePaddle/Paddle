@@ -211,8 +211,8 @@ std::set<int> CodeGenerator::DistilInputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> input_ids;
   // Use std::set to remove the reptead id and get a ordered list.
-  for (size_t i = 0; i < expressions.size(); i++) {
-    for (auto id : expressions[i].GetInputIds()) {
+  for (const auto& expression : expressions) {
+    for (auto id : expression.GetInputIds()) {
       if (id >= 0) {
         input_ids.insert(id);
       }
@@ -225,8 +225,8 @@ std::set<int> CodeGenerator::DistilOutputIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> output_ids;
   // Use std::set to remove the reptead id and get a ordered list.
-  for (size_t i = 0; i < expressions.size(); i++) {
-    for (auto id : expressions[i].GetOutputIds()) {
+  for (const auto& expression : expressions) {
+    for (auto id : expression.GetOutputIds()) {
       output_ids.insert(id);
     }
   }
@@ -237,8 +237,8 @@ std::set<int> CodeGenerator::DistilIntermediateIds(
     const std::vector<OperationExpression>& expressions) {
   std::set<int> intermediate_output_ids;
   // Use std::set to remove the reptead id and get a ordered list.
-  for (size_t i = 0; i < expressions.size(); i++) {
-    for (auto id : expressions[i].GetIntermediateOutputIds()) {
+  for (const auto& expression : expressions) {
+    for (auto id : expression.GetIntermediateOutputIds()) {
       intermediate_output_ids.insert(id);
     }
   }
@@ -303,7 +303,7 @@ std::string CodeGenerator::EmitParameters(
       output_args.push_back(args_str);
     }
   }
-  for (auto args : output_args) {
+  for (auto const& args : output_args) {
     ret << args;
     if (index != output_args.size() - 1) {
       ret << ", ";
@@ -321,9 +321,9 @@ std::string CodeGenerator::EmitComputeBody(
     const std::unordered_map<int, std::string>& dtypes) const {
   std::ostringstream compute;
   std::unordered_set<int> used;
-  for (size_t i = 0; i < expressions.size(); i++) {
-    VLOG(3) << DebugString(expressions[i]);
-    compute << expressions[i].GetExpression(&used);
+  for (const auto& expression : expressions) {
+    VLOG(3) << DebugString(expression);
+    compute << expression.GetExpression(&used);
   }
 
   // Load input to temporal variables.

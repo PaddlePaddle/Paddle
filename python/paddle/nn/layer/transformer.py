@@ -20,10 +20,9 @@ import copy
 import numpy as np
 
 import paddle
-from paddle.fluid.data_feeder import convert_dtype
+from paddle.base.data_feeder import convert_dtype
 
 from ... import tensor
-from ...fluid import layers
 from ...framework import ParamAttr
 from .. import functional as F
 from .common import Dropout, Linear
@@ -142,14 +141,16 @@ class MultiHeadAttention(Layer):
 
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # encoder input: [batch_size, sequence_length, d_model]
-            query = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, num_heads, query_len, query_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
-            output = multi_head_attn(query, None, None, attn_mask=attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, sequence_length, d_model]
+            >>> query = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, num_heads, query_len, query_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> multi_head_attn = paddle.nn.MultiHeadAttention(128, 2)
+            >>> output = multi_head_attn(query, None, None, attn_mask=attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     Cache = collections.namedtuple("Cache", ["k", "v"])
@@ -170,11 +171,11 @@ class MultiHeadAttention(Layer):
 
         assert embed_dim > 0, (
             "Expected embed_dim to be greater than 0, "
-            "but received {}".format(embed_dim)
+            f"but received {embed_dim}"
         )
         assert num_heads > 0, (
             "Expected num_heads to be greater than 0, "
-            "but received {}".format(num_heads)
+            f"but received {num_heads}"
         )
 
         self.embed_dim = embed_dim
@@ -342,18 +343,10 @@ class MultiHeadAttention(Layer):
             k, v = self.compute_kv(key, value)
             return self.StaticCache(k, v)
         elif value is None:  # incremental_state
-            k = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
-            v = layers.fill_constant_batch_size_like(
-                input=key,
-                shape=[-1, self.num_heads, 0, self.head_dim],
-                dtype=key.dtype,
-                value=0,
-            )
+            fill_shape = [-1, self.num_heads, 0, self.head_dim]
+            fill_shape[0] = paddle.shape(key)[0].item()
+            k = paddle.full(fill_shape, 0, key.dtype)
+            v = paddle.full(fill_shape, 0, key.dtype)
             return self.Cache(k, v)
         else:
             # incremental_state with initial value, mainly for usage like UniLM
@@ -499,15 +492,17 @@ class TransformerEncoderLayer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerEncoderLayer
+            >>> import paddle
+            >>> from paddle.nn import TransformerEncoderLayer
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, n_head, src_len, src_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(128, 2, 512)
-            enc_output = encoder_layer(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, n_head, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            >>> enc_output = encoder_layer(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -529,19 +524,15 @@ class TransformerEncoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -668,16 +659,18 @@ class TransformerEncoder(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerEncoderLayer, TransformerEncoder
+            >>> import paddle
+            >>> from paddle.nn import TransformerEncoderLayer, TransformerEncoder
 
-            # encoder input: [batch_size, src_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # self attention mask: [batch_size, n_head, src_len, src_len]
-            attn_mask = paddle.rand((2, 2, 4, 4))
-            encoder_layer = TransformerEncoderLayer(128, 2, 512)
-            encoder = TransformerEncoder(encoder_layer, 2)
-            enc_output = encoder(enc_input, attn_mask)  # [2, 4, 128]
+            >>> # encoder input: [batch_size, src_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # self attention mask: [batch_size, n_head, src_len, src_len]
+            >>> attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> encoder_layer = TransformerEncoderLayer(128, 2, 512)
+            >>> encoder = TransformerEncoder(encoder_layer, 2)
+            >>> enc_output = encoder(enc_input, attn_mask)
+            >>> print(enc_output.shape)
+            [2, 4, 128]
     """
 
     def __init__(self, encoder_layer, num_layers, norm=None):
@@ -803,7 +796,7 @@ class TransformerDecoderLayer(Layer):
             for linear in FFN. Otherwise, the three sub-layers all uses it as
             `weight_attr` to create parameters. Default: None, which means the
             default weight parameter property is used. See usage for details
-            in :ref:`api_paddle_fluid_param_attr_ParamAttr` .
+            in :ref:`api_paddle_base_param_attr_ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             self attention, `bias_attr[1]` would be used as `bias_attr` for
@@ -818,22 +811,24 @@ class TransformerDecoderLayer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerDecoderLayer
+            >>> import paddle
+            >>> from paddle.nn import TransformerDecoderLayer
 
-            # decoder input: [batch_size, tgt_len, d_model]
-            dec_input = paddle.rand((2, 4, 128))
-            # encoder output: [batch_size, src_len, d_model]
-            enc_output = paddle.rand((2, 6, 128))
-            # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
-            self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # cross attention mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 4, 6))
-            decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            output = decoder_layer(dec_input,
-                                   enc_output,
-                                   self_attn_mask,
-                                   cross_attn_mask)  # [2, 4, 128]
+            >>> # decoder input: [batch_size, tgt_len, d_model]
+            >>> dec_input = paddle.rand((2, 4, 128))
+            >>> # encoder output: [batch_size, src_len, d_model]
+            >>> enc_output = paddle.rand((2, 6, 128))
+            >>> # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
+            >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
+            >>> output = decoder_layer(dec_input,
+            ...                        enc_output,
+            ...                        self_attn_mask,
+            ...                        cross_attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(
@@ -855,19 +850,15 @@ class TransformerDecoderLayer(Layer):
 
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         attn_dropout = dropout if attn_dropout is None else attn_dropout
@@ -1040,23 +1031,25 @@ class TransformerDecoder(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import TransformerDecoderLayer, TransformerDecoder
+            >>> import paddle
+            >>> from paddle.nn import TransformerDecoderLayer, TransformerDecoder
 
-            # decoder input: [batch_size, tgt_len, d_model]
-            dec_input = paddle.rand((2, 4, 128))
-            # encoder output: [batch_size, src_len, d_model]
-            enc_output = paddle.rand((2, 6, 128))
-            # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
-            self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # cross attention mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 4, 6))
-            decoder_layer = TransformerDecoderLayer(128, 2, 512)
-            decoder = TransformerDecoder(decoder_layer, 2)
-            output = decoder(dec_input,
-                             enc_output,
-                             self_attn_mask,
-                             cross_attn_mask)  # [2, 4, 128]
+            >>> # decoder input: [batch_size, tgt_len, d_model]
+            >>> dec_input = paddle.rand((2, 4, 128))
+            >>> # encoder output: [batch_size, src_len, d_model]
+            >>> enc_output = paddle.rand((2, 6, 128))
+            >>> # self attention mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # cross attention mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 4, 6))
+            >>> decoder_layer = TransformerDecoderLayer(128, 2, 512)
+            >>> decoder = TransformerDecoder(decoder_layer, 2)
+            >>> output = decoder(dec_input,
+            ...                  enc_output,
+            ...                  self_attn_mask,
+            ...                  cross_attn_mask)
+            >>> print(output.shape)
+            [2, 4, 128]
     """
 
     def __init__(self, decoder_layer, num_layers, norm=None):
@@ -1251,25 +1244,27 @@ class Transformer(Layer):
 
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import Transformer
+            >>> import paddle
+            >>> from paddle.nn import Transformer
 
-            # src: [batch_size, tgt_len, d_model]
-            enc_input = paddle.rand((2, 4, 128))
-            # tgt: [batch_size, src_len, d_model]
-            dec_input = paddle.rand((2, 6, 128))
-            # src_mask: [batch_size, n_head, src_len, src_len]
-            enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
-            # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
-            dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
-            # memory_mask: [batch_size, n_head, tgt_len, src_len]
-            cross_attn_mask = paddle.rand((2, 2, 6, 4))
-            transformer = Transformer(128, 2, 4, 4, 512)
-            output = transformer(enc_input,
-                                 dec_input,
-                                 enc_self_attn_mask,
-                                 dec_self_attn_mask,
-                                 cross_attn_mask)  # [2, 6, 128]
+            >>> # src: [batch_size, tgt_len, d_model]
+            >>> enc_input = paddle.rand((2, 4, 128))
+            >>> # tgt: [batch_size, src_len, d_model]
+            >>> dec_input = paddle.rand((2, 6, 128))
+            >>> # src_mask: [batch_size, n_head, src_len, src_len]
+            >>> enc_self_attn_mask = paddle.rand((2, 2, 4, 4))
+            >>> # tgt_mask: [batch_size, n_head, tgt_len, tgt_len]
+            >>> dec_self_attn_mask = paddle.rand((2, 2, 6, 6))
+            >>> # memory_mask: [batch_size, n_head, tgt_len, src_len]
+            >>> cross_attn_mask = paddle.rand((2, 2, 6, 4))
+            >>> transformer = Transformer(128, 2, 4, 4, 512)
+            >>> output = transformer(enc_input,
+            ...                      dec_input,
+            ...                      enc_self_attn_mask,
+            ...                      dec_self_attn_mask,
+            ...                      cross_attn_mask)
+            >>> print(output.shape)
+            [2, 6, 128]
     """
 
     def __init__(
@@ -1291,19 +1286,15 @@ class Transformer(Layer):
     ):
         super().__init__()
 
-        assert (
-            d_model > 0
-        ), "Expected d_model to be greater than 0, " "but received {}".format(
-            d_model
+        assert d_model > 0, (
+            "Expected d_model to be greater than 0, " f"but received {d_model}"
         )
-        assert (
-            nhead > 0
-        ), "Expected nhead to be greater than 0, " "but received {}".format(
-            nhead
+        assert nhead > 0, (
+            "Expected nhead to be greater than 0, " f"but received {nhead}"
         )
         assert dim_feedforward > 0, (
             "Expected dim_feedforward to be greater than 0, "
-            "but received {}".format(dim_feedforward)
+            f"but received {dim_feedforward}"
         )
 
         if isinstance(bias_attr, (list, tuple)):
@@ -1458,25 +1449,25 @@ class Transformer(Layer):
             length (int|Tensor): The length of sequence.
 
         Returns:
-            Tensor: Generated square mask according to the given length.
+            Tensor, generated square mask according to the given length. The shape is [length, length].
 
         Examples:
             .. code-block:: python
 
-                import paddle
-                from paddle.nn.layer.transformer import Transformer
-                length = 5
-                d_model, n_head, dim_feedforward = 8, 4, 64
-                transformer_paddle = Transformer(
-                    d_model, n_head, dim_feedforward=dim_feedforward)
-                mask = transformer_paddle.generate_square_subsequent_mask(length)
-                print(mask)
-
-                # [[  0. -inf -inf -inf -inf]
-                # [  0.   0. -inf -inf -inf]
-                # [  0.   0.   0. -inf -inf]
-                # [  0.   0.   0.   0. -inf]
-                # [  0.   0.   0.   0.   0.]]
+                >>> import paddle
+                >>> from paddle.nn.layer.transformer import Transformer
+                >>> length = 5
+                >>> d_model, n_head, dim_feedforward = 8, 4, 64
+                >>> transformer_paddle = Transformer(
+                ...     d_model, n_head, dim_feedforward=dim_feedforward)
+                >>> mask = transformer_paddle.generate_square_subsequent_mask(length)
+                >>> print(mask)
+                Tensor(shape=[5, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[ 0.  , -inf., -inf., -inf., -inf.],
+                 [ 0.  ,  0.  , -inf., -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  , -inf., -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  , -inf.],
+                 [ 0.  ,  0.  ,  0.  ,  0.  ,  0.  ]])
 
         """
         return paddle.tensor.triu(

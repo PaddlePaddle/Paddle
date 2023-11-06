@@ -29,19 +29,20 @@
 #include "paddle/cinn/common/common.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
+#include "paddle/cinn/ir/schedule/factorize_reduction.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/schedule/ir_schedule_util.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/utils/string.h"
 
-DECLARE_int32(cinn_schedule_error_message_level);
+PD_DECLARE_int32(cinn_error_message_level);
 
 namespace cinn {
 namespace ir {
@@ -54,12 +55,11 @@ class ScheduleImpl {
   ScheduleImpl() = default;
   explicit ScheduleImpl(const ModuleExpr& module_expr,
                         bool debug_flag = false,
-                        ScheduleErrorMessageLevel err_msg_level =
-                            ScheduleErrorMessageLevel::kGeneral)
+                        utils::ErrorMessageLevel err_msg_level =
+                            utils::ErrorMessageLevel::kGeneral)
       : module_expr_(module_expr), debug_flag_(debug_flag) {
-    err_msg_level_ = static_cast<ScheduleErrorMessageLevel>(
-        FLAGS_cinn_schedule_error_message_level ||
-        static_cast<int>(err_msg_level));
+    err_msg_level_ = static_cast<utils::ErrorMessageLevel>(
+        FLAGS_cinn_error_message_level || static_cast<int>(err_msg_level));
   }
   explicit ScheduleImpl(ModuleExpr&& module_expr)
       : module_expr_(std::move(module_expr)) {}
@@ -121,6 +121,7 @@ class ScheduleImpl {
   void ReverseComputeInline(const Expr& schedule_block);
   void Bind(const Expr& loop, const std::string& thread_axis);
   Expr Rfactor(const Expr& rf_loop, int rf_axis);
+  Expr FactorizeReduction(const Expr& rf_loop, int rf_axis);
   Expr AddUnitLoop(const Expr& block) const;
   void Annotate(const Expr& block, const std::string& key, const attr_t& value);
   void Unannotate(Expr& block, const std::string& key);  // NOLINT
@@ -138,8 +139,7 @@ class ScheduleImpl {
 
   ModuleExpr module_expr_;
   bool debug_flag_{false};
-  ScheduleErrorMessageLevel err_msg_level_ =
-      ScheduleErrorMessageLevel::kGeneral;
+  utils::ErrorMessageLevel err_msg_level_ = utils::ErrorMessageLevel::kGeneral;
 };
 
 /** \brief A macro that guards the beginning of each implementation of schedule
@@ -152,10 +152,10 @@ class ScheduleImpl {
  * @param err_msg_level A ScheduleErrorMessageLevel enum, level of error message
  * printing
  */
-#define CINN_IR_SCHEDULE_END(primitive, err_msg_level)                    \
-  }                                                                       \
-  catch (const IRScheduleErrorHandler& err_hanlder) {                     \
-    CINN_THROW(err_hanlder.FormatErrorMessage(primitive, err_msg_level)); \
+#define CINN_IR_SCHEDULE_END(err_msg_level)                    \
+  }                                                            \
+  catch (const utils::ErrorHandler& err_hanlder) {             \
+    CINN_THROW(err_hanlder.FormatErrorMessage(err_msg_level)); \
   }
 
 std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
@@ -177,7 +177,7 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
   std::vector<int> processed_factors;
   CINN_IR_SCHEDULE_BEGIN();
   processed_factors = ValidateFactors(factors, tot_extent, this->module_expr_);
-  CINN_IR_SCHEDULE_END("split", this->err_msg_level_);
+  CINN_IR_SCHEDULE_END(this->err_msg_level_);
   int prod_size = std::accumulate(processed_factors.begin(),
                                   processed_factors.end(),
                                   1,
@@ -191,7 +191,7 @@ std::vector<Expr> ScheduleImpl::Split(const Expr& loop,
     new_loop_vars.push_back(temp_var);
   }
   substitute_value = common::AutoSimplify(substitute_value);
-  Expr new_node = optim::IRCopy(for_node->body);
+  Expr new_node = ir::ir_utils::IRCopy(for_node->body);
   ReplaceExpr(&new_node, {for_node->loop_var}, {substitute_value});
   std::vector<Expr> splited_loops;
   splited_loops.resize(processed_factors.size());
@@ -254,7 +254,7 @@ Expr ScheduleImpl::Fuse(const std::vector<Expr>& loops) {
   }
   substitute_value[0] = fused_expr;
 
-  Expr fused_body = optim::IRCopy(for_nodes.back()->body);
+  Expr fused_body = ir::ir_utils::IRCopy(for_nodes.back()->body);
   ReplaceExpr(&fused_body, loop_vars, substitute_value);
   optim::Simplify(&fused_body);
   Expr fused_extent(1);
@@ -323,7 +323,7 @@ void ScheduleImpl::MutateForType(const Expr& loop,
       << "loop is not serial, current forloop type is "
       << static_cast<int>(for_node->for_type()) << ", and it cannot become "
       << static_cast<int>(for_type);
-  auto loop_copy = optim::IRCopy(loop);
+  auto loop_copy = ir::ir_utils::IRCopy(loop);
   auto* new_for_node = loop_copy.As<ir::For>();
   CHECK(new_for_node);
   new_for_node->set_for_type(for_type);
@@ -676,7 +676,7 @@ struct RfCreater : public ir::IRMutator<> {
     CHECK(root_realize);
     auto root_block = root_realize->schedule_block.As<ScheduleBlock>();
     CHECK(root_block);
-    Expr root_loop = optim::IRCopy(root_block->body);
+    Expr root_loop = ir::ir_utils::IRCopy(root_block->body);
     if (auto block = root_loop.As<Block>()) {
       CHECK_EQ(block->stmts.size(), 1U)
           << "rfactor root should only have one block stmt";
@@ -687,13 +687,13 @@ struct RfCreater : public ir::IRMutator<> {
     auto rf_for = rf_loop_.As<For>();
     CHECK(rf_for);
     // create new rfactor forloops
-    Expr new_rf_forloop = optim::IRCopy(root_loop);
+    Expr new_rf_forloop = ir::ir_utils::IRCopy(root_loop);
     RfMutator rf_mutator(rf_loop_, rf_axis_);
     rf_mutator(&new_rf_forloop);
     VLOG(3) << "After RfMutator, new rf_forloop is\n" << new_rf_forloop;
     auto new_rf_tensor = rf_mutator.GetNewRfTensor();
     // create final write-back forloops
-    Expr final_forloop = optim::IRCopy(root_loop);
+    Expr final_forloop = ir::ir_utils::IRCopy(root_loop);
     FinalMutator final_mutator(rf_loop_, rf_axis_, new_rf_tensor);
     final_mutator(&final_forloop);
     VLOG(3) << "After FinalMuator, final write-back forloop is\n"
@@ -719,11 +719,84 @@ Expr ScheduleImpl::Rfactor(const Expr& rf_loop, int rf_axis) {
   return rf_create.CreateRfAllStmts();
 }
 
+Expr ScheduleImpl::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
+  std::string primitive = "FactorizeReduction";
+  // Get child block of the rf_loop and check.
+  std::vector<Expr> blocks = GetChildBlocks(rf_loop);
+  if (blocks.size() != 1) {
+    std::ostringstream os;
+    os << "The rf_loop is required to have only one child block, but got "
+       << blocks.size() << std::endl;
+    throw IRScheduleErrorHandler(primitive, os.str(), this->module_expr_);
+  }
+  Expr original_block = blocks.at(0);
+  Expr root_block = GetRootBlock(original_block);
+  // TODO(BiynXu): Add CheckReductionBlock()
+
+  // Collect the loops of the block.
+  // Construct a map from loop var names to corresponding loops.
+  std::vector<Expr> original_loops = this->GetLoops(original_block);
+  CHECK_GT(original_loops.size(), 0);
+  VLOG(3) << "before FactorizeReduction, original computational body of the "
+             "reduction is:\n"
+          << original_loops[0];
+  std::map<Var, Expr, CompVar> var2loops;
+  for (const Expr& loop : original_loops) {
+    var2loops[loop.As<For>()->loop_var] = loop;
+  }
+
+  // Get original stmt of reduction update and original store tensor.
+  Expr original_update_body = original_block.As<ir::ScheduleBlockRealize>()
+                                  ->schedule_block.As<ir::ScheduleBlock>()
+                                  ->body;
+  Expr original_update_stmt;
+  CHECK(original_update_body.As<Block>() || original_update_body.As<Store>());
+  if (original_update_body.As<Block>()) {
+    CHECK_EQ(original_update_body.As<Block>()->stmts.size(), 1);
+    original_update_stmt = original_update_body.As<Block>()->stmts[0];
+  } else if (original_update_body.As<Store>()) {
+    original_update_stmt = original_update_body;
+  }
+  Tensor original_tensor =
+      original_update_stmt.As<Store>()->tensor.as_tensor_ref();
+
+  // Create new blocks and loops.
+  Tensor rf_tensor = CreateRFTensor(original_tensor, rf_loop, rf_axis);
+  RFBlockCreater rf_block_creater(original_block,
+                                  original_loops,
+                                  rf_loop,
+                                  original_update_stmt,
+                                  rf_tensor,
+                                  var2loops,
+                                  rf_axis);
+  rf_block_creater.CreateBlock();
+  RBBlockCreater wb_block_creater(original_block,
+                                  original_loops,
+                                  rf_loop,
+                                  original_update_stmt,
+                                  rf_tensor,
+                                  rf_block_creater.rf_tensor_access_indices_,
+                                  rf_block_creater.rf_var_);
+  wb_block_creater.CreateBlock();
+
+  Expr rf_body = rf_block_creater.CreateLoops();
+  Expr wb_body = wb_block_creater.CreateLoops();
+
+  Expr new_computational_body = Block::Make({rf_body, wb_body});
+
+  // Replace and update the AST.
+  this->Replace(original_loops[0], new_computational_body);
+  VLOG(3) << "After FactorizeReduction, new computational body of the "
+             "reduction is:\n"
+          << new_computational_body;
+  return rf_tensor;
+}
+
 struct CacheReadRewriter : public ir::IRMutator<> {
  public:
   static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
     CacheReadRewriter rewriter(root, info);
-    Expr new_root = optim::IRCopy(root);
+    Expr new_root = ir::ir_utils::IRCopy(root);
     rewriter(&new_root);
     return new_root;
   }
@@ -764,12 +837,12 @@ struct CacheWriteRewriter : public ir::IRMutator<> {
  public:
   static Expr Rewrite(const Expr& root, CacheBlockInfo* info) {
     CacheWriteRewriter rewriter(root, info);
-    Expr new_root = optim::IRCopy(root);
+    Expr new_root = ir::ir_utils::IRCopy(root);
     rewriter.mutate_cache_block = true;
     rewriter(&info->cache_block);
     rewriter.mutate_cache_block = false;
     rewriter(&new_root);
-    auto find_tensor = ir::CollectIRNodesWithoutTensor(
+    auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_root,
         [&](const Expr* x) {
           return x->As<Store>() &&
@@ -777,7 +850,7 @@ struct CacheWriteRewriter : public ir::IRMutator<> {
         },
         true);
     if (!find_tensor.empty()) {
-      auto find_store = ir::CollectIRNodesWithoutTensor(
+      auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
           (*find_tensor.begin()), [&](const Expr* x) {
             return x->As<Load>() &&
                    (x->As<Load>()->tensor == Expr(info->write_tensor));
@@ -866,7 +939,7 @@ struct ChangeBodyToBlock : public ir::IRMutator<> {
 
 DeviceAPI ScheduleImpl::GetDeviceAPI() const {
   auto exprs = this->GetModule().GetExprs();
-  auto find_for_nodes = ir::CollectIRNodesWithoutTensor(
+  auto find_for_nodes = ir::ir_utils::CollectIRNodesWithoutTensor(
       exprs.front(), [&](const Expr* x) { return x->As<ir::For>(); }, true);
   CHECK(!find_for_nodes.empty());
   return (*find_for_nodes.begin()).As<ir::For>()->device_api;
@@ -927,7 +1000,7 @@ Expr ScheduleImpl::CacheWrite(const Expr& block,
           ->schedule_block.As<ScheduleBlock>()
           ->body);
 
-  auto find_cache_block = ir::CollectIRNodesWithoutTensor(
+  auto find_cache_block = ir::ir_utils::CollectIRNodesWithoutTensor(
       root,
       [&](const Expr* x) {
         return x->As<ir::ScheduleBlockRealize>() &&
@@ -939,9 +1012,10 @@ Expr ScheduleImpl::CacheWrite(const Expr& block,
   CHECK(info.write_tensor->buffer.defined());
 
   // Replace buffer
-  auto all_tensors = ir::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
-    return x->as_tensor() && x->as_tensor()->buffer.defined();
-  });
+  auto all_tensors =
+      ir::ir_utils::CollectIRNodesWithoutTensor(root, [&](const Expr* x) {
+        return x->as_tensor() && x->as_tensor()->buffer.defined();
+      });
 
   for (auto i : all_tensors) {
     if (i.as_tensor()->name != info.write_tensor->name &&
@@ -1121,7 +1195,7 @@ Expr ScheduleImpl::Reorder(const Expr& block,
 Expr ScheduleImpl::GetRootBlock(const Expr& expr) const {
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {
-    auto find_expr = ir::CollectIRNodesWithoutTensor(
+    auto find_expr = ir::ir_utils::CollectIRNodesWithoutTensor(
         it_expr,
         [&](const Expr* x) {
           return x->node_type() == expr.node_type() && *x == expr;
@@ -1195,25 +1269,26 @@ struct LoopReconstructor : public ir::IRMutator<> {
                             loop_.As<ir::For>()->device_api,
                             std::move(loop_body));
     }
-    new_loop_ = optim::IRCopy(loop_);
+    new_loop_ = ir::ir_utils::IRCopy(loop_);
 
     // Replace the copied Tensor object with the original Tensor object,
     // to ensure that the same Tensor in a AST is the same object.
     std::unordered_map<std::string, ir::Expr> tensors_map;
-    ir::CollectIRNodesWithoutTensor(loop_, [&tensors_map](const Expr* x) {
-      if (x->as_tensor()) {
-        tensors_map.insert({x->as_tensor()->name, *x});
-        return true;
-      }
-      return false;
-    });
-    auto find_store = ir::CollectIRNodesWithoutTensor(
+    ir::ir_utils::CollectIRNodesWithoutTensor(
+        loop_, [&tensors_map](const Expr* x) {
+          if (x->as_tensor()) {
+            tensors_map.insert({x->as_tensor()->name, *x});
+            return true;
+          }
+          return false;
+        });
+    auto find_store = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop_, [](const Expr* x) { return x->As<ir::Store>(); });
     for (auto store : find_store) {
       store.As<ir::Store>()->tensor =
           tensors_map.at(store.As<ir::Store>()->tensor.as_tensor()->name);
     }
-    auto find_load = ir::CollectIRNodesWithoutTensor(
+    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop_, [](const Expr* x) { return x->As<ir::Load>(); });
     for (auto load : find_load) {
       load.As<ir::Load>()->tensor =
@@ -1277,7 +1352,7 @@ void ScheduleImpl::SetBuffer(Expr& block,
                              const std::string& memory_type,
                              bool fixed) {
   CHECK(block.As<ir::ScheduleBlockRealize>());
-  auto find_tensor = ir::CollectIRNodesWithoutTensor(
+  auto find_tensor = ir::ir_utils::CollectIRNodesWithoutTensor(
       block, [&](const Expr* x) { return x->As<ir::Store>(); }, true);
   CHECK_EQ(find_tensor.size(), 1U)
       << "One block should only have one Store node!(except for root block)";
@@ -1288,7 +1363,7 @@ void ScheduleImpl::SetBuffer(Expr& block,
   auto exprs = this->GetModule().GetExprs();
   for (auto& it_expr : exprs) {
     auto find_tensor =
-        ir::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
+        ir::ir_utils::CollectIRNodesWithoutTensor(it_expr, [&](const Expr* x) {
           return x->as_tensor() &&
                  (x->as_tensor()->name == tensor.as_tensor_ref()->name ||
                   x->as_tensor()->name ==
@@ -1330,7 +1405,7 @@ void ScheduleImpl::MergeExprs() {
                              ->body);
   VLOG(3) << "Before merging, exprs[0] is : " << exprs[0];
   for (int i = 1; i < exprs.size(); ++i) {
-    auto root_block = ir::CollectIRNodesWithoutTensor(
+    auto root_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         exprs[i],
         [&](const Expr* x) {
           return x->As<ir::ScheduleBlockRealize>() &&
@@ -1431,15 +1506,15 @@ void ScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
   }
 
   Expr result = loops.size() < block_loops.size()
-                    ? optim::IRCopy(block_loops[loops.size()])
-                    : optim::IRCopy(this_block);
-  Expr new_loop = optim::IRCopy(this_loop);
+                    ? ir::ir_utils::IRCopy(block_loops[loops.size()])
+                    : ir::ir_utils::IRCopy(this_block);
+  Expr new_loop = ir::ir_utils::IRCopy(this_loop);
 
   // Get the body of block_loop under the same loops
   auto body = block_loops.at(loops.size() - 1).As<ir::For>()->body;
   // collect if
   auto if_checker = [](const Expr* x) { return x->As<ir::IfThenElse>(); };
-  auto if_set = ir::CollectIRNodesWithoutTensor(body, if_checker);
+  auto if_set = ir::ir_utils::CollectIRNodesWithoutTensor(body, if_checker);
   for (auto if_expr : if_set) {
     auto checker = [block_name](const Expr* x) {
       return x->As<ir::ScheduleBlockRealize>() &&
@@ -1447,7 +1522,8 @@ void ScheduleImpl::SimpleComputeAt(const Expr& block, const Expr& loop) {
                      ->schedule_block.As<ScheduleBlock>()
                      ->name == block_name;
     };
-    if (ir::CollectIRNodesWithoutTensor(if_expr, checker, true).size() > 0) {
+    if (ir::ir_utils::CollectIRNodesWithoutTensor(if_expr, checker, true)
+            .size() > 0) {
       result =
           IfThenElse::Make(if_expr.As<ir::IfThenElse>()->condition, result);
       break;
@@ -1584,7 +1660,7 @@ bool ComputeInliner::BodyPatternAllowInline() {
     return false;
   }
   CHECK(inlined_store_.As<Store>());
-  auto find_vars = ir::CollectIRNodesWithoutTensor(
+  auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
   for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
@@ -1607,7 +1683,7 @@ void ComputeInliner::Visit(const ir::Load* expr, Expr* op) {
 Expr ComputeInliner::ReplaceInlinedTensor(Expr* load) {
   CHECK(load->As<ir::Load>());
   SetIndexSubstitution(load->As<ir::Load>()->indices);
-  Expr value_copy = optim::IRCopy(inlined_store_.As<Store>()->value);
+  Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);
   ReplaceExpr(&value_copy, idx_sub_var_, idx_sub_expr_);
   return value_copy;
 }
@@ -1652,7 +1728,7 @@ bool ReverseComputeInliner::BodyPatternAllowInline() {
   CHECK(inlined_store_.As<Store>());
   CHECK(inlined_load_.As<Load>());
   CHECK(target_store_.As<Store>());
-  auto find_vars = ir::CollectIRNodesWithoutTensor(
+  auto find_vars = ir::ir_utils::CollectIRNodesWithoutTensor(
       inlined_store_, [&](const Expr* x) { return x->as_var(); });
   std::set<Var, CompVar> vars_set;
   for (auto& i : find_vars) vars_set.insert(i.as_var_ref());
@@ -1683,7 +1759,7 @@ void ReverseComputeInliner::Visit(const ir::Store* expr, Expr* op) {
 Expr ReverseComputeInliner::ReplaceInlinedTensor(Expr* load) {
   CHECK(load->As<ir::Load>());
   SetIndexSubstitution(load->As<ir::Load>()->indices);
-  Expr value_copy = optim::IRCopy(inlined_store_.As<Store>()->value);
+  Expr value_copy = ir::ir_utils::IRCopy(inlined_store_.As<Store>()->value);
   return value_copy;
 }
 
@@ -1698,7 +1774,7 @@ Expr ReverseComputeInliner::ReplaceTargetTensor(Expr* store) {
     idx_sub_expr_.emplace_back(idx_vars_[i]);
   }
 
-  Expr value_copy = optim::IRCopy(target_store_);
+  Expr value_copy = ir::ir_utils::IRCopy(target_store_);
   ReplaceExpr(&value_copy, idx_sub_var_, idx_sub_expr_);
   return value_copy;
 }
@@ -1935,7 +2011,7 @@ void ScheduleImpl::Annotate(const Expr& block,
   CHECK(block.As<ir::ScheduleBlockRealize>());
   CHECK(block.As<ir::ScheduleBlockRealize>()
             ->schedule_block.As<ir::ScheduleBlock>());
-  auto copied_block = optim::IRCopy(block);
+  auto copied_block = ir::ir_utils::IRCopy(block);
   auto* schedule_block = copied_block.As<ir::ScheduleBlockRealize>()
                              ->schedule_block.As<ir::ScheduleBlock>();
   schedule_block->attrs.emplace(key, value);
@@ -2033,12 +2109,12 @@ void ScheduleImpl::FlattenLoops(const std::vector<Expr>& loops,
         CHECK_EQ(iter.as_var_ref()->name, loop_vars[idx]->name)
             << "loops is not the same order with tensor!";
       } else {
-        CHECK(iter.As<IntImm>());
+        CHECK(iter.As<IntImm>()) << iter.node_type() << " is not IntImm";
         CHECK_EQ(iter.as_int32(), 0);
       }
     }
 
-    auto exprs = ir::CollectIRNodesInOrder(
+    auto exprs = ir::ir_utils::CollectIRNodesInOrder(
         schedule_block->body,
         [&](const Expr* x) { return x->As<ir::Store>() || x->As<ir::Load>(); });
     // reverse exprs from last to first.
@@ -2187,16 +2263,16 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   std::set<std::string> used_target_loop_vars;
   for (auto& iter_val : new_iter_values) {
     auto find_partial_loop =
-        ir::CollectIRNodesWithoutTensor(iter_val, [&](const Expr* x) {
+        ir::ir_utils::CollectIRNodesWithoutTensor(iter_val, [&](const Expr* x) {
           if (x->as_var()) used_target_loop_vars.insert(x->as_var_ref()->name);
           return x->as_var();
         });
   }
   CHECK(!used_target_loop_vars.empty());
   std::vector<Expr> used_target_loops;
-  auto expr_copy = optim::IRCopy(expr);
+  auto expr_copy = ir::ir_utils::IRCopy(expr);
   for (auto& var : used_target_loop_vars) {
-    auto find_loop_var = ir::CollectIRNodesWithoutTensor(
+    auto find_loop_var = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr_copy,
         [&](const Expr* x) {
           return x->As<ir::For>() && x->As<ir::For>()->loop_var->name == var &&
@@ -2219,12 +2295,12 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
   VLOG(3) << "changed_loop_num is : " << changed_loop_num;
   VLOG(3) << "old_iter_values.size() is : " << old_iter_values.size();
   if (changed_loop_num >= static_cast<int>(old_iter_values.size())) {
-    new_loop = optim::IRCopy(block);
+    new_loop = ir::ir_utils::IRCopy(block);
     new_loop.As<ir::ScheduleBlockRealize>()->iter_values = new_iter_values;
   } else {
     CHECK(old_iter_values[changed_loop_num].as_var());
     auto old_var = old_iter_values[changed_loop_num].as_var_ref();
-    auto find_partial_loop = ir::CollectIRNodesWithoutTensor(
+    auto find_partial_loop = ir::ir_utils::CollectIRNodesWithoutTensor(
         expr,
         [&](const Expr* x) {
           return x->As<ir::For>() &&
@@ -2233,8 +2309,8 @@ void ScheduleImpl::CopyTransformAndLoopInfo(const Expr& block,
         },
         true);
     CHECK_EQ(find_partial_loop.size(), 1U);
-    new_loop = optim::IRCopy(*find_partial_loop.begin());
-    auto find_schedule_block = ir::CollectIRNodesWithoutTensor(
+    new_loop = ir::ir_utils::IRCopy(*find_partial_loop.begin());
+    auto find_schedule_block = ir::ir_utils::CollectIRNodesWithoutTensor(
         new_loop,
         [&](const Expr* x) { return x->As<ir::ScheduleBlockRealize>(); },
         true);
@@ -2316,7 +2392,7 @@ IRSchedule::IRSchedule() {}
 IRSchedule::IRSchedule(const ModuleExpr& module_expr,
                        utils::LinearRandomEngine::StateType rand_seed,
                        bool debug_flag,
-                       ScheduleErrorMessageLevel err_msg_level) {
+                       utils::ErrorMessageLevel err_msg_level) {
   impl_ =
       std::make_unique<ScheduleImpl>(module_expr, debug_flag, err_msg_level);
   this->InitSeed(rand_seed);
@@ -2331,13 +2407,14 @@ IRSchedule::IRSchedule(ir::ModuleExpr&& mod_expr,
 }
 
 IRSchedule::IRSchedule(const IRSchedule& other)
-    : impl_(std::make_unique<ScheduleImpl>(optim::IRCopy(other.GetModule()))),
+    : impl_(std::make_unique<ScheduleImpl>(
+          ir::ir_utils::IRCopy(other.GetModule()))),
       trace_(other.trace_) {
   this->InitSeed(other.ForkSeed());
 }
 
 IRSchedule& IRSchedule::operator=(const IRSchedule& src) {
-  impl_ = std::make_unique<ScheduleImpl>(optim::IRCopy(src.GetModule()));
+  impl_ = std::make_unique<ScheduleImpl>(ir::ir_utils::IRCopy(src.GetModule()));
   trace_ = src.trace_;
   this->InitSeed(src.ForkSeed());
   return *this;
@@ -2563,6 +2640,13 @@ void IRSchedule::SetBuffer(Expr& block,
                          {}));
 }
 
+Expr IRSchedule::AddUnitLoop(const Expr& block) {
+  Expr ret = impl_->AddUnitLoop(block);
+  trace_.Append(ScheduleDesc::Step(
+      "AddUnitLoop", {{"block", std::vector<Expr>({block})}}, {}, {ret}));
+  return ret;
+}
+
 Expr IRSchedule::Reorder(const std::vector<Expr>& loops) {
   Expr ret = impl_->Reorder(loops);
   trace_.Append(ScheduleDesc::Step("Reorder", {{"loops", loops}}, {}, {ret}));
@@ -2639,6 +2723,15 @@ void IRSchedule::Bind(const Expr& loop, const std::string& thread_axis) {
 Expr IRSchedule::Rfactor(const Expr& rf_loop, int rf_axis) {
   auto result = impl_->Rfactor(rf_loop, rf_axis);
   trace_.Append(ScheduleDesc::Step("Rfactor",
+                                   {{"rf_loop", std::vector<Expr>({rf_loop})}},
+                                   {{"rf_axis", rf_axis}},
+                                   {result}));
+  return result;
+}
+
+Expr IRSchedule::FactorizeReduction(const Expr& rf_loop, int rf_axis) {
+  auto result = impl_->FactorizeReduction(rf_loop, rf_axis);
+  trace_.Append(ScheduleDesc::Step("FactorizeReduction",
                                    {{"rf_loop", std::vector<Expr>({rf_loop})}},
                                    {{"rf_axis", rf_axis}},
                                    {result}));

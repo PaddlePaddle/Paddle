@@ -15,8 +15,8 @@
 import unittest
 
 import paddle
-from paddle.fluid import core
-from paddle.fluid.framework import in_dygraph_mode
+from paddle.base import core
+from paddle.base.framework import in_dygraph_mode
 
 
 class TestDataParallelGroup(unittest.TestCase):

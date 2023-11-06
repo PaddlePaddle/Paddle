@@ -25,6 +25,7 @@
 #include "paddle/fluid/platform/device/gpu/gpu_info.h"
 #endif
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/profiler/cuda_tracer.h"
 #include "paddle/fluid/platform/profiler/custom_device/custom_tracer.h"
 #include "paddle/fluid/platform/profiler/extra_info.h"
@@ -164,10 +165,9 @@ std::unique_ptr<ProfilerResult> Profiler::Stop() {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::map<uint32_t, gpuDeviceProp> device_property_map;
   std::vector<int32_t> device_ids = GetSelectedDevices();
-  for (auto index = 0u; index < device_ids.size(); index++) {
-    const gpuDeviceProp& device_property =
-        GetDeviceProperties(device_ids[index]);
-    device_property_map[device_ids[index]] = device_property;
+  for (auto device_id : device_ids) {
+    const gpuDeviceProp& device_property = GetDeviceProperties(device_id);
+    device_property_map[device_id] = device_property;
   }
   ProfilerResult* profiler_result_ptr = new platform::ProfilerResult(
       std::move(tree), extrainfo, device_property_map);

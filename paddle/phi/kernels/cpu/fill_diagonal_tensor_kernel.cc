@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/phi/kernels/fill_diagonal_tensor_kernel.h"
+#include <array>
 
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/tensor_utils.h"
@@ -58,7 +59,7 @@ void CalMatDims(phi::DDim out_dims,
     dimprod *= out_dims[i];
   }
 
-  auto diagdim = dim1;
+  int64_t diagdim = dim1;
   if (*offset >= 0) {
     diagdim = std::min(out_dims[dim1], out_dims[dim2] - *offset);
     *offset *= strides[0];
@@ -87,10 +88,17 @@ void FillDiagonalTensorKernel(const Context &ctx,
   auto matdims = y.dims();
   auto fill_dims = phi::flatten_to_2d(matdims, matdims.size() - 1);
 
-  int64_t new_dims[2], strides[2];
+  std::array<int64_t, 2> new_dims;
+  std::array<int64_t, 2> strides;
   std::vector<int64_t> matdim;
   matdim.resize(fill_dims[0]);
-  CalMatDims(out_dims, dim1, dim2, &offset, new_dims, strides, matdim.data());
+  CalMatDims(out_dims,
+             dim1,
+             dim2,
+             &offset,
+             new_dims.data(),
+             strides.data(),
+             matdim.data());
   PADDLE_ENFORCE_EQ(
       new_dims[0],
       fill_dims[0],

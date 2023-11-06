@@ -3,7 +3,7 @@ if(WITH_PSLIB)
     set(BRPC_DEPS pslib_brpc)
   else()
     if(NOT WITH_HETERPS)
-      set(BRPC_DEPS brpc)
+      set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS})
     endif()
   endif()
   cc_library(

@@ -30,6 +30,23 @@ random.seed(0)
 np.random.seed(0)
 
 
+class TransedMnistDataSet(paddle.io.Dataset):
+    def __init__(self, mnist_data):
+        self.mnist_data = mnist_data
+
+    def __getitem__(self, idx):
+        img = (
+            np.array(self.mnist_data[idx][0])
+            .astype('float32')
+            .reshape(1, 28, 28)
+        )
+        batch = img / 127.5 - 1.0
+        return {"img": batch}
+
+    def __len__(self):
+        return len(self.mnist_data)
+
+
 class TestPostTrainingQuantization(unittest.TestCase):
     def setUp(self):
         self.root_path = tempfile.TemporaryDirectory()
@@ -44,11 +61,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
             os.system("mkdir -p " + self.int8_model_path)
             os.system("mkdir -p " + self.cache_folder)
         except Exception as e:
-            print(
-                "Failed to create {} due to {}".format(
-                    self.int8_model_path, str(e)
-                )
-            )
+            print(f"Failed to create {self.int8_model_path} due to {str(e)}")
             sys.exit(-1)
 
     def tearDown(self):
@@ -56,8 +69,8 @@ class TestPostTrainingQuantization(unittest.TestCase):
 
     def cache_unzipping(self, target_folder, zip_path):
         if not os.path.exists(target_folder):
-            cmd = 'mkdir {0} && tar xf {1} -C {0}'.format(
-                target_folder, zip_path
+            cmd = (
+                f'mkdir {target_folder} && tar xf {zip_path} -C {target_folder}'
             )
             os.system(cmd)
 
@@ -82,9 +95,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
                 retry += 1
             else:
                 raise RuntimeError(
-                    "Cannot download {} within retry limit {}".format(
-                        url, retry_limit
-                    )
+                    f"Cannot download {url} within retry limit {retry_limit}"
                 )
             sys.stderr.write(
                 f"Cache file {filename} not found, downloading {url} \n"
@@ -129,9 +140,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         file_name = data_url.split('/')[-1]
         zip_path = os.path.join(self.cache_folder, file_name)
         print(
-            'Data is downloaded at {}. File exists: {}'.format(
-                zip_path, os.path.exists(zip_path)
-            )
+            f'Data is downloaded at {zip_path}. File exists: {os.path.exists(zip_path)}'
         )
 
         data_cache_folder = os.path.join(self.cache_folder, folder_name)
@@ -147,9 +156,7 @@ class TestPostTrainingQuantization(unittest.TestCase):
         infer_iterations,
     ):
         print(
-            "test model path: {}. File exists: {}".format(
-                model_path, os.path.exists(model_path)
-            )
+            f"test model path: {model_path}. File exists: {os.path.exists(model_path)}"
         )
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
@@ -217,14 +224,27 @@ class TestPostTrainingQuantization(unittest.TestCase):
     ):
         place = paddle.CPUPlace()
         exe = paddle.static.Executor(place)
-        val_reader = paddle.dataset.mnist.train()
+
+        train_dataset = paddle.vision.datasets.MNIST(
+            mode='train', transform=None
+        )
+        train_dataset = TransedMnistDataSet(train_dataset)
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=batch_size
+        )
+        val_data_generator = paddle.io.DataLoader(
+            train_dataset,
+            batch_sampler=BatchSampler,
+            places=paddle.static.cpu_places(),
+        )
 
         ptq = PostTrainingQuantization(
             executor=exe,
             model_dir=model_path,
             model_filename=model_filename,
             params_filename=params_filename,
-            sample_generator=val_reader,
+            sample_generator=None,
+            data_loader=val_data_generator,
             batch_size=batch_size,
             batch_nums=batch_nums,
             algo=algo,

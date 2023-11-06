@@ -19,11 +19,12 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
-from paddle import fluid
-from paddle.fluid.param_attr import ParamAttr
+from paddle import base
+from paddle.base.param_attr import ParamAttr
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
@@ -31,8 +32,8 @@ from paddle.nn import BatchNorm, Linear
 # Note: Set True to eliminate randomness.
 #     1. For one operation, cuDNN has several algorithms,
 #        some algorithm results are non-deterministic, like convolution algorithms.
-if fluid.is_compiled_with_cuda():
-    fluid.set_flags({'FLAGS_cudnn_deterministic': True})
+if base.is_compiled_with_cuda():
+    base.set_flags({'FLAGS_cudnn_deterministic': True})
 
 SEED = 2020
 
@@ -445,30 +446,43 @@ class MobileNetV2(paddle.nn.Layer):
 
 
 def create_optimizer(args, parameter_list):
-    optimizer = fluid.optimizer.Momentum(
+    optimizer = paddle.optimizer.Momentum(
         learning_rate=args.lr,
         momentum=args.momentum_rate,
-        regularization=paddle.regularizer.L2Decay(args.l2_decay),
-        parameter_list=parameter_list,
+        weight_decay=paddle.regularizer.L2Decay(args.l2_decay),
+        parameters=parameter_list,
     )
 
     return optimizer
 
 
-def fake_data_reader(batch_size, label_size):
-    local_random = np.random.RandomState(SEED)
+class FakeDataSet(paddle.io.Dataset):
+    def __init__(self, batch_size, label_size, train_steps):
+        self.local_random = np.random.RandomState(SEED)
+        self.label_size = label_size
 
-    def reader():
-        batch_data = []
-        while True:
-            img = local_random.random_sample([3, 224, 224]).astype('float32')
-            label = local_random.randint(0, label_size, [1]).astype('int64')
-            batch_data.append([img, label])
-            if len(batch_data) == batch_size:
-                yield batch_data
-                batch_data = []
+        self.imgs = []
+        self.labels = []
 
-    return reader
+        self._generate_fake_data(batch_size * (train_steps + 1))
+
+    def _generate_fake_data(self, length):
+        for i in range(length):
+            img = self.local_random.random_sample([3, 224, 224]).astype(
+                'float32'
+            )
+            label = self.local_random.randint(0, self.label_size, [1]).astype(
+                'int64'
+            )
+
+            self.imgs.append(img)
+            self.labels.append(label)
+
+    def __getitem__(self, idx):
+        return [self.imgs[idx], self.labels[idx]]
+
+    def __len__(self):
+        return len(self.imgs)
 
 
 class Args:
@@ -482,9 +496,7 @@ class Args:
     print_step = 1
     train_step = 10
     place = (
-        fluid.CUDAPlace(0)
-        if fluid.is_compiled_with_cuda()
-        else fluid.CPUPlace()
+        base.CUDAPlace(0) if base.is_compiled_with_cuda() else base.CPUPlace()
     )
     model_save_dir = None
     model_save_prefix = None
@@ -495,7 +507,7 @@ class Args:
 
 def train_mobilenet(args, to_static):
     paddle.jit.enable_to_static(to_static)
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         np.random.seed(SEED)
         paddle.seed(SEED)
         paddle.framework.random._manual_program_seed(SEED)
@@ -513,9 +525,15 @@ def train_mobilenet(args, to_static):
         optimizer = create_optimizer(args=args, parameter_list=net.parameters())
 
         # 3. reader
-        train_reader = fake_data_reader(args.batch_size, args.class_dim)
-        train_data_loader = fluid.io.DataLoader.from_generator(capacity=16)
-        train_data_loader.set_sample_list_generator(train_reader)
+        train_dataset = FakeDataSet(
+            args.batch_size, args.class_dim, args.train_step
+        )
+        BatchSampler = paddle.io.BatchSampler(
+            train_dataset, batch_size=args.batch_size
+        )
+        train_data_loader = paddle.io.DataLoader(
+            train_dataset, batch_sampler=BatchSampler
+        )
 
         # 4. train loop
         loss_data = []
@@ -581,14 +599,14 @@ def train_mobilenet(args, to_static):
 
 def predict_static(args, data):
     paddle.enable_static()
-    exe = fluid.Executor(args.place)
+    exe = base.Executor(args.place)
     # load inference model
 
     [
         inference_program,
         feed_target_names,
         fetch_targets,
-    ] = fluid.io.load_inference_model(
+    ] = paddle.static.io.load_inference_model(
         args.model_save_dir,
         executor=exe,
         model_filename=args.model_filename,
@@ -605,7 +623,7 @@ def predict_static(args, data):
 
 def predict_dygraph(args, data):
     paddle.jit.enable_to_static(False)
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         if args.model == "MobileNetV1":
             model = MobileNetV1(class_dim=args.class_dim, scale=1.0)
         elif args.model == "MobileNetV2":
@@ -615,13 +633,13 @@ def predict_dygraph(args, data):
         model.set_dict(model_dict)
         model.eval()
 
-        pred_res = model(fluid.dygraph.to_variable(data))
+        pred_res = model(base.dygraph.to_variable(data))
 
         return pred_res.numpy()
 
 
 def predict_dygraph_jit(args, data):
-    with fluid.dygraph.guard(args.place):
+    with base.dygraph.guard(args.place):
         model = paddle.jit.load(args.model_save_prefix)
         model.eval()
 
@@ -638,7 +656,7 @@ def predict_analysis_inference(args, data):
     return out
 
 
-class TestMobileNet(unittest.TestCase):
+class TestMobileNet(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.temp_dir = tempfile.TemporaryDirectory()
@@ -698,19 +716,22 @@ class TestMobileNet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
         np.testing.assert_allclose(
             predictor_pre,
             st_pre,
             rtol=1e-05,
             atol=1e-05,
-            err_msg='inference_pred_res:\n {}\n, st_pre: \n{}.'.format(
-                predictor_pre, st_pre
-            ),
+            err_msg=f'inference_pred_res:\n {predictor_pre}\n, st_pre: \n{st_pre}.',
         )
+
+    @test_pir_only
+    def test_mobile_net_pir(self):
+        # MobileNet-V1
+        self.assert_same_loss("MobileNetV1")
+        # MobileNet-V2
+        self.assert_same_loss("MobileNetV2")
 
     def test_mobile_net(self):
         # MobileNet-V1

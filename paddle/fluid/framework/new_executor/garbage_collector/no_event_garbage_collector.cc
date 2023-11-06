@@ -27,13 +27,18 @@ InterpreterCoreNoEventGarbageCollector::
 }
 
 InterpreterCoreNoEventGarbageCollector::
-    ~InterpreterCoreNoEventGarbageCollector() {
+    ~InterpreterCoreNoEventGarbageCollector() {  // NOLINT
   queue_.reset(nullptr);
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
                                                  const Instruction& instr) {
   Add(var, &instr.DeviceContext());
+}
+
+void InterpreterCoreNoEventGarbageCollector::Add(Variable* var,
+                                                 const InstructionBase* instr) {
+  Add(var, &instr->DeviceContext());
 }
 
 void InterpreterCoreNoEventGarbageCollector::Add(
@@ -84,7 +89,7 @@ void InterpreterCoreNoEventGarbageCollector::Add(
   } else {
     // lock guard
     std::lock_guard<memory::SpinLock> guard(spinlock_);
-    cur_memory_size_ += garbage->size();
+    cur_memory_size_ += static_cast<int64_t>(garbage->size());
     garbages_->emplace_back(std::move(garbage));
     ctxs_.insert(ctx);
 

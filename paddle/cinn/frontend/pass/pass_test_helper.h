@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include <gflags/gflags.h>
 #include <gtest/gtest.h>
 
 #include <algorithm>
@@ -36,13 +35,15 @@
 #include "paddle/cinn/frontend/syntax.h"
 #include "paddle/cinn/hlir/framework/graph.h"
 #include "paddle/cinn/hlir/framework/graph_compiler.h"
+#include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/pass.h"
 #include "paddle/cinn/hlir/framework/tensor.h"
 #include "paddle/cinn/hlir/op/use_ops.h"
 #include "paddle/cinn/hlir/pass/use_pass.h"
 #include "paddle/cinn/utils/data_util.h"
+#include "paddle/utils/flags.h"
 
-DECLARE_bool(cinn_use_op_fusion);
+PD_DECLARE_bool(cinn_use_op_fusion);
 
 namespace cinn {
 namespace frontend {
@@ -79,14 +80,12 @@ inline void RunGraph(std::shared_ptr<hlir::framework::Graph> graph,
   hlir::framework::ApplyPasses(graph.get(), graph_passes);
   VLOG(3) << "Graph Viz:\n" << graph->Visualize();
   BuildScope(target, graph, scope);
-  hlir::framework::GraphCompiler::CompileOptions options;
-  options.attached_code = "";
-  options.with_instantiate_variables = true;
-  hlir::framework::GraphCompiler gc(target, scope, graph);
-  auto runtime_program = gc.Build(options,
-                                  std::unordered_set<std::string>(
-                                      output_ids.begin(), output_ids.end()))
-                             .runtime_program;
+  hlir::framework::CompilationContext context(graph, scope, target);
+  context.attached_source_code = "";
+  context.with_instantiate_variables = true;
+  context.fetch_var_ids.insert(output_ids.begin(), output_ids.end());
+  hlir::framework::GraphCompiler gc(context);
+  auto runtime_program = gc.Build();
   runtime_program->Execute();
 }
 

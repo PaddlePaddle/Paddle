@@ -9,7 +9,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <math.h>
+#include <cmath>
 
 #include <algorithm>
 #include <string>
@@ -189,12 +189,12 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
       mask_gt_inds.emplace_back(i);
 
       // slice fg segmentation polys
-      int poly_num = polys_num[i];
+      int poly_num = static_cast<int>(polys_num[i]);
       std::vector<std::vector<T>> polys;
-      int s_idx = lod1[i];
+      int s_idx = static_cast<int>(lod1[i]);
       for (int j = 0; j < poly_num; ++j) {
-        int s = lod2[s_idx + j];
-        int e = lod2[s_idx + j + 1];
+        int s = static_cast<int>(lod2[s_idx + j]);
+        int e = static_cast<int>(lod2[s_idx + j + 1]);
         PADDLE_ENFORCE_NE(s,
                           e,
                           platform::errors::InvalidArgument(
@@ -215,8 +215,8 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
       fg_inds.emplace_back(i);
     }
   }
-  int gt_num = mask_gt_inds.size();
-  int fg_num = fg_inds.size();
+  int gt_num = static_cast<int>(mask_gt_inds.size());
+  int fg_num = static_cast<int>(fg_inds.size());
 
   phi::DenseTensor boxes_from_polys;
   boxes_from_polys.mutable_data<T>({gt_num, 4}, platform::CPUPlace());
@@ -235,7 +235,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
     Gather<int>(label_int32_data,
                 1,
                 fg_inds.data(),
-                fg_inds.size(),
+                static_cast<int>(fg_inds.size()),
                 mask_class_labels.data<int>());
 
     uint8_t* masks_data = masks.mutable_data<uint8_t>(
@@ -266,7 +266,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
       for (int64_t j = 0; j < gt_num; ++j) {
         if (v[j] > max_overlap) {
           max_overlap = v[j];
-          id = j;
+          id = static_cast<int>(j);
         }
       }
       fg_masks_inds.push_back(id);
@@ -316,7 +316,7 @@ std::vector<phi::DenseTensor> SampleMaskForOneImage(
   }
 
   phi::DenseTensor roi_has_mask_t;
-  int roi_has_mask_size = roi_has_mask.size();
+  int roi_has_mask_size = static_cast<int>(roi_has_mask.size());
   int* roi_has_mask_data =
       roi_has_mask_t.mutable_data<int>({roi_has_mask_size, 1}, ctx.GetPlace());
   std::copy(roi_has_mask.begin(), roi_has_mask.end(), roi_has_mask_data);
@@ -383,7 +383,7 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
             n));
 
     int mask_dim = num_classes * resolution * resolution;
-    int roi_num = rois->lod().back()[n];
+    int roi_num = static_cast<int>(rois->lod().back()[n]);
     mask_rois->mutable_data<T>({roi_num, kBoxDim}, ctx.GetPlace());
     roi_has_mask_int32->mutable_data<int>({roi_num, 1}, ctx.GetPlace());
     mask_int32->mutable_data<int>({roi_num, mask_dim}, ctx.GetPlace());
@@ -407,19 +407,25 @@ class GenerateMaskLabelsKernel : public framework::OpKernel<T> {
       }
       phi::DenseTensor im_info_slice = im_info->Slice(i, i + 1);
       phi::DenseTensor gt_classes_slice =
-          gt_classes->Slice(gt_classes_lod[i], gt_classes_lod[i + 1]);
+          gt_classes->Slice(static_cast<int64_t>(gt_classes_lod[i]),
+                            static_cast<int64_t>(gt_classes_lod[i + 1]));
       phi::DenseTensor is_crowd_slice =
-          is_crowd->Slice(is_crowd_lod[i], is_crowd_lod[i + 1]);
+          is_crowd->Slice(static_cast<int64_t>(is_crowd_lod[i]),
+                          static_cast<int64_t>(is_crowd_lod[i + 1]));
       phi::DenseTensor label_int32_slice =
-          label_int32->Slice(label_int32_lod[i], label_int32_lod[i + 1]);
-      phi::DenseTensor rois_slice = rois->Slice(rois_lod[i], rois_lod[i + 1]);
+          label_int32->Slice(static_cast<int64_t>(label_int32_lod[i]),
+                             static_cast<int64_t>(label_int32_lod[i + 1]));
+      phi::DenseTensor rois_slice =
+          rois->Slice(static_cast<int64_t>(rois_lod[i]),
+                      static_cast<int64_t>(rois_lod[i + 1]));
 
       auto sub_lod_and_offset =
           framework::GetSubLoDAndAbsoluteOffset(gt_segms_lod, i, i + 1, 0);
       auto lod_length = sub_lod_and_offset.first;
       size_t s = sub_lod_and_offset.second.first;
       size_t e = sub_lod_and_offset.second.second;
-      phi::DenseTensor gt_segms_slice = gt_segms->Slice(s, e);
+      phi::DenseTensor gt_segms_slice =
+          gt_segms->Slice(static_cast<int64_t>(s), static_cast<int64_t>(e));
 
       std::vector<phi::DenseTensor> tensor_output =
           SampleMaskForOneImage<T>(dev_ctx,

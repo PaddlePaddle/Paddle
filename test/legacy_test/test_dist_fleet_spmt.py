@@ -16,7 +16,7 @@ import os
 import unittest
 
 import paddle
-from paddle import fluid
+from paddle import base
 
 paddle.enable_static()
 
@@ -47,17 +47,19 @@ class TestSPMT(unittest.TestCase):
             return acc
 
         def get_loss(cos_q_pt, cos_q_nt):
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(cos_q_pt)[0].item()
             loss_op1 = paddle.subtract(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=cos_q_pt, shape=[-1, 1], value=margin, dtype='float32'
+                paddle.full(
+                    shape=fill_shape, fill_value=margin, dtype='float32'
                 ),
                 cos_q_pt,
             )
             loss_op2 = paddle.add(loss_op1, cos_q_nt)
+            fill_shape = [-1, 1]
+            fill_shape[0] = paddle.shape(loss_op2)[0].item()
             loss_op3 = paddle.maximum(
-                fluid.layers.fill_constant_batch_size_like(
-                    input=loss_op2, shape=[-1, 1], value=0.0, dtype='float32'
-                ),
+                paddle.full(shape=fill_shape, fill_value=0.0, dtype='float32'),
                 loss_op2,
             )
             avg_cost = paddle.mean(loss_op3)
@@ -74,7 +76,7 @@ class TestSPMT(unittest.TestCase):
         q_emb = paddle.static.nn.sparse_embedding(
             input=q,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -90,7 +92,7 @@ class TestSPMT(unittest.TestCase):
         q_fc = paddle.static.nn.fc(
             x=q_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__q_fc__",
                 learning_rate=base_lr,
@@ -106,7 +108,7 @@ class TestSPMT(unittest.TestCase):
         pt_emb = paddle.static.nn.sparse_embedding(
             input=pt,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -122,12 +124,12 @@ class TestSPMT(unittest.TestCase):
         pt_fc = paddle.static.nn.fc(
             x=pt_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+            bias_attr=base.ParamAttr(name="__fc_b__"),
         )
         # nt
         nt = paddle.static.data(
@@ -137,7 +139,7 @@ class TestSPMT(unittest.TestCase):
         nt_emb = paddle.static.nn.sparse_embedding(
             input=nt,
             size=[dict_dim, emb_dim],
-            param_attr=fluid.ParamAttr(
+            param_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__emb__",
                 learning_rate=emb_lr,
@@ -153,12 +155,12 @@ class TestSPMT(unittest.TestCase):
         nt_fc = paddle.static.nn.fc(
             x=nt_ss,
             size=hid_dim,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 initializer=paddle.nn.initializer.Constant(value=0.01),
                 name="__fc__",
                 learning_rate=base_lr,
             ),
-            bias_attr=fluid.ParamAttr(name="__fc_b__"),
+            bias_attr=base.ParamAttr(name="__fc_b__"),
         )
         cos_q_pt = paddle.nn.functional.cosine_similarity(q_fc, pt_fc)
         cos_q_nt = paddle.nn.functional.cosine_similarity(q_fc, nt_fc)
@@ -191,7 +193,7 @@ class TestSPMT(unittest.TestCase):
     #    configs = {"use_ps_gpu": 1, "launch_barrier": False}
     #    strategy.a_sync_configs = configs
     #    strategy.a_sync = True
-    #    optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+    #    optimizer = paddle.optimizer.Adam(learning_rate=0.01)
     #    optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
     #    optimizer.minimize(loss)
 
@@ -233,12 +235,12 @@ class TestSPMT(unittest.TestCase):
         os.environ["PADDLE_FUSE_ALLREDUCE"] = "1"
         os.environ["PADDLE_LOSS_SCALE"] = "1"
 
-        startup_program = fluid.Program()
-        main_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
-            with fluid.unique_name.guard():
+        startup_program = base.Program()
+        main_program = base.Program()
+        with base.program_guard(main_program, startup_program):
+            with base.unique_name.guard():
                 loss, acc, _ = self.net()
-        optimizer = paddle.fluid.optimizer.Adam(learning_rate=0.01)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.01)
         optimizer.minimize(loss)
         print("===main_program====")
         print(main_program)

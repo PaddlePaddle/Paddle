@@ -19,9 +19,9 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed import fleet
 from paddle.distributed.fleet.meta_optimizers.common import CollectiveHelper
-from paddle.fluid import core
 from paddle.incubate import DistributedFusedLamb
 from paddle.nn.clip import ClipGradBase, _clip_by_global_norm_using_mp_type
 from paddle.vision.models import resnet18 as resnet
@@ -126,7 +126,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
     main = paddle.static.Program()
     startup = paddle.static.Program()
     with paddle.static.program_guard(main, startup):
-        with paddle.fluid.unique_name.guard():
+        with paddle.base.unique_name.guard():
             with paddle.static.amp.fp16_guard():
                 image = paddle.static.data(
                     name='image',
@@ -197,7 +197,7 @@ def run_model(use_distributed_lamb, use_fp16, use_master_param_norm, **kwargs):
                 amp_init = None
 
             if gm_steps > 1 and not use_distributed_lamb:
-                optimizer = paddle.fluid.optimizer.GradientMergeOptimizer(
+                optimizer = paddle.incubate.optimizer.GradientMergeOptimizer(
                     optimizer, k_steps=gm_steps, avg=False
                 )
 
@@ -270,7 +270,13 @@ class TestDistributedFusedLamb(unittest.TestCase):
         paddle.enable_static()
         paddle.set_flags({'FLAGS_cudnn_deterministic': True})
         _clip_by_global_norm_using_mp_type(True)
-        fleet.init(role_maker=get_role_maker())
+        if (
+            os.environ.get("FLAGS_dynamic_static_unified_comm", "false").lower()
+            == "true"
+        ):
+            paddle.distributed.collective._init_parallel_env("nccl")
+        else:
+            fleet.init(role_maker=get_role_maker())
 
     def config(self):
         clip_after_allreduce = bool(

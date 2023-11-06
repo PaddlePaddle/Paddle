@@ -17,16 +17,16 @@ import unittest
 import numpy as np
 from numpy.random import random as rand
 
-import paddle.fluid.dygraph as dg
-from paddle import fluid, tensor
+import paddle.base.dygraph as dg
+from paddle import base, tensor
 
 
 class TestComplexTraceLayer(unittest.TestCase):
     def setUp(self):
         self._dtypes = ["float32", "float64"]
-        self._places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            self._places.append(fluid.CUDAPlace(0))
+        self._places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            self._places.append(base.CUDAPlace(0))
 
     def test_basic_api(self):
         for dtype in self._dtypes:

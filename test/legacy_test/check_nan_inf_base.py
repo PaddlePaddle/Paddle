@@ -19,8 +19,8 @@ import numpy as np
 os.environ["FLAGS_check_nan_inf"] = "1"
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 paddle.enable_static()
 
@@ -67,22 +67,22 @@ def net():
     acc_top1 = paddle.static.accuracy(input=y_predict, label=y, k=1)
     avg_cost = paddle.mean(cost)
 
-    sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.05)
+    sgd_optimizer = paddle.optimizer.SGD(learning_rate=0.05)
     sgd_optimizer.minimize(avg_cost)
     return y_predict, avg_cost, acc_top1
 
 
 def check(use_cuda):
-    main = fluid.Program()
-    startup = fluid.Program()
-    scope = fluid.core.Scope()
+    main = base.Program()
+    startup = base.Program()
+    scope = base.core.Scope()
 
-    with fluid.scope_guard(scope):
-        with fluid.program_guard(main, startup):
+    with base.scope_guard(scope):
+        with base.program_guard(main, startup):
             y_predict, avg_cost, acc_top1 = net()
 
-            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-            exe = fluid.Executor(place)
+            place = base.CUDAPlace(0) if use_cuda else base.CPUPlace()
+            exe = base.Executor(place)
             exe.run(startup)
 
             step = 0.0

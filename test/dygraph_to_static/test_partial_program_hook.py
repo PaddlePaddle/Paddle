@@ -14,13 +14,17 @@
 
 import unittest
 
+from dygraph_to_static_utils_new import Dy2StTestBase
+
 import paddle
-from paddle.fluid import core
+from paddle.base import core
+from paddle.jit.api import ENV_ENABLE_SOT
 from paddle.jit.dy2static import partial_program, program_translator
 
 
-class TestPartiaProgramLayerHook(unittest.TestCase):
+class TestPartiaProgramLayerHook(Dy2StTestBase):
     def setUp(self):
+        ENV_ENABLE_SOT.set(False)
         self._hook = partial_program.PartialProgramLayerHook()
 
     def test_before_append_backward(self):
@@ -33,8 +37,9 @@ class TestPartiaProgramLayerHook(unittest.TestCase):
         self.assertIsNone(self._hook.after_infer(None))
 
 
-class TestPrimHook(unittest.TestCase):
+class TestPrimHook(Dy2StTestBase):
     def setUp(self):
+        ENV_ENABLE_SOT.set(False)
         core._set_prim_all_enabled(False)
 
         def f():

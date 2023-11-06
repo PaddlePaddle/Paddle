@@ -45,6 +45,7 @@
 			*paddle::RegisterSymbolsFor*;
 			*paddle::from_blob*;
 			*paddle::InitPhi*;
+			*paddle::flags*;
 
 			/* ut needs the following symbol, we need to modify all the ut to hidden such symbols */
 
@@ -81,6 +82,7 @@
 		*Pass*;
 		*profile*;
 		*phi*;
+		*pir*;
 		PD_*;
 		*cinn*;
 	local:

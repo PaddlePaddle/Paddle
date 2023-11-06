@@ -115,8 +115,8 @@ struct ChannelDequantizeFunctor<phi::CPUContext, T> {
           }
         }
       } else {
-        int batch_size = in->dims()[0];
-        int channel = in->dims()[1];
+        int batch_size = static_cast<int>(in->dims()[0]);
+        int channel = static_cast<int>(in->dims()[1]);
         const T* scale_one = scales[0]->data<T>();
         const T* scale_two = scales[1]->data<T>();
         for (int i = 0; i < batch_size; i++) {

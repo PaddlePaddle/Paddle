@@ -48,7 +48,7 @@ paddle::Tensor hook_function(const paddle::Tensor& t) {
   float* t_ptr = t_dense->mutable_data<float>(place);
   float* ret_ptr = ret_dense->mutable_data<float>(place);
   for (int i = 0; i < ret_dense->numel(); i++) {
-    ret_ptr[i] = t_ptr[i] + 3.0;
+    ret_ptr[i] = t_ptr[i] + 3.0f;
   }
 
   auto ret_impl = std::dynamic_pointer_cast<phi::TensorBase>(ret_dense);
@@ -76,7 +76,7 @@ void test_sigmoid(bool is_remove_gradient_hook) {
                                         true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr = std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
                       ->data<float>();
     for (int i = 0; i < tensor.numel(); i++) {
@@ -214,7 +214,7 @@ void test_matmul(bool is_remove_gradient_hook) {
                                         2.0,
                                         true);
 
-  auto reduce_hook = [&](void) -> void {
+  auto reduce_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(Y.impl())->data<float>();
     for (int i = 0; i < Y.numel(); i++) {
@@ -278,7 +278,7 @@ void test_backward_final_hooks() {
                                         true);
 
   VLOG(6) << "Make ReduceHook function";
-  auto backward_final_hook = [&](void) -> void {
+  auto backward_final_hook = [&]() -> void {
     auto* t_ptr =
         std::dynamic_pointer_cast<phi::DenseTensor>(X.impl())->data<float>();
     VLOG(6) << "Run Target Backward Hook";

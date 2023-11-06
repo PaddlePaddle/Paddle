@@ -3,34 +3,11 @@ set_source_files_properties(${BRPC_SRCS})
 
 if(WITH_HETERPS)
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      phi
-      glog
-      zlib
-      leveldb
-      snappy
-      glog
-      device_context
-      rocksdb)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi zlib device_context rocksdb)
 
 else()
 
-  set(BRPC_DEPS
-      brpc
-      ssl
-      crypto
-      protobuf
-      phi
-      glog
-      zlib
-      leveldb
-      snappy
-      glog
-      device_context)
+  set(BRPC_DEPS ${EXTERNAL_BRPC_DEPS} phi zlib device_context)
 
 endif()
 

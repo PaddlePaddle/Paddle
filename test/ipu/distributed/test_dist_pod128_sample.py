@@ -46,7 +46,7 @@ def TestDistTraining():
 
     attrs = {"size": [128, 16], "padding_idx": -1, "dtype": 'float32'}
 
-    scope = paddle.fluid.core.Scope()
+    scope = paddle.base.core.Scope()
     main_prog = paddle.static.Program()
     startup_prog = paddle.static.Program()
     main_prog.random_seed = 42
@@ -55,11 +55,11 @@ def TestDistTraining():
     np.random.seed(42)
     input_data = np.random.uniform(0, 127, size=[128, 3, 2, 1]).astype(np.int32)
 
-    with paddle.fluid.scope_guard(scope):
+    with paddle.base.scope_guard(scope):
         with paddle.static.program_guard(main_prog, startup_prog):
             x = paddle.static.data(name="x", shape=[3, 2, 1], dtype='int64')
             with paddle.static.ipu_shard_guard(index=0, stage=0):
-                out = paddle.fluid.layers.embedding(x, **attrs)
+                out = paddle.static.nn.embedding(x, **attrs)
             with paddle.static.ipu_shard_guard(index=1, stage=1):
                 loss = paddle.mean(out)
             opt = paddle.optimizer.Adam(learning_rate=1e-1)

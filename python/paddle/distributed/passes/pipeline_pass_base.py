@@ -12,10 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.fluid import core
+import logging
 
+import paddle
+from paddle.base import core
+
+from ..utils.log_utils import get_logger
 from .pass_base import PassBase
-from .pass_utils import get_skip_gc_vars
+from .pass_utils import set_skip_gc_vars
+
+logger = get_logger(logging.INFO)
 
 
 class PipelinePassBase(PassBase):
@@ -28,21 +34,21 @@ class PipelinePassBase(PassBase):
     def _check_conflict(self, other_pass):
         return True
 
-    def create_job_list(self):
+    def _create_job_list(self):
         """
         An interface that MUST be implemented by subclasses.
         """
         pass
 
-    def partial_programs(self, program):
+    def _partial_programs(self, program):
         """
         An interface that MUST be implemented by subclasses.
         The return value MUST be two lists, one is a list of types(str), another
         is a list of sub programs.
         For example:
-        return ["lr", "forward", "backward", "optimizer"], [lr_prog, fwd_prog, bwd_prog, opt_prog]
+        return [FORWARD, BACKWARD, OPT], [fwd_prog, bwd_prog, opt_prog]
         or
-        return ["forward"], [fwd_prog]
+        return [FORWARD], [fwd_prog]
         """
         pass
 
@@ -51,22 +57,25 @@ class PipelinePassBase(PassBase):
         The shared process is implemented in this function and new subclass only need
         to implement two interfaces above, 'create_job_list' and 'partial_programs'.
         """
-        type_list, sub_program_list = self.partial_programs(main_program)
+        job_types, sub_programs = self._partial_programs(main_program)
+        for i in range(len(job_types)):
+            logger.debug(
+                f"sub_program type: {job_types[i]}, sum_program:\n{sub_programs[i]}"
+            )
+        jobs = self._create_job_list()
 
-        job_list = self.create_job_list()
+        type_to_program = set_skip_gc_vars(
+            self.get_attr("num_micro_batches"), job_types, sub_programs, jobs
+        )
 
-        # Following is a shared gc process for base class.
-        gc_vars_list = get_skip_gc_vars(sub_program_list)
-        type_to_gc_vars = {}
-        for type, gc_var in zip(type_list, gc_vars_list):
-            type_to_gc_vars[type] = gc_var
-
-        for job in job_list:
-            job.set_skip_gc_vars(type_to_gc_vars[job.type()])
-
-        type_to_program = {}
-        for type, sub_program in zip(type_list, sub_program_list):
-            type_to_program[type] = sub_program.desc
-
-        plan = core.Plan(job_list, type_to_program)
+        for type in type_to_program.keys():
+            if paddle.framework.get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
+            ]:
+                type_to_program[type] = paddle.pir.translate_to_pir(
+                    type_to_program[type].desc
+                )
+            else:
+                type_to_program[type] = type_to_program[type].desc
+        plan = core.Plan(jobs, type_to_program)
         context.set_attr("plan", plan)

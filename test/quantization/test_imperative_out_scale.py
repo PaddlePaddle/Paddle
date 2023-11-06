@@ -20,7 +20,7 @@ import numpy as np
 from imperative_test_utils import fix_model_dict, train_lenet
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.framework import core, set_flags
 from paddle.nn import (
     BatchNorm2D,
@@ -133,7 +133,7 @@ class TestImperativeOutSclae(unittest.TestCase):
         self.root_path.cleanup()
 
     def test_out_scale_acc(self):
-        seed = 1000
+        seed = 1
         lr = 0.001
 
         weight_quantize_type = 'abs_max'
@@ -143,7 +143,7 @@ class TestImperativeOutSclae(unittest.TestCase):
             activation_quantize_type=activation_quantize_type,
         )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             np.random.seed(seed)
             paddle.static.default_main_program().random_seed = seed
             paddle.static.default_startup_program().random_seed = seed
@@ -170,7 +170,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 msg='Failed to do the imperative qat.',
             )
 
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             lenet = ImperativeLenet()
             load_dict = paddle.load(self.param_save_path)
             imperative_out_scale.quantize(lenet)

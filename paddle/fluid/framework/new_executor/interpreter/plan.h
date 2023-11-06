@@ -22,6 +22,7 @@
 
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -31,17 +32,27 @@ class Plan final {
  public:
   Plan(const std::vector<std::shared_ptr<Job>>& job_list,
        const std::unordered_map<std::string, ProgramDesc*>& type_to_program);
+  Plan(const std::vector<std::shared_ptr<Job>>& job_list,
+       const std::unordered_map<std::string, std::shared_ptr<::pir::Program>>&
+           type_to_ir_program);
+
   ~Plan() = default;
 
   const std::vector<std::shared_ptr<Job>>& JobList() const;
 
   const ProgramDesc* Program(const std::string& job_type) const;
+  std::shared_ptr<::pir::Program> IrProgram(const std::string& job_type) const;
+
+  void UpdateIrProgram(const std::string& job_type,
+                       std::shared_ptr<::pir::Program> ir_prog);
 
   int64_t MicroBatchNum() const;
 
  private:
   const std::vector<std::shared_ptr<Job>> job_list_;
   const std::unordered_map<std::string, ProgramDesc*> type_to_program_;
+  std::unordered_map<std::string, std::shared_ptr<::pir::Program>>
+      type_to_ir_program_;
   int64_t micro_batch_num_;
 };
 

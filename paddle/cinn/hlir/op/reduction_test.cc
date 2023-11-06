@@ -39,7 +39,9 @@
 #include "paddle/cinn/hlir/pe/nn.h"
 #include "paddle/cinn/runtime/cinn_runtime.h"
 #include "paddle/cinn/runtime/cuda/cuda_module.h"
-DECLARE_bool(cinn_ir_schedule);
+
+PD_DECLARE_bool(cinn_new_group_scheduler);
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -94,34 +96,14 @@ std::pair<ir::Module, std::string> GenReduceCode(
       strategy(attrs, inputs, out_type, {output_shape}, target));
 
   std::vector<ir::LoweredFunc> func;
-  if (!FLAGS_cinn_ir_schedule) {
-    common::CINNValuePack cinn_input =
-        common::CINNValuePack{{common::CINNValue(X)}};
-    common::CINNValuePack rets = impl->fcompute(cinn_input);
-    rets = impl->fschedule(rets);
-    poly::StageMap stages = rets.back();
-
-    // the last element is a StageMap
-    for (int i = 0; i < rets->size() - 1; i++) {
-      Expr temp = rets[i];
-      if (!temp.as_tensor_ref()->buffer.defined() &&
-          !stages[temp.as_tensor_ref()]->inlined()) {
-        inputs.push_back(temp.as_tensor_ref());
-      }
-    }
-
-    func =
-        lang::LowerVec(func_name, rets.back(), inputs, {}, {}, nullptr, target);
-  } else {
-    std::vector<std::string> input_output_nodes{"X", op_name};
-    func = GetFuncFromImpl(impl,
-                           common::CINNValuePack{{common::CINNValue(X),
-                                                  common::CINNValue(op_name)}},
-                           inputs,
-                           input_output_nodes,
-                           func_name,
-                           target);
-  }
+  std::vector<std::string> input_output_nodes{"X", op_name};
+  func = GetFuncFromImpl(
+      impl,
+      common::CINNValuePack{{common::CINNValue(X), common::CINNValue(op_name)}},
+      inputs,
+      input_output_nodes,
+      func_name,
+      target);
 
   Module::Builder builder(func_name + "_builder", target);
   for (auto& f : func) {
@@ -139,11 +121,7 @@ std::pair<ir::Module, std::string> GenReduceCode(
 
   backends::CodeGenCUDA_Dev codegen(target);
   std::string source_code;
-  if (!FLAGS_cinn_ir_schedule) {
-    source_code = codegen.Compile(builder.Build());
-  } else {
-    source_code = codegen.Compile(device_module);
-  }
+  source_code = codegen.Compile(device_module);
   // LOG(INFO) << "compiled code:\n" << device_module;
 
   return std::pair<ir::Module, std::string>(host_module, source_code);
@@ -385,18 +363,15 @@ void TestCaseForReduce(const float init_val,
       dev_x, buffer_x->memory, buffer_x->memory_size, cudaMemcpyHostToDevice));
   dim3 grid;
   dim3 block;
-  if (!FLAGS_cinn_ir_schedule) {
-    grid = {n * c, 1, 1};
-    block = {h * w, 1, 1};
-  } else {
-    grid = {c, 1, 1};
-    int block_dim_x = n * w * h > 1024 ? 1024 : n * w * h;
-    block = {block_dim_x, 1, 1};
+  grid = {c, 1, 1};
+  int block_dim_x = n * w * h > 1024 ? 1024 : n * w * h;
+  if (FLAGS_cinn_new_group_scheduler) {
+    block_dim_x = 1;
   }
+  block = {block_dim_x, 1, 1};
 
   void* args[] = {&dev_x, &dev_z};
-  std::string new_test_name = test_name;
-  if (FLAGS_cinn_ir_schedule) new_test_name = "fn_" + new_test_name + "_kernel";
+  std::string new_test_name = "fn_" + test_name + "_kernel";
   cuda_module.LaunchKernel(0, new_test_name, grid, block, args);
   CUDA_CALL(cudaMemcpy(
       buffer_z->memory, dev_z, buffer_z->memory_size, cudaMemcpyDeviceToHost));
@@ -458,8 +433,7 @@ TEST(Operator, Operator_Reduction_Case_7) {
   CUDA_CALL(cudaSetDevice(0));
   runtime::cuda::CUDAModule cuda_module(ptx,
                                         runtime::cuda::CUDAModule::Kind::PTX);
-  std::string new_func_name = func_name;
-  if (FLAGS_cinn_ir_schedule) new_func_name = "fn_" + new_func_name;
+  std::string new_func_name = "fn_" + func_name;
   void* reduce_sum_kernel =
       cuda_module.GetFunction(0, new_func_name + "_kernel");
   CHECK(reduce_sum_kernel);
@@ -563,7 +537,8 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce) {
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
@@ -576,7 +551,8 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce) {
   std::vector<int> dim = {1};
 
   auto res = GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
@@ -590,7 +566,8 @@ TEST(Operator, Operator_Reduction_Case_Warp_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Warp_Reduce_Case_1");
-  CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") != std::string::npos);
 }
 
 TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
@@ -604,7 +581,8 @@ TEST(Operator, Operator_Reduction_Case_Block_Reduce_Case_1) {
 
   auto res =
       GenReduceCode(shape, dim, "Operator_Reduction_Case_Block_Reduce_Case_2");
-  CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
+  if (!FLAGS_cinn_new_group_scheduler)
+    CHECK(res.second.find("threadIdx.x < 32") == std::string::npos);
 }
 }  // namespace framework
 }  // namespace hlir

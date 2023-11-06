@@ -16,7 +16,7 @@
 import unittest
 
 import paddle
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 
 
 class TestGetGradOpDescPrimEnabled(unittest.TestCase):

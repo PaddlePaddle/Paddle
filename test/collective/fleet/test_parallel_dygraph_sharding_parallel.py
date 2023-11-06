@@ -33,8 +33,14 @@ class TestHybridParallel(TestMultipleGpus):
     def test_hybrid_parallel_sharding_tensor_fusion(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_fusion.py')
 
+    def test_hybrid_parallel_sharding_tensor_fusion_amp(self):
+        self.run_mnist_2gpu('hybrid_parallel_sharding_model_with_fusion_amp.py')
+
     def test_hybrid_parallel_sharding_state_dict(self):
         self.run_mnist_2gpu('hybrid_parallel_sharding_state_dict.py')
+
+    def test_group_param_tensor_fusion(self):
+        self.run_mnist_2gpu('hybrid_parallel_tensor_fusion_with_group.py')
 
 
 if __name__ == "__main__":

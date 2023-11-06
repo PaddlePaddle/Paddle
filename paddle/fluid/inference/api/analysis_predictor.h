@@ -13,15 +13,13 @@
 // limitations under the License.
 
 #pragma once
+
 #include <algorithm>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/phi/common/data_type.h"
-#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
-#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
-#endif
+
 #include "paddle/fluid/framework/naive_executor.h"
 #include "paddle/fluid/framework/op_compatible_info.h"
 #include "paddle/fluid/inference/analysis/analyzer.h"
@@ -32,11 +30,19 @@
 #include "paddle/fluid/inference/api/resource_manager.h"
 #include "paddle/fluid/platform/device/gpu/gpu_types.h"
 #include "paddle/fluid/string/printf.h"
-#include "paddle/phi/core/dense_tensor.h"
+
+#if defined(PADDLE_WITH_DISTRIBUTE) && defined(PADDLE_WITH_PSCORE)
+#include "paddle/fluid/distributed/fleet_executor/fleet_executor.h"
+#endif
+
 #ifdef PADDLE_WITH_TESTING
 #include <gtest/gtest.h>
 #include <gtest/gtest_prod.h>
 #endif
+
+#include "paddle/phi/common/data_type.h"
+#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle_infer {
 namespace experimental {
@@ -564,7 +570,7 @@ class AnalysisPredictor : public PaddlePredictor {
   std::shared_ptr<framework::Scope> scope_;
   framework::Scope *sub_scope_{nullptr};
   std::shared_ptr<framework::ProgramDesc> inference_program_;
-  framework::OpCompatibleMap op_compatible_map_;
+  std::shared_ptr<pir::Program> pir_program_;
   std::vector<framework::OpDesc *> feeds_;
   std::map<std::string, size_t> feed_names_;
   // Sorted according to the idx.
@@ -574,7 +580,7 @@ class AnalysisPredictor : public PaddlePredictor {
 
   phi::DataType model_precision_{phi::DataType::FLOAT32};
 
-#if PADDLE_WITH_MKLDNN
+#if PADDLE_WITH_DNNL
   // Helper class to perform quantization
   class MkldnnQuantizer;
   MkldnnQuantizer *mkldnn_quantizer_{nullptr};
@@ -590,16 +596,14 @@ class AnalysisPredictor : public PaddlePredictor {
   details::TensorArrayBatchCleaner tensor_array_batch_cleaner_;
   // A mutex help to make Clone thread safe.
   std::mutex clone_mutex_;
+  static int clone_num_;
 
-  // For memory optimization.
-  const size_t max_shape_collect_count_{1000};
-  int need_collect_var_shapes_{-1};  // -1 for default, 0 for false, 1 for true.
-  std::vector<std::map<std::string, std::vector<int>>> batch_var_shapes_;
   int predictor_id_;
   int root_predictor_id_{-1};
 
  private:
-  std::vector<OutputTensorHookFunc> hookfuncs_;
+  std::once_flag register_input_hook_flag_;
+  std::once_flag register_output_hook_flag_;
   std::vector<OutputTensorHookFunc> output_hookfuncs_;
   std::vector<InputTensorHookFunc> input_hookfuncs_;
   // Some status here that help to determine the status inside the predictor.
@@ -607,7 +611,6 @@ class AnalysisPredictor : public PaddlePredictor {
 
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_info_;
   std::map<std::string, std::vector<std::vector<int32_t>>> shape_tensor_value_;
-  static int clone_num_;
 
   bool private_context_{false};
   void *predictor_stream_{nullptr};

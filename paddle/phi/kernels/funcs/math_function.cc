@@ -53,6 +53,7 @@ template struct SetConstant<phi::CPUContext, int>;
 template struct SetConstant<phi::CPUContext, int64_t>;
 template struct SetConstant<phi::CPUContext, bool>;
 template struct SetConstant<phi::CPUContext, uint8_t>;
+template struct SetConstant<phi::CPUContext, int8_t>;
 template struct SetConstant<phi::CPUContext, phi::dtype::complex<float>>;
 template struct SetConstant<phi::CPUContext, phi::dtype::complex<double>>;
 
@@ -62,6 +63,7 @@ template struct SetConstant<phi::XPUContext, phi::dtype::bfloat16>;
 template struct SetConstant<phi::XPUContext, float>;
 template struct SetConstant<phi::XPUContext, double>;
 template struct SetConstant<phi::XPUContext, uint8_t>;
+template struct SetConstant<phi::XPUContext, int8_t>;
 template struct SetConstant<phi::XPUContext, int16_t>;
 template struct SetConstant<phi::XPUContext, int>;
 template struct SetConstant<phi::XPUContext, int64_t>;
@@ -100,7 +102,7 @@ void TransposeNormal<DeviceContext, T>::operator()(
     const phi::DenseTensor& in,
     phi::DenseTensor* out,
     const std::vector<int>& axis) {
-  const int rank = axis.size();
+  const int rank = static_cast<const int>(axis.size());
   auto in_stride = phi::stride(in.dims());
   auto out_stride = phi::stride(out->dims());
   const T* in_ptr = in.data<T>();
@@ -275,16 +277,14 @@ struct RowwiseAdd<phi::CPUContext, T> {
             " Expected vector size=%d, but received %d",
             size,
             vector.numel()));
-    const char* in_dims_cstr = in_dims.to_str().c_str();
-    const char* out_dims_cstr = out_dims.to_str().c_str();
     PADDLE_ENFORCE_EQ(out_dims,
                       in_dims,
                       phi::errors::InvalidArgument(
                           "The output tensor shape should be same as the input"
                           " tensor shape. Expected output tensor shape: %s,"
                           " but received %s",
-                          in_dims_cstr,
-                          out_dims_cstr));
+                          in_dims.to_str().c_str(),
+                          out_dims.to_str().c_str()));
 
     auto in = phi::EigenMatrix<T>::From(input);
     auto vec = phi::EigenVector<T>::Flatten(vector);

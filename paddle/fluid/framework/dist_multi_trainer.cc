@@ -36,7 +36,7 @@ void DistMultiTrainer::Initialize(const TrainerDesc &trainer_desc,
   const std::vector<paddle::framework::DataFeed *> readers =
       dataset->GetReaders();
   RegisterHeterCallback();
-  thread_num_ = readers.size();
+  thread_num_ = static_cast<int>(readers.size());
   workers_.resize(thread_num_);
   for (int i = 0; i < trainer_desc.downpour_param().stat_var_names_size();
        i++) {
@@ -88,8 +88,7 @@ void DistMultiTrainer::InitDumpEnv() {
     }
   }
   for (int i = 0; i < dump_thread_num_; i++) {
-    dump_thread_.push_back(
-        std::thread(std::bind(&TrainerBase::DumpWork, this, i)));
+    dump_thread_.emplace_back([this, i] { DumpWork(i); });
   }
 }
 
@@ -132,11 +131,10 @@ void DistMultiTrainer::InitOtherEnv(const ProgramDesc &main_program) {
 void DistMultiTrainer::Run() {
   for (int thidx = 0; thidx < thread_num_; ++thidx) {
     if (!debug_) {
-      threads_.push_back(
-          std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
+      threads_.emplace_back(&DeviceWorker::TrainFiles, workers_[thidx].get());
     } else {
-      threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-                                     workers_[thidx].get()));
+      threads_.emplace_back(&DeviceWorker::TrainFilesWithProfiler,
+                            workers_[thidx].get());
     }
   }
 }

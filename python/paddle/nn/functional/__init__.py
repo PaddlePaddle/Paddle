@@ -21,9 +21,11 @@ from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
 from .activation import hardshrink  # noqa: F401
 from .activation import hardtanh  # noqa: F401
+from .activation import hardtanh_  # noqa: F401
 from .activation import hardsigmoid  # noqa: F401
 from .activation import hardswish  # noqa: F401
 from .activation import leaky_relu  # noqa: F401
+from .activation import leaky_relu_  # noqa: F401
 from .activation import log_sigmoid  # noqa: F401
 from .activation import maxout  # noqa: F401
 from .activation import prelu  # noqa: F401
@@ -44,6 +46,7 @@ from .activation import tanh  # noqa: F401
 from .activation import tanh_  # noqa: F401
 from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
+from .activation import thresholded_relu_  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
 from .activation import gumbel_softmax  # noqa: F401
@@ -62,8 +65,6 @@ from .common import interpolate  # noqa: F401
 from .common import upsample  # noqa: F401
 from .common import bilinear  # noqa: F401
 from .common import class_center_sample  # noqa: F401
-from .common import quant_for_compress  # noqa: F401
-from .common import linear_compress  # noqa: F401
 from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401
@@ -139,7 +140,7 @@ from .sparse_attention import sparse_attention
 from .flash_attention import scaled_dot_product_attention
 from .flash_attention import sdp_kernel
 
-__all__ = [  # noqa
+__all__ = [
     'celu',
     'conv1d',
     'conv1d_transpose',
@@ -153,9 +154,11 @@ __all__ = [  # noqa
     'gelu',
     'hardshrink',
     'hardtanh',
+    'hardtanh_',
     'hardsigmoid',
     'hardswish',
     'leaky_relu',
+    'leaky_relu_',
     'log_sigmoid',
     'maxout',
     'prelu',
@@ -176,10 +179,10 @@ __all__ = [  # noqa
     'tanh_',
     'tanhshrink',
     'thresholded_relu',
+    'thresholded_relu_',
     'log_softmax',
     'glu',
     'gumbel_softmax',
-    'diag_embed',
     'sequence_mask',
     'dropout',
     'dropout2d',
@@ -255,4 +258,5 @@ __all__ = [  # noqa
     'multi_margin_loss',
     'soft_margin_loss',
     'gaussian_nll_loss',
+    'scaled_dot_product_attention',
 ]

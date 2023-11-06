@@ -21,8 +21,8 @@ from google.protobuf import text_format
 
 import paddle
 import paddle.incubate.distributed.fleet.parameter_server.pslib.ps_pb2 as pslib
-from paddle import fluid
-from paddle.fluid.trainer_factory import TrainerFactory
+from paddle import base
+from paddle.base.trainer_factory import TrainerFactory
 from paddle.incubate.distributed.fleet.parameter_server.pslib.node import (
     DownpourServer,
     DownpourWorker,
@@ -53,7 +53,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
@@ -67,11 +67,11 @@ class TestListenAndServOp(unittest.TestCase):
             with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
 
             opt_info = {}
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             program_id = str(id(avg_cost.block.program))
             program_configs = {}
             program_configs[program_id] = {
@@ -117,7 +117,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
@@ -131,11 +131,11 @@ class TestListenAndServOp(unittest.TestCase):
             with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
 
             opt_info = {}
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             program_id = str(id(avg_cost.block.program))
             program_configs = {}
             program_configs[program_id] = {
@@ -179,7 +179,7 @@ class TestListenAndServOp(unittest.TestCase):
                 )
                 os.system(cmd)
             x = paddle.static.data(name='x', shape=[-1, 1], dtype='int64')
-            x_emb = fluid.layers.embedding(
+            x_emb = paddle.static.nn.embedding(
                 input=x, size=[1, 2], is_distributed=True
             )
             y_predict = paddle.static.nn.fc(x=x_emb, size=1)
@@ -193,11 +193,11 @@ class TestListenAndServOp(unittest.TestCase):
             with open(f"{cache_path}/fleet_desc.prototxt") as f:
                 text_format.Merge(f.read(), ps_param)
             fleet_desc = ps_param
-            exe = fluid.Executor(fluid.CPUPlace())
-            exe.run(fluid.default_startup_program())
+            exe = base.Executor(base.CPUPlace())
+            exe.run(base.default_startup_program())
 
             opt_info = {}
-            main_program = fluid.default_main_program()
+            main_program = base.default_main_program()
             program_id = str(id(avg_cost.block.program))
             program_configs = {}
             program_configs[program_id] = {

@@ -53,7 +53,7 @@ void SerializePDTensorToStream(std::ostream *os, const PaddleTensor &tensor) {
   // 2. Name
   uint64_t name_bytes = tensor.name.size();
   os->write(reinterpret_cast<char *>(&name_bytes), sizeof(name_bytes));
-  os->write(tensor.name.c_str(), name_bytes);
+  os->write(tensor.name.c_str(), name_bytes);  // NOLINT
   // 3. LoD
   auto lod = tensor.lod;
   uint64_t lod_size = lod.size();
@@ -68,32 +68,33 @@ void SerializePDTensorToStream(std::ostream *os, const PaddleTensor &tensor) {
   size_t dims = tensor.shape.size();
   os->write(reinterpret_cast<const char *>(&dims), sizeof(dims));
   os->write(reinterpret_cast<const char *>(tensor.shape.data()),
-            sizeof(int) * dims);
+            sizeof(int) * dims);  // NOLINT
   // 5. Data
   os->write(reinterpret_cast<const char *>(&tensor.dtype),
             sizeof(tensor.dtype));
   uint64_t length = tensor.data.length();
   os->write(reinterpret_cast<const char *>(&length), sizeof(size_t));
-  os->write(reinterpret_cast<const char *>(tensor.data.data()), length);
+  os->write(reinterpret_cast<const char *>(tensor.data.data()),
+            length);  // NOLINT
 }
 
 void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
   // 1. Version
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
   // 2. Name
-  uint64_t name_bytes;
+  uint64_t name_bytes = 0;
   is.read(reinterpret_cast<char *>(&name_bytes), sizeof(name_bytes));
   std::vector<char> bytes(name_bytes);
-  is.read(bytes.data(), name_bytes);
+  is.read(bytes.data(), name_bytes);  // NOLINT
   tensor->name = std::string(bytes.data(), name_bytes);
   // 3. LoD
-  uint64_t lod_level;
+  uint64_t lod_level = 0;
   is.read(reinterpret_cast<char *>(&lod_level), sizeof(lod_level));
   auto *lod = &(tensor->lod);
   lod->resize(lod_level);
   for (uint64_t i = 0; i < lod_level; ++i) {
-    uint64_t size;
+    uint64_t size = 0;
     is.read(reinterpret_cast<char *>(&size), sizeof(size));
     std::vector<size_t> tmp(size / sizeof(size_t));
     is.read(reinterpret_cast<char *>(tmp.data()),
@@ -101,16 +102,17 @@ void DeserializePDTensorToStream(std::istream &is, PaddleTensor *tensor) {
     (*lod)[i] = tmp;
   }
   // 4. Shape
-  size_t dims;
+  size_t dims = 0;
   is.read(reinterpret_cast<char *>(&dims), sizeof(dims));
   tensor->shape.resize(dims);
-  is.read(reinterpret_cast<char *>(tensor->shape.data()), sizeof(int) * dims);
+  is.read(reinterpret_cast<char *>(tensor->shape.data()),
+          sizeof(int) * dims);  // NOLINT
   // 5. Data
-  uint64_t length;
+  uint64_t length = 0;
   is.read(reinterpret_cast<char *>(&tensor->dtype), sizeof(tensor->dtype));
   is.read(reinterpret_cast<char *>(&length), sizeof(length));
   tensor->data.Resize(length);
-  is.read(reinterpret_cast<char *>(tensor->data.data()), length);
+  is.read(reinterpret_cast<char *>(tensor->data.data()), length);  // NOLINT
 }
 
 // =========================================================
@@ -137,10 +139,10 @@ void SerializePDTensorsToStream(std::ostream *os,
 void DeserializePDTensorsToStream(std::istream &is,
                                   std::vector<PaddleTensor> *tensors) {
   // 1. Version
-  uint32_t version;
+  uint32_t version = 0;
   is.read(reinterpret_cast<char *>(&version), sizeof(version));
   // 2. Tensors
-  uint64_t num;
+  uint64_t num = 0;
   is.read(reinterpret_cast<char *>(&num), sizeof(num));
   tensors->resize(num);
   for (auto &tensor : *tensors) {
@@ -238,35 +240,41 @@ void DeserializeShapeRangeInfo(
       continue;
     } else {
       std::vector<int32_t> tmp(info.min_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.min_shape(static_cast<int>(k));
       min_shape->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.max_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.max_shape(static_cast<int>(k));
       max_shape->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.opt_shape_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_shape(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.opt_shape(static_cast<int>(k));
       opt_shape->insert(std::make_pair(name, tmp));
     }
   }
   for (int i = 0; i < shape_range_infos.shape_range_info_size(); ++i) {
-    auto info = shape_range_infos.shape_range_info(i);
+    auto info = shape_range_infos.shape_range_info(static_cast<int>(i));
     auto name = info.name();
     if (min_value->count(name) || max_value->count(name) ||
         opt_value->count(name)) {
       continue;
     } else {
       std::vector<int32_t> tmp(info.min_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.min_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.min_value(static_cast<int>(k));
       min_value->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.max_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.max_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.max_value(static_cast<int>(k));
       max_value->insert(std::make_pair(name, tmp));
 
       tmp.resize(info.opt_value_size());
-      for (size_t k = 0; k < tmp.size(); ++k) tmp[k] = info.opt_value(k);
+      for (size_t k = 0; k < tmp.size(); ++k)
+        tmp[k] = info.opt_value(static_cast<int>(k));
       opt_value->insert(std::make_pair(name, tmp));
     }
   }
@@ -293,12 +301,9 @@ void UpdateShapeRangeInfo(
         info->clear_min_shape();
         info->clear_max_shape();
         info->clear_opt_shape();
-        for (size_t j = 0; j < min_shape.at(name).size(); ++j)
-          info->add_min_shape(min_shape.at(name)[j]);
-        for (size_t j = 0; j < max_shape.at(name).size(); ++j)
-          info->add_max_shape(max_shape.at(name)[j]);
-        for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
-          info->add_opt_shape(opt_shape.at(name)[j]);
+        for (auto shape : min_shape.at(name)) info->add_min_shape(shape);
+        for (auto shape : max_shape.at(name)) info->add_max_shape(shape);
+        for (auto shape : opt_shape.at(name)) info->add_opt_shape(shape);
         has_name = true;
         break;
       }
@@ -306,12 +311,9 @@ void UpdateShapeRangeInfo(
     if (!has_name) {
       auto *info = shape_range_infos.add_shape_range_info();
       info->set_name(name);
-      for (size_t j = 0; j < min_shape.at(name).size(); ++j)
-        info->add_min_shape(min_shape.at(name)[j]);
-      for (size_t j = 0; j < max_shape.at(name).size(); ++j)
-        info->add_max_shape(max_shape.at(name)[j]);
-      for (size_t j = 0; j < opt_shape.at(name).size(); ++j)
-        info->add_opt_shape(opt_shape.at(name)[j]);
+      for (auto shape : min_shape.at(name)) info->add_min_shape(shape);
+      for (auto shape : max_shape.at(name)) info->add_max_shape(shape);
+      for (auto shape : opt_shape.at(name)) info->add_opt_shape(shape);
     }
   }
 
@@ -323,12 +325,9 @@ void UpdateShapeRangeInfo(
         info->clear_min_value();
         info->clear_max_value();
         info->clear_opt_value();
-        for (size_t j = 0; j < min_value.at(name).size(); ++j)
-          info->add_min_value(min_value.at(name)[j]);
-        for (size_t j = 0; j < max_value.at(name).size(); ++j)
-          info->add_max_value(max_value.at(name)[j]);
-        for (size_t j = 0; j < opt_value.at(name).size(); ++j)
-          info->add_opt_value(opt_value.at(name)[j]);
+        for (auto shape : min_shape.at(name)) info->add_min_value(shape);
+        for (auto shape : max_shape.at(name)) info->add_max_value(shape);
+        for (auto shape : opt_shape.at(name)) info->add_opt_value(shape);
         has_name = true;
         break;
       }
@@ -336,12 +335,9 @@ void UpdateShapeRangeInfo(
     if (!has_name) {
       auto *info = shape_range_infos.add_shape_range_info();
       info->set_name(name);
-      for (size_t j = 0; j < min_value.at(name).size(); ++j)
-        info->add_min_value(min_value.at(name)[j]);
-      for (size_t j = 0; j < max_value.at(name).size(); ++j)
-        info->add_max_value(max_value.at(name)[j]);
-      for (size_t j = 0; j < opt_value.at(name).size(); ++j)
-        info->add_opt_value(opt_value.at(name)[j]);
+      for (auto shape : min_shape.at(name)) info->add_min_value(shape);
+      for (auto shape : max_shape.at(name)) info->add_max_value(shape);
+      for (auto shape : opt_shape.at(name)) info->add_opt_value(shape);
     }
   }
 

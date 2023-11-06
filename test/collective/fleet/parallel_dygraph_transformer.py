@@ -20,8 +20,8 @@ from legacy_test.test_dist_base import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import fluid
-from paddle.fluid.dygraph import to_variable
+from paddle import base
+from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 from paddle.optimizer.lr import NoamDecay
 
@@ -215,9 +215,7 @@ def position_encoding_init(n_position, d_pos_vec):
     channels = d_pos_vec
     position = np.arange(n_position)
     num_timescales = channels // 2
-    log_timescale_increment = np.log(float(1e4) / float(1)) / (
-        num_timescales - 1
-    )
+    log_timescale_increment = np.log(1e4 / float(1)) / (num_timescales - 1)
     inv_timescales = (
         np.exp(np.arange(num_timescales)) * -log_timescale_increment
     )
@@ -245,10 +243,10 @@ class PrePostProcessLayer(Layer):
             if cmd == "n":
                 self._layer_norm = paddle.nn.LayerNorm(
                     normalized_shape=d_model,
-                    weight_attr=fluid.ParamAttr(
+                    weight_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(1.0)
                     ),
-                    bias_attr=fluid.ParamAttr(
+                    bias_attr=base.ParamAttr(
                         initializer=paddle.nn.initializer.Constant(0.0)
                     ),
                 )
@@ -513,7 +511,7 @@ class PrepareEncoderDecoderLayer(Layer):
             src_vocab_size,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=word_emb_param_name,
                 initializer=paddle.nn.initializer.Normal(
                     0.0, src_emb_dim**-0.5
@@ -529,7 +527,7 @@ class PrepareEncoderDecoderLayer(Layer):
             self._src_max_len,
             src_emb_dim,
             sparse=is_sparse,
-            weight_attr=fluid.ParamAttr(
+            weight_attr=base.ParamAttr(
                 name=pos_enc_param_name,
                 initializer=paddle.nn.initializer.Assign(pos_inp),
                 trainable=False,
@@ -1089,11 +1087,11 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
             fake_data_reader(), TrainTaskConfig.batch_size
         )
         if naive_optimize:
-            optimizer = fluid.optimizer.SGD(
-                learning_rate=0.001, parameter_list=model.parameters()
+            optimizer = paddle.optimizer.SGD(
+                learning_rate=0.001, parameters=model.parameters()
             )
         else:
-            optimizer = fluid.optimizer.Adam(
+            optimizer = paddle.optimizer.Adam(
                 learning_rate=NoamDecay(
                     ModelHyperParams.d_model,
                     TrainTaskConfig.warmup_steps,
@@ -1102,7 +1100,7 @@ class TestTransformer(TestParallelDyGraphRunnerBase):
                 beta1=TrainTaskConfig.beta1,
                 beta2=TrainTaskConfig.beta2,
                 epsilon=TrainTaskConfig.eps,
-                parameter_list=model.parameters(),
+                parameters=model.parameters(),
             )
 
         return model, train_reader, optimizer

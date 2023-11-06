@@ -15,11 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
+from paddle import base
+from paddle.base import core
 
 
 def test_static_layer(
@@ -155,9 +155,9 @@ class TestBCELoss(unittest.TestCase):
     def test_BCELoss(self):
         input_np = np.random.uniform(0.1, 0.8, size=(20, 30)).astype(np.float64)
         label_np = np.random.randint(0, 2, size=(20, 30)).astype(np.float64)
-        places = [fluid.CPUPlace()]
-        if fluid.core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
+        places = [base.CPUPlace()]
+        if base.core.is_compiled_with_cuda():
+            places.append(base.CUDAPlace(0))
         reductions = ['sum', 'mean', 'none']
         for place in places:
             for reduction in reductions:
@@ -194,9 +194,9 @@ class TestBCELoss(unittest.TestCase):
         )
         weight_np = np.random.random(size=(3, 4, 10)).astype(np.float64)
         place = (
-            fluid.CUDAPlace(0)
-            if fluid.core.is_compiled_with_cuda()
-            else fluid.CPUPlace()
+            base.CUDAPlace(0)
+            if base.core.is_compiled_with_cuda()
+            else base.CPUPlace()
         )
         for reduction in ['sum', 'mean', 'none']:
             static_result = test_static_layer(

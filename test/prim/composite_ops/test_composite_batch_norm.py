@@ -20,7 +20,7 @@ from prim.composite_ops.utils import SUB_TOLERANCE
 import paddle
 import paddle.nn.functional as F
 from paddle import nn
-from paddle.fluid import core, framework
+from paddle.base import core, framework
 from paddle.incubate.autograd import primapi
 from paddle.nn import BatchNorm
 from paddle.tensor import ones  # noqa: F401
@@ -45,31 +45,24 @@ class Attr:
 
     def set_dtype(self, dtype) -> None:
         self.dtype = dtype
-        return
 
     def set_shape(self, shape) -> None:
         self.shape = shape
-        return
 
     def set_training(self, training) -> None:
         self.training = training
-        return
 
     def set_momentum(self, momentum) -> None:
         self.momentum = momentum
-        return
 
     def set_epsilon(self, epsilon) -> None:
         self.epsilon = epsilon
-        return
 
     def set_data_format(self, data_format) -> None:
         self.data_format = data_format
-        return
 
     def set_use_global_stats(self, use_global_stats) -> None:
         self.use_global_stats = use_global_stats
-        return
 
     def get_rtol(self, flag):
         rtol = SUB_TOLERANCE[self.dtype][flag].get("rtol")

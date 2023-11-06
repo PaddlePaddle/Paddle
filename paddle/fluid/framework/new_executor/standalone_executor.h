@@ -24,7 +24,7 @@
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/ir/core/program.h"
+#include "paddle/pir/core/program.h"
 
 namespace paddle {
 namespace framework {
@@ -44,12 +44,17 @@ class StandaloneExecutor {
  private:
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
-  const interpreter::Plan plan_;
-
-  std::vector<framework::Scope*> micro_batch_scopes_;
+  interpreter::Plan plan_;
   std::vector<std::shared_ptr<InterpreterCore>> interpretercores_;
 
   Scope* scope_;
+  std::vector<Scope*> micro_batch_scopes_;
+
+  std::vector<std::string> fetch_var_names_;
+  FetchUnmergedList fetch_list_;
+
+  std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
+      vec_force_events_to_wait_;
 };
 
 }  // namespace framework

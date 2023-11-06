@@ -34,8 +34,8 @@ void MaxPoolCooGradCPUKernel(const CPUContext& dev_ctx,
                              const std::vector<int>& kernel_sizes,
                              SparseCooTensor* x_grad) {
   int kernel_size = kernel_sizes[0] * kernel_sizes[1] * kernel_sizes[2];
-  const int channels = x.dims()[4];
-  int rulebook_len = rulebook.dims()[1];
+  const int channels = static_cast<int>(x.dims()[4]);
+  int rulebook_len = static_cast<int>(rulebook.dims()[1]);
   const IntT* rulebook_ptr = rulebook.data<IntT>();
   std::vector<int> offsets(kernel_size + 1);
   const int* counter_ptr = counter.data<int>();

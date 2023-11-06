@@ -18,9 +18,9 @@ from functools import reduce
 import numpy as np
 
 import paddle
-from paddle import fluid
-from paddle.fluid import core
-from paddle.fluid.framework import (
+from paddle import base
+from paddle.base import core
+from paddle.base.framework import (
     Program,
     convert_np_dtype_to_dtype_,
     default_main_program,
@@ -70,14 +70,14 @@ class TestVariable(unittest.TestCase):
         )
 
         w = b.create_var(
-            dtype=paddle.fluid.core.VarDesc.VarType.STRINGS,
+            dtype=paddle.base.core.VarDesc.VarType.STRINGS,
             shape=[1],
             name="str_var",
         )
         self.assertEqual(None, w.lod_level)
 
     def test_element_size(self):
-        with fluid.program_guard(Program(), Program()):
+        with base.program_guard(Program(), Program()):
             x = paddle.static.data(name='x1', shape=[2], dtype='bool')
             self.assertEqual(x.element_size(), 1)
 
@@ -139,9 +139,9 @@ class TestVariable(unittest.TestCase):
 
         self.assertEqual(0, nw.lod_level)
 
-        main = fluid.Program()
-        with fluid.program_guard(main):
-            exe = fluid.Executor(place)
+        main = base.Program()
+        with base.program_guard(main):
+            exe = base.Executor(place)
             tensor_array = np.array(
                 [
                     [[1, 2, 3], [4, 5, 6], [7, 8, 9]],
@@ -170,10 +170,10 @@ class TestVariable(unittest.TestCase):
             x = paddle.static.data(name='x', shape=[-1, 13], dtype='float32')
             y = paddle.static.nn.fc(x, size=1, activation=None)
             y_1 = y[:, 0]
-            feeder = fluid.DataFeeder(place=place, feed_list=[x])
+            feeder = base.DataFeeder(place=place, feed_list=[x])
             data = []
             data.append(np.random.randint(10, size=[13]).astype('float32'))
-            exe.run(fluid.default_startup_program())
+            exe.run(base.default_startup_program())
 
             local_out = exe.run(
                 main,
@@ -257,10 +257,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[2] == expected[2]).all())
         self.assertTrue((result[3] == expected[3]).all())
 
-        with self.assertRaises(IndexError):
-            one = paddle.ones(shape=[1])
-            res = x[one, [0, 0]]
-
     def _test_slice_index_list(self, place):
         data = np.random.rand(2, 3).astype("float32")
         prog = paddle.static.Program()
@@ -323,9 +319,6 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[5] == expected[5]).all())
         self.assertTrue((result[6] == expected[6]).all())
 
-        with self.assertRaises(IndexError):
-            res = x[[1.2, 0]]
-
     def _test_slice_index_list_bool(self, place):
         data = np.random.rand(2, 3, 4).astype("float32")
         np_idx = np.array([[True, False, False], [True, False, True]])
@@ -375,9 +368,6 @@ class TestVariable(unittest.TestCase):
 
         with self.assertRaises(IndexError):
             res = x[[True, False, False]]
-        with self.assertRaises(ValueError):
-            with paddle.static.program_guard(prog):
-                res = x[[False, False]]
 
     def _test_slice_index_scalar_bool(self, place):
         data = np.random.rand(1, 3, 4).astype("float32")
@@ -397,7 +387,7 @@ class TestVariable(unittest.TestCase):
         self.assertTrue((result[0] == expected[0]).all())
 
     def test_slice(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
@@ -419,16 +409,16 @@ class TestVariable(unittest.TestCase):
             self.assertTrue(isinstance(str(wc), str))
 
     def test_tostring(self):
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self._tostring()
 
-        with fluid.program_guard(default_main_program()):
+        with base.program_guard(default_main_program()):
             self._tostring()
 
     def test_fake_interface_only_api(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", lod_level=0)
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.assertRaises(AssertionError, var.numpy)
             self.assertRaises(AssertionError, var.backward)
             self.assertRaises(AssertionError, var.gradient)
@@ -437,7 +427,7 @@ class TestVariable(unittest.TestCase):
     def test_variable_in_dygraph_mode(self):
         b = default_main_program().current_block()
         var = b.create_var(dtype="float64", shape=[1, 1])
-        with fluid.dygraph.guard():
+        with base.dygraph.guard():
             self.assertTrue(var.to_string(True).startswith('name:'))
 
             self.assertFalse(var.persistable)
@@ -450,8 +440,8 @@ class TestVariable(unittest.TestCase):
 
             self.assertTrue(var.name.startswith('_generated_var_'))
             self.assertEqual(var.shape, (1, 1))
-            self.assertEqual(var.dtype, fluid.core.VarDesc.VarType.FP64)
-            self.assertEqual(var.type, fluid.core.VarDesc.VarType.LOD_TENSOR)
+            self.assertEqual(var.dtype, base.core.VarDesc.VarType.FP64)
+            self.assertEqual(var.type, base.core.VarDesc.VarType.LOD_TENSOR)
 
     def test_create_selected_rows(self):
         b = default_main_program().current_block()
@@ -460,7 +450,7 @@ class TestVariable(unittest.TestCase):
             name="var",
             shape=[1, 1],
             dtype="float32",
-            type=fluid.core.VarDesc.VarType.SELECTED_ROWS,
+            type=base.core.VarDesc.VarType.SELECTED_ROWS,
             persistable=True,
         )
 
@@ -473,7 +463,7 @@ class TestVariable(unittest.TestCase):
         prog = paddle.static.Program()
         with paddle.static.program_guard(prog):
             x = paddle.assign(np.random.rand(2, 3, 4).astype("float32"))
-            exe = paddle.static.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(base.CPUPlace())
             exe.run(paddle.static.default_startup_program())
 
             output = exe.run(prog, fetch_list=[x.size()])
@@ -494,7 +484,7 @@ class TestVariable(unittest.TestCase):
 
         startup = paddle.static.Program()
         main = paddle.static.Program()
-        scope = fluid.core.Scope()
+        scope = base.core.Scope()
         with paddle.static.scope_guard(scope):
             with paddle.static.program_guard(main, startup):
                 x = paddle.static.data(
@@ -585,7 +575,7 @@ class TestVariableSlice(unittest.TestCase):
             self.assertTrue((result[i] == expected[i]).all())
 
     def test_slice(self):
-        places = [fluid.CPUPlace()]
+        places = [base.CPUPlace()]
         if core.is_compiled_with_cuda():
             places.append(core.CUDAPlace(0))
 
@@ -595,19 +585,6 @@ class TestVariableSlice(unittest.TestCase):
 
 
 class TestListIndex(unittest.TestCase):
-    # note(chenjianye):
-    # Non-tuple sequence for multidimensional indexing is supported in numpy < 1.23.
-    # For List case, the outermost `[]` will be treated as tuple `()` in version less than 1.23,
-    # which is used to wrap index elements for multiple axes.
-    # And from 1.23, this will be treat as a whole and only works on one axis.
-    #
-    # e.g. x[[[0],[1]]] == x[([0],[1])] == x[[0],[1]] (in version < 1.23)
-    #      x[[[0],[1]]] == x[array([[0],[1]])] (in version >= 1.23)
-    #
-    # Here, we just modify the code to remove the impact of numpy version changes,
-    # changing x[[[0],[1]]] to x[tuple([[0],[1]])] == x[([0],[1])] == x[[0],[1]].
-    # Whether the paddle behavior in this case will change is still up for debate.
-
     def setUp(self):
         np.random.seed(2022)
 
@@ -638,9 +615,9 @@ class TestListIndex(unittest.TestCase):
                 y = x[index_mod]
 
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()
@@ -649,7 +626,7 @@ class TestListIndex(unittest.TestCase):
                 exe.run(paddle.static.default_startup_program())
                 fetch_list = [y.name]
 
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[np.array(index_mod)]
                 getitem_pp = exe.run(
                     prog, feed={x.name: array}, fetch_list=fetch_list
                 )
@@ -670,7 +647,7 @@ class TestListIndex(unittest.TestCase):
             pt = paddle.to_tensor(array)
             index_mod = (index % (array.shape[-1])).tolist()
             try:
-                getitem_np = array[tuple(index_mod)]
+                getitem_np = array[np.array(index_mod)]
 
             except:
                 with self.assertRaises(ValueError):
@@ -723,9 +700,9 @@ class TestListIndex(unittest.TestCase):
             y = x[index1, index2]
 
             place = (
-                paddle.fluid.CPUPlace()
-                if not paddle.fluid.core.is_compiled_with_cuda()
-                else paddle.fluid.CUDAPlace(0)
+                paddle.base.CPUPlace()
+                if not paddle.base.core.is_compiled_with_cuda()
+                else paddle.base.CUDAPlace(0)
             )
 
             prog = paddle.static.default_main_program()
@@ -787,7 +764,7 @@ class TestListIndex(unittest.TestCase):
         x = paddle.static.data(name='x', shape=array.shape, dtype='float32')
 
         y = x[index]
-        place = paddle.fluid.CPUPlace()
+        place = paddle.base.CPUPlace()
 
         prog = paddle.static.default_main_program()
         exe = paddle.static.Executor(place)
@@ -845,7 +822,7 @@ class TestListIndex(unittest.TestCase):
         )
 
         y = paddle.static.setitem(x, index, value)
-        place = paddle.fluid.CPUPlace()
+        place = paddle.base.CPUPlace()
 
         prog = paddle.static.default_main_program()
         exe = paddle.static.Executor(place)
@@ -855,7 +832,7 @@ class TestListIndex(unittest.TestCase):
         array2 = array.copy()
         try:
             index = (
-                tuple(index)
+                np.array(index)
                 if isinstance(index, list) and isinstance(index[0], list)
                 else index
             )
@@ -879,12 +856,12 @@ class TestListIndex(unittest.TestCase):
     def test_static_graph_setitem_list_index(self):
         paddle.enable_static()
         # case 1:
-        inps_shape = [3, 4, 5, 2, 3]
+        inps_shape = [4, 5, 2]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
             inps_shape
         )
 
-        index_shape = [3, 3, 1, 2]
+        index_shape = [3, 3, 1]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = inps_shape[3:]
@@ -907,12 +884,12 @@ class TestListIndex(unittest.TestCase):
             index = index[0]
 
         # case 2:
-        inps_shape = [3, 4, 5, 4, 3]
+        inps_shape = [4, 5, 4]
         array = np.arange(self.numel(inps_shape), dtype='float32').reshape(
             inps_shape
         )
 
-        index_shape = [4, 3, 2, 2]
+        index_shape = [4, 3, 2]
         index = np.arange(self.numel(index_shape)).reshape(index_shape)
 
         value_shape = [3]
@@ -923,7 +900,7 @@ class TestListIndex(unittest.TestCase):
             + 100
         )
 
-        for _ in range(4):
+        for _ in range(3):
             program = paddle.static.Program()
             index_mod = (index % (min(array.shape))).tolist()
 
@@ -1044,9 +1021,9 @@ class TestListIndex(unittest.TestCase):
                 x1_out = paddle.static.setitem(x1, (index_1, index_2), value)
                 x2_out = paddle.static.setitem(x2, index_1, value)
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1069,16 +1046,12 @@ class TestListIndex(unittest.TestCase):
                 np.testing.assert_array_equal(
                     array2,
                     setitem_pp[0],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array2, setitem_pp[0]
-                    ),
+                    err_msg=f'\n numpy:{array2},\n paddle:{setitem_pp[0]}',
                 )
                 np.testing.assert_array_equal(
                     array3,
                     setitem_pp[1],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array3, setitem_pp[1]
-                    ),
+                    err_msg=f'\n numpy:{array3},\n paddle:{setitem_pp[1]}',
                 )
             array = array[0]
             index1 = index1[0]
@@ -1127,9 +1100,9 @@ class TestListIndex(unittest.TestCase):
                 y1 = x1_out[index_mod2, index_mod1]
                 y2 = x2_out[index_mod2]
                 place = (
-                    paddle.fluid.CPUPlace()
-                    if not paddle.fluid.core.is_compiled_with_cuda()
-                    else paddle.fluid.CUDAPlace(0)
+                    paddle.base.CPUPlace()
+                    if not paddle.base.core.is_compiled_with_cuda()
+                    else paddle.base.CUDAPlace(0)
                 )
 
                 prog = paddle.static.default_main_program()
@@ -1145,31 +1118,23 @@ class TestListIndex(unittest.TestCase):
                 np.testing.assert_array_equal(
                     array2,
                     setitem_pp[0],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array2, setitem_pp[0]
-                    ),
+                    err_msg=f'\n numpy:{array2},\n paddle:{setitem_pp[0]}',
                 )
                 np.testing.assert_array_equal(
                     array3,
                     setitem_pp[1],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        array3, setitem_pp[1]
-                    ),
+                    err_msg=f'\n numpy:{array3},\n paddle:{setitem_pp[1]}',
                 )
 
                 np.testing.assert_array_equal(
                     y_np1,
                     setitem_pp[2],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        y_np1, setitem_pp[2]
-                    ),
+                    err_msg=f'\n numpy:{y_np1},\n paddle:{setitem_pp[2]}',
                 )
                 np.testing.assert_array_equal(
                     y_np2,
                     setitem_pp[3],
-                    err_msg='\n numpy:{},\n paddle:{}'.format(
-                        y_np2, setitem_pp[3]
-                    ),
+                    err_msg=f'\n numpy:{y_np2},\n paddle:{setitem_pp[3]}',
                 )
             array = array[0]
             index1 = index1[0]
@@ -1228,9 +1193,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 tensor1.numpy(),
                 array1,
-                err_msg='\n numpy:{},\n paddle:{}'.format(
-                    array1, tensor1.numpy()
-                ),
+                err_msg=f'\n numpy:{array1},\n paddle:{tensor1.numpy()}',
             )
             # 1 dim setitem
             array2 = array.copy()
@@ -1242,9 +1205,7 @@ class TestListIndex(unittest.TestCase):
             np.testing.assert_array_equal(
                 tensor2.numpy(),
                 array2,
-                err_msg='\n numpy:{},\n paddle:{}'.format(
-                    array2, tensor2.numpy()
-                ),
+                err_msg=f'\n numpy:{array2},\n paddle:{tensor2.numpy()}',
             )
 
             array = array[0]

@@ -52,11 +52,11 @@ AsyncSSAGraphExecutor::AsyncSSAGraphExecutor(
     const std::vector<Scope *> &local_exec_scopes,
     const std::vector<platform::Place> &places,
     std::vector<ir::Graph *> graphs)
-    : strategy_(std::move(strategy)),
-      local_scopes_(std::move(local_scopes)),
+    : strategy_(strategy),
+      local_scopes_(local_scopes),
       local_exec_scopes_(local_exec_scopes),
       pool_(places.size() >= 2 ? new ::ThreadPool(places.size()) : nullptr),
-      places_(std::move(places)),
+      places_(places),
       graphs_(std::move(graphs)) {
   VLOG(3) << "build AsyncSSAGraphExecutor";
   PADDLE_ENFORCE_EQ(places_.size(),
@@ -187,9 +187,9 @@ FetchResultType AsyncSSAGraphExecutor::Run(
       auto array = PADDLE_GET(LoDTensorArray, val.at(fetch_idx));
       LoDTensorArray item_array;
       item_array.reserve(array.size());
-      for (size_t i = 0; i < array.size(); ++i) {
+      for (auto &item : array) {
         std::vector<const phi::DenseTensor *> lodtensor_ptrs;
-        lodtensor_ptrs.push_back(&array[i]);
+        lodtensor_ptrs.push_back(&item);
         item_array.emplace_back();
         MergeLoDTensor(
             &(item_array.back()), lodtensor_ptrs, platform::CPUPlace());

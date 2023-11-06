@@ -17,7 +17,6 @@ limitations under the License. */
 #include <string>
 #include <unordered_set>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/framework/convert_utils.h"
 #include "paddle/fluid/framework/data_transform.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -43,6 +42,7 @@ limitations under the License. */
 #include "paddle/phi/core/kernel_context.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/phi/ops/compat/signatures.h"
+#include "paddle/utils/flags.h"
 
 namespace phi {
 class DenseTensor;
@@ -53,7 +53,7 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/xpu/xpu_op_list.h"
 #endif
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/mkldnn_op_list.h"
 #endif
@@ -62,9 +62,9 @@ class DenseTensor;
 #include "paddle/fluid/platform/device/gpu/gpu_dnn.h"
 #endif
 
-DECLARE_bool(benchmark);
+PD_DECLARE_bool(benchmark);
 PHI_DECLARE_bool(check_nan_inf);
-DECLARE_bool(enable_unused_var_check);
+PD_DECLARE_bool(enable_unused_var_check);
 PHI_DECLARE_bool(run_kp_kernel);
 PHI_DECLARE_bool(enable_host_event_recorder_hook);
 
@@ -170,7 +170,7 @@ static int GetRowSize(const Scope& scope, const std::string& name) {
   }
 
   if (var->IsType<phi::SelectedRows>()) {
-    return var->Get<phi::SelectedRows>().rows().size();
+    return static_cast<int>(var->Get<phi::SelectedRows>().rows().size());
   }
 
   return -1;
@@ -309,7 +309,7 @@ std::string RuntimeInferShapeContext::GetInputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->inputs().size()));
-  return op_proto->inputs()[idx].name();
+  return op_proto->inputs()[static_cast<int>(idx)].name();
 }
 
 std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
@@ -323,7 +323,7 @@ std::string RuntimeInferShapeContext::GetOutputNameByIdx(size_t idx) const {
                         op_.Type(),
                         idx,
                         op_proto->outputs().size()));
-  return op_proto->outputs()[idx].name();
+  return op_proto->outputs()[static_cast<int>(idx)].name();
 }
 
 void RuntimeInferShapeContext::ShareDim(const std::string& in,
@@ -423,7 +423,7 @@ void RuntimeInferShapeContext::ShareAllLoD(const std::string& in,
     auto& in_tensor = in_var->Get<phi::DenseTensor>();
     auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
     out_tensor->set_lod(in_tensor.lod());
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     if (in_tensor.layout() != DataLayout::ONEDNN)
 #endif
       out_tensor->set_layout(in_tensor.layout());
@@ -476,7 +476,7 @@ void RuntimeInferShapeContext::ShareLoD(const std::string& in,
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
 // Need to call ShareLayout explicitly in sequence related ops.
 // Shall we have a better method to shared info between in/out phi::DenseTensor?
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // Fix me: ugly workaround below
   // Correct solution:
   //    set_layout() should NOT be called here (i.e. ShareLoD). Instead,
@@ -607,14 +607,35 @@ RuntimeInferShapeContext::GetPhiDefaultKernelSignature() const {
 
 void RuntimeInferShapeContext::SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
 
+bool RuntimeInferShapeContext::HasRuntimeAttributes() const {
+  bool is_runtime = false;
+  if (phi::DefaultKernelSignatureMap::Instance().Has(op_.Type())) {
+    auto phi_kernels = phi::KernelFactory::Instance().SelectKernelMap(
+        GetPhiDefaultKernelSignature()->name);
+    if (!phi_kernels.empty()) {
+      const auto& args_def = phi_kernels.cbegin()->second.args_def();
+      const auto& attr_defs = args_def.attribute_defs();
+      for (size_t i = 0; i < attr_defs.size(); ++i) {
+        if (attr_defs[i].type_index == phi::AttributeType::SCALAR ||
+            attr_defs[i].type_index == phi::AttributeType::INT_ARRAY) {
+          is_runtime = true;
+          break;
+        }
+      }
+    }
+  } else {
+    is_runtime = true;
+  }
+  return is_runtime;
+}
+
 std::vector<LoD> RuntimeInferShapeContext::GetOutputsLod(
     const std::string& out) const {
   auto out_it = ctx_.outputs.find(out);
   auto& out_var_list = out_it->second;
 
   std::vector<LoD> ret;
-  for (size_t i = 0; i < out_var_list.size(); ++i) {
-    Variable* out_var = out_var_list[i];
+  for (auto* out_var : out_var_list) {
     if (out_var != nullptr) {
       auto* out_tensor = out_var->GetMutable<phi::DenseTensor>();
       ret.push_back(out_tensor->lod());
@@ -710,12 +731,13 @@ std::vector<proto::VarType::Type> RuntimeInferShapeContext::GetVarTypes(
     const std::vector<Variable*>& vars) const {
   std::vector<proto::VarType::Type> retv;
   retv.resize(vars.size());
-  std::transform(vars.begin(),
-                 vars.end(),
-                 retv.begin(),
-                 std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),
-                           this,
-                           std::placeholders::_1));
+  std::transform(
+      vars.begin(),
+      vars.end(),
+      retv.begin(),
+      std::bind(std::mem_fn(&RuntimeInferShapeContext::GetVarType),  // NOLINT
+                this,
+                std::placeholders::_1));
   return retv;
 }
 
@@ -797,7 +819,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (platform::EOFException&) {
     std::rethrow_exception(std::current_exception());
   } catch (std::exception& ex) {
@@ -1227,7 +1249,7 @@ bool OpSupportGPU(const std::string& op_type) {
 }
 
 struct OperatorWithKernel::CacheImpl {
-  static const char kNotAllowInferShapeCahce[];
+  static const char kNotAllowInferShapeCahce[];  // NOLINT
   explicit CacheImpl(phi::KernelContext* kernel_ctx,
                      RuntimeInferShapeContext* infer_shape_ctx,
                      const std::vector<phi::DenseTensor*>& tensors,
@@ -1273,8 +1295,9 @@ struct OperatorWithKernel::CacheImpl {
   bool not_allow_infer_shape_cache_;
   std::vector<phi::DDim> last_ddims_;
 };
-const char OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
-    "@NOT_ALLOW_INFERSHAPE_CACHE@";
+const char  // NOLINT
+    OperatorWithKernel::CacheImpl::kNotAllowInferShapeCahce[] =
+        "@NOT_ALLOW_INFERSHAPE_CACHE@";
 
 static void CheckTensorNANOrInf(const std::string& op_type,
                                 const std::string& name,
@@ -1506,7 +1529,7 @@ bool OperatorWithKernel::SupportsKernelType(
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(exe_ctx, kernel_type.data_type_)) {
     auto tmp_kernel_type = kernel_type;
@@ -1664,7 +1687,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
       std::lock_guard<std::mutex> lock(cache_update_mutex_);
       if (runtime_ctx_.get() == nullptr || pre_scope_ != cur_scope) {
-        runtime_ctx_.reset(new RuntimeContext(Inputs(), Outputs(), scope));
+        runtime_ctx_ =
+            std::make_unique<RuntimeContext>(Inputs(), Outputs(), scope);
         pre_scope_ = cur_scope;
       }
     }
@@ -1701,16 +1725,17 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (phi::KernelFactory::Instance().HasCompatiblePhiKernel(type_)) {
     if (kernel_signature_ == nullptr || phi_kernel_ == nullptr) {
       if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
-        kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+        kernel_signature_ =
+            std::make_unique<phi::KernelSignature>(type_.c_str());
       } else {
-        kernel_signature_.reset(new phi::KernelSignature(
-            std::move(GetExpectedPhiKernelArgs(exe_ctx))));
+        kernel_signature_ = std::make_unique<phi::KernelSignature>(
+            std::move(GetExpectedPhiKernelArgs(exe_ctx)));
       }
 
       VLOG(6) << *kernel_signature_.get();
       phi_kernel_name = kernel_signature_->name;
-      kernel_type_.reset(
-          new OpKernelType(std::move(InnerGetExpectedKernelType(exe_ctx))));
+      kernel_type_ =
+          std::make_unique<OpKernelType>(InnerGetExpectedKernelType(exe_ctx));
       dev_ctx = pool.Get(kernel_type_->place_);
 // NOTE(Liu-xiandong): The register kernel used KP have library_type[KP],
 // But the default library_type is Plain, so we need to modify the
@@ -1753,9 +1778,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       }
 #endif
       phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-      phi_kernel_.reset(
-          new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-              phi_kernel_name, phi_kernel_key)));
+      phi_kernel_ = std::make_unique<phi::Kernel>(
+          phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
+                                                      phi_kernel_key));
 
       if (phi_kernel_->IsValid()) {
         VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -1774,7 +1799,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
       if (!this->DnnFallback() &&
           !paddle::platform::in_mkldnn_white_list(type_) &&
           this->CanMKLDNNBeUsed(exe_ctx, kernel_type_->data_type_)) {
@@ -1897,9 +1922,9 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           VLOG(3) << "fluid in black list: " << phi_kernel_name;
         }
         phi_cpu_kernel_key = FallBackToCpu(phi_kernel_key, *this);
-        phi_kernel_.reset(
-            new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-                phi_kernel_name, phi_cpu_kernel_key)));
+        phi_kernel_ = std::make_unique<phi::Kernel>(
+            phi::KernelFactory::Instance().SelectKernel(phi_kernel_name,
+                                                        phi_cpu_kernel_key));
 
         dev_ctx = pool.Get(platform::CPUPlace());
         if (phi_kernel_->IsValid()) {
@@ -1995,11 +2020,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           }
         }
 
-        impl_.reset(
-            new CacheImpl(new phi::KernelContext(),
-                          new RuntimeInferShapeContext(*this, *runtime_ctx),
-                          tensors,
-                          HasAttr(CacheImpl::kNotAllowInferShapeCahce)));
+        impl_ = std::make_unique<CacheImpl>(
+            new phi::KernelContext(),
+            new RuntimeInferShapeContext(*this, *runtime_ctx),
+            tensors,
+            HasAttr(CacheImpl::kNotAllowInferShapeCahce));
         BuildPhiKernelContext(*runtime_ctx, dev_ctx, impl_->getKernelContext());
         (*phi_kernel_)(impl_->getKernelContext());
       } else {
@@ -2019,7 +2044,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
     }
     if (fallback_to_cpu) {
-      phi_kernel_.release();
+      [[maybe_unused]] auto released_kernel = phi_kernel_.release();
     }
   }
 
@@ -2094,14 +2119,14 @@ OpKernelType OperatorWithKernel::InnerGetExpectedKernelType(
   auto expected_kernel_key =
       framework::TransPhiKernelKeyToOpKernelType(phi_kernel_key);
 
-// NOTE(jiahongyu): PADDLE_WITH_MKLDNN codes are moved outside function
+// NOTE(jiahongyu): PADDLE_WITH_DNNL codes are moved outside function
 // GetExpectedKernelType, so that if MKLDNN can be used, the library_type_ and
 // data_layout_ of expected_kernel_key need to be adjusted. There are three
 // statements in if condition:
 // 1. Whether mkldnn kernel fallbacks to plain kernel;
 // 2. Whether this op has specific implementation;
 // 3. Whether mkldnn kernel can be used.
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (!this->DnnFallback() && !paddle::platform::in_mkldnn_white_list(type_) &&
       this->CanMKLDNNBeUsed(ctx, expected_kernel_key.data_type_)) {
     expected_kernel_key.library_type_ = framework::LibraryType::kMKLDNN;
@@ -2210,19 +2235,20 @@ phi::KernelKey OperatorWithKernel::ChoosePhiKernel(
     const ExecutionContext& ctx) const {
   std::string phi_kernel_name;
   if (phi::KernelFactory::Instance().HasStructuredKernel(type_)) {
-    kernel_signature_.reset(new phi::KernelSignature(type_.c_str()));
+    kernel_signature_ = std::make_unique<phi::KernelSignature>(type_.c_str());
   } else {
-    kernel_signature_.reset(
-        new phi::KernelSignature(std::move(GetExpectedPhiKernelArgs(ctx))));
+    kernel_signature_ = std::make_unique<phi::KernelSignature>(
+        std::move(GetExpectedPhiKernelArgs(ctx)));
   }
   VLOG(6) << *kernel_signature_.get();
   phi_kernel_name = kernel_signature_->name;
-  kernel_type_.reset(
-      new OpKernelType(std::move(InnerGetExpectedKernelType(ctx))));
+  kernel_type_ =
+      std::make_unique<OpKernelType>(InnerGetExpectedKernelType(ctx));
 
   auto phi_kernel_key = TransOpKernelTypeToPhiKernelKey(*kernel_type_.get());
-  phi_kernel_.reset(new phi::Kernel(phi::KernelFactory::Instance().SelectKernel(
-      phi_kernel_name, phi_kernel_key)));
+  phi_kernel_ =
+      std::make_unique<phi::Kernel>(phi::KernelFactory::Instance().SelectKernel(
+          phi_kernel_name, phi_kernel_key));
 
   if (phi_kernel_->IsValid()) {
     VLOG(6) << "Static graph mode ChoosePhiKernel - kernel name: "
@@ -2252,7 +2278,7 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   auto kernel_iter = kernels.find(expected_kernel_key);
 
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // workaround for missing MKLDNN kernel when FLAGS_use_mkldnn env var is set
   if (kernel_iter == kernels.end() &&
       expected_kernel_key.library_type_ == LibraryType::kMKLDNN) {
@@ -2355,8 +2381,8 @@ void OperatorWithKernel::ChooseKernel(const ExecutionContext& ctx) const {
 
   std::lock_guard<std::mutex> lock(cache_update_mutex_);
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    kernel_type_.reset(new OpKernelType(expected_kernel_key));
-    kernel_func_.reset(new OpKernelFunc(kernel_iter->second));
+    kernel_type_ = std::make_unique<OpKernelType>(expected_kernel_key);
+    kernel_func_ = std::make_unique<OpKernelFunc>(kernel_iter->second);
   }
 }
 
@@ -2497,7 +2523,7 @@ Scope* OperatorWithKernel::PrepareData(
       // not a thread safe. And for infershape scenario checks
       // to be omitted are not really needed
       if (should_skip_input == true) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
         // Var without buffer may be needed
         // for some situation like InferShape().
         // In this situation We cannot skip Var analysis, as
@@ -2569,7 +2595,8 @@ Scope* OperatorWithKernel::PrepareData(
                                                  expected_kernel_key.dtype());
           }
         } else if (in_def != nullptr &&  // KernelRegisteredType is Function
-                   in_def->backend != phi::Backend::ALL_BACKEND) {
+                   in_def->backend != phi::Backend::ALL_BACKEND &&
+                   kernel_type_for_var.backend() != phi::Backend::ALL_BACKEND) {
           auto tensor_backend = phi::TransToPhiBackend(tensor_in->place());
           if ((in_def->backend != tensor_backend &&
                !(in_def->backend == phi::Backend::GPUDNN &&
@@ -2719,7 +2746,7 @@ Scope* OperatorWithKernel::PrepareData(
 #endif
       prepare_input_data(input_name, &ins_vector, &in_def, should_skip_input);
     }
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
     // For input that is Extra, only MKLDNN will use Extra Inputs
     auto& extra_input_names =
         paddle::operators::ExtraInfoUtils::Instance().GetExtraInputNamesMap(
@@ -2772,8 +2799,6 @@ void OperatorWithKernel::ParseInputDataType(
     const phi::DenseTensor* t = nullptr;
     if (var->IsType<phi::DenseTensor>()) {
       t = &var->Get<phi::DenseTensor>();
-    } else if (var->IsType<phi::DenseTensor>()) {
-      t = &var->Get<phi::DenseTensor>();
     } else if (var->IsType<phi::SelectedRows>()) {
       t = &(var->Get<phi::SelectedRows>().value());
     } else if (var->IsType<phi::SparseCooTensor>()) {
@@ -2782,9 +2807,9 @@ void OperatorWithKernel::ParseInputDataType(
       return;
     } else if (var->IsType<LoDTensorArray>()) {
       auto t_arr = &var->Get<LoDTensorArray>();
-      for (size_t j = 0; j < t_arr->size(); j++) {
-        if (t_arr->at(j).IsInitialized()) {
-          t = &(t_arr->at(j));
+      for (const auto& item : *t_arr) {
+        if (item.IsInitialized()) {
+          t = &(item);
         }
       }
     }
@@ -2800,8 +2825,7 @@ void OperatorWithKernel::ParseMultiInputDataType(
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  for (size_t i = 0; i < vars.size(); ++i) {
-    const Variable* var = vars[i];
+  for (auto* var : vars) {
     if (var != nullptr) {
       const phi::DenseTensor* t = nullptr;
       if (var->IsType<phi::DenseTensor>()) {
@@ -2833,9 +2857,9 @@ void OperatorWithKernel::ParseMultiInputDataType(
         *data_type = tmp;
       } else if (var->IsType<LoDTensorArray>()) {
         auto t_arr = &var->Get<LoDTensorArray>();
-        for (size_t j = 0; j < t_arr->size(); j++) {
-          if (t_arr->at(j).IsInitialized()) {
-            t = &(t_arr->at(j));
+        for (const auto& item : *t_arr) {
+          if (item.IsInitialized()) {
+            t = &(item);
           }
         }
       }
@@ -2981,7 +3005,7 @@ phi::KernelKey OperatorWithKernel::GetKernelTypeForVar(
     const std::string& var_name,
     const phi::DenseTensor& tensor,
     const phi::KernelKey& expected_kernel_type) const {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   // When the op is first oneDNN op (there was some non oneDNN op
   // previously)
   // then we also need to rotate shape NHWC -> NCWH
@@ -3003,14 +3027,14 @@ phi::KernelSignature OperatorWithKernel::GetExpectedPhiKernelArgs(
   if (arg_map_fn_ == nullptr) {
     auto* arg_map_fn = phi::OpUtilsMap::Instance().GetArgumentMappingFn(type_);
     if (arg_map_fn) {
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(*arg_map_fn));
+      arg_map_fn_ = std::make_unique<phi::ArgumentMappingFn>(*arg_map_fn);
     } else {
       auto func =
           [this](
               const phi::ArgumentMappingContext& ctx) -> phi::KernelSignature {
         return phi::DefaultKernelSignatureMap::Instance().Get(type_);
       };
-      arg_map_fn_.reset(new phi::ArgumentMappingFn(func));
+      arg_map_fn_ = std::make_unique<phi::ArgumentMappingFn>(func);
     }
   }
   return (*arg_map_fn_)(arg_mapping_ctx);
@@ -3021,7 +3045,7 @@ static void SetDnnAttrIntoDeviceContext(
     const Attribute& attr,
     const std::string& attr_name,
     const operators::ExtraAttrPropertySet& attr_propertys) {
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx) &&
       attr_propertys.Support(operators::ExtraAttrProperty::ONEDNN)) {
     VLOG(4) << "Runtime attr `" << attr_name << "` is passed to OneDNNContext.";
@@ -3089,7 +3113,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   auto attr_defs = phi_kernel_->args_def().attribute_defs();
   auto output_defs = phi_kernel_->args_def().output_defs();
 
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
   if (phi::OneDNNContext::classof(dev_ctx)) {
     // Onednn holds this op's variable's name and init them here.
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
@@ -3145,9 +3169,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
     }
     auto ins_vector = it->second;
     size_t end_idx = start_idx + ins_vector.size();
-    for (size_t offset = 0; offset < ins_vector.size(); ++offset) {
+    for (auto* var : ins_vector) {
       const phi::TensorBase* tensor_in = nullptr;
-      auto* var = ins_vector[offset];
       if (var->IsType<phi::DenseTensor>()) {
         tensor_in = &(var->Get<phi::DenseTensor>());
         phi_kernel_context->EmplaceBackInputWithoutSetRange(tensor_in);
@@ -3198,9 +3221,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
     size_t end_idx = start_idx + outs_vector.size();
 
-    for (size_t offset = 0; offset < outs_vector.size(); ++offset) {
+    for (auto* var : outs_vector) {
       phi::TensorBase* tensor_out = nullptr;
-      auto* var = outs_vector[offset];
       if (var) {
         if (var->template IsType<phi::DenseTensor>()) {
           tensor_out = var->template GetMutable<phi::DenseTensor>();
@@ -3219,11 +3241,8 @@ void OperatorWithKernel::BuildPhiKernelContext(
         } else if (var->template IsType<framework::Strings>()) {
           tensor_out = var->template GetMutable<framework::Strings>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (var->template IsType<paddle::framework::RawTensor>()) {
-          tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
-          phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
-        } else if (!var->IsInitialized()) {
-          // The following is for RAW type of var
+        } else if (var->template IsType<paddle::framework::RawTensor>() ||
+                   !var->IsInitialized()) {
           tensor_out = var->template GetMutable<paddle::framework::RawTensor>();
           phi_kernel_context->EmplaceBackOutputWithoutSetRange(tensor_out);
         } else {
@@ -3252,33 +3271,32 @@ void OperatorWithKernel::BuildPhiKernelContext(
           // scalar is in the attribute
           switch (AttrTypeID(attr_iter->second)) {
             case proto::AttrType::FLOAT:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(float, attr_iter->second)));
               break;
             case proto::AttrType::FLOAT64:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(double, attr_iter->second)));
               break;
             case proto::AttrType::INT:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int, attr_iter->second)));
               break;
             case proto::AttrType::LONG:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(int64_t, attr_iter->second)));
               break;
             case proto::AttrType::STRING:
-              phi_kernel_context->EmplaceBackAttr(std::move(phi::Scalar(
-                  PADDLE_GET_CONST(std::string, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::Scalar(
+                  PADDLE_GET_CONST(std::string, attr_iter->second)));
               break;
             case proto::AttrType::BOOLEAN:
-              phi_kernel_context->EmplaceBackAttr(std::move(
-                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(
+                  phi::Scalar(PADDLE_GET_CONST(bool, attr_iter->second)));
               break;
             case proto::AttrType::SCALAR:
-              phi_kernel_context->EmplaceBackAttr(
-                  std::move(phi::Scalar(PADDLE_GET_CONST(
-                      paddle::experimental::Scalar, attr_iter->second))));
+              phi_kernel_context->EmplaceBackAttr(phi::Scalar(PADDLE_GET_CONST(
+                  paddle::experimental::Scalar, attr_iter->second)));
               break;
             default:
               PADDLE_THROW(platform::errors::Unimplemented(
@@ -3451,7 +3469,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
           } break;
           case phi::AttributeType::STRING:
             phi_kernel_context->EmplaceBackAttr(
-                std::move(PADDLE_GET_CONST(std::string, attr_iter->second)));
+                PADDLE_GET_CONST(std::string, attr_iter->second));
             break;
           case phi::AttributeType::INT64S:
             switch (AttrTypeID(attr_iter->second)) {
@@ -3495,7 +3513,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 
 // Clear All old attrs before add new attrs,
 // because sometimes old attrs may be misused.
-#if defined(PADDLE_WITH_MKLDNN)
+#if defined(PADDLE_WITH_DNNL)
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     one_dnn_ctx->ClearDnnAttr();
@@ -3518,7 +3536,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
   #endif
   */
   // For compatible with Op with extra attrs for specific backend
-#if defined(PADDLE_WITH_MKLDNN) || defined(PADDLE_WITH_CUDA)
+#if defined(PADDLE_WITH_DNNL) || defined(PADDLE_WITH_CUDA)
   auto& runtime_attrs = RuntimeAttrs();
   for (const auto& attr_iter : runtime_attrs) {
     auto& attr_name = attr_iter.first;
@@ -3545,7 +3563,7 @@ void OperatorWithKernel::BuildPhiKernelContext(
 #endif
 
 // For compatible with Op with extra input for onednn backend
-#ifdef PADDLE_WITH_MKLDNN
+#ifdef PADDLE_WITH_DNNL
   if (phi::OneDNNContext::classof(dev_ctx)) {
     phi::OneDNNContext* one_dnn_ctx = static_cast<phi::OneDNNContext*>(dev_ctx);
     auto& extra_input_names =

@@ -16,9 +16,9 @@ import logging
 
 import paddle
 from paddle import _legacy_C_ops, in_dynamic_mode
-from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.framework import _create_tensor
-from paddle.fluid.log_helper import get_logger
+from paddle.base.data_feeder import check_variable_and_dtype
+from paddle.base.framework import _create_tensor
+from paddle.base.log_helper import get_logger
 from paddle.framework import ParamAttr, core
 from paddle.nn import Layer
 from paddle.nn import functional as F
@@ -611,19 +611,21 @@ class QuantizedConv2DTranspose(Layer):
     The only difference is that its inputs are all fake quantized.
 
     Examples:
-       .. code-block:: python
+        .. code-block:: python
 
-          import paddle
-          import paddle.nn as nn
-          from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
+            >>> import paddle
+            >>> import paddle.nn as nn
+            >>> from paddle.nn.quant.quant_layers import QuantizedConv2DTranspose
 
-          x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
-          conv = nn.Conv2DTranspose(4, 6, (3, 3))
-          conv_quantized = QuantizedConv2DTranspose(conv)
-          y_quantized = conv_quantized(x_var)
-          y_var = conv(x_var)
-          print(y_var.shape, y_quantized.shape)
-          # [2, 6, 10, 10], [2, 6, 10, 10]
+            >>> x_var = paddle.uniform((2, 4, 8, 8), dtype='float32', min=-1., max=1.)
+            >>> conv = nn.Conv2DTranspose(4, 6, (3, 3))
+            >>> conv_quantized = QuantizedConv2DTranspose(conv)
+            >>> y_quantized = conv_quantized(x_var)
+            >>> y_var = conv(x_var)
+            >>> print(y_var.shape)
+            [2, 6, 10, 10]
+            >>> print(y_quantized.shape)
+            [2, 6, 10, 10]
 
     """
 

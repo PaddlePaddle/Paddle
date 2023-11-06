@@ -114,7 +114,7 @@ void ArgsortKernel(const Context& dev_ctx,
     trans.push_back(axis);
     phi::DDim trans_dims(in_dims);
     for (size_t i = 0; i < trans.size(); i++) {
-      trans_dims[i] = in_dims[trans[i]];
+      trans_dims[static_cast<int>(i)] = in_dims[trans[i]];
     }
 
     DenseTensor trans_inp;

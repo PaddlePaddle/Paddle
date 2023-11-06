@@ -25,8 +25,8 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
-from paddle.fluid.data_feeder import check_variable_and_dtype, convert_dtype
-from paddle.fluid.layers import tensor
+from paddle.base.data_feeder import check_variable_and_dtype, convert_dtype
+from paddle.base.framework import Variable
 from paddle.framework import in_dynamic_mode
 
 
@@ -150,7 +150,7 @@ class Distribution:
         is_variable = False
         is_number = False
         for arg in args:
-            if isinstance(arg, tensor.Variable):
+            if isinstance(arg, Variable):
                 is_variable = True
             else:
                 is_number = True
@@ -176,9 +176,7 @@ class Distribution:
         tmp = 0.0
 
         for arg in args:
-            if not isinstance(
-                arg, (float, list, tuple, np.ndarray, tensor.Variable)
-            ):
+            if not isinstance(arg, (float, list, tuple, np.ndarray, Variable)):
                 raise TypeError(
                     "Type of input args must be float, list, tuple, numpy.ndarray or Tensor, but received type {}".format(
                         type(arg)

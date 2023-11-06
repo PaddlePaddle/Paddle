@@ -116,13 +116,13 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
       }
     }
     // restore parent-child relationship
-    for (auto it = child_parent_map.begin(); it != child_parent_map.end();
-         it++) {
-      if (it->second != -1) {  // not root node
-        index_node_map[it->second]->AddChild(index_node_map[it->first]);
+    for (auto& map_item : child_parent_map) {
+      if (map_item.second != -1) {  // not root node
+        index_node_map[map_item.second]->AddChild(
+            index_node_map[map_item.first]);
       } else {
         thread_event_trees_map[current_threadid] =
-            index_node_map[it->first];  // root node
+            index_node_map[map_item.first];  // root node
       }
     }
   }
@@ -150,7 +150,7 @@ std::unique_ptr<ProfilerResult> DeserializationReader::Parse() {
   return std::unique_ptr<ProfilerResult>(profiler_result_ptr);
 }
 
-DeserializationReader::~DeserializationReader() {
+DeserializationReader::~DeserializationReader() {  // NOLINT
   delete node_trees_proto_;
   input_file_stream_.close();
 }
@@ -287,7 +287,7 @@ DeserializationReader::RestoreOperatorSupplementEventNode(
       auto shape_vector_proto = shape_vectors_proto.shapes(j);
       std::vector<int64_t> shape;
       for (int k = 0; k < shape_vector_proto.size_size(); k++) {
-        shape.push_back(shape_vector_proto.size(k));
+        shape.push_back(shape_vector_proto.size(k));  // NOLINT
       }
       input_shape_vec.push_back(shape);
     }

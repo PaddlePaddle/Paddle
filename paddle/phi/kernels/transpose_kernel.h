@@ -28,14 +28,33 @@ void TransposeKernel(const Context& dev_ctx,
                      const std::vector<int>& axis,
                      DenseTensor* out);
 
+template <typename Context>
+void TransposeStridedKernel(const Context& dev_ctx,
+                            const DenseTensor& x,
+                            const std::vector<int>& axis,
+                            DenseTensor* out);
+
+template <typename T, typename Context>
+void Transpose(const Context& dev_ctx,
+               const DenseTensor& x,
+               const std::vector<int>& axis,
+               DenseTensor* dense_out) {
+  MetaTensor meta_out(dense_out);
+  TransposeInferMeta(x, axis, &meta_out);
+
+  // do not call TransposeStridedKernel, because some other kernels call
+  // Transpose directly
+  if (x.initialized()) {
+    TransposeKernel<T, Context>(dev_ctx, x, axis, dense_out);
+  }
+}
+
 template <typename T, typename Context>
 DenseTensor Transpose(const Context& dev_ctx,
                       const DenseTensor& x,
                       const std::vector<int>& axis) {
   DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  TransposeInferMeta(x, axis, &meta_out);
-  TransposeKernel<T, Context>(dev_ctx, x, axis, &dense_out);
+  Transpose<T, Context>(dev_ctx, x, axis, &dense_out);
   return dense_out;
 }
 

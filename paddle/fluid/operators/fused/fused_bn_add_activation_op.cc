@@ -164,6 +164,12 @@ void FusedBatchNormAddActOpMaker::Make() {
   AddInput("Bias",
            "Bias is a 1-dimensional tensor of size C "
            "that is applied to the output");
+  AddInput("Mean",
+           "Mean is a 1-dimensional tensor of size C "
+           "that is applied to the output");
+  AddInput("Variance",
+           "Variance is a 1-dimensional tensor of size C "
+           "that is applied to the output");
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
@@ -260,8 +266,6 @@ phi::KernelKey FusedBatchNormAddActGradOp::GetExpectedKernelType(
   }
   const phi::DenseTensor *t = nullptr;
   if (var->IsType<phi::DenseTensor>()) {
-    t = &var->Get<phi::DenseTensor>();
-  } else if (var->IsType<phi::DenseTensor>()) {
     t = &var->Get<phi::DenseTensor>();
   }
   if (t == nullptr) {

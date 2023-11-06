@@ -17,6 +17,7 @@
 #include <iostream>
 
 #include "absl/types/optional.h"
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -26,8 +27,6 @@
 #include "paddle/cinn/hlir/pe/schedule.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/utils/functional.h"
-
-DECLARE_bool(cinn_ir_schedule);
 
 namespace cinn {
 namespace hlir {
@@ -107,6 +106,13 @@ std::vector<Type> InferDtypeForElementwise(
       << "The input's type size is 0! Please check again.";
   std::vector<Type> res{inputs_type[0]};
   return res;
+}
+
+void GenerateEquationsForElementwise(
+    cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
 }
 
 std::vector<Type> InferDtypeForElementwiseBool(
@@ -393,7 +399,6 @@ std::vector<shape_t> InferShapeForFillConstant(
     const framework::AttrMapType &attrs) {
   CHECK(attrs.count("shape"));
   auto shape = absl::get<std::vector<int>>(attrs.at("shape"));
-  CHECK(!shape.empty()) << "shape attr is empty!";
   return {shape};
 }
 
@@ -414,6 +419,11 @@ std::vector<Type> InferDtypeForFillConstant(
             << common::Type2Str(out_type);
   }
   return {out_type};
+}
+
+void GenerateEquationsForFillConstant(
+    cinn::adt::config::OpEquationContext *ctx) {
+  // Do nothing
 }
 
 std::vector<std::vector<std::string>> InferLayoutForFillConstant(
@@ -990,6 +1000,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForElementwise))  \
       .set_attr("inferdtype",                                              \
                 MakeOpFunction(cinn::hlir::op::InferDtypeForElementwise))  \
+      .set_attr(                                                           \
+          "generate_equations",                                            \
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForElementwise)) \
       .set_attr("inferlayout",                                             \
                 MakeOpFunction(cinn::hlir::op::InferLayoutForElementwise)) \
       .set_attr<cinn::hlir::framework::OpPatternKind>(                     \
@@ -1111,6 +1124,9 @@ CINN_REGISTER_HELPER(elementwise_ops) {
                 MakeOpFunction(cinn::hlir::op::InferShapeForFillConstant))
       .set_attr("inferdtype",
                 MakeOpFunction(cinn::hlir::op::InferDtypeForFillConstant))
+      .set_attr(
+          "generate_equations",
+          MakeOpFunction(cinn::hlir::op::GenerateEquationsForFillConstant))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForFillConstant))

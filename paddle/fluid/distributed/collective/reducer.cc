@@ -13,11 +13,12 @@
 // limitations under the License.
 
 #include "paddle/fluid/distributed/collective/reducer.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/backends/device_guard.h"
 #include "paddle/phi/backends/device_manager.h"
 #include "paddle/phi/core/flags.h"
 
-DECLARE_bool(use_stream_safe_cuda_allocator);
+PD_DECLARE_bool(use_stream_safe_cuda_allocator);
 PHI_DECLARE_string(allocator_strategy);
 
 namespace paddle {
@@ -492,9 +493,7 @@ EagerReducer::EagerReducer(
   for (size_t global_var_index = 0; global_var_index < tensors_.size();
        ++global_var_index) {
     auto tensor = tensors_[global_var_index];
-    auto reduce_hook = [=](void) -> void {
-      this->AddDistHook(global_var_index);
-    };
+    auto reduce_hook = [=]() -> void { this->AddDistHook(global_var_index); };
 
     const auto &grad_node = GetGradNodeFromTensor(&tensor);
 
@@ -572,7 +571,7 @@ void EagerReducer::InitializeGroups(
       tensor_locator.inside_group_index = inside_group_index++;
       variable_locators_[var_index] = tensor_locator;
     }
-    group.tensor_indices_ = std::move(tensor_indices_);
+    group.tensor_indices_ = tensor_indices_;
     groups_.emplace_back(std::move(group));
 
     VLOG(3) << "The Group[" << group_index << "]:" << groups_.back();
@@ -610,8 +609,8 @@ void EagerReducer::InitializeDenseGroups(
     p_group->length_.push_back(size);
 
     // for concat operator
-    p_group->origin_shapes_.push_back(IntArray(tensor.shape()));
-    p_group->dense_tensors_.push_back(phi::DenseTensor());
+    p_group->origin_shapes_.emplace_back(tensor.shape());
+    p_group->dense_tensors_.emplace_back();
 
     const auto &dtype = tensor.dtype();
     const auto &inner_place = tensor.impl()->place();
@@ -652,8 +651,8 @@ void EagerReducer::TraverseBackwardGraph(const std::vector<Tensor> &outputs) {
                                egr::kSlotSmallVectorSize> &metas =
         node->OutputMeta();
     for (size_t i = 0; i < metas.size(); i++) {
-      for (size_t j = 0; j < metas[i].size(); j++) {
-        const egr::Edge &edge = metas[i][j].GetEdge();
+      for (const auto &item : metas[i]) {
+        const egr::Edge &edge = item.GetEdge();
         auto next_node_shared = edge.GetMutableGradNode();
         if (!next_node_shared || !next_node_shared.get()) {
           continue;
@@ -758,9 +757,7 @@ void EagerReducer::AddDistHook(size_t var_index) {
     auto *autograd_meta = tensors_[var_index].get_autograd_meta();
     auto &grad_tensor = static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
 
-    if (!HasGrad(var_index)) {
-      group_tensor.ShareDataWith(phi::DenseTensor());
-    } else {
+    if (HasGrad(var_index)) {
       auto grad_dense_tensor =
           *(std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl()));
       group_tensor.ShareDataWith(grad_dense_tensor);
@@ -835,8 +832,18 @@ void EagerReducer::MarkVarReady(const size_t var_index,
     const auto length = group.length_[inside_group_index];
     if (is_used_var) {
       auto *autograd_meta = tensors_[var_index].get_autograd_meta();
-      auto &grad_tensor =
+      paddle::Tensor grad_tensor =
           static_cast<egr::AutogradMeta *>(autograd_meta)->Grad();
+      if (grad_tensor.is_dense_tensor()) {
+        const auto &tensor_impl = grad_tensor.impl();
+        auto dense_tensor =
+            std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+        if (!dense_tensor->meta().is_contiguous()) {
+          grad_tensor.set_impl(std::make_shared<phi::DenseTensor>(std::move(
+              paddle::experimental::Trans2Contiguous(*dense_tensor))));
+        }
+      }
+
       group_tensor
           .ShareDataWith(*(
               std::dynamic_pointer_cast<phi::DenseTensor>(grad_tensor.impl())))
@@ -851,6 +858,17 @@ void EagerReducer::MarkVarReady(const size_t var_index,
       if (HasGrad(var_index)) {
         VLOG(3) << "Tensor[" << tensors_[var_index].name() << "] has grad";
         auto grad_tensor = egr::EagerUtils::mutable_grad(tensors_[var_index]);
+
+        if (grad_tensor->is_dense_tensor()) {
+          const auto &tensor_impl = grad_tensor->impl();
+          auto dense_tensor =
+              std::dynamic_pointer_cast<phi::DenseTensor>(tensor_impl);
+          if (!dense_tensor->meta().is_contiguous()) {
+            grad_tensor->set_impl(std::make_shared<phi::DenseTensor>(std::move(
+                paddle::experimental::Trans2Contiguous(*dense_tensor))));
+          }
+        }
+
         group_tensor
             .ShareDataWith(*(std::dynamic_pointer_cast<phi::DenseTensor>(
                 grad_tensor->impl())))
@@ -933,9 +951,9 @@ void EagerReducer::MarkGroupReady(size_t group_index) {
        ++next_group_) {
     UNUSED auto &group = groups_[next_group_];
     if (group.is_sparse_) {
-      AllReduceSparse(&group, next_group_);
+      AllReduceSparse(&group, static_cast<int>(next_group_));
     } else {
-      FusedAllReduceSchedule(&group, next_group_);
+      FusedAllReduceSchedule(&group, static_cast<int>(next_group_));
     }
   }
 }
@@ -967,6 +985,7 @@ void EagerReducer::ProcessUnusedDenseVars() {
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {global_used_vars_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1058,11 +1077,12 @@ void EagerReducer::FusedAllReduceSchedule(EagerGroup *group,
 
   // div nranks
   paddle::experimental::scale_(
-      group->dense_contents_, 1.0 / nranks_, 0.0, false);
+      group->dense_contents_, 1.0 / nranks_, 0.0, false);  // NOLINT
 
   // all_reduce
   std::vector<Tensor> reduce_tensors = {group->dense_contents_};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1084,11 +1104,13 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
                                    const int curr_group_index) {
   // div nranks
   Tensor sparse_tensor(group->sparse_contents_);
-  paddle::experimental::scale_(sparse_tensor, 1.0 / nranks_, 0.0, false);
+  paddle::experimental::scale_(
+      sparse_tensor, 1.0 / nranks_, 0.0, false);  // NOLINT
 
   VLOG(3) << "sparse_group [" << curr_group_index << "] start allreduce.";
 
-  auto *dev_ctx = platform::DeviceContextPool::Instance().Get(inner_place_);
+  auto *dev_ctx =
+      platform::DeviceContextPool::Instance().Get(inner_place_);  // NOLINT
   if (platform::is_gpu_place(inner_place_)) {
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     dev_ctx = static_cast<phi::GPUContext *>(
@@ -1146,6 +1168,7 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
   opts.reduce_op = ReduceOp::SUM;
   std::vector<Tensor> reduce_tensors = {rows_num_tensor};
   std::vector<phi::DenseTensor> in_out;
+  in_out.reserve(reduce_tensors.size());
   for (auto &t : reduce_tensors) {
     in_out.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
   }
@@ -1194,6 +1217,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_rows_tensors = {dst_rows_tensor};
     std::vector<phi::DenseTensor> in;
     std::vector<phi::DenseTensor> out;
+    in.reserve(src_rows_tensors.size());
+    out.reserve(dst_rows_tensors.size());
     for (auto &t : src_rows_tensors) {
       in.push_back(*std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));
     }
@@ -1225,6 +1250,8 @@ void EagerReducer::AllReduceSparse(EagerGroup *group,
     std::vector<Tensor> dst_value_tensors = {dst_value_tensor};
     std::vector<phi::DenseTensor> src_dense;
     std::vector<phi::DenseTensor> dst_dense;
+    src_dense.reserve(src_value_tensors.size());
+    dst_dense.reserve(dst_value_tensors.size());
     for (auto &t : src_value_tensors) {
       src_dense.push_back(
           *std::dynamic_pointer_cast<phi::DenseTensor>(t.impl()));

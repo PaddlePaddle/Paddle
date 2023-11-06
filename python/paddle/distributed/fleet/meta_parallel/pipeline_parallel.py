@@ -11,8 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 import os
+import sys
 import time
 import warnings
+from collections import defaultdict
 
 import paddle
 from paddle import framework
@@ -22,6 +24,7 @@ from ..utils import timer_helper as timer
 from ..utils.hybrid_parallel_util import (
     broadcast_dp_parameters,
     broadcast_mp_parameters,
+    broadcast_sep_parameters,
     broadcast_sharding_parameters,
 )
 from ..utils.log_util import logger
@@ -29,7 +32,7 @@ from .meta_parallel_base import MetaParallelBase
 from .parallel_layers.pp_layers import PipelineLayer
 
 _use_four_directions = os.environ.get(
-    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.fluid.core.is_compiled_with_xpu()
+    'PADDLE_USE_FOUR_DIRECTIONS_P2P', paddle.base.core.is_compiled_with_xpu()
 )
 if _use_four_directions:
     from .pp_utils import four_directions_p2p_communication as p2p
@@ -44,8 +47,7 @@ from paddle.distributed.fleet.utils.tensor_fusion_helper import (
 
 __all__ = []
 
-g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 0))
-logger.info(f"g_shard_use_reduce {g_shard_use_reduce}")
+g_shard_use_reduce = int(os.environ.get("FLAGS_shard_use_reduce", 1))
 
 
 # assume only the first stage and last stage need data, and data consumption is ordred
@@ -137,6 +139,7 @@ class PipelineParallel(MetaParallelBase):
         super().__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+        self.use_sep_parallel = self._hcg.get_sep_parallel_world_size() > 1
         self.use_sharding_parallel = (
             self._hcg.get_sharding_parallel_world_size() > 1
         )
@@ -160,7 +163,13 @@ class PipelineParallel(MetaParallelBase):
         self.stage_id = self._hcg.get_stage_id()
         self.global_rank = self._hcg.get_global_rank()
         self.pp_group = self._hcg.get_pipe_parallel_group()
+
         self.dp_group = self._hcg.get_data_parallel_group()
+
+        # fused sep and dp
+        if self.use_sep_parallel:
+            self.dp_group = self._hcg.get_dp_sep_parallel_group()
+
         self.sharding_group = self._hcg.get_sharding_parallel_group()
 
         self._virtual_pp_world_size = None
@@ -218,7 +227,7 @@ class PipelineParallel(MetaParallelBase):
             self._dp_comm_overlap and self._sharding_comm_overlap
         ), "Cannot use dp pp overlap and sharding pp overlap at the same time."
 
-        self._comm_buffers = []
+        self._chunk_2_comm_buffers = defaultdict(list)
         self._comm_overlap = (
             self._dp_comm_overlap or self._sharding_comm_overlap
         )
@@ -241,14 +250,16 @@ class PipelineParallel(MetaParallelBase):
         self._compute_loss = True
 
         logger.info(
-            "Pipeline Info -- num_stages: {}, stage_id: {}".format(
-                self.num_stages, self.stage_id
-            )
+            f"Pipeline Info -- num_stages: {self.num_stages}, stage_id: {self.stage_id}"
         )
 
         if self.use_model_parallel:
             logger.info("start broadcast mp parameters")
             broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self.use_sep_parallel:
+            logger.info("start broadcast sep parameters")
+            broadcast_sep_parameters(self._layers, self._hcg)
 
         if self.use_sharding_parallel:
             logger.info("start broadcast sharding parameters")
@@ -292,7 +303,9 @@ class PipelineParallel(MetaParallelBase):
 
         return fused_allreduce
 
-    def register_allreduce_overlap_hook(self, model, comm_group, acc_steps, dp):
+    def register_allreduce_overlap_hook(
+        self, model, comm_group, acc_steps, dp, group_size=128 * 1024 * 1024
+    ):
         if model.get_num_virtual_stages() > 1:
             models = model.get_model_chunks()
         else:
@@ -309,7 +322,7 @@ class PipelineParallel(MetaParallelBase):
             else HOOK_ACTION.REDUCE
         )
 
-        for model in models:
+        for chunk_idx, model in enumerate(models):
             # For virtual pipeline. Will separate parameters in different chunk into
             # different groups to get the best performance.
 
@@ -339,12 +352,12 @@ class PipelineParallel(MetaParallelBase):
                     dst = comm_group.ranks[dst]
                 else:
                     dst = -1
-                var_groups = assign_group_by_size(parameter_list)
+                var_groups = assign_group_by_size(parameter_list, group_size)
                 for group_idx, parameters in var_groups.items():
                     buffer = FusedCommBuffer(
                         group_idx, parameters, comm_group, acc_steps, act, dst
                     )
-                    self._comm_buffers.append(buffer)
+                    self._chunk_2_comm_buffers[chunk_idx].append(buffer)
                     for param in parameters:
                         param._register_backward_hook(
                             self.bw_hook_func(buffer, param)
@@ -515,9 +528,12 @@ class PipelineParallel(MetaParallelBase):
         self._flush_records()
 
         if self._comm_overlap:
-            assert len(self._comm_buffers) > 0
-            for buffer in self._comm_buffers:
-                buffer.scale_grads()
+            assert (
+                len(self._chunk_2_comm_buffers) > 0
+            ), "comm buffers should be created"
+            for _, buffers in self._chunk_2_comm_buffers.items():
+                for buffer in buffers:
+                    buffer.scale_grads()
 
         if self._enable_timer:
             self.timers("allreduce_shared_weight_gradients").start()
@@ -558,7 +574,7 @@ class PipelineParallel(MetaParallelBase):
 
         self._layers.train()
 
-        if self._sharding_comm_overlap and len(self._comm_buffers) == 0:
+        if self._sharding_comm_overlap and len(self._chunk_2_comm_buffers) == 0:
             self.register_allreduce_overlap_hook(
                 self._layers, self.sharding_group, self.accumulate_steps, False
             )
@@ -933,6 +949,39 @@ class PipelineParallelWithInterleave(PipelineParallel):
 
         return output_tensor
 
+    def _overlap_comm_grads(self):
+        if self._comm_overlap:
+            self._backward_step_count += 1
+            sync_step = self._backward_step_count - self.stage_id
+            if sync_step > 0 and sync_step % self.num_stages == 0:
+                chunk_idx = self._virtual_pp_world_size - (
+                    sync_step // self.num_stages
+                )
+                for buffer in self._chunk_2_comm_buffers[chunk_idx]:
+                    buffer.comm_grads()
+
+            if self.stage_id != 0:
+                if (
+                    self._backward_step_count
+                    == self.num_stages * self.num_model_chunks
+                ):
+                    for buffer in self._chunk_2_comm_buffers[0]:
+                        buffer.comm_grads()
+
+    def _sync_overlap_grads(self):
+        if self._comm_overlap:
+            assert (
+                self._backward_step_count
+                == self.num_stages * self.num_model_chunks
+            ), (
+                "backward step count should be equal to accumulate steps * virtual pp world size,"
+                f" but get {self._backward_step_count}, excepted result is {self.num_stages * self.num_model_chunks}"
+            )
+
+            for _, buffers in self._chunk_2_comm_buffers.items():
+                for buffer in buffers:
+                    buffer.scale_grads()
+
     def _backward_step_helper(self, micro_step):
         virtual_pp_rank = self._get_virtual_pp_rank(micro_step, forward=False)
         self.set_virtual_pipeline_rank(virtual_pp_rank)
@@ -956,7 +1005,23 @@ class PipelineParallelWithInterleave(PipelineParallel):
             input_tensor, output_tensor, output_tensor_grad
         )
 
+        self._overlap_comm_grads()
+
         return input_tensor_grad
+
+    def bw_hook_func(self, buffer, param):
+        # For pipeline with interleave, we need to add grad to buffer without communication.
+        # Use communication where appropriate to avoid dp communication and pp scheduling conflicts.
+        @paddle.autograd.no_grad()
+        def fused_allreduce(*_):
+            buffer.add_grad(param, use_comm=False)
+
+        return fused_allreduce
+
+    def register_allreduce_overlap_hook(self, model, comm_group, acc_steps, dp):
+        super().register_allreduce_overlap_hook(
+            model, comm_group, acc_steps, dp, group_size=sys.maxsize
+        )
 
     def forward_backward_pipeline(
         self,
@@ -995,6 +1060,19 @@ class PipelineParallelWithInterleave(PipelineParallel):
         self.total_loss = None
         self.micro_batch_id = 0
         self._forward_only = forward_only
+
+        # store the number of backward steps
+        assert (
+            self.accumulate_steps % self.num_stages == 0
+        ), "accumulate_steps({}) should be evenly divisible by num_stages({}) for pipeline with interleave".format(
+            self.accumulate_steps, self.num_stages
+        )
+        per_stage_accumulate_steps = self.accumulate_steps // self.num_stages
+        self._backward_step_count = (
+            -(per_stage_accumulate_steps - 1)
+            * self.num_stages
+            * self.num_model_chunks
+        )
 
         # init some data buffers for interleave scheduler
         self.input_tensors = [[] for _ in range(self.num_model_chunks)]
@@ -1255,10 +1333,7 @@ class PipelineParallelWithInterleave(PipelineParallel):
                     )
                 )
 
-            if self._comm_overlap:
-                assert len(self._comm_buffers) > 0
-                for buffer in self._comm_buffers:
-                    buffer.scale_grads()
+            self._sync_overlap_grads()
 
             if static_scheduler:
                 self._reset_counter()

@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
+from op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 
 import paddle
-from paddle.fluid import core
+from paddle.base import core
 
 
 class TestElementwiseOp(OpTest):
@@ -130,9 +130,6 @@ class TestElementwiseMaxFP16Op_ZeroDim1(TestElementwiseFP16Op):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
 
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMaxOp_ZeroDim2(TestElementwiseOp):
     def init_data(self):
@@ -145,9 +142,6 @@ class TestElementwiseMaxFP16Op_ZeroDim2(TestElementwiseFP16Op):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, []).astype(np.float16)
 
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
-
 
 class TestElementwiseMaxOp_ZeroDim3(TestElementwiseOp):
     def init_data(self):
@@ -159,9 +153,6 @@ class TestElementwiseMaxFP16Op_ZeroDim3(TestElementwiseFP16Op):
     def init_data(self):
         self.x = np.random.uniform(0.1, 1, []).astype(np.float16)
         self.y = np.random.uniform(0.1, 1, [13, 17]).astype(np.float16)
-
-    def if_enbale_cinn(self):
-        self.enable_cinn = False
 
 
 @unittest.skipIf(

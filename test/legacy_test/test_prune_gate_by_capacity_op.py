@@ -17,8 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.base import core
 from paddle.distributed.models.moe import utils
-from paddle.fluid import core
 
 
 def count(x, upper_num):
@@ -62,7 +62,7 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
 def assert_allclose(output, expected, n_expert):
     c1 = count(output, n_expert)
     c2 = count(expected, n_expert)
-    assert np.allclose(c1, c2)
+    np.testing.assert_allclose(c1, c2)
 
 
 @unittest.skipIf(

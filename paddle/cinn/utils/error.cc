@@ -1,4 +1,4 @@
-// Copyright (c) 2021 CINN Authors. All Rights Reserved.
+// Copyright (c) 2023 CINN Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,4 +14,19 @@
 
 #include "paddle/cinn/utils/error.h"
 
-namespace cinn::utils {}  // namespace cinn::utils
+namespace cinn {
+namespace utils {
+
+std::string ErrorHandler::FormatErrorMessage(
+    const ErrorMessageLevel& err_msg_level) const {
+  std::ostringstream os;
+  std::string err_msg = err_msg_level == ErrorMessageLevel::kDetailed
+                            ? DetailedErrorMessage()
+                            : GeneralErrorMessage();
+
+  os << err_msg;
+  return os.str();
+}
+
+}  // namespace utils
+}  // namespace cinn

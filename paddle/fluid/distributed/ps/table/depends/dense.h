@@ -22,8 +22,8 @@
 #include <utility>
 #include <vector>
 
-#include "gflags/gflags.h"
 #include "paddle/fluid/distributed/common/utils.h"
+#include "paddle/utils/flags.h"
 
 namespace paddle {
 namespace distributed {

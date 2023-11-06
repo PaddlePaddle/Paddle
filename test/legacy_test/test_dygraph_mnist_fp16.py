@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import fluid
+from paddle import base
 from paddle.nn import Linear
 
 
@@ -120,14 +120,14 @@ class MNIST(paddle.nn.Layer):
 
 class TestMnist(unittest.TestCase):
     def func_mnist_fp16(self):
-        if not fluid.is_compiled_with_cuda():
+        if not base.is_compiled_with_cuda():
             return
         x = np.random.randn(1, 3, 224, 224).astype("float32")
         y = np.random.randint(10, size=[1, 1], dtype="int64")
-        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+        with base.dygraph.guard(base.CUDAPlace(0)):
             model = MNIST(dtype="float32")
-            x = fluid.dygraph.to_variable(x)
-            y = fluid.dygraph.to_variable(y)
+            x = base.dygraph.to_variable(x)
+            y = base.dygraph.to_variable(y)
 
             # using amp.auto_cast because paddle.nn.Conv2D doesn't suppport setting dtype
             with paddle.amp.auto_cast(dtype='float16'):

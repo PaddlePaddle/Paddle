@@ -21,7 +21,7 @@ paddle.enable_static()
 
 import os
 
-from paddle import fluid
+from paddle import base
 
 
 class TestFleetBase(unittest.TestCase):
@@ -45,9 +45,7 @@ class TestFleetBase(unittest.TestCase):
         )
         input_y = paddle.static.data(name="y", shape=[-1, 1], dtype='int64')
 
-        emb = paddle.fluid.layers.embedding(
-            input=input_slot, size=[10, 9], is_sparse=True
-        )
+        emb = paddle.static.nn.sparse_embedding(input=input_slot, size=[10, 9])
         input_x = paddle.concat(x=[input_x, emb], axis=1)
         fc_1 = paddle.static.nn.fc(x=input_x, size=64, activation='tanh')
         fc_2 = paddle.static.nn.fc(x=fc_1, size=64, activation='tanh')
@@ -68,11 +66,11 @@ class TestFleetBase(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer, strategy=strategy)
         optimizer.minimize(avg_cost)
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = base.CPUPlace()
+        exe = base.Executor(place)
         exe.run(paddle.static.default_startup_program())
-        compiled_prog = fluid.compiler.CompiledProgram(
-            fluid.default_main_program()
+        compiled_prog = base.compiler.CompiledProgram(
+            base.default_main_program()
         )
 
         temp_dir = tempfile.TemporaryDirectory()

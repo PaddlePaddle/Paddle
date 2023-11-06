@@ -20,7 +20,7 @@
 #include "paddle/cinn/frontend/decomposer/test_helper.h"
 #include "paddle/cinn/runtime/use_extern_funcs.h"
 
-DEFINE_string(model_dir, "", "");
+PD_DEFINE_string(model_dir, "", "");
 
 namespace cinn {
 namespace frontend {
@@ -69,7 +69,8 @@ void RunProgram(const Target& target, Program* prog) {
 
   auto scope = BuildScope(target, graph);
 
-  hlir::framework::GraphCompiler gc(target, scope, graph);
+  hlir::framework::CompilationContext context(graph, scope, target);
+  hlir::framework::GraphCompiler gc(context);
   auto runtime_program = gc.Build();
 
   for (size_t i = 0; i < input_names.size(); ++i) {

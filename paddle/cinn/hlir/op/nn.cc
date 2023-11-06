@@ -16,6 +16,7 @@
 
 #include <functional>
 
+#include "paddle/cinn/adt/op_equation_context.h"
 #include "paddle/cinn/hlir/framework/node.h"
 #include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/op_strategy.h"
@@ -76,6 +77,12 @@ std::vector<framework::shape_t> InferShapeForRelu(
   CHECK(!inputs_shape.empty()) << "The inputs is empty! Please check again.";
   std::vector<framework::shape_t> res{inputs_shape[0]};
   return res;
+}
+
+void GenerateEquationsForRelu(cinn::adt::config::OpEquationContext *ctx) {
+  CHECK(ctx->GetInTensorsRanks().size() != 0)
+      << "The inputs is empty! Please check again.";
+  ctx->Equal(ctx->GetInIteratorTuple(0), ctx->GetOutIteratorTuple(0));
 }
 
 std::vector<Type> InferDtypeForRelu(const std::vector<Type> &inputs_type,
@@ -208,7 +215,7 @@ std::shared_ptr<OpStrategy> StrategyForConv2d(
                                        tensor_name,
                                        target);
             } else {
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
               out = pe::Conv2d_NCHW_MKLDNN(A.as_tensor_ref(),
                                            B.as_tensor_ref(),
                                            padding[0],
@@ -1897,7 +1904,7 @@ std::shared_ptr<OpStrategy> StrategyForSoftmax(
         std::string tensor_name =
             pack_args[pack_args.size() - 1].operator std::string();
 
-#ifdef CINN_WITH_MKLDNN
+#ifdef CINN_WITH_DNNL
         if (use_mkldnn) {
           out = pe::SoftmaxMKLDNN(A, new_axis, tensor_name);
         } else {
@@ -2328,6 +2335,8 @@ CINN_REGISTER_HELPER(nn_ops) {
           "CINNStrategy", cinn::hlir::op::StrategyForRelu)
       .set_attr("infershape", MakeOpFunction(cinn::hlir::op::InferShapeForRelu))
       .set_attr("inferdtype", MakeOpFunction(cinn::hlir::op::InferDtypeForRelu))
+      .set_attr("generate_equations",
+                MakeOpFunction(cinn::hlir::op::GenerateEquationsForRelu))
 #ifndef CINN_WITH_CUDA
       .set_attr("inferlayout",
                 MakeOpFunction(cinn::hlir::op::InferLayoutForUnary))

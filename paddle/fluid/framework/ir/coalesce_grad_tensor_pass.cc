@@ -189,7 +189,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       const {
     if (params_grads.empty()) return true;
     auto dtype = GetDtypeOfVar(vars_info, params_grads.front().second);
-    for (auto p_g : params_grads) {
+    for (auto const &p_g : params_grads) {
       auto next_dtype = GetDtypeOfVar(vars_info, p_g.second);
       if (next_dtype != dtype) {
         return false;
@@ -288,14 +288,14 @@ class CoalesceGradTensorPass : public ir::Pass {
       details::GroupParamsAndGrads *group_params_grads) const {
     std::map<std::string, size_t> var_idx;
 
-    for (size_t i = 0; i < params_grads.size(); ++i) {
-      auto pos = params_grads[i].first.find_first_of(".");
+    for (const auto &params_grad : params_grads) {
+      auto pos = params_grad.first.find_first_of(".");
 
       std::string var_key;
       if (pos == std::string::npos) {
-        var_key = params_grads[i].first;
+        var_key = params_grad.first;
       } else {
-        var_key = params_grads[i].first.substr(0, pos);
+        var_key = params_grad.first.substr(0, pos);
       }
 
       size_t idx = 0;
@@ -309,7 +309,7 @@ class CoalesceGradTensorPass : public ir::Pass {
       }
       auto &local_group_params_grads = group_params_grads->at(idx);
       local_group_params_grads.emplace_back(
-          std::make_pair(params_grads[i].first, params_grads[i].second));
+          std::make_pair(params_grad.first, params_grad.second));
     }
 
     if (VLOG_IS_ON(10)) {

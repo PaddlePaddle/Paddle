@@ -35,8 +35,6 @@
 #include "paddle/cinn/lang/builtin.h"
 #include "paddle/cinn/lang/compute.h"
 
-DECLARE_bool(cinn_ir_schedule);
-
 namespace cinn {
 namespace hlir {
 namespace op {
@@ -162,6 +160,25 @@ std::shared_ptr<framework::OpStrategy> StrategyForArgmax(
     // variables, because the size will exceed the limit.
     ir_sch.SetBuffer(blocks[0], "local");
     ir_sch.SetBuffer(blocks[1], "local");
+
+    int iter_var_size = blocks[0]
+                            .As<ir::ScheduleBlockRealize>()
+                            ->schedule_block.As<ir::ScheduleBlock>()
+                            ->iter_vars.size();
+    int real_axis = axis;
+    if (real_axis < 0) {
+      real_axis += iter_var_size;
+    }
+    blocks[0]
+        .As<ir::ScheduleBlockRealize>()
+        ->schedule_block.As<ir::ScheduleBlock>()
+        ->iter_vars[real_axis]
+        ->is_reduce_axis = true;
+    blocks[1]
+        .As<ir::ScheduleBlockRealize>()
+        ->schedule_block.As<ir::ScheduleBlock>()
+        ->iter_vars[real_axis]
+        ->is_reduce_axis = true;
 
     int64_t prod_size = std::accumulate(output_shapes[0].begin(),
                                         output_shapes[0].end(),

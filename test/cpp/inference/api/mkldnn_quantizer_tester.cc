@@ -19,7 +19,7 @@
 #include "paddle/fluid/inference/api/mkldnn_quantizer.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 
-DEFINE_string(dirname, "", "dirname to tests.");
+PD_DEFINE_string(dirname, "", "dirname to tests.");
 
 namespace paddle {
 

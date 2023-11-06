@@ -19,7 +19,7 @@ from legacy_test.test_dist_base import (
 )
 
 import paddle
-from paddle.fluid.dygraph.base import to_variable
+from paddle.base.dygraph.base import to_variable
 from paddle.nn import Linear
 
 np.random.seed(2021)
