@@ -680,16 +680,15 @@ PHI_DEFINE_EXPORTED_bool(
  * Example:
  * Note:
  */
+#ifdef PADDLE_WITH_DNNL
 PHI_DEFINE_EXPORTED_bool(
     use_mkldnn,
-#ifdef PADDLE_WITH_DNNL
     phi::backends::cpu::MayIUse(phi::backends::cpu::cpu_isa_t::avx2) ? true
-                                                                     : false
-#else
-    false
-#endif
-    ,
+                                                                     : false,
     "Use MKLDNN to run");
+#else
+PHI_DEFINE_EXPORTED_bool(use_mkldnn, false, "Use MKLDNN to run");
+#endif
 
 /**
  * Debug related FLAG
