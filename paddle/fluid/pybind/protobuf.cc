@@ -94,7 +94,7 @@ static void DeserializeMessage(T *self, const std::string &str) {
 
 // Bind Methods
 void BindProgramDesc(pybind11::module *m) {
-  pybind11::class_<pd::ProgramDesc, std::shared_ptr<ProgramDesc>>(
+  pybind11::class_<pd::ProgramDesc, std::shared_ptr<pd::ProgramDesc>>(
       *m, "ProgramDesc", "")
       .def(pybind11::init<>())
       .def("__init__",
