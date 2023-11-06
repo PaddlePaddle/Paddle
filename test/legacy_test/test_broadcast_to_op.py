@@ -19,6 +19,7 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import Program, program_guard
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -40,6 +41,9 @@ class TestBroadcastToError(unittest.TestCase):
 
 # Test python API
 class TestBroadcastToAPI(unittest.TestCase):
+    # TODO: add test_with_pir_api
+    # base.backward.calc_gradient maybe not support pir
+    # AttributeError: 'paddle.base.libpaddle.pir.Program' object has no attribute '_appending_grad_times'
     def test_api(self):
         input = np.random.random([12, 14]).astype("float32")
         x = paddle.static.data(name='x', shape=[12, 14], dtype="float32")
@@ -70,6 +74,7 @@ class TestBroadcastToAPI(unittest.TestCase):
         np.testing.assert_array_equal(res_2, np.tile(input, (1, 1)))
         np.testing.assert_array_equal(res_3, np.tile(input, (1, 1)))
 
+    @test_with_pir_api
     def test_api_fp16_gpu(self):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)

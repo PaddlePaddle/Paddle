@@ -289,7 +289,9 @@ def monkey_patch_opresult():
                 python_api == paddle.divide
             ) and self.dtype in _supported_int_dtype_:
                 self = paddle.cast(self, DataType.FLOAT32)
-                other_var = paddle.cast(other_var_opresult, DataType.FLOAT32)
+                other_var_opresult = paddle.cast(
+                    other_var_opresult, DataType.FLOAT32
+                )
 
             out = python_api(self, other_var_opresult)
             return out
