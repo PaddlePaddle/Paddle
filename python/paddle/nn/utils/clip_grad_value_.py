@@ -26,7 +26,6 @@ def clip_grad_value_(
     Clips gradient of an iterable of parameters at specified value.
     The gradient will be modified in place.
     This API can only run in dynamic graph mode, not static graph mode.
-    
     Args:
         parameters (Iterable[paddle.Tensor]|paddle.Tensor): Tensors or a single Tensor
             that will be normalized gradients
