@@ -20,6 +20,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/framework/new_executor/garbage_collector/garbage_collector.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 namespace paddle {
@@ -315,12 +316,7 @@ void Instruction::ClearInplace() { vec_inplace_in_to_out_.clear(); }
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 void Instruction::UpdataRecordStreamForGcInfo() {
-  bool is_interpreter_fast_gc_enabled =
-      (memory::allocation::AllocatorFacade::Instance()
-           .IsStreamSafeCUDAAllocatorUsed() &&
-       FLAGS_fast_eager_deletion_mode) ||
-      FLAGS_new_executor_use_cuda_graph;
-  if (!is_interpreter_fast_gc_enabled ||
+  if (!IsInterpretercoreFastGCEnabled() ||
       KernelType() != OpFuncType::kGpuAsync) {
     return;
   }

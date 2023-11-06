@@ -1288,8 +1288,7 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     }
 
     if (var->IsType<phi::DenseTensor>()) {
-      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()),
-                         instr.record_stream_for_gc_);
+      TensorRecordStream(*(var->GetMutable<phi::DenseTensor>()), instr.stream_);
     } else if (
         var->IsType<
             operators::reader::
@@ -1298,29 +1297,29 @@ void ProgramInterpreter::RecordStreamForGC(const Instruction& instr) {
     } else if (var->IsType<phi::SelectedRows>()) {
       TensorRecordStream(
           *(var->GetMutable<phi::SelectedRows>()->mutable_value()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
     } else if (var->IsType<LoDTensorArray>()) {
       auto* tensor_arr = var->GetMutable<LoDTensorArray>();
       for (auto& tensor : *tensor_arr) {
-        TensorRecordStream(tensor, instr.record_stream_for_gc_);
+        TensorRecordStream(tensor, instr.stream_);
       }
     } else if (var->IsType<phi::SparseCooTensor>()) {
       TensorRecordStream(
           *(var->GetMutable<phi::SparseCooTensor>()->mutable_indices()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
       TensorRecordStream(
           *(var->GetMutable<phi::SparseCooTensor>()->mutable_values()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
     } else if (var->IsType<phi::SparseCsrTensor>()) {
       TensorRecordStream(
           *(var->GetMutable<phi::SparseCsrTensor>()->mutable_cols()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
       TensorRecordStream(
           *(var->GetMutable<phi::SparseCsrTensor>()->mutable_crows()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
       TensorRecordStream(
           *(var->GetMutable<phi::SparseCsrTensor>()->mutable_values()),
-          instr.record_stream_for_gc_);
+          instr.stream_);
     } else if (var->IsType<std::vector<Scope*>>()) {
       // do nothing
     } else {
