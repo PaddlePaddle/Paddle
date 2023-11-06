@@ -47,43 +47,48 @@ def save(state_dict, path, **configs):
     Args:
         obj(Object) : The object to be saved.
         path(str|BytesIO) : The path/buffer of the object to be saved.
-          If saved in the current directory, the input path string will be used as the file name.
+            If saved in the current directory, the input path string will be used as the file name.
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
-                                 Default: 4
+            Default: 4.
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
-          (1)use_binary_format(bool):
-            To be used in paddle.save. When the saved object is static graph variable, you can specify ``use_binary_for_var``.
-            If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
-            Default: False
-          (2)gather_to(int|list|tuple|None):
-            To specify which global rank to save in.Defalut is None.
-            None value means distributed saving with no gathering to a single card.
-          (3)state_type(str):
-            Value can be 'params' or 'opt', specifying to save parametres or optimizer state.
-          (4)max_grouped_size(str|int):
-            To limit the max size(how many bits) a object group to be transfered a time.
-            If str, the format must be as num+'G/M/K', for example, 3G, 2K, 10M, etc. Default is 3G.
+            1. use_binary_format(bool):
+                To be used in paddle.save. When the saved object is static graph variable, you can specify ``use_binary_for_var``.
+                If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
+                Default: False.
+            2. gather_to(int|list|tuple|None):
+                To specify which global rank to save in.Defalut is None.
+                None value means distributed saving with no gathering to a single card.
+            3. state_type(str):
+                Value can be 'params' or 'opt', specifying to save parametres or optimizer state.
+            4. max_grouped_size(str|int):
+                To limit the max size(how many bits) a object group to be transfered a time.
+                If str, the format must be as num+'G/M/K', for example, 3G, 2K, 10M, etc. Default is 3G.
+
     Returns:
-        None
+        None  
+
     Examples:
-        import paddle
-        paddle.distributed.init_process_group(backend='nccl')
-        paddle.distributed.fleet.init(is_collective=True)
 
-        model = build_model()
-        optimizer = build_optimizer(model)
+        .. code-block:: python
 
-        dist_optimizer = paddle.distributed_optimizer(optimizer)
-        dist_model = paddle.distributed_optimizer(model)
+            import paddle
+            paddle.distributed.init_process_group(backend='nccl')
+            paddle.distributed.fleet.init(is_collective=True)
 
-        # gather params to rank 0 and then save
-        paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
+            model = build_model()
+            optimizer = build_optimizer(model)
 
-        # save whoe params on all ranks
-        paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
+            dist_optimizer = paddle.distributed_optimizer(optimizer)
+            dist_model = paddle.distributed_optimizer(model)
 
-        # save optimizer state dict on rank 0
-        paddle.incubate.distributed.utils.io.save(optimizer.state_dict(), path="path/to/save.pdopt", gather=0, state_type="opt")
+            # gather params to rank 0 and then save
+            paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
+
+            # save whoe params on all ranks
+            paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
+
+            # save optimizer state dict on rank 0
+            paddle.incubate.distributed.utils.io.save(optimizer.state_dict(), path="path/to/save.pdopt", gather=0, state_type="opt")
 
     '''
 
