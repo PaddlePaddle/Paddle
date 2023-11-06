@@ -58,8 +58,10 @@ class NCCLCommTask : public CommTask {
 
   void StartRecord();
   void EndRecord();
+  void ClearRecord() override;
 
   bool CudaEventQuery(cudaEvent_t event);
+  bool CudaEventDestroy(cudaEvent_t event);
 
  protected:
   std::mutex mutex_;

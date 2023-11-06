@@ -73,8 +73,34 @@ void NCCLCommTask::EndRecord() {
   CUDA_CHECK(cudaEventRecord(nccl_end_event_, nccl_stream_));
 }
 
+void NCCLCommTask::ClearRecord() {
+  if (start_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    CUDA_CHECK(CudaEventDestroy(nccl_start_event_));
+    start_event_created_ = false;
+  }
+  if (end_event_created_) {
+    backends::gpu::GPUDeviceGuard guard(place_.device);
+    CUDA_CHECK(CudaEventDestroy(nccl_end_event_));
+    end_event_created_ = false;
+  }
+}
+
 bool NCCLCommTask::CudaEventQuery(cudaEvent_t event) {
   cudaError_t ret = cudaEventQuery(event);
+  if (ret == cudaSuccess) {
+    return true;
+  } else if (ret != cudaErrorNotReady) {
+    CUDA_CHECK(ret);
+  } else {
+    // ignore and clear the error if not ready
+    CUDA_CHECK(cudaGetLastError());
+  }
+  return false;
+}
+
+bool NCCLCommTask::CudaEventDestroy(cudaEvent_t event) {
+  cudaError_t ret = cudaEventDestroy(event);
   if (ret == cudaSuccess) {
     return true;
   } else if (ret != cudaErrorNotReady) {

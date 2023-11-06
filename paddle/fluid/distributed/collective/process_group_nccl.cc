@@ -836,6 +836,8 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   BroadcastUniqueNCCLID(&nccl_id, is_p2p_op, place_key, p2p_rank);
 
+  VLOG(0) << "init comm group,gid:" << gid_ << ",local_rank:" << rank_
+          << ",size:" << size_;
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
