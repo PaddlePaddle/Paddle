@@ -91,9 +91,7 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
         )
         if len(x.shape) == 1 and axis != 0 and axis != -1:
             raise ValueError(
-                "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".format(
-                    axis
-                )
+                f"Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {axis}"
             )
 
         attrs = {

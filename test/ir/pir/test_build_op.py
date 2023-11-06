@@ -33,16 +33,16 @@ def get_ir_program():
         y_s = paddle.matmul(x_s, x_s)
         y_s = paddle.add(x_s, y_s)
         y_s = paddle.tanh(y_s)
-    newir_program = pir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
 class TestBuildOp(unittest.TestCase):
     def test_build_mean_op(self):
-        newir_program = get_ir_program()
-        tanh_out = newir_program.global_block().ops[-1].result(0)
+        pir_program = get_ir_program()
+        tanh_out = pir_program.global_block().ops[-1].result(0)
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
+            pir_program
         ):
             out = paddle.mean(tanh_out)
             self.assertEqual(out.get_defining_op().name(), "pd_op.mean")
@@ -58,10 +58,10 @@ class TestBuildOp(unittest.TestCase):
 
 class TestBuildOp2(unittest.TestCase):
     def test_build_add_n_op(self):
-        newir_program = get_ir_program()
-        tanh_out = newir_program.global_block().ops[-1].result(0)
+        pir_program = get_ir_program()
+        tanh_out = pir_program.global_block().ops[-1].result(0)
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
+            pir_program
         ):
             out1 = paddle.mean(tanh_out)
             out2 = paddle.mean(tanh_out)
@@ -79,14 +79,14 @@ class TestBuildOp2(unittest.TestCase):
 
 class TestBuildOp3(unittest.TestCase):
     def test_insertion_point(self):
-        newir_program = get_ir_program()
+        pir_program = get_ir_program()
         with paddle.pir_utils.IrGuard():
-            add_op = newir_program.global_block().ops[-2]
-            tanh_op = newir_program.global_block().ops[-1]
+            add_op = pir_program.global_block().ops[-2]
+            tanh_op = pir_program.global_block().ops[-1]
             add_out = add_op.result(0)
             tanh_operand = tanh_op.operands()[0]
 
-            with paddle.pir.core.program_guard(newir_program):
+            with paddle.pir.core.program_guard(pir_program):
                 pir.set_insertion_point(tanh_op)
                 full_out = paddle.tensor.fill_constant(
                     shape=[4, 4], dtype="float", value=2
@@ -96,7 +96,7 @@ class TestBuildOp3(unittest.TestCase):
                 out = paddle.mean(sum_out)
                 tanh_operand.set_source(out)
 
-            print(newir_program)
+            print(pir_program)
             self.assertEqual(
                 tanh_operand.source().get_defining_op().name(), "pd_op.mean"
             )
@@ -104,10 +104,10 @@ class TestBuildOp3(unittest.TestCase):
 
 class TestBuildOp4(unittest.TestCase):
     def test_build_concat_op(self):
-        newir_program = get_ir_program()
-        tanh_out = newir_program.global_block().ops[-1].result(0)
+        pir_program = get_ir_program()
+        tanh_out = pir_program.global_block().ops[-1].result(0)
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
+            pir_program
         ):
             out = paddle.concat([tanh_out, tanh_out], 0)
             self.assertEqual(out.get_defining_op().name(), "pd_op.concat")
@@ -123,10 +123,10 @@ class TestBuildOp4(unittest.TestCase):
 
 class TestBuildOp5(unittest.TestCase):
     def test_build_split_op(self):
-        newir_program = get_ir_program()
-        tanh_out = newir_program.global_block().ops[-1].result(0)
+        pir_program = get_ir_program()
+        tanh_out = pir_program.global_block().ops[-1].result(0)
         with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-            newir_program
+            pir_program
         ):
             out = paddle.split(tanh_out, [2, 2], 0)
             self.assertEqual(out[0].get_defining_op().name(), "builtin.split")
