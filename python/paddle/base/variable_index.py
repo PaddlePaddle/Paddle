@@ -762,9 +762,7 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
 
-        elif isinstance(
-            slice_item, (paddle.base.Variable, paddle.pir.OpResult)
-        ):
+        elif isinstance(slice_item, paddle.base.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
             if (
                 slice_item.dtype == paddle.bool
