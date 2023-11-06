@@ -34,6 +34,7 @@
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/api/lib/kernel_dispatch.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/phi/common/type_traits.h"
 #include "paddle/phi/core/compat/convert_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -343,6 +344,12 @@ phi::DataType GetKernelDataTypeByYamlInfo(
     auto slot_name = data_type_info[i];
     auto& input_map = op_info_parser->InputName2Id();
 
+    bool is_complex_tag = false;
+    if (slot_name.find("complex:") == 0) {
+      slot_name = slot_name.substr(8);
+      is_complex_tag = true;
+    }
+
     auto find_it = Str2PhiDataType.find(slot_name);
     if (find_it != Str2PhiDataType.end()) {
       kernel_data_type = find_it->second;
@@ -382,6 +389,9 @@ phi::DataType GetKernelDataTypeByYamlInfo(
       } else {
         PADDLE_THROW(phi::errors::Unimplemented(
             "Only support DenseTensorType, SelectedRows, VectorType"));
+      }
+      if (is_complex_tag) {
+        kernel_data_type = phi::dtype::ToComplex(kernel_data_type);
       }
 
     } else {
