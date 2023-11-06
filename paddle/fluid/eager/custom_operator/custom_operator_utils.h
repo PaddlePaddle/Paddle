@@ -17,7 +17,7 @@
 #include "paddle/phi/api/ext/op_meta_info.h"
 
 namespace egr {
-void run_custom_op_impl(paddle::OpMetaInfo op_info,
+void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
                         bool is_forward,
                         bool is_double_grad,
                         paddle::CustomOpKernelContext& ctx);  // NOLINT

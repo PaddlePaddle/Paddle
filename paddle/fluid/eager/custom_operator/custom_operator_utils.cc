@@ -451,7 +451,7 @@ paddle::Tensor BuildEmptyDistPaddleTensor(
 }
 #endif
 
-void run_custom_op_impl(paddle::OpMetaInfo op_info,
+void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
                         bool is_forward,
                         bool is_double_grad,
                         paddle::CustomOpKernelContext& ctx) {  // NOLINT
