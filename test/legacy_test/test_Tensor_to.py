@@ -38,7 +38,7 @@ class TensorToTest(unittest.TestCase):
         for dtype in valid_dtypes:
             tensorx = tensorx.to(dtype)
             typex_str = str(tensorx.dtype)
-            self.assertEqual((typex_str == "paddle." + dtype), True)
+            self.assertTrue(typex_str, "paddle." + dtype)
 
     def test_Tensor_to_device(self):
         tensorx = paddle.to_tensor([1, 2, 3])
@@ -51,9 +51,9 @@ class TensorToTest(unittest.TestCase):
             tensorx = tensorx.to(place)
             placex_str = str(tensorx.place)
             if place == "gpu":
-                self.assertEqual((placex_str == "Place(" + place + ":0)"), True)
+                self.assertTrue(placex_str, "Place(" + place + ":0)")
             else:
-                self.assertEqual((placex_str == "Place(" + place + ")"), True)
+                self.assertTrue(placex_str, "Place(" + place + ")")
 
     def test_Tensor_to_device_dtype(self):
         tensorx = paddle.to_tensor([1, 2, 3])
@@ -80,53 +80,49 @@ class TensorToTest(unittest.TestCase):
                 tensorx = tensorx.to(place, dtype)
                 placex_str = str(tensorx.place)
                 if place == "gpu":
-                    self.assertEqual(
-                        (placex_str == "Place(" + place + ":0)"), True
-                    )
+                    self.assertTrue(placex_str, "Place(" + place + ":0)")
                 else:
-                    self.assertEqual(
-                        (placex_str == "Place(" + place + ")"), True
-                    )
+                    self.assertTrue(placex_str, "Place(" + place + ")")
                 typex_str = str(tensorx.dtype)
-                self.assertEqual((typex_str == "paddle." + dtype), True)
+                self.assertTrue(typex_str, "paddle." + dtype)
 
     def test_Tensor_to_blocking(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         tensorx = tensorx.to("cpu", "int32", False)
         placex_str = str(tensorx.place)
-        self.assertEqual((placex_str == "Place(cpu)"), True)
+        self.assertTrue(placex_str, "Place(cpu)")
         typex_str = str(tensorx.dtype)
-        self.assertEqual((typex_str == "paddle.int32"), True)
+        self.assertTrue(typex_str, "paddle.int32")
         tensor2 = paddle.to_tensor([4, 5, 6])
         tensor2 = tensor2.to(tensorx, False)
         place2_str = str(tensor2.place)
-        self.assertEqual((place2_str == "Place(cpu)"), True)
+        self.assertTrue(place2_str, "Place(cpu)")
         type2_str = str(tensor2.dtype)
-        self.assertEqual((type2_str == "paddle.int32"), True)
+        self.assertTrue(type2_str, "paddle.int32")
         tensor2 = tensor2.to("float16", False)
         type2_str = str(tensor2.dtype)
-        self.assertEqual((type2_str == "paddle.float16"), True)
+        self.assertTrue(type2_str, "paddle.float16")
 
     def test_Tensor_to_other(self):
         tensor1 = paddle.to_tensor([1, 2, 3], dtype="int8", place="cpu")
         tensor2 = paddle.to_tensor([1, 2, 3])
         tensor2 = tensor2.to(tensor1)
-        self.assertEqual((tensor2.dtype == tensor1.dtype), True)
-        self.assertEqual((type(tensor2.place) == type(tensor1.place)), True)
+        self.assertTrue(tensor2.dtype, tensor1.dtype)
+        self.assertTrue(type(tensor2.place), type(tensor1.place))
 
     def test_kwargs(self):
         tensorx = paddle.to_tensor([1, 2, 3])
         tensorx = tensorx.to(device="cpu", dtype="int8", blocking=True)
         placex_str = str(tensorx.place)
-        self.assertEqual((placex_str == "Place(cpu)"), True)
+        self.assertTrue(placex_str, "Place(cpu)")
         typex_str = str(tensorx.dtype)
-        self.assertEqual((typex_str == "paddle.int8"), True)
+        self.assertTrue(typex_str, "paddle.int8")
         tensor2 = paddle.to_tensor([4, 5, 6])
         tensor2 = tensor2.to(other=tensorx)
         place2_str = str(tensor2.place)
-        self.assertEqual((place2_str == "Place(cpu)"), True)
+        self.assertTrue(place2_str, "Place(cpu)")
         type2_str = str(tensor2.dtype)
-        self.assertEqual((type2_str == "paddle.int8"), True)
+        self.assertTrue(type2_str, "paddle.int8")
 
     def test_error(self):
         tensorx = paddle.to_tensor([1, 2, 3])

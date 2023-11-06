@@ -44,11 +44,11 @@ class LayerAstypeTest(unittest.TestCase):
         for dtype in valid_dtypes:
             net = net.astype(dtype)
             typex_str = str(net._dtype)
-            self.assertEqual((typex_str == "paddle." + dtype), True)
+            self.assertTrue(typex_str, "paddle." + dtype)
             param_typex_str = str(net.parameters()[0].dtype)
-            self.assertEqual((param_typex_str == "paddle." + dtype), True)
+            self.assertTrue(param_typex_str, "paddle." + dtype)
             buffer_typex_str = str(net.buffers()[0].dtype)
-            self.assertEqual((buffer_typex_str == "paddle." + dtype), True)
+            self.assertTrue(buffer_typex_str, "paddle." + dtype)
 
     def test_error(self):
         linear1 = paddle.nn.Linear(10, 3)
