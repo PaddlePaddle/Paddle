@@ -461,6 +461,11 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
   bool rank_is_in_current_mesh = true;
   phi::distributed::ProcessMesh current_process_mesh;
 
+  const auto& inputs = paddle::OpMetaInfoHelper::GetInputs(op_info);
+  const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(op_info);
+  const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
+
+  std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
   std::vector<Tensor> x = *all_inputs;
   const phi::distributed::ProcessMesh* mesh = nullptr;
   for (auto& input : x) {
@@ -621,6 +626,8 @@ std::tuple<bool, bool, phi::distributed::ProcessMesh> PrepareCtxForAutoParallel(
           run_auto_parallel, rank_is_in_current_mesh, current_process_mesh);
     }
   }
+  return std::tuple<bool, bool, phi::distributed::ProcessMesh>(
+      run_auto_parallel, rank_is_in_current_mesh, current_process_mesh);
 }
 #endif
 
@@ -665,8 +672,6 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(op_info);
   ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
 
-  std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
-
 #ifdef PADDLE_WITH_DISTRIBUTE
   auto result =
       PrepareCtxForAutoParallel(op_info, is_forward, is_double_grad, ctx);
@@ -678,6 +683,7 @@ void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
   }
 #endif
 
+  std::vector<Tensor>* all_inputs = ctx.AllMutableInput();
   for (size_t i = 0; i < all_inputs->size(); ++i) {
     auto& tensor = all_inputs->at(i);
     if (tensor.initialized() && tensor.is_dense_tensor() &&
