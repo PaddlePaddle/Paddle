@@ -19,8 +19,8 @@
 #include <numeric>
 #include <sstream>
 #include <vector>
-#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 
+#include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/transforms/constant_folding_pass.h"
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/transform_general_functions.h"
@@ -1124,19 +1124,19 @@ TEST(pattern_rewrite, Patterns) {
 
   pir::PassManager pm(ctx);
   pm.AddPass(std::make_unique<TestPass>());
-  //   pm.AddPass(pir::CreateConstantFoldingPass());
+  pm.AddPass(pir::CreateConstantFoldingPass());
   pm.AddPass(pir::CreateDeadCodeEliminationPass());
   pm.EnablePassTiming();
-  pm.EnableIRPrinting();
-  // pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
-  //     [](pir::Pass *pass, pir::Operation *op) {
-  //       return pass->name() == "ConstantFoldingPass";
-  //     },
-  //     [](pir::Pass *pass, pir::Operation *op) {
-  //       return pass->name() == "ConstantFoldingPass";
-  //     },
-  //     true,
-  //     true));
+  pm.EnableIRPrinting(std::make_unique<pir::PassManager::IRPrinterOption>(
+      [](pir::Pass *pass, pir::Operation *op) {
+        return pass->name() == "constant_folding_pass";
+      },
+      [](pir::Pass *pass, pir::Operation *op) {
+        return pass->name() == "constant_folding_pass";
+      },
+      true,
+      true));
 
   CHECK_EQ(pm.Run(&program), true);
+  EXPECT_EQ(program.block()->size(), 2u);
 }
