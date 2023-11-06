@@ -116,16 +116,15 @@ class GroupShardedOptimizerStage2(Optimizer):
         else:
             self._local_params.extend(list(params))
 
-        hcg = fleet.fleet._hcg if hasattr(fleet.fleet, "_hcg") else None
-
         strategy = (
             fleet.fleet._user_defined_strategy
-            if hasattr(fleet.fleet, "_hcg")
+            if hasattr(fleet.fleet, "_user_defined_strategy")
             else None
         )
 
         self._delay_scale_loss = False
         if strategy is not None:
+            print("niuliling niuliling")
             self._delay_scale_loss = strategy.hybrid_configs[
                 "sharding_configs"
             ].delay_scale_loss
@@ -615,6 +614,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # This method won't be called directly by opt.step()!
         # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
         if self._delay_scale_loss:
+            print("_delay_scale_loss niuliling niuliling")
             for param in self._layers.parameters():
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     assert param.grad is None
