@@ -35,10 +35,10 @@ phi::ccl::CCLReduceOp ToXCCLRedType(ReduceOp reduction) {
 
 const char* ToXCCLRedString(ReduceOp reduction) {
   static const std::map<ReduceOp, const char*> red_type = {
-      {ReduceOp::MIN, "MIN"},
-      {ReduceOp::MAX, "MAX"},
-      {ReduceOp::SUM, "SUM"},
-      {ReduceOp::PRODUCT, "PRODUCT"},
+      {ReduceOp::MIN, "min"},
+      {ReduceOp::MAX, "max"},
+      {ReduceOp::SUM, "sum"},
+      {ReduceOp::PRODUCT, "product"},
   };
   auto it = red_type.find(reduction);
   PADDLE_ENFORCE_EQ(

@@ -338,7 +338,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       };
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl reduce " + reduce_op_name + " compute";
+  std::string event_name = "xccl reduce_" + reduce_op_name + " compute";
   std::shared_ptr<ProcessGroup::Task> task = RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -365,7 +365,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
     bool use_calc_stream) {
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl reduce" + reduce_op_name + " scatter compute";
+  std::string event_name = "xccl reduce_" + reduce_op_name + "_scatter compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -940,7 +940,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl allreduce " + reduce_op_name + " compute";
+  std::string event_name = "xccl allreduce_" + reduce_op_name + " compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1167,7 +1167,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
           {"reduce_root_rank", {{opts.root_rank}}},
       };
 
-  std::string event_name = "xccl reduce " + reduce_op_name + " compute";
+  std::string event_name = "xccl reduce_" + reduce_op_name + " compute";
 
   return Collective(
       in_tensors,
