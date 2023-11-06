@@ -14,24 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 
-namespace phi {
-
-template <typename T, typename Context>
-void CummaxKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  DataType dtype,
-                  DenseTensor* out,
-                  DenseTensor* indices);
-
-template <typename T, typename Context>
-void CumminKernel(const Context& dev_ctx,
-                  const DenseTensor& x,
-                  int axis,
-                  DataType dtype,
-                  DenseTensor* out,
-                  DenseTensor* indices);
-
-}  // namespace phi
+namespace egr {
+void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
+                        bool is_forward,
+                        bool is_double_grad,
+                        paddle::CustomOpKernelContext& ctx);  // NOLINT
+}  // namespace egr
