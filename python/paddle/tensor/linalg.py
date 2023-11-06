@@ -16,6 +16,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -1785,7 +1786,12 @@ def bincount(x, weights=None, minlength=0, name=None):
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
     """
-    if x.dtype not in [paddle.int32, paddle.int64]:
+    if x.dtype not in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+    ]:
         raise TypeError("Elements in Input(x) should all be integers")
 
     if in_dynamic_or_pir_mode():
