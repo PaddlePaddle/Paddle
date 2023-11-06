@@ -298,7 +298,7 @@ def _convert_into_opresult(tensor):
     """
     import paddle
     from paddle.base import core, framework
-    from paddle.jit.newir_dy2static.parameter_recorder import (
+    from paddle.jit.pir_dy2static.parameter_recorder import (
         _global_parameter_recorder,
     )
 
