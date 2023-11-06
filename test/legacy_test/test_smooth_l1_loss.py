@@ -47,8 +47,7 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_mean(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
@@ -59,6 +58,8 @@ class SmoothL1Loss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[100, 200], dtype='float32'
@@ -95,8 +96,7 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_sum(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
@@ -106,6 +106,8 @@ class SmoothL1Loss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[100, 200], dtype='float32'
@@ -142,8 +144,7 @@ class SmoothL1Loss(unittest.TestCase):
     def test_smooth_l1_loss_none(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
@@ -153,6 +154,8 @@ class SmoothL1Loss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[100, 200], dtype='float32'
@@ -183,14 +186,14 @@ class SmoothL1Loss(unittest.TestCase):
             dy_ret_value = dy_ret.numpy()
             self.assertIsNotNone(dy_ret_value)
 
+        test_dynamic_or_pir_mode()
         np.testing.assert_allclose(dy_ret_value, expected, rtol=1e-05)
 
     def test_smooth_l1_loss_delta(self):
         input_np = np.random.random([100, 200]).astype(np.float32)
         label_np = np.random.random([100, 200]).astype(np.float32)
         delta = np.random.rand()
-        prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
+
         place = (
             base.CUDAPlace(0)
             if base.core.is_compiled_with_cuda()
@@ -200,6 +203,8 @@ class SmoothL1Loss(unittest.TestCase):
 
         @test_with_pir_api
         def test_dynamic_or_pir_mode():
+            prog = paddle.static.Program()
+            startup_prog = paddle.static.Program()
             with paddle.static.program_guard(prog, startup_prog):
                 input = paddle.static.data(
                     name='input', shape=[100, 200], dtype='float32'

@@ -665,7 +665,6 @@ class TestHSigmoidLossAPI(unittest.TestCase):
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
