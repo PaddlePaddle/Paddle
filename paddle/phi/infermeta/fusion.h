@@ -532,7 +532,8 @@ void Conv2dFusionInferMeta(const MetaTensor& input,
                            const std::string& activation,
                            const std::vector<int>& split_channels,
                            MetaTensor* output,
-                           std::vector<MetaTensor*> outputs);
+                           std::vector<MetaTensor*> outputs,
+                           MetaConfig config);
 
 void FusionGRUInferMeta(const MetaTensor& x,
                         const MetaTensor& h0,

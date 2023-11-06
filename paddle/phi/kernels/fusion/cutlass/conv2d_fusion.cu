@@ -11,14 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/kernel_registry.h"
-
 #include "paddle/phi/kernels/fusion/cutlass/conv2d/conv2d_decl.h"
 
 namespace phi {
 namespace fusion {
 namespace cutlass_internal {
+
 template <typename T, typename Context>
 void Conv2dFusionKernel(const Context& ctx,
                         const DenseTensor& x,

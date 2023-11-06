@@ -56,10 +56,9 @@
   output : Tensor(output), Tensor[](outputs){split_channels.size()}
   infer_meta :
     func : Conv2dFusionInferMeta
-    param : [input,filter,bias,residual_data,strides,paddings,padding_algorithm,dilations,groups,data_format,activation,split_channels]
+    param : [input, filter, bias, residual_data, strides, paddings, padding_algorithm, dilations, groups, data_format, activation, split_channels]
   kernel :
     func : conv2d_fusion
-    param : [input,filter,bias,residual_data,strides,paddings,padding_algorithm,dilations,groups,data_format,activation,split_channels,exhaustive_search,workspace_size_MB,fuse_alpha]
     data_type : input
   optional : bias, residual_data, outputs
 

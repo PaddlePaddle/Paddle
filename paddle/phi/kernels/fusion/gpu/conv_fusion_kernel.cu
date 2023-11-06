@@ -389,7 +389,6 @@ void Conv2dFusionKernel(const Context& ctx,
     workspace_size_limit = max_user_size * 1024 * 1024;
   }
 
-  auto dtype = phi::backends::gpu::CudnnDataType<T>::type;
   const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
   // Choose NHWC or NCHW by data_format attr.
   auto compute_format = channel_last ? CUDNN_TENSOR_NHWC : CUDNN_TENSOR_NCHW;
