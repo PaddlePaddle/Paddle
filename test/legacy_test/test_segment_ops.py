@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def compute_segment_sum(x, segment_ids):
@@ -344,6 +345,7 @@ class TestSegmentMeanBF16Op(TestSegmentMean):
 
 
 class API_SegmentOpsTest(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
@@ -397,6 +399,7 @@ class API_SegmentOpsTest(unittest.TestCase):
 
 
 class API_GeometricSegmentOpsTest(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         with paddle.static.program_guard(paddle.static.Program()):
             x = paddle.static.data(name="x", shape=[3, 3], dtype="float32")
