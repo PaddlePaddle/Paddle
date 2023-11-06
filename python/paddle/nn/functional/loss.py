@@ -17,7 +17,7 @@ import math
 # TODO: define loss functions of neural network
 import paddle
 from paddle import _C_ops, base, in_dynamic_mode
-from paddle.framework import core
+from paddle.framework import core, in_dynamic_or_pir_mode
 from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
@@ -654,7 +654,7 @@ def binary_cross_entropy(
             % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.bce_loss(input, label)
         if weight is not None:
             out = _C_ops.multiply(out, weight, 'axis', -1)
@@ -979,7 +979,7 @@ def hsigmoid_loss(
     if num_classes < 2:
         raise ValueError(f'Expected num_classes >= 2 (got {num_classes})')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, _, _ = _C_ops.hsigmoid_loss(
             input,
             label,
@@ -1098,7 +1098,7 @@ def smooth_l1_loss(input, label, reduction='mean', delta=1.0, name=None):
 
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.huber_loss(input, label, delta)
     else:
         check_variable_and_dtype(
@@ -1324,7 +1324,7 @@ def l1_loss(input, label, reduction='mean', name=None):
             "received %s, which is not allowed." % reduction
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         unreduced = _C_ops.abs(_C_ops.subtract(input, label))
 
         if reduction == 'mean':
@@ -1683,7 +1683,7 @@ def kl_div(input, label, reduction='mean', name=None):
     ):
         label = paddle.cast(label, 'float64')
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out = _C_ops.kldiv_loss(input, label, 'none')
         if reduction == 'mean':
             out = paddle.mean(out)

@@ -21,6 +21,7 @@ from op_test import OpTest, skip_check_grad_ci
 import paddle
 import paddle.nn.functional as F
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 np.random.seed(100)
@@ -218,13 +219,14 @@ class TestHSigmoidOp(OpTest):
         self.user_grads = hsigmoid_grad(x, w, label, bias, num_classes)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['X', 'W', 'Bias'],
             ['Out'],
             user_defined_grads=self.user_grads,
+            check_pir=True,
         )
 
 
@@ -278,7 +280,7 @@ class TestHSigmoidOpSparse(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
@@ -358,6 +360,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
                 result.append(loss_val)
         return result
 
+    @test_with_pir_api
     def test_hs_grad_with_sparse(self):
         dense_result = self.training_test(is_sparse=False)
         sparse_result = self.training_test(is_sparse=True)
@@ -414,13 +417,14 @@ class TestHSigmoidOpWithCostumTree(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
             ['Bias', 'X', 'W'],
             ['Out'],
             no_grad_set=set('Label'),
+            check_pir=True,
         )
 
 
@@ -479,10 +483,12 @@ class TestHSigmoidOpWithCostumTreeWithoutBias(OpTest):
         self.outputs = {'PreOut': pre_output, 'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'W'], ['Out'], no_grad_set=set('Label'))
+        self.check_grad(
+            ['X', 'W'], ['Out'], no_grad_set=set('Label'), check_pir=True
+        )
 
 
 class TestHSigmoidLossAPI(unittest.TestCase):
@@ -564,6 +570,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             np.testing.assert_allclose(self.out_np, out.numpy(), rtol=1e-05)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_static_api(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
@@ -619,10 +626,11 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             for ret in [ret1, ret2]:
                 np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
-        train_program = base.Program()
-        startup_program = base.Program()
-        with base.program_guard(train_program, startup_program):
+        train_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(train_program, startup_program):
             x = paddle.static.data('x', [-1, self.feature_size])
             labels = paddle.static.data('labels', [-1, 1], 'int64')
             path_table = None
@@ -657,6 +665,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 
+    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -20,8 +20,10 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
+@test_with_pir_api
 def test_static_layer(
     place, input_np, label_np, reduction='mean', weight_np=None
 ):
@@ -55,6 +57,7 @@ def test_static_layer(
     return static_result
 
 
+@test_with_pir_api
 def test_static_functional(
     place, input_np, label_np, reduction='mean', weight_np=None
 ):
@@ -262,10 +265,10 @@ class TestBceLossOp(OpTest):
         self.outputs = {'Out': output_np}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_case(self):
         self.shape = [10, 10]
@@ -286,16 +289,17 @@ class TestBceLossOpCase2(OpTest):
 
 class TestBceLossOpFP16(TestBceLossOp):
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
     def init_test_dtype(self):
         self.dtype = np.float16
 
 
 class TestBceLossOpStaticFP16(unittest.TestCase):
+    @test_with_pir_api
     def test_fp16(self):
         paddle.enable_static()
         shape = [2, 3, 20]

@@ -17,7 +17,8 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, static
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestFunctionalL1Loss(unittest.TestCase):
@@ -43,6 +44,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         input = paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
@@ -57,7 +59,6 @@ class TestFunctionalL1Loss(unittest.TestCase):
 
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
         exe = base.Executor(place)
-        exe.run(base.default_startup_program())
         static_result = exe.run(
             feed={"input": self.input_np, "label": self.label_np},
             fetch_list=[result0, result1, result2],
@@ -77,7 +78,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with base.program_guard(base.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             self.run_static()
 
     def test_gpu(self):
@@ -88,11 +89,12 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with base.program_guard(base.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):
+        @test_with_pir_api
         def test_value_error():
             input = paddle.static.data(
                 name='input', shape=[10, 10, 5], dtype='float32'
@@ -133,6 +135,7 @@ class TestClassL1Loss(unittest.TestCase):
         np.testing.assert_allclose(dy_result.numpy(), expected, rtol=1e-05)
         self.assertEqual(dy_result.shape, [10, 10, 5])
 
+    @test_with_pir_api
     def run_static(self, use_gpu=False):
         input = paddle.static.data(
             name='input', shape=[10, 10, 5], dtype='float32'
@@ -151,7 +154,6 @@ class TestClassL1Loss(unittest.TestCase):
 
         place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
         exe = base.Executor(place)
-        exe.run(base.default_startup_program())
         static_result = exe.run(
             feed={"input": self.input_np, "label": self.label_np},
             fetch_list=[result0, result1, result2],
@@ -170,7 +172,7 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with base.program_guard(base.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             self.run_static()
 
     def test_gpu(self):
@@ -181,11 +183,12 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with base.program_guard(base.Program()):
+        with static.program_guard(static.Program(), static.Program()):
             self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):
+        @test_with_pir_api
         def test_value_error():
             loss = paddle.nn.loss.L1Loss(reduction="reduce_mean")
 
