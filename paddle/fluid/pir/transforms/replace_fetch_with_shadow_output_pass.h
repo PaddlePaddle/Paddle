@@ -1,4 +1,4 @@
-// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,10 +14,13 @@
 
 #pragma once
 
-#include <pybind11/pybind11.h>
+#include <memory>
+#include "paddle/pir/core/dll_decl.h"
 
-namespace paddle {
-namespace pybind {
-void BindPir(pybind11::module *m);
-}  // namespace pybind
-}  // namespace paddle
+namespace pir {
+
+class Pass;
+
+IR_API std::unique_ptr<Pass> CreateReplaceFetchWithShadowOutputPass();
+
+}  // namespace pir

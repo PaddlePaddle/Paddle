@@ -63,8 +63,8 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
@@ -274,17 +274,17 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
   dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
-const interpreter::NewIrDependencyBuilder&
-PirInterpreter::GetNewIrDependencyBuilder() const {
+const interpreter::PirDependencyBuilder&
+PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
@@ -293,7 +293,7 @@ std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
     const {
   return ir_stream_analyzer_;
 }
@@ -1090,7 +1090,8 @@ void PirInterpreter::ConstructEventForJitInput() {
 
 paddle::framework::FetchList PirInterpreter::Run(
     const std::vector<std::string>& feed_names,
-    const std::vector<phi::DenseTensor>& feed_tensors) {
+    const std::vector<phi::DenseTensor>& feed_tensors,
+    bool need_fetch) {
   auto FeedInput = [&] {
     VLOG(4) << "Feed inputs";
     for (size_t i = 0; i < feed_names.size(); ++i) {
@@ -1135,7 +1136,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -1150,7 +1152,8 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1162,37 +1165,20 @@ paddle::framework::FetchList PirInterpreter::Run(
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
+
   // return Fetch Tensors
   Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
-
+  framework::FetchList fetch_res;
+  if (need_fetch) {
     for (auto& var_name : fetch_var_names_) {
       auto* var = inner_scope->FindVar(var_name);
-      VLOG(0) << "fetch " << var_name << "[" << var << "]";
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
       fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
-
-    VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+
+  VLOG(4) << "get fetch list size: " << fetch_res.size();
+  return fetch_res;
 }
 
 FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
@@ -1224,7 +1210,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       LOG_FIRST_N(INFO, 1) << "New ir interpreter is running in BetaRun mode "
@@ -1239,7 +1226,8 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
+        execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
       TraceRunImpl();
@@ -1251,38 +1239,21 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
   if (HasLocalScope()) {
     ClearLoDTensorArrayInLocalScope();
   }
-  // return Fetch Tensors
-  Scope* inner_scope = InnerScope();
-  if (FLAGS_enable_new_ir_in_executor) {
-    framework::FetchList fetch_res;
 
-    if (need_fetch) {
-      for (auto& var_name : fetch_var_names_) {
-        auto* var = inner_scope->FindVar(var_name);
-        VLOG(0) << "fetch " << var_name << "[" << var << "]";
-        fetch_res.push_back(var->Get<phi::DenseTensor>());
-      }
+  framework::FetchList fetch_res;
+  if (need_fetch) {
+    // return Fetch Tensors
+    Scope* inner_scope = InnerScope();
+
+    for (auto& var_name : fetch_var_names_) {
+      auto* var = inner_scope->FindVar(var_name);
+      VLOG(4) << "fetch " << var_name << "[" << var << "]";
+      fetch_res.push_back(var->Get<phi::DenseTensor>());
     }
+
     VLOG(4) << "get fetch list size: " << fetch_res.size();
-    return fetch_res;
-  } else {
-    auto* fetch_var = inner_scope->FindVar(interpreter::kFetchVarName);
-    if (fetch_var && need_fetch) {
-      auto fetch_list =
-          std::move(*fetch_var->GetMutable<framework::FetchList>());
-#ifdef PADDLE_WITH_CUDA
-      if (platform::IsCUDAGraphCapturing()) {
-        PADDLE_ENFORCE_EQ(fetch_list.empty(),
-                          true,
-                          platform::errors::InvalidArgument(
-                              "Cannot fetch data when using CUDA Graph."));
-      }
-#endif
-      return fetch_list;
-    } else {
-      return {};
-    }
   }
+  return fetch_res;
 }
 
 void PirInterpreter::TraceRunImpl() {
@@ -1501,10 +1472,11 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
   platform::RecordEvent instruction_event(
       instr_node->Name(), platform::TracerEventType::Operator, 1);
 
-  SetDeviceId(instr_node->DeviceContext().GetPlace());
+  auto cur_place = instr_node->DeviceContext().GetPlace();
+  SetDeviceId(cur_place);
 
   try {
-    instr_node->WaitEvent(place_);
+    instr_node->WaitEvent(cur_place);
     VLOG(4) << "begin to run op " << instr_node->Name();
     VLOG(4) << "begin: " << __func__ << " OP id:" << instr_node->Id()
             << " name:" << instr_node->Name() << " type:"
@@ -1540,10 +1512,10 @@ void PirInterpreter::RunInstructionBase(InstructionBase* instr_node) {
               << instr_node->DebugStringEx(scope_, value_exe_info_.get());
       CheckGC(instr_node);
       VLOG(4) << "done CheckGC";
-      memory::LogDeviceMemoryStats(place_, instr_node->Name());
+      memory::LogDeviceMemoryStats(cur_place, instr_node->Name());
     }
     VLOG(5) << "after run kernel";
-    instr_node->RecordEvent(place_);
+    instr_node->RecordEvent(cur_place);
   } catch (platform::EnforceNotMet& ex) {
     auto* op = instr_node->Operation();
     const std::vector<std::string> op_callstack_attr =
