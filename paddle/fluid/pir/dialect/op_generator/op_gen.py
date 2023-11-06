@@ -736,8 +736,8 @@ class OpInfoParser:
     def parse_output_optional_list(self):
         optional_list = []
         for output_info in self.op_yaml_item['outputs']:
-            if 'optional' in output_info:
-                if output_info['optional']:
+            if 'optional' in output_info or 'intermediate' in output_info:
+                if output_info['optional'] or output_info['intermediate']:
                     optional_list.append("true")
                 else:
                     optional_list.append("false")
@@ -1018,7 +1018,7 @@ def OpGenerator(
         ):
             op_compat_item = op_compat_item.pop('scalar')
 
-        if op['support_tensor'] != []:
+        if 'support_tensor' in op.keys() and op['support_tensor']:
             scalar_item, int_array_item = op_compat_parser.parse_support_tensor(
                 op
             )
@@ -1435,11 +1435,31 @@ def OpGenerator(
                         'data_type' in op_kernel_map
                         and op_kernel_map['data_type']
                     ):
-                        kernel_key_dtype = '", "'.join(
-                            op_kernel_map['data_type']['candidates']
-                        )
+                        for idx in range(
+                            len(op_kernel_map['data_type']['candidates'])
+                        ):
+                            if (
+                                'to_complex_flag' in op_kernel_map['data_type']
+                                and op_kernel_map['data_type'][
+                                    'to_complex_flag'
+                                ][idx]
+                            ):
+                                kernel_key_dtype += (
+                                    'complex:'
+                                    + op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
+                            else:
+                                kernel_key_dtype += (
+                                    op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
                         if kernel_key_dtype != "":
-                            kernel_key_dtype = '"' + kernel_key_dtype + '"'
+                            kernel_key_dtype = '"' + kernel_key_dtype[:-3]
                     if 'backend' in op_kernel_map and op_kernel_map['backend']:
                         kernel_key_backend = '", "'.join(
                             op_kernel_map['backend']['candidates']

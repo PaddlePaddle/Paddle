@@ -1161,7 +1161,7 @@ class Optimizer:
         end = len(target_block.ops)
         return target_block._slice_ops(start, end)
 
-    def _new_ir_create_optimization_pass(
+    def _pir_create_optimization_pass(
         self, parameters_and_grads, param_group_idx=0
     ):
         """Add optimization operators to update gradients to tensors.
@@ -1423,7 +1423,7 @@ class Optimizer:
                         params_grads['params'], self.regularization
                     )
                 if in_pir_mode():
-                    optimize_ops = self._new_ir_create_optimization_pass(
+                    optimize_ops = self._pir_create_optimization_pass(
                         params_grads, param_group_idx=param_group_idx
                     )
                 else:

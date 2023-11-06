@@ -33,7 +33,7 @@ namespace ir {
 Tensor CreateRFTensor(const Tensor& original_tensor,
                       const Expr& rf_loop,
                       int rf_axis) {
-  std::string name = original_tensor->name + "_rf";
+  std::string name = common::UniqName(original_tensor->name + "_rf");
   std::vector<Expr> new_shape = original_tensor->shape;
   new_shape.insert(new_shape.begin() + rf_axis, rf_loop.As<For>()->extent);
   Tensor rf_tensor = _Tensor_::Make(name,
@@ -80,19 +80,23 @@ class ReduceBlockCreater {
             ->schedule_block.As<ir::ScheduleBlock>()
             ->name;
     if (is_rf_block_) {
-      new_update_block_name += "_rf";
+      new_update_block_name = rf_tensor_->name;
     }
     std::string new_init_block_name =
         ir::GenReduceInitTensorNameOf(new_update_block_name);
     VLOG(5) << "new_init_block_name = " << new_init_block_name;
 
-    Expr init_value = rf_tensor_->GetReduceInitVal();
-    const std::vector<Expr>& domain = rf_tensor_->domain_without_reduce_axis();
+    const ir::Tensor& real_tensor =
+        is_rf_block_
+            ? rf_tensor_
+            : original_update_stmt_.As<ir::Store>()->tensor.as_tensor_ref();
+    Expr init_value = real_tensor->GetReduceInitVal();
+    const std::vector<Expr>& domain = real_tensor->domain_without_reduce_axis();
     ir::Tensor init_tensor = lang::Compute(
         domain,
         [=](const std::vector<Expr>& axis) { return init_value; },
         new_init_block_name);
-    init_tensor->Bind(rf_tensor_->buffer);
+    init_tensor->Bind(real_tensor->buffer);
     Expr init_stmt = ir::Store::Make(
         init_tensor, init_value, new_update_stmt_.As<ir::Store>()->indices);
     new_init_sch_block_ = ScheduleBlock::Make(
@@ -299,6 +303,12 @@ class RFBlockCreater : public ReduceBlockCreater {
     REPLACE_RF_TENSOR(Mul)
     REPLACE_RF_TENSOR(Max)
     REPLACE_RF_TENSOR(Min)
+    REPLACE_RF_TENSOR(And)
+    REPLACE_RF_TENSOR(Or)
+    REPLACE_RF_TENSOR(LT)
+    REPLACE_RF_TENSOR(LE)
+    REPLACE_RF_TENSOR(GT)
+    REPLACE_RF_TENSOR(GE)
 #undef REPLACE_RF_TENSOR
 
     new_update_stmt_ =
@@ -388,6 +398,12 @@ class RBBlockCreater : public ReduceBlockCreater {
     REPLACE_RF_TENSOR(Mul)
     REPLACE_RF_TENSOR(Max)
     REPLACE_RF_TENSOR(Min)
+    REPLACE_RF_TENSOR(And)
+    REPLACE_RF_TENSOR(Or)
+    REPLACE_RF_TENSOR(LT)
+    REPLACE_RF_TENSOR(LE)
+    REPLACE_RF_TENSOR(GT)
+    REPLACE_RF_TENSOR(GE)
 #undef REPLACE_RF_TENSOR
 
     Expr original_store_tensor = original_update_stmt_.As<ir::Store>()->tensor;
