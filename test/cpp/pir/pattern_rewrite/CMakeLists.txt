@@ -13,27 +13,27 @@ cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
 cc_test(
   drr_test
   SRCS drr_test.cc
-  DEPS drr)
+  DEPS drr dead_code_elimination_pass)
 
 cc_test(
   drr_same_type_binding_test
   SRCS drr_same_type_binding_test.cc
-  DEPS drr gtest pd_op_dialect pir)
+  DEPS drr gtest pd_op_dialect pir dead_code_elimination_pass)
 
 cc_test(
   drr_fuse_linear_test
   SRCS drr_fuse_linear_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  DEPS fusion_passes drr gtest pd_op_dialect pir dead_code_elimination_pass)
 
 cc_test(
   drr_fuse_linear_param_grad_add_test
   SRCS drr_fuse_linear_param_grad_add_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  DEPS fusion_passes drr gtest pd_op_dialect pir dead_code_elimination_pass)
 
 cc_test(
   drr_attention_fuse_test
   SRCS drr_attention_fuse_test.cc
-  DEPS fusion_passes drr gtest pd_op_dialect pir)
+  DEPS fusion_passes drr gtest pd_op_dialect pir dead_code_elimination_pass)
 
 set_tests_properties(pattern_rewrite_test
                      PROPERTIES ENVIRONMENT "FLAGS_enable_pir_in_executor=true")

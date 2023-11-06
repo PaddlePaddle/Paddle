@@ -1107,7 +1107,6 @@ void BuildProgram(pir::Builder &builder) {  // NOLINT
   builder.Build<paddle::dialect::FetchOp>(transpose2_op.out(), "out", 0);
 }
 
-// TODO(wilber): Add a normal test.
 TEST(pattern_rewrite, Patterns) {
   pir::IrContext *ctx = pir::IrContext::Instance();
 
