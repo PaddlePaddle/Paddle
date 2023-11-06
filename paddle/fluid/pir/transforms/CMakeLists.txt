@@ -3,7 +3,7 @@ file(GLOB FUSION_PASS_SRCS "fusion/*.cc")
 cc_library(
   fusion_passes
   SRCS ${FUSION_PASS_SRCS}
-  DEPS drr)
+  DEPS drr transform_general_functions)
 
 cc_library(
   transform_general_functions
