@@ -41,8 +41,8 @@ if sys.version_info < (3, 7):
     )
 else:
     if os.getenv("PY_VERSION") is None:
-        print("export PY_VERSION = %s" % platform.python_version())
         python_version = platform.python_version()
+        print(f"export PY_VERSION = {python_version}")
         os.environ["PY_VERSION"] = python_version
     else:
         if os.getenv("PY_VERSION") != str(sys.version_info.major) + '.' + str(
@@ -137,10 +137,8 @@ def get_header_install_dir(header):
         install_dir = re.sub(
             env_dict.get("PADDLE_SOURCE_DIR") + '/', '', header
         )
-        print('install_dir: ', install_dir)
         if 'fluid/jit' in install_dir:
             install_dir = re.sub('fluid/jit', 'jit', install_dir)
-            print('fluid/jit install_dir: ', install_dir)
     else:
         # third_party
         install_dir = re.sub(
@@ -206,12 +204,10 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        print("install_lib:", self.install_platlib)
 
         self.install_headers = os.path.join(
             self.install_platlib, 'paddle', 'include'
         )
-        print("install_headers:", self.install_headers)
         return ret
 
 
@@ -776,10 +772,8 @@ def cmake_run(build_path):
                 or option_key == 'PYTHON_LIBRARIES'
             ):
                 key = option_key + ":FILEPATH"
-                print(key)
             elif option_key == 'PYTHON_INCLUDE_DIR':
                 key = option_key + ':PATH'
-                print(key)
             elif option_key == 'GENERATOR':
                 key = 'CMAKE_' + option_key
             else:
@@ -788,14 +782,12 @@ def cmake_run(build_path):
                 paddle_build_options[key] = option_value
 
     options_process(args, paddle_build_options)
-    print("args:", args)
     with cd(build_path):
         cmake_args = []
         cmake_args.append(CMAKE)
         cmake_args += args
         cmake_args.append('-DWITH_SETUP_INSTALL=ON')
         cmake_args.append(TOP_DIR)
-        print("cmake_args:", cmake_args)
         subprocess.check_call(cmake_args)
 
 
@@ -804,7 +796,6 @@ def build_run(args, build_path, envrion_var):
         build_args = []
         build_args.append(CMAKE)
         build_args += args
-        print(" ".join(build_args))
         try:
             subprocess.check_call(build_args, cwd=build_path, env=envrion_var)
         except (CalledProcessError, KeyboardInterrupt) as e:
