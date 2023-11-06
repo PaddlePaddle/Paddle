@@ -100,19 +100,6 @@ def to_sot_test(fn):
     return impl
 
 
-def to_pir_api_test(fn):
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        logger.info("[PIR] running pir api")
-        ir_outs = None
-        with paddle.pir_utils.IrGuard():
-            paddle.disable_static()
-            ir_outs = fn(*args, **kwargs)
-        return ir_outs
-
-    return impl
-
-
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
         logger.info("[Program] running legacy ir")
@@ -124,7 +111,7 @@ def to_legacy_ir_test(fn):
 def to_pir_exe_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR] running pir exe")
+        logger.info("[PIR_EXE] running pir exe")
         ir_outs = None
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
@@ -138,6 +125,19 @@ def to_pir_exe_test(fn):
                 finally:
                     del os.environ[pir_flag]
                     set_flags({pir_flag: False})
+        return ir_outs
+
+    return impl
+
+
+def to_pir_api_test(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        logger.info("[PIR_API] running pir api")
+        ir_outs = None
+        with paddle.pir_utils.IrGuard():
+            paddle.disable_static()
+            ir_outs = fn(*args, **kwargs)
         return ir_outs
 
     return impl
@@ -285,7 +285,7 @@ def test_legacy_and_pir_api(fn):
     return fn
 
 
-def test_legacy_and_pir_api_and_pir_exe(fn):
+def test_legacy_and_pir_exe_and_pir_api(fn):
     fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
     return fn
 

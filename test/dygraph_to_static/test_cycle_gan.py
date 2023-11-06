@@ -28,7 +28,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 from dygraph_to_static_utils_new import (
     Dy2StTestBase,
-    test_legacy_and_pir_api_and_pir_exe,
+    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
@@ -687,7 +687,7 @@ class TestCycleGANModel(Dy2StTestBase):
         out = train(self.args, to_static)
         return out
 
-    @test_legacy_and_pir_api_and_pir_exe
+    @test_legacy_and_pir_exe_and_pir_api
     def test_train(self):
         st_out = self.train(to_static=True)
         dy_out = self.train(to_static=False)
