@@ -42,6 +42,15 @@ __no_shape_var_type__ = [
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]
+_g_gradient_clip_ops = [
+    "sum",
+    "sqrt",
+    "fill_constant",
+    "elementwise_max",
+    "elementwise_div",
+    "stack",
+    "reduce_sum",
+]
 
 
 def get_logger(log_level, name="auto_parallel"):
@@ -1939,6 +1948,10 @@ def validate_opt(optimizer):
     if optimizer is not None:
         optimizer._parameter_list = None
         optimizer._param_groups = None
+        if optimizer._grad_clip and isinstance(
+            optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm
+        ):
+            optimizer._grad_clip._async_add_n = True
     return optimizer
 
 
