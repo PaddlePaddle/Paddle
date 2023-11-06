@@ -89,19 +89,14 @@ class LabelSmoothTestCase(unittest.TestCase):
         y_np = y_var.numpy()
         return y_np
 
+    @test_with_pir_api
     def _test_equivalence(self, place):
         place = base.CPUPlace()
+        result1 = self.base_layer(place)
         result2 = self.functional(place)
         result3 = self.paddle_dygraph_layer()
+        np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
-
-        @test_with_pir_api
-        def dynamic_and_pir_mode_test():
-            result1 = self.base_layer(place)
-            result2 = self.functional(place)
-            np.testing.assert_array_almost_equal(result1, result2)
-
-        dynamic_and_pir_mode_test()
 
     def runTest(self):
         place = base.CPUPlace()
