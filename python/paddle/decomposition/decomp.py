@@ -464,7 +464,6 @@ def _decomp_bwd_with_vjp(
 
 def _decomp_bwd_without_vjp(
     block: Block,
-    fwd_op: pir.Operation,
     bwd_op: pir.Operation,
     grad_var_to_var_map: dict,
     fwd_inputs: dict,
@@ -477,7 +476,6 @@ def _decomp_bwd_without_vjp(
 
     Args:
         block (Block): the block to which the bwd_op belongs.
-        fwd_op (pir.Operation): the forward op.
         bwd_op (pir.Operation): the backward op to be decomposed.
         grad_var_to_var_map (dict): a dict obtained from distributed processing,
             which maps the backward grad variable to its corresponding forward variable.
@@ -566,7 +564,7 @@ def decomp_bwd_op(
     (1) try to decompose backward op by calling _decompose_bwd_with_vjp, if forward op has composite vjp rules (including custom vjp),
     _decompose_bwd_with_vjp will call call_vjp() to get a list of primitive operators in backward graph, then replace backward op successfully and return True;
     (2) when _decompose_bwd_with_vjp return False, means there is no composite vjp rules,
-    try to decompose forward op firstly by calling _decompose_fwd_op and get corresponding primitive operators in backward graph by calling _decompose_bwd_without_vjp, then replace backward op successfully and return True;
+    try to decompose forward op firstly by calling _decompose_fwd_op firstly and get corresponding primitive operators in backward graph by calling _decompose_bwd_without_vjp secondly, then replace backward op successfully and return True;
     (3) if the backward op is still not decomposed by the above two steps, returns False.
 
     Args:
@@ -612,7 +610,6 @@ def decomp_bwd_op(
                 bwd_has_decomposed,
             ) = _decomp_bwd_without_vjp(
                 block,
-                fwd_op,
                 bwd_op,
                 grad_var_to_var_map,
                 fwd_inputs,

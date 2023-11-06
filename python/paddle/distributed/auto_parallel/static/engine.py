@@ -256,14 +256,14 @@ class Engine:
         else:
             self.enable_prim_in_distribute = False
         #
-        self.newir_prune_startup_program = None
+        self.pir_prune_startup_program = None
         #
-        self.newir_program = None
+        self.pir_program = None
         self.param_mapping = None
-        self.newir_program_initialized = False
+        self.pir_program_initialized = False
         #
-        self.newir_program_after_decomposed = None
-        self.newir_program_decomposed = False
+        self.pir_program_after_decomposed = None
+        self.pir_program_decomposed = False
 
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
@@ -855,13 +855,13 @@ class Engine:
                 prune_startup_prog = dist_startup_prog._prune(uninitialized)
 
                 if self.enable_prim_in_distribute:
-                    self.newir_prune_startup_program = (
-                        paddle.pir.translate_to_new_ir(prune_startup_prog.desc)
+                    self.pir_prune_startup_program = (
+                        paddle.pir.translate_to_pir(prune_startup_prog.desc)
                     )
                     with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                        self.newir_prune_startup_program
+                        self.pir_prune_startup_program
                     ):
-                        self._executor.run(self.newir_prune_startup_program)
+                        self._executor.run(self.pir_prune_startup_program)
                 else:
                     self._executor.run(prune_startup_prog)
 
@@ -1499,7 +1499,7 @@ class Engine:
         else:
             self._switch_mode(self._mode)
 
-    def _translate_to_newir_program(self, feed_dict=None):
+    def _translate_to_pir_program(self, feed_dict=None):
         def _add_feed_ops(
             program,
             feed,
@@ -1542,32 +1542,32 @@ class Engine:
                     )
             return tmp_program
 
-        if not self.newir_program_initialized:
+        if not self.pir_program_initialized:
             if feed_dict is not None:
                 tmp_program = _add_feed_ops(self.main_program, feed_dict)
             else:
                 tmp_program = self.main_program.clone()
 
             (
-                newir_program,
+                pir_program,
                 param_mapping,
-            ) = paddle.pir.translate_to_new_ir_with_param_map(tmp_program.desc)
+            ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
 
             self.lr_scheduler = self.main_program.lr_scheduler
-            self.newir_program = newir_program
+            self.pir_program = pir_program
             self.param_mapping = param_mapping
-            self.newir_program_initialized = True
+            self.pir_program_initialized = True
 
-    def _decompose_newir_program(self):
-        if not self.newir_program_initialized:
+    def _decompose_pir_program(self):
+        if not self.pir_program_initialized:
             raise RuntimeError(
-                "To decompose newir program, please translate the main program to newir program first."
+                "To decompose pir program, please translate the main program to pir program first."
             )
 
-        def _get_new_ir_grad_var_to_var_map(
+        def _get_pir_grad_var_to_var_map(
             param_mapping, old_ir_grad_var_to_var_map
         ):
-            new_ir_grad_var_to_var_map = {}
+            pir_grad_var_to_var_map = {}
             for grad_var, var in old_ir_grad_var_to_var_map.items():
                 if (
                     grad_var in param_mapping.keys()
@@ -1579,29 +1579,29 @@ class Engine:
                     ):
                         new_grad_var = param_mapping[grad_var][0]
                         new_var = param_mapping[var][0]
-                        new_ir_grad_var_to_var_map[new_grad_var] = new_var
+                        pir_grad_var_to_var_map[new_grad_var] = new_var
                     elif len(param_mapping[grad_var]) > len(param_mapping[var]):
                         new_grad_var_1 = param_mapping[grad_var][0]
                         new_var_1 = param_mapping[var][0]
-                        new_ir_grad_var_to_var_map[new_grad_var_1] = new_var_1
+                        pir_grad_var_to_var_map[new_grad_var_1] = new_var_1
                         new_grad_var_2 = param_mapping[grad_var][-1]
                         new_var_2 = param_mapping[var][-1]
-                        new_ir_grad_var_to_var_map[new_grad_var_2] = new_var_2
+                        pir_grad_var_to_var_map[new_grad_var_2] = new_var_2
                 else:
                     raise RuntimeError(
                         f"can not find {grad_var} and {var} mapping in param_mapping"
                     )
-            return new_ir_grad_var_to_var_map
+            return pir_grad_var_to_var_map
 
-        def _get_bwd_ops_name(newir_program):
+        def _get_bwd_ops_name(pir_program):
             bwd_ops = []
-            global_block = newir_program.global_block()
+            global_block = pir_program.global_block()
             for op in global_block.ops:
                 if op.name().endswith("_grad") and op.name() not in bwd_ops:
                     bwd_ops.append(op.name())
             return bwd_ops
 
-        if not self.newir_program_decomposed:
+        if not self.pir_program_decomposed:
             prev_fwd_prim_state = core._is_fwd_prim_enabled()
             prev_bwd_prim_state = core._is_bwd_prim_enabled()
             core._set_prim_forward_enabled(True)
@@ -1612,12 +1612,12 @@ class Engine:
             ]._dist_op_context.grad_var_to_var
             assert len(grad_var_to_var.keys()) == 1
             grad_var_to_var_map = grad_var_to_var[1]
-            newir_grad_var_to_var_map = _get_new_ir_grad_var_to_var_map(
+            pir_grad_var_to_var_map = _get_pir_grad_var_to_var_map(
                 self.param_mapping, grad_var_to_var_map
             )
 
             # todo: using pir::program_clone for deepcopy
-            program = self.newir_program
+            program = self.pir_program
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
                 program
             ):
@@ -1630,7 +1630,7 @@ class Engine:
                         new_grads, has_decomposed = decomp.decomp_bwd_op(
                             program.global_block(),
                             op,
-                            newir_grad_var_to_var_map,
+                            pir_grad_var_to_var_map,
                         )
                         if (
                             not has_decomposed
@@ -1638,8 +1638,8 @@ class Engine:
                         ):
                             not_decomposed_bwd_ops_name.append(op.name())
 
-                self.newir_program_after_decomposed = program
-                self.newir_program_decomposed = True
+                self.pir_program_after_decomposed = program
+                self.pir_program_decomposed = True
 
                 core._set_prim_forward_enabled(prev_fwd_prim_state)
                 core._set_prim_backward_enabled(prev_bwd_prim_state)
@@ -1687,8 +1687,8 @@ class Engine:
             self._prepare_reader()
 
         if self.enable_prim_in_distribute:
-            self._translate_to_newir_program(feed_dict)
-            self._decompose_newir_program()
+            self._translate_to_pir_program(feed_dict)
+            self._decompose_pir_program()
             self._update_lr()
 
             fetch_list = []
@@ -1698,11 +1698,11 @@ class Engine:
                 fetch_list.append(result[0])
 
             with paddle.pir_utils.IrGuard(), paddle.pir.core.program_guard(
-                self.newir_program_after_decomposed,
-                self.newir_prune_startup_program,
+                self.pir_program_after_decomposed,
+                self.pir_prune_startup_program,
             ):
                 outs = self._executor.run(
-                    self.newir_program_after_decomposed,
+                    self.pir_program_after_decomposed,
                     feed=feed_dict,
                     fetch_list=fetch_list,
                     use_program_cache=self._strategy.use_cache,
