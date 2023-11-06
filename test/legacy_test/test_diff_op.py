@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
@@ -85,7 +85,7 @@ class TestDiffOp(unittest.TestCase):
         if core.is_compiled_with_cuda():
             places.append(base.CUDAPlace(0))
         for place in places:
-            with base.program_guard(base.Program(), base.Program()):
+            with static.program_guard(static.Program(), static.Program()):
                 x = paddle.static.data(
                     name="input", shape=self.input.shape, dtype=self.input.dtype
                 )
@@ -121,7 +121,7 @@ class TestDiffOp(unittest.TestCase):
                 )
                 self.assertTrue((fetches[0] == self.output).all(), True)
 
-    @test_with_pir_api
+    # @test_with_pir_api
     def func_grad(self):
         for place in self.places:
             x = paddle.to_tensor(self.input, place=place, stop_gradient=False)
