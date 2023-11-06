@@ -1303,7 +1303,7 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
  * version.
  */
 PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
-                         false,
+                         true,
                          "Enable new IR in executor");
 
 /**
