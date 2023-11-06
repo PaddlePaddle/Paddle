@@ -29,8 +29,8 @@ from paddle.base.libpaddle.pir import (  # noqa: F401
     reset_insertion_point_to_start,
     set_global_program,
     set_insertion_point,
-    translate_to_new_ir,
-    translate_to_new_ir_with_param_map,
+    translate_to_pir,
+    translate_to_pir_with_param_map,
 )
 
 from . import core  # noqa: F401
