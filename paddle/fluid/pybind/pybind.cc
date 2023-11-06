@@ -2978,7 +2978,7 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindPIR(&m);
+  BindPir(&m);
   BindVjp(&m);
   BindDecomp(&m);
 }
