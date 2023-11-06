@@ -440,8 +440,8 @@ void Tensor::bump_inplace_version() {
   } else if (is_dist_tensor()) {
     auto &inplace_version_counter =
         static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->value()
-            .InplaceVersionCounter();
+            ->unsafe_mutable_value()
+            ->InplaceVersionCounter();
     inplace_version_counter.Bump();
   } else {
     PADDLE_THROW(
@@ -458,8 +458,8 @@ uint32_t Tensor::current_inplace_version() {
   } else if (is_dist_tensor()) {
     auto &inplace_version_counter =
         static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->value()
-            .InplaceVersionCounter();
+            ->unsafe_mutable_value()
+            ->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else {
     LOG_FIRST_N(WARNING, 1) << "current_inplace_version is only supported on "
@@ -477,8 +477,8 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
     } else if (is_dist_tensor()) {
       auto &inplace_version_counter =
           static_cast<phi::distributed::DistTensor *>(impl_.get())
-              ->value()
-              .InplaceVersionCounter();
+              ->unsafe_mutable_value()
+              ->InplaceVersionCounter();
       return inplace_version_counter.SetInplaceVersionToZero();
     }
   }
