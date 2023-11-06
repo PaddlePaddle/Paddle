@@ -85,7 +85,7 @@ class IR_API Pass {
  protected:
   virtual void Run(Operation* op) = 0;
 
-  virtual inline bool CanApplyOn(Operation* op) const;
+  virtual bool CanApplyOn(Operation* op) const;
 
   virtual bool Initialize(IrContext* context) { return true; }
 
@@ -117,18 +117,15 @@ class PatternRewritePass : public Pass {
  protected:
   virtual RewritePatternSet InitializePatterns(IrContext* context) = 0;
 
-  bool Initialize(IrContext* context) override {
+  bool Initialize(IrContext* context) final {
     RewritePatternSet ps = InitializePatterns(context);
-    PADDLE_ENFORCE_NE(
-        ps.empty(),
-        true,
-        phi::errors::Unavailable(
-            "Pass creation failed."
-            "When using PatternRewritePass to create a Pass, the number of "
-            "customized Patterns is required to be greater than zero."
-            "Suggested fix: Check whether Pattern is added to the "
-            "InitializePatterns() function of class [%s]",
-            name()));
+    IR_ENFORCE(ps.empty() == false,
+               "Pass creation failed."
+               "When using PatternRewritePass to create a Pass, the number of "
+               "customized Patterns is required to be greater than zero."
+               "Suggested fix: Check whether Pattern is added to the "
+               "InitializePatterns() function of class [%s]",
+               name());
     patterns_ = FrozenRewritePatternSet(std::move(ps));
 
     return true;

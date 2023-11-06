@@ -194,11 +194,11 @@ class ConstantFoldingPass : public pir::PatternRewritePass {
  public:
   ConstantFoldingPass() : pir::PatternRewritePass("constant_folding_pass", 1) {}
 
-  bool Initialize(pir::IrContext* context) override {
+  RewritePatternSet InitializePatterns(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
     ps.Add<ConstantFoldingPattern>(context);
 
-    return true;
+    return ps;
   }
 };
 
