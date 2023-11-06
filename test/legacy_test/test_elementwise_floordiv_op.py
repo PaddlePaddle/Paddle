@@ -21,6 +21,7 @@ from op_test import OpTest, paddle_static_guard
 
 import paddle
 from paddle import base
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseModOp(OpTest):
@@ -45,7 +46,7 @@ class TestElementwiseModOp(OpTest):
         self.outputs = {'Out': self.out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def init_input_output(self):
         self.x = np.random.uniform(0, 10000, [10, 10]).astype(self.dtype)
@@ -104,6 +105,7 @@ def device_guard(device=None):
 
 
 class TestFloorDivideOp(unittest.TestCase):
+    @test_with_pir_api
     def test_name(self):
         with paddle_static_guard():
             with base.program_guard(base.Program()):
