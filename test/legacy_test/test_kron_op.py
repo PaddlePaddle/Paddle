@@ -138,6 +138,7 @@ class TestKronLayer(unittest.TestCase):
         place = base.CPUPlace()
         a = np.random.randn(10, 10).astype(np.float64)
         b = np.random.randn(10, 10).astype(np.float64)
+        out_np = np.kron(a, b)
         paddle.enable_static()
         prog = paddle.static.Program()
         with base.unique_name.guard():
@@ -147,7 +148,7 @@ class TestKronLayer(unittest.TestCase):
                 out_var = paddle.kron(a_var, b_var)
         exe = paddle.static.Executor(place=place)
         (res,) = exe.run(prog, feed={'a': a, 'b': b}, fetch_list=[out_var])
-        np.testing.assert_allclose(res, self.out_np)
+        np.testing.assert_allclose(res, out_np)
 
 
 class TestComplexKronOp(OpTest):

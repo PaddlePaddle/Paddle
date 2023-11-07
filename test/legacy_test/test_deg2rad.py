@@ -55,7 +55,7 @@ class TestDeg2radAPI(unittest.TestCase):
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue(res == self.out_np)
+            self.assertTrue((res == self.out_np).all())
         paddle.disable_static()
 
     def test_dygraph(self):
