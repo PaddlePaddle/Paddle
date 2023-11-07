@@ -62,7 +62,7 @@ if(NOT CINN_ONLY)
     manual_op.cc
     op_attribute.cc
     DEPS
-    pd_op_dialect)
+    op_dialect_vjp)
 
   target_include_directories(cinn_op_dialect PRIVATE ${CINN_DIALECT_BINARY_DIR})
 endif()

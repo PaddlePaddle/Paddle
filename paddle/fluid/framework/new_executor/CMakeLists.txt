@@ -12,7 +12,7 @@ set(STANDALONE_EXECUTOR_DEPS
     interpreter
     interpretercore_garbage_collector
     workqueue
-    pd_op_dialect
+    op_dialect_vjp
     pd_op_to_kernel_pass
     pir_adaptor
     program_translator
