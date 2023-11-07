@@ -28,12 +28,7 @@ from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
-from .utils import (
-    RETURN_NO_VALUE_MAGIC_NUM,
-    backend_guard,
-    construct_grad_names,
-    tensor_name_guard,
-)
+from .utils import backend_guard, construct_grad_names, tensor_name_guard
 
 __all__ = []
 
@@ -250,7 +245,6 @@ class PartialProgramLayer:
 
             self._update_stop_gradient(out_vars)
             restored_nest_out = self._restore_out(out_vars)
-            restored_nest_out = self._remove_no_value(restored_nest_out)
             return restored_nest_out
 
     def _sync_lr_value_with_scheduler(self):
@@ -977,41 +971,6 @@ class PartialProgramLayer:
     @switch_to_static_graph
     def _clone_for_test(self, main_program):
         return main_program.clone(for_test=True)
-
-    def _is_no_value(self, var):
-        if isinstance(var, core.eager.Tensor) and var.shape == [1]:
-            # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
-            if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
-                return True
-        return False
-
-    def _remove_no_value(self, out_vars):
-        """
-        Removes invalid value for various-length return statement
-        """
-        if isinstance(out_vars, core.eager.Tensor):
-            if self._is_no_value(out_vars):
-                return None
-            return out_vars
-        elif isinstance(out_vars, (tuple, list)):
-            if isinstance(out_vars, tuple):
-                res = tuple(
-                    var for var in out_vars if not self._is_no_value(var)
-                )
-            else:
-                # isinstance(out_vars, list)
-                res = [var for var in out_vars if not self._is_no_value(var)]
-
-            has_removed = len(out_vars) > len(res)
-            # len(out_vars) > len(res) means we have removed var. This is
-            # preventing out_vars is empty or just one element at the beginning
-            if len(res) == 0 and has_removed:
-                return None
-            elif len(res) == 1 and has_removed:
-                return res[0]
-            return res
-
-        return out_vars
 
     def _set_grad_type(self, params, train_program):
         # NOTE: if user set sparse gradient mode, the param's gradient

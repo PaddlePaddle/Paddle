@@ -54,6 +54,7 @@ from .pir_partial_program import (
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
+    RETURN_NO_VALUE_MAGIC_NUM,
     ast_to_func,
     backend_guard,
     func_to_source_code,
@@ -781,7 +782,9 @@ class ASTStaticFunction(StaticFunction):
 
             # 3. return outputs.
             try:
-                return partial_program_layer(args)
+                outs = partial_program_layer(args)
+                outs = self._remove_no_value(outs)
+                return outs
             except Exception as e:
                 if not hasattr(e, error.ERROR_DATA):
                     # runtime error
@@ -797,6 +800,41 @@ class ASTStaticFunction(StaticFunction):
                     f" if you can't handle this {type(e)} yourself."
                 )
                 raise e
+
+    def _is_no_value(self, var):
+        if isinstance(var, core.eager.Tensor) and var.shape == [1]:
+            # NOTE: .numpy() will insert MemcpySync operation, it hits performance.
+            if var.numpy()[0] == RETURN_NO_VALUE_MAGIC_NUM:
+                return True
+        return False
+
+    def _remove_no_value(self, out_vars):
+        """
+        Removes invalid value for various-length return statement
+        """
+        if isinstance(out_vars, core.eager.Tensor):
+            if self._is_no_value(out_vars):
+                return None
+            return out_vars
+        elif isinstance(out_vars, (tuple, list)):
+            if isinstance(out_vars, tuple):
+                res = tuple(
+                    var for var in out_vars if not self._is_no_value(var)
+                )
+            else:
+                # isinstance(out_vars, list)
+                res = [var for var in out_vars if not self._is_no_value(var)]
+
+            has_removed = len(out_vars) > len(res)
+            # len(out_vars) > len(res) means we have removed var. This is
+            # preventing out_vars is empty or just one element at the beginning
+            if len(res) == 0 and has_removed:
+                return None
+            elif len(res) == 1 and has_removed:
+                return res[0]
+            return res
+
+        return out_vars
 
     def get_concrete_program(self, *args, **kwargs):
         """
