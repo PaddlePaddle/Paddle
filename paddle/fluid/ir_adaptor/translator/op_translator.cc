@@ -1027,7 +1027,10 @@ struct DataOpTranscriber : public FeedOpTranscriber {
       const std::string& normalized_op_name,
       const OpAttributeInfoList& op_attr_infos,
       const OpDesc& op_desc) override {
-    int allocate_type = paddle::get<int>(op_desc.GetAttr("place"));
+    int allocate_type = PADDLE_GET_CONST(int, op_desc.GetAttr("place"));
+    int var_dtype = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+    auto phi_dtype = phi::TransToPhiDataType(var_dtype);
+
     auto& attribute_translator = AttributeTranslator::instance();
     pir::Attribute shape = attribute_translator(
         "paddle::dialect::IntArrayAttribute", op_desc.GetAttr("shape"));
@@ -1036,8 +1039,7 @@ struct DataOpTranscriber : public FeedOpTranscriber {
          pir::StrAttribute::get(ctx,
                                 op_desc.GetAttrIfExists<std::string>("name"))},
         {"shape", shape},
-        {"dtype",
-         paddle::dialect::DataTypeAttribute::get(ctx, phi::DataType::FLOAT32)},
+        {"dtype", paddle::dialect::DataTypeAttribute::get(ctx, phi_dtype)},
         {"place",
          paddle::dialect::PlaceAttribute::get(
              ctx, phi::Place(static_cast<phi::AllocationType>(allocate_type)))},
