@@ -481,7 +481,7 @@ def _setitem_impl_(var, item, value):
         else:
             raise IndexError(
                 "Valid index accept int, slice, ellipsis, None, list of bool, Variable, "
-                "but received {}.".format(slice_item)
+                f"but received {slice_item}."
             )
 
         axes.append(dim)
@@ -493,9 +493,7 @@ def _setitem_impl_(var, item, value):
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
             raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".format(
-                    item
-                )
+                f"Valid index accept int or slice or ellipsis or list, but received {item}."
             )
         return slice_info.set_item(var, value)
     attrs = {
@@ -764,14 +762,29 @@ def parse_index(x, indices):
             has_advanced_index = True
             estimated_dim += 1
 
-        elif isinstance(
-            slice_item, (paddle.base.Variable, paddle.pir.OpResult)
-        ):
+        elif isinstance(slice_item, paddle.base.Variable):
             # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
             if (
                 slice_item.dtype == paddle.bool
                 or slice_item.dtype == paddle.base.libpaddle.BOOL
             ):
+                if slice_item.ndim == 0:
+                    # 0-D bool Tensor, same as single PY-bool.
+                    none_axes.append(dim)
+
+                elif slice_item.shape[0] != x.shape[dim]:
+                    raise IndexError(
+                        "The shape of boolean index {} did not match indexed tensor {} along axis {}".format(
+                            slice_item.shape[0], x.shape[dim], dim
+                        )
+                    )
+            advanced_index[estimated_dim] = (estimated_dim, slice_item)
+            has_advanced_index = True
+            estimated_dim += 1
+
+        elif isinstance(slice_item, paddle.pir.OpResult):
+            # In this case, the Variable is not 0-dim Tensor and will be treated as advanced-indexing.
+            if slice_item.dtype == paddle.pir.core.DataType.BOOL:
                 if slice_item.ndim == 0:
                     # 0-D bool Tensor, same as single PY-bool.
                     none_axes.append(dim)

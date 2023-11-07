@@ -2473,6 +2473,24 @@
   attrs :
     repeats : Repeats
 
+- op : repeat_interleave
+  backward : repeat_interleave_grad
+  inputs :
+    x : X
+  outputs :
+    out : Out
+  attrs :
+    {repeats : Repeats, axis : dim}
+
+- op : repeat_interleave_with_tensor_index
+  backward : repeat_interleave_with_tensor_index_grad
+  inputs :
+    {x : X, repeats: RepeatTensor}
+  outputs:
+    out : Out
+  attrs:
+    axis : dim
+
 - op : reshape (reshape2)
   backward : reshape_grad (reshape2_grad)
   inputs:
@@ -3386,6 +3404,16 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: sparse_momentum
+  inputs :
+    {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  scalar:
+   axis:
+     datatype : int
+     tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad

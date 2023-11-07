@@ -336,7 +336,7 @@ def asin(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.41151685, -0.20135793,  0.10016742,  0.30469266])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asin(x)
     else:
         check_variable_and_dtype(
@@ -383,7 +383,7 @@ def asinh(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.39003533, -0.19869010,  0.09983408,  0.29567307])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.asinh(x)
     else:
         check_variable_and_dtype(

@@ -559,11 +559,52 @@ phi::distributed::DistTensor* SetKernelDistOutput(
   return nullptr;
 }
 
+phi::distributed::DistTensor* SetKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+  return SetKernelDistOutput(out, paddle::get<0>(dist_attr));
+}
+
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
-    Tensor* out, const phi::distributed::TensorDistAttr& dist_attr) {
+    Tensor* out,
+    bool set_dist_output_as_tensor_impl,
+    const phi::distributed::ArgDistAttr& dist_attr) {
   if (out) {
-    return std::make_shared<phi::distributed::DistTensor>(phi::DDim(),
-                                                          dist_attr);
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    auto dist_output = std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
+    if (set_dist_output_as_tensor_impl) {
+      VLOG(3) << "CreateKernelDistOutput function set generated output "
+                 "dist_tensor as Tensor's impl";
+      if (out->is_dist_tensor()) {
+        VLOG(3)
+            << "out is DistTensor, set its DistAttr to generated DistOutput.";
+        dist_output->unsafe_set_dist_attr(
+            std::static_pointer_cast<phi::distributed::DistTensor>(out->impl())
+                ->dist_attr());
+      }
+      out->set_impl(dist_output);
+    }
+    return dist_output;
+  }
+  return nullptr;
+}
+
+std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
+    Tensor* out, const phi::distributed::ArgDistAttr& dist_attr) {
+  if (out) {
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    return std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
   }
   return nullptr;
 }
