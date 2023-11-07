@@ -100,22 +100,6 @@ def to_sot_test(fn):
     return impl
 
 
-def to_pir_ast_test(fn):
-    @wraps(fn)
-    def impl(*args, **kwargs):
-        logger.info("[PIR][AST] running pir api")
-        ir_outs = None
-        try:
-            with paddle.pir_utils.IrGuard():
-                paddle.disable_static()
-                ir_outs = fn(*args, **kwargs)
-        finally:
-            paddle.enable_static()
-        return ir_outs
-
-    return impl
-
-
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
         logger.info("[Program] running legacy ir")
@@ -124,10 +108,10 @@ def to_legacy_ir_test(fn):
     return impl
 
 
-def to_pir_test(fn):
+def to_pir_exe_test(fn):
     @wraps(fn)
     def impl(*args, **kwargs):
-        logger.info("[PIR] running pir")
+        logger.info("[PIR_EXE] running pir exe")
         ir_outs = None
         if os.environ.get('FLAGS_use_stride_kernel', False):
             return
@@ -146,6 +130,19 @@ def to_pir_test(fn):
     return impl
 
 
+def to_pir_api_test(fn):
+    @wraps(fn)
+    def impl(*args, **kwargs):
+        logger.info("[PIR_API] running pir api")
+        ir_outs = None
+        with paddle.pir_utils.IrGuard():
+            paddle.disable_static()
+            ir_outs = fn(*args, **kwargs)
+        return ir_outs
+
+    return impl
+
+
 # Metaclass and BaseClass
 class Dy2StTestMeta(type):
     TO_STATIC_HANDLER_MAP = {
@@ -155,8 +152,8 @@ class Dy2StTestMeta(type):
 
     IR_HANDLER_MAP = {
         IrMode.LEGACY_IR: to_legacy_ir_test,
-        IrMode.PIR_EXE: to_pir_test,
-        IrMode.PIR_API: to_pir_ast_test,
+        IrMode.PIR_EXE: to_pir_exe_test,
+        IrMode.PIR_API: to_pir_api_test,
     }
 
     def __new__(cls, name, bases, attrs):
@@ -284,12 +281,12 @@ def test_legacy_and_pir(fn):
 
 
 def test_legacy_and_pir_api(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API)(fn)
     return fn
 
 
-def test_legacy_and_pir_api_and_pir_exe(fn):
-    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)
+def test_legacy_and_pir_exe_and_pir_api(fn):
+    fn = set_ir_mode(IrMode.LEGACY_IR | IrMode.PIR_API | IrMode.PIR_EXE)(fn)
     return fn
 
 
@@ -299,7 +296,7 @@ def compare_legacy_with_pir(fn):
         outs = fn(*args, **kwargs)
         if core._is_bwd_prim_enabled() or core._is_fwd_prim_enabled():
             return outs
-        ir_outs = to_pir_test(fn)(*args, **kwargs)
+        ir_outs = to_pir_exe_test(fn)(*args, **kwargs)
         np.testing.assert_equal(
             outs,
             ir_outs,
