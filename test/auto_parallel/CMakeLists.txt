@@ -95,6 +95,9 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
   py_test_modules(test_reshard_s_to_r MODULES test_reshard_s_to_r)
   set_tests_properties(test_reshard_s_to_r
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
+  py_test_modules(test_reshard_p_to_s MODULES test_reshard_p_to_s)
+  set_tests_properties(test_reshard_p_to_s
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_reshard_s_to_s MODULES test_reshard_s_to_s)
   set_tests_properties(test_reshard_s_to_s
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
