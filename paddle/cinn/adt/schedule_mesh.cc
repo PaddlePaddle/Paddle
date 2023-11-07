@@ -202,11 +202,15 @@ class AllInjectiveScheduleMeshPolicy final : public ScheduleMeshPolicy {
   std::tuple<ScheduleMesh, List<LoopType>> Optimize(
       const List<ScheduleDim>& loop_sizes) const override {
     ScheduleMesh sched_mesh{loop_sizes};
-    List<LoopType> loop_types{};
+    std::int64_t acc = 1;
     for (const auto& sched_dim : *loop_sizes) {
-      loop_types->emplace_back(Temporal{});
+      acc *= GetLoopSize(sched_dim).Get<std::int64_t>();
     }
-    return std::make_tuple(sched_mesh, loop_types);
+    sched_mesh = MeshReshape(sched_mesh, {acc});
+    sched_mesh = MeshPaddingRoundUp(sched_mesh, {kThreadSize});
+    sched_mesh = MeshReshape(sched_mesh, {-1, kThreadSize});
+
+    return std::make_tuple(sched_mesh, List<LoopType>{S0x{}, S1x{}});
   }
 };
 
