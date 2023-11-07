@@ -81,6 +81,8 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'multihead_matmul',
     'set_value',
     'set_value_',
+    'set_value_with_tensor',
+    'set_value_with_tensor_',
     'squeeze_excitation_block',
     'yolo_box_xpu',
     'fusion_gru',
@@ -112,8 +114,6 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'rnn_',
     'seed',
     'send_v2',
-    'set_value_with_tensor',
-    'set_value_with_tensor_',
     'shadow_feed',
 ]
 

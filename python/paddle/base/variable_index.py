@@ -915,11 +915,14 @@ def _setitem_static(x, indices, values):
         elif paddle.framework.in_pir_mode():
             return paddle._C_ops.set_value_(
                 x,
-                value_tensor,
                 StartsTensorList,
                 EndsTensorList,
                 StepsTensorList,
-                *itertools.chain.from_iterable(attrs.items()),
+                attrs["axes"],
+                attrs["decrease_axes"],
+                attrs["none_axes"],
+                attrs["shape"],
+                values,
             )
         else:
             helper = paddle.base.layer_helper.LayerHelper(
