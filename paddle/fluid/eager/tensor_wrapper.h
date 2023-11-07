@@ -216,6 +216,8 @@ class TensorWrapper {
         dense_tensor = static_cast<phi::distributed::DistTensor*>(
                            intermidiate_tensor_.impl().get())
                            ->unsafe_mutable_value();
+      } else {
+        return;
       }
 
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
