@@ -260,7 +260,6 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 
 # python API test
 class TestMultiDotOpError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

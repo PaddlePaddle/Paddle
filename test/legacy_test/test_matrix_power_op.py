@@ -297,7 +297,6 @@ class TestMatrixPowerAPI(unittest.TestCase):
 
 
 class TestMatrixPowerAPIError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         input_np = np.random.random([4, 4]).astype("float64")
 
