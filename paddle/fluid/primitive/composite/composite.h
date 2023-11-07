@@ -97,16 +97,19 @@ Tensor gelu_decomp(const Tensor& x, bool approximate) {
     auto kAlpha =
         full<T>(phi::vectorize(x.dims()), M_2_SQRTPI * M_SQRT1_2, org_dtype);
     auto GELU_CONSTANT = full<T>(phi::vectorize(x.dims()), 0.044715, org_dtype);
-    auto tanh_out = tanh<T>(kAlpha * (x + GELU_CONSTANT * x * x * x));
+    auto x_pow3 =
+        elementwise_pow<T>(x, full<T>(phi::vectorize(x.dims()), 3, org_dtype));
+    auto multi_out = multiply<T>(x_pow3, GELU_CONSTANT);
+    auto tanh_out = tanh<T>(multiply<T>(kAlpha, x + multi_out));
 
-    auto res = x * half * (one + tanh_out);
+    auto res = multiply<T>(multiply<T>(x, half), one + tanh_out);
     return res;
   } else {
     // gelu(x) = 0.5 * x *  (1 + erf(x / sqrt(2)))
     auto M_SQRT1_2T = full<T>(phi::vectorize(x.dims()), M_SQRT1_2, org_dtype);
-    auto res = x * full<T>(phi::vectorize(x.dims()), 0.5, org_dtype) *
-               (one + erf<T>(x * M_SQRT1_2T));
+    auto erf_out = add<T>(one, erf<T>(multiply<T>(x, M_SQRT1_2T)));
 
+    auto res = multiply<T>(multiply<T>(x, half), erf_out);
     return res;
   }
 }

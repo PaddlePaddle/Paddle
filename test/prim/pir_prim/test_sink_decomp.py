@@ -124,10 +124,8 @@ class TestGeluSink(unittest.TestCase):
         with paddle.static.program_guard(main_program):
             x = paddle.static.data('x', self.shape_x, dtype='float32')
             x.stop_gradient = False
-            sum_out = F.gelu(x)
-            print(type(sum_out))
+            sum_out = F.gelu(x, approximate=True)
             [new_out] = decompose(main_program, [sum_out])
-            print(type(new_out))
             gradients = grad(new_out, x)
 
             exe = paddle.static.Executor()
@@ -151,5 +149,46 @@ class TestGeluSink(unittest.TestCase):
             np.testing.assert_equal(ref, actual)
 
 
+class TestSumMax:
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = [8, 16, 32, 64]
+        self.shape_y = [8, 16, 32, 64]
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.y = np.random.random(self.shape_y).astype("float32")
+        self.prog = None
+
+    def base_net(self, flag=None):
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            y = paddle.static.data('y', self.shape_y, dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            sum_out = paddle.sum(x, y)  # 静态图下 测试输出, 含有axis的算子  max()
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, (x, y))
+
+            exe = paddle.static.Executor()
+            [fwd, dx, dy] = exe.run(
+                feed={'x': self.x, 'y': self.y}, fetch_list=[new_out, gradients]
+            )
+
+        return fwd, dx, dy
+
+    def test_relu_forward(self):
+        res_ref = self.base_net()
+        # res = self.base_net("forward")
+        print(res_ref)
+        print("-----------------------------------")
+        # print(res)
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_equal(ref, actual)
+
+
 if __name__ == "__main__":
     unittest.main()
+
+    # summax = TestSumMax()
+    # summax.setUp()
+    # summax.test_relu_forward()
