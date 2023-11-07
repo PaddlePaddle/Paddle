@@ -21,7 +21,8 @@ namespace framework {
 namespace interpreter {
 
 Plan::Plan(const std::vector<std::shared_ptr<Job>>& job_list,
-           const std::unordered_map<std::string, ProgramDesc*>& type_to_program)
+           const std::unordered_map<std::string, std::shared_ptr<ProgramDesc>>&
+               type_to_program)
     : job_list_(job_list),
       type_to_program_(type_to_program),
       micro_batch_num_(1) {
@@ -73,7 +74,8 @@ const std::vector<std::string> Plan::JobTypes() const {
   return res;
 }
 
-const ProgramDesc* Plan::Program(const std::string& job_type) const {
+const std::shared_ptr<ProgramDesc> Plan::Program(
+    const std::string& job_type) const {
   return type_to_program_.at(job_type);
 }
 

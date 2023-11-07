@@ -21,6 +21,11 @@ cc_library(
   DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
 
 cc_library(
+  dead_code_elimination_pass
+  SRCS dead_code_elimination_pass.cc
+  DEPS pd_op_dialect pir)
+
+cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
   DEPS pd_op_dialect_core op_yaml_info_parser)
