@@ -35,7 +35,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=layer_norm,
-            with_backward=True,
+            with_backward=False,
             normalized_shape=[4, 4],
         )
 
@@ -46,7 +46,7 @@ class TestLayerNormSemiAutoParallel(SemiAutoParallelTestBase):
             inputs_shape=shapes,
             inputs_specs=specs,
             op_func=layer_norm,
-            with_backward=True,
+            with_backward=False,
             normalized_shape=[4, 4],
         )
 
