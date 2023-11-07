@@ -981,17 +981,14 @@ void AnalysisConfig::Update() {
 #endif
   }
 
-  if (use_mkldnn_) {
+  if (!use_gpu() && !use_xpu() && !use_ipu()) {
+    if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
-    if (!enable_ir_optim_) {
-      LOG(ERROR)
-          << "EnableMKLDNN() only works when IR optimization is enabled.";
-    } else {
       pass_builder()->EnableMKLDNN();
-    }
 #endif
-  } else {
-    pass_builder()->DisableMKLDNN();
+    } else if (!use_mkldnn_) {
+      pass_builder()->DisableMKLDNN();
+    }
   }
 
   // Quantization passes must come after all other optimization passes
