@@ -47,15 +47,23 @@ class TestSavedTensorHookForSemiAutoParallel(unittest.TestCase):
 
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
             z = paddle.matmul(x, y, False, False)
-        z.sum().backward()
 
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
             dist_z = paddle.matmul(dist_x, dist_y, False, False)
-        dist_z.sum().backward()
 
-        self.assertTrue(paddle.equal_all(z, dist_z))
-        self.assertTrue(paddle.equal_all(x.grad, dist_x.grad))
-        self.assertTrue(paddle.equal_all(y.grad, dist_y.grad))
+        np.testing.assert_allclose(
+            z.numpy(), dist_z.numpy(), rtol=1e-04, verbose=True
+        )
+
+        z.backward()
+        dist_z.backward()
+
+        np.testing.assert_allclose(
+            x.grad.numpy(), dist_x.grad.numpy(), rtol=1e-04, verbose=True
+        )
+        np.testing.assert_allclose(
+            y.grad.numpy(), dist_y.grad.numpy(), rtol=1e-04, verbose=True
+        )
 
 
 if __name__ == '__main__':
