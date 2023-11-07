@@ -191,7 +191,7 @@ class GradSlotMeta {
   // operation when compute the input Tensor's gradient
   phi::distributed::TensorDistAttr dist_attr_;
   phi::DDim dist_tensor_global_dims_;
-  bool is_dist_meta{false};
+  bool is_dist_meta_{false};
 };
 
 class GradNodeBase {
