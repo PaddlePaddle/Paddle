@@ -106,13 +106,13 @@ bool ProcessOp(pir::Operation* op, pir::PatternRewriter* rewriter) {
 
   if (x_dims != y_dims) {
     auto output_shape = GetOutputShape(x_dims, y_dims);
-
     if (!IsSameDim(x_dims, output_shape)) {
       // add broadcast to input 0
       auto new_transpose_op = rewriter->Build<cinn::dialect::BroadcastOp>(
           op->operand_source(0),
           GetBroadcastAxis(x_dims, output_shape),
           output_shape);
+
       op->operand(0).set_source(new_transpose_op->result(0));
     }
 

@@ -33,7 +33,7 @@
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_dialect.h"
-#include "paddle/pir/dialect/control_flow/ir/cf_ops.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
@@ -273,7 +273,7 @@ std::shared_ptr<::pir::Program> BuildDropOutProgram() {
   return program;
 }
 
-TEST(GroupOp, TestBuildSoftmax) {
+TEST(GroupOp, TestBuildDropout) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   std::shared_ptr<::pir::Program> program = BuildDropOutProgram();
@@ -284,27 +284,18 @@ TEST(GroupOp, TestBuildSoftmax) {
 
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
-  std::cerr << "fin build cinn pass process " << std::endl;
-
-  program->Print(std::cout);
-
-  std::cerr << "finish here" << std::endl;
 
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
-
-  res->Print(std::cout);
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
-
   kernel_program->Print(std::cout);
 
   paddle::framework::Scope exe_scope;

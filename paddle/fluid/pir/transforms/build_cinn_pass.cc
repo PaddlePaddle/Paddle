@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 
-#include <algorithm>
 #include <queue>
 #include <regex>
 #include <set>
@@ -147,14 +146,17 @@ bool IsSupportCinn(pir::Operation* op) {
   }
 
   // Strip the dialect, like pd_op.abs -> abs
-  const auto& op_name = CompatibleInfo::OpName(*op);
+  const auto op_name = CompatibleInfo::OpName(*op);
+  if (CompatibleInfo::IsSupportCinn(*op)) {
+    VLOG(4) << "Found special supported op for CINN: " << op_name;
+    return true;
+  }
+
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
-  if (op_name == "uniform") {
-    return false;
-  }
-
+  // TODO(phlrain): cinn fronted op name is not same with name in codegen
+  //                update using a better way define allow op list
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to" || op_name == "multiply") {
     return true;
@@ -352,7 +354,6 @@ class CinnSubgraphDetector {
   void DoOpFusion() {
     // do fusion
     for (auto* op : sort_ops_) {
-      std::cerr << "sort op " << op->name() << std::endl;
       auto subgraph = subgraph_map_.count(op)
                           ? subgraph_map_[op]
                           : std::make_shared<SubGraph>(op, op_classifier_(op));
@@ -362,7 +363,6 @@ class CinnSubgraphDetector {
       auto producers = GetProducerOpsReverseSort(op, op2id_);
 
       for (auto* producer : producers) {
-        std::cerr << "produer " << producer->name() << std::endl;
         if (op_classifier_(producer) != subgraph->substitute) {
           continue;
         }
@@ -379,7 +379,6 @@ class CinnSubgraphDetector {
           continue;
         }
         // fuse producer to sub-graph
-        std::cerr << "add producer " << producer->name() << std::endl;
         if (!subgraph->op_set.count(producer)) {
           subgraph->Insert(producer);
           subgraph_map_[producer] = subgraph;
@@ -428,7 +427,6 @@ class CinnSubgraphDetector {
   void DoSubGraphFusion() {
     while (true) {
       bool update = false;
-      std::cerr << "subgraph_list_ " << subgraph_list_.size() << std::endl;
       for (auto& subgraph : subgraph_list_) {
         // sub graph is not substitute
         if (!subgraph->substitute) {
@@ -643,9 +641,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   for (auto* op : group_ops) {
     op->MoveTo(group_block, group_block->begin());
   }
-  // step 3: Insert YieldOp for outputs
 
-  // step 4: Replace outputs of inner ops
+  // step 3: Replace outputs of inner ops
   std::vector<pir::OpResult> group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
@@ -656,6 +653,7 @@ void ReplaceWithGroupOp(pir::Block* block,
                                  });
   }
 
+  // step 4: Insert YieldOp for outputs
   builder.SetInsertionPointToEnd(group_block);
   builder.Build<::pir::YieldOp>(outputs);
 }

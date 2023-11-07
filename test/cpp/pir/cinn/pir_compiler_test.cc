@@ -40,6 +40,7 @@
 using cinn::hlir::framework::pir::Group;
 using cinn::hlir::framework::pir::GroupPtr;
 
+bool simple_cmp(float a, float b) { return std::abs((a - b) / a) < 1e-5; }
 using ProgramInfo =
     std::tuple<std::shared_ptr<::pir::Program>, std::vector<GroupPtr>>;
 ProgramInfo BuildProgram() {
@@ -117,8 +118,6 @@ ProgramInfo BuildSoftmax() {
       builder.Build<paddle::dialect::DivideOp>(exp, broadcast_2).result(0);
 
   std::vector<GroupPtr> groups;
-  //   groups.emplace_back(std::make_shared<Group>(
-  //       std::initializer_list<::pir::Operation*>({x.owner()})));
   groups.emplace_back(std::make_shared<Group>(
       std::initializer_list<::pir::Operation*>({max.owner(),
                                                 broadcast_1.owner(),
@@ -128,13 +127,10 @@ ProgramInfo BuildSoftmax() {
                                                 broadcast_2.owner(),
                                                 divide.owner()})));
 
-  // groups[0]->input_values.push_back(x);
-  // groups[0]->output_values.push_back(broadcast_1);
-
   return {program, groups};
 }
 
-TEST(PIRCompier, CompileSoftmax) {
+TEST(PirCompier, CompileSoftmax) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -159,7 +155,7 @@ TEST(PIRCompier, CompileSoftmax) {
   LOG(INFO) << scope->var_names().size();
   ASSERT_EQ(scope->var_names().size(), 8);
 
-  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
 
   ::pir::Builder builder = ::pir::Builder(ctx, new_program->block());
@@ -190,14 +186,11 @@ TEST(PIRCompier, CompileSoftmax) {
   builder.Build<paddle::dialect::FetchOp>(
       cinn_op->result(cinn_op->num_results() - 1), "out", 0);
 
-  new_program->Print(std::cout);
-
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(new_program.get(), place);
 
-  kernel_program->Print(std::cout);
   paddle::framework::Scope exe_scope;
 
   paddle::framework::interpreter::ExecutionConfig exe_conf;
@@ -209,95 +202,84 @@ TEST(PIRCompier, CompileSoftmax) {
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  std::cerr << "out tensor" << out_tensor << std::endl;
-  // auto runtime_program = ir_compiler.Build(groups);
-
-  //   // Step 3: Execute Runtime Instruction and check Scope.
-  //   ASSERT_NO_THROW(runtime_program->Execute());
-  //   for (auto& var_name : scope->var_names()) {
-  //     std::string name = {var_name.begin(), var_name.end()};
-  //     std::vector<float> data =
-  //         cinn::GetTensorData<float>(scope->GetTensor(name), target);
-  //     for (int i = 0; i < 1; ++i) {
-  //       LOG_FIRST_N(INFO, 10) << "data: " << data[i];
-  //     }
-  //   }
+  bool res0 = simple_cmp(out_tensor.data<float>()[0], 1.0 / 16);
+  EXPECT_EQ(res0, true);
 }
 
-// TEST(PIRCompier, CompilerAndRun) {
-//   // Step 1: Construct pir::Program
-//   auto prog_info = BuildProgram();
-//   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-//   EXPECT_EQ(program->block()->size(), 6u);
-//   LOG(INFO) << program->block()->size();
+TEST(PirCompier, CompilerAndRun) {
+  // Step 1: Construct pir::Program
+  auto prog_info = BuildProgram();
+  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
+  EXPECT_EQ(program->block()->size(), 6u);
+  LOG(INFO) << program->block()->size();
 
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
 
-//   // Step 2: Compiler New pir::Program into Runtime Program
-//   auto target = cinn::common::DefaultNVGPUTarget();
-//   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-//   ASSERT_EQ(scope->var_names().size(), 6);
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  ASSERT_EQ(scope->var_names().size(), 6);
 
-//   cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
-//   auto runtime_program = ir_compiler.Build();
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  auto runtime_program = ir_compiler.Build();
 
-//   // Step 3: Execute Runtime Instruction and check Scope.
-//   ASSERT_NO_THROW(runtime_program->Execute());
-//   for (auto& var_name : scope->var_names()) {
-//     std::string name = {var_name.begin(), var_name.end()};
-//     std::vector<float> data =
-//         cinn::GetTensorData<float>(scope->GetTensor(name), target);
-//     for (int i = 0; i < 1; ++i) {
-//       LOG_FIRST_N(INFO, 10) << "data: " << data[i];
-//     }
-//   }
-// }
+  // Step 3: Execute Runtime Instruction and check Scope.
+  ASSERT_NO_THROW(runtime_program->Execute());
+  for (auto& var_name : scope->var_names()) {
+    std::string name = {var_name.begin(), var_name.end()};
+    std::vector<float> data =
+        cinn::GetTensorData<float>(scope->GetTensor(name), target);
+    for (int i = 0; i < 1; ++i) {
+      LOG_FIRST_N(INFO, 10) << "data: " << data[i];
+    }
+  }
+}
 
-// TEST(PIRCompier, CompileGroupOps) {
-//   // Step 1: Construct pir::Program
-//   auto prog_info = BuildProgram();
-//   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-//   std::vector<GroupPtr> groups = std::get<1>(prog_info);
-//   EXPECT_EQ(program->block()->size(), 6u);
-//   LOG(INFO) << program->block()->size();
+TEST(PirCompier, CompileGroupOps) {
+  // Step 1: Construct pir::Program
+  auto prog_info = BuildProgram();
+  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
+  std::vector<GroupPtr> groups = std::get<1>(prog_info);
+  EXPECT_EQ(program->block()->size(), 6u);
+  LOG(INFO) << program->block()->size();
 
-//   std::stringstream ss;
-//   program->Print(ss);
-//   LOG(INFO) << ss.str();
+  std::stringstream ss;
+  program->Print(ss);
+  LOG(INFO) << ss.str();
 
-//   // Step 2: Compiler New pir::Program into Runtime Program
-//   auto target = cinn::common::DefaultNVGPUTarget();
-//   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-//   ASSERT_EQ(scope->var_names().size(), 6);
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  ASSERT_EQ(scope->var_names().size(), 6);
 
-//   cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
-//   auto runtime_program = ir_compiler.Build(groups);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  auto runtime_program = ir_compiler.Build(groups);
 
-//   // Step 3: Execute Runtime Instruction and check Scope.
-//   ASSERT_NO_THROW(runtime_program->Execute());
-//   for (auto& var_name : scope->var_names()) {
-//     std::string name = {var_name.begin(), var_name.end()};
-//     std::vector<float> data =
-//         cinn::GetTensorData<float>(scope->GetTensor(name), target);
-//     for (int i = 0; i < 1; ++i) {
-//       LOG_FIRST_N(INFO, 10) << "data: " << data[i];
-//     }
-//   }
-// }
+  // Step 3: Execute Runtime Instruction and check Scope.
+  ASSERT_NO_THROW(runtime_program->Execute());
+  for (auto& var_name : scope->var_names()) {
+    std::string name = {var_name.begin(), var_name.end()};
+    std::vector<float> data =
+        cinn::GetTensorData<float>(scope->GetTensor(name), target);
+    for (int i = 0; i < 1; ++i) {
+      LOG_FIRST_N(INFO, 10) << "data: " << data[i];
+    }
+  }
+}
 
-// TEST(RuntimeDialect, CompilerAndRun) {
-//   // Step 1: Construct pir::Program
-//   auto prog_info = BuildProgram();
-//   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
-//   EXPECT_EQ(program->block()->size(), 6u);
+TEST(RuntimeDialect, CompilerAndRun) {
+  // Step 1: Construct pir::Program
+  auto prog_info = BuildProgram();
+  std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
+  EXPECT_EQ(program->block()->size(), 6u);
 
-//   // Step 2: Compiler New pir::Program into Runtime Program
-//   auto target = cinn::common::DefaultNVGPUTarget();
-//   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-//   ASSERT_EQ(scope->var_names().size(), 6u);
+  // Step 2: Compiler New pir::Program into Runtime Program
+  auto target = cinn::common::DefaultNVGPUTarget();
+  auto scope = cinn::hlir::framework::BuildScope(target, *program);
+  ASSERT_EQ(scope->var_names().size(), 6u);
 
-//   cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
-//   auto runtime_program = ir_compiler.Build();
-// }
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
+  auto runtime_program = ir_compiler.Build();
+}
