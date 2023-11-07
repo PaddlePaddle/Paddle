@@ -81,7 +81,6 @@ class TestDiagFlatAPI(unittest.TestCase):
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
             exe = paddle.static.Executor(place)
-            exe.run(paddle.static.default_startup_program())
             res0, res3 = exe.run(
                 main,
                 feed={"input": self.input_np, 'input2': self.input_np2},
