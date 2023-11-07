@@ -342,17 +342,7 @@ def get_value_for_bool_tensor(var, item):
                 )
             )
         i += 1
-    empty_shape = [0] + list(var.shape[i:])
-
-    def idx_not_empty(var, item):
-        bool_2_idx = paddle.nonzero(item)
-        return paddle.gather_nd(var, bool_2_idx)
-
-    return paddle.static.nn.cond(
-        item.any(),
-        lambda: idx_not_empty(var, item),
-        lambda: paddle.empty(empty_shape, var.dtype),
-    )
+    return paddle.masked_select(var, item)
 
 
 def _setitem_for_tensor_array(var, item, value):
