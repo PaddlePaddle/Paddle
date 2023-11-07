@@ -514,9 +514,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     phi::DenseTensor ones_weight_max_tensor;
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-    int max_ptr_size = weight_scale.empty()
-                           ? phi::backends::xpu::get_xpu_max_ptr_size(-1)
-                           : weight_scale.size();
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    if (weight_scale.size() != 1) {
+      max_ptr_size = weight_scale.size();
+    }
     ones_weight_max_tensor.set_type(phi::DataType::FLOAT32);
     ones_weight_max_tensor.Resize({max_ptr_size});
     std::vector<float> ones_weight(max_ptr_size, 1.0);

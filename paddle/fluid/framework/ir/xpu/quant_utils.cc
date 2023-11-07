@@ -321,15 +321,28 @@ void ConvertWithoutQuant(phi::DenseTensor* weight,
   if (std::is_same<T, int8_t>::value || std::is_same<T, int16_t>::value) {
     auto* cpu_ctx = static_cast<phi::CPUContext*>(
         platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-    int max_ptr_size = weight_scales.empty()
-                           ? phi::backends::xpu::get_xpu_max_ptr_size(-1)
-                           : weight_scales.size();
+    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
+    if (weight_scales.size() != 1) {
+      // Per-channel type
+      max_ptr_size = weight_scales.size();
+    }
     weight_max->set_type(phi::DataType::FLOAT32);
     weight_max->Resize({max_ptr_size});
     if (!weight_scales.empty()) {
-      memcpy(cpu_ctx->Alloc<float>(weight_max),
-             weight_scales.data(),
-             max_ptr_size * sizeof(float));
+      if (weight_scales.size() != 1) {
+        // Per-channel type
+        memcpy(cpu_ctx->Alloc<float>(weight_max),
+               weight_scales.data(),
+               max_ptr_size * sizeof(float));
+      } else {
+        // Per-tensor type
+        // This case for weight shape like [1, 17, 1, 1], the type of case is
+        // both  per-tensor type and a per-channel type.
+        std::vector<float> max_vec(max_ptr_size, weight_scales[0]);
+        memcpy(cpu_ctx->Alloc<float>(weight_max),
+               max_vec.data(),
+               max_ptr_size * sizeof(float));
+      }
     } else {
       LOG(FATAL) << "weight scales cannot be empty!";
     }
