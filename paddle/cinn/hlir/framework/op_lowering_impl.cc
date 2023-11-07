@@ -407,7 +407,7 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
 
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
-        DoOpLower(group, op_impl, node, tensor_map, &op_func_arg_tensors);
+        DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
 
     if (FLAGS_cinn_enable_map_expr) {
       group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(node, funcs);
