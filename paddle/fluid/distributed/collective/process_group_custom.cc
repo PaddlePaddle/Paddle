@@ -305,8 +305,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
     const BroadcastOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  std::vector<phi::DenseTensor> in_wrapper{in_tensor};
-  std::vector<phi::DenseTensor> out_wrapper{*out_tensor};
   int root = opts.source_rank + opts.source_root;
   std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
       broadcast_info{
@@ -333,7 +331,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
     const ReduceOptions& opts,
     bool sync_op,
     bool use_calc_stream) {
-  const std::vector<int64_t> root_rank_vec{opts.root_rank};
   std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
       reduce_info{
           {"reduce root rank", {{opts.root_rank}}},
@@ -1163,7 +1160,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
 
-  const std::vector<int64_t> root_rank_vec{opts.root_rank};
   std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
       reduce_info{
           {"reduce_root_rank", {{opts.root_rank}}},
