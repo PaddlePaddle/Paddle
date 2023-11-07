@@ -23,6 +23,13 @@ from paddle.base.framework import Variable
 from paddle.common_ops_import import VarDesc
 
 Number = (bool, int, float, complex)
+Number_float = (
+    VarDesc.VarType.FP32,
+    VarDesc.VarType.FP16,
+    VarDesc.VarType.FP64,
+    VarDesc.VarType.BF16,
+)
+Numpy_float = (np.float16, np.float32, np.float64)
 
 
 class judge_dtype_for_type_promotion:
@@ -180,9 +187,19 @@ class judge_dtype_for_type_promotion:
                         )
                         result = fn(**bound.arguments)
                         return result
-                raise ValueError(
-                    f"got different dtype for x: ({x_dtype}), y: ({y_dtype})."
-                )
+                # only float + float raise error
+                if (
+                    x_dtype in Number_float
+                    or isinstance(x_dtype, float)
+                    or (isinstance(x, np.ndarray) and x.dtype in Numpy_float)
+                ) and (
+                    y_dtype in Number_float
+                    or isinstance(y_dtype, float)
+                    or (isinstance(y, np.ndarray) and y.dtype in Numpy_float)
+                ):
+                    raise ValueError(
+                        f"got different float dtype for x: ({x_dtype}), y: ({y_dtype})."
+                    )
 
             result = fn(**bound.arguments)
             return result

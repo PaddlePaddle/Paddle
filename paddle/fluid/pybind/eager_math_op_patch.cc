@@ -285,11 +285,21 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -428,11 +438,21 @@ static PyObject* tensor__sub__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -565,11 +585,21 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -704,11 +734,21 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -855,11 +895,21 @@ static PyObject* tensor__div__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -1010,11 +1060,21 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar_div function for __rdiv__ and __rtruediv__
@@ -1168,11 +1228,21 @@ static PyObject* tensor__gt__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __gt__ now
@@ -1298,11 +1368,21 @@ static PyObject* tensor__ge__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __ge__ now
@@ -1519,11 +1599,21 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar_matmul function for __matmul__ now
@@ -1667,11 +1757,21 @@ static PyObject* tensor__lt__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __lt__ now
@@ -1797,11 +1897,21 @@ static PyObject* tensor__le__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __le__ now
@@ -1927,11 +2037,21 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases or not
   // there is no scalar case for floordiv, but alse need to cast self_tensor
@@ -2062,11 +2182,21 @@ static PyObject* tensor__pow__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   if (PyFloat_Check(other_obj) || PyCheckInteger(other_obj) ||
@@ -2188,12 +2318,21 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
-
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
   // 1. scalar exists cases or not
   // there is no scalar case for rpow, but alse need to cast self_tensor in
   // need.
@@ -2319,11 +2458,21 @@ static PyObject* tensor__ne__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __ne__ now
@@ -2449,11 +2598,21 @@ static PyObject* tensor__eq__method(TensorObject* self,
   }
 
   // check diff
-  PADDLE_ENFORCE_EQ(
-      other_obj_dtype,
-      self_obj_dtype,
-      paddle::platform::errors::Fatal(
-          "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if ((other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT32 ||
+       other_obj_dtype == DataType::FLOAT64 ||
+       other_obj_dtype == DataType::BFLOAT16) &&
+      (self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT32 ||
+       self_obj_dtype == DataType::FLOAT64 ||
+       self_obj_dtype == DataType::BFLOAT16)) {
+    // only check float + float diff
+    PADDLE_ENFORCE_EQ(
+        other_obj_dtype,
+        self_obj_dtype,
+        paddle::platform::errors::Fatal(
+            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  }
 
   // 1. scalar exists cases
   // there is no scalar function for __eq__ now
