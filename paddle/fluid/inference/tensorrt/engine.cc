@@ -185,7 +185,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
     }
   }
   if (with_dynamic_shape()) {
-    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode and use enqueueV3";
     for (int i = 0; i < max_profile_num_; i++) {
       for (auto &input : min_input_shape()) {
 #if IS_TRT_VERSION_LT(7100)
@@ -201,10 +201,6 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
           continue;
         }
 #endif
-        LOG(INFO) << "TRT dynamic_shape set " << input.first
-                   << " min: " << Vec2Str(input.second)
-                   << ", max: " << Vec2Str(max_input_shape()[input.first])
-                   << ", opt: " << Vec2Str(optim_input_shape()[input.first]);
         optim_profiles_[i]->setDimensions(
             input.first.c_str(),
             nvinfer1::OptProfileSelector::kMIN,
