@@ -174,7 +174,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
   // numel > 0 indicates the tensor need to be sliced
   const phi::DenseTensor& in_tensor_maybe_partial =
       numel > 0 ? GetPartialTensor(in_tensor, offset, numel) : in_tensor;
-  std::string event_name = "xccl allgather compute";
+  std::string event_name = "xccl_allgather_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -195,7 +195,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
     bool use_calc_stream) {
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl allreduce_" + reduce_op_name + " compute";
+  std::string event_name = "xccl_allreduce_" + reduce_op_name + "_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -229,7 +229,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
   // shape check. Its shape check will be done by dynamic checks with
   // FLAGS_enable_xccl_dynamic_check.
 
-  std::string event_name = "xccl alltoall compute";
+  std::string event_name = "xccl_alltoall_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -310,7 +310,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       broadcast_info{
           {"bcast_root", {{root}}},
       };
-  std::string event_name = "xccl broadcast compute";
+  std::string event_name = "xccl_broadcast_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         int root = opts.source_rank + opts.source_root;
@@ -337,7 +337,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
       };
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl reduce_" + reduce_op_name + " compute";
+  std::string event_name = "xccl_reduce_" + reduce_op_name + "_compute";
   std::shared_ptr<ProcessGroup::Task> task = RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -364,7 +364,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::ReduceScatter(
     bool use_calc_stream) {
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl reduce_" + reduce_op_name + "_scatter compute";
+  std::string event_name = "xccl_reduce_" + reduce_op_name + "_scatter_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -394,7 +394,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       /*cur_rank*/ rank_,
       size_,
       phi::AllocationType::CUSTOM);
-  std::string event_name = "xccl scatter compute";
+  std::string event_name = "xccl_scatter_compute";
   std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
       scatter_info{
           {"scatter root rank", {{opts.root_rank}}},
@@ -491,7 +491,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Gather(
       gather_info{
           {"gather_root_rank", {{opts.root_rank}}},
       };
-  std::string event_name = "xccl gather compute";
+  std::string event_name = "xccl_gather_compute";
   return RunFnInXCCLEnv(gather_func,
                         in_tensor,
                         CommType::GATHER,
@@ -519,7 +519,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
           {"recv_src_rank", {{src_rank}}},
       };
 
-  std::string event_name = "xccl recv compute";
+  std::string event_name = "xccl_recv_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -547,7 +547,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
       send_info{
           {"send_dst_rank", {{dst_rank}}},
       };
-  std::string event_name = "xccl send compute";
+  std::string event_name = "xccl_send_compute";
   return RunFnInXCCLEnv(
       [&](const phi::stream::Stream& stream) {
         auto comm_context = this->GetCommContext();
@@ -672,9 +672,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::RunFnInXCCLEnv(
 
     std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
         comm_infos{
-            {"communicate data amount", {size_vec}},
-            {"current communicate group", {comm_group_}},
-            {"current rank", {{static_cast<int64_t>(rank_)}}},
+            {"communicate_data_amount", {size_vec}},
+            {"current_communicate_group", {comm_group_}},
+            {"current_rank", {{static_cast<int64_t>(rank_)}}},
         };
     for (auto& comm_info_ : CommInfo) {
       comm_infos.push_back(std::move(comm_info_));
@@ -824,9 +824,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Collective(
           "input", {phi::DataTypeToString(inputs[i].dtype())}};
       std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
           comm_infos{
-              {"communicate data amount", {size_vec}},
-              {"current communicate group", {comm_group_}},
-              {"current rank", {{static_cast<int64_t>(rank_)}}},
+              {"communicate_data_amount", {size_vec}},
+              {"current_communicate_group", {comm_group_}},
+              {"current_rank", {{static_cast<int64_t>(rank_)}}},
           };
       for (auto& comm_info_ : CommInfo) {
         comm_infos.push_back(std::move(comm_info_));
@@ -897,9 +897,9 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::PointToPoint(
 
       std::vector<std::pair<const char*, std::vector<std::vector<int64_t>>>>
           comm_infos{
-              {"communicate data amount", {size_vec}},
-              {"current communicate group", {comm_group_}},
-              {"current rank", {{static_cast<int64_t>(rank_)}}},
+              {"communicate_data_amount", {size_vec}},
+              {"current_communicate_group", {comm_group_}},
+              {"current_rank", {{static_cast<int64_t>(rank_)}}},
           };
       for (auto& comm_info_ : CommInfo) {
         comm_infos.push_back(std::move(comm_info_));
@@ -939,7 +939,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllReduce(
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
   std::string reduce_op_name =
       paddle::distributed::ToXCCLRedString(opts.reduce_op);
-  std::string event_name = "xccl allreduce_" + reduce_op_name + " compute";
+  std::string event_name = "xccl_allreduce_" + reduce_op_name + "_compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -972,7 +972,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Broadcast(
       broadcast_info{
           {"bcast_root", {{root}}},
       };
-  std::string event_name = "xccl broadcast compute";
+  std::string event_name = "xccl_broadcast_compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1027,7 +1027,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Send(
           {"send_dst_rank", {{dst_rank}}},
       };
 
-  std::string event_name = "xccl send compute";
+  std::string event_name = "xccl_send_compute";
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& input,
@@ -1053,7 +1053,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Recv(
           {"recv_src_rank", {{src_rank}}},
       };
 
-  std::string event_name = "xccl recv compute";
+  std::string event_name = "xccl_recv_compute";
   auto task = PointToPoint(
       tensors,
       [&](phi::DenseTensor& output,
@@ -1082,7 +1082,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllGather(
       true,
       phi::errors::InvalidArgument("All outputs should be in CustomPlace."));
 
-  std::string event_name = "xccl allgather compute";
+  std::string event_name = "xccl_allgather_compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1108,7 +1108,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::AllToAll(
       CheckTensorsInCustomPlace(out_tensors, device_type_),
       true,
       phi::errors::InvalidArgument("All inputs should be in CustomPlace."));
-  std::string event_name = "xccl alltoall compute";
+  std::string event_name = "xccl_alltoall_compute";
   return Collective(
       in_tensors,
       out_tensors,
@@ -1165,7 +1165,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Reduce(
           {"reduce_root_rank", {{opts.root_rank}}},
       };
 
-  std::string event_name = "xccl reduce_" + reduce_op_name + " compute";
+  std::string event_name = "xccl_reduce_" + reduce_op_name + "_compute";
 
   return Collective(
       in_tensors,
@@ -1202,7 +1202,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupCustom::Scatter(
       scatter_info{
           {"scatter_root_rank", {{opts.root_rank}}},
       };
-  std::string event_name = "xccl scatter compute";
+  std::string event_name = "xccl_scatter_compute";
   return Collective(
       in_tensors,
       out_tensors,
