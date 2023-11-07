@@ -27,6 +27,11 @@ if(WITH_GLOO)
   list(APPEND COMM_CONTEXT_MANAGER_DEPS gloo_comm_context gloo_store)
 endif()
 
+if(WITH_MKLDNN)
+  list(APPEND COMM_CONTEXT_MANAGER_DEPS mkldnn extern_mkldnn)
+  list(APPEND COMM_TASK_MANAGER_DEPS mkldnn extern_mkldnn)
+endif()
+
 cc_library(
   comm_context_manager
   SRCS comm_context_manager.cc
@@ -36,8 +41,3 @@ cc_library(
   comm_task_manager
   SRCS comm_task_manager.cc nccl_comm_task.cc nccl_tools.cc
   DEPS ${COMM_TASK_MANAGER_DEPS})
-
-if(WITH_MKLDNN)
-  list(APPEND COMM_CONTEXT_MANAGER_DEPS mkldnn extern_mkldnn)
-  list(APPEND COMM_TASK_MANAGER_DEPS mkldnn extern_mkldnn)
-endif()
