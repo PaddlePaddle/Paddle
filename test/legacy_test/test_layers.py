@@ -630,10 +630,8 @@ class TestLayer(LayerTest):
 
         static_rlt = _test_static_specific(inp_np_x, inp_np_y)
         static_rlt2 = _test_static(inp_np_x, inp_np_y)
-        dy_rlt_value, dy_rlt2_value, static_rlt3 = (
-            _test_dygraph_1(inp_np_x, inp_np_y),
-            _test_dygraph_2(inp_np_x, inp_np_y),
-            _test_static(inp_np_x, inp_np_y),
+        dy_rlt_value, dy_rlt2_value, static_rlt3 = _test_dygraph_1(
+            inp_np_x, inp_np_y
         )
         np.testing.assert_array_equal(dy_rlt2_value, static_rlt3)
         np.testing.assert_array_equal(static_rlt2, static_rlt)
