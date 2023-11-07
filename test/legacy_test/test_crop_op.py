@@ -47,6 +47,7 @@ def crop(data, offsets, crop_shape):
 class TestCropOp(OpTest):
     def setUp(self):
         self.op_type = "crop"
+        self.python_api = paddle.crop
         self.crop_by_input = False
         self.offset_by_input = False
         self.attrs = {}
