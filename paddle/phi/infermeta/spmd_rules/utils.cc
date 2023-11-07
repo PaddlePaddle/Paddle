@@ -266,14 +266,14 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
           break;
         }
       }
-      if (!p_a->is_shard()) {
+      if (!p_b->is_shard()) {
         mismatch = true;
         break;
       }
       auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
       auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
       auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
-      auto b_axis = axis_names[non_empty_index][b_shard->get_axis()];
+      auto b_axis = axis_names[i][b_shard->get_axis()];
       if (a_axis != b_axis) {
         mismatch = true;
         break;

@@ -282,7 +282,7 @@ std::tuple<std::vector<std::string>, std::string> BuildLayerNormGradEinsum(
     int64_t input_rank, int64_t begin_norm_axis) {
   std::string alphabet = "ijklmnopqrstuvwxyz";
   std::string x_notation = alphabet.substr(0, input_rank);
-  std::string mean_variance_notation = x_notation.substr(begin_norm_axis);
+  std::string mean_variance_notation = x_notation.substr(0, begin_norm_axis);
   std::string align_notation = x_notation.substr(0, begin_norm_axis);
   return {
       {x_notation, mean_variance_notation, mean_variance_notation, x_notation},
