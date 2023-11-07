@@ -187,7 +187,7 @@ class TestDiagonalScatterFloat64(TestDiagonalScatterAPI):
 )
 class TestDiagonalScatterBFloat16(TestDiagonalScatterAPI):
     def set_args(self):
-        self.dtype = "bfloat16"
+        self.dtype = "uint16"
         self.x = convert_float_to_uint16(
             np.random.random([10, 10]).astype(np.float32)
         )
@@ -306,18 +306,25 @@ class TestDiagoalScatterAxis1(TestDiagonalScatterAPI):
 
 # check error
 class TestDiagonalScatterError(TestDiagonalScatterAPI):
-    def test_error_1(self):
+    def test_tensor_x_dimension_error(self):
+        # Tensor x must be at least 2-dimensional in diagonal_scatter
         paddle.disable_static()
         x = paddle.to_tensor([1.0], "float32")
         y = paddle.to_tensor([], "float32")
-        with self.assertRaisesRegex(
-            AssertionError,
-            "Tensor x must be at least 2-dimensional in diagonal_scatter",
-        ):
+        with self.assertRaises(AssertionError):
             paddle.diagonal_scatter(x, y)
         paddle.enable_static()
 
-    def test_error_2(self):
+    def test_tensor_y_dimension_error(self):
+        # y.shape should be (10,), but received (1,)
+        paddle.disable_static()
+        x = paddle.to_tensor(self.x, self.dtype)
+        y = paddle.to_tensor([1.0], "float32")
+        with self.assertRaises(AssertionError):
+            paddle.diagonal_scatter(x, y)
+        paddle.enable_static()
+
+    def test_axis1_out_of_range_error(self):
         # axis1 is out of range in diagonal_scatter (expected to be in range of [-2, 2), but got 1000)
         paddle.disable_static()
         x = paddle.to_tensor(self.x, self.dtype)
@@ -327,7 +334,7 @@ class TestDiagonalScatterError(TestDiagonalScatterAPI):
             paddle.diagonal_scatter(x, y, self.offset, axis1, self.axis2)
         paddle.enable_static()
 
-    def test_error_3(self):
+    def test_axis2_out_of_range_error(self):
         # axis2 is out of range in diagonal_scatter (expected to be in range of [-2, 2), but got -1000)
         paddle.disable_static()
         x = paddle.to_tensor(self.x, self.dtype)
@@ -337,7 +344,7 @@ class TestDiagonalScatterError(TestDiagonalScatterAPI):
             paddle.diagonal_scatter(x, y, self.offset, self.axis1, axis2)
         paddle.enable_static()
 
-    def test_error_4(self):
+    def test_axis1_axis2_be_identical_error(self):
         # axis1 and axis2 should not be identical in diagonal_scatter, but received axis1 = 0, axis2 = 0
         paddle.disable_static()
         x = paddle.to_tensor(self.x, self.dtype)

@@ -5855,7 +5855,6 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
     if in_dynamic_mode():
         return _C_ops.fill_diagonal_tensor(x, y, offset, axis1, axis2)
     else:
-        helper = LayerHelper('diagonal_scatter', **locals())
         check_variable_and_dtype(
             x,
             'X',
@@ -5863,7 +5862,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
                 'float16',
                 'float32',
                 'float64',
-                'bfloat16',
+                'uint16',
                 'uint8',
                 'int8',
                 'int32',
@@ -5881,7 +5880,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
                 'float16',
                 'float32',
                 'float64',
-                'bfloat16',
+                'uint16',
                 'uint8',
                 'int8',
                 'int32',
@@ -5892,6 +5891,7 @@ def diagonal_scatter(x, y, offset=0, axis1=0, axis2=1, name=None):
             ],
             'paddle.tensor.manipulation.diagonal_scatter',
         )
+        helper = LayerHelper('diagonal_scatter', **locals())
         out = helper.create_variable_for_type_inference(x.dtype)
         helper.append_op(
             type='fill_diagonal_tensor',
