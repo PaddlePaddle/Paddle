@@ -54,6 +54,18 @@ namespace pybind {
 
 namespace py = ::pybind11;
 
+template <typename T>
+static T PyObjectCast(PyObject* obj) {
+  try {
+    return py::cast<T>(py::handle(obj));
+  } catch (py::cast_error&) {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Python object is not type of %s, the real type is %s",
+        typeid(T).name(),
+        obj->ob_type->tp_name));
+  }
+}
+
 int TensorDtype2NumpyDtype(phi::DataType dtype);
 
 bool PyObject_CheckLongOrConvertToLong(PyObject** obj);
@@ -121,6 +133,7 @@ PyObject* ToPyObject(const std::vector<size_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
+PyObject* ToPyObject(const std::vector<PyObject*>& value);
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
@@ -327,6 +340,13 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     PyObject* args,
     ssize_t arg_idx,
     bool dispensable = false);
+
+std::vector<PyObject*> GetEmptyTensorsWithVarDescFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable);
 
 paddle::Tensor& GetTensorFromArgs(const std::string& op_type,
                                   const std::string& arg_name,

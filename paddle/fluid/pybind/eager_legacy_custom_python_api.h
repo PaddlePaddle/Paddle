@@ -14,6 +14,7 @@
 #pragma once
 
 #include <iostream>
+#include <vector>
 
 #include "paddle/fluid/eager/to_static/run_program_op_func.h"
 #include "paddle/phi/core/enforce.h"
@@ -28,7 +29,13 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    auto Out = GetTensorPtrListFromArgs("run_program", "Out", args, 2, true);
+    std::vector<PyObject *> TensorObjs =
+        GetEmptyTensorsWithVarDescFromArgs("run_program", "Out", args, 2, true);
+    std::vector<Tensor *> Out = std::vector<Tensor *>();
+    for (auto tensor_obj : TensorObjs) {
+      Out.emplace_back(&(reinterpret_cast<TensorObject *>(tensor_obj)->tensor));
+    }
+
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
     framework::AttributeMap attrs;
@@ -40,7 +47,8 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     run_program_ad_func(X, Params, Out, OutScope, attrs);
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
-    Py_RETURN_NONE;
+
+    return ToPyObject(TensorObjs);
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

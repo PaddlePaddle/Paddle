@@ -225,18 +225,22 @@ class PartialProgramLayer:
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
         with UniqueNameGuard(self._name_generator):
-            in_vars, out_vars, in_var_names = self._prepare(inputs)
+            in_vars, in_var_names = self._prepare(inputs)
             self._cast_fp16_if_pure_fp16(in_vars)
             attrs = self._prepare_attributes()
             attrs.extend(["x_names", in_var_names])
 
             self._sync_lr_value_with_scheduler()
 
+            out_var_desc = [
+                self._outputs[var_id].desc for var_id in self._outputs.var_ids
+            ]
+
             with tensor_name_guard(in_vars, in_var_names):
-                _legacy_C_ops.run_program(
+                out_vars = _legacy_C_ops.run_program(
                     self._valid_vars(in_vars),
                     self._valid_vars(self._params),
-                    self._valid_vars(out_vars),
+                    self._valid_vars(out_var_desc),
                     self._create_scope_vec(
                         program_id=self.program_id, use_scope_cache=True
                     ),
@@ -246,7 +250,8 @@ class PartialProgramLayer:
 
             self._update_stop_gradient(out_vars)
             restored_nest_out = self._restore_out(out_vars)
-            return self._remove_no_value(restored_nest_out)
+            restored_nest_out = self._remove_no_value(restored_nest_out)
+            return restored_nest_out
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
@@ -920,44 +925,13 @@ class PartialProgramLayer:
                 # NOTE(Aurelius84): If var is on CPUPlace, it will be transformed multi times
                 # into CUDAPlace when it's as input of multi Ops. so we move it in advance
                 # to avoid this problem.
-                if value.stop_gradient and not value.place._equals(
-                    expected_place
-                ):
-                    var = value._copy_to(expected_place, False)
-                    var.stop_gradient = True
-                else:
-                    var = value
+                var = value
             else:
                 continue
             input_var_names.append(self._inputs[i].desc.name())
             input_vars.append(var)
 
-        # mapping from name(string) -> Tensor
-        out_tensor_map = {}
-
-        def create_out(var_id):
-            var = self._outputs[var_id]
-            assert isinstance(var, framework.Variable)
-            var_desc = var.desc
-
-            if var_desc.name() in out_tensor_map:
-                return out_tensor_map[var_desc.name()]
-
-            out = core.eager.Tensor(
-                var_desc.dtype(),
-                var_desc.shape(),
-                var_desc.name(),
-                var_desc.type(),
-                False,
-            )
-            out.stop_gradient = var.stop_gradient
-            out_tensor_map[var_desc.name()] = out
-            return out
-
-        # Create Tensor to receive output data.
-        out_vars = list(map(create_out, self._outputs.var_ids))
-
-        return input_vars, out_vars, input_var_names
+        return input_vars, input_var_names
 
     def _create_scope_vec(self, program_id=None, use_scope_cache=False):
         inner_scope = self._get_scope(

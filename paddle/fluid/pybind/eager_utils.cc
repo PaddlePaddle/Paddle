@@ -17,6 +17,7 @@ limitations under the License. */
 #undef copysign
 #endif
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -851,6 +852,16 @@ PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value) {
   return result;
 }
 
+PyObject* ToPyObject(const std::vector<PyObject*>& value) {
+  PyObject* result = PyList_New((Py_ssize_t)value.size());
+
+  for (size_t i = 0; i < value.size(); i++) {
+    PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), value[i]);
+  }
+
+  return result;
+}
+
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize) {
 // NOTE(liuyuanle): I encountered a bug(access violation) in windows. ref to
@@ -1312,6 +1323,75 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
         arg_idx,
         reinterpret_cast<PyTypeObject*>(obj->ob_type)->tp_name));
   }
+}
+
+std::vector<PyObject*> GetEmptyTensorsWithVarDescFromArgs(
+    const std::string& op_type,
+    const std::string& arg_name,
+    PyObject* args,
+    ssize_t arg_idx,
+    bool dispensable) {
+  PyObject* list = PyTuple_GET_ITEM(args, arg_idx);
+
+  if (list == nullptr) {
+    if (!dispensable) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+          "None",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    return {};
+  }
+
+  std::vector<PyObject*> result;
+
+  if (PyList_Check(list)) {
+    Py_ssize_t len = PyList_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      auto var_desc =
+          PyObjectCast<paddle::framework::VarDesc>(PyList_GetItem(list, i));
+      PyObject* tensor_obj = CreateTensorFromVarDesc(var_desc);
+      result.emplace_back(tensor_obj);
+    }
+  } else if (PyTuple_Check(list)) {
+    Py_ssize_t len = PyTuple_Size(list);
+    if (len == 0) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+          "empty list",
+          op_type,
+          arg_name,
+          arg_idx));
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      auto var_desc =
+          PyObjectCast<paddle::framework::VarDesc>(PyTuple_GetItem(list, i));
+      PyObject* tensor_obj = CreateTensorFromVarDesc(var_desc);
+      result.emplace_back(tensor_obj);
+    }
+  } else if (list == Py_None) {
+    return {};
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "%s(): argument '%s' (position %d) must be list of VarDesc, but got "
+        "%s",
+        op_type,
+        arg_name,
+        arg_idx,
+        (reinterpret_cast<PyTypeObject*>(list->ob_type))->tp_name));
+  }
+
+  return result;
 }
 
 std::vector<paddle::Tensor*> GetTensorPtrListFromArgs(
