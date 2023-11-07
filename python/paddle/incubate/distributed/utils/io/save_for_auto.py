@@ -55,7 +55,7 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
 
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +SKIP('origin example is not runable')
             >>> dist_model = build_distributed_model()
             >>> path_prefix = "path/to/save_infer"
             >>> save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
