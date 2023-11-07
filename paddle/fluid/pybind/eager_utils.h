@@ -60,9 +60,7 @@ static T PyObjectCast(PyObject* obj) {
     return py::cast<T>(py::handle(obj));
   } catch (py::cast_error&) {
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "Python object is not type of %s, the real type is %s",
-        typeid(T).name(),
-        obj->ob_type->tp_name));
+        "Python object is not type of %s", typeid(T).name()));
   }
 }
 
@@ -134,6 +132,8 @@ PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
+                     bool return_py_none_if_not_initialize = false);
+PyObject* ToPyObject(const std::vector<paddle::Tensor*>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
                      bool return_py_none_if_not_initialize = false);

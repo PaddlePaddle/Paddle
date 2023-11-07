@@ -44,7 +44,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
 
-    return ToPyObject(Out, true);
+    return ToPyObject(Out);
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

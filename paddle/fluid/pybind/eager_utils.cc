@@ -1352,7 +1352,6 @@ paddle::Tensor* CreateTensorFromVarDesc(
     const paddle::framework::VarDesc& var_desc) {
   auto tensor = new paddle::Tensor();
 
-  auto place = egr::Controller::Instance().GetExpectedPlace();
   auto stop_gradient = var_desc.StopGradient();
   auto dtype = var_desc.GetDataType();
   std::vector<int64_t> shape = var_desc.GetShape();
@@ -1365,7 +1364,7 @@ paddle::Tensor* CreateTensorFromVarDesc(
 
   auto ddims = phi::make_ddim(dims);
   tensor->set_name(var_desc.Name());
-  auto autograd_meta = egr::EagerUtils::autograd_meta(&(tensor));
+  auto autograd_meta = egr::EagerUtils::autograd_meta(tensor);
   autograd_meta->SetPersistable(false);
   autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
 
