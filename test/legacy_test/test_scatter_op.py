@@ -21,6 +21,7 @@ from op_test import OpTest, convert_float_to_uint16
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -677,7 +678,7 @@ class TestScatterAPI(unittest.TestCase):
                 )
                 return gpu_out.numpy()
 
-        @test_with_pir_api
+        @switch_to_static_graph
         def test_static_graph():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
