@@ -39,7 +39,7 @@ def parse_args():
     return args
 
 
-def process_job_log(log_data, device_id):
+def process_job_log(log_data, device_id, log_start_time):
     log_pattern = r'.*?Profiler Info: Job \((\d+)\), type = (\w+), micro_batch_id = (\d+), job_start_time = (\d+.\d+), job_end_time = (\d+.\d+)'
     matches = re.findall(log_pattern, log_data)
     events = []
@@ -52,6 +52,9 @@ def process_job_log(log_data, device_id):
 
         start_time = float(job_start_time.strip()) * 1000
         end_time = float(job_end_time.strip()) * 1000
+
+        if log_start_time > start_time:
+            continue
 
         event_start = {
             "name": job_type + "_" + str(job_id),
@@ -84,6 +87,7 @@ def process_step_log(log_data, device_id):
     end_pattern = r'.*?NVTX range pop, time: (\d+.\d+)'
     start_matches = re.findall(start_pattern, log_data)
     end_matches = re.findall(end_pattern, log_data)
+    end_matches = end_matches[len(end_matches) - len(start_matches) :]
 
     step_info = []
     for start_match, stop_match in zip(start_matches, end_matches):
@@ -93,7 +97,12 @@ def process_step_log(log_data, device_id):
             for _ in range(int(step_id) - len(step_info) + 1):
                 step_info.append([float('inf'), 0])
         step_info[int(step_id)] = [start_time, stop_time]
-    return step_info
+
+    start_step = 0
+    for info in step_info:
+        if info[0] == float('inf'):
+            start_step += 1
+    return step_info, start_step
 
 
 def main():
@@ -106,19 +115,23 @@ def main():
         log_file = os.path.join(args.log_dir, "workerlog." + str(device_id))
         with open(log_file, "r") as f:
             log_data = f.read()
-        events = process_job_log(log_data, device_id)
-        step_info = process_step_log(log_data, device_id)
-        all_events.extend(events)
+
+        step_info, start_step = process_step_log(log_data, device_id)
 
         if len(step_info) > len(step_infos):
             for _ in range(len(step_info) - len(step_infos)):
                 step_infos.append([float('inf'), 0])
         for i, info in enumerate(step_info):
+            if info[0] == float('inf'):
+                continue
             start_time = float(info[0].strip()) * 1000
             stop_time = float(info[1].strip()) * 1000
 
             step_infos[i][0] = min(step_infos[i][0], start_time)
             step_infos[i][1] = max(step_infos[i][1], stop_time)
+
+        events = process_job_log(log_data, device_id, step_infos[start_step][0])
+        all_events.extend(events)
 
     for i, info in enumerate(step_infos):
         if info[0] == float('inf'):
