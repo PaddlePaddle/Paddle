@@ -819,6 +819,20 @@ TEST(LayerNorm, Ctor) {
   auto spmd1 =
       LayerNormGradInferSpmd(x, scale, bias, mean, variance, out_grad, 1.0, 2);
 
+  EXPECT_EQ(spmd1.first.size(), static_cast<size_t>(5));
+  EXPECT_EQ(spmd1.second.size(), static_cast<size_t>(3));
+
+  check_dim_mapping(spmd1.first[0], {0, 1, -1});
+  check_dim_mapping(spmd1.first[1], {-1});
+  check_dim_mapping(spmd1.first[2], {-1});
+  check_dim_mapping(spmd1.first[3], {0, 1});
+  check_dim_mapping(spmd1.first[4], {0, 1});
+  check_dim_mapping(spmd1.first[5], {0, 1, -1});
+  check_dim_mapping(spmd1.second[0], {0, 1, -1});
+  check_dim_mapping(spmd1.second[1], {-1});
+  check_dim_mapping(spmd1.second[2], {-1});
+  check_partial_dims(spmd1.second[1], {0, 1});
+  check_partial_dims(spmd1.second[2], {0, 1});
   // test 2
   mean = build_input({16}, {0});
   variance = build_input({16}, {0});
@@ -826,6 +840,19 @@ TEST(LayerNorm, Ctor) {
   bias = build_input({32, 32}, {0, 1});
   auto spmd2 =
       LayerNormGradInferSpmd(x, scale, bias, mean, variance, out_grad, 1.0, 1);
+  EXPECT_EQ(spmd2.first.size(), static_cast<size_t>(5));
+  EXPECT_EQ(spmd2.second.size(), static_cast<size_t>(3));
+  check_dim_mapping(spmd2.first[0], {0, -1, -1});
+  check_dim_mapping(spmd2.first[1], {-1, -1});
+  check_dim_mapping(spmd2.first[2], {-1, -1});
+  check_dim_mapping(spmd2.first[3], {0});
+  check_dim_mapping(spmd2.first[4], {0});
+  check_dim_mapping(spmd2.first[5], {0, -1, -1});
+  check_dim_mapping(spmd1.second[0], {0, -1, -1});
+  check_dim_mapping(spmd1.second[1], {-1, -1});
+  check_dim_mapping(spmd1.second[2], {-1, -1});
+  check_partial_dims(spmd1.second[1], {0});
+  check_partial_dims(spmd1.second[2], {0});
 }
 
 TEST(Util, Ctor) {
