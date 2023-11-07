@@ -92,7 +92,7 @@ static std::vector<paddle::Tensor> filter_unused_input_var_in_backward(
   return filter_x;
 }
 
-static std::vector<paddle::Tensor> newir_filter_unused_input_var_in_backward(
+static std::vector<paddle::Tensor> pir_filter_unused_input_var_in_backward(
     const std::vector<paddle::Tensor>& x,
     const std::string x_key_name,
     const paddle::framework::AttributeMap& attrs) {
@@ -134,7 +134,6 @@ inline void run_program_ad_func(
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
   VLOG(2) << "start run run_program ad function.";
@@ -156,8 +155,7 @@ inline void run_program_ad_func(
   auto params_tmp = Trans2ContiguousTensors(params);
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  RunProgramAPI(
-      x_tmp, params_tmp, out, step_scope, dout, require_any_grad, attrs);
+  RunProgramAPI(x_tmp, params_tmp, out, step_scope, require_any_grad, attrs);
   VLOG(2) << "start run run_program grad";
   auto is_test = false;
   if (attrs.count("is_test")) {
@@ -208,15 +206,14 @@ inline void run_program_ad_func(
   }
 }
 
-inline void newir_run_program_ad_func(
+inline void pir_run_program_ad_func(
     const std::vector<paddle::Tensor>& x,
     const std::vector<paddle::Tensor>& params,
     std::vector<paddle::Tensor*>& out,                   // NOLINT
     std::vector<paddle::framework::Scope*>& step_scope,  // NOLINT
-    std::vector<paddle::Tensor*>& dout,                  // NOLINT
     const paddle::framework::AttributeMap& attrs) {
   // Prepare Autograd Meta
-  VLOG(2) << "start run newir run_program ad function.";
+  VLOG(2) << "start run pir run_program ad function.";
   auto deref_out = details::DereferenceTensors(out);
   std::vector<egr::AutogradMeta*> p_autograd_x =
       egr::EagerUtils::nullable_autograd_meta(x);
@@ -235,13 +232,18 @@ inline void newir_run_program_ad_func(
   auto output_size =
       PADDLE_GET_CONST(std::vector<::pir::Value>, attrs.at("fo")).size();
   auto middles = std::vector<paddle::Tensor*>();
-  std::shared_ptr<NewIRGradNodeRunProgram> grad_node;
-  VLOG(2) << "start run run_program with require_any_grad = "
-          << require_any_grad;
 
-  if (require_any_grad) {
+  auto is_test = false;
+  if (attrs.count("is_test")) {
+    is_test = PADDLE_GET_CONST(bool, attrs.at("is_test"));
+  }
+  std::shared_ptr<PirGradNodeRunProgram> grad_node;
+  VLOG(2) << "start run run_program with require_any_grad = "
+          << require_any_grad << ", is_test = " << is_test;
+
+  if (!is_test && require_any_grad) {
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
-    grad_node = std::make_shared<NewIRGradNodeRunProgram>(1, 2);
+    grad_node = std::make_shared<PirGradNodeRunProgram>(1, 2);
     grad_node->GetMiddle().resize(middle_size);
     grad_node->GetOutputs().resize(output_size);
     for (size_t i = 0; i < middle_size; ++i) {
@@ -265,16 +267,16 @@ inline void newir_run_program_ad_func(
 
   // Call forward function
   // if require_any_grad is False, don't save any middle vars.
-  NewIRRunProgramAPI(
-      x, params, out, middles, step_scope, dout, require_any_grad, attrs);
-  if (require_any_grad) {
+  PirRunProgramAPI(
+      x, params, out, middles, step_scope, require_any_grad, attrs);
+  if (!is_test && require_any_grad) {
     egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
 
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 
     // Clear unused x vars
-    auto filter_x = newir_filter_unused_input_var_in_backward(x, "bx", attrs);
+    auto filter_x = pir_filter_unused_input_var_in_backward(x, "bx", attrs);
     // Set TensorWrappers
     grad_node->SetFwdX(filter_x);
 

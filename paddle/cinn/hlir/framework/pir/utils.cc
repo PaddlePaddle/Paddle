@@ -16,7 +16,9 @@
 
 #include <string>
 #include <unordered_map>
+#include "glog/logging.h"
 
+#include "paddle/cinn/hlir/framework/op.h"
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/phi/common/data_type.h"
@@ -34,6 +36,14 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.max", "reduce_max"},
     {"pd_op.add", "elementwise_add"}};
 
+const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
+    "subtract"};
+
+bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
+  return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
+         CINN_WHITE_OPS.end();
+}
+
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   std::string name = op.name();
   if (OP_NAMES.count(name)) {
@@ -49,8 +59,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::pir::Value>()(value));
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
@@ -178,6 +189,23 @@ common::Type CompatibleInfo::ConvertIRType(::pir::Type type) {
   CASE_TYPE(BoolType, UI1)
 
   LOG(FATAL) << "unknown ir::Type " << type;
+}
+
+int CompatibleInfo::ShapeProduct(const std::vector<int>& shape) {
+  return std::accumulate(shape.begin(), shape.end(), 1, std::multiplies<int>());
+}
+
+OpPatternKind CompatibleInfo::OpKind(const ::pir::Operation& op) {
+  auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+  const hlir::framework::Operator* cinn_op =
+      Operator::Get(CompatibleInfo::OpName(op));
+  CHECK(op_pattern_dict.Find(cinn_op));
+  return op_pattern_dict[cinn_op];
+}
+
+std::vector<int> CompatibleInfo::ValueShape(const ::pir::Value& value) {
+  auto& dim = value.type().dyn_cast<::pir::DenseTensorType>().dims();
+  return phi::vectorize<int>(dim);
 }
 
 }  // namespace pir
