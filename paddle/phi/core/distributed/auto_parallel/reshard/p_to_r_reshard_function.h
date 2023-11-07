@@ -14,13 +14,16 @@
 
 #pragma once
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
 namespace phi {
 namespace distributed {
 
-class SameNdMeshReshardFunction final : public ReshardFunction {
+class PToRReshardFunction final : public ReshardFunction {
  public:
+  PToRReshardFunction() = default;
+  ~PToRReshardFunction() = default;
+
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
 
