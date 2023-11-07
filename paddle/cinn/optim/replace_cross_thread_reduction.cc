@@ -31,8 +31,6 @@ namespace cinn {
 namespace optim {
 namespace {
 
-namespace {
-
 struct BufferCmp {
   bool operator()(const ir::Buffer& a, const ir::Buffer& b) const {
     if (a->name == b->name) return false;
