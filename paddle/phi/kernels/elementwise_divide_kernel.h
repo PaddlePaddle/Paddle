@@ -26,13 +26,23 @@ void DivideKernel(const Context& dev_ctx,
                   DenseTensor* out);
 
 template <typename T, typename Context>
+void Divide(const Context& dev_ctx,
+            const DenseTensor& x,
+            const DenseTensor& y,
+            DenseTensor* dense_out) {
+  MetaTensor meta_out(dense_out);
+  ElementwiseInferMeta(x, y, &meta_out);
+  if (x.initialized()) {
+    DivideKernel<T, Context>(dev_ctx, x, y, dense_out);
+  }
+}
+
+template <typename T, typename Context>
 DenseTensor Divide(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y) {
   DenseTensor dense_out;
-  MetaTensor meta_out(&dense_out);
-  ElementwiseInferMeta(x, y, &meta_out);
-  DivideKernel<T, Context>(dev_ctx, x, y, &dense_out);
+  Divide<T, Context>(dev_ctx, x, y, &dense_out);
   return dense_out;
 }
 

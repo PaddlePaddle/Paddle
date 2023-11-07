@@ -50,13 +50,24 @@ class ConditionBlockCombination {
  public:
   ConditionBlockCombination(const ::paddle::framework::BlockDesc& src_block,
                             const std::vector<uint64_t>& op_ids);
+
   const std::string& CondVarName() const;
-  int TrueBlockId() const;
-  int FalseBlockId() const;
-  size_t OutputSize() const;
-  std::vector<::paddle::framework::VarDesc*> OutputVars() const;
+
+  std::vector<std::vector<::paddle::framework::VarDesc*>> OutputVars() const;
+
+  size_t MainOutputSize() const;
+
   std::vector<std::string> TrueBlockOutputVarNames() const;
+
+  std::vector<::paddle::framework::OpDesc*> TrueBlockInitOps() const;
+
+  int TrueBlockId() const;
+
   std::vector<std::string> FalseBlockOutputVarNames() const;
+
+  std::vector<::paddle::framework::OpDesc*> FalseBlockInitOps() const;
+
+  int FalseBlockId() const;
 
  private:
   bool Verify(const std::vector<::paddle::framework::OpDesc*>& op_list);
@@ -106,7 +117,8 @@ class ProgramTranslator {
 
   void Translate();
 
-  std::unordered_map<std::string, std::vector<pir::Value>> VarDesc2Value();
+  std::unordered_map<std::string, std::vector<pir::OpResult>>
+  VarDesc2OpResult();
 
  private:
   const ProgramDesc* legacy_program_;  // not owned
@@ -127,16 +139,18 @@ class ProgramTranslator {
 
   static const std::unordered_set<std::string> unsupported_ops;
 
-  void TranslateBlock(const BlockDesc& src_block,
-                      uint64_t start_id,
-                      uint64_t end_id,
-                      TranslationContext* translation_ctx,
-                      pir::Block* dest_block,
-                      bool for_cond_block = false,
-                      std::vector<std::string> skip_cond_assign = {});
+  void TranslateBlock(
+      const BlockDesc& src_block,
+      uint64_t start_id,
+      uint64_t end_id,
+      TranslationContext* translation_ctx,
+      pir::Block* dst_block,
+      bool for_cond_block = false,
+      const std::vector<std::string>& cond_sub_block_outputs = {},
+      const std::vector<::paddle::framework::OpDesc*>& cond_init_ops = {});
   void TranslateGeneralOperation(const OpDesc* src_op,
                                  TranslationContext* translation_ctx,
-                                 pir::Block* dest_block);
+                                 pir::Block* dst_block);
   void GetParameterForSingleBlock(const BlockDesc& block);
   void SetParameterFromSingleBlock(const BlockDesc& block);
   void SetStopGradientAttributeForAllValue(const BlockDesc& block);
@@ -146,10 +160,10 @@ class ProgramTranslator {
   pir::Operation* TranslateCondIfOperation(
       const ConditionBlockCombination& cond_ops,
       TranslationContext* translation_ctx,
-      pir::Block* dest_block);
+      pir::Block* dst_block);
   void TranslateWhileOperation(const OpDesc* op,
                                TranslationContext* translation_ctx,
-                               pir::Block* dest_block);
+                               pir::Block* dst_block);
 };
 
 }  // namespace translator

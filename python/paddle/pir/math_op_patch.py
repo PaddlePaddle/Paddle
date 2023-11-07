@@ -261,14 +261,16 @@ def monkey_patch_opresult():
                             break
                     else:
                         # when break is not triggered, enter the else branch
-                        other_var_opresult = paddle.fill_constant(
-                            self.shape,
-                            lhs_dtype,
-                            other_var,
+                        other_var_opresult = (
+                            paddle.tensor.creation.fill_constant(
+                                self.shape,
+                                lhs_dtype,
+                                other_var,
+                            )
                         )
                 else:
                     # add fill_op to current_block
-                    other_var_opresult = paddle.fill_constant(
+                    other_var_opresult = paddle.tensor.creation.fill_constant(
                         [],
                         lhs_dtype,
                         other_var,
@@ -287,7 +289,9 @@ def monkey_patch_opresult():
                 python_api == paddle.divide
             ) and self.dtype in _supported_int_dtype_:
                 self = paddle.cast(self, DataType.FLOAT32)
-                other_var = paddle.cast(other_var_opresult, DataType.FLOAT32)
+                other_var_opresult = paddle.cast(
+                    other_var_opresult, DataType.FLOAT32
+                )
 
             out = python_api(self, other_var_opresult)
             return out
@@ -368,6 +372,56 @@ def monkey_patch_opresult():
             '__rtruediv__',
             _binary_creator_('__rtruediv__', paddle.tensor.divide, True, None),
         ),
+        (
+            '__pow__',
+            _binary_creator_('__pow__', paddle.tensor.pow, False, None),
+        ),
+        (
+            '__rpow__',
+            _binary_creator_('__rpow__', paddle.tensor.pow, True, None),
+        ),
+        (
+            '__floordiv__',
+            _binary_creator_(
+                '__floordiv__', paddle.tensor.floor_divide, False, None
+            ),
+        ),
+        (
+            '__mod__',
+            _binary_creator_('__mod__', paddle.tensor.remainder, False, None),
+        ),
+        (
+            '__matmul__',
+            _binary_creator_('__matmul__', paddle.tensor.matmul, False, None),
+        ),
+        #  for logical compare
+        # TODO(gouzil): Open after deleting c++ logic
+        # (
+        #     '__eq__',
+        #     _binary_creator_('__eq__', paddle.tensor.equal, False, None),
+        # ),
+        (
+            '__ne__',
+            _binary_creator_('__ne__', paddle.tensor.not_equal, False, None),
+        ),
+        (
+            '__lt__',
+            _binary_creator_('__lt__', paddle.tensor.less_than, False, None),
+        ),
+        (
+            '__le__',
+            _binary_creator_('__le__', paddle.tensor.less_equal, False, None),
+        ),
+        (
+            '__gt__',
+            _binary_creator_('__gt__', paddle.tensor.greater_than, False, None),
+        ),
+        (
+            '__ge__',
+            _binary_creator_(
+                '__ge__', paddle.tensor.greater_equal, False, None
+            ),
+        ),
     ]
 
     global _already_patch_opresult
@@ -386,6 +440,12 @@ def monkey_patch_opresult():
             method_impl = getattr(paddle.tensor, method_name, None)
             if method_impl:
                 setattr(OpResult, method_name, method_impl)
+
+        # Bit operation symbol
+        for magic_method, origin_method in paddle.tensor.magic_method_func:
+            impl = getattr(paddle.tensor, origin_method, None)
+            if impl:
+                setattr(OpResult, magic_method, impl)
 
         # Handling __getitem__
         from ..base.variable_index import _getitem_static

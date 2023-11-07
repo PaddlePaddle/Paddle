@@ -16,7 +16,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
 from paddle.nn import BatchNorm, Linear
@@ -41,8 +41,7 @@ class SimpleNet(paddle.nn.Layer):
         return dx[0]
 
 
-@dy2static_unittest
-class TestGradNameParse(unittest.TestCase):
+class TestGradNameParse(Dy2StTestBase):
     def test_grad_name_parse(self):
         net = SimpleNet()
         opt = paddle.optimizer.Adam(
@@ -69,8 +68,7 @@ def tanh_high_order_grad(x):
     return paddle.grad(y, x, create_graph=True)[0]
 
 
-@dy2static_unittest
-class TestTanhHighOrderGrad(unittest.TestCase):
+class TestTanhHighOrderGrad(Dy2StTestBase):
     def setUp(self):
         self.func = tanh_high_order_grad
 
@@ -118,7 +116,6 @@ def matmul_high_order_grad(x, y):
     return g[0]
 
 
-@dy2static_unittest
 class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad
@@ -138,7 +135,6 @@ class TestMatMulHighOrderGrad1(TestTanhHighOrderGrad):
         self.dy2st_grad_input = (x2,)
 
 
-@dy2static_unittest
 class TestMatMulHighOrderGrad2(TestTanhHighOrderGrad):
     def setUp(self):
         self.func = matmul_high_order_grad
