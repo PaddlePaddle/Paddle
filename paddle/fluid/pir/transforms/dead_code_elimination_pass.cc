@@ -35,16 +35,16 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<paddle::dialect::FetchOp>() ||
-        op->isa<paddle::dialect::ShadowOutputOp>())
+    if (op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>() ||
+        op->isa<paddle::dialect::ShadowOutputOp>()) {
       return false;
-
+    }
     return op->use_empty();
   }
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (op->dyn_cast<pir::GetParameterOp>()) {
+    if (op->isa<pir::GetParameterOp>()) {
       // Delete parameter from program.
       pir::GetParameterOp get_parameter_op =
           op->dyn_cast<pir::GetParameterOp>();
