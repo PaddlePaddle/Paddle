@@ -919,6 +919,76 @@ class TestTensorFloa32Float16Add(TestTensorFloa32Bfloat16OrFloat16Add):
             self._floa32_bfloat16_or_float16_add(y_dtype=paddle.float16)
 
 
+class TestElementwiseAddOpDistributed(OpTest):
+    def init_kernel_type(self):
+        self.use_mkldnn = False
+
+    def setUp(self):
+        self.op_type = "elementwise_add"
+        self.python_api = paddle.add
+        self.public_python_api = paddle.add
+        self.prim_op_type = "prim"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.if_check_prim()
+        self.if_enable_cinn()
+
+        self.inputs = {
+            'X': OpTest.np_dtype_to_base_dtype(self.x),
+            'Y': OpTest.np_dtype_to_base_dtype(self.y),
+        }
+        self.input_specs = {
+            "X": ["x", None],
+            "Y": [None, None],
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def check_dygraph(self):
+        return not self.use_mkldnn and self.axis == -1
+
+    def test_check_output(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        self.check_output(
+            check_dygraph=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_auto_parallel=True,
+        )
+
+    def test_check_grad_normal(self):
+        # TODO(wangzhongpu): support mkldnn op in dygraph mode
+        if self.dtype == np.float16:
+            return
+        self.check_grad(
+            ['X', 'Y'],
+            'Out',
+            check_dygraph=self.check_dygraph(),
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_dygraph(),
+            check_pir=self.check_dygraph(),
+            check_auto_parallel=True,
+        )
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [30, 10]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [30, 10]).astype(self.dtype)
+        self.out = np.add(self.x, self.y)
+
+    def init_dtype(self):
+        self.dtype = np.float64
+
+    def init_axis(self):
+        self.axis = -1
+
+    def if_check_prim(self):
+        self.check_prim = self.axis == -1
+
+    def if_enable_cinn(self):
+        pass
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

@@ -1970,6 +1970,7 @@ class OpTest(unittest.TestCase):
         inplace_atol=None,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         core._set_prim_all_enabled(False)
         core.set_prim_eager_enabled(False)
@@ -2532,6 +2533,43 @@ class OpTest(unittest.TestCase):
         if only_check_prim:
             return
 
+        if check_auto_parallel:
+            import pathlib
+            import pickle
+
+            test_class_name = self.__class__.__name__
+            file = open(
+                f"{test_class_name}_{self.op_type}_forward_info.pkl",
+                "wb",
+            )
+            info = {}
+            info["op_type"] = self.op_type
+            info["python_api"] = self.python_api
+            info["dtype"] = self.dtype
+            info["input_specs"] = self.input_specs
+            info["inputs"] = self.inputs
+            info["attrs"] = self.attrs
+            info["outputs"] = self.outputs
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
+                info["place"] = "cpu"
+            if isinstance(place, paddle.base.libpaddle.CUDAPlace):
+                info["place"] = "gpu"
+            info["python_out_sig"] = (
+                self.python_out_sig if hasattr(self, "python_out_sig") else None
+            )
+
+            pickle.dump(info, file)
+            file.close()
+            import os
+
+            current_path = str(pathlib.Path(__file__).resolve().parents[0])
+            if info["place"] == "gpu":
+                os.system(
+                    "python -m paddle.distributed.launch --devices 0,1 {}/{}_{}_forward_test.py".format(
+                        current_path, test_class_name, self.op_type
+                    )
+                )
+
         static_checker = StaticChecker(self, self.outputs)
         static_checker.check()
         outs, fetch_list = static_checker.outputs, static_checker.fetch_list
@@ -2660,6 +2698,7 @@ class OpTest(unittest.TestCase):
         check_cinn=False,
         only_check_prim=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         self.__class__.op_type = self.op_type
         if self.is_mkldnn_op():
@@ -2686,6 +2725,7 @@ class OpTest(unittest.TestCase):
                 inplace_atol=inplace_atol,
                 check_cinn=check_cinn,
                 check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
             )
             if not res and only_check_prim:
                 continue
@@ -2870,6 +2910,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2894,6 +2935,7 @@ class OpTest(unittest.TestCase):
                 atol=atol,
                 check_cinn=check_cinn,
                 check_pir=check_pir,
+                check_auto_parallel=check_auto_parallel,
             )
 
     def check_grad_with_place(
@@ -2915,6 +2957,7 @@ class OpTest(unittest.TestCase):
         atol=1e-5,
         check_cinn=False,
         check_pir=False,
+        check_auto_parallel=False,
     ):
         if hasattr(self, "use_custom_device") and self.use_custom_device:
             check_dygraph = False
@@ -2952,6 +2995,46 @@ class OpTest(unittest.TestCase):
 
         if only_check_prim:
             return
+
+        if check_auto_parallel:
+            import pathlib
+            import pickle
+
+            test_class_name = self.__class__.__name__
+            file = open(
+                f"./{test_class_name}_{self.op_type}_grad_info.pkl",
+                "wb",
+            )
+            test_info = {}
+            test_info["op_type"] = self.op_type
+            test_info["python_api"] = self.python_api
+            test_info["dtype"] = self.dtype
+            test_info["input_specs"] = self.input_specs
+            test_info["inputs"] = self.inputs
+            test_info["attrs"] = self.attrs
+            test_info["outputs"] = self.outputs
+            if isinstance(place, paddle.base.libpaddle.CPUPlace):
+                test_info["place"] = "cpu"
+            if isinstance(place, paddle.base.libpaddle.CUDAPlace):
+                test_info["place"] = "gpu"
+            test_info["python_out_sig"] = (
+                self.python_out_sig if hasattr(self, "python_out_sig") else None
+            )
+            test_info["inputs_to_check"] = inputs_to_check
+            test_info["output_names"] = output_names
+            test_info["no_grad_set"] = no_grad_set
+            test_info["user_defined_grad_outputs"] = user_defined_grad_outputs
+            pickle.dump(test_info, file)
+            file.close()
+            import os
+
+            current_path = str(pathlib.Path(__file__).resolve().parents[0])
+            if test_info["place"] == "gpu":
+                os.system(
+                    "python -m paddle.distributed.launch --devices 0,1 {}/{}_{}_grad_test.py".format(
+                        current_path, test_class_name, self.op_type
+                    )
+                )
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else {}
         op_outputs = self.outputs if hasattr(self, "outputs") else {}
