@@ -55,7 +55,10 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #endif
@@ -1402,7 +1405,13 @@ void BindUtils(pybind11::module *m) {
 std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;

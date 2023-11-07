@@ -404,9 +404,11 @@ class PartialProgramLayer:
     # whole
     @switch_to_static_graph
     def _create_program(self, is_infer_mode=False):
+        print("!!!!!!!!!!!!!!!!")
         if is_infer_mode:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
+            print(infer_program)
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
