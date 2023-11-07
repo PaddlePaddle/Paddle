@@ -308,6 +308,7 @@ cc_test(
        memory
        device_context
        broadcast_op_handle)
+
 cc_test_old(
   gather_op_test
   SRCS

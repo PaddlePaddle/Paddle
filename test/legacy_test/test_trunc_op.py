@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -36,10 +37,10 @@ class TestTruncOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5)
+        self.check_grad(['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True)
 
 
 class TestFloatTruncOp(TestTruncOp):
@@ -66,6 +67,7 @@ class TestTruncAPI(unittest.TestCase):
         self.x = np.random.random((20, 20)).astype(np.float32)
         self.place = paddle.CPUPlace()
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -114,11 +116,13 @@ class TestTruncBF16OP(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
+        self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', numeric_grad_delta=1e-5)
+        self.check_grad_with_place(
+            place, ['X'], 'Out', numeric_grad_delta=1e-5, check_pir=True
+        )
 
 
 if __name__ == "__main__":
