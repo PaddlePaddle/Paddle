@@ -1245,7 +1245,25 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
     out->set_dims(x.dims());
   }
 
-  out->set_dtype(x.dtype());
+  constexpr auto f8 = 1ULL << (static_cast<uint8_t>(DataType::FLOAT64) - 1);
+  constexpr auto c4 = 1ULL << (static_cast<uint8_t>(DataType::COMPLEX64) - 1);
+  constexpr auto c8 = 1ULL << (static_cast<uint8_t>(DataType::COMPLEX128) - 1);
+  uint64_t get_prior_dtype = (1ULL << (static_cast<uint8_t>(x.dtype()) - 1)) |
+                             (1ULL << (static_cast<uint8_t>(y.dtype()) - 1));
+  DataType promoted_type = x.dtype();
+
+  // dtype need promote when meet input dtype with more precision
+  if ((get_prior_dtype & c8) == c8) {
+    promoted_type = DataType::COMPLEX128;
+  } else if ((get_prior_dtype & c4) == c4) {
+    if ((get_prior_dtype & f8) == f8) {
+      promoted_type = DataType::COMPLEX128;
+    } else {
+      promoted_type = DataType::COMPLEX64;
+    }
+  }
+
+  out->set_dtype(promoted_type);
   out->set_layout(x.layout());
   out->share_lod(x);
 }

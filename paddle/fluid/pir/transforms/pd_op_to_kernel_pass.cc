@@ -1678,9 +1678,7 @@ void ProcessBlock(
 
 std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
                                                     phi::Place place) {
-  if (FLAGS_print_ir) {
-    std::cout << "IR before lowering = " << *prog << std::endl;
-  }
+  VLOG(3) << "PIR kernel program before lowering = " << *prog;
 
   auto program = std::make_unique<pir::Program>(pir::IrContext::Instance());
 
@@ -1696,9 +1694,7 @@ std::unique_ptr<pir::Program> PdOpLowerToKernelPass(pir::Program* prog,
   ProcessBlock(
       place, block, program->block(), ctx, &map_op_pair, &map_value_pair);
 
-  if (FLAGS_print_ir) {
-    std::cout << "IR after lowering = " << *program << std::endl;
-  }
+  VLOG(3) << "PIR kernel program after lowering = " << *program;
 
   return program;
 }
