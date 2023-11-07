@@ -96,11 +96,14 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     } else {
       infer_context = infer_engine_->createExecutionContext();
     }
+#if IS_TRT_VERSION_GE(8500)
     int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
     for (int i = 0; i < endBindingIndex; ++i) {
       const auto tensorName = infer_engine_->getIOTensorName(i);
       m_IOTensorNames.emplace_back(tensorName);
     }
+#endif
+
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
         platform::errors::InvalidArgument(
@@ -173,27 +176,23 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              std::vector<void *> *buffers,
                              int batch_size,
                              cudaStream_t stream) {
+#if IS_TRT_VERSION_GE(8500)
   int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
   if (with_dynamic_shape()) {
-    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode and use enqueueV3";
     for (int i = 0; i < endBindingIndex; ++i) {
       const auto tensorName = infer_engine_->getIOTensorName(i);
       auto const &name = infer_engine_->getIOTensorName(i);
       auto const &mode = infer_engine_->getTensorIOMode(name);
       if (mode == nvinfer1::TensorIOMode::kINPUT) {
         nvinfer1::Dims const dims = context->getTensorShape(name);
-#if IS_TRT_VERSION_GE(8500)
         isShapeInferenceIO = infer_engine_->isShapeInferenceIO(name);
-#else
-        isShapeInferenceIO = infer_engine_->isShapeBinding(i);
-#endif
         nvinfer1::Dims inputDims;
         inputDims.nbDims = dims.nbDims;
         inputDims.d[0] = batch_size;
         for (int32_t m = 1u; m < dims.nbDims; m++) {
           inputDims.d[m] = dims.d[m];
         }
-#if IS_TRT_VERSION_GE(8500)
         if (!isShapeInferenceIO) {
           context->setInputShape(tensorName, inputDims);
         }
@@ -226,7 +225,7 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
 #if IS_TRT_VERSION_GE(8500)
     ret = context->enqueueV3(stream);
 #else
-          ret = context->enqueueV2(buffers->data(), stream, nullptr);
+    ret = context->enqueueV2(buffers->data(), stream, nullptr);
 #endif
   }
   return ret;
@@ -250,7 +249,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
 #else
-        infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
+  infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
 #endif
 
   bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
@@ -430,11 +429,11 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-        ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
-            *network(), *infer_builder_config_));
-        infer_runtime_.reset(createInferRuntime(&logger_));
-        infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
-            ihost_memory_->data(), ihost_memory_->size()));
+  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
+      *network(), *infer_builder_config_));
+  infer_runtime_.reset(createInferRuntime(&logger_));
+  infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
+      ihost_memory_->data(), ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -956,7 +955,7 @@ void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
     out_file.close();
   }
 #else
-        LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
+  LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
 #endif
 }
 
