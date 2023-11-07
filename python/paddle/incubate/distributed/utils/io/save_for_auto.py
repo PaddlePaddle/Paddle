@@ -55,9 +55,10 @@ def save_for_auto_inference(path_prefix, dist_model, cvt2cpu=False):
 
         .. code-block:: python
 
-            dist_model = build_distributed_model()
-            path_prefix = "path/to/save_infer"
-            save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> dist_model = build_distributed_model()
+            >>> path_prefix = "path/to/save_infer"
+            >>> save_for_auto_inference(path_prefix, dist_model=dist_model, original_model=single_model, cvt2cpu=False)
 
     Outputs:
         path/to/save_infer_dist0.pdparams path/to/save_infer_dist1.pdparams path/to/save_infer_dist2.pdparams ...
