@@ -532,9 +532,7 @@ class PipelineLayer(nn.Layer):
             if framework.in_dynamic_mode():
                 with paddle.framework.no_grad():
                     paddle.distributed.all_reduce(
-                        param.grad
-                        if not hasattr(param, "main_grad")
-                        else param.main_grad,
+                        param.actual_grad,
                         group=comm['group'],
                     )
             else:

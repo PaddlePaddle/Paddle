@@ -243,70 +243,56 @@ class InnerOverlapLinear(paddle.autograd.PyLayer):
                     "with cuda 11.6 or higher."
                 )
 
+            multi_precision = hasattr(weight, "main_grad")
             if bias is None:
-                if hasattr(weight, "main_grad"):
+                if weight.actual_grad is not None:
                     (
-                        weight.main_grad,
+                        weight.acutal_grad,
                         _,
                     ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, weight.main_grad, None, True, False
+                        x,
+                        dy,
+                        weight.actual_grad,
+                        None,
+                        multi_precision,
+                        False,
                     )
                     task.wait()
                     return dx, None
                 else:
-                    if weight.grad is not None:
-                        (
-                            weight.grad,
-                            _,
-                        ) = paddle._C_ops.fused_linear_param_grad_add(
-                            x, dy, weight.grad, None, False, False
-                        )
-                        task.wait()
-                        return dx, None
-                    else:
-                        (
-                            dw,
-                            _,
-                        ) = paddle._C_ops.fused_linear_param_grad_add(
-                            x, dy, None, None, False, False
-                        )
-                        task.wait()
-                        return dx, dw
+                    (
+                        dw,
+                        _,
+                    ) = paddle._C_ops.fused_linear_param_grad_add(
+                        x, dy, None, None, False, False
+                    )
+                    task.wait()
+                    return dx, dw
 
-            if hasattr(weight, "main_grad") and hasattr(bias, "main_grad"):
+            if weight.actual_grad is not None:
+                assert bias.actual_grad is not None
                 (
-                    weight.main_grad,
-                    bias.main_grad,
+                    weight.actual_grad,
+                    bias.actual_grad,
                 ) = paddle._C_ops.fused_linear_param_grad_add(
                     x,
                     dy,
-                    weight.main_grad,
-                    bias.main_grad,
-                    True,
+                    weight.actual_grad,
+                    bias.actual_grad,
+                    multi_precision,
                     True,
                 )
                 task.wait()
                 return dx, None, None
             else:
-                if weight.grad is not None:
-                    assert bias.grad is not None
-                    (
-                        weight.grad,
-                        bias.grad,
-                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, weight.grad, bias.grad, False, True
-                    )
-                    task.wait()
-                    return dx, None, None
-                else:
-                    (
-                        dw,
-                        dbias,
-                    ) = paddle._C_ops.fused_linear_param_grad_add(
-                        x, dy, None, None, False, True
-                    )
-                    task.wait()
-                    return dx, dw, dbias
+                (
+                    dw,
+                    dbias,
+                ) = paddle._C_ops.fused_linear_param_grad_add(
+                    x, dy, None, None, False, True
+                )
+                task.wait()
+                return dx, dw, dbias
         else:
             dy = dy.reshape([-1, dy.shape[-1]])
             dw = paddle.matmul(

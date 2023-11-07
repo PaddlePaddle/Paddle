@@ -254,10 +254,8 @@ class GroupShardedStage2(nn.Layer):
         with paddle.no_grad():
             for param in self._trainable_params:
                 if param.name in self._param_grads:
-                    if self.use_main_grad and param.main_grad is not None:
-                        param.main_grad.scale_(scale=scale_factor)
-                    elif param.grad is not None:
-                        param.grad.scale_(scale=scale_factor)
+                    if param.actual_grad is not None:
+                        param.actual_grad.scale_(scale=scale_factor)
                 # param._reset_grad_inplace_version(True)
 
             # Scale grads of master params with offload strategy
@@ -379,15 +377,12 @@ class GroupShardedStage2(nn.Layer):
     def _get_scaled_grad_fn(self, param):
         @paddle.autograd.no_grad()
         def scale(grad):
-            if hasattr(param, "main_grad"):
-                param.main_grad.scale_(self._world_size_scaling)
+            if grad is not None and grad._is_initialized():
+                grad.scale_(self._world_size_scaling)
             else:
-                if grad is not None and grad._is_initialized():
-                    grad.scale_(self._world_size_scaling)
-                else:
-                    assert param.grad is not None
-                    assert param.grad._is_initialized()
-                    param.grad.scale_(self._world_size_scaling)
+                assert param.actual_grad is not None
+                assert param.actual_grad._is_initialized()
+                param.actual_grad.scale_(self._world_size_scaling)
 
         return scale
 
@@ -433,9 +428,7 @@ class GroupShardedStage2(nn.Layer):
                     # Synchronize the reduce parameter gradient asynchronize
                     self._sharding_optimizers[0]._update_task(
                         dist.reduce(
-                            tensor=param.grad
-                            if not self.use_main_grad
-                            else param.main_grad,
+                            tensor=param.actual_grad,
                             dst=self._group.ranks[dst_rank],
                             group=self._group,
                             sync_op=not self._reduce_overlap,
@@ -664,16 +657,12 @@ class GroupShardedStage2(nn.Layer):
                         )
             for param in self._trainable_params:
                 if param.name in self._param_grads:
-                    if self.use_main_grad and param.main_grad is None:
-                        continue
-                    elif param.grad is None:
+                    if param.actual_grad is None:
                         continue
                     dst_rank = self._trainable_param2rank[param.name]
                     if dst_rank == self._rank:
                         dist.all_reduce(
-                            tensor=param.grad
-                            if not self.use_main_grad
-                            else param.main_grad,
+                            tensor=param.actual_grad,
                             group=self._dp_group,
                             sync_op=True,
                         )

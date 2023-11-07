@@ -244,13 +244,8 @@ class DygraphShardingOptimizer:
             sharding_nrank = hcg.get_sharding_parallel_group().nranks
             for param in parameter_list:
                 g_var = None
-                if param.trainable and (param._grad_ivar() is not None):
-                    g_var = param._grad_ivar()
-                if param.trainable and hasattr(param, "main_grad"):
-                    assert (
-                        param._grad_ivar() is None
-                    ), "param.grad should be None when using main_grad"
-                    g_var = param.main_grad
+                if param.trainable and param.actual_grad is not None:
+                    g_var = param.actual_grad
                 if g_var is not None:
                     g_var.scale_(1.0 / sharding_nrank)
                     param_rank = self._param2rank[param.name]
@@ -343,9 +338,7 @@ class DygraphShardingOptimizer:
                     )
                 if param.stop_gradient:
                     continue
-                grad_var = param._grad_ivar()
-                if hasattr(param, "main_grad") and param.main_grad is not None:
-                    grad_var = param.main_grad
+                grad_var = param.actual_grad
                 params_grads.append((param, grad_var))
 
             if g_shard_norm_align_dp:
