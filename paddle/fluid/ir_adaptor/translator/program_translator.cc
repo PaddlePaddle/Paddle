@@ -524,41 +524,35 @@ void ProgramTranslator::TranslateWhileOperation(
       translation_ctx->at(loop_vars_reverse[0].first).value};
   std::vector<pir::Type> op_outputs_type;
   auto body_block = new pir::Block();
-  std::vector<TCValue> param_status;
+  auto* body_block_context = translation_ctx->CreateInnerContext();
   for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
     auto& name = loop_vars_reverse[idx].first;
     auto& tc_value = translation_ctx->at(name);
     auto val_type = tc_value.value.type();
     op_inputs.push_back(tc_value.value);
     op_outputs_type.push_back(val_type);
-    param_status.emplace_back(tc_value);
-    translation_ctx->PushValue(name, body_block->AddArgument(val_type));
+    body_block_context->PushValue(name, body_block->AddArgument(val_type));
   }
   pir::Operation* while_op =
       pir::Operation::Create(op_inputs, {}, op_outputs_type, op_info, 1);
   dst_block->push_back(while_op);
   while_op->region(0).push_back(body_block);
-  TranslateBlock(sub_block, 0, index + 1, translation_ctx, body_block);
+  TranslateBlock(sub_block, 0, index + 1, body_block_context, body_block);
 
   auto yeild_info = ctx_->GetRegisteredOpInfo(pir::YieldOp::name());
   std::vector<pir::Value> yeild_inputs{
-      translation_ctx->at(loop_vars_reverse[0].second).value};
+      body_block_context->at(loop_vars_reverse[0].second).value};
   for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
     auto& name = loop_vars_reverse[idx].second;
-    yeild_inputs.push_back(translation_ctx->at(name).value);
+    yeild_inputs.push_back(body_block_context->at(name).value);
   }
   body_block->push_back(
       pir::Operation::Create(yeild_inputs, {}, {}, yeild_info));
-
-  index = 0;
-  for (size_t idx = loop_vars_reverse.size() - 1u; idx > 0; --idx) {
-    auto& name = loop_vars_reverse[idx].first;
-    translation_ctx->PushValue(name, param_status[index++]);
-  }
   auto name_iter = loop_vars_reverse.rbegin();
   for (size_t idx = 0; idx < while_op->num_results(); ++idx) {
     translation_ctx->PushValue(name_iter++->first, while_op->result(idx));
   }
+
   while_op->Verify();
   VLOG(8) << "=============>end to translate while op:" << op;
 }
@@ -799,15 +793,17 @@ void ProgramTranslator::SetIsPersisableAttributeForAllValue(
   }
 }
 
-std::unordered_map<std::string, std::vector<pir::Value>>
-ProgramTranslator::VarDesc2Value() {
-  std::unordered_map<std::string, std::vector<pir::Value>> var_desc_2_value;
+std::unordered_map<std::string, std::vector<pir::OpResult>>
+ProgramTranslator::VarDesc2OpResult() {
+  std::unordered_map<std::string, std::vector<pir::OpResult>>
+      var_desc_2_opresult;
   for (const auto& [var_name, value_info_list] : param_map_) {
     for (const auto& value_info : value_info_list) {
-      var_desc_2_value[var_name].push_back(value_info.value);
+      var_desc_2_opresult[var_name].push_back(
+          value_info.value.dyn_cast<pir::OpResult>());
     }
   }
-  return var_desc_2_value;
+  return var_desc_2_opresult;
 }
 
 }  // namespace translator

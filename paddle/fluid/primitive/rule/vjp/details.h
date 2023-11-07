@@ -675,6 +675,18 @@ void softmax_grad(const Tensor& out,
 }
 
 template <typename T>
+void relu_grad(const Tensor& out, const Tensor& out_grad, Tensor* x_grad) {
+  if (x_grad) {
+    auto condition = greater_than<T>(
+        out, full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    auto res = where<T>(condition,
+                        out_grad,
+                        full<T>(phi::vectorize(out.dims()), 0.0, out.dtype()));
+    set_output<T>(res, x_grad);
+  }
+}
+
+template <typename T>
 void gather_nd_grad(const Tensor& x,
                     const Tensor& index,
                     const Tensor& out_grad,

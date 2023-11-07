@@ -27,7 +27,7 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 
@@ -56,7 +56,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     const std::string& job_type = job->Type();
     std::shared_ptr<ProgramDesc> program = nullptr;
     std::shared_ptr<::pir::Program> ir_program = nullptr;
-    if (FLAGS_enable_pir_api || FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
@@ -70,7 +70,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                  micro_batch_id,
                                  micro_batch_num));
 
-    if (!FLAGS_enable_pir_api && !FLAGS_enable_new_ir_in_executor) {
+    if (!FLAGS_enable_pir_api && !FLAGS_enable_pir_in_executor) {
       SetColAttrForFeedFetchOps(program, micro_batch_num, micro_batch_id);
     }
 
@@ -79,9 +79,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     execution_config.skip_gc_vars = job->SkipGcVars();
 
     // TODO(phlrain) we only support cpu for now
-    if (FLAGS_enable_new_ir_in_executor) {
-      auto inner_scope =
-          micro_batch_num == 1 ? scope : micro_batch_scopes_[micro_batch_id];
+    if (FLAGS_enable_pir_in_executor) {
       std::shared_ptr<::pir::Program> base_program = ir_program;
       auto block = base_program->block();
       for (auto it = block->begin(); it != block->end(); ++it) {
@@ -102,6 +100,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                         .dyn_cast<pir::StrAttribute>()
                                         .AsString() +
                                     "@fetch";
+          job->SetFetchVarName(fetch_var_names_[index]);
         }
       }
 
@@ -129,9 +128,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
 
       interpretercores_.emplace_back(
           std::make_shared<InterpreterCore>(place_,
-                                            fetch_var_names_,
+                                            job->FetchVarNames(),
                                             shared_program->block(),
-                                            inner_scope,
+                                            micro_batch_scopes_[micro_batch_id],
                                             execution_config));
     } else {
       interpretercores_.emplace_back(
@@ -191,10 +190,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   std::vector<std::vector<phi::DenseTensor>> splited_feeds;
-  if (FLAGS_enable_new_ir_in_executor) {
-    SplitFeedTensor(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
+  if (FLAGS_enable_pir_in_executor) {
+    SplitFeedTensors(feed_names, plan_.MicroBatchNum(), scope_, &splited_feeds);
   }
 
+  fetch_list_.resize(plan_.MicroBatchNum());
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
     const auto& job = jobs[job_idx];
     const std::string& job_type = job->Type();
@@ -208,14 +208,21 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
     // Note(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
-        !FLAGS_enable_new_ir_in_executor) {
+        !FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->ShareBuildResultsFrom(
           interpretercores_[type_to_first_id[job_type]]);
     }
 
-    if (FLAGS_enable_new_ir_in_executor && splited_feeds.size() > 0) {
+    if (FLAGS_enable_pir_in_executor) {
       interpretercores_[job_idx]->Run(feed_names,
-                                      splited_feeds[job->MicroBatchId()]);
+                                      splited_feeds[job->MicroBatchId()],
+                                      /*need_fetch = */ false);
+
+      FetchTensors(job->FetchVarNames(),
+                   fetch_var_names_,
+                   job->MicroBatchId(),
+                   micro_batch_scopes_[job->MicroBatchId()],
+                   &fetch_list_);
     } else {
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
@@ -228,13 +235,9 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   }
 
   // return Fetch Tensors
-  if (FLAGS_enable_new_ir_in_executor) {
+  if (FLAGS_enable_pir_in_executor) {
     framework::FetchList fetch_res;
-    for (auto& var_name : fetch_var_names_) {
-      auto* var = scope_->FindVar(var_name);
-      fetch_res.push_back(var->Get<phi::DenseTensor>());
-    }
-
+    MergeFetchTensors(fetch_list_, plan_.MicroBatchNum(), &fetch_res);
     return fetch_res;
   } else {
     auto* fetch_var = scope_->FindVar(interpreter::kFetchVarName);

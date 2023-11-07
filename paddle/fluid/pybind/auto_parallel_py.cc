@@ -40,13 +40,13 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/nd_mesh_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -183,8 +183,16 @@ void BindAutoParallel(py::module *m) {
       *m, "RToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToSReshardFunctionCrossMesh>(
+      *m, "RToSReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToRReshardFunctionCrossMesh>(
+      *m, "SToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::RToPReshardFunction>(
