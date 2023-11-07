@@ -82,22 +82,17 @@ RUN python3.10 setup.py build && python3.10 setup.py install && \
   python3.12 setup.py build && python3.12 setup.py install
 
 WORKDIR /home
-RUN wget https://files.pythonhosted.org/packages/28/af/2c76c8aa46ccdf7578b83d97a11a2d1858794d4be4a1610ade0d30182e8b/pip-20.0.1.tar.gz && tar -zxf pip-20.0.1.tar.gz
-WORKDIR pip-20.0.1
-
-RUN python3.9 setup.py install && \
-  python3.8 setup.py install
-
-WORKDIR /home
 RUN wget https://files.pythonhosted.org/packages/1f/7f/4da15e07ccd11c84c1ccc8f6e24288d5e76c99441bf80e315b33542db951/pip-23.3.1.tar.gz && tar -zxf pip-23.3.1.tar.gz
 WORKDIR pip-23.3.1
-RUN python3.10 setup.py install && \
+RUN python3.9 setup.py install && \
+  python3.8 setup.py install  && \
+  python3.10 setup.py install && \
   python3.11 setup.py install && \
   python3.12 setup.py install
 
 WORKDIR /home
-RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-20.0.1.tar.gz pip-23.3.1.tar.gz && \
-    rm -r setuptools-50.3.2 setuptools-68.2.2  pip-20.0.1 pip-23.3.1
+RUN rm setuptools-50.3.2.zip setuptools-68.2.2.tar.gz pip-23.3.1.tar.gz && \
+    rm -r setuptools-50.3.2 setuptools-68.2.2 pip-23.3.1
 
 # remove them when apt-get support 2.27 and higher version
 RUN wget -q https://ftp.gnu.org/gnu/binutils/binutils-2.33.1.tar.gz && \ 
@@ -124,12 +119,6 @@ RUN git config --global credential.helper store
 RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 #For pre-commit
-RUN python3.8 -m pip --no-cache-dir install --upgrade pip && \
-    python3.9 -m pip --no-cache-dir install --upgrade pip && \
-    python3.10 -m pip --no-cache-dir install --upgrade pip && \
-    python3.11 -m pip --no-cache-dir install --upgrade pip && \
-    python3.12 -m pip --no-cache-dir install --upgrade pip
-
 RUN rm -f /usr/local/bin/pip && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip && \
     rm -f /usr/local/bin/pip3 && ln -s /usr/local/bin/pip3.9 /usr/local/bin/pip3
 
