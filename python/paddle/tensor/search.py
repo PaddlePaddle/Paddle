@@ -1236,12 +1236,12 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
 
 def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
     """
-    Get the TopP scores and ids.
+    Get the TopP scores and ids according to the cumulative threshold `ps`.
 
     Args:
         x(Tensor): A N-D Tensor with type float32, float16 and bfloat16.
-        ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
-        threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16.
+        ps(Tensor): A 1-D Tensor with type float32, float16 and bfloat16. `ps` is the cumulative probalitity threshold to limit low probality input.
+        threshold(Tensor): A 1-D Tensor with type float32, float16 and bfloat16. `threshold` is the absolute probability threshold to limit input, it will take effect simultaneously with `ps`, if not set, the default value is 0.f.
         seed(int, optional): the random seed,
         name (str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
 
