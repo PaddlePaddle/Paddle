@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 
 #include <gtest/gtest.h>
 
@@ -23,8 +23,7 @@
 PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
-namespace hlir {
-namespace framework {
+namespace ir {
 
 using frontend::NetBuilder;
 using frontend::RunDecomposer;
@@ -42,9 +41,8 @@ void Compile(NetBuilder* net_builder) {
   auto& dtype_dict =
       graph->GetMutableAttrs<absl::flat_hash_map<std::string, Type>>(
           "inferdtype");
-  auto& shape_dict =
-      graph->GetMutableAttrs<absl::flat_hash_map<std::string, shape_t>>(
-          "infershape");
+  auto& shape_dict = graph->GetMutableAttrs<
+      absl::flat_hash_map<std::string, hlir::framework::shape_t>>("infershape");
 
   auto op_lowerer =
       hlir::framework::CreateOpLowerer(dtype_dict, shape_dict, target);
@@ -72,7 +70,7 @@ void CheckAccuracy(NetBuilder* net_builder,
   auto program = net_builder->Build();
   auto target = common::DefaultTarget();
 
-  auto graph = std::make_shared<Graph>(program, target);
+  auto graph = std::make_shared<hlir::framework::Graph>(program, target);
   hlir::framework::ApplyPasses(graph.get(),
                                {"OpFusionPass", "FusionMergePass"});
 
@@ -765,6 +763,5 @@ TEST(GROUP_SCHEDULER, softmax) {
   CheckAccuracy(&net_builder, input_names);
 }
 
-}  // namespace framework
-}  // namespace hlir
+}  // namespace ir
 }  // namespace cinn

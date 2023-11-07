@@ -13,13 +13,10 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/cinn/hlir/framework/graph.h"
-#include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/schedule_block_graph.h"
+#include "paddle/cinn/ir/group_schedule/base_group_scheduler.h"
 
 namespace cinn {
-namespace hlir {
-namespace framework {
+namespace ir {
 
 // The priority of the ScheduleBlockNode,
 // prioritizing whether it has been bound to the cuda axis,
@@ -38,19 +35,23 @@ struct NodePriority {
 };
 
 /**
- * The class used for scheduling fusion groups.
+ * The class used for scheduling fusion groups with static shape.
  * Its responsibility is to perform loop alignment,
  * automatic inline, automatic loop fusion,
  * and optimize the storage location of intermediate variables.
  * Note: Currently only CUDA backend is supported.
  */
-class GroupScheduler {
+class StaticShapeGroupScheduler : public GroupScheduler {
  public:
-  GroupScheduler(ir::IRSchedule* ir_sch,
-                 const std::shared_ptr<Graph::Group>& group,
-                 const common::Target& target);
+  StaticShapeGroupScheduler(
+      ir::IRSchedule* ir_sch,
+      const std::unordered_set<std::string>& output_tensor_names,
+      const common::Target& target)
+      : GroupScheduler(ir_sch, output_tensor_names, target) {}
 
-  void operator()();
+  void Schedule() override;
+
+  std::vector<std::pair<SymbolicCondition, ir::Expr>> GetIRs() override;
 
  private:
   // Automatically align loops for each ScheduleBlock.
@@ -119,12 +120,6 @@ class GroupScheduler {
                       int insert_pos) const;
 
  private:
-  ir::IRSchedule* ir_sch_;
-  const std::shared_ptr<Graph::Group>& group_;
-  const common::Target& target_;
-  // Graph in units of ScheduleBlockNode, each node corresponds to a
-  // ScheduleBlock in IR.
-  std::unique_ptr<ir::ScheduleBlockGraph> schedule_block_graph_;
   /**
    * @brief Interface of feasibility condition.
    * @param schedule_block The src schedule_block to be replaced.
@@ -132,10 +127,8 @@ class GroupScheduler {
    * @param insert_pos The insert position of new schedule_block in the
    * target_loop.
    */
-
-  using FeasibleCondition = bool (GroupScheduler::*)(Expr schedule_block,
-                                                     Expr target_loop,
-                                                     int insert_pos) const;
+  using FeasibleCondition = bool (StaticShapeGroupScheduler::*)(
+      Expr schedule_block, Expr target_loop, int insert_pos) const;
   // All feasible conditions.
   std::vector<FeasibleCondition> feasible_conditions_;
 
@@ -166,6 +159,5 @@ class GroupScheduler {
   std::map<std::vector<int>, ir::Expr> blocks_order_with_ctrl_stmt_;
 };
 
-}  // namespace framework
-}  // namespace hlir
+}  // namespace ir
 }  // namespace cinn
