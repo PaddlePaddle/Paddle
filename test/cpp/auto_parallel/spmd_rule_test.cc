@@ -817,7 +817,7 @@ TEST(LayerNorm, Ctor) {
   auto bias = build_input({32}, {0});
 
   auto spmd1 =
-      LayerNormGradInferSpmd(x, mean, variance, scale, bias, out_grad, 1.0, 2);
+      LayerNormGradInferSpmd(x, scale, bias, mean, variance, out_grad, 1.0, 2);
 
   // test 2
   mean = build_input({16}, {0});
@@ -825,7 +825,7 @@ TEST(LayerNorm, Ctor) {
   scale = build_input({32, 32}, {0, 1});
   bias = build_input({32, 32}, {0, 1});
   auto spmd2 =
-      LayerNormGradInferSpmd(x, mean, variance, scale, bias, out_grad, 1.0, 1);
+      LayerNormGradInferSpmd(x, scale, bias, mean, variance, out_grad, 1.0, 1);
 }
 
 TEST(Util, Ctor) {
