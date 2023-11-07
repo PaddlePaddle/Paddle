@@ -24,6 +24,11 @@ namespace cinn::adt {
 class IGroup;
 using cinn::adt::LoopDescriptors;
 
+/**
+ * Kernel = KGroup = List<IGroup>.
+ * KGroup is a list of IGroups, KGroup uses shardable dimension to concatenate
+ * all ops. This dimension is shared by all IGroups and bound to BlockIdx.
+ */
 class KGroup final {
  public:
   explicit KGroup(

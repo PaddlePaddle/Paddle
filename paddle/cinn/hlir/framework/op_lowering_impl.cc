@@ -103,14 +103,51 @@ bool OpLowererImpl::NonFusibleScheduleDetermineFunction(Node* node) {
   return true;
 }
 
+void OpLowererImpl::LowerOpsForMapExpr(
+    const GroupPtr& group,
+    const std::vector<Node*>& nodes,
+    std::vector<ir::Tensor>* group_func_arg_tensors,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
+  auto& strategy = Operator::GetAttrs<StrategyFunction>("CINNStrategy");
+  for (Node* node : nodes) {
+    // 1.Select Op impl
+    std::vector<Type> out_types;
+    std::vector<std::vector<int>> out_shapes;
+    std::vector<NodeData*> node_datas = GetAllNodeData(node);
+    for (const auto& node_data : node_datas) {
+      out_types.push_back(this->type_dict_.at(node_data->id()));
+      out_shapes.push_back(this->shape_dict_.at(node_data->id()));
+    }
+    std::vector<ir::Tensor> op_func_arg_tensors =
+        std::move(CollectInputTensor(node,
+                                     this->type_dict_,
+                                     this->shape_dict_,
+                                     group_func_arg_tensors,
+                                     tensor_map));
+    auto op_impl =
+        OpStrategy::SelectImpl(strategy[node->op()](node->attrs,
+                                                    op_func_arg_tensors,
+                                                    out_types,
+                                                    out_shapes,
+                                                    this->target_));
+
+    // 2.Perform the lower process of Op
+    std::vector<ir::LoweredFunc> funcs =
+        DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
+
+    group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(node, funcs);
+  }
+}
+
 /* Most of below codes copies from `PostProcess` function */
 std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
     const GroupPtr& group,
-    const std::unordered_map<std::string, ir::Tensor>& tensor_map,
+    const std::vector<Node*>& nodes,
     bool do_op_schedule,
     bool apply_group_schedule,
     bool apply_pass,
-    std::vector<ir::Tensor>* group_func_arg_tensors) {
+    std::vector<ir::Tensor>* group_func_arg_tensors,
+    std::unordered_map<std::string, ir::Tensor>* tensor_map) {
   if (!FLAGS_cinn_map_expr_enable_schedule) {
     do_op_schedule = false;
     apply_group_schedule = false;
@@ -121,6 +158,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   VLOG(1) << "do_op_schedule = " << do_op_schedule;
   VLOG(1) << "apply_group_schedule = " << apply_group_schedule;
   VLOG(1) << "apply_pass = " << apply_pass;
+  LowerOpsForMapExpr(group, nodes, group_func_arg_tensors, tensor_map);
 
   ir::Expr func_body = adt::MapExprToIr(group->map_expr_ctx(), target_);
 
@@ -130,7 +168,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
-    DoGroupSchedule(ir_sch, group, tensor_map);
+    DoGroupSchedule(ir_sch, group, *tensor_map);
     VLOG(3) << "After group schedule, ir is: \n"
             << ir_sch.GetModule().GetExprs().at(0);
   }
@@ -139,7 +177,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   // including preparing function args and temporary variables,
   // applying low-level optimization passes, etc.
   return PostProcess(group,
-                     tensor_map,
+                     *tensor_map,
                      do_op_schedule,
                      apply_pass,
                      &ir_sch,
@@ -162,21 +200,20 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   std::vector<ir::Tensor> group_func_arg_tensors;
   std::unordered_map<std::string, ir::Tensor> tensor_map;
   bool do_op_schedule = apply_group_schedule || apply_op_schedule;
-  std::vector<ir::Expr> func_bodies = LowerOps(group,
-                                               nodes,
+  if (FLAGS_cinn_enable_map_expr) {
+    return LowerMapExpr(group,
+                        nodes,
+                        /*do_op_schedule=*/do_op_schedule,
+                        /*apply_group_schedule=*/apply_group_schedule,
+                        /*apply_pass=*/apply_pass,
+                        &group_func_arg_tensors,
+                        &tensor_map);
+  }
+  std::vector<ir::Expr> func_bodies = LowerOps(nodes,
                                                do_op_schedule,
                                                schedule_determine_func,
                                                &group_func_arg_tensors,
                                                &tensor_map);
-
-  if (FLAGS_cinn_enable_map_expr) {
-    return LowerMapExpr(group,
-                        tensor_map,
-                        /*do_op_schedule=*/do_op_schedule,
-                        /*apply_group_schedule=*/apply_group_schedule,
-                        /*apply_pass=*/apply_pass,
-                        &group_func_arg_tensors);
-  }
 
   // 2.Do group schedule.
   ir::ModuleExpr mod_expr(func_bodies);
@@ -375,7 +412,6 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 }
 
 std::vector<ir::Expr> OpLowererImpl::LowerOps(
-    const GroupPtr& group,
     const std::vector<Node*>& nodes,
     bool apply_op_schedule,
     ScheduleDetermineFunction schedule_determine_func,
@@ -408,10 +444,6 @@ std::vector<ir::Expr> OpLowererImpl::LowerOps(
     // 2.Perform the lower process of Op
     std::vector<ir::LoweredFunc> funcs =
         DoOpLower(op_impl, node, tensor_map, &op_func_arg_tensors);
-
-    if (FLAGS_cinn_enable_map_expr) {
-      group->mut_map_expr_ctx()->UpdateOpLoweredFuncKey(node, funcs);
-    }
 
     if (apply_op_schedule && (this->*schedule_determine_func)(node)) {
       // 3.Perform the schedule of Op
