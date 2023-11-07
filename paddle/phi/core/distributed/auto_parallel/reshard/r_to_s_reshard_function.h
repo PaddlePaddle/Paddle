@@ -13,17 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
+
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
 namespace phi {
 namespace distributed {
 
-class SToRReshardFunction final : public ReshardFunction {
+class RToSReshardFunction final : public ReshardFunction {
  public:
-  SToRReshardFunction() = default;
-  ~SToRReshardFunction() = default;
-
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
 
@@ -33,7 +30,7 @@ class SToRReshardFunction final : public ReshardFunction {
             DistTensor* out) override;
 };
 
-class SToRReshardFunctionCrossMesh final : public ReshardFunction {
+class RToSReshardFunctionCrossMesh final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
