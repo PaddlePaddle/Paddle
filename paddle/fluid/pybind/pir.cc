@@ -37,6 +37,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
@@ -50,7 +51,6 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
@@ -128,7 +128,8 @@ std::string GetValueInfo(Value v) {
 }
 
 void BindProgram(py::module *m) {
-  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(
+      *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.
