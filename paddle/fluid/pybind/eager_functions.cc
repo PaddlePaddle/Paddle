@@ -62,10 +62,16 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/flags.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 
 PHI_DECLARE_string(tensor_operants_mode);
 
@@ -535,6 +541,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
   const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto& input = inputs.at(i);
     // Parse op_type first, so that use i + 1
@@ -552,17 +559,6 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     if (paddle::framework::detail::IsDuplicableVar(input)) {
       std::vector<paddle::Tensor> tensors =
           std::move(CastPyArg2VectorOfTensor(obj, i + 1));  // NOLINT
-      for (auto& tensor : tensors) {
-        if (tensor.initialized() && tensor.is_dense_tensor() &&
-            !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
-                 ->meta()
-                 .is_contiguous()) {
-          tensor.set_impl(std::make_shared<phi::DenseTensor>(
-              std::move(paddle::experimental::Trans2Contiguous(
-                  *(std::dynamic_pointer_cast<phi::DenseTensor>(
-                      tensor.impl()))))));
-        }
-      }
       ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
@@ -570,19 +566,12 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
     } else {
       paddle::Tensor tensor =
           std::move(CastPyArg2Tensor(obj, i + 1));  // NOLINT
-      if (tensor.initialized() && tensor.is_dense_tensor() &&
-          !std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl())
-               ->meta()
-               .is_contiguous()) {
-        tensor.set_impl(std::make_shared<phi::DenseTensor>(
-            std::move(paddle::experimental::Trans2Contiguous(*(
-                std::dynamic_pointer_cast<phi::DenseTensor>(tensor.impl()))))));
-      }
       ctx.EmplaceBackInput(std::move(tensor));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
     }
   }
+
   // Parse op_type and inputs first, so that use 1 + inputs.size() + i
   int attr_start_idx = static_cast<int>(1 + inputs.size());
   for (size_t i = 0; i < attrs.size(); ++i) {
@@ -628,6 +617,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           attr_type_str));
     }
   }
+
   {
     eager_gil_scoped_release guard;
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
@@ -671,11 +661,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
     }
 
-    // handle inplace map
-    ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-    (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
-    ctx.AssignInplaceOutputs();
+    egr::run_custom_op_impl(vec_map[0], true, false, ctx);
 
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
@@ -684,7 +671,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->initialized()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)),
+              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+                  out_tensor->is_dist_tensor(),
               phi::errors::InvalidArgument(
                   "Custom operator's %d-th output is not initialized. "
                   "Please check your implementation again. If you are "

@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import paddle
-from paddle.base import framework
 
 from ..dy2static.program_translator import _program_hash, synchronized
 
@@ -43,7 +42,7 @@ class ParametersRecorder:
                 type=tensor.type,
                 initializer=non_used_initializer,
             )
-            if isinstance(tensor, framework.EagerParamBase):
+            if isinstance(tensor, paddle.Tensor):
                 params.add(tensor)
             mappings[id(tensor)] = op_result
         return mappings[id(tensor)]
@@ -61,4 +60,49 @@ class ParametersRecorder:
         return list(params), list(params_values)
 
 
+class InplaceMap:
+    def __init__(self):
+        self.params_dict = {}
+
+    @synchronized
+    def add(self, program, id, param):
+        """use the default_program as key, append param the parameter list."""
+        key = _program_hash(program)
+        if key not in self.params_dict:
+            self.params_dict[key] = {}
+
+        params = self.params_dict[key]
+        params[id] = param
+
+    def get(self, program, id):
+        params = self.params_dict.get(_program_hash(program))
+        if params is None:
+            return None
+        if id not in params:
+            return None
+        root_var = params[id]
+        saved = []
+        while id(root_var) in params.keys():
+            saved.append(root_var)
+            root_var = params[id(root_var)]
+        for var in saved:
+            params[id(var)] = root_var
+        return root_var
+
+    def restore_checkpoint(self, checkpoint):
+        # InplaceMap is a nested effect.
+        # when enter a block, we should save a checkpoint
+        # when exit a block, we should restore a checkpoint
+        # for example:
+        # if cond > 0:
+        #    x [:] = 0
+        # return x
+        # x[:] only effect current cond block, we should restore in false block.
+        self.params_dict = checkpoint
+
+    def save_checkpoint(self):
+        return dict(self.params_dict.items())
+
+
 _global_parameter_recorder = ParametersRecorder()
+_global_inplace_map = InplaceMap()
