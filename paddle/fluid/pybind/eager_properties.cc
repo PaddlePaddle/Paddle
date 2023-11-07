@@ -588,17 +588,27 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor() ||
+      !self->tensor.is_dist_tensor()) {
     RETURN_PY_NONE;
   }
 
-  auto dense_tensor =
-      std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
-
-  if (dense_tensor == nullptr) {
-    RETURN_PY_NONE;
-  } else {
-    return ToPyObject(dense_tensor->offset());
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
+    if (dense_tensor == nullptr) {
+      RETURN_PY_NONE;
+    } else {
+      return ToPyObject(dense_tensor->offset());
+    }
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dense_tensor =
+        std::dynamic_pointer_cast<phi::DistTensor>(self->tensor.impl());
+    if (dense_tensor == nullptr) {
+      RETURN_PY_NONE;
+    } else {
+      return ToPyObject(dense_tensor->offset());
+    }
   }
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
