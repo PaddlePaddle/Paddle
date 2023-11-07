@@ -28,7 +28,7 @@ namespace phi {
 namespace distributed {
 class TensorDistAttr;
 
-bool IsEmpty(const std::vector<int64_t>& shape) {
+inline bool IsEmpty(const std::vector<int64_t>& shape) {
   return shape.empty() || shape.at(0) == 0;
 }
 
