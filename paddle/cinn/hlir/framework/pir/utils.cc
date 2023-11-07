@@ -59,8 +59,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::pir::Value>()(value));
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
