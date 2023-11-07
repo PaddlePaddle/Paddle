@@ -3647,7 +3647,7 @@ def expand(x, shape, name=None):
             shape.stop_gradient = True
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
-                shape = paddle.utils._convert_to_tensor_list(shape)
+                shape = paddle.utils.get_int_tensor_list(shape)
         else:
             TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
