@@ -285,11 +285,11 @@ static PyObject* tensor__add__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -438,11 +438,11 @@ static PyObject* tensor__sub__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -585,11 +585,11 @@ static PyObject* tensor__rsub__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -734,11 +734,11 @@ static PyObject* tensor__mul__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -895,11 +895,11 @@ static PyObject* tensor__div__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1060,11 +1060,11 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1228,11 +1228,11 @@ static PyObject* tensor__gt__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1368,11 +1368,11 @@ static PyObject* tensor__ge__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1599,11 +1599,11 @@ static PyObject* tensor__matmul__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1757,11 +1757,11 @@ static PyObject* tensor__lt__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -1897,11 +1897,11 @@ static PyObject* tensor__le__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -2037,11 +2037,11 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -2182,11 +2182,11 @@ static PyObject* tensor__pow__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -2318,11 +2318,11 @@ static PyObject* tensor__rpow__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -2458,11 +2458,11 @@ static PyObject* tensor__ne__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
@@ -2598,11 +2598,11 @@ static PyObject* tensor__eq__method(TensorObject* self,
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT32 ||
+  if ((other_obj_dtype == DataType::FLOAT16 ||
        other_obj_dtype == DataType::FLOAT32 ||
        other_obj_dtype == DataType::FLOAT64 ||
        other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT32 ||
+      (self_obj_dtype == DataType::FLOAT16 ||
        self_obj_dtype == DataType::FLOAT32 ||
        self_obj_dtype == DataType::FLOAT64 ||
        self_obj_dtype == DataType::BFLOAT16)) {
