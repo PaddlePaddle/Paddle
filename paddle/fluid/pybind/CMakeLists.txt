@@ -45,6 +45,7 @@ set(PYBIND_DEPS
     pd_inplace_pass
     fusion_passes
     replace_fetch_with_shadow_output_pass
+    dead_code_elimination_pass
     pir
     new_profiler
     jit_layer
