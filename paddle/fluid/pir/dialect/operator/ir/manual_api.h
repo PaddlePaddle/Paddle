@@ -60,7 +60,7 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
                     phi::DataType dtype = phi::DataType::FLOAT32,
                     const Place& place = phi::CPUPlace());
 
-pir::OpResult tensor_array_length(pir::Value x);
+pir::OpResult array_length(pir::Value x);
 
 }  // namespace dialect
 }  // namespace paddle

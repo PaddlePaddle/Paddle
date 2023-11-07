@@ -14,7 +14,10 @@
 
 # Define functions about array.
 
+import paddle
+
 from ..base.data_feeder import check_type, check_variable_and_dtype
+from ..base.framework import in_pir_mode
 from ..common_ops_import import Variable
 from ..framework import LayerHelper, core, in_dynamic_mode
 
@@ -51,6 +54,15 @@ def array_length(array):
             array, list
         ), "The 'array' in array_write must be a list in dygraph mode"
         return len(array)
+    elif in_pir_mode():
+        if (
+            not isinstance(array, paddle.pir.OpResult)
+            or not array.is_dense_tensor_array_type()
+        ):
+            raise TypeError(
+                "array should be tensor array vairable in array_length Op"
+            )
+        return paddle._pir_ops.array_length(array)
     else:
         if (
             not isinstance(array, Variable)

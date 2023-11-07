@@ -62,7 +62,7 @@ void OperatorDialect::initialize() {
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,
-              paddle::dialect::TensorArrayLengthOp>();
+              paddle::dialect::ArrayLengthOp>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }

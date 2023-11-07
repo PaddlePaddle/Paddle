@@ -125,19 +125,19 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
-static PyObject *static_api_tensor_array_length(PyObject *self,
-                                                PyObject *args,
-                                                PyObject *kwargs) {
+static PyObject *static_api_array_length(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
   try {
-    VLOG(6) << "Add tensor_array_length op into program";
+    VLOG(6) << "Add array_length op into program";
     VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
 
     // Get Value from args
     PyObject *x_obj = PyTuple_GET_ITEM(args, 0);
-    auto x = CastPyArg2Value(x_obj, "tensor_array_length", 0);
+    auto x = CastPyArg2Value(x_obj, "array_length", 0);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::tensor_array_length(x);
+    auto static_api_out = paddle::dialect::array_length(x);
 
     return ToPyObject(static_api_out);
   } catch (...) {
@@ -155,10 +155,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_get_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for get_parameter."},
-    {"tensor_array_length",
-     (PyCFunction)(void (*)(void))static_api_tensor_array_length,
+    {"array_length",
+     (PyCFunction)(void (*)(void))static_api_array_length,
      METH_VARARGS | METH_KEYWORDS,
-     "C++ interface function for tensor_array_length."},
+     "C++ interface function for array_length."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

@@ -63,6 +63,7 @@
 
 namespace py = pybind11;
 using paddle::dialect::APIBuilder;
+using paddle::dialect::DenseTensorArrayType;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
 using pir::Attribute;
@@ -734,6 +735,14 @@ void BindOpResult(py::module *m) {
       .def("is_selected_row_type",
            [](OpResult &self) {
              if (self.type().isa<SelectedRowsType>()) {
+               return true;
+             } else {
+               return false;
+             }
+           })
+      .def("is_dense_tensor_array_type",
+           [](OpResult &self) {
+             if (self.type().isa<DenseTensorArrayType>()) {
                return true;
              } else {
                return false;

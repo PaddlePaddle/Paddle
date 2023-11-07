@@ -1046,7 +1046,7 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
-OpInfoTuple TensorArrayLengthOp::GetOpInfo() {
+OpInfoTuple ArrayLengthOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       OpInputInfo("x",
                   "paddle::dialect::DenseTensorArrayType",
@@ -1063,7 +1063,7 @@ OpInfoTuple TensorArrayLengthOp::GetOpInfo() {
   paddle::dialect::OpRunTimeInfo run_time_info =
       OpRunTimeInfo("TensorArrayLengthInferMeta",
                     {"x"},
-                    "tensor_array_length",
+                    "array_length",
                     {"x"},
                     {"x"},
                     {},
@@ -1071,13 +1071,13 @@ OpInfoTuple TensorArrayLengthOp::GetOpInfo() {
                     {});
 
   return std::make_tuple(
-      inputs, attributes, outputs, run_time_info, "tensor_array_length");
+      inputs, attributes, outputs, run_time_info, "array_length");
 }
 
-void TensorArrayLengthOp::Build(pir::Builder &builder,
-                                pir::OperationArgument &argument,
-                                pir::Value x) {
-  VLOG(4) << "Start build TensorArrayLengthOp";
+void ArrayLengthOp::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          pir::Value x) {
+  VLOG(4) << "Start build ArrayLengthOp";
   VLOG(4) << "Builder construction inputs";
   argument.AddInputs({x});
   VLOG(4) << "Builder construction attributes";
@@ -1109,9 +1109,9 @@ void TensorArrayLengthOp::Build(pir::Builder &builder,
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
 
-void TensorArrayLengthOp::VerifySig() {
+void ArrayLengthOp::VerifySig() {
   VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
-             "TensorArrayLengthOp.";
+             "ArrayLengthOp.";
   VLOG(4) << "Verifying inputs:";
   {
     auto input_size = num_operands();
@@ -1142,10 +1142,10 @@ void TensorArrayLengthOp::VerifySig() {
         phi::errors::PreconditionNotMet(
             "Type validation failed for the 0th output."));
   }
-  VLOG(4) << "End Verifying for: TensorArrayLengthOp.";
+  VLOG(4) << "End Verifying for: ArrayLengthOp.";
 }
 
-void TensorArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
+void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
   auto fn = PD_INFER_META(phi::TensorArrayLengthInferMeta);
   fn(infer_meta);
 }
@@ -1159,4 +1159,4 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
-IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::TensorArrayLengthOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
