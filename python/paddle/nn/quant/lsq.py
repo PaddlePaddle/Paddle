@@ -17,9 +17,10 @@ import math
 import paddle
 from paddle.autograd import PyLayer
 from paddle.framework import ParamAttr
-from paddle.nn import Layer
 from paddle.nn.initializer import Constant
 from paddle.utils import unique_name
+
+from ..layer.layers import Layer
 
 
 def round(x):

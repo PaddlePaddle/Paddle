@@ -19,7 +19,7 @@ import numpy as np
 import paddle
 
 
-class TestDy2staticNewIR(unittest.TestCase):
+class TestDy2staticPir(unittest.TestCase):
     def test_basic_network(self):
         def func(x):
             out = paddle.mean(x)
@@ -64,7 +64,7 @@ class TestDy2staticNewIR(unittest.TestCase):
         )
 
 
-class TestDy2staticNewIR2(unittest.TestCase):
+class TestDy2staticPir2(unittest.TestCase):
     def test_basic_layer(self):
         class SimpleNet(paddle.nn.Layer):
             def __init__(self):
@@ -85,7 +85,7 @@ class TestDy2staticNewIR2(unittest.TestCase):
         )
 
 
-class TestDy2staticNewIR3(unittest.TestCase):
+class TestDy2staticPir3(unittest.TestCase):
     def test_complex_layer(self):
         def output_pure_func(x, y):
             outx = paddle.mean(x)
@@ -152,7 +152,7 @@ class TestLossFor10Steps(unittest.TestCase):
         )
 
 
-class TestDy2staticNewIR5(unittest.TestCase):
+class TestDy2staticPir5(unittest.TestCase):
     def test_run(self):
         # Dy2static RunProgramOp support nn.Layer's forward and backward training.
         class SimpleNet(paddle.nn.Layer):
@@ -195,7 +195,7 @@ class TestDy2staticNewIR5(unittest.TestCase):
         )
 
 
-class TestDy2staticNewIR6(unittest.TestCase):
+class TestDy2staticPir6(unittest.TestCase):
     # test basic-indexing __getitem__ for OpResult
     def test_basic_network(self):
         def func(x):

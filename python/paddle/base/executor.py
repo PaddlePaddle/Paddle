@@ -21,7 +21,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult, Value, translate_to_new_ir
+from ..pir import OpResult, Value, translate_to_pir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -798,8 +798,8 @@ class _StandaloneExecutor:
         tensors = self._new_exe.run(feed_names)._move_to_list()
         if return_numpy:
             tensors = as_numpy(tensors, copy=True)
-            if not get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if not get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
                 return _merge_tensors(tensors, self._plan.micro_batch_num())
             return tensors
@@ -980,8 +980,8 @@ class _ExecutorCache:
             else False
         )
 
-        if get_flags('FLAGS_enable_new_ir_in_executor')[
-            'FLAGS_enable_new_ir_in_executor'
+        if get_flags('FLAGS_enable_pir_in_executor')[
+            'FLAGS_enable_pir_in_executor'
         ]:
             # todo(phlrain), skip inplace add addto pass in new IR
             enable_inplace = False
@@ -1010,11 +1010,11 @@ class _ExecutorCache:
             )
         else:
             default_job = core.Job("default")
-            if get_flags("FLAGS_enable_new_ir_in_executor")[
-                'FLAGS_enable_new_ir_in_executor'
+            if get_flags("FLAGS_enable_pir_in_executor")[
+                'FLAGS_enable_pir_in_executor'
             ]:
                 type_to_program = {
-                    "default": translate_to_new_ir(new_program.desc)
+                    "default": translate_to_pir(new_program.desc)
                 }
             else:
                 type_to_program = {"default": new_program.desc}
@@ -1215,7 +1215,7 @@ class Executor:
                         )
                     check_feed_shape_type(var, cur_feed)
                 idx = op.desc.attr('col')
-                pir_flag_name = 'FLAGS_enable_new_ir_in_executor'
+                pir_flag_name = 'FLAGS_enable_pir_in_executor'
                 if get_flags(pir_flag_name)[pir_flag_name]:
                     core.set_feed_variable(
                         scope, cur_feed, feed_target_name, idx
