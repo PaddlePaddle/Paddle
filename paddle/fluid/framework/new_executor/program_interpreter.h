@@ -50,8 +50,10 @@ class ProgramInterpreter : public InterpreterBaseImpl {
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true) override;
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true) override;
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_auto_parallel_profiler = false) override;
 
   void Build(
       const std::vector<std::string>& feed_names,
@@ -222,6 +224,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   phi::GpuTimer calculated_stream_timer_;
 #endif
   size_t last_calculated_instr_id;
+  bool enable_auto_parallel_profiler_;
 };
 
 }  // namespace framework

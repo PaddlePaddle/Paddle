@@ -30,7 +30,6 @@
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
-PHI_DECLARE_bool(auto_parallel_profiler);
 
 namespace paddle {
 namespace framework {
@@ -50,6 +49,7 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     ss << scope << ", ";
   }
   VLOG(6) << ss.str();
+  enable_auto_parallel_profiler_ = false;
 
   const auto& jobs = plan_.JobList();
   for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
@@ -225,7 +225,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
   // record each job's run time
 #if defined(PADDLE_WITH_CUDA)
-  if (FLAGS_auto_parallel_profiler) {
+  if (enable_auto_parallel_profiler_) {
     for (size_t job_idx = 0; job_idx < jobs.size(); ++job_idx) {
       const auto& job = jobs[job_idx];
       const std::string& job_type = job->Type();

@@ -14,8 +14,6 @@
 
 #include "paddle/fluid/platform/device/gpu/cuda/cuda_profiler.h"
 
-PHI_DECLARE_bool(auto_parallel_profiler);
-
 namespace paddle {
 namespace platform {
 
@@ -48,25 +46,10 @@ void CudaNvtxRangePush(const std::string& name, const NvtxRangeColor color) {
   eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
   eventAttrib.message.ascii = name.c_str();
 
-  if (FLAGS_auto_parallel_profiler) {
-    struct timeval time_now {};
-    gettimeofday(&time_now, nullptr);
-    double push_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
-    VLOG(0) << "NVTX range push: " << name
-            << ", time: " << std::to_string(push_time);
-  }
   dynload::nvtxRangePushEx(&eventAttrib);
 }
 
-void CudaNvtxRangePop() {
-  if (FLAGS_auto_parallel_profiler) {
-    struct timeval time_now {};
-    gettimeofday(&time_now, nullptr);
-    double pop_time = (time_now.tv_sec * 1000) + (time_now.tv_usec / 1000.0);
-    VLOG(0) << "NVTX range pop, time: " << std::to_string(pop_time);
-  }
-  dynload::nvtxRangePop();
-}
+void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
 #endif
 
 }  // namespace platform

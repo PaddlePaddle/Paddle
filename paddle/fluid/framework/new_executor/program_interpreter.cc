@@ -39,7 +39,6 @@
 #include "paddle/phi/core/flags.h"
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
-PHI_DECLARE_bool(auto_parallel_profiler);
 
 namespace paddle {
 namespace framework {
@@ -133,7 +132,9 @@ void ProgramInterpreter::RunImpl() {
 }
 
 FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
-                                  bool need_fetch) {
+                                  bool need_fetch,
+                                  bool enable_auto_parallel_profiler) {
+  enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
 
@@ -703,7 +704,7 @@ void ProgramInterpreter::Convert(
     vec_instruction_.emplace_back(op_idx, std::move(op_func_node), *dev_ctx_);
   }
 
-  if (FLAGS_auto_parallel_profiler) {
+  if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     gpuStream_t calculate_stream =
         dynamic_cast<phi::GPUContext*>(
@@ -1075,7 +1076,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
 
   try {
     instr_node.WaitEvent(place_);
-    if (FLAGS_auto_parallel_profiler) {
+    if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (!interpreter::IsCommunicationOp(instr_node) &&
           !calculated_stream_timer_.IsStart()) {
@@ -1136,7 +1137,7 @@ void ProgramInterpreter::ExecuteInstructionList(
 
   exception_holder_.Clear();
 
-  if (FLAGS_auto_parallel_profiler) {
+  if (enable_auto_parallel_profiler_) {
     for (int i = vec_instr.size() - 1; i >= 0; --i) {
       auto& instr_node = vec_instr[i];
       if (!interpreter::IsCommunicationOp(instr_node)) {
@@ -1258,7 +1259,7 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 
     RunInstruction(instr_node);
 
-    if (FLAGS_auto_parallel_profiler) {
+    if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (instr_id == last_calculated_instr_id) {
         VLOG(3) << "Stop calculated stream timer from op: "

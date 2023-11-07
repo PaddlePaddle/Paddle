@@ -13,11 +13,18 @@
 # limitations under the License.
 
 import json
+import logging
 import os
 import re
 from argparse import ArgumentParser
 
 import paddle
+from paddle.base.log_helper import get_logger
+
+_logger = get_logger(
+    __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s'
+)
+
 
 color_map = {
     "forward": "thread_state_running",  # RGB: 126, 200, 148
@@ -32,9 +39,7 @@ def parse_args():
     device_count = paddle.device.cuda.device_count()
     all_devices = ",".join([str(i) for i in range(device_count)])
     parser.add_argument("--devices", type=str, default=all_devices)
-    parser.add_argument(
-        "--log_dir", type=str, default="build/Testing/Temporary/"
-    )
+    parser.add_argument("--log_dir", type=str, required=True)
     args = parser.parse_args()
     return args
 
@@ -110,7 +115,7 @@ def main():
     all_events = []
     step_infos = []
     for device_id in args.devices.split(","):
-        print(f"Process device {device_id}")
+        _logger.info(f"Process device {device_id}")
         device_id = int(device_id)
         log_file = os.path.join(args.log_dir, "workerlog." + str(device_id))
         with open(log_file, "r") as f:
@@ -164,7 +169,7 @@ def main():
     save_path = os.path.join(args.log_dir, "pipeline_profile.json")
     with open(save_path, "w") as f:
         f.write(json.dumps({"traceEvents": all_events}))
-    print(f"Save pipeline profile to {save_path}")
+    _logger.info(f"Save pipeline profile to {save_path}")
 
     # support Perfetto format
     save_path = os.path.join(args.log_dir, "pipeline_profile_perfetto.json")
@@ -202,7 +207,7 @@ def main():
 
     with open(save_path, "w") as f:
         f.write(json_str)
-    print(f"Save pipeline profile to {save_path}")
+    _logger.info(f"Save pipeline profile to {save_path}")
 
 
 if __name__ == "__main__":

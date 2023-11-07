@@ -55,6 +55,8 @@ class StandaloneExecutor {
 
   std::vector<std::unordered_map<std::string, std::shared_ptr<EventInter>>>
       vec_force_events_to_wait_;
+
+  bool enable_auto_parallel_profiler_;
 };
 
 }  // namespace framework

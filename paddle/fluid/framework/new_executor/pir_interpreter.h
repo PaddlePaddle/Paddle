@@ -54,8 +54,10 @@ class PirInterpreter : public InterpreterBaseImpl {
       const std::vector<phi::DenseTensor>& feed_tensors,
       bool need_fetch = true) override;
 
-  paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
-                                   bool need_fetch = true) override;
+  paddle::framework::FetchList Run(
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_auto_parallel_profiler = false) override;
 
   void ShareWorkQueueFrom(InterpreterBaseImpl* src) override;
 
