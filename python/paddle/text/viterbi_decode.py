@@ -64,7 +64,7 @@ def viterbi_decode(
             [[0, 0],
              [1, 1]])
     """
-    if in_dygraph_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.viterbi_decode(
             potentials, transition_params, lengths, include_bos_eos_tag
         )
