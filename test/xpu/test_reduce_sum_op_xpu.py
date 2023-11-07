@@ -34,6 +34,7 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
     class XPUTestReduceSumBase(XPUOpTest):
         def setUp(self):
             self.place = paddle.XPUPlace(0)
+            self.dtype = self.in_type
             self.init_case()
             self.set_case()
 
@@ -54,6 +55,9 @@ class XPUTestReduceSumOp(XPUOpTestWrapper):
                         axis=self.axis, keepdims=self.attrs['keep_dim']
                     )
                 }
+            if self.dtype == np.uint16:
+                self.outputs['Out'] = self.outputs['Out'].astype(np.uint16)
+                
 
         def init_case(self):
             self.shape = (5, 6, 10)
