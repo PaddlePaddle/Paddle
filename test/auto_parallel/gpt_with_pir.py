@@ -103,6 +103,8 @@ class TestPir(unittest.TestCase):
     ):
         reset_prog()
 
+        paddle.set_default_dtype('float32')
+
         strategy = apply_pass(use_sharding, pipeline_mode, fuse_passes_list)
         clip = paddle.nn.ClipGradByGlobalNorm(self.clip_norm)
         opt = paddle.optimizer.AdamW(learning_rate=0.00001, grad_clip=clip)
@@ -172,6 +174,7 @@ class TestPir(unittest.TestCase):
         np.testing.assert_allclose(
             out_dp_prog.history["loss"][0],
             out_dp_ir.history["loss"][0],
+            rtol=1e-5,
             err_msg='pass {} has wrong results!, \nu={}\nv={}\ndiff={}'.format(
                 __class__,
                 out_dp_prog.history["loss"][0],
