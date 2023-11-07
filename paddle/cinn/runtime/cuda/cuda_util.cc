@@ -162,6 +162,8 @@ void cinn_call_cublas(void *v_args,
   int n = trans_o ? (trans_b ? b3 : b4) : (trans_a ? a4 : a3);
   int k = trans_a ? a3 : a4;
 
+  VLOG(3) << "m: " << m << ", n: " << n << ", k: " << k;
+
   cublasOperation_t trans_op_l = trans_o
                                      ? (trans_a ? CUBLAS_OP_N : CUBLAS_OP_T)
                                      : (trans_b ? CUBLAS_OP_T : CUBLAS_OP_N);
@@ -245,7 +247,7 @@ void cinn_call_cublas(void *v_args,
       int batch = std::max(a2, b2);
       VLOG(3) << "call cublasGemmStridedBatched with a1*b1 = 1, stride_l = "
               << stride_l << ", stride_r = " << stride_r
-              << ", batch = " << batch;
+              << ", batch = " << batch << ", dtype = " << cuda_dtype;
       cinn::utils::RecordEvent record_run("Call cublasGemmStridedBatched",
                                           cinn::utils::EventType::kInstruction);
       CUBLAS_CALL(cublasGemmStridedBatched(cuda_dtype,

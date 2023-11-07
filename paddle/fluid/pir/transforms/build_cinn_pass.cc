@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 
-#include <algorithm>
 #include <queue>
 #include <regex>
 #include <set>
@@ -136,7 +135,12 @@ bool IsSupportCinn(pir::Operation* op) {
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
   VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
   // Strip the dialect, like pd_op.abs -> abs
-  const auto& op_name = CompatibleInfo::OpName(*op);
+  const auto op_name = CompatibleInfo::OpName(*op);
+  if (CompatibleInfo::IsSupportCinn(*op)) {
+    VLOG(4) << "Found special supported op for CINN: " << op_name;
+    return true;
+  }
+
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 

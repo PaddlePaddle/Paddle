@@ -130,7 +130,7 @@ ProgramInfo BuildSoftmax() {
   return {program, groups};
 }
 
-TEST(PIRCompier, CompileSoftmax) {
+TEST(PirCompier, CompileSoftmax) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -206,7 +206,7 @@ TEST(PIRCompier, CompileSoftmax) {
   EXPECT_EQ(res0, true);
 }
 
-TEST(PIRCompier, CompilerAndRun) {
+TEST(PirCompier, CompilerAndRun) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
@@ -222,7 +222,7 @@ TEST(PIRCompier, CompilerAndRun) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6);
 
-  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build();
 
   // Step 3: Execute Runtime Instruction and check Scope.
@@ -237,7 +237,7 @@ TEST(PIRCompier, CompilerAndRun) {
   }
 }
 
-TEST(PIRCompier, CompileGroupOps) {
+TEST(PirCompier, CompileGroupOps) {
   // Step 1: Construct pir::Program
   auto prog_info = BuildProgram();
   std::shared_ptr<::pir::Program> program = std::get<0>(prog_info);
@@ -254,7 +254,7 @@ TEST(PIRCompier, CompileGroupOps) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6);
 
-  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build(groups);
 
   // Step 3: Execute Runtime Instruction and check Scope.
@@ -280,6 +280,6 @@ TEST(RuntimeDialect, CompilerAndRun) {
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
   ASSERT_EQ(scope->var_names().size(), 6u);
 
-  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto runtime_program = ir_compiler.Build();
 }

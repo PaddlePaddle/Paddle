@@ -39,6 +39,14 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.divide", "divide"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
+const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
+    "subtract"};
+
+bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
+  return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
+         CINN_WHITE_OPS.end();
+}
+
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   std::string name = op.name();
   if (OP_NAMES.count(name)) {
