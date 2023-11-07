@@ -113,6 +113,12 @@ SpmdInfo ReductionInferSpmdBase(const DistMetaTensor& x,
   out_dist_attr.set_partial_status(partial_on_dims,
                                    static_cast<ReduceType>(reduce_type));
 
+  VLOG(4) << "out_axes: " << str_join(out_axes);
+  VLOG(4) << "axis_to_dim_map: ";
+  for (auto it = axis_to_dim_map.cbegin(); it != axis_to_dim_map.cend(); it++) {
+    VLOG(4) << "axis: " << it->first << " "
+            << "dim: " << it->second;
+  }
   // Step3.2  handle input tensor partial (TODO)
   // If the op is a linear op, i.e. `linearity` is true, it supports
   // the input to be partial. Otherwise, the input cannot be partial

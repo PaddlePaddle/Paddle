@@ -37,5 +37,10 @@ SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
                                    int padding_idx,
                                    bool sparse);
 
+SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
+                                const DistMetaTensor& weight,
+                                const DistMetaTensor& out_grad,
+                                int64_t padding_idx,
+                                bool sparse);
 }  // namespace distributed
 }  // namespace phi

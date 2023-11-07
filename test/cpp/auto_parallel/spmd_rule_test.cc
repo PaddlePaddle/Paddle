@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/phi/core/distributed/type_defs.h"
+#include "paddle/phi/infermeta/spmd_rules/embedding.h"
 #include "paddle/phi/infermeta/spmd_rules/replicated.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 
@@ -1325,6 +1326,59 @@ TEST(ElementwiseUnaryLike, Ctor) {
   input = phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
   infered_dist_attrs = phi::distributed::ScaleInferSpmd(input, 1.0, 1.0, false);
   check_element_unary_like(infered_dist_attrs);
+}
+
+TEST(EmbeddingGradInferSpmd, Ctor) {
+  // build input data class
+  std::vector<int64_t> x_shape = {4, 5};
+  std::vector<int64_t> w_shape = {10, 3};
+  std::vector<int64_t> out_grad_shape = {4, 5, 3};
+
+  std::vector<int64_t> mesh_shape = {2, 3};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3, 4, 5};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  // indices is shard, embedding table is replicated,
+  TensorDistAttr x_dist_attr = TensorDistAttr();
+  x_dist_attr.set_process_mesh(process_mesh);
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({1, -1}));
+  x_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr w_dist_attr = TensorDistAttr();
+  w_dist_attr.set_process_mesh(process_mesh);
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  w_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  TensorDistAttr out_grad_dist_attr = TensorDistAttr();
+  out_grad_dist_attr.set_process_mesh(process_mesh);
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, -1}));
+  out_grad_dist_attr.set_dynamic_dims(std::vector<bool>({false, false}));
+
+  phi::distributed::DistMetaTensor x(phi::make_ddim(x_shape), x_dist_attr);
+  phi::distributed::DistMetaTensor w(phi::make_ddim(w_shape), w_dist_attr);
+  phi::distributed::DistMetaTensor out_grad(phi::make_ddim(out_grad_shape),
+                                            out_grad_dist_attr);
+
+  auto spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, -1, -1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(paddle::get<0>(spmdinfo.second[0]).is_partial(), true);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding indices and "
+             "replicating weight"
+          << std::endl
+          << std::endl
+          << std::endl;
 }
 
 }  // namespace auto_parallel
