@@ -759,7 +759,6 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
             optimizer.minimize(loss)
         return main_program
 
-    # @test_with_pir_api
     def test_param_has_l2decay(self):
         paddle.enable_static()
         weight_attr = paddle.ParamAttr(
@@ -776,7 +775,6 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
             self.assertTrue('sum' not in ops[i].type)
             self.assertTrue('scale' not in ops[i].type)
 
-    # @test_with_pir_api
     def test_param_has_l1decay(self):
         paddle.enable_static()
         weight_attr = paddle.ParamAttr(
@@ -807,7 +805,6 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
                 ops[-2].attr('regularization_coeff'), np.float32(0.5)
             )
 
-    # @test_with_pir_api
     def test_param_has_no_regularizer(self):
         paddle.enable_static()
         program = self.get_program(weight_attr=None)
