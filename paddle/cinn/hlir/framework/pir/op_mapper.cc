@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #include "paddle/cinn/hlir/framework/pir/op_mapper.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/cinn_op.h"
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 
@@ -25,13 +27,39 @@ namespace {
 
 void AppendAttrForReduceOp(const ::pir::Operation& op,
                            utils::AttributeMap& attrs) {  // NOLINT
-  auto* source_op =
-      op.operand_source(/*dim_idx=*/1).dyn_cast<::pir::OpResult>().owner();
-  CHECK(source_op->isa<paddle::dialect::FullIntArrayOp>());
-  auto dim_val =
-      paddle::dialect::GetInt64Vector(source_op->attributes().at("value"));
-  std::vector<int> dim(dim_val.begin(), dim_val.end());
+  auto attr = op.attributes().at("dim");
+  auto attr_vec = attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> dim;
+  for (auto vec_element : attr_vec) {
+    dim.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
+  }
+
   attrs["dim"] = dim;
+}
+
+void AppendAttrForBoadcastToOp(const ::pir::Operation& op,
+                               utils::AttributeMap& attrs) {  // NOLINT
+  auto axes_attr = op.attributes().at("broadcast_axes");
+  auto attr_vec = axes_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> axis;
+  for (auto vec_element : attr_vec) {
+    axis.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
+  }
+
+  attrs["broadcast_axes"] = axis;
+
+  auto out_shape_attr = op.attributes().at("out_shape");
+  auto out_shape_attr_vec =
+      out_shape_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+
+  std::vector<int> out_shape;
+  for (auto vec_element : out_shape_attr_vec) {
+    out_shape.push_back(vec_element.dyn_cast<::pir::Int64Attribute>().data());
+  }
+
+  attrs["out_shape"] = out_shape;
 }
 
 }  // namespace
@@ -42,7 +70,7 @@ void AppendAttrForReduceOp(const ::pir::Operation& op,
   };
 
 #define REGISTER_ATTR_RULE(OP, func) \
-  attr_funcs_[paddle::dialect::OP::name()] = func;
+  attr_funcs_[cinn::dialect::OP::name()] = func;
 
 void OpMapper::RegisterMapRules() {
   // max(x, dim) -> reduce_max(x)
@@ -50,10 +78,9 @@ void OpMapper::RegisterMapRules() {
   REGISTER_OPERAND_RULE(SumOp, 0);
   REGISTER_OPERAND_RULE(MinOp, 0);
   REGISTER_OPERAND_RULE(ProdOp, 0);
-  REGISTER_ATTR_RULE(MaxOp, AppendAttrForReduceOp);
-  REGISTER_ATTR_RULE(SumOp, AppendAttrForReduceOp);
-  REGISTER_ATTR_RULE(MinOp, AppendAttrForReduceOp);
-  REGISTER_ATTR_RULE(ProdOp, AppendAttrForReduceOp);
+  REGISTER_ATTR_RULE(ReduceMaxOp, AppendAttrForReduceOp);
+  REGISTER_ATTR_RULE(ReduceSumOp, AppendAttrForReduceOp);
+  REGISTER_ATTR_RULE(BroadcastOp, AppendAttrForBoadcastToOp);
 }
 
 }  // namespace pir
