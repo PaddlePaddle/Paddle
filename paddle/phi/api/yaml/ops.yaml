@@ -1410,6 +1410,7 @@
   output : Tensor(out), Tensor(mean), Tensor(variance)
   infer_meta :
     func : LayerNormInferMeta
+    spmd_rule : LayerNormInferSpmd
   kernel :
     func : layer_norm
     data_type : x

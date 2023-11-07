@@ -1251,7 +1251,6 @@
   infer_meta :
     func : LayerNormGradInferMeta
     param : [x, scale, bias]
-    spmd_rule : LayerNormGradInferSpmd
   kernel :
     func : layer_norm_grad
     data_type : x
