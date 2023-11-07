@@ -24,6 +24,7 @@
 #include "paddle/phi/infermeta/backward.h"
 #include "paddle/phi/infermeta/fusion.h"
 #include "paddle/phi/infermeta/multiary.h"
+#include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/builtin_op.h"
@@ -1046,6 +1047,95 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+const char *CreateArrayOp::attributes_name[1] = {"dtype"};
+
+OpInfoTuple CreateArrayOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {
+      paddle::dialect::OpAttributeInfo(
+          "dtype", "paddle::dialect::DataTypeAttribute", "")};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {OpOutputInfo(
+      "out", "paddle::dialect::DenseTensorArrayType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("CreateArrayInferMeta",
+                    {"dtype"},
+                    "create_array",
+                    {"dtype"},
+                    {"dtype"},
+                    {},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "create_array");
+}
+
+void CreateArrayOp::Build(pir::Builder &builder,
+                          pir::OperationArgument &argument,
+                          phi::DataType dtype) {
+  VLOG(4) << "Start build CreateArrayOp";
+  VLOG(4) << "Builder construction inputs";
+  VLOG(4) << "Builder construction attributes";
+  pir::Attribute attr_dtype = paddle::dialect::DataTypeAttribute::get(
+      pir::IrContext::Instance(), dtype);
+  argument.AddAttribute("dtype", attr_dtype);
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::CreateArrayInferMeta(dtype, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.layout());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void CreateArrayOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "CreateArrayOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        0u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
+  }
+  VLOG(4) << "Verifying attributes:";
+  {
+    auto &attributes = this->attributes();
+    PADDLE_ENFORCE(attributes.count("dtype") > 0, "dtype does not exist.");
+  }
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorArrayType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: CreateArrayOp.";
+}
+
+void CreateArrayOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::CreateArrayInferMeta);
+  fn(infer_meta);
+}
+
 OpInfoTuple ArrayLengthOp::GetOpInfo() {
   std::vector<paddle::dialect::OpInputInfo> inputs = {
       OpInputInfo("x",
@@ -1060,15 +1150,8 @@ OpInfoTuple ArrayLengthOp::GetOpInfo() {
   std::vector<paddle::dialect::OpOutputInfo> outputs = {
       OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
 
-  paddle::dialect::OpRunTimeInfo run_time_info =
-      OpRunTimeInfo("TensorArrayLengthInferMeta",
-                    {"x"},
-                    "array_length",
-                    {"x"},
-                    {"x"},
-                    {},
-                    {},
-                    {});
+  paddle::dialect::OpRunTimeInfo run_time_info = OpRunTimeInfo(
+      "ArrayLengthInferMeta", {"x"}, "array_length", {"x"}, {"x"}, {}, {}, {});
 
   return std::make_tuple(
       inputs, attributes, outputs, run_time_info, "array_length");
@@ -1095,7 +1178,7 @@ void ArrayLengthOp::Build(pir::Builder &builder,
   paddle::dialect::IrMetaTensor dense_out;
   phi::MetaTensor meta_out(&dense_out);
 
-  phi::TensorArrayLengthInferMeta(meta_x, &meta_out);
+  phi::ArrayLengthInferMeta(meta_x, &meta_out);
 
   std::vector<pir::Type> argument_outputs;
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
@@ -1146,7 +1229,7 @@ void ArrayLengthOp::VerifySig() {
 }
 
 void ArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
-  auto fn = PD_INFER_META(phi::TensorArrayLengthInferMeta);
+  auto fn = PD_INFER_META(phi::ArrayLengthInferMeta);
   fn(infer_meta);
 }
 
@@ -1159,4 +1242,5 @@ IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
+IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
 IR_DEFINE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)

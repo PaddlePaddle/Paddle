@@ -867,5 +867,5 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
                              DataType dtype,
                              MetaTensor* out);
 
-void TensorArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out);
 }  // namespace phi

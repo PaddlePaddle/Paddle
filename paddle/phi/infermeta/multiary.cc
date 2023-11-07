@@ -4419,7 +4419,7 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dtype(dtype);
 }
 
-void TensorArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dtype(phi::DataType::INT64);
   out->set_dims(make_ddim({1}));
 }

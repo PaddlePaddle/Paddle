@@ -30,5 +30,10 @@ void ArrayLengthKernel(const Context& ctx,
 
 }  // namespace phi
 
-PD_REGISTER_KERNEL(
-    array_length, CPU, ALL_LAYOUT, phi::ArrayLengthKernel, float, double) {}
+PD_REGISTER_KERNEL(array_length,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::ArrayLengthKernel,
+                   float,
+                   double,
+                   bool) {}
