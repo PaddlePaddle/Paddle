@@ -208,10 +208,10 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             )
             avg_cost = paddle.mean(cost)
 
-        # p_g = base.backward.append_backward(loss=avg_cost)
-        p_g = paddle.autograd.ir_backward.grad(
-            avg_cost, prog.global_block().all_parameters()
-        )
+            # p_g = base.backward.append_backward(loss=avg_cost)
+            p_g = paddle.autograd.ir_backward.grad(
+                avg_cost, prog.global_block().all_parameters()
+            )
 
         grad_list = [elem[1] for elem in p_g]
         train_reader = paddle.batch(paddle.dataset.mnist.train(), batch_size=3)
@@ -249,13 +249,11 @@ class TestPirGradientClipByGlobalNorm(TestGradientClip):
             )
             avg_cost = paddle.mean(cost)
 
-        # p_g_clip = base.backward.append_backward(loss=avg_cost)
-        p_g_clip = paddle.autograd.ir_backward.grad(
-            avg_cost, prog.global_block().all_parameters()
-        )
-        with paddle.static.program_guard(
-            main_program=prog, startup_program=startup_program
-        ):
+            # p_g_clip = base.backward.append_backward(loss=avg_cost)
+            p_g_clip = paddle.autograd.ir_backward.grad(
+                avg_cost, prog.global_block().all_parameters()
+            )
+
             p_g_clip = self.clip_gradient(p_g_clip)
 
         grad_clip_list = [elem[1] for elem in p_g_clip]
