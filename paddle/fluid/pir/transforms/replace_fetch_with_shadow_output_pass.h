@@ -21,6 +21,6 @@ namespace pir {
 
 class Pass;
 
-IR_API std::unique_ptr<Pass> CreateReorderBlockOpsPass();
+IR_API std::unique_ptr<Pass> CreateReplaceFetchWithShadowOutputPass();
 
 }  // namespace pir

@@ -613,9 +613,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             return inf_norm(x, porder=p, axis=axis, keepdim=keepdim, name=name)
         elif p == 0:
             raise ValueError(
-                "just support axis type int or list (length of list <=1) if p = 0, found {}".format(
-                    axis
-                )
+                f"just support axis type int or list (length of list <=1) if p = 0, found {axis}"
             )
         else:
             return p_matrix_norm(
@@ -859,7 +857,7 @@ def cond(x, p=None, name=None):
             Calculate the matrix norm of a square matrix or batches of square matrices,
             when porder is in (1, -1, inf, -inf)
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             abs_out = _C_ops.abs(input)
             sum_out = _C_ops.sum(abs_out, axis, None, False)
 
@@ -922,7 +920,7 @@ def cond(x, p=None, name=None):
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
         """
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             pow_out = _C_ops.pow(input, porder)
             sum_out_1 = _C_ops.sum(pow_out, axis, None, False)
             sum_out_2 = _C_ops.sum(sum_out_1, axis, None, False)
@@ -985,7 +983,7 @@ def cond(x, p=None, name=None):
         """
         u, s, vh = svd(input, full_matrices=False)
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if porder == "nuc":
                 return _C_ops.sum(s, axis, None, False)
             max_out = _C_ops.max(s, axis, False)
@@ -1056,7 +1054,7 @@ def cond(x, p=None, name=None):
                 return out
 
     def empty_tensor(input, shape):
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             return input.reshape(shape)
         raise ValueError(
             "only support x is nonempty tensor in static graph mode"
@@ -1907,7 +1905,7 @@ def det(x, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.det(x)
     else:
         check_dtype(x.dtype, 'Input', ['float16', 'float32', 'float64'], 'det')
@@ -1966,7 +1964,7 @@ def slogdet(x, name=None):
              [ 0.25681755, -0.25061053, -0.10809582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.slogdet(x)
     else:
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
@@ -2685,9 +2683,7 @@ def eigvals(x, name=None):
 
     if x_shape[-1] != x_shape[-2]:
         raise ValueError(
-            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".format(
-                x_shape
-            )
+            f"The last two dimensions of Input(x) should be equal, but received x's shape = {x_shape}"
         )
 
     if in_dynamic_or_pir_mode():
@@ -2835,9 +2831,7 @@ def eigh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -3149,7 +3143,7 @@ def solve(x, y, name=None):
             Tensor(shape=[2], dtype=float64, place=Place(cpu), stop_gradient=True,
             [2., 3.])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.solve(x, y)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3221,7 +3215,7 @@ def triangular_solve(
              [-2.],
              [-5.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.triangular_solve(x, y, upper, transpose, unitriangular)
     else:
         inputs = {"X": [x], "Y": [y]}
@@ -3344,9 +3338,7 @@ def eigvalsh(x, UPLO='L', name=None):
                 )
             if x_shape[-1] != x_shape[-2]:
                 raise ValueError(
-                    "The input matrix must be batches of square matrices. But received x's dimention: {}".format(
-                        x_shape
-                    )
+                    f"The input matrix must be batches of square matrices. But received x's dimention: {x_shape}"
                 )
             if UPLO != 'L' and UPLO != 'U':
                 raise ValueError(
@@ -3444,17 +3436,13 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
     if device == "cpu":
         if driver not in (None, "gels", "gelss", "gelsd", "gelsy"):
             raise ValueError(
-                "Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels', 'gelss', 'gelsd', 'gelsy' or None for CPU inputs. But got {driver}"
             )
         driver = "gelsy" if driver is None else driver
     elif "gpu" in device:
         if driver not in (None, "gels"):
             raise ValueError(
-                "Only support valid driver is 'gels' or None for CUDA inputs. But got {}".format(
-                    driver
-                )
+                f"Only support valid driver is 'gels' or None for CUDA inputs. But got {driver}"
             )
         driver = "gels" if driver is None else driver
     else:

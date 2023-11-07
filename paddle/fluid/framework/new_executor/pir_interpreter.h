@@ -51,7 +51,8 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) override;
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true) override;
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names,
                                    bool need_fetch = true) override;
@@ -203,9 +204,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   void SolvePersisableVarNames();
 
-  const interpreter::NewIrDependencyBuilder& GetNewIrDependencyBuilder() const;
+  const interpreter::PirDependencyBuilder& GetPirDependencyBuilder() const;
 
-  const interpreter::NewIrStreamAnalyzer& GetNewIrStreamAnalyzer() const;
+  const interpreter::PirStreamAnalyzer& GetPirStreamAnalyzer() const;
 
   InstructionSchedulingPriorityLess ir_instruction_scheduling_priority_less;
 
@@ -218,9 +219,9 @@ class PirInterpreter : public InterpreterBaseImpl {
 
   std::vector<int> var_ref_count_;
 
-  interpreter::NewIrDependencyBuilder ir_dependency_builder_;
+  interpreter::PirDependencyBuilder ir_dependency_builder_;
 
-  interpreter::NewIrStreamAnalyzer ir_stream_analyzer_;
+  interpreter::PirStreamAnalyzer ir_stream_analyzer_;
 
   std::vector<std::string> fetch_var_names_;
 
