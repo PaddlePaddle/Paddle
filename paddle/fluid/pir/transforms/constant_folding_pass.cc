@@ -33,6 +33,7 @@
 #include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/op_result.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
@@ -46,22 +47,22 @@ namespace {
 class ConstantFoldingPattern : public pir::RewritePattern {
  public:
   ConstantFoldingPattern(pir::IrContext* context,
+                         paddle::framework::Scope* scope,
                          pir::PatternBenefit benefit = 1,
                          const std::vector<std::string>& generated_names = {})
-      : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names) {
-  }
+      : RewritePattern(MatchAnyOpTypeTag(), benefit, context, generated_names),
+        scope_(scope) {}
 
   bool Match(pir::Operation* op) const override {
     // TODO(liuyuanle): Use trait to improve robustness.
-    if (op->dyn_cast<pir::GetParameterOp>() ||
-        op->dyn_cast<pir::SetParameterOp>() ||
-        op->dyn_cast<paddle::dialect::FetchOp>())
+    if (op->isa<pir::GetParameterOp>() || op->isa<pir::SetParameterOp>() ||
+        op->isa<paddle::dialect::FetchOp>() ||
+        op->isa<paddle::dialect::ShadowOutputOp>())
       return false;
 
     // Inputs must come from get parameter op.
     for (uint32_t i = 0; i < op->num_operands(); ++i)
-      if (pir::GetDefiningOpForInput(op, i)->dyn_cast<pir::GetParameterOp>() ==
-          nullptr)
+      if (!pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>())
         return false;
     return true;
   }
@@ -101,7 +102,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     paddle::framework::InterpreterCore core(phi::CPUPlace{},
                                             fetch_var_names,
                                             kernel_program->block(),
-                                            &scope_,
+                                            scope_,
                                             exe_config_);
 
     paddle::framework::FetchList fetch_list = core.Run({});
@@ -118,7 +119,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         "@constant_folding_pass@_" + std::to_string(suffix_++);
     exe_config_.skip_gc_vars.insert(param_name);
 
-    auto* param_var = scope_.Var(param_name);
+    auto* param_var = scope_->Var(param_name);
     auto* param_tensor = param_var->GetMutable<phi::DenseTensor>();
     *param_tensor = out_tensor;
     program->SetParameter(param_name, std::move(parameter));
@@ -150,7 +151,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       program->SetParameter(param_name,
                             std::make_unique<pir::Parameter>(*param));
 
-      auto* param_var = scope_.FindVar(param_name);
+      auto* param_var = scope_->FindVar(param_name);
       PADDLE_ENFORCE_NOT_NULL(
           param_var,
           phi::errors::InvalidArgument("Parameter var not in scope."));
@@ -163,7 +164,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // prepare op outputs
     std::vector<pir::Type> output_types;
     for (uint32_t i = 0; i < op->num_results(); i++) {
-      output_types.push_back(op->result(i).type());
+      output_types.push_back(op->result_type(i));
     }
 
     auto* temp_op =
@@ -185,8 +186,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
+  paddle::framework::Scope* scope_{nullptr};
   inline static size_t suffix_{0};
-  inline static paddle::framework::Scope scope_{};
   inline static paddle::framework::interpreter::ExecutionConfig exe_config_{};
 };
 
@@ -196,7 +197,7 @@ class ConstantFoldingPass : public pir::Pass {
 
   bool Initialize(pir::IrContext* context) override {
     pir::RewritePatternSet ps(context);
-    ps.Add<ConstantFoldingPattern>(context);
+    ps.Add<ConstantFoldingPattern>(context, &scope_);
     patterns_ = pir::FrozenRewritePatternSet(std::move(ps));
     return true;
   }
@@ -214,6 +215,7 @@ class ConstantFoldingPass : public pir::Pass {
 
  private:
   pir::FrozenRewritePatternSet patterns_;
+  paddle::framework::Scope scope_;
 };
 
 }  // namespace
