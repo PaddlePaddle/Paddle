@@ -600,7 +600,9 @@ class P2pHelper:
         if _timers is not None:
             _timers("send_forward_recv_forward").start()
 
-        self._send_meta(output_tensor)
+        if output_tensor is not None:
+            self._send_meta(output_tensor)
+
         if recv_prev:
             self._recv_meta()
 
