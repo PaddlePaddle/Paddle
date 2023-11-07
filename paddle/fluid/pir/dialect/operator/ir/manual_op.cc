@@ -1046,6 +1046,110 @@ void SplitGradOp::InferMeta(phi::InferMetaContext *infer_meta) {
   fn(infer_meta);
 }
 
+OpInfoTuple TensorArrayLengthOp::GetOpInfo() {
+  std::vector<paddle::dialect::OpInputInfo> inputs = {
+      OpInputInfo("x",
+                  "paddle::dialect::DenseTensorArrayType",
+                  false,
+                  false,
+                  false,
+                  false)};
+
+  std::vector<paddle::dialect::OpAttributeInfo> attributes = {};
+
+  std::vector<paddle::dialect::OpOutputInfo> outputs = {
+      OpOutputInfo("out", "paddle::dialect::DenseTensorType", false, false)};
+
+  paddle::dialect::OpRunTimeInfo run_time_info =
+      OpRunTimeInfo("TensorArrayLengthInferMeta",
+                    {"x"},
+                    "tensor_array_length",
+                    {"x"},
+                    {"x"},
+                    {},
+                    {},
+                    {});
+
+  return std::make_tuple(
+      inputs, attributes, outputs, run_time_info, "tensor_array_length");
+}
+
+void TensorArrayLengthOp::Build(pir::Builder &builder,
+                                pir::OperationArgument &argument,
+                                pir::Value x) {
+  VLOG(4) << "Start build TensorArrayLengthOp";
+  VLOG(4) << "Builder construction inputs";
+  argument.AddInputs({x});
+  VLOG(4) << "Builder construction attributes";
+  VLOG(4) << "Builder construction outputs";
+
+  paddle::dialect::DenseTensorArrayType x_type =
+      x.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
+  paddle::dialect::IrMetaTensor dense_x(
+      paddle::dialect::TransToPhiDataType(x_type.dtype()),
+      {},
+      x_type.data_layout(),
+      {});
+  phi::MetaTensor meta_x(&dense_x);
+
+  paddle::dialect::IrMetaTensor dense_out;
+  phi::MetaTensor meta_out(&dense_out);
+
+  phi::TensorArrayLengthInferMeta(meta_x, &meta_out);
+
+  std::vector<pir::Type> argument_outputs;
+  pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorType::get(
+      pir::IrContext::Instance(),
+      paddle::dialect::TransToIrDataType(dense_out.dtype()),
+      dense_out.dims(),
+      dense_out.layout(),
+      dense_out.lod(),
+      dense_out.offset());
+  argument_outputs.push_back(out_dense_tensor_type);
+  argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
+}
+
+void TensorArrayLengthOp::VerifySig() {
+  VLOG(4) << "Start Verifying inputs, outputs and attributes for: "
+             "TensorArrayLengthOp.";
+  VLOG(4) << "Verifying inputs:";
+  {
+    auto input_size = num_operands();
+    PADDLE_ENFORCE_EQ(
+        input_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of inputs must be equal to 1.", input_size));
+
+    PADDLE_ENFORCE((*this)
+                       ->operand_source(0)
+                       .type()
+                       .isa<paddle::dialect::DenseTensorArrayType>(),
+                   phi::errors::PreconditionNotMet(
+                       "Type validation failed for the 0th input."));
+  }
+  VLOG(4) << "Verifying attributes:";
+  VLOG(4) << "Verifying outputs:";
+  {
+    auto output_size = num_results();
+    PADDLE_ENFORCE_EQ(
+        output_size,
+        1u,
+        phi::errors::PreconditionNotMet(
+            "The size %d of outputs must be equal to 1.", output_size));
+    PADDLE_ENFORCE(
+        (*this)->result(0).type().isa<paddle::dialect::DenseTensorType>(),
+        phi::errors::PreconditionNotMet(
+            "Type validation failed for the 0th output."));
+  }
+  VLOG(4) << "End Verifying for: TensorArrayLengthOp.";
+}
+
+void TensorArrayLengthOp::InferMeta(phi::InferMetaContext *infer_meta) {
+  auto fn = PD_INFER_META(phi::TensorArrayLengthInferMeta);
+  fn(infer_meta);
+}
+
 }  // namespace dialect
 }  // namespace paddle
 

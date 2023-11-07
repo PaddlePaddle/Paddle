@@ -181,6 +181,24 @@ class SplitGradOp : public pir::Op<SplitGradOp, OpYamlInfoInterface> {
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class TensorArrayLengthOp : public pir::Op<TensorArrayLengthOp,
+                                           OpYamlInfoInterface,
+                                           InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.tensor_array_length"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value x);
+  void VerifySig();
+  pir::Value x() { return operand_source(0); }
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 }  // namespace dialect
 }  // namespace paddle
 
@@ -190,3 +208,4 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddN_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::AddNWithKernelOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::TensorArrayLengthOp)
