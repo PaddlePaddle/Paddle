@@ -251,7 +251,7 @@ def weighted_sample_neighbors(
                 "`eids` should not be None if `return_eids` is True."
             )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         (
             out_neighbors,
             out_count,
