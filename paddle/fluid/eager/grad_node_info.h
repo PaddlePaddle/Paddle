@@ -21,7 +21,7 @@
 #include "paddle/fluid/eager/hooks.h"
 #include "paddle/phi/api/all.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/utils/test_macros.h"
 
 namespace egr {

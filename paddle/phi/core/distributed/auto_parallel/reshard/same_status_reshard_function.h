@@ -14,12 +14,12 @@
 
 #pragma once
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
 namespace phi {
 namespace distributed {
 
-class RToPReshardFunction final : public ReshardFunction {
+class SameStatusReshardFunction final : public ReshardFunction {
  public:
   bool IsSuitable(const DistTensor& in,
                   const TensorDistAttr& out_dist_attr) override;
