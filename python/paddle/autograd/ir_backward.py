@@ -446,8 +446,17 @@ def append_backward_ops(
             op.operands_source(), grad_semantic_info
         ):
             if not grad_semantic:
-                inputs.append([input])
+                if (
+                    input.get_defining_op() is not None
+                    and input.get_defining_op().name() == "builtin.combine"
+                ):
+                    inputs.append(
+                        list(input.get_defining_op().operands_source())
+                    )
+                else:
+                    inputs.append([input])
                 continue
+
             if (
                 input.get_defining_op() is not None
                 and input.get_defining_op().name() == "builtin.combine"

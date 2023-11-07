@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
 
 #include "glog/logging.h"
 #include "paddle/phi/common/int_array.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/kernels/all_gather_kernel.h"
 #include "paddle/phi/kernels/concat_kernel.h"
 #include "paddle/phi/kernels/split_kernel.h"
@@ -115,7 +115,52 @@ void SToRReshardFunction::Eval(DeviceContext* dev_ctx,
   }
 }
 
+bool SToRReshardFunctionCrossMesh::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  const auto& in_dist_attr = in.dist_attr();
+  const auto& in_dims_mapping = in_dist_attr.dims_mapping();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_shard());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_replicated());
+
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  int split_axis = GetSplitAxisWithDimsMapping(in_dims_mapping).begin()->first;
+  int64_t num_of_process = in_process_mesh.size();
+  RESHARD_SHORTCUT_IF_FALSE(in.local_dims()[static_cast<int>(split_axis)] *
+                                num_of_process ==
+                            in.dims()[static_cast<int>(split_axis)]);
+
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+
+  return true;
+}
+
+void SToRReshardFunctionCrossMesh::Eval(DeviceContext* dev_ctx,
+                                        const DistTensor& in,
+                                        const TensorDistAttr& out_dist_attr,
+                                        DistTensor* out) {
+  VLOG(3) << "Call SToRReshardFunctionCrossMesh Eval";
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  SameStatusReshardFunction same_status_func;
+  DistTensor tmp_result;
+
+  TensorDistAttr tmp_dist_attr = in.dist_attr();
+  tmp_dist_attr.set_process_mesh(out_process_mesh);
+  same_status_func.Eval(dev_ctx, in, tmp_dist_attr, &tmp_result);
+
+  SToRReshardFunction s_to_r_func;
+  s_to_r_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+}
+
 REGISTER_RESHARD_FUNC(SToRReshardFunction);
+REGISTER_RESHARD_FUNC(SToRReshardFunctionCrossMesh);
 
 }  // namespace distributed
 }  // namespace phi

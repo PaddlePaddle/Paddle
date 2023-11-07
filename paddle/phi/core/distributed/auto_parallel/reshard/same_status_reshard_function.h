@@ -14,13 +14,21 @@
 
 #pragma once
 
-#include <memory>
-#include "paddle/pir/core/dll_decl.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
-namespace pir {
+namespace phi {
+namespace distributed {
 
-class Pass;
+class SameStatusReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-IR_API std::unique_ptr<Pass> CreateReorderBlockOpsPass();
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
 
-}  // namespace pir
+}  // namespace distributed
+}  // namespace phi

@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 
 #include <algorithm>
 
 #include "glog/logging.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/distributed/store/store_utils.h"
 #include "paddle/phi/kernels/p_recv_kernel.h"
 #include "paddle/phi/kernels/p_send_kernel.h"
