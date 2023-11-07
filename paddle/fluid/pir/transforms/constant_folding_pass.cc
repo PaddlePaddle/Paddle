@@ -56,8 +56,7 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   bool Match(pir::Operation* op) const override {
     // TODO(liuyuanle): Use trait to improve robustness.
     if (op->isa<pir::GetParameterOp>() || op->isa<pir::SetParameterOp>() ||
-        op->isa<paddle::dialect::FetchOp>() ||
-        op->isa<paddle::dialect::ShadowOutputOp>())
+        op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>())
       return false;
 
     // Inputs must come from get parameter op.
