@@ -336,7 +336,6 @@ class ListWithCondNet(paddle.nn.Layer):
 
     # Add *args to test function.__self__ in FunctionSpec.
     # DO NOT remove *args.
-    @paddle.jit.to_static
     def forward(self, x, index, *args):
         y = paddle.nn.functional.relu(x)
         a = []
@@ -360,7 +359,7 @@ class TestListWithCondGradInferVarType(Dy2StTestBase):
         net = ListWithCondNet()
         x = paddle.to_tensor([2, 3, 4], dtype='float32')
         index = paddle.to_tensor([1])
-        res = net(x, index)
+        res = paddle.jit.to_static(net)(x, index)
         self.assertEqual(res, 48.0)
 
 

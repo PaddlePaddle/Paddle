@@ -83,7 +83,7 @@ class IR_API Pass {
  protected:
   virtual void Run(Operation* op) = 0;
 
-  virtual inline bool CanApplyOn(Operation* op) const;
+  virtual bool CanApplyOn(Operation* op) const;
 
   virtual bool Initialize(IrContext* context) { return true; }
 
