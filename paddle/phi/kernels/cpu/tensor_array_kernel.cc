@@ -24,7 +24,6 @@ void ArrayLengthKernel(const Context& ctx,
                        const TensorArray& x,
                        DenseTensor* out) {
   out->Resize({1});
-  auto cpu = platform::CPUPlace();
   ctx.template Alloc<int64_t>(out);
   *out->data<int64_t>() = static_cast<int64_t>(x.size());
 }
