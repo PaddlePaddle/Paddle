@@ -155,7 +155,7 @@ TEST(PirCompier, CompileSoftmax) {
   LOG(INFO) << scope->var_names().size();
   ASSERT_EQ(scope->var_names().size(), 8);
 
-  cinn::hlir::framework::PIRCompiler ir_compiler(*program, target, scope);
+  cinn::hlir::framework::PirCompiler ir_compiler(*program, target, scope);
   auto fn_ptr_res = ir_compiler.BuildCUDAJITInfo(groups);
 
   ::pir::Builder builder = ::pir::Builder(ctx, new_program->block());
