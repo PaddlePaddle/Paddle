@@ -34,23 +34,23 @@ def get_ir_program():
         k_s = paddle.tanh(z_s)
         q_s = paddle.unsqueeze(k_s, [2])
 
-    newir_program = pir.translate_to_new_ir(main_program.desc)
-    return newir_program
+    pir_program = pir.translate_to_pir(main_program.desc)
+    return pir_program
 
 
 class TestPybind(unittest.TestCase):
     def test_program(self):
-        newir_program = get_ir_program()
-        print(newir_program)
+        pir_program = get_ir_program()
+        print(pir_program)
 
-        block = newir_program.global_block()
+        block = pir_program.global_block()
         program = block.program
 
-        self.assertEqual(newir_program, program)
+        self.assertEqual(pir_program, program)
 
     def test_block(self):
-        newir_program = get_ir_program()
-        block = newir_program.global_block()
+        pir_program = get_ir_program()
+        block = pir_program.global_block()
         ops = block.ops
         self.assertEqual(
             len(ops), 6
@@ -59,11 +59,11 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(block.ops), 5)
 
     def test_operation(self):
-        newir_program = get_ir_program()
-        ops = newir_program.global_block().ops
-        matmul_op = newir_program.global_block().ops[1]
-        add_op = newir_program.global_block().ops[2]
-        tanh_op = newir_program.global_block().ops[3]
+        pir_program = get_ir_program()
+        ops = pir_program.global_block().ops
+        matmul_op = pir_program.global_block().ops[1]
+        add_op = pir_program.global_block().ops[2]
+        tanh_op = pir_program.global_block().ops[3]
         parent_block = tanh_op.get_parent_block()
         parent_ops_num = len(parent_block.ops)
         self.assertEqual(parent_ops_num, 6)
@@ -73,10 +73,10 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(len(matmul_op.get_output_names()), 1)
 
     def test_value(self):
-        newir_program = get_ir_program()
-        matmul_op = newir_program.global_block().ops[1]
-        add_op = newir_program.global_block().ops[2]
-        tanh_op = newir_program.global_block().ops[3]
+        pir_program = get_ir_program()
+        matmul_op = pir_program.global_block().ops[1]
+        add_op = pir_program.global_block().ops[2]
+        tanh_op = pir_program.global_block().ops[3]
 
         self.assertEqual(
             matmul_op.result(0).dtype, paddle.base.core.DataType.FLOAT32
@@ -138,9 +138,9 @@ class TestPybind(unittest.TestCase):
         self.assertEqual(uninit_op_result.initialized(), False)
 
     def test_type(self):
-        newir_program = get_ir_program()
-        matmul_op = newir_program.global_block().ops[1]
-        add_op = newir_program.global_block().ops[2]
+        pir_program = get_ir_program()
+        matmul_op = pir_program.global_block().ops[1]
+        add_op = pir_program.global_block().ops[2]
         print(matmul_op.result(0).type())
         self.assertEqual(
             matmul_op.result(0).type() == add_op.result(0).type(), True
@@ -166,10 +166,10 @@ class TestPybind(unittest.TestCase):
                 shape=[4, 4], dtype="float32", value=2
             )
 
-        newir_program = pir.translate_to_new_ir(main_program.desc)
-        print(newir_program)
-        conv_attr = newir_program.global_block().ops[3].attrs()
-        full_attr = newir_program.global_block().ops[8].attrs()
+        pir_program = pir.translate_to_pir(main_program.desc)
+        print(pir_program)
+        conv_attr = pir_program.global_block().ops[3].attrs()
+        full_attr = pir_program.global_block().ops[8].attrs()
         self.assertEqual(conv_attr["stop_gradient"], [False])
         self.assertEqual(conv_attr["dilations"], [1, 1])
         self.assertEqual(conv_attr["data_format"], "NCHW")
@@ -181,22 +181,29 @@ class TestPybind(unittest.TestCase):
         self.assertTrue(isinstance(full_attr["place"], paddle.base.core.Place))
 
     def test_operands(self):
-        newir_program = get_ir_program()
-        matmul_op = newir_program.global_block().ops[1]
+        pir_program = get_ir_program()
+        matmul_op = pir_program.global_block().ops[1]
         operands = matmul_op.operands()
         self.assertEqual(len(operands), 2)
 
     def test_results(self):
-        newir_program = get_ir_program()
-        matmul_op = newir_program.global_block().ops[1]
+        pir_program = get_ir_program()
+        matmul_op = pir_program.global_block().ops[1]
         results = matmul_op.results()
         self.assertEqual(len(results), 1)
 
     def test_get_output_intermediate_status(self):
-        newir_program = get_ir_program()
-        unsqueeze_op = newir_program.global_block().ops[-1]
+        pir_program = get_ir_program()
+        unsqueeze_op = pir_program.global_block().ops[-1]
         results = unsqueeze_op.get_output_intermediate_status()
         self.assertEqual(results, [False, True])
+
+    def test_prog_seed(self):
+        p = pir.Program()
+        self.assertEqual(p._seed, 0)
+
+        p.global_seed(10)
+        self.assertEqual(p._seed, 10)
 
 
 if __name__ == "__main__":

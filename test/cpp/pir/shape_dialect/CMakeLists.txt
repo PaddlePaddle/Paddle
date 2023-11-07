@@ -25,9 +25,8 @@ paddle_test(
   pd_op_dialect
   pir)
 
-set_tests_properties(
-  constraint_pass_test PROPERTIES ENVIRONMENT
-                                  "FLAGS_enable_new_ir_in_executor=true")
+set_tests_properties(constraint_pass_test
+                     PROPERTIES ENVIRONMENT "FLAGS_enable_pir_in_executor=true")
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

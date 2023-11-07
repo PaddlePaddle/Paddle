@@ -103,14 +103,14 @@
 #endif
 
 #include "paddle/fluid/ir_adaptor/translator/translate.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/pd_op_to_kernel_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
 
 namespace paddle {
@@ -726,13 +726,15 @@ bool AnalysisPredictor::PrepareExecutor() {
     execution_config.skip_gc_vars.insert(output_names.begin(),
                                          output_names.end());
 
-    if (FLAGS_enable_new_ir_in_executor) {
+    if (FLAGS_enable_pir_in_executor) {
       pir_program_ = std::move(
           paddle::TranslateLegacyProgramToProgram(*inference_program_));
 
       ::pir::PassManager pm(::pir::IrContext::Instance(), 2);
       pm.AddPass(::pir::CreateReplaceFetchWithShadowOutputPass());
       pm.AddPass(::pir::CreateDeadCodeEliminationPass());
+
+      pm.EnableIRPrinting();
       pm.Run(pir_program_.get());
 
       pir_program_ = std::move(

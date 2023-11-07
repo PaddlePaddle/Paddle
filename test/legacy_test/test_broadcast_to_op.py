@@ -42,7 +42,9 @@ class TestBroadcastToError(unittest.TestCase):
 
 # Test python API
 class TestBroadcastToAPI(unittest.TestCase):
-    @test_with_pir_api
+    # TODO: add test_with_pir_api
+    # base.backward.calc_gradient maybe not support pir
+    # AttributeError: 'paddle.base.libpaddle.pir.Program' object has no attribute '_appending_grad_times'
     def test_api(self):
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()

@@ -123,4 +123,10 @@ def finfo(dtype):
             float32
 
     """
+    import paddle
+
+    if paddle.base.framework.in_pir_mode() and isinstance(
+        dtype, paddle.pir.core.DataType
+    ):
+        dtype = paddle.base.framework.paddle_type_to_proto_type[dtype]
     return core_finfo(dtype)

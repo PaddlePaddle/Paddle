@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import itertools
-from functools import cached_property
 
 import numpy as np
 
@@ -34,6 +33,20 @@ from . import logging_utils
 from .utils import RETURN_NO_VALUE_MAGIC_NUM, backend_guard
 
 __all__ = []
+
+
+class cached_property:
+    """
+    Descriptor to implement lazy initialization of property.
+    """
+
+    def __init__(self, function):
+        self.function = function
+
+    def __get__(self, instance, cls):
+        val = self.function(instance)
+        setattr(instance, self.function.__name__, val)
+        return val
 
 
 class NestSequence:
@@ -96,8 +109,8 @@ class NestSequence:
 
 
 class RunableProgram:
-    """a newir program ready for run_program_op to run. constructed by 3 parts:
-    - newir program (pir::Program)
+    """a pir program ready for run_program_op to run. constructed by 3 parts:
+    - pir program (pir::Program)
     - in_out_values
         - input_x values ([pir::OpResult])
         - input_param values ([pir::OpResult])
@@ -159,7 +172,10 @@ class RunableProgram:
         )
 
     def split_forward_backward(self):
-        return paddle.base.libpaddle.pir.split_program(
+        [
+            fwd_prog,
+            bwd_prog,
+        ], prog_attr = paddle.base.libpaddle.pir.split_program(
             self.program,
             self.x_values,
             self.param_values,
@@ -170,6 +186,8 @@ class RunableProgram:
             list(self.forward_range),
             list(self.backward_range),
         )
+
+        return [fwd_prog, bwd_prog], prog_attr
 
     @cached_property
     def _forward_backward_program(self):
@@ -186,6 +204,55 @@ class RunableProgram:
     @property
     def backward_program(self):
         return self._forward_backward_program[0][1]
+
+
+class PirPassContext:
+    """
+    PirPassContext is a class that only has staticmethod currently.
+    It will create a new RunableProgram after calling apply method.
+    """
+
+    INPUT_OP_NAME = "pd_op.data"
+    PARM_OP_NAME = "builtin.get_parameter"
+    OUTPUT_OP_NAME = "builtin.set_parameter"
+
+    @classmethod
+    def apply(cls, runable_program, build_strategy):
+        # TODO(Aurelius84): Currently only support infer mode,
+        # and we just use forward_program because backward_program
+        # is empty.
+        if not build_strategy.build_cinn_pass:
+            return runable_program
+        elif not paddle.is_compiled_with_cinn():
+            raise RuntimeError(
+                "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
+            )
+
+        fwd_program = paddle.base.libpaddle.pir.apply_pir_pass(
+            runable_program.forward_program
+        )
+        in_out_values = cls._prepare_attr(fwd_program)
+        return RunableProgram(fwd_program, in_out_values)
+
+    @classmethod
+    def _prepare_attr(cls, program):
+        """
+        After applying Pass, we need to update the Input/Parameter/Output Value
+        that refer to the new program.
+
+        NOTE: We assume that Inputs come from INPUT_OP, Params come from
+              PARM_OP and Output come from OUTPUT_OP.
+        """
+        inputs, params, outputs = [], [], []
+        for op in program.global_block().ops:
+            op_name = op.name()
+            if op_name == cls.INPUT_OP_NAME:
+                inputs.append(op.result(0))
+            elif op_name == cls.PARM_OP_NAME:
+                params.append(op.result(0))
+            elif op_name == cls.OUTPUT_OP_NAME:
+                outputs.append(op.operand(0).source())
+        return inputs, params, outputs
 
 
 class PartialProgramLayerHook:
@@ -273,7 +340,7 @@ class PartialProgramLayer:
 
         c_run_program_fn = None
         if use_pir_api():
-            c_run_program_fn = _legacy_C_ops.newir_run_program
+            c_run_program_fn = _legacy_C_ops.pir_run_program
         else:
             c_run_program_fn = _legacy_C_ops.run_program
         c_run_program_fn(
@@ -340,8 +407,12 @@ class PartialProgramLayer:
         if is_infer_mode:
             # TODO(xiongkun) who to transfer the pruning program?
             infer_program = self.origin_runable_program.clone()
-            if self._hooker:
-                infer_program = self._hooker.after_infer(infer_program)
+            infer_program = PirPassContext.apply(
+                infer_program, self._build_strategy
+            )
+            # TODO(Aurelius84): Support this later.
+            # if self._hooker:
+            #     infer_program = self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program = self.origin_runable_program.clone()
