@@ -39,11 +39,12 @@ set(PYBIND_DEPS
     phi_utils
     phi
     pir_adaptor
-    pd_op_dialect
+    op_dialect_vjp
     program_translator
     pd_inplace_pass
     fusion_passes
     replace_fetch_with_shadow_output_pass
+    dead_code_elimination_pass
     pir
     new_profiler
     jit_layer
