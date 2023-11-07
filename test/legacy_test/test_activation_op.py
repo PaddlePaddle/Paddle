@@ -1957,6 +1957,9 @@ class TestTan(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
@@ -4900,7 +4903,7 @@ create_test_act_bf16_class(
     TestFloor, grad_check=False, check_prim=True, check_pir=True
 )
 create_test_act_bf16_class(TestCos, check_pir=True)
-create_test_act_bf16_class(TestTan)
+create_test_act_bf16_class(TestTan, check_pir=True)
 create_test_act_bf16_class(TestCosh)
 create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
