@@ -343,7 +343,6 @@ class CinnSubgraphDetector {
   void DoOpFusion() {
     // do fusion
     for (auto* op : sort_ops_) {
-      std::cerr << "sort op " << op->name() << std::endl;
       auto subgraph = subgraph_map_.count(op)
                           ? subgraph_map_[op]
                           : std::make_shared<SubGraph>(op, op_classifier_(op));
@@ -353,7 +352,6 @@ class CinnSubgraphDetector {
       auto producers = GetProducerOpsReverseSort(op, op2id_);
 
       for (auto* producer : producers) {
-        std::cerr << "produer " << producer->name() << std::endl;
         if (op_classifier_(producer) != subgraph->substitute) {
           continue;
         }
@@ -418,7 +416,6 @@ class CinnSubgraphDetector {
   void DoSubGraphFusion() {
     while (true) {
       bool update = false;
-      std::cerr << "subgraph_list_ " << subgraph_list_.size() << std::endl;
       for (auto& subgraph : subgraph_list_) {
         // sub graph is not substitute
         if (!subgraph->substitute) {

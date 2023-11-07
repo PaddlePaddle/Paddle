@@ -592,16 +592,6 @@ void LoopAssignReduceWithLast(ir::IRSchedule& ir_sch,  // NOLINT
   int lane = 1;
   int index = static_cast<int>(axes.size()) - 1;
 
-  std::cerr << "in shape \n";
-  for (auto& s : inshape) {
-    std::cerr << "s " << s << std::endl;
-  }
-
-  std::cerr << "axis \n";
-  for (auto& a : axes) {
-    std::cerr << "axis " << a << std::endl;
-  }
-
   for (; index >= 0; --index) {
     if (index + 1 < axes.size() && axes[index] != axes[index + 1] - 1) {
       break;

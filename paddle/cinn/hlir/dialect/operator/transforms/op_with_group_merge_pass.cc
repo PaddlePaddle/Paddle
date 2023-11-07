@@ -51,6 +51,7 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
   if (found_it == OpKindMap.end()) {
+    std::cerr << "op name " << op_name << std::endl;
     throw std::runtime_error("not support op yet in op kind map");
   }
 
