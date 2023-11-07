@@ -133,7 +133,6 @@ PyObject* ToPyObject(const std::vector<size_t>& value);
 PyObject* ToPyObject(const std::vector<float>& value);
 PyObject* ToPyObject(const std::vector<double>& value);
 PyObject* ToPyObject(const std::vector<std::vector<size_t>>& value);
-PyObject* ToPyObject(const std::vector<PyObject*>& value);
 PyObject* ToPyObject(const std::vector<paddle::Tensor>& value,
                      bool return_py_none_if_not_initialize = false);
 PyObject* ToPyObject(const std::vector<std::vector<paddle::Tensor>>& value,
@@ -341,7 +340,7 @@ paddle::optional<paddle::Tensor> GetOptionalTensorFromArgs(
     ssize_t arg_idx,
     bool dispensable = false);
 
-std::vector<PyObject*> GetEmptyTensorsWithVarDescFromArgs(
+std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
     const std::string& op_type,
     const std::string& arg_name,
     PyObject* args,

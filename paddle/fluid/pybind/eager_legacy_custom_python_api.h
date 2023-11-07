@@ -29,12 +29,8 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
   try {
     auto X = GetTensorListFromArgs("run_program", "X", args, 0, true);
     auto Params = GetTensorListFromArgs("run_program", "Params", args, 1, true);
-    std::vector<PyObject *> TensorObjs =
-        GetEmptyTensorsWithVarDescFromArgs("run_program", "Out", args, 2, true);
-    std::vector<Tensor *> Out = std::vector<Tensor *>();
-    for (auto tensor_obj : TensorObjs) {
-      Out.emplace_back(&(reinterpret_cast<TensorObject *>(tensor_obj)->tensor));
-    }
+    std::vector<paddle::Tensor *> Out =
+        GetTensorsWithVarDescFromArgs("run_program", "Out", args, 2, true);
 
     auto OutScope =
         GetScopePtrListFromArgs("run_program", "OutScope", args, 3, false);
@@ -48,7 +44,7 @@ static PyObject *eager_api_run_program(PyObject *self,  // TOREMOVE
     PyEval_RestoreThread(tstate);
     tstate = nullptr;
 
-    return ToPyObject(TensorObjs);
+    return ToPyObject(Out, true);
   } catch (paddle::platform::EnforceNotMet &exception) {
     if (tstate) {
       PyEval_RestoreThread(tstate);

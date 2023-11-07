@@ -44,7 +44,5 @@ void BindFunctions(PyObject* module);
 void BindEagerPyLayer(PyObject* module);
 void BindEagerOpFunctions(pybind11::module* module);
 void BindFinalStateEagerOpFunctions(pybind11::module* module);
-
-PyObject* CreateTensorFromVarDesc(const paddle::framework::VarDesc& var_desc);
 }  // namespace pybind
 }  // namespace paddle

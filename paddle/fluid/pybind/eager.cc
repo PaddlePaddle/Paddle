@@ -20,7 +20,6 @@ limitations under the License. */
 #include <string>
 #include <vector>
 
-#include "paddle/fluid/eager/accumulation/accumulation_node.h"
 #include "paddle/fluid/eager/api/all.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/utils.h"
@@ -55,30 +54,6 @@ extern PyTypeObject* p_tensor_type;
 extern PyTypeObject* p_string_tensor_type;  // For StringTensor
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_framework_tensor_pytype;
-
-PyObject* CreateTensorFromVarDesc(const paddle::framework::VarDesc& var_desc) {
-  PyObject* obj = p_tensor_type->tp_alloc(p_tensor_type, 0);
-  if (obj) {
-    auto v = reinterpret_cast<TensorObject*>(obj);
-    new (&(v->tensor)) paddle::Tensor();
-
-    std::vector<int64_t> shape = var_desc.GetShape();
-    std::vector<int> cast_shape = std::vector<int>();
-    for (int64_t dim : shape) {
-      cast_shape.emplace_back(static_cast<int>(dim));
-    }
-
-    EmptyTensorInitializer(v,
-                           var_desc.Name(),
-                           egr::Controller::Instance().GetExpectedPlace(),
-                           false,
-                           var_desc.StopGradient(),
-                           var_desc.GetDataType(),
-                           cast_shape,
-                           var_desc.GetType());
-  }
-  return obj;
-}
 
 PyObject* TensorNew(PyTypeObject* type, PyObject* args, PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
