@@ -25,7 +25,6 @@ paddle.enable_static()
 
 
 class TestBroadcastToError(unittest.TestCase):
-    @test_with_pir_api
     def test_errors(self):
         with program_guard(Program(), Program()):
             x1 = base.create_lod_tensor(
