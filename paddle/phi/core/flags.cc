@@ -1272,6 +1272,16 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
                            "Tensor operants mode");
 
 /**
+ * Enable TensorRT build supportsFormateCombine and get getOutputDimensions
+ * automaticly FLAG Name: enable_auto_generate_plugin_fn Since Version: 2.6.0
+ * Value Range: bool, default=false
+ * Example: Note: If Ture, enable generate func automaticly
+ */
+PHI_DEFINE_EXPORTED_bool(enable_auto_generate_plugin_fn,
+                         false,
+                         "enable generate func automaticly");
+
+/**
  * Using new IR in executor  FLAG
  * Name: enable_new_ir_in_executor
  * Since Version: 2.6.0

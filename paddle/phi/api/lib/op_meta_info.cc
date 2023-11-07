@@ -337,6 +337,17 @@ OpMetaInfo& OpMetaInfo::SetInferDtypeFn(InferDtypeFunc&& func) {
   return *this;
 }
 
+#ifdef PADDLE_WITH_TENSORRT
+OpMetaInfo& OpMetaInfo::SetTrtInferShapeFn(TrtInferShapeFunc&& func) {
+  trt_infer_shape_fn_ = std::forward<TrtInferShapeFunc>(func);
+  return *this;
+}
+OpMetaInfo& OpMetaInfo::SetTrtSupportFormateFn(TrtSupportsFormateFunc&& func) {
+  trt_supports_formate_fn_ = std::forward<TrtSupportsFormateFunc>(func);
+  return *this;
+}
+#endif
+
 //////////////// Op Meta Info Helper /////////////////
 const std::string& OpMetaInfoHelper::GetOpName(const paddle::OpMetaInfo& info) {
   return info.name_;
@@ -373,6 +384,17 @@ const InferDtypeFunc& OpMetaInfoHelper::GetInferDtypeFn(
     const paddle::OpMetaInfo& info) {
   return info.infer_dtype_fn_;
 }
+
+#ifdef PADDLE_WITH_TENSORRT
+const TrtInferShapeFunc& OpMetaInfoHelper::GetTrtInferShapeFn(
+    const paddle::OpMetaInfo& info) {
+  return info.trt_infer_shape_fn_;
+}
+const TrtSupportsFormateFunc& OpMetaInfoHelper::GetTrtSupportsFormateFn(
+    const paddle::OpMetaInfo& info) {
+  return info.trt_supports_formate_fn_;
+}
+#endif
 
 //////////////// Op Meta Info Map /////////////////
 
@@ -509,6 +531,20 @@ OpMetaInfoBuilder& OpMetaInfoBuilder::SetInferDtypeFn(InferDtypeFunc func) {
   info_ptr_->SetInferDtypeFn(std::forward<InferDtypeFunc>(func));
   return *this;
 }
+
+#ifdef PADDLE_WITH_TENSORRT
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtInferShapeFn(
+    TrtInferShapeFunc func) {
+  info_ptr_->SetTrtInferShapeFn(std::forward<TrtInferShapeFunc>(func));
+  return *this;
+}
+
+OpMetaInfoBuilder& OpMetaInfoBuilder::SetTrtSupportFormateFn(
+    TrtSupportsFormateFunc func) {
+  info_ptr_->SetTrtSupportFormateFn(std::forward<TrtSupportsFormateFunc>(func));
+  return *this;
+}
+#endif
 }  // namespace paddle
 
 #ifdef __cplusplus

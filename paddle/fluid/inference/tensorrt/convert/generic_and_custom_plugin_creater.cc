@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/tensorrt/plugin/custom_generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin/generic_plugin.h"
 #include "paddle/fluid/inference/tensorrt/plugin_arg_mapping_context.h"
 #include "paddle/phi/api/ext/op_meta_info.h"
@@ -251,9 +252,89 @@ class GenericPluginCreater : public OpConverter {
   }
 };
 
+class CustomGenericPluginCreater : public OpConverter {
+ public:
+  void operator()(const framework::proto::OpDesc &op,
+                  const framework::Scope &scope,
+                  bool test_mode) override {
+    framework::OpDesc op_desc(op, nullptr);
+    VLOG(3) << "convert " << op_desc.Type()
+            << " op to custom generic pluign layer";
+
+    nvinfer1::ILayer *layer = nullptr;
+    std::vector<nvinfer1::ITensor *> inputs;
+
+    CHECK(block_);
+    const framework::BlockDesc block_desc(
+        nullptr, const_cast<framework::proto::BlockDesc *>(block_));
+
+    plugin::CustomPlugin::InputOutPutVarInfo in_out_info;
+    using paddle::inference::tensorrt::plugin::
+        ProtoTypeToGenerateCustomPluginDataType;
+
+    bool with_fp16 = engine_->WithFp16() && !engine_->disable_trt_plugin_fp16();
+
+    auto &op_meta_info_map = OpMetaInfoMap::Instance();
+    const auto &meta_info_map = op_meta_info_map.GetMap();
+    auto &op_info = meta_info_map.at(op_desc.Type()).front();
+
+    // set inputs
+    auto &op_input_names = OpMetaInfoHelper::GetInputs(op_info);
+    for (auto &param_name : op_input_names) {
+      for (auto &arg_name : op_desc.Input(param_name)) {
+        inputs.push_back(engine_->GetITensor(arg_name));
+        auto *var = block_desc.FindVar(arg_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::NotFound(
+                "There is no variable called %s in block.", arg_name.c_str()));
+        PADDLE_ENFORCE_EQ(
+            var->GetType(),
+            FluidDT::VarType_Type_LOD_TENSOR,
+            platform::errors::InvalidArgument("TensorRT engine only takes "
+                                              "LoDTensor as input"));
+        in_out_info.inputs_data_type.push_back(
+            ProtoTypeToGenerateCustomPluginDataType(var->GetDataType()));
+      }
+    }
+
+    // set outputs
+    auto &op_output_names = OpMetaInfoHelper::GetOutputs(op_info);
+    std::vector<std::string> output_names;
+    for (auto &param_name : op_output_names) {
+      for (auto &arg_name : op_desc.Output(param_name)) {
+        output_names.push_back(arg_name);
+        auto *var = block_desc.FindVar(arg_name);
+        PADDLE_ENFORCE_NOT_NULL(
+            var,
+            platform::errors::NotFound(
+                "There is no variable called %s in block.", arg_name.c_str()));
+        PADDLE_ENFORCE_EQ(
+            var->GetType(),
+            FluidDT::VarType_Type_LOD_TENSOR,
+            platform::errors::InvalidArgument("TensorRT engine only takes "
+                                              "LoDTensor as input"));
+        in_out_info.outputs_data_type.push_back(
+            ProtoTypeToGenerateCustomPluginDataType(var->GetDataType()));
+      }
+    }
+
+    auto *plugin = new plugin::CustomPlugin(op, in_out_info, with_fp16);
+    CHECK(plugin);
+
+    layer = engine_->AddDynamicPlugin(
+        inputs.data(), inputs.size(), (plugin::DynamicPluginTensorRT *)plugin);
+    CHECK(layer);
+
+    RreplenishLayerAndOutput(layer, op_desc.Type(), output_names, test_mode);
+  }
+};
+
 }  // namespace tensorrt
 }  // namespace inference
 }  // namespace paddle
 
 REGISTER_TRT_OP_CONVERTER(custom_plugin_creater, CustomPluginCreater);
 REGISTER_TRT_OP_CONVERTER(generic_plugin_creater, GenericPluginCreater);
+REGISTER_TRT_OP_CONVERTER(custom_generic_plugin_creater,
+                          CustomGenericPluginCreater);

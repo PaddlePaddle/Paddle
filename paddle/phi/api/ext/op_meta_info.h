@@ -27,6 +27,10 @@ limitations under the License. */
 #include "paddle/utils/none.h"
 #include "paddle/utils/optional.h"
 
+#ifdef PADDLE_WITH_TENSORRT
+#include "NvInfer.h"
+#endif
+
 /**
  * Op Meta Info Related Define.
  *
@@ -446,6 +450,18 @@ using InferShapeFunc = std::vector<std::vector<int64_t>> (*)(
     const std::vector<std::vector<std::vector<int64_t>>>& vec_input_shapes,
     const std::vector<paddle::any>& attrs);
 
+#ifdef PADDLE_WITH_TENSORRT
+using TrtInferShapeFunc =
+    nvinfer1::DimsExprs (*)(int32_t outputIndex,
+                            const nvinfer1::DimsExprs* inputs,
+                            int32_t nbInputs,
+                            nvinfer1::IExprBuilder& exprBuilder);  // NOLINT
+using TrtSupportsFormateFunc = bool (*)(int32_t pos,
+                                        const nvinfer1::PluginTensorDesc* inOut,
+                                        int32_t nbInputs,
+                                        int32_t nbOutputs);
+#endif
+
 #define PD_SPECIALIZE_InferShapeCallHelper_FOR_SHAPE(input_type)     \
   template <typename... Tail>                                        \
   struct InferShapeCallHelper<input_type, Tail...> {                 \
@@ -855,6 +871,11 @@ class PADDLE_API OpMetaInfo {
   // format: PD_INFER_DTYPE(...)
   OpMetaInfo& SetInferDtypeFn(InferDtypeFunc&& func);
 
+#ifdef PADDLE_WITH_TENSORRT
+  OpMetaInfo& SetTrtInferShapeFn(TrtInferShapeFunc&& func);
+  OpMetaInfo& SetTrtSupportFormateFn(TrtSupportsFormateFunc&& func);
+#endif
+
  private:
   friend class OpMetaInfoHelper;
 
@@ -869,6 +890,10 @@ class PADDLE_API OpMetaInfo {
   KernelFunc kernel_fn_{nullptr};
   InferShapeFunc infer_shape_fn_{nullptr};
   InferDtypeFunc infer_dtype_fn_{nullptr};
+#ifdef PADDLE_WITH_TENSORRT
+  TrtInferShapeFunc trt_infer_shape_fn_{nullptr};
+  TrtSupportsFormateFunc trt_supports_formate_fn_{nullptr};
+#endif
 };
 
 //////////////// Op Meta Info Helper /////////////////
@@ -888,6 +913,13 @@ class OpMetaInfoHelper {
   static const KernelFunc& GetKernelFn(const paddle::OpMetaInfo& info);
   static const InferShapeFunc& GetInferShapeFn(const paddle::OpMetaInfo& info);
   static const InferDtypeFunc& GetInferDtypeFn(const paddle::OpMetaInfo& info);
+
+#ifdef PADDLE_WITH_TENSORRT
+  static const TrtInferShapeFunc& GetTrtInferShapeFn(
+      const paddle::OpMetaInfo& info);
+  static const TrtSupportsFormateFunc& GetTrtSupportsFormateFn(
+      const paddle::OpMetaInfo& info);
+#endif
 };
 
 //////////////// Op Meta Info Map /////////////////
@@ -927,6 +959,11 @@ class PADDLE_API OpMetaInfoBuilder {
   OpMetaInfoBuilder& SetKernelFn(KernelFunc func);
   OpMetaInfoBuilder& SetInferShapeFn(InferShapeFunc func);
   OpMetaInfoBuilder& SetInferDtypeFn(InferDtypeFunc func);
+
+#ifdef PADDLE_WITH_TENSORRT
+  OpMetaInfoBuilder& SetTrtInferShapeFn(TrtInferShapeFunc func);
+  OpMetaInfoBuilder& SetTrtSupportFormateFn(TrtSupportsFormateFunc func);
+#endif
 
  private:
   // Forward Op name

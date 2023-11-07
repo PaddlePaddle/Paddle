@@ -19,7 +19,9 @@
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 #include "paddle/fluid/framework/phi_utils.h"
+#include "paddle/fluid/inference/tensorrt/custom_generic_plugin_fn_factory.h"
 #include "paddle/fluid/inference/tensorrt/dynamic_shape_infermeta_factory.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 #include "paddle/phi/core/compat/op_utils.h"
 #include "paddle/phi/core/kernel_factory.h"
 
@@ -3161,6 +3163,160 @@ struct CustomPluginTeller : public Teller {
   }
 };
 
+struct CustomGenericPluginTeller : public Teller {
+  CustomGenericPluginTeller() = default;
+  bool operator()(const framework::OpDesc& desc,
+                  bool use_no_calib_int8 = false,
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
+    const std::string op_type = desc.Type();
+    auto& op_meta_info_map = OpMetaInfoMap::Instance();
+    const auto& meta_info_map = op_meta_info_map.GetMap();
+    if (meta_info_map.count(op_type) <= 0) {
+      VLOG(3) << op_type << " has no meta info";
+      return false;
+    }
+    auto& op_info = meta_info_map.at(op_type).front();
+    auto& trt_supports_formate_fn =
+        OpMetaInfoHelper::GetTrtSupportsFormateFn(op_info);
+    auto& supports_formate_factory =
+        tensorrt::SupportsFormateFnFactory::Instance();
+    if (trt_supports_formate_fn != nullptr) {
+      supports_formate_factory.Insert(op_type, trt_supports_formate_fn);
+    } else if (FLAGS_enable_auto_generate_plugin_fn) {
+      auto supportsFormatCombination =
+          [](int32_t pos,
+             const nvinfer1::PluginTensorDesc* in_out,
+             int32_t nb_inputs,
+             int32_t nb_outputs,
+             const paddle::OpMetaInfo& info,
+             const framework::OpDesc& desc) -> bool {
+        for (int i = 0; i < nb_inputs + nb_outputs; ++i) {
+          if (!((in_out[pos].type == nvinfer1::DataType::kFLOAT ||
+                 in_out[pos].type == nvinfer1::DataType::kINT32) &&
+                in_out[pos].format == nvinfer1::TensorFormat::kLINEAR)) {
+            return false;
+          }
+        }
+        return true;
+      };
+      supports_formate_factory.InsertAuto(op_type, supportsFormatCombination);
+    } else {
+      VLOG(3) << op_type << " has no trt supportsFormatCombination function";
+      return false;
+    }
+    auto& trt_infer_shape_fn = OpMetaInfoHelper::GetTrtInferShapeFn(op_info);
+    auto& get_output_dims_factory =
+        tensorrt::GetOutputDimsFnFactory::Instance();
+    if (trt_infer_shape_fn != nullptr) {
+      get_output_dims_factory.Insert(op_type, trt_infer_shape_fn);
+      return true;
+    } else if (FLAGS_enable_auto_generate_plugin_fn) {
+      auto& infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(op_info);
+      if (infer_shape_fn == nullptr) {
+        auto getOutputDimensions =
+            [](int32_t output_index,
+               const nvinfer1::DimsExprs* inputs,
+               int32_t nb_inputs,
+               nvinfer1::IExprBuilder& expr_builder,
+               const paddle::OpMetaInfo& info,
+               const framework::OpDesc& desc) -> nvinfer1::DimsExprs {
+          nvinfer1::DimsExprs dims_output(inputs[0]);
+          return dims_output;
+        };
+        get_output_dims_factory.InsertAuto(op_type, getOutputDimensions);
+        return true;
+      } else {
+        auto getOutputDimensions =
+            [](int32_t output_index,
+               const nvinfer1::DimsExprs* inputs,
+               int32_t nb_inputs,
+               nvinfer1::IExprBuilder& expr_builder,
+               const paddle::OpMetaInfo& info,
+               const framework::OpDesc& desc) -> nvinfer1::DimsExprs {
+          auto& input_names = OpMetaInfoHelper::GetInputs(info);
+          auto op_type = desc.Type();
+          std::vector<std::vector<int64_t>> input_shapes;
+          std::vector<std::vector<std::vector<int64_t>>> vec_input_shapes;
+          std::vector<paddle::any> custom_attrs;
+          for (int i = 0; i < nb_inputs; ++i) {
+            std::vector<int64_t> vec;
+            for (int32_t i = 0; i < inputs[i].nbDims; ++i) {
+              int32_t dim = inputs[i].d[i]->getConstantValue();
+              PADDLE_ENFORCE_NE(
+                  dim,
+                  std::numeric_limits<int32_t>::min(),
+                  phi::errors::InvalidArgument(
+                      "Custom Operator %s TrtInferShapeFn is not registed, "
+                      "we attempt to reuse InferShapeFn, "
+                      "but got uncertain dimension(s) of %s.",
+                      op_type,
+                      input_names[i]));
+              vec[i] = dim;
+            }
+            input_shapes.emplace_back(vec);
+          }
+          auto& op_attrs_names = OpMetaInfoHelper::GetAttrs(info);
+          auto& attrs = desc.GetAttrMap();
+          for (auto& op_attrs_name : op_attrs_names) {
+            auto attr_name_and_type = paddle::ParseAttrStr(op_attrs_name);
+            auto attr_name = attr_name_and_type[0];
+            auto attr_type_str = attr_name_and_type[1];
+            if (attr_type_str == "bool") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(bool, attrs.at(attr_name)));
+            } else if (attr_type_str == "int") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(int, attrs.at(attr_name)));
+            } else if (attr_type_str == "float") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(float, attrs.at(attr_name)));
+            } else if (attr_type_str == "int64_t") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(int64_t, attrs.at(attr_name)));
+            } else if (attr_type_str == "std::string") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(std::string, attrs.at(attr_name)));
+            } else if (attr_type_str == "std::vector<int>") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(std::vector<int>, attrs.at(attr_name)));
+            } else if (attr_type_str == "std::vector<float>") {
+              custom_attrs.emplace_back(
+                  PADDLE_GET_CONST(std::vector<float>, attrs.at(attr_name)));
+            } else if (attr_type_str == "std::vector<std::string>") {
+              custom_attrs.emplace_back(PADDLE_GET_CONST(
+                  std::vector<std::string>, attrs.at(attr_name)));
+            } else {
+              PADDLE_THROW(phi::errors::Unimplemented(
+                  "Unsupported `%s` type value as custom attribute now. "
+                  "Supported data types include `bool`, `int`, `float`, "
+                  "`int64_t`, `std::string`, `std::vector<int>`, "
+                  "`std::vector<float>`, `std::vector<int64_t>`, "
+                  "`std::vector<std::string>`, Please check whether the "
+                  "attribute data "
+                  "type and data type string are matched.",
+                  attr_type_str));
+            }
+          }
+          auto& infer_shape_fn = OpMetaInfoHelper::GetInferShapeFn(info);
+          auto output_shapes =
+              infer_shape_fn(input_shapes, vec_input_shapes, custom_attrs);
+          nvinfer1::DimsExprs* output_dims = new nvinfer1::DimsExprs();
+          output_dims->nbDims = output_shapes[output_index].size();
+          for (int i = 0; i < output_dims->nbDims; ++i) {
+            output_dims->d[i] =
+                expr_builder.constant(output_shapes[output_index][i]);
+          }
+          return *output_dims;
+        };
+        get_output_dims_factory.InsertAuto(op_type, getOutputDimensions);
+        return true;
+      }
+    }
+    return false;
+  }
+};
+
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
                     bool with_dynamic_shape,
@@ -3197,6 +3353,14 @@ bool OpTeller::Tell(const framework::ir::Node* node,
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }
+  auto& custom_generic_plugin_teller = GetCustomGenericPluginTeller();
+  if ((*custom_generic_plugin_teller)(desc,
+                                      use_no_calib_int8,
+                                      with_dynamic_shape,
+                                      use_explicit_quantization)) {
+    SetOpConverterType(node->Op(), OpConverterType::CustomGenericPluginCreater);
+    return true;
+  }
   return false;
 }
 
@@ -3204,6 +3368,7 @@ OpTeller::OpTeller() {  // NOLINT
   tellers_.emplace_back(new tensorrt::SimpleOpTypeSetTeller);
   tellers_.emplace_back(new tensorrt::GenericPluginTeller);
   tellers_.emplace_back(new tensorrt::CustomPluginTeller);
+  tellers_.emplace_back(new tensorrt::CustomGenericPluginTeller);
 }
 
 }  // namespace tensorrt

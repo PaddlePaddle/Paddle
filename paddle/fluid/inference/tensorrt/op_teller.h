@@ -22,6 +22,8 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 
+PHI_DECLARE_bool(enable_auto_generate_plugin_fn);
+
 namespace paddle {
 namespace framework {
 class OpDesc;
@@ -59,7 +61,8 @@ struct Teller {
 enum class OpConverterType {
   Default = 0,
   GenericPluginCreater,
-  CustomPluginCreater
+  CustomPluginCreater,
+  CustomGenericPluginCreater
 };
 /*
  * class OpTeller helps to tell whether a fluid
@@ -83,6 +86,10 @@ class OpTeller {
   std::unique_ptr<Teller>& GetGenericPluginTeller() { return tellers_.at(1); }
 
   std::unique_ptr<Teller>& GetCustomPluginTeller() { return tellers_.at(2); }
+
+  std::unique_ptr<Teller>& GetCustomGenericPluginTeller() {
+    return tellers_.at(3);
+  }
 
   void SetOpConverterType(framework::OpDesc* op_desc, OpConverterType type) {
     op_desc->SetAttr("converter_type", static_cast<int>(type));
