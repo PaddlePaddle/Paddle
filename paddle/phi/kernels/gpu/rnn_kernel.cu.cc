@@ -253,7 +253,7 @@ void RnnKernel(const Context &dev_ctx,
       for (auto weight_item : weight_list) {
         size_t len = weight_item->numel();
         auto dim = weight_item->dims();
-        const_cast<DenseTensor *>(weight_item)
+        const_cast<DenseTensor *>(weight_item)  // NOLINT
             ->ShareDataWith(
                 weight_whole.Slice(static_cast<int64_t>(offset),
                                    static_cast<int64_t>(offset + len)))
@@ -263,7 +263,7 @@ void RnnKernel(const Context &dev_ctx,
     }
 #endif
   } else {
-    w_data = const_cast<T *>(weight_list[0]->data<T>());
+    w_data = const_cast<T *>(weight_list[0]->data<T>());  // NOLINT
   }
 
   RNNDescriptors rnn(seq_length,
