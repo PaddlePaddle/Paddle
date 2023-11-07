@@ -42,15 +42,15 @@ from .function_spec import (
     get_buffers,
     get_parameters,
 )
-from .newir_partial_program import (
-    PartialProgramLayerHook as PirPartialProgramLayerHook,
-)
 from .origin_info import (
     attach_origin_info,
     create_and_update_origin_info_map,
     update_op_callstack_with_origin_info,
 )
 from .partial_program import PartialProgramLayerHook
+from .pir_partial_program import (
+    PartialProgramLayerHook as PirPartialProgramLayerHook,
+)
 from .utils import (
     ALREADY_D2S,
     NO_SHAPE_VAR_TYPE,
@@ -198,7 +198,7 @@ class CacheKey:
         'class_instance',
         'kwargs',
         '_spec_names_id',
-        '_new_ir_flags',
+        '_pir_flags',
     ]
 
     def __init__(
@@ -228,9 +228,7 @@ class CacheKey:
         self._spec_names_id = _hash_spec_names(
             input_args_with_spec, input_kwargs_with_spec
         )
-        self._new_ir_flags = os.environ.get(
-            'FLAGS_enable_new_ir_in_executor', None
-        )
+        self._pir_flags = os.environ.get('FLAGS_enable_pir_in_executor', None)
 
     @classmethod
     def from_func_and_args(cls, function_spec, args, kwargs, class_instance):
@@ -274,7 +272,7 @@ class CacheKey:
                 self.class_instance,
                 with_hook,
                 is_train,
-                self._new_ir_flags,
+                self._pir_flags,
             )
         )
 
@@ -1151,7 +1149,7 @@ class ConcreteProgram:
 
     @staticmethod
     @switch_to_static_graph
-    def newir_from_func_spec(
+    def pir_from_func_spec(
         func_spec, input_spec, input_kwargs_spec, class_instance, **kwargs
     ):
         """
@@ -1187,10 +1185,10 @@ class ConcreteProgram:
         with ir_static.program_guard(main_program, startup_program):
             with _to_static_mode_guard_(is_to_static=True):
                 # 1. Adds `paddle.static.data` layers for input if needed
-                static_inputs = func_spec.newir_to_static_inputs_with_spec(
+                static_inputs = func_spec.pir_to_static_inputs_with_spec(
                     input_spec, main_program
                 )
-                _kwargs = func_spec.newir_to_static_inputs_with_spec(
+                _kwargs = func_spec.pir_to_static_inputs_with_spec(
                     input_kwargs_spec, main_program
                 )
                 if class_instance:
@@ -1219,7 +1217,7 @@ class ConcreteProgram:
                         raise
 
                 # 3. Gets all ParamBases and buffered VarBases in the function
-                from ..newir_dy2static.parameter_recorder import (
+                from ..pir_dy2static.parameter_recorder import (
                     _global_parameter_recorder,
                 )
 
@@ -1532,7 +1530,7 @@ class ProgramCache:
         enable_fallback = enable_prim
         try:
             if use_pir_api():
-                concrete_program = ConcreteProgram.newir_from_func_spec(
+                concrete_program = ConcreteProgram.pir_from_func_spec(
                     func_spec=cache_key.function_spec,
                     input_spec=cache_key.input_args_with_spec,
                     input_kwargs_spec=cache_key.input_kwargs_with_spec,
@@ -1580,12 +1578,12 @@ class ProgramCache:
                     )
 
         if use_pir_api():
-            from .newir_partial_program import partial_program_from
+            from .pir_partial_program import partial_program_from
 
             partial_program = partial_program_from(
                 concrete_program, cache_key.class_instance is not None
             )
-        else:  # TODO(new_ir): remove later.
+        else:  # TODO(pir): remove later.
             from .partial_program import partial_program_from
 
             partial_program = partial_program_from(
