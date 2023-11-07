@@ -3734,7 +3734,7 @@ def reshape(x, shape, name=None):
         - 3. Given a 3-D tensor x with a shape [2, 4, 6], and the target shape is [-1, 0, 3, 2], the reshape operator will transform x into a 4-D tensor with shape [2, 4, 3, 2] and leaving x's data unchanged. In this case, besides -1, 0 means the actual dimension value is going to be copied from the corresponding dimension of x.
 
     Args:
-        x (Tensor): An N-D Tensor. The data type is ``float32``, ``float64``, ``int32``, ``int64`` or ``bool``
+        x (Tensor): An N-D Tensor. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``uint16``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         shape (list|tuple|Tensor): Define the target shape. At most one dimension of the target shape can be -1.
                         The data type is ``int32`` . If ``shape`` is a list or tuple, each element of it should be integer or Tensor with shape [].
                         If ``shape`` is an Tensor, it should be an 1-D Tensor .
@@ -3879,6 +3879,11 @@ def reshape(x, shape, name=None):
                 'int64',
                 'bool',
                 'uint16',
+                'int8',
+                'uint8',
+                'complex64',
+                'complex128',
+                'bfloat16',
             ],
             'reshape',
         )
