@@ -124,6 +124,7 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @brief Lower an Op set to CINN IR.
    * Compute, Lower and optional Schedule will be performed one by one
    * for each Op.
+   * @param group The group to be lowered.
    * @param nodes The Op nodes to be lowered.
    * @param apply_op_schedule Whether to schedule at Op level.
    * @param schedule_determine_func Function used to determine which Ops to
@@ -150,7 +151,6 @@ class OpLowererImpl : public OpLowererImplBase<GroupPtr> {
    * @return The lowered func of the Op node.
    */
   std::vector<ir::LoweredFunc> DoOpLower(
-      const GroupPtr& group,
       std::shared_ptr<hlir::framework::OpImpl> op_impl,
       Node* node,
       std::unordered_map<std::string, ir::Tensor>* tensor_map,
