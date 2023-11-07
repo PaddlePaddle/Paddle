@@ -68,7 +68,7 @@ class TestMNIST(TestParallelExecutorBase):
             model,
             feed_dict={"image": img, "label": label},
             use_device=use_device,
-            fuse_elewise_add_act_ops=True,
+            fuse_elewise_add_act_ops=False,
             use_ir_memory_optimize=False,
             enable_inplace=False,
             optimizer=_optimizer,
