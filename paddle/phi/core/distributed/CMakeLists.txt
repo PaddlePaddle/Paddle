@@ -38,5 +38,6 @@ cc_library(
   DEPS ${COMM_TASK_MANAGER_DEPS})
 
 if(WITH_MKLDNN)
-  target_link_libraries(comm_task_manager mkldnn)
+  list(APPEND COMM_CONTEXT_MANAGER_DEPS mkldnn extern_mkldnn)
+  list(APPEND COMM_TASK_MANAGER_DEPS mkldnn extern_mkldnn)
 endif()
