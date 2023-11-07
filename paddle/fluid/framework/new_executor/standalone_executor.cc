@@ -195,7 +195,7 @@ paddle::framework::FetchList StandaloneExecutor::Run(
     VLOG(6) << "Run job (" << job_idx << "), type = " << job_type
             << ", micro_batch_id =" << job->MicroBatchId();
 
-    // Note(sonder): Share build results don't work for new IR now.
+    // NOTE(sonder): Share build results don't work for new IR now.
     if (type_to_first_id.count(job_type) != 0 &&
         !FLAGS_enable_new_ir_in_executor) {
       interpretercores_[job_idx]->ShareBuildResultsFrom(
