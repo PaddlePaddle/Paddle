@@ -107,7 +107,6 @@ class TestFCAddINT8OneDNNOp(OpTest):
         # self.out_float += self.residual_float
 
         self.out_scale, self.out = self.quantize(self.out_float)
-        print(self.out)
 
     def test_check_output(self):
         int_atol = 2
