@@ -190,7 +190,7 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   */
   std::string all_aixs;
   std::string align_axis;
-  std::tie(all_aixs, align_axis) = FillConcatNotation(axis, dim);
+  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
   std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
