@@ -691,16 +691,15 @@ class TestScatterAPI(unittest.TestCase):
                     name="updates", dtype=updates.dtype, shape=updates.shape
                 )
                 out_t = paddle.scatter(x_t, index_t, updates_t)
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates,
+                }
+                fetch = [out_t]
                 gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-                res = gpu_exe.run(
-                    feed={
-                        'x': x,
-                        'index': index,
-                        'updates': updates,
-                    },
-                    fetch_list=[out_t],
-                )
-                return res
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
 
         np.testing.assert_array_equal(test_dygraph(), test_static_graph())
 
