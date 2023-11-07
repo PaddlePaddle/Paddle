@@ -103,7 +103,8 @@ class TensorWrapper {
                 static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
                     ->dist_attr()));
         phi::DenseTensor* dense_tensor =
-            static_cast<phi::DenseTensor*>(tensor.impl().get());
+            static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
+                ->unsafe_mutable_value();
         phi::DenseTensor tmp(
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta());

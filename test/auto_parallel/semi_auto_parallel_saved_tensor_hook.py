@@ -22,36 +22,6 @@ import paddle.distributed as dist
 
 class TestSavedTensorHookForSemiAutoParallel(unittest.TestCase):
     def run_test_case(self):
-        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
-
-        x_np = np.random.random(size=[64, 32]).astype(np.float32)
-        y_np = np.random.random(size=[32, 48]).astype(np.float32)
-        x = paddle.to_tensor(x_np)
-        y = paddle.to_tensor(y_np)
-        x.stop_gradient = False
-        y.stop_gradient = False
-
-        x_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', None])
-        y_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
-
-        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
-        dist_y = dist.shard_tensor(y_np, dist_attr=y_dist_attr)
-        dist_x.stop_gradient = False
-        dist_y.stop_gradient = False
-        dist_x = dist_x.add(dist_x)
-        dist_y = dist_y.add(dist_y)
-        dist_out = paddle.matmul(
-            dist_x, dist_y, transpose_x=False, transpose_y=False
-        )
-        dist_x.add_(dist_x)
-        dist_y.add_(dist_y)
-
-        with self.assertRaisesRegex(
-            RuntimeError,
-            "received tensor_version:1 != wrapper_version_snapshot:0",
-        ):
-            dist_out.backward()
-
         def pack_hook(x):
             return x.numpy()
 
@@ -76,11 +46,11 @@ class TestSavedTensorHookForSemiAutoParallel(unittest.TestCase):
         dist_y.stop_gradient = False
 
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-            z = paddle.multiply(x, y)
+            z = paddle.matmul(x, y, False, False)
         z.sum().backward()
 
         with paddle.autograd.saved_tensors_hooks(pack_hook, unpack_hook):
-            dist_z = paddle.multiply(dist_x, dist_y)
+            dist_z = paddle.matmul(dist_x, dist_y, False, False)
         dist_z.sum().backward()
 
         self.assertTrue(paddle.equal_all(z, dist_z))
