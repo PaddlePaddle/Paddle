@@ -338,31 +338,6 @@ SpmdInfo LayerNormGradInferSpmd(const DistMetaTensor& x,
                                    mean_shape.size(),
                                    variance_shape.size()));
 
-  PADDLE_ENFORCE_EQ(
-      scale_shape.size() + begin_norm_axis,
-      x_shape.size(),
-      phi::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
-                                   "x's rank [%d] are not matched.",
-                                   scale_shape.size(),
-                                   x_shape.size()));
-
-  if (begin_norm_axis > 0) {
-    PADDLE_ENFORCE_EQ(
-        scale_shape.size() + mean_shape.size(),
-        x_shape.size(),
-        phi::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
-                                     "x's rank [%d] are not matched.",
-                                     scale_shape.size(),
-                                     x_shape.size()));
-  } else {
-    PADDLE_ENFORCE_EQ(
-        scale_shape.size(),
-        x_shape.size(),
-        phi::errors::InvalidArgument("The Tensor scale's rank [%d] and Tensor "
-                                     "x's rank [%d] are not matched.",
-                                     scale_shape.size(),
-                                     x_shape.size()));
-  }
   // 2、align sharding
   TensorDistAttr x_dist_attr;
   TensorDistAttr mean_dist_attr;

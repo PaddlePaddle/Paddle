@@ -374,6 +374,7 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
       }
       sharded_axis.insert(cost_axis.second);
       mesh_dim_to_axis[mesh_dim] = cost_axis.second;
+      break;
     }
   }
   std::vector<TensorDistAttr> new_input_attrs;
