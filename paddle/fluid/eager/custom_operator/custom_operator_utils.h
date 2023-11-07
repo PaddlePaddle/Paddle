@@ -14,24 +14,11 @@
 
 #pragma once
 
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
+#include "paddle/phi/api/ext/op_meta_info.h"
 
-namespace phi {
-namespace distributed {
-
-class SToSReshardFunction final : public ReshardFunction {
- public:
-  SToSReshardFunction() = default;
-  ~SToSReshardFunction() = default;
-
-  bool IsSuitable(const DistTensor& in,
-                  const TensorDistAttr& out_dist_attr) override;
-
-  void Eval(DeviceContext* dev_ctx,
-            const DistTensor& in,
-            const TensorDistAttr& out_dist_attr,
-            DistTensor* out) override;
-};
-
-}  // namespace distributed
-}  // namespace phi
+namespace egr {
+void run_custom_op_impl(const paddle::OpMetaInfo& op_info,
+                        bool is_forward,
+                        bool is_double_grad,
+                        paddle::CustomOpKernelContext& ctx);  // NOLINT
+}  // namespace egr
