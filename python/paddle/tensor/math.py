@@ -19,7 +19,7 @@ math functions
 import numpy as np
 
 import paddle
-from paddle import _C_ops, _legacy_C_ops
+from paddle import _C_ops
 from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc, dygraph_utils
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
@@ -3861,7 +3861,7 @@ def kron(x, y, name=None):
              [21, 24, 27, 28, 32, 36]])
     """
     if in_dynamic_or_pir_mode():
-        return _legacy_C_ops.kron(x, y)
+        return _C_ops.kron(x, y)
     else:
         helper = LayerHelper('kron', **locals())
         check_variable_and_dtype(

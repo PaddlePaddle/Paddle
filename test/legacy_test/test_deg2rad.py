@@ -35,25 +35,28 @@ class TestDeg2radAPI(unittest.TestCase):
 
     @test_with_pir_api
     def test_static_graph(self):
+        place = (
+            base.CUDAPlace(0)
+            if core.is_compiled_with_cuda()
+            else base.CPUPlace()
+        )
+        paddle.enable_static()
         with paddle.static.program_guard(
             paddle.static.Program(), paddle.static.Program()
         ):
             x = paddle.static.data(
                 name='input', dtype=self.x_dtype, shape=self.x_shape
             )
-            place = (
-                base.CUDAPlace(0)
-                if core.is_compiled_with_cuda()
-                else base.CPUPlace()
-            )
-            exe = base.Executor(place)
+
+            exe = paddle.static.Executor(place)
             out = paddle.deg2rad(x)
-            res = exe.run(
+            (res,) = exe.run(
                 paddle.static.default_main_program(),
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue((np.array(res[0]) == self.out_np).all())
+            self.assertTrue(res == self.out_np)
+        paddle.disable_static()
 
     def test_dygraph(self):
         paddle.disable_static()
