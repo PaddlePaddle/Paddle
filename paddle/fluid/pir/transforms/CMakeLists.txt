@@ -23,7 +23,7 @@ cc_library(
 cc_library(
   dead_code_elimination_pass
   SRCS dead_code_elimination_pass.cc
-  DEPS pd_op_dialect pir)
+  DEPS op_dialect_vjp pir)
 
 cc_library(
   pd_inplace_pass
