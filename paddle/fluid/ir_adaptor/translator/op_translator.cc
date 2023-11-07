@@ -2410,19 +2410,8 @@ struct FusedElemwiseAddActivationOpTranscriber : public OpTranscriber {
   }
 };
 
-struct FusedElemwiseAddActivationGradOpTranscriber : public OpTranscriber {
-  void HandleNonexistentAttribute(pir::IrContext* ctx,
-                                  pir::AttributeMap* attribute_map,
-                                  const OpAttributeInfo& info) override {
-    if (info.name == "scale") {
-      (*attribute_map)[info.name] = pir::FloatAttribute::get(ctx, 0.0);
-    } else if (info.name == "axis") {
-      (*attribute_map)[info.name] = pir::Int32Attribute::get(ctx, -1);
-    } else if (info.name == "save_intermediate_out") {
-      (*attribute_map)[info.name] = pir::BoolAttribute::get(ctx, false);
-    }
-  }
-
+struct FusedElemwiseAddActivationGradOpTranscriber
+    : public FusedElemwiseAddActivationOpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
     const auto inter_out_grad = op_desc.Output("IntermediateOut@GRAD");
