@@ -23,6 +23,7 @@
 #include "paddle/cinn/hlir/framework/pir/utils.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
 #include "paddle/cinn/hlir/pe/map_expr_to_ir.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/lang/placeholder.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
@@ -205,7 +206,18 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerMapExpr(
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
   if (apply_group_schedule) {
-    DoGroupSchedule(ir_sch, group, tensor_map, tmp_tensor_info);
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_ops.begin(),
+        group->output_ops.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [](::pir::Operation* node) {
+          ::pir::Value node_data = node->result(0);
+          return hlir::framework::pir::CompatibleInfo::ValueName(node_data);
+        });
+    ir::StaticShapeGroupScheduler group_scheduler(
+        &ir_sch, output_tensor_names, target_);
+    group_scheduler.MapExprSchedule();
     VLOG(3) << "After group schedule, ir is: \n"
             << ir_sch.GetModule().GetExprs().at(0);
   }
