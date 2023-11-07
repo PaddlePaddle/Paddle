@@ -1500,7 +1500,7 @@ class Engine:
             self._switch_mode(self._mode)
 
     def _translate_to_pir_program(self, feed_dict=None):
-        def _add_feed_ops(
+        def _add_data_ops(
             program,
             feed,
         ):
@@ -1512,26 +1512,18 @@ class Engine:
             tmp_program = program.clone()
             global_block = tmp_program.global_block()
 
-            feed_var_name = "feed"
-            if feed_var_name in global_block.vars:
-                feed_var = global_block.var(feed_var_name)
-            else:
-                feed_var = global_block.create_var(
-                    name=feed_var_name,
-                    type=core.VarDesc.VarType.FEED_MINIBATCH,
-                    persistable=True,
-                )
-
-            # prepend feed operators
+            # prepend data operators
             for i, name in enumerate(feed):
                 if global_block.has_var(name):
                     out = global_block.var(name)
                     global_block._prepend_op(
-                        type='feed',
-                        inputs={'X': [feed_var]},
-                        outputs={'Out': out},
+                        type='data',
+                        inputs={},
+                        outputs={'out': out},
                         attrs={
-                            'col': i,
+                            'shape': out.shape,
+                            'dtype': out.dtype,
+                            'place': 0,
                             'name': out.name,
                         },
                     )
@@ -1544,7 +1536,7 @@ class Engine:
 
         if not self.pir_program_initialized:
             if feed_dict is not None:
-                tmp_program = _add_feed_ops(self.main_program, feed_dict)
+                tmp_program = _add_data_ops(self.main_program, feed_dict)
             else:
                 tmp_program = self.main_program.clone()
 
@@ -1552,6 +1544,15 @@ class Engine:
                 pir_program,
                 param_mapping,
             ) = paddle.pir.translate_to_pir_with_param_map(tmp_program.desc)
+
+            data_ops = []
+            global_block = pir_program.global_block()
+            for op in global_block.ops:
+                if op.name() == "pd_op.data":
+                    data_ops.append(op)
+            insert_point = 0
+            for data_op in data_ops:
+                global_block.move_op(data_op, insert_point)
 
             self.lr_scheduler = self.main_program.lr_scheduler
             self.pir_program = pir_program
