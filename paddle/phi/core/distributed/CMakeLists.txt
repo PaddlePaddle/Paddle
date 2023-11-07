@@ -37,6 +37,6 @@ cc_library(
   SRCS comm_task_manager.cc nccl_comm_task.cc nccl_tools.cc
   DEPS ${COMM_TASK_MANAGER_DEPS})
 
-if (WITH_MKLDNN)
+if(WITH_MKLDNN)
   target_link_libraries(comm_task_manager mkldnn)
 endif()
