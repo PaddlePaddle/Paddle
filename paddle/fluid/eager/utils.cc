@@ -337,9 +337,42 @@ void EagerUtils::HandleViewBetweenInputAndOutput(
         std::dynamic_pointer_cast<phi::DenseTensor>(input_tensor.impl());
     if (view_output_tensor->impl() == nullptr) {
       view_output_tensor->set_impl(std::make_shared<phi::DenseTensor>());
+    } else {
+      PADDLE_ENFORCE(view_output_tensor->is_dense_tensor(),
+                     phi::errors::Unavailable(
+                         "DenseTensor can not be inplaced with other Tensor."));
     }
     auto view_output_dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(view_output_tensor->impl());
+    view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
+    view_output_dense_tensor->ShareInplaceVersionCounterWith(
+        *input_dense_tensor);
+
+    VLOG(4) << "Perform View between Output Tensor("
+            << view_output_tensor->name() << ") and Input Tensor("
+            << input_tensor.name()
+            << "), share allocation and inplace version.";
+  } else if (input_tensor.is_dist_tensor()) {
+    auto input_dense_tensor =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+            input_tensor.impl())
+            ->unsafe_mutable_value();
+    if (view_output_tensor->impl() == nullptr) {
+      view_output_tensor->set_impl(
+          std::make_shared<phi::distributed::DistTensor>(
+              input_tensor.dims(),
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                  input_tensor.impl())
+                  ->dist_attr()));
+    } else {
+      PADDLE_ENFORCE(view_output_tensor->is_dist_tensor(),
+                     phi::errors::Unavailable(
+                         "DistTensor can not be inplaced with other Tensor."));
+    }
+    auto view_output_dense_tensor =
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+            view_output_tensor->impl())
+            ->unsafe_mutable_value();
     view_output_dense_tensor->ShareBufferWith(*input_dense_tensor);
     view_output_dense_tensor->ShareInplaceVersionCounterWith(
         *input_dense_tensor);
