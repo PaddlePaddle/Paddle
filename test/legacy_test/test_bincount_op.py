@@ -255,8 +255,6 @@ class TestTensorMinlength(unittest.TestCase):
         )
         np.testing.assert_allclose(np_out, pd_out.numpy())
 
-    # @test_with_pir_api
-    # pir mode not support paddle.static.save_inference_model
     def test_static_and_infer(self):
         paddle.enable_static()
         np_x = np.random.randn(100).astype('float32')
