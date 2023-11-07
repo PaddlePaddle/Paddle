@@ -619,8 +619,7 @@ class ConcatDataset(Dataset):
             s += l
         return r
 
-    def __init__(self, datasets) -> None:
-        super().__init__()
+    def __init__(self, datasets):
         self.datasets = list(datasets)
         assert (
             len(self.datasets) > 0
