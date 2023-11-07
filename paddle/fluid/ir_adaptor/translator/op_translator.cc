@@ -2324,6 +2324,45 @@ struct ShareBufferOpTranscriber : public OpTranscriber {
   }
 };
 
+struct RandIntOpTranscriber : public OpTranscriber {
+  std::tuple<OpOutputTypeList, OpOutputMapping> GenerateOperationOutput(
+      pir::IrContext* ctx,
+      const OpDesc& op_desc,
+      const OpOutputInfoList& output_infos) {
+    OpOutputMapping arg_to_idx;
+    OpOutputTypeList op_output_types = {};
+
+    auto& type_translator = TypeTranslator::instance();
+
+    const BlockDesc* block = op_desc.Block();
+    std::string legacy_output_name = "Out";
+    const auto& legacy_output_vars = op_desc.Output(legacy_output_name);
+    auto& var_name = legacy_output_vars[0];
+    VarDesc* var = block->FindVarRecursive(var_name);
+    IR_ENFORCE(var != nullptr,
+               "[op:%s] Output %s should not be null",
+               op_desc.Type(),
+               var_name);
+    int dtype_attr_val = PADDLE_GET_CONST(int, op_desc.GetAttr("dtype"));
+
+    paddle::framework::proto::VarType::Type var_type =
+        static_cast<paddle::framework::proto::VarType::Type>(dtype_attr_val);
+
+    pir::Type dtype = type_translator[var_type](ctx, *var);
+    paddle::dialect::DenseTensorTypeStorage::Dim dim =
+        phi::make_ddim(var->GetShape());
+    paddle::dialect::DenseTensorTypeStorage::DataLayout layout =
+        paddle::dialect::DenseTensorTypeStorage::DataLayout::UNDEFINED;
+    paddle::dialect::DenseTensorTypeStorage::LoD lod = {};
+    size_t offset = 0;
+    pir::Type translated_var_type = paddle::dialect::DenseTensorType::get(
+        ctx, dtype, dim, layout, lod, offset);
+    arg_to_idx[var_name] = {0, 0};
+    op_output_types.push_back(translated_var_type);
+    return {op_output_types, arg_to_idx};
+  }
+};
+
 struct RepeatInterLeaveOpTranscriber : public OpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
@@ -2418,6 +2457,7 @@ OpTranslator::OpTranslator() {
   special_handlers["lookup_table_v2"] = EmbeddingOpTranscriber();
   special_handlers["lookup_table_v2_grad"] = EmbeddingGradOpTranscriber();
   special_handlers["one_hot_v2"] = OneHotTranscriber();
+  special_handlers["randint"] = RandIntOpTranscriber();
   special_handlers["reduce_all"] = ReduceOpTranscriber();
   special_handlers["reduce_any"] = ReduceOpTranscriber();
   special_handlers["repeat_interleave"] = RepeatInterLeaveOpTranscriber();
