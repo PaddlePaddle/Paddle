@@ -1535,8 +1535,8 @@ std::unique_ptr<OpYamlInfoParser> GetOpYamlInfoParser(pir::Operation* op) {
 
   std::unique_ptr<OpYamlInfoParser> op_info_parser(nullptr);
   if (op_info_interface) {
-    op_info_parser =
-        std::make_unique<OpYamlInfoParser>(op_info_interface.GetOpInfo());
+    op_info_parser = std::make_unique<OpYamlInfoParser>(
+        op_info_interface.GetOpInfo(), paddle::dialect::IsLegacyOp(op->name()));
   }
 
   return op_info_parser;

@@ -1258,6 +1258,35 @@ void SendURecvInferMeta(const MetaTensor& x,
   }
 }
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& learning_rate,
+                             const MetaTensor& velocity,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out) {
+  auto lr_dims = phi::product(learning_rate.dims());
+  PADDLE_ENFORCE_EQ(lr_dims != 0 && lr_dims == 1,
+                    true,
+                    phi::errors::InvalidArgument(
+                        "Learning_rate should be a scalar. But Received "
+                        "LearningRate's dim [%s]",
+                        lr_dims));
+  auto param_dim = param.dims();
+  PADDLE_ENFORCE_EQ(
+      param_dim,
+      velocity.dims(),
+      phi::errors::InvalidArgument(
+          "Param and Velocity of SparseMomentumOp should have the same "
+          "dimension. But received Param's dim [%s] and Velocity [%s].",
+          param_dim,
+          velocity.dims()));
+  param_out->set_dims(param_dim);
+  velocity_out->set_dims(param_dim);
+  if (master_param_out != nullptr) {
+    master_param_out->set_dims(param_dim);
+  }
+}
+
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
