@@ -119,7 +119,7 @@ class PatternRewritePass : public Pass {
 
   bool Initialize(IrContext* context) final {
     RewritePatternSet ps = InitializePatterns(context);
-    IR_ENFORCE(ps.empty() == false,
+    IR_ENFORCE(ps.Empty() == false,
                "Pass creation failed."
                "When using PatternRewritePass to create a Pass, the number of "
                "customized Patterns is required to be greater than zero."

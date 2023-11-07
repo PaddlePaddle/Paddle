@@ -346,7 +346,7 @@ class RewritePatternSet {
 
   void Clear() { native_patterns_.clear(); }
 
-  bool empty() const { return native_patterns_.empty(); }
+  bool Empty() const { return native_patterns_.empty(); }
 
   // 'add' methods for adding patterns to the set.
   template <typename... Ts,
