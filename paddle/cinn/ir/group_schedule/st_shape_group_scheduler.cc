@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/cinn/hlir/framework/group_scheduler.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_bind.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/auto_inline.h"
 #include "paddle/cinn/auto_schedule/search_space/auto_gen_rule/reduction_factoring.h"
@@ -26,8 +26,7 @@
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 
 namespace cinn {
-namespace hlir {
-namespace framework {
+namespace ir {
 
 static const std::unordered_set<std::string>
     kProhibitScheduleExternalFuncNames = {
@@ -128,15 +127,9 @@ std::unordered_set<std::string> GetReduceVarNames(ir::Expr block) {
   return reduce_var_names;
 }
 
-GroupScheduler::GroupScheduler(ir::IRSchedule* ir_sch,
-                               const std::shared_ptr<Graph::Group>& group,
-                               const common::Target& target)
-    : ir_sch_(ir_sch), group_(group), target_(target) {
-  schedule_block_graph_ = std::make_unique<ir::ScheduleBlockGraph>(*ir_sch_);
-}
-
-void GroupScheduler::operator()() {
-  feasible_conditions_.emplace_back(&GroupScheduler::IsKeepGraphDependency);
+void StaticShapeGroupScheduler::Schedule() {
+  feasible_conditions_.emplace_back(
+      &StaticShapeGroupScheduler::IsKeepGraphDependency);
   DoLoopAlignment();
   DoComputeInline();
 #ifdef CINN_WITH_CUDA
@@ -150,7 +143,12 @@ void GroupScheduler::operator()() {
 #endif
 }
 
-NodePriority GroupScheduler::CalculateNodePriority(
+std::vector<std::pair<SymbolicCondition, ir::Expr>>
+StaticShapeGroupScheduler::GetIRs() {
+  return {{Expr(1), ir_sch_->GetModule().GetExprs()[0]}};
+}
+
+NodePriority StaticShapeGroupScheduler::CalculateNodePriority(
     const ir::ScheduleBlockNode* node) const {
   bool has_loop_binded = false;
   std::unordered_set<std::string> reduce_loop_var_names =
@@ -179,7 +177,7 @@ NodePriority GroupScheduler::CalculateNodePriority(
   return NodePriority{has_loop_binded, score};
 }
 
-ir::ScheduleBlockNode* GroupScheduler::FindGlobalMasterNode() const {
+ir::ScheduleBlockNode* StaticShapeGroupScheduler::FindGlobalMasterNode() const {
   NodePriority max{false, std::numeric_limits<int64_t>::min()};
   ir::ScheduleBlockNode* master = nullptr;
   auto FindMaster = [&](ir::ScheduleBlockNode* node) {
@@ -199,26 +197,16 @@ ir::ScheduleBlockNode* GroupScheduler::FindGlobalMasterNode() const {
   return master;
 }
 
-std::unordered_set<std::string> GroupScheduler::OutputTensorNames() const {
-  std::unordered_set<std::string> output_tensor_names;
-  std::transform(
-      group_->output_nodes.begin(),
-      group_->output_nodes.end(),
-      std::inserter(output_tensor_names, output_tensor_names.begin()),
-      [](const Node* node) {
-        NodeData* node_data =
-            (*node->outlinks().begin())->sink()->safe_as<NodeData>();
-        CHECK(node_data);
-        return node_data->id();
-      });
-
+std::unordered_set<std::string> StaticShapeGroupScheduler::OutputTensorNames()
+    const {
+  std::unordered_set<std::string> output_tensor_names{output_tensor_names_};
   for (ir::ScheduleBlockNode* node : schedule_block_graph_->EndPoints()) {
     output_tensor_names.insert(node->id());
   }
   return output_tensor_names;
 }
 
-void GroupScheduler::DoLoopAlignment() {
+void StaticShapeGroupScheduler::DoLoopAlignment() {
   VLOG(5) << "[Start LoopAlignment] func body: "
           << ir_sch_->GetModule().GetExprs().front();
   ir::ScheduleBlockNode* global_master = FindGlobalMasterNode();
@@ -394,7 +382,7 @@ void GroupScheduler::DoLoopAlignment() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::DoComputeInline() {
+void StaticShapeGroupScheduler::DoComputeInline() {
   VLOG(5) << "[Start DoComputeInline] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -421,7 +409,7 @@ void GroupScheduler::DoComputeInline() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::DoHorizontalLoopFusion() {
+void StaticShapeGroupScheduler::DoHorizontalLoopFusion() {
   VLOG(5) << "[Start DoHorizontalLoopFusion] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -451,7 +439,7 @@ void GroupScheduler::DoHorizontalLoopFusion() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::DoVerticalLoopFusion() {
+void StaticShapeGroupScheduler::DoVerticalLoopFusion() {
   VLOG(5) << "[Start DoVerticalLoopFusion] func body: "
           << ir_sch_->GetModule().GetExprs().front();
   UpdateBlockOrder();
@@ -584,7 +572,7 @@ void GroupScheduler::DoVerticalLoopFusion() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::BindCudaAxis() {
+void StaticShapeGroupScheduler::BindCudaAxis() {
   if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start BindCudaAxis] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -623,7 +611,7 @@ std::ostream& operator<<(std::ostream& os, const Range& x) {
 // TODO(BiynXu): After implementing auxiliary data structures such as IntegerSet
 // and MultiDimIntegerSet, re implement this function to simplify these ugly
 // codes.
-void GroupScheduler::AllocateStorage() {
+void StaticShapeGroupScheduler::AllocateStorage() {
   if (target_.arch != Target::Arch::NVGPU) return;
   VLOG(5) << "[Start AllocateStorage] func body: "
           << ir_sch_->GetModule().GetExprs().front();
@@ -1089,7 +1077,7 @@ void GroupScheduler::AllocateStorage() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::OptimizeReduction() {
+void StaticShapeGroupScheduler::OptimizeReduction() {
   VLOG(5) << "[Start OptimizeReduction] func body: "
           << ir_sch_->GetModule().GetExprs().front();
 
@@ -1115,15 +1103,15 @@ void GroupScheduler::OptimizeReduction() {
           << ir_sch_->GetModule().GetExprs().front();
 }
 
-void GroupScheduler::UpdateBlockOrder() {
+void StaticShapeGroupScheduler::UpdateBlockOrder() {
   ir::Expr root_block = ir_sch_->GetRootBlock(ir_sch_->GetAllBlocks()[0]);
   ir::BlockOrderConstructor block_order_constructor;
   blocks_order_with_ctrl_stmt_ = block_order_constructor(&root_block);
 }
 
-bool GroupScheduler::IsKeepGraphDependency(Expr schedule_block,
-                                           Expr target_loop,
-                                           int insert_pos) const {
+bool StaticShapeGroupScheduler::IsKeepGraphDependency(Expr schedule_block,
+                                                      Expr target_loop,
+                                                      int insert_pos) const {
   // Assuming inserting the schedule_block into the target_loop,
   // obtain the transformed upstream and downstream blocks.
   std::unordered_set<std::string> blocks_above;
@@ -1196,9 +1184,9 @@ bool GroupScheduler::IsKeepGraphDependency(Expr schedule_block,
   return true;
 }
 
-bool GroupScheduler::MeetConditions(Expr schedule_block,
-                                    Expr target_loop,
-                                    int insert_pos) const {
+bool StaticShapeGroupScheduler::MeetConditions(Expr schedule_block,
+                                               Expr target_loop,
+                                               int insert_pos) const {
   for (const auto& condition_func : feasible_conditions_) {
     if (!(this->*condition_func)(schedule_block, target_loop, insert_pos)) {
       return false;
@@ -1207,6 +1195,5 @@ bool GroupScheduler::MeetConditions(Expr schedule_block,
   return true;
 }
 
-}  // namespace framework
-}  // namespace hlir
+}  // namespace ir
 }  // namespace cinn
