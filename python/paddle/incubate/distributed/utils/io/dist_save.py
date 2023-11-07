@@ -71,24 +71,25 @@ def save(state_dict, path, **configs):
 
         .. code-block:: python
 
-            import paddle
-            paddle.distributed.init_process_group(backend='nccl')
-            paddle.distributed.fleet.init(is_collective=True)
+            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> import paddle
+            >>> paddle.distributed.init_process_group(backend='nccl')
+            >>> paddle.distributed.fleet.init(is_collective=True)
 
-            model = build_model()
-            optimizer = build_optimizer(model)
+            >>> model = build_model()
+            >>> optimizer = build_optimizer(model)
 
-            dist_optimizer = paddle.distributed_optimizer(optimizer)
-            dist_model = paddle.distributed_optimizer(model)
+            >>> dist_optimizer = paddle.distributed_optimizer(optimizer)
+            >>> dist_model = paddle.distributed_optimizer(model)
 
-            # gather params to rank 0 and then save
-            paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
+            >>> # gather params to rank 0 and then save
+            >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0], state_type="params")
 
-            # save whoe params on all ranks
-            paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
+            >>> # save whoe params on all ranks
+            >>> paddle.incubate.distributed.utils.io.save(model.state_dict(), path="path/to/save.pdparams", gather_to=[0,1], state_type="params")
 
-            # save optimizer state dict on rank 0
-            paddle.incubate.distributed.utils.io.save(optimizer.state_dict(), path="path/to/save.pdopt", gather=0, state_type="opt")
+            >>> # save optimizer state dict on rank 0
+            >>> paddle.incubate.distributed.utils.io.save(optimizer.state_dict(), path="path/to/save.pdopt", gather=0, state_type="opt")
 
     '''
 
