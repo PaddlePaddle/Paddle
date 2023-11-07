@@ -721,6 +721,14 @@ class DistForwardAPI(ForwardAPI):
                         name=param
                     )
                     input_args_code += "meta_dist_input_" + param + ", "
+                elif (
+                    self.inputs['input_info'][param]
+                    == "const paddle::optional<Tensor>&"
+                ):
+                    input_decl_code += (
+                        OPTIONAL_SINGLE_DIST_META_IN_TEMPLATE.format(name=param)
+                    )
+                    input_args_code += "meta_dist_input_" + param + ", "
 
                 else:
                     raise ValueError(
