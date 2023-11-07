@@ -103,7 +103,6 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
       m_IOTensorNames.emplace_back(tensorName);
     }
 #endif
-
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
         platform::errors::InvalidArgument(
@@ -177,41 +176,73 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              int batch_size,
                              cudaStream_t stream) {
 #if IS_TRT_VERSION_GE(8500)
-  int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
+  int totalBindings = infer_engine_->getNbBindings();
+
+  int numInputs = 0;
+  for (int i = 0; i < totalBindings; i++) {
+    if (infer_engine_->bindingIsInput(i)) {
+      numInputs++;
+    }
+  }
   if (with_dynamic_shape()) {
-    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode and use enqueueV3";
-    for (int i = 0; i < endBindingIndex; ++i) {
-      const auto tensorName = infer_engine_->getIOTensorName(i);
-      auto const &name = infer_engine_->getIOTensorName(i);
-      auto const &mode = infer_engine_->getTensorIOMode(name);
-      if (mode == nvinfer1::TensorIOMode::kINPUT) {
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    for (int i = 0; i < max_profile_num_; i++) {
+      for (auto &input : min_input_shape()) {
+#if IS_TRT_VERSION_LT(7100)
+        if (!(std::all_of(input.second.begin(),
+                          input.second.end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(max_input_shape()[input.first].begin(),
+                          max_input_shape()[input.first].end(),
+                          [](int x) { return x > 0; }) &&
+              std::all_of(optim_input_shape()[input.first].begin(),
+                          optim_input_shape()[input.first].end(),
+                          [](int x) { return x > 0; }))) {
+          continue;
+        }
+#endif
+        LOG(INFO) << "TRT dynamic_shape set " << input.first
+                   << " min: " << Vec2Str(input.second)
+                   << ", max: " << Vec2Str(max_input_shape()[input.first])
+                   << ", opt: " << Vec2Str(optim_input_shape()[input.first]);
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kMIN,
+            Vec2TRT_Dims(input.second, input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kMAX,
+            Vec2TRT_Dims(max_input_shape()[input.first], input.first, true));
+        optim_profiles_[i]->setDimensions(
+            input.first.c_str(),
+            nvinfer1::OptProfileSelector::kOPT,
+            Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
+      }
+      for (int i = 0; i < numInputs; ++i) {
+        auto const &name = infer_engine_->getIOTensorName(i);
         nvinfer1::Dims const dims = context->getTensorShape(name);
-        isShapeInferenceIO = infer_engine_->isShapeInferenceIO(name);
         nvinfer1::Dims inputDims;
         inputDims.nbDims = dims.nbDims;
-        inputDims.d[0] = batch_size;
         for (int32_t m = 1u; m < dims.nbDims; m++) {
           inputDims.d[m] = dims.d[m];
         }
-        if (!isShapeInferenceIO) {
-          context->setInputShape(tensorName, inputDims);
-        }
-      }
-    }
-    PADDLE_ENFORCE_EQ(context->allInputDimensionsSpecified(),
-                      true,
-                      platform::errors::PreconditionNotMet(
-                          "Error, not all required dimensions specified."));
-    for (size_t j = 0; j < buffers->size(); j++) {
-      bool status =
-          context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
-      if (!status) {
-        return false;
+        context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
       }
     }
   }
-#endif
 
+  PADDLE_ENFORCE_EQ(context->allInputDimensionsSpecified(),
+                    true,
+                    platform::errors::PreconditionNotMet(
+                        "Error, not all required dimensions specified."));
+  for (size_t j = 0; j < buffers->size(); j++) {
+    bool status =
+        context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
+    if (!status) {
+      return false;
+    }
+  }
+#endif
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
                "entire graph.";
