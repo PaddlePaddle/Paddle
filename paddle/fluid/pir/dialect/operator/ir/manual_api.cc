@@ -119,5 +119,13 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
   return paddle::dialect::full(shape, 0, dtype, place);
 }
 
+pir::OpResult tensor_array_length(pir::Value x) {
+  auto tensor_array_length_op =
+      APIBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::TensorArrayLengthOp>(x);
+  return tensor_array_length_op.out();
+}
+
 }  // namespace dialect
 }  // namespace paddle
