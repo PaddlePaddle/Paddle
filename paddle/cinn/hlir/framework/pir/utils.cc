@@ -40,6 +40,14 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.multiply", "elementwise_mul"},
     {"cinn_op.broadcast", "broadcast_to"}};
 
+const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
+    "subtract"};
+
+bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
+  return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
+         CINN_WHITE_OPS.end();
+}
+
 std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
   std::string name = op.name();
   if (OP_NAMES.count(name)) {
@@ -55,8 +63,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::pir::Value>()(value));
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {

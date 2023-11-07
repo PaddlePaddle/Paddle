@@ -14,7 +14,6 @@
 
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 
-#include <algorithm>
 #include <queue>
 #include <regex>
 #include <set>
@@ -136,10 +135,17 @@ bool IsSupportCinn(pir::Operation* op) {
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
   VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
   // Strip the dialect, like pd_op.abs -> abs
-  const auto& op_name = CompatibleInfo::OpName(*op);
+  const auto op_name = CompatibleInfo::OpName(*op);
+  if (CompatibleInfo::IsSupportCinn(*op)) {
+    VLOG(4) << "Found special supported op for CINN: " << op_name;
+    return true;
+  }
+
   bool registered =
       ::cinn::frontend::OpMapperRegistry::Global()->Find(op_name) != nullptr;
 
+  // TODO(phlrain): cinn fronted op name is not same with name in codegen
+  //                update using a better way define allow op list
   if (op_name == "subtract" || op_name == "divide" ||
       op_name == "broadcast_to" || op_name == "multiply") {
     return true;
@@ -364,7 +370,6 @@ class CinnSubgraphDetector {
           continue;
         }
         // fuse producer to sub-graph
-        std::cerr << "add producer " << producer->name() << std::endl;
         if (!subgraph->op_set.count(producer)) {
           subgraph->Insert(producer);
           subgraph_map_[producer] = subgraph;
@@ -628,9 +633,8 @@ void ReplaceWithGroupOp(pir::Block* block,
   for (auto* op : group_ops) {
     op->MoveTo(group_block, group_block->begin());
   }
-  // step 3: Insert YieldOp for outputs
 
-  // step 4: Replace outputs of inner ops
+  // step 3: Replace outputs of inner ops
   std::vector<pir::OpResult> group_outs = new_group_op->results();
   std::unordered_set<pir::Operation*> inner_ops(group_ops.begin(),
                                                 group_ops.end());
@@ -641,6 +645,7 @@ void ReplaceWithGroupOp(pir::Block* block,
                                  });
   }
 
+  // step 4: Insert YieldOp for outputs
   builder.SetInsertionPointToEnd(group_block);
   builder.Build<::pir::YieldOp>(outputs);
 }
