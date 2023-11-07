@@ -22,7 +22,6 @@
 #include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/pir/core/builtin_dialect.h"
 #include "paddle/pir/pass/pass_manager.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 
 class RemoveRedundentReshapePattern
     : public pir::drr::DrrPatternBase<RemoveRedundentReshapePattern> {
