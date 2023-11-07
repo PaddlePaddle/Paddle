@@ -926,7 +926,7 @@ class Layer:
 
         Parameters:
             dtype(str|paddle.dtype|numpy.dtype): target data type of layer.
-                If set str, it can be "bool",  "float16", "float32", "float64",
+                If set str, it can be "bool", "bfloat16", "float16", "float32", "float64",
                 "int8", "int16", "int32", "int64", "uint8", "complex64", "complex128".
                 Default: None
 
@@ -995,7 +995,7 @@ class Layer:
             return self
         else:
             raise ValueError(
-                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
+                "dtype value error, must be 'bfloat16', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32', 'int64', 'uint8', 'complex64', 'complex128', 'bool', or paddle.dtype, numpy.dtype, but recieve "
                 + str(dtype)
             )
 
