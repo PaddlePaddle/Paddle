@@ -613,7 +613,7 @@ class GroupShardedOptimizerStage2(Optimizer):
         # This method won't be called directly by opt.step()!
         # The _redefine_opt_step() in class GroupShardedStage2 will wrap this function.
         if self._delay_scale_loss:
-            for param in self._layers.parameters():
+            for param in self._local_params:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
                     assert param.grad is None
                     param.main_grad = param.main_grad.scale_(
