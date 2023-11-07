@@ -556,4 +556,19 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       const std::string& fc_activation,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
+
+void FCInferMeta(const MetaTensor& input,
+                 const MetaTensor& w,
+                 const MetaTensor& bias,
+                 const int in_num_col_dims,
+                 const std::string& activation_type,
+                 const bool use_mkldnn,
+                 const bool padding_weights,
+                 const bool use_quantizer,
+                 const std::string& mkldnn_data_type,
+                 const float scale_in,
+                 const std::vector<float>& sclae_weights,
+                 const float scale_out,
+                 const bool force_fp32_output,
+                 MetaTensor* out);
 }  // namespace phi

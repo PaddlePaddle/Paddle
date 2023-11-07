@@ -1033,6 +1033,20 @@
   extra :
     attrs : [int round_type = 1]
 
+- op : fc
+  inputs :
+    input : Input
+    w : W
+    bias : Bias
+  outputs :
+    out : Out
+  attrs :
+    scale_in : Scale_in
+    scale_weights : Scale_weights
+    scale_out : Scale_out
+  extra :
+    attrs : [ bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
+
 - op : feed
   outputs: {out: Out}
 
