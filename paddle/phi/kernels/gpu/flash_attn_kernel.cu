@@ -132,7 +132,8 @@ void FlashAttnUnpaddedKernel(
       params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
-  RaiseNotSupportedError();
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FlashAttention is unsupported, please set use_flash_attn to false."));
 #endif
 }
 
@@ -234,7 +235,8 @@ void FlashAttnKernel(const Context& ctx,
       params.mask_dims.data());
   CheckFlashAttnStatus(succ);
 #else
-  RaiseNotSupportedError();
+  PADDLE_THROW(phi::errors::Unimplemented(
+      "FlashAttention is unsupported, please set use_flash_attn to false."));
 #endif
 }
 
