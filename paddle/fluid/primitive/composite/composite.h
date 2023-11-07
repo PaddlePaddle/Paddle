@@ -53,13 +53,18 @@ Tensor mean_decomp(const Tensor& x, const IntArray& axis, bool keepdim) {
     value *= x_dim[axis_[i]];
   }
   auto sum_x = sum<T>(x_tmp, IntArray(axis_), x_tmp.dtype(), keepdim);
-  auto res = divide<T>(
-      sum_x, full<T>(phi::vectorize(sum_x.dims()), value, sum_x.dtype()));
+  auto res =
+      sum_x / full<T>(phi::vectorize(sum_x.dims()), value, sum_x.dtype());
   if (need_cast) {
     return cast<T>(res, org_dtype);
   } else {
     return res;
   }
+}
+
+template <typename T>
+Tensor relu_decomp(const Tensor& x) {
+  return maximum<T>(x, full<T>(phi::vectorize(x.dims()), 0.0, x.dtype()));
 }
 
 template <typename T>
@@ -76,7 +81,7 @@ template <typename T>
 Tensor add_n_decomp(const std::vector<Tensor>& x) {
   Tensor res = x[0];
   for (size_t i = 1; i < x.size(); i++) {
-    res = add<T>(res, x[i]);
+    res = res + x[i];
   }
   return res;
 }
