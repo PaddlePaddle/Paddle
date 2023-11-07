@@ -893,6 +893,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
