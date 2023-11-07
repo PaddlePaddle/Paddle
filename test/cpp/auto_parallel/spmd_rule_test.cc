@@ -788,6 +788,46 @@ TEST(ConcatRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[0], {1, -1, 0});
   check_partial_dims(infered_dist_attrs.second[0], {});
 }
+
+TEST(LayerNorm, Ctor) {
+  using phi::distributed::PartialStatus;
+  std::vector<int64_t> mesh_shape = {2, 2};
+  std::vector<int64_t> process_ids = {0, 1, 2, 3};
+  std::vector<std::string> dim_names = {"x", "y"};
+  ProcessMesh process_mesh(mesh_shape, process_ids, dim_names);
+
+  std::vector<int64_t> x_shapes = {16, 32, 32};
+
+  auto build_input = [&](const std::vector<int64_t>& shape,
+                         const std::vector<int64_t>& dim_mapping) {
+    auto t_dist_attr = TensorDistAttr();
+    t_dist_attr.set_process_mesh(process_mesh);
+    t_dist_attr.set_dims_mapping(dim_mapping);
+    t_dist_attr.set_dynamic_dims({false, false, false});
+    auto input =
+        phi::distributed::DistMetaTensor(phi::make_ddim(shape), t_dist_attr);
+    return input;
+  };
+  // test 1
+  auto x = build_input(x_shapes, {0, 1, -1});
+  auto out_grad = build_input(x_shapes, {0, 1, -1});
+  auto mean = build_input({16, 32}, {0, 1});
+  auto variance = build_input({16, 32}, {0, 1});
+  auto scale = build_input({32}, {0});
+  auto bias = build_input({32}, {0});
+
+  auto spmd1 =
+      LayerNormGradInferSpmd(x, mean, variance, scale, bias, out_grad, 1.0, 2);
+
+  // test 2
+  mean = build_input({16}, {0});
+  variance = build_input({16}, {0});
+  scale = build_input({32, 32}, {0, 1});
+  bias = build_input({32, 32}, {0, 1});
+  auto spmd2 =
+      LayerNormGradInferSpmd(x, mean, variance, scale, bias, out_grad, 1.0, 1);
+}
+
 TEST(Util, Ctor) {
   // test equal test not equal
   using phi::distributed::PartialStatus;
