@@ -623,42 +623,93 @@ std::string ReshardDebugInfo(
 std::shared_ptr<phi::distributed::DistTensor> ReshardApiInputToKernelInput(
     phi::DeviceContext* dev_ctx,
     const Tensor& tensor,
-    const phi::distributed::TensorDistAttr& dist_attr) {
+    const phi::distributed::ArgDistAttr& dist_attr) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+      true,
+      phi::errors::PreconditionNotMet("Arg must be a TensorDistAttr"));
+
   auto tensor_in = tensor.impl();
+  const auto& tensor_dist_attr = paddle::get<0>(dist_attr);
   if (tensor_in) {
     phi::distributed::DistTensor* dist_tensor =
         static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
-      VLOG(6) << "ApiIn to KernelIn - "
-              << ReshardDebugInfo(*dist_tensor, dist_attr);
-      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                 dist_attr);
-      return func->Eval(dev_ctx, *dist_tensor, dist_attr);
+    if (ReshardIsNeeded(dist_tensor->dist_attr(), tensor_dist_attr)) {
+      VLOG(6) << "ApiIn to Replicated KernelIn - "
+              << ReshardDebugInfo(*dist_tensor, tensor_dist_attr);
+      auto* func = phi::distributed::ChooseProperReshardFunction(
+          *dist_tensor, tensor_dist_attr);
+      return func->Eval(dev_ctx, *dist_tensor, tensor_dist_attr);
     }
     return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
   }
   return nullptr;
 }
 
-std::shared_ptr<phi::distributed::DistTensor>
-ReshardApiInputToReplicatedKernelInput(
-    phi::DeviceContext* dev_ctx,
-    const Tensor& tensor,
-    const phi::distributed::TensorDistAttr& dist_attr) {
-  auto tensor_in = tensor.impl();
-  if (tensor_in) {
-    phi::distributed::DistTensor* dist_tensor =
-        static_cast<phi::distributed::DistTensor*>(tensor_in.get());
-    if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
-      VLOG(6) << "ApiIn to Replicated KernelIn - "
-              << ReshardDebugInfo(*dist_tensor, dist_attr);
-      auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
-                                                                 dist_attr);
-      return func->Eval(dev_ctx, *dist_tensor, dist_attr);
+std::vector<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
+                             const std::vector<Tensor>& tensors,
+                             const phi::distributed::ArgDistAttr& dist_attrs) {
+  PADDLE_ENFORCE_EQ(
+      paddle::holds_alternative<std::vector<phi::distributed::TensorDistAttr>>(
+          dist_attrs),
+      true,
+      phi::errors::PreconditionNotMet(
+          "Arg must be a vector of TensorDistAttr"));
+  const auto& tensor_dist_attrs = paddle::get<1>(dist_attrs);
+
+  PADDLE_ENFORCE_EQ(tensors.size(),
+                    tensor_dist_attrs.size(),
+                    phi::errors::InvalidArgument(
+                        "Tensor's size should be equal to dist_attrs' size."));
+
+  std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
+  for (size_t i = 0; i < tensors.size(); i++) {
+    auto tensor_in = tensors[i].impl();
+    auto dist_attr = tensor_dist_attrs[i];
+    if (tensor_in) {
+      phi::distributed::DistTensor* dist_tensor =
+          static_cast<phi::distributed::DistTensor*>(tensor_in.get());
+      if (ReshardIsNeeded(dist_tensor->dist_attr(), dist_attr)) {
+        VLOG(6) << "Vector ApiIn to Replicated KernelIn - "
+                << ReshardDebugInfo(*dist_tensor, dist_attr);
+        auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
+                                                                   dist_attr);
+        out.push_back(func->Eval(dev_ctx, *dist_tensor, dist_attr));
+      }
+      out.push_back(
+          std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
+    } else {
+      out.push_back(nullptr);
     }
-    return std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in);
   }
-  return nullptr;
+  return out;
+}
+
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
+                             const paddle::optional<Tensor>& tensor,
+                             const phi::distributed::ArgDistAttr& dist_attr) {
+  if (tensor) {
+    VLOG(6) << "Optional ApiIn to Replicated KernelIn.";
+    return paddle::make_optional<std::shared_ptr<phi::distributed::DistTensor>>(
+        ReshardApiInputToKernelInput(dev_ctx, *tensor, dist_attr));
+  }
+  return paddle::none;
+}
+
+paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
+ReshardApiInputToKernelInput(
+    phi::DeviceContext* dev_ctx,
+    const paddle::optional<std::vector<Tensor>>& tensors,
+    const phi::distributed::ArgDistAttr& dist_attrs) {
+  if (tensors) {
+    VLOG(6) << "Optional ApiIn to Replicated KernelIn.";
+    return paddle::make_optional<
+        std::vector<std::shared_ptr<phi::distributed::DistTensor>>>(
+        ReshardApiInputToKernelInput(dev_ctx, *tensors, dist_attrs));
+  }
+  return paddle::none;
 }
 
 void ReshardOutputPartialAxisToReplicated(
@@ -666,6 +717,12 @@ void ReshardOutputPartialAxisToReplicated(
   if (out_tensor->dist_attr().is_partial()) {
     auto dist_attr = out_tensor->dist_attr();
     dist_attr.clean_partial_status();
+    if (!IsCurRankInMesh(out_tensor->dist_attr().process_mesh())) {
+      VLOG(6) << "DistTensor is not in mesh, just clear its partial status and "
+                 "skip reshard it to replicated.";
+      out_tensor->unsafe_set_dist_attr(dist_attr);
+      return;
+    }
     VLOG(6) << "FwdAPI Output P2R - "
             << ReshardDebugInfo(*out_tensor, dist_attr);
     auto* func =
@@ -706,19 +763,7 @@ void ReshardKernelOutputToApiOutput(
 }
 
 std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const Tensor& input,
-    const phi::TensorArgDef& target_args_def,
-    const TransformFlag& transform_flag,
-    bool is_stride_kernel) {
-  return PrepareDataForDistTensor(
-      std::static_pointer_cast<phi::distributed::DistTensor>(input.impl()),
-      target_args_def,
-      transform_flag,
-      is_stride_kernel);
-}
-
-std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const std::shared_ptr<phi::distributed::DistTensor>& input,
+    std::shared_ptr<phi::distributed::DistTensor> input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
@@ -753,13 +798,13 @@ std::shared_ptr<phi::distributed::DistTensor> PrepareDataForDistTensor(
 }
 
 std::vector<std::shared_ptr<phi::distributed::DistTensor>>
-PrepareDataForDistTensor(const std::vector<Tensor>& input,
-                         const phi::TensorArgDef& target_args_def,
-                         const TransformFlag& transform_flag,
-                         bool is_stride_kernel) {
+PrepareDataForDistTensor(
+    std::vector<std::shared_ptr<phi::distributed::DistTensor>> input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   std::vector<std::shared_ptr<phi::distributed::DistTensor>> out;
-  for (auto& x : input) {
-    const auto& tensor_in = x.impl();
+  for (auto tensor_in : input) {
     if (tensor_in) {
       phi::distributed::DistTensor* dist_tensor =
           static_cast<phi::distributed::DistTensor*>(tensor_in.get());
@@ -795,26 +840,37 @@ PrepareDataForDistTensor(const std::vector<Tensor>& input,
   return out;
 }
 
-paddle::optional<phi::distributed::DistTensor> PrepareDataForDistTensor(
-    const paddle::optional<Tensor>& input,
+paddle::optional<std::shared_ptr<phi::distributed::DistTensor>>
+PrepareDataForDistTensor(
+    paddle::optional<std::shared_ptr<phi::distributed::DistTensor>> input,
     const phi::TensorArgDef& target_args_def,
     const TransformFlag& transform_flag,
     bool is_stride_kernel) {
   if (input) {
-    return {*PrepareDataForDistTensor(
-        *input, target_args_def, transform_flag, is_stride_kernel)};
+    VLOG(6) << "PrepareDataForDistTensor for optional return transformed dist "
+               "tensor";
+    return paddle::make_optional<std::shared_ptr<phi::distributed::DistTensor>>(
+        PrepareDataForDistTensor(
+            *input, target_args_def, transform_flag, is_stride_kernel));
   }
   return paddle::none;
 }
 
 paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
-PrepareDataForDistTensor(const paddle::optional<std::vector<Tensor>>& input,
-                         const phi::TensorArgDef& target_args_def,
-                         const TransformFlag& transform_flag,
-                         bool is_stride_kernel) {
+PrepareDataForDistTensor(
+    paddle::optional<std::vector<std::shared_ptr<phi::distributed::DistTensor>>>
+        input,
+    const phi::TensorArgDef& target_args_def,
+    const TransformFlag& transform_flag,
+    bool is_stride_kernel) {
   if (input) {
-    return PrepareDataForDistTensor(
-        *input, target_args_def, transform_flag, is_stride_kernel);
+    VLOG(6) << "PrepareDataForDistTensor for optional vector return "
+               "transformed dist "
+               "tensor";
+    return paddle::make_optional<
+        std::vector<std::shared_ptr<phi::distributed::DistTensor>>>(
+        PrepareDataForDistTensor(
+            *input, target_args_def, transform_flag, is_stride_kernel));
   }
   return paddle::none;
 }

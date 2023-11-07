@@ -18,7 +18,6 @@ from .primitives import *  # noqa: F403
 from .register import register_decomp
 
 
-@register_decomp('pd_op.mean')
 def mean(x, axis, keepdim):
     """define composite rule of op mean"""
     x_shape = x.shape

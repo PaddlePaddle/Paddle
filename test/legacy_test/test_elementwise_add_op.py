@@ -744,16 +744,16 @@ class TestComplexElementwiseAddOp(OpTest):
         self.out = self.x + self.y
 
     def test_check_output(self):
-        self.check_output(check_pir=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', check_pir=False)
+        self.check_grad(['X', 'Y'], 'Out', check_pir=True)
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=False)
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"), check_pir=True)
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=False)
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'), check_pir=True)
 
 
 class TestRealComplexElementwiseAddOp(TestComplexElementwiseAddOp):
@@ -772,7 +772,11 @@ class TestBoolAddFloatElementwiseAddop(unittest.TestCase):
         b = paddle.full([4, 5, 6], True, dtype='bool')
         c = a + b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
-        paddle.enable_static()
+        with paddle.pir_utils.IrGuard():
+            a = 1.5
+            b = paddle.full([4, 5, 6], True, dtype='bool')
+            c = a + b
+            self.assertTrue(c.dtype == core.DataType.FLOAT32)
 
     def test_dygraph_add(self):
         paddle.disable_static()

@@ -21,7 +21,8 @@ from test_attribute_var import UnittestBase
 from utils import static_guard
 
 import paddle
-from paddle.base import Program, core, program_guard
+from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def pad_wrapper(x, paddings, pad_value):
@@ -129,7 +130,9 @@ create_test_fp16(TestCase3)
 class TestPadOpError(unittest.TestCase):
     def test_errors(self):
         with static_guard():
-            with program_guard(Program(), Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_data = np.random.random((2, 2)).astype("float32")
 
                 def test_Variable():
@@ -150,9 +153,9 @@ class TestPaddingValueTensor(UnittestBase):
 
     def test_static(self):
         with static_guard():
-            main_prog = Program()
-            starup_prog = Program()
-            with program_guard(main_prog, starup_prog):
+            main_prog = paddle.static.Program()
+            starup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, starup_prog):
                 fc = paddle.nn.Linear(4, 10)
                 x = paddle.randn([2, 4])
                 x.stop_gradient = False
@@ -171,6 +174,7 @@ class TestPaddingValueTensor(UnittestBase):
                     res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
                 )
                 np.testing.assert_allclose(res[1], gt)
+
                 paddle.static.save_inference_model(
                     self.save_path, [x], [feat, out], exe
                 )
@@ -183,6 +187,29 @@ class TestPaddingValueTensor(UnittestBase):
                     constant_values=[1.0, 1.0],
                 )
                 np.testing.assert_allclose(infer_outs[1], gt)
+
+    def test_pir_static(self):
+        with paddle.pir_utils.IrGuard():
+            main_prog = paddle.static.Program()
+            starup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, starup_prog):
+                fc = paddle.nn.Linear(4, 10)
+                x = paddle.randn([2, 4])
+                x.stop_gradient = False
+                feat = fc(x)  # [2,3,10]
+
+                out = self.call_func(feat)
+
+                sgd = paddle.optimizer.SGD()
+                sgd.minimize(paddle.mean(out))
+
+                exe = paddle.static.Executor()
+                exe.run(starup_prog)
+                res = exe.run(fetch_list=[feat, out])
+                gt = np.pad(
+                    res[0], [1, 1], 'constant', constant_values=[1.0, 1.0]
+                )
+                np.testing.assert_allclose(res[1], gt)
 
     def path_prefix(self):
         return 'padding_value'
@@ -208,12 +235,13 @@ class TestPaddingValueTensor2(TestPaddingValueTensor):
 
 
 class TestPaddingValueTensor3(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         with static_guard():
             np_x = np.random.random((16, 16)).astype('float32')
-            main_prog = Program()
-            starup_prog = Program()
-            with program_guard(main_prog, starup_prog):
+            main_prog = paddle.static.Program()
+            starup_prog = paddle.static.Program()
+            with paddle.static.program_guard(main_prog, starup_prog):
                 x = paddle.assign(np_x).astype('float32')
                 pad_value = paddle.assign([0.0]).astype('float64')
                 y = paddle.nn.functional.pad(x, [0, 1, 2, 3], value=pad_value)

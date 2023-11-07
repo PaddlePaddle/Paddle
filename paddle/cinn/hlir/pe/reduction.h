@@ -467,6 +467,9 @@ std::vector<ir::Tensor> TwoStepBlockReduceAny(
     const std::vector<int>& axes,
     const bool keep_dim,
     const std::string& output_name = "T_Reduce_Any_out");
+
+std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
+                                              const ir::Expr& tensor);
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

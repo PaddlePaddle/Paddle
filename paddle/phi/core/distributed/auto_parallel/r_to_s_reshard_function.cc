@@ -18,6 +18,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
 #include "paddle/phi/kernels/split_kernel.h"
 
 namespace phi {
@@ -25,20 +26,19 @@ namespace distributed {
 
 bool RToSReshardFunction::IsSuitable(const DistTensor& in,
                                      const TensorDistAttr& out_dist_attr) {
-  bool flag = true;
   const auto& in_dist_attr = in.dist_attr();
 
-  flag &= in_dist_attr.is_replicated();
-  flag &= out_dist_attr.is_shard();
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
 
   const auto& in_process_mesh = in_dist_attr.process_mesh();
   const auto& out_process_mesh = out_dist_attr.process_mesh();
 
-  flag &= (in_process_mesh.ndim() == 1);
-  flag &= (out_process_mesh.ndim() == 1);
-  flag &= (in_process_mesh == out_process_mesh);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh == out_process_mesh);
 
-  return flag;
+  return true;
 }
 
 void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
@@ -86,7 +86,57 @@ void RToSReshardFunction::Eval(phi::DeviceContext* dev_ctx,
   SetDistProps(out, in.dims(), out_dist_attr);
 }
 
+bool RToSReshardFunctionCrossMesh::IsSuitable(
+    const DistTensor& in, const TensorDistAttr& out_dist_attr) {
+  const auto& in_dist_attr = in.dist_attr();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_dist_attr.is_replicated());
+  RESHARD_SHORTCUT_IF_FALSE(out_dist_attr.is_shard());
+
+  const auto& in_process_mesh = in_dist_attr.process_mesh();
+  const auto& out_process_mesh = out_dist_attr.process_mesh();
+
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(out_process_mesh.ndim() == 1);
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh.shape() ==
+                            out_process_mesh.shape());
+  RESHARD_SHORTCUT_IF_FALSE(in_process_mesh != out_process_mesh);
+
+  return true;
+}
+
+void RToSReshardFunctionCrossMesh::Eval(phi::DeviceContext* dev_ctx,
+                                        const DistTensor& in,
+                                        const TensorDistAttr& out_dist_attr,
+                                        DistTensor* out) {
+  VLOG(3) << "Call RToSReshardFunctionCrossMesh Eval";
+  const auto& in_dist_attr = in.dist_attr();
+
+  DistTensor tmp_result;
+  TensorDistAttr in_dist_attr_shard = in_dist_attr;
+  in_dist_attr_shard.set_dims_mapping(out_dist_attr.dims_mapping());
+  RToSReshardFunction r_to_s_func;
+  PADDLE_ENFORCE(
+      r_to_s_func.IsSuitable(in, in_dist_attr_shard),
+      phi::errors::InvalidArgument(
+          "Invoke the r to s reshard function is not valid from %s to %s.",
+          tmp_result.dist_attr(),
+          out_dist_attr));
+  r_to_s_func.Eval(dev_ctx, in, in_dist_attr_shard, &tmp_result);
+
+  // Step 2: Same status from the input mesh to output mesh
+  SameStatusReshardFunction same_status_func;
+  PADDLE_ENFORCE(
+      same_status_func.IsSuitable(tmp_result, out_dist_attr),
+      phi::errors::InvalidArgument("Invoke the same status reshard function "
+                                   "is not valid from %s to %s.",
+                                   tmp_result.dist_attr(),
+                                   out_dist_attr));
+  same_status_func.Eval(dev_ctx, tmp_result, out_dist_attr, out);
+}
+
 REGISTER_RESHARD_FUNC(RToSReshardFunction);
+REGISTER_RESHARD_FUNC(RToSReshardFunctionCrossMesh);
 
 }  // namespace distributed
 }  // namespace phi
