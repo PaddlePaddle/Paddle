@@ -216,9 +216,14 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       if (jobs.size() > 1 && job_type != "forward") {
         const std::vector<std::string> tmp_feed_names = {};
         interpretercores_[job_idx]->Run(tmp_feed_names,
-                                        /*need_fetch = */ false);
+                                        /*need_fetch = */ false,
+                                        /*enable_auto_parallel_profiler = */
+                                        enable_auto_parallel_profiler_);
       } else {
-        interpretercores_[job_idx]->Run(feed_names, /*need_fetch = */ false);
+        interpretercores_[job_idx]->Run(feed_names,
+                                        /*need_fetch = */ false,
+                                        /*enable_auto_parallel_profiler = */
+                                        enable_auto_parallel_profiler_);
       }
     }
   }
@@ -260,6 +265,11 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       return {};
     }
   }
+}
+
+void StandaloneExecutor::SetEnableAutoParallelProfiler(
+    bool enable_auto_parallel_profiler) {
+  enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
 }
 
 }  // namespace framework

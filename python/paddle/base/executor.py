@@ -823,6 +823,11 @@ class _StandaloneExecutor:
                 )
             return tensors
 
+    def set_enable_auto_parallel_profiler(self, enable_auto_parallel_profiler):
+        self._new_exe.set_enable_auto_parallel_profiler(
+            enable_auto_parallel_profiler
+        )
+
     def _create_new_executor(self):
         new_exe = core.StandaloneExecutor(self._place, self._plan, self._scope)
 
@@ -1178,6 +1183,8 @@ class Executor:
         self._fleet_executor_with_standalone = False
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
+
+        self.enable_auto_parallel_profiler = False
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1887,6 +1894,10 @@ class Executor:
                     tensor._copy_from(cpu_tensor, tensor._place())
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
+
+            new_exe.set_enable_auto_parallel_profiler(
+                self.enable_auto_parallel_profiler
+            )
 
             ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)

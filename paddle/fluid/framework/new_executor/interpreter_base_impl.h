@@ -71,7 +71,9 @@ class InterpreterBaseImpl {
       bool need_fetch = true) = 0;
 
   virtual paddle::framework::FetchList Run(
-      const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
+      const std::vector<std::string>& feed_names,
+      bool need_fetch = true,
+      bool enable_auto_parallel_profiler = false) = 0;
 
   virtual void ShareWorkQueueFrom(InterpreterBaseImpl* src) = 0;
 

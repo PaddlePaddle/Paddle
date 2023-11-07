@@ -2019,6 +2019,12 @@ All parameter, weight, gradient are variables in Paddle.
                ret = self.Run(feed_names);
              }
              return py::cast(std::move(ret));
+           })
+
+      .def("set_enable_auto_parallel_profiler",
+           [](StandaloneExecutor &self, bool enable_auto_parallel_profiler) {
+             pybind11::gil_scoped_release release;
+             self.SetEnableAutoParallelProfiler(enable_auto_parallel_profiler);
            });
 
   py::class_<framework::interpreter::Job,

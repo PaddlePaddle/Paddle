@@ -44,76 +44,63 @@ def parse_args():
     return args
 
 
-def process_job_log(log_data, device_id, log_start_time):
+def process_job_log(log_data, device_id, start_step):
     log_pattern = r'.*?Profiler Info: Job \((\d+)\), type = (\w+), micro_batch_id = (\d+), job_start_time = (\d+.\d+), job_end_time = (\d+.\d+)'
     matches = re.findall(log_pattern, log_data)
     events = []
     last_end_time = None
 
-    for match in matches:
+    step_times = []
+    step_start_time = 0
+    step_end_time = 0
+
+    for i, match in enumerate(matches):
         job_id, job_type, micro_batch_id, job_start_time, job_end_time = match
-        if job_type in ["lr"]:
-            continue
 
         start_time = float(job_start_time.strip()) * 1000
         end_time = float(job_end_time.strip()) * 1000
 
-        if log_start_time > start_time:
-            continue
+        if job_type == "forward" and micro_batch_id == "0":
+            if step_start_time != 0:
+                step_times.append([step_start_time, step_end_time])
+            step_start_time = start_time
+        step_end_time = end_time
 
-        event_start = {
-            "name": job_type + "_" + str(job_id),
-            "cat": job_type,
-            "ph": "B",
-            "ts": start_time,
-            "pid": 0,
-            "tid": "GPU" + str(device_id),
-            "cname": color_map[job_type],
-        }
-        event_end = {
-            "name": job_type + "_" + str(job_id),
-            "cat": job_type,
-            "ph": "E",
-            "pid": 0,
-            "ts": end_time,
-            "tid": "GPU" + str(device_id),
-            "cname": color_map[job_type],
-        }
-        events.append(event_start)
-        events.append(event_end)
+        if len(step_times) >= start_step:
+            event_start = {
+                "name": job_type + "_" + str(job_id),
+                "cat": job_type,
+                "ph": "B",
+                "ts": start_time,
+                "pid": 0,
+                "tid": "GPU" + str(device_id),
+                "cname": color_map[job_type],
+            }
+            event_end = {
+                "name": job_type + "_" + str(job_id),
+                "cat": job_type,
+                "ph": "E",
+                "pid": 0,
+                "ts": end_time,
+                "tid": "GPU" + str(device_id),
+                "cname": color_map[job_type],
+            }
+            events.append(event_start)
+            events.append(event_end)
 
         last_end_time = end_time
 
-    return events
-
-
-def process_step_log(log_data, device_id):
-    start_pattern = r'.*?NVTX range push: (\d+), time: (\d+.\d+)'
-    end_pattern = r'.*?NVTX range pop, time: (\d+.\d+)'
-    start_matches = re.findall(start_pattern, log_data)
-    end_matches = re.findall(end_pattern, log_data)
-    end_matches = end_matches[len(end_matches) - len(start_matches) :]
-
-    step_info = []
-    for start_match, stop_match in zip(start_matches, end_matches):
-        step_id, start_time = start_match
-        stop_time = stop_match
-        if int(step_id) >= len(step_info):
-            for _ in range(int(step_id) - len(step_info) + 1):
-                step_info.append([float('inf'), 0])
-        step_info[int(step_id)] = [start_time, stop_time]
-
-    start_step = 0
-    for info in step_info:
-        if info[0] == float('inf'):
-            start_step += 1
-    return step_info, start_step
+    step_times.append([step_start_time, step_end_time])
+    step_times = step_times[start_step:]
+    return events, step_times
 
 
 def main():
     args = parse_args()
     all_events = []
     step_infos = []
+    start_step = 0
+
     for device_id in args.devices.split(","):
         _logger.info(f"Process device {device_id}")
         device_id = int(device_id)
@@ -121,31 +108,28 @@ def main():
         with open(log_file, "r") as f:
             log_data = f.read()
 
-        step_info, start_step = process_step_log(log_data, device_id)
+        start_step_pattern = (
+            r'.*?Schedule Profiler start at step (\d+) and end at step.*'
+        )
+        start_step_match = re.findall(start_step_pattern, log_data)
+        start_step = (
+            int(start_step_match[0]) if len(start_step_match) > 0 else 0
+        )
 
-        if len(step_info) > len(step_infos):
-            for _ in range(len(step_info) - len(step_infos)):
-                step_infos.append([float('inf'), 0])
-        for i, info in enumerate(step_info):
-            if info[0] == float('inf'):
-                continue
-            start_time = float(info[0].strip()) * 1000
-            stop_time = float(info[1].strip()) * 1000
-
-            step_infos[i][0] = min(step_infos[i][0], start_time)
-            step_infos[i][1] = max(step_infos[i][1], stop_time)
-
-        events = process_job_log(log_data, device_id, step_infos[start_step][0])
+        events, step_times = process_job_log(log_data, device_id, start_step)
         all_events.extend(events)
+        for i, info in enumerate(step_times):
+            if len(step_infos) <= i:
+                step_infos.append([float("inf"), float("-inf")])
+            step_infos[i][0] = min(step_infos[i][0], info[0])
+            step_infos[i][1] = max(step_infos[i][1], info[1])
 
     for i, info in enumerate(step_infos):
-        if info[0] == float('inf'):
-            continue
         start_time = info[0]
         if i > 0:
             start_time = max(start_time, step_infos[i - 1][1])
         event_start = {
-            "name": "step" + str(i),
+            "name": "step" + str(i + start_step),
             "cat": "step",
             "ph": "B",
             "ts": start_time,
@@ -154,7 +138,7 @@ def main():
             "cname": color_map["default"],
         }
         event_end = {
-            "name": "step" + str(i),
+            "name": "step" + str(i + start_step),
             "cat": "step",
             "ph": "E",
             "ts": info[1],

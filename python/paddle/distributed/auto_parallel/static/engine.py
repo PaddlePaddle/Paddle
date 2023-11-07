@@ -251,8 +251,7 @@ class Engine:
         paddle.framework.set_flags({'FLAGS_new_executor_sequential_run': 1})
         paddle.framework.set_flags({'FLAGS_new_executor_static_build': 1})
 
-        if self._strategy.pipeline.schedule_profiler:
-            paddle.framework.set_flags({'schedule_profiler': 1})
+        self.enable_auto_parallel_profiler = False
 
     def _prepare_data_spec(self, data, split, batch_size):
         inputs_spec = []
@@ -1485,6 +1484,11 @@ class Engine:
             and not self._has_prepared_reader[self._mode]
         ):
             self._prepare_reader()
+
+        self._executor.enable_auto_parallel_profiler = (
+            self.enable_auto_parallel_profiler
+        )
+
         outs = self._executor.run(
             self.main_program,
             feed=feed_dict,

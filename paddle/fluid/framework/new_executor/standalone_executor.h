@@ -41,6 +41,8 @@ class StandaloneExecutor {
 
   paddle::framework::FetchList Run(const std::vector<std::string>& feed_names);
 
+  void SetEnableAutoParallelProfiler(bool enable_auto_parallel_profiler);
+
  private:
   bool is_interpretercore_build_result_shared_{false};
   const platform::Place place_;
