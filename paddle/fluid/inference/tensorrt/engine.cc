@@ -96,6 +96,11 @@ nvinfer1::IExecutionContext *TensorRTEngine::context() {
     } else {
       infer_context = infer_engine_->createExecutionContext();
     }
+    int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
+    for (int i = 0; i < endBindingIndex; ++i) {
+      const auto tensorName = infer_engine_->getIOTensorName(i);
+      m_IOTensorNames.emplace_back(tensorName);
+    }
     PADDLE_ENFORCE_NOT_NULL(
         infer_context,
         platform::errors::InvalidArgument(
@@ -168,6 +173,46 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
                              std::vector<void *> *buffers,
                              int batch_size,
                              cudaStream_t stream) {
+  int32_t const endBindingIndex = infer_engine_->getNbIOTensors();
+  if (with_dynamic_shape()) {
+    LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+    for (int i = 0; i < endBindingIndex; ++i) {
+      const auto tensorName = infer_engine_->getIOTensorName(i);
+      auto const &name = infer_engine_->getIOTensorName(i);
+      auto const &mode = infer_engine_->getTensorIOMode(name);
+      if (mode == nvinfer1::TensorIOMode::kINPUT) {
+        nvinfer1::Dims const dims = context->getTensorShape(name);
+#if IS_TRT_VERSION_GE(8500)
+        isShapeInferenceIO = infer_engine_->isShapeInferenceIO(name);
+#else
+        isShapeInferenceIO = infer_engine_->isShapeBinding(i);
+#endif
+        nvinfer1::Dims inputDims;
+        inputDims.nbDims = dims.nbDims;
+        inputDims.d[0] = batch_size;
+        for (int32_t m = 1u; m < dims.nbDims; m++) {
+          inputDims.d[m] = dims.d[m];
+        }
+#if IS_TRT_VERSION_GE(8500)
+        if (!isShapeInferenceIO) {
+          context->setInputShape(tensorName, inputDims);
+        }
+      }
+    }
+    PADDLE_ENFORCE_EQ(context->allInputDimensionsSpecified(),
+                      true,
+                      platform::errors::PreconditionNotMet(
+                          "Error, not all required dimensions specified."));
+    for (size_t j = 0; j < buffers->size(); j++) {
+      bool status =
+          context->setTensorAddress(m_IOTensorNames[j].c_str(), (*buffers)[j]);
+      if (!status) {
+        return false;
+      }
+    }
+  }
+#endif
+
   if (cudagraph_inited_) {
     VLOG(1) << "cuda_graph init success, so we will use cuda graph launch the "
                "entire graph.";
@@ -178,7 +223,11 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
   if (!with_dynamic_shape()) {
     ret = context->enqueue(batch_size, buffers->data(), stream, nullptr);
   } else {
-    ret = context->enqueueV2(buffers->data(), stream, nullptr);
+#if IS_TRT_VERSION_GE(8500)
+    ret = context->enqueueV3(stream);
+#else
+          ret = context->enqueueV2(buffers->data(), stream, nullptr);
+#endif
   }
   return ret;
 }
@@ -201,7 +250,7 @@ void TensorRTEngine::FreezeNetwork() {
   infer_builder_config_->setMemoryPoolLimit(
       nvinfer1::MemoryPoolType::kWORKSPACE, params_.max_workspace_size);
 #else
-  infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
+        infer_builder_config_->setMaxWorkspaceSize(params_.max_workspace_size);
 #endif
 
   bool enable_fp16 = (precision() == phi::DataType::FLOAT16);
@@ -381,11 +430,11 @@ void TensorRTEngine::FreezeNetwork() {
   infer_engine_.reset(infer_builder_->buildEngineWithConfig(
       *network(), *infer_builder_config_));
 #else
-  ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
-      *network(), *infer_builder_config_));
-  infer_runtime_.reset(createInferRuntime(&logger_));
-  infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
-      ihost_memory_->data(), ihost_memory_->size()));
+        ihost_memory_.reset(infer_builder_->buildSerializedNetwork(
+            *network(), *infer_builder_config_));
+        infer_runtime_.reset(createInferRuntime(&logger_));
+        infer_engine_.reset(infer_runtime_->deserializeCudaEngine(
+            ihost_memory_->data(), ihost_memory_->size()));
 #endif
 
   PADDLE_ENFORCE_NOT_NULL(
@@ -452,12 +501,12 @@ void TensorRTEngine::DeclareOutput(const nvinfer1::ILayer *layer,
                         "of the network at the same time.",
                         name));
   network()->markOutput(*output);
-  PADDLE_ENFORCE_EQ(
-      output->isNetworkOutput(),
-      true,
-      platform::errors::InvalidArgument(
-          "The output %s of TRT engine should be the output of the network.",
-          name));
+  PADDLE_ENFORCE_EQ(output->isNetworkOutput(),
+                    true,
+                    platform::errors::InvalidArgument(
+                        "The output %s of TRT engine should be the output "
+                        "of the network.",
+                        name));
 }
 
 void TensorRTEngine::DeclareOutput(const std::string &name) {
@@ -550,8 +599,8 @@ nvinfer1::ITensor *TensorRTEngine::ConvertWeight2ITensor(
     trt_in_shape.nbDims = 1;
     trt_in_shape.d[0] = 1;
   }
-  // In fact , this is not always right, because we can't determine if the 0th
-  // dimension is batch. Just for run chenqu's model
+  // In fact , this is not always right, because we can't determine if the
+  // 0th dimension is batch. Just for run chenqu's model
   if (!with_dynamic_shape()) {
     trt_in_shape.nbDims--;
     for (int i = 0; i < trt_in_shape.nbDims; i++) {
@@ -609,8 +658,10 @@ void TensorRTEngine::Deserialize(const std::string &engine_serialized_data) {
       infer_engine_,
       platform::errors::Fatal(
           "Building TRT cuda engine failed when deserializing engine info. "
-          "Please check:\n1. Your TRT serialization is generated and loaded "
-          "on the same GPU architecture;\n2. The Paddle Inference version of "
+          "Please check:\n1. Your TRT serialization is generated and "
+          "loaded "
+          "on the same GPU architecture;\n2. The Paddle Inference version "
+          "of "
           "generating serialization file and doing inference are "
           "consistent."));
 
@@ -905,7 +956,7 @@ void TensorRTEngine::GetEngineInfo(const std::string &engine_info_path) {
     out_file.close();
   }
 #else
-  LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
+        LOG(INFO) << "Inspector needs TensorRT version 8.2 and after.";
 #endif
 }
 
