@@ -360,7 +360,56 @@ def _p2p_helper(
     pipe_group = _hcg.get_pipe_parallel_group()
 
     # start to p2p communicate
-    if _sync_send:
+    if not _sync_send:
+        if tensor_send_prev is not None:
+            src_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_prev,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_prev is not None:
+            dst_rank = _hcg._get_p2p_prev_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_prev,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_send_next is not None:
+            src_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_send_next,
+                    _send_on_calc_stream,
+                    src_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+        if tensor_recv_next is not None:
+            dst_rank = _hcg._get_p2p_next_rank()
+            ops.extend(
+                _process_p2p_tuple_or_tensor(
+                    tensor_recv_next,
+                    _recv_on_calc_stream,
+                    dst_rank,
+                    pipe_group,
+                    mp_degree,
+                    mp_rank,
+                )
+            )
+    else:
         # Some devices(NPU for example) do not support asynchronized send op, So the order is
         # recv_prev -> send_next -> recv_next -> send_prev
         # When using this order, the environment variable
@@ -413,55 +462,7 @@ def _p2p_helper(
                     mp_rank,
                 )
             )
-    else:
-        if tensor_send_prev is not None:
-            src_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_prev,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_recv_prev is not None:
-            dst_rank = _hcg._get_p2p_prev_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_prev,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_send_next is not None:
-            src_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_send_next,
-                    _send_on_calc_stream,
-                    src_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
-        if tensor_recv_next is not None:
-            dst_rank = _hcg._get_p2p_next_rank()
-            ops.extend(
-                _process_p2p_tuple_or_tensor(
-                    tensor_recv_next,
-                    _recv_on_calc_stream,
-                    dst_rank,
-                    pipe_group,
-                    mp_degree,
-                    mp_rank,
-                )
-            )
+
     if len(ops) > 0:
         batch_send_recv_on_calc_stream(ops)
 
