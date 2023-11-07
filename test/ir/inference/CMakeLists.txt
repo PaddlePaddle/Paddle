@@ -210,8 +210,8 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set_tests_properties(test_merge_layernorm_fuse_pass PROPERTIES TIMEOUT 180)
     set_tests_properties(test_skip_merge_layernorm_fuse_pass PROPERTIES TIMEOUT
                                                                         180)
-    set_tests_properties(test_emb_eltwise_layernorm_fuse_pass PROPERTIES TIMEOUT
-                                                                         120)
+    set_tests_properties(test_trt_emb_eltwise_layernorm_fuse_pass
+                         PROPERTIES TIMEOUT 180)
 
     set_tests_properties(test_fc_fuse_pass PROPERTIES TIMEOUT 240)
     set_tests_properties(test_reverse_roll_fuse_pass PROPERTIES TIMEOUT 120)

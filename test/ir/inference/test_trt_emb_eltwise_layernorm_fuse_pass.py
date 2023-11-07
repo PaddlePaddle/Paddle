@@ -20,6 +20,8 @@ import numpy as np
 from auto_scan_test import PassAutoScanTest
 from program_config import OpConfig, ProgramConfig, TensorConfig
 
+import paddle.inference as paddle_infer
+
 
 class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
     r'''
@@ -70,7 +72,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.1, 0.1, attrs['weight_size']).astype(
+            return np.random.uniform(0.05, 0.05, attrs['weight_size']).astype(
                 np.float32
             )
 
@@ -194,8 +196,52 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # only used in gpu passes and trt passes.
-        config = self.create_inference_config(use_gpu=True)
+        # trt dynamic_shape
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=4,
+            workspace_size=1 << 30,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Half,
+            use_static=False,
+            use_calib_mode=False,
+        )
+        if program_config.ops[0].type == 'lookup_table':
+            config.set_trt_dynamic_shape_info(
+                {
+                    "input_data1": [1, 128, 1],
+                    "input_data2": [1, 128, 1],
+                    "input_data3": [1, 128, 1],
+                },
+                {
+                    "input_data1": [4, 128, 1],
+                    "input_data2": [4, 128, 1],
+                    "input_data3": [4, 128, 1],
+                },
+                {
+                    "input_data1": [2, 128, 1],
+                    "input_data2": [2, 128, 1],
+                    "input_data3": [2, 128, 1],
+                },
+            )
+        else:
+            config.set_trt_dynamic_shape_info(
+                {
+                    "input_data1": [1, 128],
+                    "input_data2": [1, 128],
+                    "input_data3": [1, 128],
+                },
+                {
+                    "input_data1": [4, 128],
+                    "input_data2": [4, 128],
+                    "input_data3": [4, 128],
+                },
+                {
+                    "input_data1": [2, 128],
+                    "input_data2": [2, 128],
+                    "input_data3": [2, 128],
+                },
+            )
         yield config, ['fused_embedding_eltwise_layernorm'], (1e-5, 1e-5)
 
     def add_ignore_pass_case(self):
@@ -206,7 +252,7 @@ class TestEmbeddingEltwiseLayerNormFusePass(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=50,
-            passes=["embedding_eltwise_layernorm_fuse_pass"],
+            passes=["trt_embedding_eltwise_layernorm_fuse_pass"],
             min_success_num=0,
         )
 
@@ -234,7 +280,7 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
         return True
 
     def sample_program_config(self, draw):
-        padding_idx = 0
+        padding_idx = -1
         axis = -1
         op_type = draw(st.sampled_from(['lookup_table', 'lookup_table_v2']))
         epsilon = 0.0001
@@ -288,7 +334,7 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
 
         def generate_weight1(attrs):
             # set embedding weight by attrs
-            return np.random.uniform(0.1, 0.1, attrs['weight_size']).astype(
+            return np.random.uniform(0.05, 0.1, attrs['weight_size']).astype(
                 np.float32
             )
 
@@ -412,9 +458,37 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
         return program_config
 
     def sample_predictor_configs(self, program_config):
-        # only used in gpu passes and trt passes.
-        config = self.create_inference_config(use_gpu=True)
+        # trt dynamic_shape
+        config = self.create_trt_inference_config()
+        config.enable_tensorrt_engine(
+            max_batch_size=4,
+            workspace_size=1 << 30,
+            min_subgraph_size=0,
+            precision_mode=paddle_infer.PrecisionType.Half,
+            use_static=False,
+            use_calib_mode=False,
+        )
         if program_config.ops[0].type == 'lookup_table':
+            config.set_trt_dynamic_shape_info(
+                {
+                    "embedding_output1": [1, 128, 384],
+                    "embedding_output2": [1, 128, 384],
+                    "embedding_output3": [1, 1, 384],
+                },
+                {
+                    "embedding_output1": [4, 128, 384],
+                    "embedding_output2": [4, 128, 384],
+                    "embedding_output3": [4, 1, 384],
+                },
+                {
+                    "embedding_output1": [2, 128, 384],
+                    "embedding_output2": [2, 128, 384],
+                    "embedding_output3": [2, 1, 384],
+                },
+            )
+            config.exp_disable_tensorrt_ops(["lookup_table"])
+            config.delete_pass("trt_skip_layernorm_fuse_pass")
+            config.delete_pass("preln_residual_bias_fuse_pass")
             yield config, [
                 'lookup_table',
                 'lookup_table',
@@ -424,6 +498,26 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
                 'layer_norm',
             ], (1e-5, 1e-5)
         else:
+            config.set_trt_dynamic_shape_info(
+                {
+                    "embedding_output1": [1, 128, 384],
+                    "embedding_output2": [1, 128, 384],
+                    "embedding_output3": [1, 1, 384],
+                },
+                {
+                    "embedding_output1": [4, 128, 384],
+                    "embedding_output2": [4, 128, 384],
+                    "embedding_output3": [4, 1, 384],
+                },
+                {
+                    "embedding_output1": [2, 128, 384],
+                    "embedding_output2": [2, 128, 384],
+                    "embedding_output3": [2, 1, 384],
+                },
+            )
+            config.exp_disable_tensorrt_ops(["lookup_table_v2"])
+            config.delete_pass("trt_skip_layernorm_fuse_pass")
+            config.delete_pass("preln_residual_bias_fuse_pass")
             yield config, [
                 'lookup_table_v2',
                 'lookup_table_v2',
@@ -441,7 +535,7 @@ class TestEmbeddingEltwiseLayerNormFusePassNoBroadcast(PassAutoScanTest):
         self.run_and_statis(
             quant=False,
             max_examples=50,
-            passes=["embedding_eltwise_layernorm_fuse_pass"],
+            passes=["trt_embedding_eltwise_layernorm_fuse_pass"],
             min_success_num=0,
         )
 
