@@ -215,14 +215,16 @@ bool TensorRTEngine::Enqueue(nvinfer1::IExecutionContext *context,
             Vec2TRT_Dims(optim_input_shape()[input.first], input.first, true));
       }
       for (int i = 0; i < numInputs; ++i) {
-        auto const &name = infer_engine_->getIOTensorName(i);
-        nvinfer1::Dims const dims = context->getTensorShape(name);
-        nvinfer1::Dims inputDims;
-        inputDims.nbDims = dims.nbDims;
-        for (int32_t m = 1u; m < dims.nbDims; m++) {
-          inputDims.d[m] = dims.d[m];
+        if (optim_input_shape().count(m_IOTensorNames[i])) {
+          const auto &dims_vec = optim_input_shape().at(m_IOTensorNames[i]);
+          nvinfer1::Dims inputDims;
+          inputDims.nbDims = dims_vec.size();
+          inputDims.d[0] = batch_size;
+          for (auto j = 1u; j < dims_vec.size(); ++j) {
+            inputDims.d[j] = dims_vec[j];
+          }
+          context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
         }
-        context->setInputShape(m_IOTensorNames[i].c_str(), inputDims);
       }
     }
   }
