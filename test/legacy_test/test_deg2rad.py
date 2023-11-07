@@ -19,7 +19,6 @@ import numpy as np
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -33,7 +32,6 @@ class TestDeg2radAPI(unittest.TestCase):
         self.x_shape = [6]
         self.out_np = np.deg2rad(self.x_np)
 
-    @test_with_pir_api
     def test_static_graph(self):
         place = (
             base.CUDAPlace(0)
@@ -55,7 +53,7 @@ class TestDeg2radAPI(unittest.TestCase):
                 feed={'input': self.x_np},
                 fetch_list=[out],
             )
-            self.assertTrue((res == self.out_np).all())
+            self.assertTrue((np.array(res[0]) == self.out_np).all())
         paddle.disable_static()
 
     def test_dygraph(self):
