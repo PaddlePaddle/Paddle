@@ -22,7 +22,11 @@ from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place, in_pir_mode, in_dynamic_or_pir_mode
+from ...base.framework import (
+    _current_expected_place,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
