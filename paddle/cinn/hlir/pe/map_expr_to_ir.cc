@@ -28,6 +28,9 @@
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
 #include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/runtime/flags.h"
+
+PD_DECLARE_bool(cinn_enable_map_expr_inline);
 
 namespace cinn::adt {
 
@@ -210,9 +213,12 @@ class MapExprToIrTranslator {
   }
 
   InlineStmt ConvertToInlineStmt(const InternalStmt& internal_stmt) const {
-    using Translator = InlineTranslator<MapStmt, OpCall, Tensor>;
-    // using Translator = NoInlineTranslator<MapStmt, OpCall, Tensor>;
-    return Translator::Call(internal_stmt);
+    if (FLAGS_cinn_enable_map_expr_inline) {
+      return InlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    } else {
+      return NoInlineTranslator<MapStmt, OpCall, Tensor>::Call(internal_stmt);
+    }
+    LOG(FATAL) << "Dead code";
   }
 
   std::optional<ir::Expr> TranslateOpExprImpl(
@@ -276,6 +282,7 @@ class MapExprToIrTranslator {
             TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
       }
     }
+    return store_rvalue;
   }
 
   std::optional<ir::Expr> MakeGeneralExpr(
@@ -294,6 +301,7 @@ class MapExprToIrTranslator {
             TranslateTensorIndex(op_expr_children->at(i), IterExprs4Tensor);
       }
     }
+    return store_rvalue;
   }
 
   std::optional<ir::Expr> TranslateOpCallImpl(
