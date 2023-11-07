@@ -141,7 +141,7 @@ class TestYoloBoxOp(OpTest):
         self.outputs = {'Boxes': boxes, 'Scores': scores}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def initTestCase(self):
         self.anchors = [10, 13, 16, 30, 33, 23]
