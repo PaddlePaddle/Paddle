@@ -3517,7 +3517,7 @@ def broadcast_to(x, shape, name=None):
             [[1, 2, 3],
              [1, 2, 3]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
