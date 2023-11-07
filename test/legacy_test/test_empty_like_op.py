@@ -178,19 +178,19 @@ class TestEmptyLikeAPI_Static(TestEmptyLikeAPICommon):
 
             out = paddle.empty_like(data_x)
 
-        place = (
-            paddle.CUDAPlace(0)
-            if core.is_compiled_with_cuda()
-            else paddle.CPUPlace()
-        )
-        exe = paddle.static.Executor(place)
-        res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
-
-        self.dst_dtype = self.dtype
-        self.dst_shape = x.shape
-        self.__check_out__(res[0])
-
-        paddle.disable_static()
+            place = (
+                paddle.CUDAPlace(0)
+                if core.is_compiled_with_cuda()
+                else paddle.CPUPlace()
+            )
+            exe = paddle.static.Executor(place)
+            res = exe.run(train_program, feed={'x': x}, fetch_list=[out])
+    
+            self.dst_dtype = self.dtype
+            self.dst_shape = x.shape
+            self.__check_out__(res[0])
+    
+            paddle.disable_static()
 
     def init_config(self):
         self.x_shape = (200, 3)
