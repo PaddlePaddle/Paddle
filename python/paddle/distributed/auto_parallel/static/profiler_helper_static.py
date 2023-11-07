@@ -74,7 +74,6 @@ def process_job_log(log_data, device_id, start_step):
                 "ts": start_time,
                 "pid": 0,
                 "tid": "GPU" + str(device_id),
-                "cname": color_map[job_type],
             }
             event_end = {
                 "name": job_type + "_" + str(job_id),
@@ -83,8 +82,11 @@ def process_job_log(log_data, device_id, start_step):
                 "pid": 0,
                 "ts": end_time,
                 "tid": "GPU" + str(device_id),
-                "cname": color_map[job_type],
             }
+            if job_type in color_map:
+                event_start["cname"] = (color_map[job_type],)
+                event_end["cname"] = (color_map[job_type],)
+
             events.append(event_start)
             events.append(event_end)
 
