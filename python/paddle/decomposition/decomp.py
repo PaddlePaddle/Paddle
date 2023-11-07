@@ -79,7 +79,7 @@ def _prepare_python_api_arguments(op):
             # therefore append None for it.
             inputs.append(None)
 
-    # The inputs of PIR op builtin.combine will be restored as list of tensor.
+    # The inputs of Pir op builtin.combine will be restored as list of tensor.
     if op.name() == combine_op_name:
         return (inputs,)
 

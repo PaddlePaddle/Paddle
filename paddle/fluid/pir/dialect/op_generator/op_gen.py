@@ -26,6 +26,7 @@ from op_interface_gen import (
     gen_op_infer_meta_str,
     gen_op_vjp_str,
 )
+from op_kerneltype_gen import gen_kernel_type_for_var_str
 from op_member_func_gen import gen_op_get_inputs_outputs_str
 from op_verify_gen import gen_verify_func_str
 from vjp_interface_black_list import vjp_interface_black_list
@@ -66,6 +67,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/phi/core/infermeta_utils.h"
 #include "paddle/fluid/pir/dialect/operator/ir/manual_op.h"
 #include "paddle/fluid/ir_adaptor/translator/utils.h"
+{only_pd_op_header_files}
 
 {op_to_multi_kernels_map}
 
@@ -99,6 +101,7 @@ class {op_name} : public pir::Op<{op_name}{interfaces}{traits}> {{
   {build_attr_num_over_1}
   {build_mutable_attr_is_input_attr_num_over_1}
   void VerifySig();
+{get_kernel_type_for_var_declare}
 {get_inputs_and_outputs}
 {exclusive_interface}
 }};
@@ -109,6 +112,13 @@ op_0_attribute_declare_str = (
 op_n_attribute_declare_str = (
     "static const char *attributes_name[{attribute_num}];"
 )
+
+get_kernel_type_for_var_declare_template = """
+  static phi::DataType GetKernelTypeForVar(
+      const std::string& var_name,
+        const phi::DataType& tensor_dtype,
+        const phi::DataType& expected_kernel_dtype);
+"""
 
 # =====================================
 # String Template for cc file code gen
@@ -396,6 +406,9 @@ class OpInfoParser:
         # parse inplace && view
         self.inplace_map = self.parse_op_inplace_info()
         self.view_map = self.parse_op_view_info()
+
+        # parse data_transform
+        self.data_transform_map = self.parse_data_transform_info()
 
         # parse has_custom_verify
         self.custom_verify = self.parse_custom_verify()
@@ -853,6 +866,15 @@ class OpInfoParser:
         else:
             return None
 
+    def parse_data_transform_info(self):
+        if (
+            'data_transform' in self.op_yaml_item
+            and self.op_yaml_item['data_transform']
+        ):
+            data_trans_item = self.op_yaml_item['data_transform']
+            return data_trans_item
+        return None
+
     def parse_backward_name(self):
         if 'backward' in self.op_yaml_item:
             return self.op_yaml_item['backward']
@@ -1079,6 +1101,7 @@ def OpGenerator(
         op_invoke_map = op_info.invoke_map
         op_inplace_map = op_info.inplace_map
         op_view_map = op_info.view_map
+        op_data_transform_map = op_info.data_transform_map
         op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
         op_traits = []
 
@@ -1096,6 +1119,9 @@ def OpGenerator(
         exclusive_interface_str = gen_exclusive_interface_str(
             op_info, op_info_items
         )
+
+        if dialect_name == "pd_op":
+            op_interfaces += ["paddle::dialect::GetKernelTypeForVarInterface"]
 
         # if op has custom vjp rule, then append a CustomVjpTrait to it
         if op_info.op_phi_name[0] in custom_vjp_op_name_list:
@@ -1186,6 +1212,12 @@ def OpGenerator(
                 build_mutable_attr_is_input_attr_num_over_1 = ""
                 build_func_with_attr_is_map = ""
                 build_func_with_muta_attr_is_input = ""
+
+                get_kernel_type_for_var_declare_str = ""
+                if dialect_name == "pd_op":
+                    get_kernel_type_for_var_declare_str = (
+                        get_kernel_type_for_var_declare_template
+                    )
 
                 if op_infer_meta_map is not None:
                     (
@@ -1319,6 +1351,7 @@ def OpGenerator(
                         build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
+                        get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
                     )
                     op_defined_str = ""
                 else:
@@ -1339,6 +1372,7 @@ def OpGenerator(
                         build_mutable_attr_is_input_attr_num_over_1=build_mutable_attr_is_input_attr_num_over_1,
                         get_inputs_and_outputs=op_get_inputs_outputs_str,
                         exclusive_interface=exclusive_interface_str,
+                        get_kernel_type_for_var_declare=get_kernel_type_for_var_declare_str,
                     )
                     attribute_names_str = (
                         '"'
@@ -1435,11 +1469,31 @@ def OpGenerator(
                         'data_type' in op_kernel_map
                         and op_kernel_map['data_type']
                     ):
-                        kernel_key_dtype = '", "'.join(
-                            op_kernel_map['data_type']['candidates']
-                        )
+                        for idx in range(
+                            len(op_kernel_map['data_type']['candidates'])
+                        ):
+                            if (
+                                'to_complex_flag' in op_kernel_map['data_type']
+                                and op_kernel_map['data_type'][
+                                    'to_complex_flag'
+                                ][idx]
+                            ):
+                                kernel_key_dtype += (
+                                    'complex:'
+                                    + op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
+                            else:
+                                kernel_key_dtype += (
+                                    op_kernel_map['data_type']['candidates'][
+                                        idx
+                                    ]
+                                    + '", "'
+                                )
                         if kernel_key_dtype != "":
-                            kernel_key_dtype = '"' + kernel_key_dtype + '"'
+                            kernel_key_dtype = '"' + kernel_key_dtype[:-3]
                     if 'backend' in op_kernel_map and op_kernel_map['backend']:
                         kernel_key_backend = '", "'.join(
                             op_kernel_map['backend']['candidates']
@@ -1490,6 +1544,18 @@ def OpGenerator(
                         op_output_optional_list,
                     )
 
+                # generate op GetKernelKeyForVar function str
+                op_get_kernel_type_for_var_str = ''
+                if dialect_name == "pd_op":
+                    op_get_kernel_type_for_var_str = (
+                        gen_kernel_type_for_var_str(
+                            op_class_name,
+                            op_data_transform_map,
+                            op_kernel_map,
+                            op_info.op_compat_item,
+                        )
+                    )
+
                 op_infer_meta_str = gen_op_infer_meta_str(
                     op_info, op_class_name, op_info_items
                 )
@@ -1534,6 +1600,8 @@ def OpGenerator(
 
                     ops_defined_list.append(op_verify_str)
                     ops_defined_list.append(op_infer_meta_str)
+                    ops_defined_list.append(op_get_kernel_type_for_var_str)
+
                     # NOTE(chenxi67)skip if dialect_name==cinn
                     if dialect_name == "cinn":
                         pass
@@ -1584,12 +1652,18 @@ def OpGenerator(
 
     head_file_str = ""
     head_file_str += "".join(ops_declare_list)  # Add op class
+    only_pd_op_header_files_str = ""
+
     if dialect_name == "pd_op":
         op_to_multi_kernels_map = OP_TO_MULTI_KERNELS_MAP_H
         for name in reversed(namespaces):
             op_to_multi_kernels_map = NAMESPACE_GARD_TEMPLATE.format(
                 namespace=name, input=op_to_multi_kernels_map
             )  # Add namespaces
+        only_pd_op_header_files_str = """
+#include \"paddle/phi/common/data_type.h\"
+#include \"paddle/fluid/pir/dialect/operator/interface/get_kernel_type_for_var.h\"
+            """
     else:
         op_to_multi_kernels_map = ""
 
@@ -1602,6 +1676,7 @@ def OpGenerator(
         op_to_multi_kernels_map=op_to_multi_kernels_map,
         input=head_file_str,
         declare_type_id=declare_type_id_str,
+        only_pd_op_header_files=only_pd_op_header_files_str,
     )  # Add head
 
     # (5) Generate source file str

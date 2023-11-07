@@ -23,6 +23,7 @@ decomp_interface_declare_gen_op_list = [
     "mean",
     "squeeze",
     "add_n",
+    "relu",
     "layer_norm",
 ]
 
@@ -32,6 +33,7 @@ decomp_interface_implementation_gen_op_list = [
     "mean",
     "squeeze",
     "add_n",
+    "relu",
     "layer_norm",
 ]
 
