@@ -167,7 +167,7 @@ class GradSlotMeta {
 
   void SetDistAttr(const phi::distributed::TensorDistAttr& dist_attr) {
     dist_attr_ = dist_attr;
-    is_dist_meta = true;
+    is_dist_meta_ = true;
   }
 
   const phi::DDim& DistTensorGlobalDims() const {
@@ -176,10 +176,10 @@ class GradSlotMeta {
 
   void SetDistTensorGlobalDims(const phi::DDim& dims) {
     dist_tensor_global_dims_ = dims;
-    is_dist_meta = true;
+    is_dist_meta_ = true;
   }
 
-  bool IsDistMeta() const { return is_dist_meta; }
+  bool IsDistMeta() const { return is_dist_meta_; }
 
  private:
   bool stop_gradient_{false};
