@@ -149,7 +149,7 @@ class TestCrossAPI(unittest.TestCase):
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
                 feed={'x': self.data_x, 'y': self.data_y},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
