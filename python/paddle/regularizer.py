@@ -238,7 +238,7 @@ class L2Decay(WeightDecayRegularizer):
         assert isinstance(
             param, (framework.Variable, pir.OpResult, pir.core.ParameterMeta)
         )
-        assert isinstance(block, framework.Block, pir.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
 
         if in_dynamic_or_pir_mode():
             return _C_ops.scale(param, self._coeff, 0.0, True)
