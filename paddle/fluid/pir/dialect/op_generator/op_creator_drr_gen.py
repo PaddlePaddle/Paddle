@@ -98,8 +98,6 @@ class OpCreatorCodeGen:
 
         op_info_items = []
         for op in op_yaml_items:
-            if op['name'] == "shadow_output":
-                continue
             op_compat_item = op_compat_parser.get_compat(op['name'])
             if (
                 op_compat_item is not None

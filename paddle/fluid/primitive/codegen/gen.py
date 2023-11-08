@@ -51,7 +51,6 @@ BACKENDS_BLACK_LIST = [
     "send_v2",
     "assert",
     "embedding_grad_sparse",
-    "shadow_output",
 ]
 
 
