@@ -160,13 +160,14 @@ class TestConvBnFusePass(PassAutoScanTest):
         # for mkldnn
         if program_config.ops[0].attrs['use_mkldnn']:
             config = self.create_inference_config()
-            config.enable_mkldnn()
             yield config, ['fused_conv2d'], (1e-5, 1e-5)
         else:
             config = self.create_inference_config()
+            config.disable_mkldnn()
             yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
             config = self.create_inference_config(use_gpu=True)
+            config.disable_mkldnn()
             yield config, ['conv2d', 'elementwise_add'], (1e-5, 1e-5)
 
             config = self.create_trt_inference_config()

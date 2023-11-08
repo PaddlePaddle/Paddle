@@ -984,11 +984,15 @@ void AnalysisConfig::Update() {
   if (!use_gpu() && !use_xpu() && !use_ipu()) {
     if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
+      // default enable mkldnn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
 #endif
     } else if (!use_mkldnn_) {
       pass_builder()->DisableMKLDNN();
     }
+  } else {
+    // mkldnn need disable when open gpu, xpu or xpu
+    pass_builder()->DisableMKLDNN();
   }
 
   // Quantization passes must come after all other optimization passes
