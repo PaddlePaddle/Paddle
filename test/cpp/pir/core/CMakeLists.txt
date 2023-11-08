@@ -1,52 +1,16 @@
-paddle_test(
-  type_test
-  SRCS
-  type_test.cc
-  DEPS
-  pir
-  gtest
-  op_dialect_vjp)
-paddle_test(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
-paddle_test(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
-paddle_test(
-  ir_op_test
-  SRCS
-  ir_op_test.cc
-  DEPS
-  pir
-  gtest
-  test_dialect
-  op_dialect_vjp)
-paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
-paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
-paddle_test(
-  ir_program_test
-  SRCS
-  ir_program_test.cc
-  DEPS
-  op_dialect_vjp
-  pir
-  phi
-  gtest)
+paddle_test(type_test SRCS type_test.cc DEPS pir)
+paddle_test(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir)
+paddle_test(ir_value_test SRCS ir_value_test.cc DEPS pir)
+paddle_test(ir_op_test SRCS ir_op_test.cc DEPS pir)
+paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir)
+paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir)
+paddle_test(ir_program_test SRCS ir_program_test.cc DEPS op_dialect_vjp pir)
 
-paddle_test(
-  ir_infershape_test
-  SRCS
-  ir_infershape_test.cc
-  DEPS
-  op_dialect_vjp
-  pir
-  phi
-  gtest)
+paddle_test(ir_infershape_test SRCS ir_infershape_test.cc DEPS op_dialect_vjp
+            pir)
 
-paddle_test(
-  scalar_attribute_test
-  SRCS
-  scalar_attribute_test.cc
-  DEPS
-  op_dialect_vjp
-  pir
-  gtest)
+paddle_test(scalar_attribute_test SRCS scalar_attribute_test.cc DEPS
+            op_dialect_vjp pir)
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
@@ -80,75 +44,25 @@ paddle_test(
   DEPS
   program_translator
   gtest
-  op_dialect_vjp
   pir)
 
-paddle_test(
-  add_dialect_parser_test
-  SRCS
-  add_dialect_parser_test.cc
-  DEPS
-  gtest
-  op_dialect_vjp
-  pir)
+paddle_test(add_dialect_parser_test SRCS add_dialect_parser_test.cc DEPS gtest
+            pir)
 
-paddle_test(
-  ir_parser_test
-  SRCS
-  ir_parser_test.cc
-  DEPS
-  gtest
-  op_dialect_vjp
-  pir)
+paddle_test(ir_parser_test SRCS ir_parser_test.cc DEPS gtest pir)
 
-paddle_test(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
-paddle_test(
-  ir_op_yaml_info_parser_test
-  SRCS
-  op_yaml_info_parser_test.cc
-  DEPS
-  gtest
-  op_dialect
-  op_dialect_vjp
-  pir)
+paddle_test(ir_op_info_test SRCS op_info_test.cc DEPS pir)
+paddle_test(ir_op_yaml_info_parser_test SRCS op_yaml_info_parser_test.cc DEPS
+            gtest pir)
 
-paddle_test(
-  ir_type_converter_test
-  SRCS
-  ir_type_converter_test.cc
-  DEPS
-  gtest
-  program_translator
-  op_dialect_vjp
-  pir)
+paddle_test(ir_type_converter_test SRCS ir_type_converter_test.cc DEPS pir)
 
-paddle_test(
-  type_interface_test
-  SRCS
-  type_interface_test.cc
-  DEPS
-  pir
-  test_dialect
-  gtest
-  op_dialect_vjp)
+paddle_test(type_interface_test SRCS type_interface_test.cc DEPS pir)
 
-paddle_test(
-  block_operand_test
-  SRCS
-  block_operand_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+paddle_test(block_operand_test SRCS block_operand_test.cc DEPS test_dialect pir)
 
-paddle_test(
-  block_argument_test
-  SRCS
-  block_argument_test.cc
-  DEPS
-  test_dialect
-  gtest
-  pir)
+paddle_test(block_argument_test SRCS block_argument_test.cc DEPS test_dialect
+            pir)
 
 if(WITH_ONNXRUNTIME AND WIN32)
   # Copy onnxruntime for some c++ test in Windows, since the test will

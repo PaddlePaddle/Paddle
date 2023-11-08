@@ -1,11 +1,2 @@
-paddle_test(
-  ir_kernel_dialect_pass_test
-  SRCS
-  ir_kernel_dialect_pass_test.cc
-  DEPS
-  pd_op_to_kernel_pass
-  program_translator
-  op_dialect
-  pir
-  phi
-  gtest)
+paddle_test(ir_kernel_dialect_pass_test SRCS ir_kernel_dialect_pass_test.cc
+            DEPS pir)
