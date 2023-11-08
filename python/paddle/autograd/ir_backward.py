@@ -396,7 +396,6 @@ def append_backward_ops(
     ):
         for opresult in state_valuegrad.keys():
             if value.is_name(opresult):
-                breakpoint()
                 return state_valuegrad[opresult]
         return []
 
@@ -406,7 +405,6 @@ def append_backward_ops(
         output_grads = []
         for i, value in enumerate(op.results()):
             new_value = [value]
-            breakpoint()
             if (
                 check_in_keys(value, state.value_to_valuegrad)
                 and len(
