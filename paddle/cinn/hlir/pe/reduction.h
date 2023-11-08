@@ -470,6 +470,8 @@ std::vector<ir::Tensor> TwoStepBlockReduceAny(
 
 std::string CrossThreadReduceExternalFuncName(const ir::Expr& op,
                                               const ir::Expr& tensor);
+
+std::string Type2StrForReduce(common::Type type);
 }  // namespace pe
 }  // namespace hlir
 }  // namespace cinn

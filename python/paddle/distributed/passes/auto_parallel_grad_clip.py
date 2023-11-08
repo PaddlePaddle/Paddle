@@ -401,6 +401,33 @@ class ClipGradByGloblNormPass(PassBase):
                 else:
                     op.desc.set_input("X", reserved_vars)
 
+            elif op.type == 'stack':
+                # 'stack' op is also used to calculate global_norm ('stack' + 'reduce_sum'), and need to filter inputs which is not in cur_rank
+                reserved_vars = []
+                for input_name in op.input_arg_names:
+                    if (
+                        input_name not in removed_tmp_var
+                        and self.clip_helper.is_local_var_with_dist_attr(
+                            input_name
+                        )
+                    ):
+                        reserved_vars.append(input_name)
+                if not reserved_vars:
+                    removed_op_idx.add(idx)
+                    removed_tmp_var.update(set(op.output_arg_names))
+                    if block.ops[idx + 1].type == 'reduce_sum':
+                        removed_op_idx.add(idx + 1)
+                        removed_tmp_var.update(
+                            set(block.ops[idx + 1].output_arg_names)
+                        )
+                    if block.ops[idx + 2].type == 'cast':
+                        removed_op_idx.add(idx + 2)
+                        removed_tmp_var.update(
+                            set(block.ops[idx + 2].output_arg_names)
+                        )
+                else:
+                    op.desc.set_input("X", reserved_vars)
+
         for idx, op in reversed(list(enumerate(block.ops))):
             if not is_optimize_op(op):
                 break

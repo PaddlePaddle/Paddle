@@ -15,10 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
 
 import paddle
 from paddle import base
@@ -36,8 +33,7 @@ def function(x: A) -> A:
     return 2 * x
 
 
-@dy2static_unittest
-class TestTypeHint(unittest.TestCase):
+class TestTypeHint(Dy2StTestBase):
     def setUp(self):
         self.place = (
             base.CUDAPlace(0)
@@ -50,7 +46,7 @@ class TestTypeHint(unittest.TestCase):
     def _init_dyfunc(self):
         self.dyfunc = function
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def _run_static(self):
         return self._run(to_static=True)
 

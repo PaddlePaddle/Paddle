@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+
 import copy
 from collections import OrderedDict
 from functools import reduce
@@ -33,17 +34,10 @@ from .cost import (
 from .dist_attribute import TensorDistAttr
 from .dist_context import DistributedContext
 from .process_group import new_process_group
-from .utils import is_gradient_clip_op, is_optimize_op
+from .utils import _g_gradient_clip_ops, is_gradient_clip_op, is_optimize_op
 
 # NOTE: If op in _g_special_ops or _g_gradient_clip_ops, it will not be resharded.
 _g_special_ops = ['check_finite_and_unscale', 'update_loss_scaling']
-_g_gradient_clip_ops = [
-    "sum",
-    "sqrt",
-    "fill_constant",
-    "elementwise_max",
-    "elementwise_div",
-]
 _g_subblock_ops = ["while", "conditional_block"]
 
 
@@ -62,6 +56,26 @@ def get_var_with_recursion(var_name, block, program):
     return var
 
 
+class EndOpDesc:
+    """
+    Describe to end reshard parse process.
+    It is supposed to contain a list of variables which are the outputs of one reshard process.
+
+    Args:
+        vars (list): a list of variables.
+    """
+
+    def __init__(self, vars):
+        self._vars = vars
+
+    @property
+    def vars(self):
+        return self._vars
+
+    def __repr__(self):
+        return f"End vars : {self._vars}."
+
+
 class AllGatherOpDesc:
     """
     Describe the allgather op in the reshard phase.
@@ -72,11 +86,12 @@ class AllGatherOpDesc:
         is_bool (bool): Whether allgather bool data. Default: False.
     """
 
-    def __init__(self, group, shape, is_bool=False):
+    def __init__(self, group, shape, is_bool=False, need_split=True):
         self._group = group
         self._desc = "all_gather"
         self._shape = shape
         self._is_bool = is_bool
+        self._need_split = need_split
 
     @property
     def is_bool(self):
@@ -94,8 +109,12 @@ class AllGatherOpDesc:
     def shape(self):
         return self._shape
 
+    @property
+    def need_split(self):
+        return self._need_split
+
     def __repr__(self):
-        return f"op: {self._desc}, group: {self._group}, shape: {self._shape}, is_bool: {self._is_bool}."
+        return f"op: {self._desc}, group: {self._group}, shape: {self._shape}, is_bool: {self._is_bool}, need_split: {self._need_split}."
 
 
 class AllGatherConcatOpDesc:
@@ -605,7 +624,7 @@ class Inserter:
         return out
 
     @staticmethod
-    def insert_allgather_op(block, idx, tensor, ranks, op_role):
+    def insert_allgather_op(block, idx, tensor, ranks, op_role, need_split):
         """Insert allgather op into block at the given index."""
         tensor_list = []
         group = new_process_group(ranks)
@@ -643,11 +662,14 @@ class Inserter:
         idx_offset += 1
 
         # insert split op
-        split_out = Inserter.insert_split_op(
-            block, idx + idx_offset, allgather_out, group.nranks, op_role
-        )
-        idx_offset += 1
-        tensor_list.extend(split_out)
+        if need_split:
+            split_out = Inserter.insert_split_op(
+                block, idx + idx_offset, allgather_out, group.nranks, op_role
+            )
+            idx_offset += 1
+            tensor_list.extend(split_out)
+        else:
+            tensor_list.extend([allgather_out])
         return tensor_list, idx_offset
 
     @staticmethod
@@ -1269,7 +1291,7 @@ class Resharder:
         return True
 
     def is_special_op(self, op):
-        global _g_special_ops, _g_gradient_clip_ops
+        global _g_special_ops
         if op.type in _g_special_ops:
             return True
         if is_gradient_clip_op(op) and op.type in _g_gradient_clip_ops:
@@ -1721,6 +1743,21 @@ class Resharder:
                                 group=group, shape=allgather_shape
                             )
                         ]
+                    # optimization: [sharded, any x n] -> [unsharded,  any x n], only need one allgather and no split or concat anymore.
+                    elif (
+                        target_dims_mapping[1:] == source_dims_mapping[1:]
+                        and target_dims_mapping[0] == -1
+                        and source_dims_mapping[0] != -1
+                    ):
+                        op_desc_seq[process] = [
+                            AllGatherOpDesc(
+                                group=min_comm_group,
+                                shape=allgather_shape,
+                                is_bool=(source_tensor.dtype == paddle.bool),
+                                need_split=False,
+                            ),
+                            EndOpDesc(None),
+                        ]
                     else:
                         op_desc_seq[process] = (
                             [
@@ -1797,6 +1834,8 @@ class Resharder:
             else reshard_op.attr('op_role')
         )
 
+        # a Hack to send output vars from allgather_op to end_op
+        end_vars = None
         for op_desc in op_desc_list:
             if isinstance(op_desc, AllGatherOpDesc):
                 if var_name not in self.has_allgather.keys():
@@ -1819,6 +1858,7 @@ class Resharder:
                             out_cast,
                             op_desc.group,
                             op_role,
+                            need_split=op_desc.need_split,
                         )
                         idx += idx_offset
                         tensor_name_list = []
@@ -1842,7 +1882,10 @@ class Resharder:
                             source_tensor,
                             op_desc.group,
                             op_role,
+                            need_split=op_desc.need_split,
                         )
+                        if idx_offset == 1:
+                            end_vars = tensor_list
                         idx += idx_offset
                         tensor_name_list = [var.name for var in tensor_list]
                         self.has_allgather[var_name].append(
@@ -2003,7 +2046,9 @@ class Resharder:
                     )
                 idx = idx_list[0]
 
-            elif isinstance(op_desc, (SliceOpDesc, AllGatherConcatOpDesc)):
+            elif isinstance(
+                op_desc, (SliceOpDesc, AllGatherConcatOpDesc, EndOpDesc)
+            ):
                 target_tensor = None
                 if isinstance(op_desc, SliceOpDesc):
                     assert (
@@ -2026,7 +2071,7 @@ class Resharder:
                         new_var_name=new_name,
                         op_role=op_role,
                     )
-                else:
+                elif isinstance(op_desc, AllGatherConcatOpDesc):
                     target_tensor = Inserter.insert_c_concat_op(
                         block,
                         idx,
@@ -2034,6 +2079,10 @@ class Resharder:
                         op_desc.group,
                         op_role,
                     )
+                else:
+                    assert isinstance(op_desc, EndOpDesc)
+                    assert len(end_vars) == 1
+                    target_tensor = end_vars[0]
 
                 assert target_tensor is not None
                 process_mesh = dist_attr[0]

@@ -3,10 +3,9 @@ cc_test_old(
   SRCS
   ir_kernel_dialect_pass_test.cc
   DEPS
-  pd_op_to_kernel_pass
+  transform
   program_translator
-  pd_kernel_dialect
-  pd_trait
+  op_dialect
   pir
   phi
   gtest)
