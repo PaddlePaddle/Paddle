@@ -21,9 +21,8 @@ from ...base.data_feeder import check_dtype, check_variable_and_dtype
 from ...base.framework import convert_np_dtype_to_dtype_
 from ...base.layer_helper import LayerHelper
 from ...tensor.manipulation import chunk
-from ...tensor.math import tanh  # noqa: F401
-from ...tensor.math import tanh_  # noqa: F401
-from ...tensor.ops import sigmoid  # noqa: F401
+from ...tensor.math import tanh, tanh_  # noqa: F401
+from ...tensor.ops import sigmoid
 
 __all__ = []
 
@@ -243,7 +242,7 @@ def hardshrink(x, threshold=0.5, name=None):
 
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -297,7 +296,7 @@ def hardtanh(x, min=-1.0, max=1.0, name=None):
             [-1.       , 0.30000001,  1.       ])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardtanh(x, min, max)
     else:
         check_variable_and_dtype(
@@ -364,7 +363,7 @@ def hardsigmoid(x, slope=0.1666667, offset=0.5, name=None):
             [0.        , 1.        , 0.66666669])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardsigmoid(x, slope, offset)
     else:
         check_variable_and_dtype(
@@ -418,7 +417,7 @@ def hardswish(x, name=None):
             Tensor(shape=[3], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.       , 5.        , 0.66666669])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.hardswish(x)
     else:
         check_variable_and_dtype(
@@ -1296,7 +1295,7 @@ def softplus(x, beta=1, threshold=20, name=None):
             [0.51301527, 0.59813893, 0.74439669, 0.85435522])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softplus(x, beta, threshold)
     else:
         check_variable_and_dtype(
@@ -1363,7 +1362,7 @@ def softshrink(x, threshold=0.5, name=None):
             f"The threshold must be no less than zero. Received: {threshold}."
         )
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softshrink(x, threshold)
     else:
         check_variable_and_dtype(
@@ -1407,7 +1406,7 @@ def softsign(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [-0.28571430, -0.16666666,  0.09090909,  0.23076925])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.softsign(x)
 
     check_variable_and_dtype(
