@@ -512,7 +512,7 @@ def leaky_relu_(x, negative_slope=0.01, name=None):
         return _C_ops.leaky_relu_(x, negative_slope)
 
 
-@judge_dtype_for_type_promotion(type_promoting_args=("x", "weight"))
+#@judge_dtype_for_type_promotion(type_promoting_args=("x", "weight"))
 def prelu(x, weight, data_format="NCHW", name=None):
     """
     prelu activation. The calculation formula is follows:

@@ -48,8 +48,12 @@ class judge_dtype_for_type_promotion:
         @wraps(fn)
         def _fn(*args, **kwargs):
             bound = sig.bind(*args, **kwargs)
-            x = bound.arguments['x']
-            y = bound.arguments['y']
+            try:
+                x = bound.arguments['x']
+                y = bound.arguments['y']
+            except:
+                x = bound.arguments['input']
+                y = bound.arguments['label']
             got_sclar = False
             got_numpy = False
             if isinstance(x, (Variable, paddle.Tensor)):
