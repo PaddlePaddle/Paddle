@@ -109,5 +109,64 @@ class TestPrimMode(unittest.TestCase):
                 self.assertEqual(core.has_decomp(op), True)
 
 
+class TestSumMax(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2023)
+        self.shape_x = []
+        self.x = np.random.random(self.shape_x).astype("float32")
+        self.prog = None
+
+    def base_net(self, flag=None, operator=None):
+        if flag == "forward":
+            core._set_prim_forward_enabled(True)
+        main_program = paddle.static.Program()
+        with paddle.static.program_guard(main_program):
+            x = paddle.static.data('x', self.shape_x, dtype='float32')
+            x.stop_gradient = False
+
+            if operator == "sum":
+                sum_out = paddle.sum(x, axis=0, keepdim=True)
+            else:
+                sum_out = paddle.max(x, axis=0, keepdim=True)
+
+            [new_out] = decompose(main_program, [sum_out])
+            gradients = grad(new_out, x)
+
+            exe = paddle.static.Executor()
+            [fwd, dx] = exe.run(
+                feed={'x': self.x}, fetch_list=[new_out, gradients]
+            )
+
+        whole_ops = [op.name() for op in main_program.global_block().ops]
+        self.prog = main_program
+        if flag == "forward":
+            core._set_prim_forward_enabled(False)
+            # assert 'pd_op.relu' not in whole_ops
+        # else:
+        #     assert 'pd_op.relu' in whole_ops
+        return fwd, dx
+
+    def test_sum_forward(self):
+        res_ref = self.base_net(operator="sum")
+        print("=========================")
+        print("sum input: ")
+        print(self.x)
+        print("sum output: ")
+        print(res_ref)
+        print("=========================")
+        # res = self.base_net("forward")
+        # for ref, actual in zip(res_ref, res):
+        #     np.testing.assert_equal(ref, actual)
+
+    def test_max_forward(self):
+        res_ref = self.base_net(operator="max")
+        print("=========================")
+        print("max input: ")
+        print(self.x)
+        print("max output: ")
+        print(res_ref)
+        print("=========================")
+
+
 if __name__ == "__main__":
     unittest.main()
