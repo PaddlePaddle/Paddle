@@ -1303,6 +1303,22 @@ function check_coverage() {
     fi
 }
 
+function check_cpp_python_coverage() {
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/get_coverage.sh combine_cov_info
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
+}
+
+
+function get_cpp_and_python_coverage_info() {
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/get_coverage.sh get_cov_info
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
+}
 
 function single_test() {
     TEST_NAME=$1
@@ -2506,81 +2522,111 @@ set +x
         test_cases=$(ctest -N -V) # get all test cases
 
         python ${PADDLE_ROOT}/tools/group_case_for_parallel.py ${PADDLE_ROOT}
+        #risemeup1(NOTE):Run single card tests that occupies video memory and does not occupy video memory
+        if [ ${RUN_SINGLE_CARD_TEST1:-OFF} == "ON" ]; then
+            single_ut_mem_0_startTime_s=`date +%s`
+            echo "start running single card tests which do not occupy video memory"
+            while read line
+            do
+                card_test "$line" 1 4
+            done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
+            single_ut_mem_0_endTime_s=`date +%s`
+            echo "ipipe_log_param_single_card_test_mem_0_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"
+            echo "ipipe_log_param_single_card_test_mem_0_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+            
+            echo "start running single card tests1 which occupy video memory"
+            single_ut_startTime_s=`date +%s`
+            while read line
+            do
+                num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+                if [ $num -eq 0 ]; then
+                    num=1
+                fi
+                card_test "$line" 1 $num
+            done < $PADDLE_ROOT/tools/single_card_tests1_new
+            single_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_single_card_test1_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"
+            echo "ipipe_log_param_single_card_test1_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
+            echo "Finised 1st round of running single card tests"
+        fi
+       
+        #risemeup1(NOTE):Run single card tests that occupies video memory
+        if [ ${RUN_SINGLE_CARD_TEST2:-OFF} == "ON" ]; then
+            echo "start running single card tests2 which occupy video memory"
+            single_ut_startTime_s=`date +%s`
+            while read line
+            do
+                num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+                if [ $num -eq 0 ]; then
+                    num=1
+                fi
+                card_test "$line" 1 $num
+            done < $PADDLE_ROOT/tools/single_card_tests2_new
+            single_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_single_card_test2_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"
+            echo "ipipe_log_param_single_card_test2_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
+            echo "Finised 2nd round of running single card tests"
+        fi
 
-        single_ut_mem_0_startTime_s=`date +%s`
-        while read line
-        do
-            card_test "$line" 1 4
-        done < $PADDLE_ROOT/tools/single_card_tests_mem0_new
-        single_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"
-        echo "ipipe_log_param_1_mem_0_TestCases_Total_Time: $[ $single_ut_mem_0_endTime_s - $single_ut_mem_0_startTime_s ]s"  >> ${PADDLE_ROOT}/build/build_summary.txt
+        #risemeup1(NOTE):Run multi card tests ,execlusive card tests and no_parallel_test
+        if [ ${RUN_MULI_AND_EXECLUSVIE_AND_OTHER_TEST:-OFF} == "ON" ]; then
+            echo "start running multi card tests ,execlusive card tests and no_parallel_tests"
 
-        single_ut_startTime_s=`date +%s`
-        while read line
-        do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
-            if [ $num -eq 0 ]; then
-                num=1
-            fi
-            card_test "$line" 1 $num
-        done < $PADDLE_ROOT/tools/single_card_tests_new
-        single_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"
-        echo "ipipe_log_param_1_TestCases_Total_Time: $[ $single_ut_endTime_s - $single_ut_startTime_s ]s"   >> ${PADDLE_ROOT}/build/build_summary.txt
+            multiple_ut_mem_0_startTime_s=`date +%s`
+            while read line
+            do
+                card_test "$line" 2 4
+            done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
+            multiple_ut_mem_0_endTime_s=`date +%s`
+            echo "ipipe_log_param_multiple_card_tests_mem0_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s"
+            echo "ipipe_log_param_multiple_card_tests_mem0_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+            
+            multiple_ut_startTime_s=`date +%s`
+            while read line
+            do
+                num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+                if [ $num -eq 0 ]; then
+                    num=1
+                fi
+                card_test "$line" 2 $num
 
-        multiple_ut_mem_0_startTime_s=`date +%s`
-        while read line
-        do
-            card_test "$line" 2 4
-        done < $PADDLE_ROOT/tools/multiple_card_tests_mem0_new
-        multiple_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s"
-        echo "ipipe_log_param_2_mem0_TestCases_Total_Time: $[ $multiple_ut_mem_0_endTime_s - $multiple_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-        multiple_ut_startTime_s=`date +%s`
-        while read line
-        do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
-            if [ $num -eq 0 ]; then
-                num=1
-            fi
-            card_test "$line" 2 $num
+            done < $PADDLE_ROOT/tools/multiple_card_tests_new
+            multiple_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_multiple_card_tests_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s"
+            echo "ipipe_log_param_multiple_card_tests_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
-        done < $PADDLE_ROOT/tools/multiple_card_tests_new
-        multiple_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s"
-        echo "ipipe_log_param_2_TestCases_Total_Time: $[ $multiple_ut_endTime_s - $multiple_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+            exclusive_ut_mem_0_startTime_s=`date +%s`
+            while read line
+            do
+                card_test "$line" -1 4
+            done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
+            exclusive_ut_mem_0_endTime_s=`date +%s`
+            echo "ipipe_log_param_execlusive_card_tests_mem0_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s"
+            echo "ipipe_log_param_execlusive_card_tests_memo0_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
-        exclusive_ut_mem_0_startTime_s=`date +%s`
-        while read line
-        do
-            card_test "$line" -1 4
-        done < $PADDLE_ROOT/tools/exclusive_card_tests_mem0_new
-        exclusive_ut_mem_0_endTime_s=`date +%s`
-        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s"
-        echo "ipipe_log_param_-1_mem0_TestCases_Total_Time: $[ $exclusive_ut_mem_0_endTime_s - $exclusive_ut_mem_0_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+            exclusive_ut_startTime_s=`date +%s`
+            while read line
+            do
+                num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
+                if [ $num -eq 0 ]; then
+                    num=1
+                fi
+                card_test "$line" -1 $num
+            done < $PADDLE_ROOT/tools/exclusive_card_tests_new
+            exclusive_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_execlusive_card_tests_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
+            echo "ipipe_log_param_execlusive_card_tests_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 
-        exclusive_ut_startTime_s=`date +%s`
-        while read line
-        do
-            num=$[(`echo $line | awk -F"$" '{print NF-1}'`-1)/6]
-            if [ $num -eq 0 ]; then
-                num=1
-            fi
-            card_test "$line" -1 $num
-        done < $PADDLE_ROOT/tools/exclusive_card_tests_new
-        exclusive_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s"
-        echo "ipipe_log_param_-1_TestCases_Total_Time: $[ $exclusive_ut_endTime_s - $exclusive_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
-
-        noparallel_ut_startTime_s=`date +%s`
-        while read line
-        do
-            card_test "$line" -1 4
-        done < $PADDLE_ROOT/tools/no_parallel_case_file
-        noparallel_ut_endTime_s=`date +%s`
-        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
-        echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+            noparallel_ut_startTime_s=`date +%s`
+            while read line
+            do
+                card_test "$line" -1 4
+            done < $PADDLE_ROOT/tools/no_parallel_case_file
+            noparallel_ut_endTime_s=`date +%s`
+            echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s"
+            echo "ipipe_log_param_noparallel_TestCases_Total_Time: $[ $noparallel_ut_endTime_s - $noparallel_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        fi
+           
         ###retry
         collect_failed_tests
         rm -f $tmp_dir/*
@@ -4097,6 +4143,15 @@ function main() {
         parallel_test
         check_coverage
         ;;
+    # Note(risemeup1):we separate the steps of parallel_test and compute coverage
+      gpu_coverage_ci_test)
+        export FLAGS_NEW_IR_OPTEST=True
+        parallel_test
+        get_cpp_and_python_coverage_info
+      ;;
+     gpu_get_coverage_info)
+        check_cpp_python_coverage
+      ;;
       nv_cicheck_coverage)
         parallel_test
         nv_test
