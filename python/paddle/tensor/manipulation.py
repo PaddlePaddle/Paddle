@@ -30,6 +30,7 @@ from ..base.data_feeder import (
 from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
+    _current_expected_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -585,7 +586,7 @@ def unstack(x, axis=0, num=None):
         raise ValueError(f'`axis` must be in the range [-{x.ndim}, {x.ndim})')
     if num is not None and (num < 0 or num > x.shape[axis]):
         raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if num is None:
             num = x.shape[axis]
         if num == 0:
@@ -2481,7 +2482,7 @@ def unique_consecutive(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
         )
@@ -3083,7 +3084,7 @@ def scatter(x, index, updates, overwrite=True, name=None):
             >>> #  [2., 2.],
             >>> #  [1., 1.]]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.scatter(x, index, updates, overwrite)
     else:
         check_variable_and_dtype(
@@ -3182,7 +3183,7 @@ def scatter_nd_add(x, index, updates, name=None):
             >>> print(output.shape)
             [3, 5, 9, 10]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
         if x.dtype != updates.dtype:
@@ -3519,6 +3520,16 @@ def broadcast_to(x, shape, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
+    elif in_pir_mode():
+        place = _current_expected_place()
+        if isinstance(shape, (list, tuple)):
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils.get_int_tensor_list(shape, place)
+        elif isinstance(shape, paddle.pir.OpResult):
+            shape.stop_gradient = True
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
+        return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
             assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
@@ -3636,6 +3647,8 @@ def expand(x, shape, name=None):
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils._convert_to_tensor_list(shape)
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -4904,7 +4917,7 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
@@ -5080,7 +5093,7 @@ def index_add(x, index, axis, value, name=None):
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
@@ -5216,7 +5229,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
              [0., 0., 1.],
              [0., 1., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
     helper = LayerHelper("index_put", **locals())
@@ -5474,3 +5487,104 @@ __METHODS = {
 }
 for name, func in __METHODS.items():
     setattr(core.eager.Tensor, name, func)
+
+
+def _index_fill_impl(x, index, axis, value, inplace):
+    if not isinstance(index, Variable):
+        raise ValueError("index must be Tensor")
+
+    if not isinstance(value, Variable):
+        value = paddle.to_tensor(value, dtype=x.dtype)
+    else:
+        if len(value.shape) > 0:
+            raise ValueError("value must be scalar or 0-D tensor")
+
+    x_dim = len(x.shape)
+    if not (isinstance(axis, int)) or (axis > x_dim - 1) or axis < -x_dim:
+        raise ValueError(
+            "The axis should be int, and in range [-rank(x), rank(x))"
+        )
+
+    if axis < 0:
+        axis = axis + x_dim
+
+    perm = list(range(len(x.shape)))
+    perm[0] = axis
+    perm[axis] = 0
+
+    if inplace:
+        paddle.transpose(x, perm)
+        paddle.index_put_(x, (index,), value)
+        return x
+    else:
+        out = paddle.transpose(x, perm)
+        out = paddle.index_put(out, (index,), value)
+        out = paddle.transpose(out, perm)
+        return out
+
+
+def index_fill(x, index, axis, value, name=None):
+    """
+    Outplace version of ``index_fill_`` API, the output Tensor will be inplaced with input ``x``.
+    Please refer to :ref:`api_paddle_index_fill_`.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            >>> index = paddle.to_tensor([0, 2], dtype="int32")
+            >>> value = -1
+            >>> res = paddle.index_fill(input_tensor, index, 0, value)
+            >>> print(input_tensor)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 9]])
+            >>> print(res)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
+
+    """
+    return _index_fill_impl(x, index, axis, value, False)
+
+
+@inplace_apis_in_dygraph_only
+def index_fill_(x, index, axis, value, name=None):
+    """
+    Fill the elements of the input tensor with value by the spcific axis and index.
+
+    Args:
+        x (Tensor) : The Destination Tensor. Supported data types are int32, int64, float16, float32, float64.
+        index (Tensor): The 1-D Tensor containing the indices to index.
+            The data type of ``index`` must be int32 or int64.
+        axis (int): The dimension along which to index.
+        value (float): The tensor used to fill with.
+        name(str, optional): For details, please refer to :ref:`api_guide_Name`. Generally, no setting is required. Default: None.
+
+    Returns:
+        Tensor, same dimention and dtype with x.
+
+    Examples:
+        .. code-block:: python
+
+            >>> import paddle
+            >>> input_tensor = paddle.to_tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype='int64')
+            >>> index = paddle.to_tensor([0, 2], dtype="int32")
+            >>> value = -1
+            >>> res = paddle.index_fill_(input_tensor, index, 0, value)
+            >>> print(input_tensor)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
+            >>> print(res)
+            Tensor(shape=[3, 3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                   [[-1, -1, -1],
+                    [ 4,  5,  6],
+                    [-1, -1, -1]])
+
+    """
+    return _index_fill_impl(x, index, axis, value, True)

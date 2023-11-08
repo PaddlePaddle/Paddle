@@ -524,8 +524,8 @@ class TestFillConstantOpError(unittest.TestCase):
             # The shape dtype of fill_constant_op must be int32 or int64.
             # test_shape_tensor_dtype:
             with paddle.pir_utils.IrGuard():
-                new_ir_program = paddle.static.Program()
-                with paddle.static.program_guard(new_ir_program):
+                pir_program = paddle.static.Program()
+                with paddle.static.program_guard(pir_program):
                     shape = paddle.static.data(
                         name="shape_tensor", shape=[2], dtype="int32"
                     )
