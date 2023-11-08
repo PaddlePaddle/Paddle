@@ -129,6 +129,8 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 120)
   py_test_modules(test_semi_auto_parallel_dygraph_inplace MODULES
                   test_semi_auto_parallel_dygraph_inplace)
+  set_tests_properties(test_semi_auto_parallel_dygraph_inplace
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_gpt_with_pir MODULES test_gpt_with_pir)
   set_tests_properties(test_gpt_with_pir PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE"
                                                     TIMEOUT 100)
