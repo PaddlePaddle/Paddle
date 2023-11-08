@@ -22,7 +22,7 @@
 import math
 
 from paddle import _C_ops
-from paddle.framework import LayerHelper, in_dynamic_mode
+from paddle.framework import LayerHelper, in_dynamic_or_pir_mode
 
 
 def variable_length_memory_efficient_attention(
