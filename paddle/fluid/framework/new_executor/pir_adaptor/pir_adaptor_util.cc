@@ -50,10 +50,15 @@ std::shared_ptr<ValueExecutionInfo> ValueExecutionInfo::NewChild(Scope* scope) {
   std::shared_ptr<ValueExecutionInfo> info =
       std::make_shared<ValueExecutionInfo>(scope);
   info->parent_ = this;
+  info->value_2_var_name_ = this->value_2_var_name_;
+  info->var_2_var_name_ = this->var_2_var_name_;
+  info->var_name_2_id_ = this->var_name_2_id_;
+  info->id_2_var_name_ = this->id_2_var_name_;
+  info->var_list_ = this->var_list_;
   return info;
 }
 
-void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
+void ValueExecutionInfo::Add(::pir::Value value, const std::string& var_name) {
   auto* var = scope_->FindVar(var_name);
   PADDLE_ENFORCE_NOT_NULL(
       var, platform::errors::NotFound("Cannot find %s in scope.", var_name));
@@ -79,8 +84,8 @@ void ValueExecutionInfo::Add(::pir::Value value, std::string var_name) {
 }
 
 void ValueExecutionInfo::Rename(pir::Value value,
-                                std::string new_name,
-                                std::string orig_name) {
+                                const std::string& new_name,
+                                const std::string& orig_name) {
   value_2_var_name_[value] = new_name;
 
   for (auto kv : value_2_var_name_) {
@@ -157,54 +162,15 @@ void ValueExecutionInfo::ResetVarList(int id, Variable* var) {
   var_list_[id] = var;
 }
 
-bool ValueExecutionInfo::HasValue(::pir::Value value) const {
-  return HasValueInternal(value);
-}
-
-bool ValueExecutionInfo::HasLocalValue(::pir::Value value) const {
-  return HasValueLocally(value);
-}
-
-std::string ValueExecutionInfo::GetVarName(::pir::Value value) const {
-  return GetVarNameInternal(value);
-}
-
-std::string ValueExecutionInfo::GetVarName(const Variable* var) const {
-  return GetVarNameInternal(var);
-}
-
-std::string ValueExecutionInfo::GetLocalVarName(::pir::Value value) const {
-  return GetVarNameLocally(value);
-}
-
-std::string ValueExecutionInfo::GetLocalVarName(const Variable* var) const {
-  return GetVarNameLocally(var);
-}
-
-int ValueExecutionInfo::GetVarId(::pir::Value value) const {
-  return GetVarIdInternal(value);
-}
-
-int ValueExecutionInfo::GetVarId(const Variable* var) const {
-  return GetVarIdInternal(var);
-}
-
-int ValueExecutionInfo::GetLocalVarId(::pir::Value value) const {
-  return GetVarIdLocally(value);
-}
-
-int ValueExecutionInfo::GetLocalVarId(const Variable* var) const {
-  return GetVarIdLocally(var);
-}
-
-bool ValueExecutionInfo::HasValueInternal(::pir::Value value) const {
-  if (HasValueLocally(value)) {
+bool ValueExecutionInfo::HasVar(const std::string& var_name) const {
+  auto it = var_name_2_id_.find(var_name);
+  if (it != var_name_2_id_.end()) {
     return true;
   }
-  return (parent_ == nullptr) ? false : parent_->HasValueInternal(value);
+  return false;
 }
 
-bool ValueExecutionInfo::HasValueLocally(::pir::Value value) const {
+bool ValueExecutionInfo::HasValue(::pir::Value value) const {
   auto it = value_2_var_name_.find(value);
   if (it != value_2_var_name_.end()) {
     return true;
@@ -212,15 +178,7 @@ bool ValueExecutionInfo::HasValueLocally(::pir::Value value) const {
   return false;
 }
 
-std::string ValueExecutionInfo::GetVarNameInternal(::pir::Value value) const {
-  auto name = GetVarNameLocally(value);
-  if (name != "") {
-    return name;
-  }
-  return (parent_ == nullptr) ? "" : parent_->GetVarNameInternal(value);
-}
-
-std::string ValueExecutionInfo::GetVarNameLocally(::pir::Value value) const {
+std::string ValueExecutionInfo::GetVarName(::pir::Value value) const {
   auto it = value_2_var_name_.find(value);
   if (it != value_2_var_name_.end()) {
     return it->second;
@@ -228,15 +186,7 @@ std::string ValueExecutionInfo::GetVarNameLocally(::pir::Value value) const {
   return "";
 }
 
-std::string ValueExecutionInfo::GetVarNameInternal(const Variable* var) const {
-  auto name = GetVarNameLocally(var);
-  if (name != "") {
-    return name;
-  }
-  return (parent_ == nullptr) ? "" : parent_->GetVarNameInternal(var);
-}
-
-std::string ValueExecutionInfo::GetVarNameLocally(const Variable* var) const {
+std::string ValueExecutionInfo::GetVarName(const Variable* var) const {
   auto it = var_2_var_name_.find(var);
   if (it != var_2_var_name_.end()) {
     return it->second;
@@ -244,16 +194,8 @@ std::string ValueExecutionInfo::GetVarNameLocally(const Variable* var) const {
   return "";
 }
 
-int ValueExecutionInfo::GetVarIdInternal(::pir::Value value) const {
-  auto id = GetVarIdLocally(value);
-  if (id != -1) {
-    return id;
-  }
-  return (parent_ == nullptr) ? -1 : parent_->GetVarIdInternal(value);
-}
-
-int ValueExecutionInfo::GetVarIdLocally(::pir::Value value) const {
-  auto var_name = GetVarNameLocally(value);
+int ValueExecutionInfo::GetVarId(::pir::Value value) const {
+  auto var_name = GetVarName(value);
   auto it = var_name_2_id_.find(var_name);
   if (it != var_name_2_id_.end()) {
     return it->second;
@@ -261,16 +203,8 @@ int ValueExecutionInfo::GetVarIdLocally(::pir::Value value) const {
   return -1;
 }
 
-int ValueExecutionInfo::GetVarIdInternal(const Variable* var) const {
-  auto id = GetVarIdLocally(var);
-  if (id != -1) {
-    return id;
-  }
-  return (parent_ == nullptr) ? -1 : parent_->GetVarIdInternal(var);
-}
-
-int ValueExecutionInfo::GetVarIdLocally(const Variable* var) const {
-  auto var_name = GetVarNameLocally(var);
+int ValueExecutionInfo::GetVarId(const Variable* var) const {
+  auto var_name = GetVarName(var);
   auto it = var_name_2_id_.find(var_name);
   if (it != var_name_2_id_.end()) {
     return it->second;
@@ -368,6 +302,7 @@ void BuildValue(pir::Value value,
     var->GetMutable<phi::SelectedRows>();
   } else if (value.type().isa<pir::VectorType>()) {
     auto tensor_array = var->GetMutable<VariableRefArray>();
+    tensor_array->clear();
     for (size_t i = 0; i < value.type().dyn_cast<pir::VectorType>().size();
          i++) {
       PADDLE_ENFORCE(value.type()
@@ -409,9 +344,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, fetch_var_name);
-  }
-
-  if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
+  } else if (op_name == "pd_op.feed" || op_name == "pd_op.data") {
     VLOG(6) << "Handle for" << op_name;
     auto value = op->result(0);
     VLOG(6) << "link feed output to feed in variable"
@@ -425,9 +358,7 @@ void HandleForSpecialOp(pir::Operation* op,
                        "The variable %s shoud exist", name));
 
     value_exe_info->Add(value, name);
-  }
-
-  if (op_name == "builtin.combine") {
+  } else if (op_name == "builtin.combine") {
     auto out_value = op->result(0);
 
     Variable* var = nullptr;
@@ -451,9 +382,7 @@ void HandleForSpecialOp(pir::Operation* op,
       tensor_array->emplace_back(
           value_exe_info->GetScope()->FindVar(value_2_var_name.at(value)));
     }
-  }
-
-  if (op_name == "builtin.set_parameter") {
+  } else if (op_name == "builtin.set_parameter") {
     VLOG(6) << "Handle for builtin.set_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -478,8 +407,7 @@ void HandleForSpecialOp(pir::Operation* op,
     }
 
     value_exe_info->Rename(value, param_name, orig_name);
-  }
-  if (op_name.compare(pir::ShadowOutputOp::name()) == 0) {
+  } else if (op_name == "builtin.shadow_output") {
     VLOG(6) << "Handle for builtin.shadow_ouptut";
     auto var_name = op->attributes()
                         .at("output_name")
@@ -490,15 +418,15 @@ void HandleForSpecialOp(pir::Operation* op,
     // change opreand name to param_name
     auto orig_name = value_exe_info->GetValue2VarName().at(value);
 
-    if (value_exe_info->GetScope()->FindVar(var_name) == nullptr) {
-      const_cast<Scope*>(value_exe_info->GetScope())
-          ->Rename(orig_name, var_name);
+    if (value_exe_info->GetScope()->FindVar(var_name) != nullptr) {
+      const_cast<Scope*>(value_exe_info->GetScope())->EraseVars({var_name});
+      VLOG(1) << "var " << var_name << " has been removed from scope";
     }
+    const_cast<Scope*>(value_exe_info->GetScope())->Rename(orig_name, var_name);
+    VLOG(8) << "var " << orig_name << " has been renamed to " << var_name;
 
     value_exe_info->Rename(value, var_name, orig_name);
-  }
-
-  if (op_name == "builtin.get_parameter") {
+  } else if (op_name == "builtin.get_parameter") {
     VLOG(6) << "Handle for builtin.get_parameter:";
     auto param_name = op->attributes()
                           .at("parameter_name")
@@ -507,9 +435,7 @@ void HandleForSpecialOp(pir::Operation* op,
     auto value = op->result(0);
 
     value_exe_info->Add(value, param_name);
-  }
-
-  if (op_name == "builtin.slice") {
+  } else if (op_name == "builtin.slice") {
     VLOG(6) << "Handle for builtin.slice";
     auto out_value = op->result(0);
     auto in_value = op->operand_source(0);
@@ -534,9 +460,7 @@ void HandleForSpecialOp(pir::Operation* op,
     std::string var_name =
         value_exe_info->GetVar2VarName().at(variable_array[index]);
     value_exe_info->AddValue2VarName(out_value, var_name);
-  }
-
-  if (op_name == "builtin.split") {
+  } else if (op_name == "builtin.split") {
     VLOG(6) << "Handle for builtin.split";
     auto in_value = op->operand_source(0);
     PADDLE_ENFORCE_EQ(value_exe_info->GetValue2VarName().count(in_value),
@@ -560,17 +484,13 @@ void HandleForSpecialOp(pir::Operation* op,
           value_exe_info->GetVar2VarName().at(variable_array[idx]);
       value_exe_info->AddValue2VarName(out_value, var_name);
     }
-  }
-
-  if (op_name == "pd_op.if") {
+  } else if (op_name == "pd_op.if") {
     auto if_op = op->dyn_cast<paddle::dialect::IfOp>();
     for (size_t i = 0; i < if_op->num_results(); ++i) {
       auto if_op_out_value = if_op->result(i);
       BuildValue(if_op_out_value, var_name_prefix, value_exe_info);
     }
-  }
-
-  if (op_name == "pd_op.while") {
+  } else if (op_name == "pd_op.while") {
     auto while_op = op->dyn_cast<paddle::dialect::WhileOp>();
 
     for (size_t i = 0; i < while_op->num_results(); ++i) {
@@ -594,7 +514,8 @@ void HandleForInplaceOp(pir::Operation* op,
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
   paddle::dialect::OpYamlInfoParser yaml_parser(
       op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>()
-          ->get_op_info_());
+          ->get_op_info_(),
+      paddle::dialect::IsLegacyOp(op_name));
 
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value value = op->result(i);
@@ -608,8 +529,7 @@ void HandleForInplaceOp(pir::Operation* op,
       const std::string& inplace_name = yaml_parser.InplaceName(value_name);
       pir::Value inplace_value =
           op->operand_source(yaml_parser.InputName2Id().at(inplace_name));
-      std::string var_name =
-          value_exe_info->GetValue2VarName().at(inplace_value);
+      std::string var_name = value_exe_info->GetVarName(inplace_value);
       VLOG(4) << "inplace: " << value_name << " -> " << inplace_name
               << " (var: " << var_name << ")";
       value_exe_info->AddValue2VarName(value, var_name);
@@ -618,8 +538,7 @@ void HandleForInplaceOp(pir::Operation* op,
       pir::Value view_value =
           op->operand_source(yaml_parser.InputName2Id().at(view_name));
       // const std::string& var_name = value_2_var_name->at(view_value);
-      const std::string& var_name =
-          value_exe_info->GetValue2VarName().at(view_value);
+      std::string var_name = value_exe_info->GetVarName(view_value);
       VLOG(4) << "view: " << value_name << " -> " << view_name
               << " (var: " << var_name << ")";
       value_exe_info->AddValue2VarName(value, var_name);
@@ -897,7 +816,6 @@ std::shared_ptr<OperatorBase> BuildOperatorBase(
           "pir::vector type"));
     }
   }
-
   auto& op_info = OpInfoMap::Instance().Get(fluid_op_name);
   auto ptr =
       op_info.Creator()(fluid_op_name, in_name_map, out_name_map, attr_map);

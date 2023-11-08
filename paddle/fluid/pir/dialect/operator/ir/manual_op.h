@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/infershape_utils.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/infermeta.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
@@ -34,7 +35,8 @@ namespace dialect {
 class AddNOp : public pir::Op<AddNOp,
                               paddle::dialect::OpYamlInfoInterface,
                               paddle::dialect::InferMetaInterface,
-                              paddle::dialect::VjpInterface> {
+                              paddle::dialect::VjpInterface,
+                              paddle::dialect::DecompInterface> {
  public:
   using Op::Op;
   static const char *name() { return "pd_op.add_n"; }
@@ -51,8 +53,11 @@ class AddNOp : public pir::Op<AddNOp,
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<std::vector<pir::OpResult>> Vjp(
       pir::Operation *op,
+      const std::vector<std::vector<pir::Value>> &inputs_,
+      const std::vector<std::vector<pir::OpResult>> &outputs,
       const std::vector<std::vector<pir::Value>> &out_grads,
       const std::vector<std::vector<bool>> &stop_gradients);
+  static std::vector<std::vector<pir::OpResult>> Decomp(pir::Operation *op);
 };
 
 class AddN_Op : public pir::Op<AddN_Op,

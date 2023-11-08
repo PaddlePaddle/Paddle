@@ -24,7 +24,7 @@ namespace paddle {
 namespace framework {
 class Scope;
 class Value;
-class NewIRInterpreter;
+class PirInterpreter;
 class ValueExecutionInfo;
 
 /// The execute semantics of while op ['output' = while_op('cond', 'intput')]
@@ -44,7 +44,7 @@ class WhileInstruction : public InstructionBase {
 
   void Run() override;
 
-  const std::string& Name() const override { return cond_name_; }
+  const std::string& Name() const override { return name_; }
 
   ::pir::Operation* Operation() const override { return op_; }
 
@@ -58,13 +58,15 @@ class WhileInstruction : public InstructionBase {
   // Get return value from body_block after each execution.
   void GetValueFromBodyBlock();
 
-  std::string cond_name_{"while_instruction"};
+  std::string name_{"while_instruction"};
 
   Variable* cond_var_;
-  std::vector<Variable*> while_op_inputs_;
-  std::vector<Variable*> while_op_outputs_;
 
-  std::unique_ptr<NewIRInterpreter> body_inter_;
+  std::vector<Variable*> inputs_;
+  std::vector<Variable*> outputs_;
+
+  std::unique_ptr<PirInterpreter> body_inter_;
+  std::vector<std::string> body_outputs_;
   std::vector<std::string> body_skip_gc_names_;
 
   ::pir::Block* body_block_;

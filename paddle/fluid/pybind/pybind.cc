@@ -195,6 +195,7 @@ limitations under the License. */
 #include "paddle/fluid/eager/api/utils/global_utils.h"
 #include "paddle/fluid/eager/nan_inf_utils.h"
 #include "paddle/fluid/imperative/layout_autotune.h"
+#include "paddle/fluid/pir/dialect/operator/interface/decomp.h"
 #include "paddle/fluid/pir/dialect/operator/interface/vjp.h"
 #include "paddle/fluid/pir/dialect/operator/trait/custom_vjp.h"
 #include "paddle/fluid/prim/utils/eager/eager_tensor_operants.h"
@@ -694,6 +695,8 @@ void BindVjp(pybind11::module *m) {
   m->def(
       "call_vjp",
       [](pir::Operation &fwd_op,
+         const std::vector<std::vector<pir::Value>> &inputs,
+         const std::vector<std::vector<pir::OpResult>> &outputs,
          const std::vector<std::vector<pir::OpResult>> &out_grads,
          const std::vector<std::vector<bool>> &stop_gradients) {
         py::list res;
@@ -703,8 +706,8 @@ void BindVjp(pybind11::module *m) {
             vjp_interface,
             phi::errors::InvalidArgument(
                 "The vjp function is not registered in %s op ", fwd_op.name()));
-        std::vector<std::vector<pir::OpResult>> vjp_res =
-            vjp_interface.Vjp(&fwd_op, out_grads, stop_gradients);
+        std::vector<std::vector<pir::OpResult>> vjp_res = vjp_interface.Vjp(
+            &fwd_op, inputs, outputs, out_grads, stop_gradients);
         PADDLE_ENFORCE_EQ(
             stop_gradients.size(),
             vjp_res.size(),
@@ -766,6 +769,42 @@ void BindVjp(pybind11::module *m) {
                out (bool): True means that the op has custom vjp rules, False means it does not.
            )DOC");
 }
+
+void BindDecomp(pybind11::module *m) {
+  m->def("call_decomp", [](pir::Operation &fwd_op) {
+    py::list res;
+    paddle::dialect::DecompInterface decomp_interface =
+        fwd_op.dyn_cast<paddle::dialect::DecompInterface>();
+    PADDLE_ENFORCE(
+        decomp_interface,
+        phi::errors::InvalidArgument(
+            "The decomp function is not registered in %s op ", fwd_op.name()));
+    std::vector<std::vector<pir::OpResult>> decomp_res =
+        decomp_interface.Decomp(&fwd_op);
+    for (size_t i = 0; i < decomp_res.size(); ++i) {
+      py::list sub_res;
+      for (size_t j = 0; j < decomp_res[i].size(); ++j) {
+        if (!decomp_res[i][j]) {
+          sub_res.append(nullptr);
+        } else {
+          sub_res.append(decomp_res[i][j]);
+        }
+      }
+      res.append(sub_res);
+    }
+    return res;
+  });
+
+  m->def("has_decomp", [](pir::Operation &fwd_op) {
+    pir::IrContext *ctx = pir::IrContext::Instance();
+    pir::OpInfo fwd_op_info = ctx->GetRegisteredOpInfo(fwd_op.name());
+    auto decomp_interface_impl =
+        fwd_op_info.GetInterfaceImpl<paddle::dialect::DecompInterface>();
+    if (decomp_interface_impl == nullptr) return false;
+    return true;
+  });
+}
+
 PYBIND11_MODULE(libpaddle, m) {
   BindImperative(&m);
   BindEager(&m);
@@ -1987,8 +2026,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def(py::init<const std::string &>(), py::arg("type"))
       .def("micro_batch_id", &framework::interpreter::Job::MicroBatchId)
       .def("type", &framework::interpreter::Job::Type)
-      .def("set_col_attr_for_fetch_op",
-           &framework::interpreter::Job::SetColAttrForFetchOp)
       .def("set_micro_batch_id", &framework::interpreter::Job::SetMicroBatchId)
       .def("set_skip_gc_vars", &framework::interpreter::Job::SetSkipGcVars);
 
@@ -1996,7 +2033,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def(
           py::init<
               const std::vector<std::shared_ptr<framework::interpreter::Job>> &,
-              const std::unordered_map<std::string, framework::ProgramDesc *>
+              const std::unordered_map<std::string,
+                                       std::shared_ptr<framework::ProgramDesc>>
                   &>(),
           py::arg("job_list"),
           py::arg("type_to_program"))
@@ -2008,7 +2046,10 @@ All parameter, weight, gradient are variables in Paddle.
           py::arg("job_list"),
           py::arg("type_to_ir_program"))
       .def("job_list", &framework::interpreter::Plan::JobList)
+      .def("job_types", &framework::interpreter::Plan::JobTypes)
       .def("micro_batch_num", &framework::interpreter::Plan::MicroBatchNum)
+      .def("set_ir_program", &framework::interpreter::Plan::SetIrProgram)
+      .def("ir_program", &framework::interpreter::Plan::IrProgram)
       .def("program", &framework::interpreter::Plan::Program);
 
   m.def("init_gflags", framework::InitGflags);
@@ -2938,8 +2979,9 @@ All parameter, weight, gradient are variables in Paddle.
   GetAllWorkerInfos(&m);
 #endif
 
-  BindPIR(&m);
+  BindPir(&m);
   BindVjp(&m);
+  BindDecomp(&m);
 }
 }  // namespace pybind
 }  // namespace paddle
