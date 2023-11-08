@@ -138,7 +138,7 @@ class FCOneDNNHandler
     dnnl::primitive_attr attributes;
     dnnl::post_ops post_operations;
 
-    // float activation_scale = 1.0f;
+    float activation_scale = 1.0f;
     if (phi::funcs::is_int8<T_w>()) {
       std::vector<float> src_scales, wei_scales, psum_scales, dst_scales;
       std::tie(src_scales, wei_scales, psum_scales, dst_scales) =
@@ -181,47 +181,47 @@ class FCOneDNNHandler
     if (activation_type == "relu") {
       post_operations.append_eltwise(dnnl::algorithm::eltwise_relu, 0.0f, 0.0f);
     }
-    // AppendActivation(dev_ctx, post_operations, activation_scale);
+    AppendActivation(dev_ctx, post_operations, activation_scale);
 
     attributes.set_post_ops(post_operations);
     return attributes;
   }
 
-  // void AppendActivation(const OneDNNContext& dev_ctx,
-  //                       dnnl::post_ops& post_ops,  // NOLINT
-  //                       float activation_scale = 1.0f) {
-  //   const auto invalid_attribute =
-  //       dev_ctx.HasDnnAttr("fuse_activation")
-  //           ? PADDLE_GET_CONST(std::string,
-  //                              dev_ctx.GetDnnAttr("fuse_activation"))
-  //                 .empty()
-  //           : true;
-  //   if (invalid_attribute) return;
-  //   const auto fuse_activation =
-  //       PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"));
-  //   const auto fuse_alpha =
-  //       dev_ctx.HasDnnAttr("fuse_alpha")
-  //           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
-  //           : 0.0f;
-  //   const auto fuse_beta =
-  //       dev_ctx.HasDnnAttr("fuse_beta")
-  //           ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
-  //           : 0.0f;
+  void AppendActivation(const OneDNNContext& dev_ctx,
+                        dnnl::post_ops& post_ops,  // NOLINT
+                        float activation_scale = 1.0f) {
+    const auto invalid_attribute =
+        dev_ctx.HasDnnAttr("fuse_activation")
+            ? PADDLE_GET_CONST(std::string,
+                               dev_ctx.GetDnnAttr("fuse_activation"))
+                  .empty()
+            : true;
+    if (invalid_attribute) return;
+    const auto fuse_activation =
+        PADDLE_GET_CONST(std::string, dev_ctx.GetDnnAttr("fuse_activation"));
+    const auto fuse_alpha =
+        dev_ctx.HasDnnAttr("fuse_alpha")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_alpha"))
+            : 0.0f;
+    const auto fuse_beta =
+        dev_ctx.HasDnnAttr("fuse_beta")
+            ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
+            : 0.0f;
 
-  //   const auto activation_map = phi::funcs::OneDNNActivationMap();
-  //   const auto& activation_type = activation_map.find(fuse_activation);
+    const auto activation_map = phi::funcs::OneDNNActivationMap();
+    const auto& activation_type = activation_map.find(fuse_activation);
 
-  //   PADDLE_ENFORCE_NE(
-  //       activation_type,
-  //       activation_map.end(),
-  //       phi::errors::InvalidArgument(
-  //           "Activation '%s' not found in oneDNN algorithms mapper",
-  //           fuse_activation));
+    PADDLE_ENFORCE_NE(
+        activation_type,
+        activation_map.end(),
+        phi::errors::InvalidArgument(
+            "Activation '%s' not found in oneDNN algorithms mapper",
+            fuse_activation));
 
-  //   post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
-  //   post_ops.append_eltwise(
-  //       dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
-  // }
+    post_ops.append_eltwise(activation_type->second, fuse_alpha, fuse_beta);
+    post_ops.append_eltwise(
+        dnnl::algorithm::eltwise_linear, activation_scale, 0.0f);
+  }
 
   // Computing oneDNN's scaling mask which determines along which dimension
   // slice should the scaling be applied.
