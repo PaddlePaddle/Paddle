@@ -62,13 +62,10 @@ class TestMVAPI(unittest.TestCase):
             for vec_stop_gradient in [False, True]:
                 paddle.enable_static()
 
-                train_program = Program()
-                startup_program = Program()
-
                 self.input_x = np.random.rand(5, 100).astype("float64")
                 self.input_vec = np.random.rand(100).astype("float64")
 
-                with program_guard(train_program, startup_program):
+                with program_guard(Program(), Program()):
                     data_x = paddle.static.data(
                         "x", shape=[5, 100], dtype="float64"
                     )
