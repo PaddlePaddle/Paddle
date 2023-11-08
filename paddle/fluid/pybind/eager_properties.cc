@@ -76,8 +76,8 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
 }
 
 #ifdef PADDLE_WITH_XPU
-PyDoc_STRVAR(tensor_scale__doc__,
-             R"DOC(scale
+PyDoc_STRVAR(tensor_scale_value__doc__,
+             R"DOC(scale_value
 
 Tensor's scale value, only available in XPU.
 
@@ -90,14 +90,14 @@ Examples:
         >>> import paddle
 
         >>> x = paddle.to_tensor(1.)
-        >>> print(x.scale)
+        >>> print(x.scale_value)
         -1
-        >>> x.scale = -1.2
-        >>> print(x.scale)
+        >>> x.scale_value = -1.2
+        >>> print(x.scale_value)
         -1.2
 )DOC");
 
-PyObject* tensor_properties_get_scale(TensorObject* self, void* closure) {
+PyObject* tensor_properties_get_scale_value(TensorObject* self, void* closure) {
   EAGER_TRY
   phi::DenseTensor tmp;
   auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
@@ -110,9 +110,9 @@ PyObject* tensor_properties_get_scale(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
-int tensor_properties_set_scale(TensorObject* self,
-                                PyObject* value,
-                                void* closure) {
+int tensor_properties_set_scale_value(TensorObject* self,
+                                      PyObject* value,
+                                      void* closure) {
   EAGER_TRY
   phi::DenseTensor tmp;
   auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
@@ -820,10 +820,10 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      tensor_name__doc__,
      nullptr},
 #ifdef PADDLE_WITH_XPU
-    {"scale",
-     (getter)tensor_properties_get_scale,
-     (setter)tensor_properties_set_scale,
-     tensor_scale__doc__,
+    {"scale_value",
+     (getter)tensor_properties_get_scale_value,
+     (setter)tensor_properties_set_scale_value,
+     tensor_scale_value__doc__,
      nullptr},
 #endif
     {"stop_gradient",

@@ -325,7 +325,7 @@ class Optimizer:
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
                 if core.is_compiled_with_xpu():
-                    scale_arr.append(var_tmp.scale)
+                    scale_arr.append(var_tmp.scale_value)
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -434,7 +434,7 @@ class Optimizer:
                 tensor.set(load_para_np, framework._current_expected_place())
                 if xpu_tensor_scale_values_available:
                     new_scale_value = scale_tensor_np[0]
-                    var_tmp.scale = new_scale_value
+                    var_tmp.scale_value = new_scale_value
                     scale_tensor_np = np.delete(scale_tensor_np, 0)
 
     def get_opti_var_name_list(self):
