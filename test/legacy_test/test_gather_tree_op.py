@@ -102,15 +102,6 @@ class TestGatherTreeOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_Variable_parents)
 
-            def test_type_ids():
-                # dtype must be int32 or int64
-                bad_ids = paddle.static.data(
-                    name='bad_ids', shape=[5, 2, 2], dtype='float32'
-                )
-                paddle.nn.functional.gather_tree(bad_ids, parents)
-
-            self.assertRaises(TypeError, test_type_ids)
-
             def test_type_parents():
                 # dtype must be int32 or int64
                 bad_parents = paddle.static.data(
@@ -136,6 +127,26 @@ class TestGatherTreeOpError(unittest.TestCase):
 
             self.assertRaises(ValueError, test_parents_ndim)
 
+        paddle.disable_static()
+
+
+class TestGatherTreeOpErrorWithIds(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        with program_guard(Program(), Program()):
+            ids = paddle.static.data(name='ids', shape=[5, 2, 2], dtype='int64')
+            parents = paddle.static.data(
+                name='parents', shape=[5, 2, 2], dtype='int64'
+            )
+
+            def test_type_ids():
+                # dtype must be int32 or int64
+                bad_ids = paddle.static.data(
+                    name='bad_ids', shape=[5, 2, 2], dtype='float32'
+                )
+                paddle.nn.functional.gather_tree(bad_ids, parents)
+
+            self.assertRaises(TypeError, test_type_ids)
         paddle.disable_static()
 
 
