@@ -1261,24 +1261,20 @@ def top_p_sampling(x, ps, threshold=None, seed=None, name=None):
             >>> paddle.seed(2023)
             >>> x = paddle.randn([2,3])
             >>> print(x)
-            >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
              [[-0.32012719, -0.07942779,  0.26011357],
               [ 0.79003978, -0.39958701,  1.42184138]])
             >>> paddle.seed(2023)
             >>> ps = paddle.randn([2])
             >>> print(ps)
-            >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2], dtype=float32, place=Place(gpu:0), stop_gradient=True,
              [-0.32012719, -0.07942779])
             >>> value, index = paddle.tensor.top_p_sampling(x, ps)
             >>> print(value)
-            >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2, 1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
              [[0.26011357],
               [1.42184138]])
             >>> print(index)
-            >>> # doctest: +SKIP('Different environments yield different output.')
             Tensor(shape=[2, 1], dtype=int64, place=Place(gpu:0), stop_gradient=True,
              [[2],
               [2]])
