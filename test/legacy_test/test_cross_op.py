@@ -152,7 +152,7 @@ class TestCrossAPI(unittest.TestCase):
             (res,) = exe.run(
                 main,
                 feed={'x': self.data_x, 'y': self.data_y},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
@@ -169,7 +169,7 @@ class TestCrossAPI(unittest.TestCase):
             (res,) = exe.run(
                 main,
                 feed={'x': self.data_x, 'y': self.data_y},
-                fetch_list=[z.name],
+                fetch_list=[z],
                 return_numpy=False,
             )
         expect_out = np.array(
