@@ -33,11 +33,6 @@ class Variable;
 void SetVariable(Scope* scope,
                  const phi::DenseTensor& input,
                  const std::string& var_name) {
-  // provide a way to create persist variable or parameter in program object
-  // this function is very similar to SetFeedVariable
-  // === !!! IMPORTANT NOTE !!! ===
-  // SetVariable only supports phi::DenseTensor
-  // and other types are currently not supported.
   bool is_new_var = (scope->FindVar(var_name) == nullptr);
   auto target_var = scope->Var(var_name);
   VLOG(1) << "Currently, SetVariable() only supports phi::DenseTensor.";

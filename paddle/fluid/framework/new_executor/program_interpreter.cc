@@ -1491,23 +1491,25 @@ void ProgramInterpreter::ProfileInstructionList(
     }
   }
 
-  profiler::OpRuntimeProfiler op_runtime_profiler;
+  auto IsOpSupportsRuntimeProfiling = [](const std::string& op_type) {
+    if (op_type.substr(0, 2) == "c_" || op_type.substr(0, 4) == "send" ||
+        op_type.substr(0, 4) == "recv")
+      return false;
+    return true;
+  };
 
   for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
     auto& instr = vec_instruction_[trace_execute_order_[idx]];
     OperatorBase* op_base = instr.OpBase();
 
-    VLOG(4) << "** Profile instruction " << idx;
+    bool need_profiling = IsOpSupportsRuntimeProfiling(op_base->Type()) &&
+                          (op_base->Id() < block_.OpSize());
 
-    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
-      // if this instruction supports runtime profiling and op_base ID is
-      // correctly set, then run op profiling
+    if (need_profiling) {
       std::string profile_signature = std::to_string(op_base->Id());
-      ProfileInstruction(instr, &op_runtime_profiler, profile_signature);
+      ProfileInstruction(instr);
     } else {
-      // don't need profiling
       RunInstruction(instr);
-      VLOG(4) << "** op does not support runtime profiling.";
     }
 
     if (UNLIKELY(exception_holder_.IsCaught())) {
@@ -1515,30 +1517,9 @@ void ProgramInterpreter::ProfileInstructionList(
       break;
     }
   }
-
-// make sure all instructions are executed on device side, then we starts
-// collecting profiling information
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   platform::GpuDeviceSync();
 #endif
-
-  // then starts collecting profiling information, and write op run time
-  // info into dist_attr.
-  for (size_t idx = 0; idx < trace_execute_order_.size(); idx++) {
-    auto& instr = vec_instruction_[trace_execute_order_[idx]];
-    OperatorBase* op_base = instr.OpBase();
-    if (instr.IsSupportRuntimeProfiling() && op_base->Id() < block_.OpSize()) {
-      OpDesc* op_desc = block_.Op(op_base->Id());
-      OperatorDistAttr* op_dist_attr = op_desc->MutableDistAttr();
-      std::string profile_signature = std::to_string(op_base->Id());
-      double cpu_us = -1.0, device_us = -1.0;
-      std::tie(cpu_us, device_us) =
-          op_runtime_profiler.MeasureTimeLapseBetweenEvents(
-              profile_signature + "@start", profile_signature + "@end");
-      op_dist_attr->set_run_time_us(cpu_us);  // cpu_us is ignored here
-    }
-  }
-
   if (UNLIKELY(exception_holder_.IsCaught())) {
     VLOG(1) << "Exception caught " << exception_holder_.Type();
     PADDLE_ENFORCE_EQ(
@@ -1551,10 +1532,7 @@ void ProgramInterpreter::ProfileInstructionList(
   }
 }
 
-void ProgramInterpreter::ProfileInstruction(
-    const Instruction& instr_node,
-    profiler::OpRuntimeProfiler* op_runtime_profiler,
-    const std::string& profile_signature) {
+void ProgramInterpreter::ProfileInstruction(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
 
   platform::RecordEvent instruction_event(
@@ -1565,7 +1543,7 @@ void ProgramInterpreter::ProfileInstruction(
   try {
     instr_node.WaitEvent(place_);
     if (!instr_node.IsArtificial()) {
-      ProfileOperator(instr_node, op_runtime_profiler, profile_signature);
+      ProfileOperator(instr_node);
       CheckGC(instr_node);
       memory::LogDeviceMemoryStats(place_, instr_node.OpBase()->Type());
     }
@@ -1585,10 +1563,7 @@ void ProgramInterpreter::ProfileInstruction(
   }
 }
 
-void ProgramInterpreter::ProfileOperator(
-    const Instruction& instr_node,
-    profiler::OpRuntimeProfiler* op_runtime_profiler,
-    const std::string& profile_signature) {
+void ProgramInterpreter::ProfileOperator(const Instruction& instr_node) {
   auto* op = instr_node.OpBase();
   auto place = instr_node.DeviceContext().GetPlace();
   Scope* local_scope = HasLocalScope() ? var_scope_.GetMutableLocalScope()
@@ -1636,23 +1611,31 @@ void ProgramInterpreter::ProfileOperator(
         1,
         platform::EventRole::kInnerOp);
 
-    std::string op_start_event_signature = profile_signature + "@start";
-    std::string op_end_event_signature = profile_signature + "@end";
-    const platform::DeviceContext& dev_ctx = instr_node.DeviceContext();
-
     auto SyncDevice = []() -> void {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       platform::GpuDeviceSync();
 #endif
     };
 
+    auto Tick = []() -> uint64_t {
+      timeval _now;
+      gettimeofday(&_now, nullptr);
+      uint64_t us_since_epoch =
+          static_cast<uint64_t>(_now.tv_sec) * 1000 * 1000 +
+          static_cast<uint64_t>(_now.tv_usec);
+      return us_since_epoch;
+    };
+
+    OperatorDistAttr* op_dist_attr = block_.Op(op->Id())->MutableDistAttr();
+    uint64_t start_ts = 0;  // start time stamp
+
     // compute
     if (op_with_kernel == nullptr) {  // operator base
       SyncDevice();
       instr_node.OpBase()->Run(*local_scope, place_);  // op run case 1
-      op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+      start_ts = Tick();
       SyncDevice();
-      op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+      op_dist_attr->set_run_time_us(Tick() - start_ts);
     } else {
       phi::Kernel* kernel = instr_node.PhiKernel();
       if (kernel && kernel->IsValid()) {  // phi kernel
@@ -1663,27 +1646,25 @@ void ProgramInterpreter::ProfileOperator(
               *instr_node.InnerRuntimeContext().get(),
               const_cast<platform::DeviceContext*>(&instr_node.DeviceContext()),
               &phi_kernel_context);
-
           SyncDevice();
           (*kernel)(&phi_kernel_context);  // op run case 2
-          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+          start_ts = Tick();
           SyncDevice();
-          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
-
+          op_dist_attr->set_run_time_us(Tick() - start_ts);
         } else {
           SyncDevice();
           (*kernel)(instr_node.InnerExecutionContext().get());  // op run case 3
-          op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+          start_ts = Tick();
           SyncDevice();
-          op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+          op_dist_attr->set_run_time_us(Tick() - start_ts);
         }
       } else {  // fluid kernel
         SyncDevice();
         instr_node.KernelFunc()(
             *instr_node.InnerExecutionContext().get());  // op run case 4
-        op_runtime_profiler->RecordEvent(op_start_event_signature, &dev_ctx);
+        start_ts = Tick();
         SyncDevice();
-        op_runtime_profiler->RecordEvent(op_end_event_signature, &dev_ctx);
+        op_dist_attr->set_run_time_us(Tick() - start_ts);
       }
     }
   }
