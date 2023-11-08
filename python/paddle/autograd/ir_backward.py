@@ -183,20 +183,36 @@ def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):
     pruned op in total_ops is uneffective_ops, else is effective_ops
 
     '''
+
+    def append_list(value, inputs: list) -> list:
+        if isinstance(value, (list, set, tuple)):
+            for input in inputs:
+                for v in value:
+                    if input.is_name(v):
+                        break
+                else:
+                    # when break is not triggered, enter the else branch
+                    inputs.append(v)
+        else:
+            inputs.append(value)
+        return inputs
+
+    inputs_list = list(inputs_set)
+
     intersection_op_flags = [True] * len(total_ops)
     union_op_flags = [False] * len(total_ops)
     # from input to output
-    if inputs_set:
+    if inputs_list:
         for i, op in enumerate(total_ops):
-            if some_in_set(op.results(), inputs_set):
+            if some_in_set(op.results(), inputs_list):
                 union_op_flags[i] = True
                 continue
 
-            if some_in_set(op.operands_source(), inputs_set):
+            if some_in_set(op.operands_source(), inputs_list):
                 union_op_flags[i] = True
                 for value in op.results():
                     if value not in no_grad_set:
-                        inputs_set.add(value)
+                        append_list(value, inputs_list)
             else:
                 intersection_op_flags[i] = False
 
@@ -249,6 +265,13 @@ def update_no_grad_set_after_prune(
     from inputs to outputs add value not in the path to no_grad_set,
     from outputs to inputs add value not in the path to no_grad_set,
     '''
+
+    def check_exist(value, res_set: set) -> bool:
+        for res in res_set:
+            if value.is_name(res):
+                return True
+        return False
+
     inputs_set = set(inputs)
     if inputs_set:
         for op in block.ops:
@@ -259,17 +282,17 @@ def update_no_grad_set_after_prune(
 
         for op in effective_forward_ops:
             for value in op.operands_source():
-                if value not in inputs_set:
+                if not check_exist(value, inputs_set):
                     no_grad_set.add(value)
 
     outputs_set = set(outputs)
     no_grad_set_tmp = set()
     for op in reversed(effective_forward_ops):
-        for output in op.results():
-            if output not in outputs_set and not some_in_set(
-                [output], set(op.operands_source())
+        for output_res in op.results():
+            if not check_exist(output_res, outputs_set) and not some_in_set(
+                [output_res], set(op.operands_source())
             ):
-                no_grad_set_tmp.add(output)
+                no_grad_set_tmp.add(output_res)
 
         for input in op.operands_source():
             if input not in no_grad_set:
@@ -362,15 +385,34 @@ def append_backward_ops(
     else continue to next op.
     '''
 
+    def check_in_keys(value, state_valuegrad: collections.defaultdict) -> bool:
+        for opresult in state_valuegrad.keys():
+            if value.is_name(opresult):
+                return True
+        return False
+
+    def take_defaultdict_list_value(
+        value, state_valuegrad: collections.defaultdict
+    ):
+        for opresult in state_valuegrad.keys():
+            if value.is_name(opresult):
+                breakpoint()
+                return state_valuegrad[opresult]
+        return []
+
     def make_output_with_output_grad(op):
         zero_flag = [False] * op.num_results()
         outputs = []
         output_grads = []
         for i, value in enumerate(op.results()):
             new_value = [value]
+            breakpoint()
             if (
-                value in state.value_to_valuegrad
-                and len(state.value_to_valuegrad[value]) > 1
+                check_in_keys(value, state.value_to_valuegrad)
+                and len(
+                    take_defaultdict_list_value(value, state.value_to_valuegrad)
+                )
+                > 1
             ):
                 # one value is input of more than one fwd_op,
                 # so more than one bwd_op create input_grad,
@@ -554,7 +596,14 @@ def append_backward_ops(
         else:
             if op.num_operands() == 0 and op.num_results() != 0:
                 for value in op.results():
-                    if len(state.value_to_valuegrad[value]) > 1:
+                    if (
+                        len(
+                            take_defaultdict_list_value(
+                                value, state.value_to_valuegrad
+                            )
+                        )
+                        > 1
+                    ):
                         # need add sum op
                         paddle.add_n(
                             [
@@ -581,6 +630,19 @@ def append_backward_ops(
 
 
 def create_backward_prune_set(inputs, outputs, no_grad_set, state):
+    def append_list(value, inputs_list: list) -> list:
+        if isinstance(value, (list, set, tuple)):
+            for input in inputs_list:
+                for v in value:
+                    if input.is_name(v):
+                        break
+                else:
+                    # when break is not triggered, enter the else branch
+                    inputs_list.append(v)
+        else:
+            inputs_list.append(value)
+        return inputs_list
+
     outputs_set = set()
     for input_ in inputs:
         if not input_.use_empty():
@@ -590,16 +652,16 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
         else:
             logging.warning("input privided by inputs has no use")
 
-    inputs_set = set()
+    inputs_list = []
     for output in outputs:
         if state.value_to_valuegrad[output] != []:
-            inputs_set.add(state.value_to_valuegrad[output][0][0])
+            inputs_list.append(state.value_to_valuegrad[output][0][0])
     inputs_set_tmp = set()
-    for out_grad in inputs_set:
+    for out_grad in inputs_list:
         if not out_grad.use_empty():
             for item in out_grad.first_use().owner().operands_source():
                 inputs_set_tmp.add(item)
-    inputs_set.update(inputs_set_tmp)
+    append_list(inputs_set_tmp, inputs_list)
 
     no_gradvar_set = set()  # grad_value of value in no_grad_set
     for key in state.value_to_valuegrad:
@@ -610,7 +672,7 @@ def create_backward_prune_set(inputs, outputs, no_grad_set, state):
             for item in state.value_to_sumvaluegrad[key][0]:
                 no_gradvar_set.add(item)
 
-    return outputs_set, inputs_set, no_gradvar_set
+    return outputs_set, inputs_list, no_gradvar_set
 
 
 def remove_op(block, op, state):
