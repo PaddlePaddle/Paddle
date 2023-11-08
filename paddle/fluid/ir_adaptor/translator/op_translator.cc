@@ -1606,8 +1606,8 @@ struct MulGradOpTranscriber : public OpTranscriber {
                << "[" << op_desc.Type() << "]" << grad_var_name << " "
                << idx_in_op << " " << idx_in_vec;
 
-      VarDesc* var_desc =
-          op_desc.Block()->FindVarRecursive(var_name.substr(0, 1));
+      VarDesc* var_desc = op_desc.Block()->FindVarRecursive(
+          op_desc.Input(var_name.substr(0, 1))[0]);
       IR_ENFORCE(var_desc != nullptr,
                  "[op:%s] Input %s should not be null",
                  op_desc.Type(),
