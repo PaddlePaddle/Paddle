@@ -345,7 +345,7 @@ class DygraphShardingOptimizer:
         origin_clip = self._inner_opt._grad_clip
         target_param_list = (
             self._origin_parameter_list
-            if not self.fuse_optimizer
+            if (not self.tensor_fusion or not self.fuse_optimizer)
             else self._parameter_list
         )
         if not isinstance(target_param_list[0], dict):
