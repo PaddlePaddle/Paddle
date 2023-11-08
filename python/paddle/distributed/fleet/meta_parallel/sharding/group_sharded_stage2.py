@@ -219,11 +219,8 @@ class GroupShardedStage2(nn.Layer):
         #         self._grad_storages[dtype][self._rank].buffer.zero_()
 
         for dtype in self._grad_storages.keys():
-            if (
-                not self._offload
-            ):
-                for rank in range(0, self._group.nranks):
-                    self._grad_storages[dtype][rank].buffer.zero_()
+            for rank in range(0, self._group.nranks):
+                self._grad_storages[dtype][rank].buffer.zero_()
 
         # Release grads of params
         for param in self._trainable_params:
