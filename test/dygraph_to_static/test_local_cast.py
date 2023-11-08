@@ -1,0 +1,117 @@
+#   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# NOTE(SigureMo): This unittest does NOT need to run in PIR mode. Don't import Dy2StTestBase.
+
+import unittest
+
+import paddle
+from paddle.jit.dy2static.program_translator import ProgramTranslator
+from paddle.static.amp.fp16_utils import prepare_op_should_auto_cast
+
+
+class LocalAutoCastLayer1(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self._fc = paddle.nn.Linear(10, 10)
+
+    @paddle.jit.to_static(full_graph=True)
+    def forward(self, x):
+        x = self._fc(x)
+        y = self._fc(x) * 2
+        with paddle.amp.auto_cast(False):
+            x = x.astype("float32")
+            y = y.astype("float32")
+            if x[0][0] > 1:
+                x = x + y
+            else:
+                x = x - y
+                x = x * 2
+
+        return x + 1
+
+
+class LocalAutoCastLayer2(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self._fc = paddle.nn.Linear(10, 10)
+
+    @paddle.jit.to_static(full_graph=True)
+    def forward(self, x):
+        with paddle.amp.auto_cast(False):
+            x = x.astype("float32")
+            x = self._fc(x)
+            y = self._fc(x) * 2
+        if x[0][0] > 1:
+            x = x + y
+        else:
+            x = x - y
+            x = x * 2
+
+        return x + 1
+
+
+class TestLocalCast(unittest.TestCase):
+    def should_auto_cast_for_each_ops(self, layer, input):
+        concrete_program, _ = layer.forward.get_concrete_program(input)
+        program = concrete_program.main_program
+        prepare_op_should_auto_cast(
+            program, ProgramTranslator.get_instance()._amp_records
+        )
+        actual = []
+        for block in program.blocks:
+            current_block_should_auto_cast = []
+            actual.append(current_block_should_auto_cast)
+            for op in block.ops:
+                current_block_should_auto_cast.append(op.should_auto_cast)
+        return actual
+
+    def test_should_auto_cast_1(self):
+        layer = LocalAutoCastLayer1()
+        input = paddle.randn([10, 10])
+        expected = [
+            # There are part of ops in auto_cast(False) block
+            [
+                True, True, True, True, True,
+                False, False, False, False, False, False, False, False, False, False, False,
+                True,
+            ],
+            # All if branch in auto_cast(False) block
+            [False, False],
+            # All else branch in auto_cast(False) block
+            [False, False, False],
+        ]  # fmt: skip
+        actual = self.should_auto_cast_for_each_ops(layer, input)
+        self.assertEqual(expected, actual)
+
+    def test_should_auto_cast_2(self):
+        layer = LocalAutoCastLayer2()
+        input = paddle.randn([10, 10])
+        expected = [
+            # There are part of ops in auto_cast(False) block
+            [
+                False, False, False, False, False, False,
+                True, True, True, True, True, True, True, True, True, True,
+            ],
+            # All if branch out of auto_cast(False) block
+            [True, True],
+            # All else branch out of auto_cast(False) block
+            [True, True, True],
+        ]  # fmt: skip
+        actual = self.should_auto_cast_for_each_ops(layer, input)
+        self.assertEqual(expected, actual)
+
+
+if __name__ == '__main__':
+    unittest.main()

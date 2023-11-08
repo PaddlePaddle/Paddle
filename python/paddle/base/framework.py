@@ -2936,7 +2936,7 @@ class Operator:
             self._cuda_graph_attr = _current_cuda_graph_mode
 
             # attr for OP should cast in AMP mode
-            self._should_auto_cast: bool = False
+            self._should_auto_cast: bool = True
 
             op_maker = core.op_proto_and_checker_maker
 

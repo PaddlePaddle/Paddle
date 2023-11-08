@@ -611,7 +611,7 @@ def map_block(block, fn, parent_op=None):
 
 def prepare_op_should_auto_cast(
     program: paddle.static.Program,
-    ranged_cast_info: dict[int, list[tuple[AmpOptions, int, int]]],
+    amp_records: dict[int, list[tuple[AmpOptions, int, int]]],
 ):
     amp_enable_op_map: dict[paddle.static.Operator, bool] = {}
 
@@ -621,8 +621,8 @@ def prepare_op_should_auto_cast(
         for op in ops:
             # The top level should be FP16
             current_op_amp_options = amp_enable_op_map.get(parent_op, True)
-            if block_idx in ranged_cast_info:
-                for amp_options, start, end in ranged_cast_info[block_idx]:
+            if block_idx in amp_records:
+                for amp_options, start, end in amp_records[block_idx]:
                     if op.idx in range(start, end):
                         current_op_amp_options = amp_options.enable
                         break
@@ -817,7 +817,6 @@ def cast_model_to_fp16(
                 num_cast_ops += in_var_cast_num
 
             idx += num_cast_ops + 1
-
     _logger.debug("---- after cast model to fp16 ----")
     _logger.debug(program)
 
