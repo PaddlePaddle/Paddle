@@ -92,7 +92,7 @@ Examples:
         >>> x = paddle.to_tensor(1.)
         >>> print(x.scale)
         -1
-        >>> x.name = -1.2
+        >>> x.scale = -1.2
         >>> print(x.scale)
         -1.2
 )DOC");
