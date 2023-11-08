@@ -243,7 +243,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
   for (auto& op : *block) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
-      VLOG(6) << "operand: " << op->num_operands() << " " << i;
       visited_values.insert(op->operand_source(i));
     }
 
@@ -282,7 +281,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         upper_op_attrs.at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
       for (size_t i = 0; i < op->num_operands(); ++i) {
-        VLOG(6) << "operand: " << op->num_operands() << " " << i;
         reused_input_values.insert(op->operand_source(i));
       }
       for (auto& result : op->results()) {
@@ -343,7 +341,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
-      VLOG(6) << "operand: " << op->num_operands() << " " << in_slot;
       if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
           (!CanDoInplace(eager_dels.at(op),
                          op->operand_source(in_slot),
@@ -379,7 +376,6 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     if (can_do_inplace) {
       inplace_ops[op] = upper_op_name + "_";
       for (auto& kv : inplace_out_2_in) {
-        VLOG(6) << "operand: " << op->num_operands() << " " << kv.second;
         reused_input_values.insert(op->operand_source(kv.second));
         reused_output_values.insert(op->result(kv.first));
       }
