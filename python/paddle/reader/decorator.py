@@ -359,7 +359,7 @@ def buffered(reader, size):
 
 def firstn(reader, n):
     """
-    paddle.base.io.firstn ( :ref:`api_base_io_firstn` ) is recommended to use,
+    paddle.base.io.firstn ( :ref:`api_paddle_base_io_firstn` ) is recommended to use,
     and paddle.reader.firstn is an alias.
 
     This API creates a decorated reader, and limits the max number of
