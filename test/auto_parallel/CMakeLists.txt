@@ -119,6 +119,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_basic)
   set_tests_properties(test_semi_auto_parallel_basic
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 200)
+  py_test_modules(test_semi_auto_parallel_pylayer MODULES
+                  test_semi_auto_parallel_pylayer)
+  set_tests_properties(test_semi_auto_parallel_pylayer
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 100)
   py_test_modules(test_semi_auto_parallel_single_strategy MODULES
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
