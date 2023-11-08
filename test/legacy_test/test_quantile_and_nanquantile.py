@@ -336,6 +336,38 @@ class TestQuantileRuntime(unittest.TestCase):
                     and np.allclose(paddle_res_fp64, np_res_fp64)
                 )
 
+    def test_static_tensor(self):
+        paddle.enable_static()
+        for func, res_func in API_list:
+            for device in self.devices:
+                x = paddle.static.data(
+                    name="x", shape=self.input_data.shape, dtype=paddle.float32
+                )
+                q = paddle.static.data(name="q", shape=(3,), dtype=paddle.float32)
+                x_fp64 = paddle.static.data(
+                    name="x_fp64",
+                    shape=self.input_data.shape,
+                    dtype=paddle.float64,
+                )
+
+                results = func(x, q=q, axis=1)
+                np_input_data = self.input_data.astype("float32")
+                results_fp64 = func(x_fp64, q=q, axis=1)
+                np_input_data_fp64 = self.input_data.astype("float64")
+                q_data = np.array([0.5, 0.5, 0.5]).astype("float32")
+
+                exe = paddle.static.Executor(device)
+                paddle_res, paddle_res_fp64 = exe.run(
+                    paddle.static.default_main_program(),
+                    feed={"x": np_input_data, "x_fp64": np_input_data_fp64, "q": q_data},
+                    fetch_list=[results, results_fp64],
+                )
+                np_res = res_func(np_input_data, q=[0.5,0.5, 0.5], axis=1)
+                np_res_fp64 = res_func(np_input_data_fp64, q=[0.5,0.5, 0.5], axis=1)
+                self.assertTrue(
+                    np.allclose(paddle_res, np_res)
+                    and np.allclose(paddle_res_fp64, np_res_fp64)
+                )
 
 if __name__ == '__main__':
     unittest.main()

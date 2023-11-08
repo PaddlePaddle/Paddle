@@ -498,15 +498,21 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     elif isinstance(q, (list, tuple)):
         if len(q) <= 0:
             raise ValueError("q should not be empty")
-    elif isinstance(q, paddle.Tensor):
-        if len(q.shape) > 1:
-            raise ValueError("q should be a 0-D tensor or a 1-D tensor")
-        elif len(q.shape) == 0:
-            q = [q]
+    elif isinstance(q, Variable):
+        if in_dynamic_mode():
+            if len(q.shape) > 1:
+                raise ValueError("q should be a 0-D tensor or a 1-D tensor")
+            elif len(q.shape) == 0:
+                q = [q]
     else:
         raise TypeError(
             "Type of q should be int, float, list or tuple, or tensor"
         )
+    for q_num in q:
+        if not in_dynamic_mode() and isinstance(q, Variable):
+            break
+        if q_num < 0 or q_num > 1:
+            raise ValueError("q should be in range [0, 1]")
 
     # Validate axis
     dims = len(x.shape)
@@ -555,8 +561,6 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
     indices = []
 
     for q_num in q:
-        if q_num < 0 or q_num > 1:
-            raise ValueError("q should be in range [0, 1]")
         if in_dynamic_mode():
             q_num = paddle.to_tensor(q_num, dtype='float64')
         if ignore_nan:
@@ -583,10 +587,10 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
         tensor_below = paddle.take_along_axis(
             sorted_tensor, indices_below, axis=axis
         )
-        weights = index - indices_below.astype('float64')
+        weights = (index - indices_below).astype('float64')
         out = paddle.lerp(
-            tensor_below.astype('float64'),
-            tensor_upper.astype('float64'),
+            tensor_below.astype("float64"),
+            tensor_upper.astype("float64"),
             weights,
         )
         if not keepdim:
@@ -595,7 +599,7 @@ def _compute_quantile(x, q, axis=None, keepdim=False, ignore_nan=False):
             out = out.reshape(out_shape)
         outputs.append(out)
 
-    if len(q) > 1:
+    if len(outputs) > 1:
         outputs = paddle.stack(outputs, 0)
     else:
         outputs = outputs[0]
