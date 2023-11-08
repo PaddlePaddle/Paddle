@@ -3141,6 +3141,14 @@
   outputs :
     {out : Out, index : Index, counts : Counts}
 
+- op : unique_raw
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, indices : Indices, inverse : Index, counts : Counts}
+  get_expected_kernel_type :
+    unique : GetUniqueExpectedKernelType
+
 - op : unpool
   inputs :
     {x : X, indices: Indices}
@@ -3428,6 +3436,12 @@
     x : X
   outputs :
     out : Out
+
+- op: unique_with_counts
+  inputs :
+    {x : X}
+  outputs :
+    {out : Out, index : Index, count : Count}
 
 - op: write_to_array
   inputs :

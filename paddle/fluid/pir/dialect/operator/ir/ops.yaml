@@ -180,6 +180,16 @@
     func: share_data
     param: [x]
 
+- op : unique_raw
+  args : (Tensor x, bool return_index, bool return_inverse, bool return_counts, int[] axis, DataType dtype=DataType::INT64, bool is_sorted=false)
+  output : Tensor(out), Tensor(indices), Tensor(inverse), Tensor(counts)
+  infer_meta :
+    func : UniqueRawInferMeta
+  kernel :
+    func : unique_raw
+    data_type : x
+  optional : indices, inverse, counts
+
 - op : write_to_array
   args : (Tensor i, Tensor x)
   output : Tensor[](out)
@@ -225,3 +235,12 @@
     func: sparse_momentum
     data_type: param
   optional: master_param, master_param_out
+
+- op: unique_with_counts
+  args: (Tensor x, int dtype)
+  output: Tensor(out), Tensor(index), Tensor(count)
+  infer_meta:
+    func: UniqueWithCountsInferMeta
+  kernel:
+    func: unique_with_counts
+    data_type: x

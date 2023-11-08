@@ -744,6 +744,12 @@ void UniqueRawInferMeta(const MetaTensor& x,
                         MetaTensor* index,
                         MetaTensor* counts);
 
+void UniqueWithCountsInferMeta(const MetaTensor& x,
+                               int dtype,
+                               MetaTensor* out,
+                               MetaTensor* index,
+                               MetaTensor* count);
+
 void UnsqueezeInferMeta(const MetaTensor& x,
                         const IntArray& axes,
                         MetaTensor* out,

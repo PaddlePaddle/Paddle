@@ -2437,6 +2437,19 @@ struct RepeatInterLeaveGradOpTranscriber : public OpTranscriber {
   }
 };
 
+struct UniqueOpTranscriber : public OpTranscriber {
+  pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
+                            const OpDesc& op_desc) override {
+    bool is_sorted = paddle::get<bool>(op_desc.GetAttr("is_sorted"));
+    std::string target_op_name = "pd_op.unique_raw";
+    if (is_sorted) {
+      target_op_name = "pd_op.unique";
+    }
+    const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
+    return op_info;
+  }
+};
+
 OpTranslator::OpTranslator() {
   pir::IrContext* ctx = pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
@@ -2473,6 +2486,7 @@ OpTranslator::OpTranslator() {
   special_handlers["tril_triu"] = TrilAndTriuOpTranscriber();
   special_handlers["mul"] = MulOpTranscriber();
   special_handlers["mul_grad"] = MulGradOpTranscriber();
+  special_handlers["unique"] = UniqueOpTranscriber();
 
   // special handler for elementwise ops with axis != -1
   // note(lyk): maybe we should do this by a pass, which seems more reasonable

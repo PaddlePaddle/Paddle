@@ -5044,6 +5044,23 @@ void UnsqueezeInferMeta(const MetaTensor& x,
   }
 }
 
+void UniqueWithCountsInferMeta(const MetaTensor& x,
+                               int dtype,
+                               MetaTensor* out,
+                               MetaTensor* index,
+                               MetaTensor* count) {
+  auto in_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      in_dims.size(),
+      1,
+      phi::errors::InvalidArgument("The Input(X) should be 1-D Tensor, "
+                                   "But now the dims of Input(X) is %d.",
+                                   in_dims.size()));
+  out->set_dims({-1});
+  index->set_dims(in_dims);
+  count->set_dims({-1});
+}
+
 void UnsqueezeWithXShapeInferMeta(const MetaTensor& x,
                                   const IntArray& axes,
                                   MetaTensor* out,
