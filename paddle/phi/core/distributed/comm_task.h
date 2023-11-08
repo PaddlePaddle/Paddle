@@ -37,7 +37,7 @@ class CommTask {
  public:
   CommTask(const std::string& backend = "",
            const phi::Place& place = phi::Place(),
-           cosnt std::string& group_key = "",
+           const std::string& group_key = "",
            int rank = -1,
            int size = 0,
            int gid = 0,

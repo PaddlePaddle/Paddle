@@ -89,7 +89,7 @@ inline std::string CommTypeToString(CommType CommType) {
 // convert vector to string, concatenate continuous intervals with `:`,
 // concatenate discontinuous intervals with `#` eg: [1,2,3,4,5,7,8,9] =>
 // 1:3#4#5#7:9
-std::string VectorToString(const std::vector<int>& vec) {
+inline std::string VectorToString(const std::vector<int>& vec) {
   if (vec.empty()) {
     return "";
   }
@@ -98,8 +98,7 @@ std::string VectorToString(const std::vector<int>& vec) {
   }
 
   std::stringstream ss;
-  int i = 0;
-  bool flag = true;
+  size_t i = 0;
   int start_rank = vec[i];
   for (; i < vec.size() - 1; ++i) {
     if (vec[i] + 1 == vec[i + 1]) {
@@ -110,7 +109,7 @@ std::string VectorToString(const std::vector<int>& vec) {
     }
     ss << start_rank;
     if (start_rank != vec[i]) {
-      ss << ":";
+      ss << "~";
       ss << vec[i];
     }
     start_rank = vec[i + 1];
@@ -121,7 +120,7 @@ std::string VectorToString(const std::vector<int>& vec) {
   }
   ss << start_rank;
   if (start_rank != vec[i]) {
-    ss << ":";
+    ss << "~";
     ss << vec[i];
   }
 
