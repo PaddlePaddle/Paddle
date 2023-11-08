@@ -19,7 +19,6 @@ from op_test import OpTest
 
 import paddle
 from paddle.pir_utils import test_with_pir_api
-from paddle.static import Program, program_guard
 
 
 class TestMVOp(OpTest):
@@ -65,7 +64,9 @@ class TestMVAPI(unittest.TestCase):
                 self.input_x = np.random.rand(5, 100).astype("float64")
                 self.input_vec = np.random.rand(100).astype("float64")
 
-                with program_guard(Program(), Program()):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     data_x = paddle.static.data(
                         "x", shape=[5, 100], dtype="float64"
                     )
