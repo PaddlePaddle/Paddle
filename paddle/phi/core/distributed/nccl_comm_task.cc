@@ -26,6 +26,7 @@ namespace phi {
 namespace distributed {
 
 NCCLCommTask::NCCLCommTask(const phi::Place& place,
+                           const std::string& group_key,
                            int rank,
                            int size,
                            int gid,
@@ -39,6 +40,7 @@ NCCLCommTask::NCCLCommTask(const phi::Place& place,
                            int64_t timeout)
     : CommTask("NCCL",
                place,
+               group_key,
                rank,
                size,
                gid,
@@ -186,12 +188,17 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto current_timepoint = std::chrono::steady_clock::now();
   auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       current_timepoint - start_time_);
-  return "op:" + CommTypeToString(comm_type_) + ",gid:" + std::to_string(gid_) +
-         ",seq:" + std::to_string(seq_) +
-         ",started:" + std::to_string(IsStarted()) +
-         ",completed:" + std::to_string(IsCompleted()) +
+  auto global_ranks =
+      phi::distributed::CommContextManager.GetInstance().GetGroupRank(
+          group_key_);
+  return "gid:" + std::to_string(gid_) +
+         ",group_ranks:" + VectorToString(global_ranks) +
          ",global_rank:" + std::to_string(global_rank_) +
          ",local_rank:" + std::to_string(rank_) +
+         ",comm_count:" + std::to_string(seq_) +
+         ",op:" + CommTypeToString(comm_type_) +
+         ",started:" + std::to_string(IsStarted()) +
+         ",completed:" + std::to_string(IsCompleted()) +
          ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
          ",sync_op:" + std::to_string(sync_op_) +
          ",use_calc_stream:" + std::to_string(use_calc_stream_) +

@@ -34,6 +34,7 @@ static int64_t DefaultTimeout = 30 * 60 * 1000;
 class NCCLCommTask : public CommTask {
  public:
   NCCLCommTask(const phi::Place& place = phi::Place(),
+               const std::string& group_key = "",
                int rank = -1,
                int size = 0,
                int gid = 0,

@@ -37,6 +37,7 @@ class CommTask {
  public:
   CommTask(const std::string& backend = "",
            const phi::Place& place = phi::Place(),
+           cosnt std::string& group_key = "",
            int rank = -1,
            int size = 0,
            int gid = 0,
@@ -47,6 +48,7 @@ class CommTask {
            CommType comm_type = CommType::UNKNOWN)
       : backend_(backend),
         place_(place),
+        group_key_(group_key),
         rank_(rank),
         size_(size),
         gid_(gid),
@@ -139,6 +141,7 @@ class CommTask {
  protected:
   std::string backend_;
   phi::Place place_;
+  std::string group_key_;
   int global_rank_;
   int rank_;
   int size_;

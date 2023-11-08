@@ -244,6 +244,7 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs;
+  std::string group_key_;
 };
 
 }  //  namespace distributed

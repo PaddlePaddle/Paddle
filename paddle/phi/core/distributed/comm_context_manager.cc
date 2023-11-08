@@ -109,5 +109,25 @@ bool CommContextManager::Has(int ring_id) const {
   return id_to_comm_context_.find(ring_id) != id_to_comm_context_.end();
 }
 
+void CommContextManager::SetGroupSize(const std::string& pg_key, int size) {
+  pg_key_size_[pg_key] = size;
+}
+
+void CommContextManager::AddGroupRanks(const std::string& pg_key,
+                                       std::vector<int> global_ranks) {
+  if (pg_key_ranks_.find(pg_key) == pg_key_ranks_.end()) {
+    pg_key_ranks_[pg_key] = global_ranks;
+  }
+}
+
+std::vector<int> CommContextManager::GetGroupRanks(
+    const std::string& pg_key) const {
+  PADDLE_ENFORCE_NE(
+      pg_key_ranks_.find(pg_key),
+      pg_key_ranks_.end(),
+      errors::NotFound("Can not find pg_key %d in GroupRanks.", pg_key));
+  return pg_key_ranks_.at(pg_key);
+}
+
 }  // namespace distributed
 }  // namespace phi

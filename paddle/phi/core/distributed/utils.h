@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include <sstream>
 #include "paddle/phi/core/dense_tensor.h"
 
 namespace phi {
@@ -83,6 +84,48 @@ inline std::string CommTypeToString(CommType CommType) {
       return "Unknown";
   }
   return "Unknown";
+}
+
+// convert vector to string, concatenate continuous intervals with `:`,
+// concatenate discontinuous intervals with `#` eg: [1,2,3,4,5,7,8,9] =>
+// 1:3#4#5#7:9
+std::string VectorToString(const std::vector<int>& vec) {
+  if (vec.empty()) {
+    return "";
+  }
+  if (vec.size() == 1) {
+    return std::to_string(vec[0]);
+  }
+
+  std::stringstream ss;
+  int i = 0;
+  bool flag = true;
+  int start_rank = vec[i];
+  for (; i < vec.size() - 1; ++i) {
+    if (vec[i] + 1 == vec[i + 1]) {
+      continue;
+    }
+    if (ss.rdbuf()->in_avail() != 0) {
+      ss << "#";
+    }
+    ss << start_rank;
+    if (start_rank != vec[i]) {
+      ss << ":";
+      ss << vec[i];
+    }
+    start_rank = vec[i + 1];
+  }
+
+  if (ss.rdbuf()->in_avail() != 0) {
+    ss << "#";
+  }
+  ss << start_rank;
+  if (start_rank != vec[i]) {
+    ss << ":";
+    ss << vec[i];
+  }
+
+  return ss.str();
 }
 
 }  //  namespace distributed
