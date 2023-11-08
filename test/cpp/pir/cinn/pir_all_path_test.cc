@@ -303,13 +303,8 @@ TEST(GroupOp, TestBuildDropout) {
   paddle::framework::InterpreterCore executor(
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-  std::cerr << "before run\n";
   executor.Run({}, true);
-
-  std::cerr << "after run\n";
 
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
-
-  std::cerr << out_tensor.dims() << std::endl;
 }
