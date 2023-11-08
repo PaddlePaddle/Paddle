@@ -403,18 +403,17 @@ std::vector<ir::LoweredFunc> OpLowererImpl::DoOpLower(
   for (const ir::Tensor& tensor : *op_func_arg_tensors) {
     cinn_inputs.push_back(common::CINNValue(ir::Expr(tensor)));
   }
-  std::cerr << "1\n";
   // set tensor name = operand hash name
   auto op_results = op->results();
   for (const auto& result : op_results) {
     std::string output_id = CompatibleInfo::ValueName(result);
     cinn_inputs.push_back(common::CINNValue(output_id));
   }
-  std::cerr << "12\n";
+
   // 1.Do compute
   common::CINNValuePack pack =
       op_impl->fcompute(common::CINNValuePack{cinn_inputs});
-  std::cerr << "13\n";
+
   poly::StageMap tmp_stages = pack.back();
   std::string post = "";
   for (int idx = 0; idx < pack.size() - 1; ++idx) {
