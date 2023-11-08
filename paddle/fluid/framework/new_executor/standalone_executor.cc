@@ -261,13 +261,10 @@ std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
 
   interpretercores_[0]->RunProfile(feed_names);
 
-  // Don't return program desc directly, instead, return a copy of it,
-  // since we don't know how the program desc will be further processed
-  // in Python side. If we return a raw shared_ptr, the program desc
-  // will be easily altered externally, result in unexpected behavior
-  // during the next profiling run.
-  // NOTE: std::make_shared will always try to copy the objects that we
-  // passed in, that is what we expect it to do here.
+  // Don't return program desc directly, instead, return a copy of it since we
+  // don't know how the program desc will be further processed in Python side.
+  // If we return a raw shared_ptr, the program desc will be easily altered
+  // externally, result in unexpected behavior during the next profiling run.
   std::shared_ptr<framework::ProgramDesc> copy_desc =
       std::make_shared<framework::ProgramDesc>(
           *(interpretercores_[0]->GetMutableCopyProgram()));

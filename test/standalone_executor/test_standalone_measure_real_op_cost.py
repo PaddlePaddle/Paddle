@@ -97,10 +97,7 @@ class TestOpProfiling(unittest.TestCase):
         paddle.seed(123)
         np.random.seed(456)
 
-        # build program
         train_program, startup_program, loss = self._build_program()
-
-        # run the startup program
         exe = Executor(place)
         exe.run(startup_program)
 
@@ -108,17 +105,10 @@ class TestOpProfiling(unittest.TestCase):
             measure_real_op_cost_wrt_program_and_place(
                 train_program, place, verbose_level=2
             )
-
-            # run this line below to see if profiling results are
-            # successfully written, if not, an AssertionError will
-            # be raised.
-            train_program.global_block().ops[0].get_runtime_us()
-
         x = np.ones([1024, 1]).astype('float32')
         (loss_data,) = exe.run(
             train_program, feed={"X": x}, fetch_list=[loss.name]
         )
-
         return loss_data
 
     def _compare_loss_between(self, loss_run1, loss_run2):
@@ -126,9 +116,6 @@ class TestOpProfiling(unittest.TestCase):
         return s1 == s2
 
     def test_op_profiling_cpu(self):
-        '''
-        * test if adding profiling before program execution can affect training process.
-        '''
         self.assertTrue(
             self._compare_loss_between(
                 self._run_op_profiling(paddle.CPUPlace(), run_profiling=True),
@@ -137,9 +124,6 @@ class TestOpProfiling(unittest.TestCase):
         )
 
     def test_op_profiling_cuda0(self):
-        '''
-        * test if adding profiling before program execution can affect training process.
-        '''
         if not core.is_compiled_with_cuda():
             return True
         self.assertTrue(

@@ -2396,6 +2396,17 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
 
 
+def check_if_op_supports_runtime_profiling(op):
+    op_type = op.type
+    if (
+        op_type.startswith('c_')
+        or op_type.startswith('send')
+        or op_type.startswith('recv')
+    ):
+        return False
+    return True
+
+
 def _measure_real_op_cost_wrt_program_and_place_multipass(
     program, place, run_iters, verbose
 ):
@@ -2585,8 +2596,8 @@ def _measure_real_op_cost_wrt_program_and_place_multipass(
             range(len(temp_main_block.ops)), temp_main_block.ops
         ):
             prof_results[op_id][iter_id] = (
-                temp_op.get_runtime_us()
-                if temp_op.supports_runtime_profiling()
+                temp_op.dist_attr.run_time_us
+                if check_if_op_supports_runtime_profiling(temp_op)
                 else None
             )
     return prof_results
@@ -2628,13 +2639,13 @@ def measure_real_op_cost_wrt_program_and_place(
     Returns profiling report (as Python string). This API will write op run time
     directly into program object. For example, to retrieve the run time for the first
     op in program, use:
-    >>> program.global_block().ops[0].get_runtime_us()
+    >>> program.global_block().ops[0].dist_attr.run_time_us
     Note
     -----------
     Not all ops support runtime profiling. Currently communication ops do not support
     runtime profiling feature since their execution times rely on other ops. To check
     if an op supports runtime profiling, use:
-    >>> op.supports_runtime_profiling()
+    >>> check_if_op_supports_runtime_profiling(op)
     where "op" is an instance of "paddle.base.framework.Operator".
     Example
     -----------
@@ -2645,7 +2656,7 @@ def measure_real_op_cost_wrt_program_and_place(
     >>>     program, paddle.CUDAPlace(0), verbose_level=1
     >>> )
     >>> print("first op execution time: %d us." % \\
-    >>>     program.global_block().ops[0].get_runtime_us()
+    >>>     int(program.global_block().ops[0].dist_attr.run_time_us)
     >>> )
     * Profiling a program which is already embedded into an Executor or
     some other class instance (inspect mode):
@@ -2749,15 +2760,18 @@ def measure_real_op_cost_wrt_program_and_place(
                 raise RuntimeError(
                     'unknwon profile_strategy "%s" given.' % profile_strategy
                 )
-        if op_runtime_us_final is not None and op.supports_runtime_profiling():
-            op.set_runtime_us(op_runtime_us_final)
+        if (
+            op_runtime_us_final is not None
+            and check_if_op_supports_runtime_profiling(op)
+        ):
+            op.dist_attr.run_time_us = op_runtime_us_final
 
     # print out profiling results if needed then return
     TABLE_WIDTH = 64
 
     def _format_single_line(idx, op):
         profile_run_success = (
-            op.supports_runtime_profiling()
+            check_if_op_supports_runtime_profiling(op)
             and op.desc.dist_attr.run_time_us >= 0.0
         )
         bg_str = ' .' * (TABLE_WIDTH // 2)
@@ -2769,8 +2783,8 @@ def measure_real_op_cost_wrt_program_and_place(
         right_str = ''
         if profile_run_success:
             # op supports runtime profiling and profiling info is correctly set
-            right_str = '%d us' % int(op.get_runtime_us())
-        elif op.supports_runtime_profiling():
+            right_str = '%d us' % int(op.dist_attr.run_time_us)
+        elif check_if_op_supports_runtime_profiling(op):
             # op supports runtime profiling but no runtime info found
             right_str = 'skipped'
         else:

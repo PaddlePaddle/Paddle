@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import unittest
 
 import paddle
@@ -21,7 +20,7 @@ from paddle.static import Program, program_guard
 paddle.enable_static()
 
 
-class TestOpProfiling(unittest.TestCase):
+class TestOperatorDistAttrSetGet(unittest.TestCase):
     def setUp(self):
         pass
 
@@ -52,10 +51,7 @@ class TestOpProfiling(unittest.TestCase):
         global_block = startup_program.global_block()
         global_block.ops[0].dist_attr.run_time_us = 1.0  # set
         dt = global_block.ops[0].dist_attr.run_time_us  # get
-        if dt != 1.0:
-            raise RuntimeError("dist_attr set/get method failed!")
-        else:
-            sys.stdout.write("OK.")
+        self.assertTrue(dt == 1.0)
 
 
 if __name__ == "__main__":
