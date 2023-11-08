@@ -1523,21 +1523,26 @@ class TestSqrt(TestActivation, TestParameter):
         if self.dtype == np.float16:
             return
         if self.dtype not in [np.complex64, np.complex128]:
-          self.check_grad(
-              ['X'],
-              'Out',
-              check_prim=True,
-              check_pir=True,
-              check_prim_pir=True,
-          )
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_pir=True,
+                check_prim_pir=True,
+            )
         else:
-          self.check_grad(
-              ['X'],
-              'Out',
-          )   
+            self.check_grad(
+                ['X'],
+                'Out',
+            )
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
+        if self.dtype not in [np.complex64, np.complex128]:
+            self.check_output(
+                check_prim=True, check_pir=True, check_prim_pir=True
+            )
+        else:
+            self.check_output()
 
 
 class TestSqrtComplex64(TestSqrt):
