@@ -280,8 +280,6 @@ TEST(GroupOp, TestBuildDropout) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  program->Print(std::cout);
-
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
   pir::PassManager pm(ctx);
@@ -296,7 +294,6 @@ TEST(GroupOp, TestBuildDropout) {
 
   auto kernel_program =
       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
-  kernel_program->Print(std::cout);
 
   paddle::framework::Scope exe_scope;
 
