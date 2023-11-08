@@ -118,7 +118,7 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
                               const phi::DDim& dims,
                               const phi::DataLayout& layout,
                               const phi::LoD& lod)
-      : dtype_(dtype), dims_(dims), layout_(layout), lod_(lod), {}
+      : dtype_(dtype), dims_(dims), layout_(layout), lod_(lod) {}
 
   ///
   /// \brief Each derived TypeStorage must define a Construct method, which
