@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.framework import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -43,10 +44,12 @@ class TestTakeAlongAxisOp(OpTest):
         self.outputs = {'Result': self.target}
 
     def test_check_output(self):
-        self.check_output(check_cinn=self.check_cinn)
+        self.check_output(check_cinn=self.check_cinn, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Result', check_cinn=self.check_cinn)
+        self.check_grad(
+            ['Input'], 'Result', check_cinn=self.check_cinn, check_pir=True
+        )
 
     def init_data(self):
         self.x_type = "float64"
@@ -101,11 +104,17 @@ class TestTakeAlongAxisBF16Op(OpTest):
         self.place = core.CUDAPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_cinn=self.check_cinn)
+        self.check_output_with_place(
+            self.place, check_cinn=self.check_cinn, check_pir=True
+        )
 
     def test_check_grad(self):
         self.check_grad_with_place(
-            self.place, ['Input'], 'Result', check_cinn=self.check_cinn
+            self.place,
+            ['Input'],
+            'Result',
+            check_cinn=self.check_cinn,
+            check_pir=True,
         )
 
     def init_data(self):
@@ -142,6 +151,7 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
+    @test_with_pir_api
     def test_api_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
