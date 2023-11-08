@@ -920,7 +920,9 @@ class PartialProgramLayer:
                     zero_copy=True,
                 )
             elif isinstance(value, core.eager.Tensor):
-                if value.place._equals(cuda_pinned_place):
+                if value.place._equals(
+                    cuda_pinned_place
+                ) and not value.place._equals(expected_place):
                     var = value._copy_to(expected_place, False)
                     var.stop_gradient = value.stop_gradient
                 else:
