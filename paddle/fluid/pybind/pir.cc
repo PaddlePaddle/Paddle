@@ -473,8 +473,8 @@ void BindValue(py::module *m) {
            [](Value &self, Value &op_value) {
              self.ReplaceAllUsesWith(op_value);
            })
-      .def("__eq__", &Value::operator==)
-      .def("__eq__",
+      .def("is_name", &Value::operator==)
+      .def("is_name",
            [](Value &self, OpResult &other) {
              return self.impl() == other.Value::impl();
            })
@@ -661,8 +661,8 @@ void BindOpResult(py::module *m) {
   OVERRIDE_COMPARE_OP_FOR_EACH(__gt__, greater_than);
   OVERRIDE_COMPARE_OP_FOR_EACH(__ge__, greater_equal);
 
-  op_result.def("__eq__", &OpResult::operator==)
-      .def("__eq__",
+  op_result.def("is_name", &OpResult::operator==)
+      .def("is_name",
            [](OpResult &self, Value &other) {
              return self.Value::impl() == other.impl();
            })

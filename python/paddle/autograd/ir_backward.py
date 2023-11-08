@@ -157,18 +157,22 @@ def prepare_grad_outputs(grad_outputs, outputs, state):
 
 def some_in_set(value_list, value_set):
     def operand2value(values):
-        value_set = set()
+        res = []
         for item in values:
             if isinstance(item, paddle.pir.OpOperand):
-                value_set.add(item.source())
+                res.append(item.source())
             else:
-                value_set.add(item)
-        return value_set
+                res.append(item)
+        return res
 
-    if operand2value(value_list) & operand2value(value_set):
-        return True
-    else:
+    def check_value(original_value: list, compare_value: list) -> bool:
+        for i in original_value:
+            for j in compare_value:
+                if i.is_name(j):
+                    return True
         return False
+
+    return check_value(operand2value(value_list), operand2value(value_set))
 
 
 def prune_ops(total_ops, inputs_set, outputs_set, no_grad_set):

@@ -272,9 +272,9 @@ class TestMathOpPatchesPir(unittest.TestCase):
         x_np = np.array([3, 4, 10, 14, 9, 18]).astype('float32')
         y_np = np.array([3, 4, 11, 15, 8, 18]).astype('float32')
         # TODO(gouzil): Open after deleting c++ logic
-        # res_np_b = x_np == y_np
-        # res_np_c = paddle.equal(paddle.to_tensor(x_np), paddle.to_tensor(y_np))
-        # res_np_d = x_np.__eq__(y_np)
+        res_np_b = x_np == y_np
+        res_np_c = paddle.equal(paddle.to_tensor(x_np), paddle.to_tensor(y_np))
+        res_np_d = x_np.__eq__(y_np)
         res_np_e = x_np != y_np
         res_np_f = paddle.not_equal(
             paddle.to_tensor(x_np), paddle.to_tensor(y_np)
@@ -286,20 +286,20 @@ class TestMathOpPatchesPir(unittest.TestCase):
             with program_guard:
                 x = paddle.static.data(name="x", shape=[-1, 1], dtype='float32')
                 y = paddle.static.data(name="y", shape=[-1, 1], dtype='float32')
-                # b = x == y
-                # c = x.equal(y)
-                # d = x.__eq__(y)
+                b = x == y
+                c = x.equal(y)
+                d = x.__eq__(y)
                 e = x != y
                 f = x.not_equal(y)
                 g = x.__ne__(y)
-                (e_np, f_np, g_np) = exe.run(
+                (b_np, c_np, d_np, e_np, f_np, g_np) = exe.run(
                     main_program,
                     feed={"x": x_np, "y": y_np},
-                    fetch_list=[e, f, g],
+                    fetch_list=[b, c, d, e, f, g],
                 )
-                # np.testing.assert_array_equal(res_np_b, b_np)
-                # np.testing.assert_array_equal(res_np_c, c_np)
-                # np.testing.assert_array_equal(res_np_d, d_np)
+                np.testing.assert_array_equal(res_np_b, b_np)
+                np.testing.assert_array_equal(res_np_c, c_np)
+                np.testing.assert_array_equal(res_np_d, d_np)
                 np.testing.assert_array_equal(res_np_e, e_np)
                 np.testing.assert_array_equal(res_np_f, f_np)
                 np.testing.assert_array_equal(res_np_g, g_np)
