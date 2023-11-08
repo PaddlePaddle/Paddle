@@ -1497,15 +1497,19 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 new_start_index = (
                     len(whole_program.global_block().ops) - backward_length
                 )
+                print(whole_program)
                 return whole_program, new_start_index, dst_vars
+            print(whole_program)
             return whole_program, forward_end_idx, src_vars
 
-    def after_infer(self, infer_program, src_vars):
+    def after_infer(self, infer_program):
         with backend_guard(self.backend):
             if core._is_fwd_prim_enabled():
-                dst_vars = decomposition.decompose(infer_program, src_vars)
-                return infer_program, dst_vars
-            return infer_program, src_vars
+                infer_program.out_values = decomposition.decompose(
+                    infer_program.program, infer_program.out_values
+                )
+                return infer_program
+            return infer_program
 
 
 class ProgramCache:

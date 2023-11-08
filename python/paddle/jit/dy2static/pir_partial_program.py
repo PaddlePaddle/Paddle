@@ -411,8 +411,8 @@ class PartialProgramLayer:
                 infer_program, self._build_strategy
             )
             # TODO(Aurelius84): Support this later.
-            # if self._hooker:
-            #     infer_program = self._hooker.after_infer(infer_program)
+            if self._hooker:
+                _ = self._hooker.after_infer(infer_program)
             return infer_program
         else:
             train_program = self.origin_runable_program.clone()

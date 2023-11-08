@@ -54,5 +54,39 @@ class TestDy2staticPir(unittest.TestCase):
         )
 
 
+class TestDy2staticPirEval(unittest.TestCase):
+    def test_basic_network_backward(self):
+        core._set_prim_all_enabled(True)
+
+        def func(x):
+            x1 = paddle.mean(x)
+            out = paddle.nn.functional.gelu(x1, False)
+            return out
+
+        # ==== dygraph computation ====
+        static_func = paddle.jit.to_static(func, full_graph=True)
+        static_func.eval()
+        x = paddle.randn((8, 16, 64))
+        x.stop_gradient = False
+        ref_out = func(x) * 2
+
+        # ==== to static compuatation ====
+        out = static_func(x)
+        actual_out = out * 2
+
+        ops = [
+            op.name()
+            for op in static_func.program_cache.last()[-1][-1]
+            .infer_program.program.global_block()
+            .ops
+        ]
+        print(ops)
+        core._set_prim_all_enabled(False)
+
+        np.testing.assert_allclose(
+            ref_out, actual_out.numpy(), atol=1e-6, rtol=1e-6
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
