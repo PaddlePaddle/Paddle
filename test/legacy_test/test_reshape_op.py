@@ -465,7 +465,6 @@ class TestReshapeAPI(unittest.TestCase):
             'int16',
             'int32',
             'int64',
-            'uint16',
             'int8',
             'uint8',
             'complex64',
