@@ -24,7 +24,7 @@ from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
 from paddle.base.framework import _apply_pass, get_flags
-from paddle.base.unique_name import guard as UniqueNameGuard
+from paddle.base.unique_name import change_unique_name
 from paddle.optimizer.lr import LRScheduler
 
 from . import logging_utils
@@ -219,35 +219,38 @@ class PartialProgramLayer:
         """
         Execute static graph by Interpreter and Return dynamic Tensors.
         """
-        with UniqueNameGuard(self._name_generator):
-            in_vars, in_var_names, origin_var_names = self._prepare(inputs)
-            self._cast_fp16_if_pure_fp16(in_vars)
-            attrs = self._prepare_attributes()
-            attrs.extend(["x_names", in_var_names])
+        name_resumer = change_unique_name(self._name_generator)
 
-            self._sync_lr_value_with_scheduler()
+        in_vars, in_var_names, origin_var_names = self._prepare(inputs)
+        self._cast_fp16_if_pure_fp16(in_vars)
+        attrs = self._prepare_attributes()
+        attrs.extend(["x_names", in_var_names])
 
-            out_var_desc = [
-                self._outputs[var_id].desc for var_id in self._outputs.var_ids
-            ]
+        self._sync_lr_value_with_scheduler()
 
-            out_vars = _legacy_C_ops.run_program(
-                self._valid_vars(in_vars),
-                self._valid_vars(self._params),
-                self._valid_vars(out_var_desc),
-                self._create_scope_vec(
-                    program_id=self.program_id, use_scope_cache=True
-                ),
-                self._cuda_graph_vec,
-                *attrs
-            )
+        out_var_desc = [
+            self._outputs[var_id].desc for var_id in self._outputs.var_ids
+        ]
 
-            for t, name in zip(in_vars, origin_var_names):
-                t.name = name
+        out_vars = _legacy_C_ops.run_program(
+            self._valid_vars(in_vars),
+            self._valid_vars(self._params),
+            self._valid_vars(out_var_desc),
+            self._create_scope_vec(
+                program_id=self.program_id, use_scope_cache=True
+            ),
+            self._cuda_graph_vec,
+            *attrs
+        )
 
-            self._update_stop_gradient(out_vars)
-            restored_nest_out = self._restore_out(out_vars)
-            return restored_nest_out
+        for t, name in zip(in_vars, origin_var_names):
+            t.name = name
+
+        self._update_stop_gradient(out_vars)
+        restored_nest_out = self._restore_out(out_vars)
+
+        name_resumer()
+        return restored_nest_out
 
     def _sync_lr_value_with_scheduler(self):
         """Update lr_var value with calculated by lr_scheduler."""
