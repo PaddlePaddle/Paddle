@@ -24,8 +24,8 @@ from paddle.framework import core
 from paddle.incubate.nn.functional import (
     variable_length_memory_efficient_attention,
 )
-from paddle.static import Program, program_guard
 from paddle.pir_utils import test_with_pir_api
+from paddle.static import Program, program_guard
 
 paddle.seed(2023)
 
