@@ -44,7 +44,7 @@ class HOOK_ACTION:
 def flatten_dense_tensors(
     parameters,
     use_main_grad=False,
-    release_grad=False,
+    release_grads=False,
     fuse_param=True,
     warp_buffer=False,
 ):
@@ -68,7 +68,7 @@ def flatten_dense_tensors(
         _buffer_size += np.prod(param.shape) + align_
         _param2align[param.name] = align_
 
-    if release_grad:
+    if release_grads:
         assert not fuse_param
         assert not warp_buffer
         return None, _buffer_size, _param2offset
