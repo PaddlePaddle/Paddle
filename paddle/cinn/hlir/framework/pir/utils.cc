@@ -38,6 +38,7 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.subtract", "subtract"},
     {"pd_op.divide", "divide"},
+    {"pd_op.multiply", "elementwise_mul"},
     {"cinn_op.broadcast", "broadcast_to"},
     {"cinn_op.scale_f", "scale"}};
 

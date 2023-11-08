@@ -59,6 +59,9 @@ OpPatternKind GetOpKind(const std::string& op_name) {
 }
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
+  if (op->num_operands() == 0) {
+    return phi::DDim({});
+  }
   auto in = op->operand_source(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
