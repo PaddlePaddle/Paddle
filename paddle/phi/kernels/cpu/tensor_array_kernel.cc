@@ -34,16 +34,17 @@ void ArrayLengthKernel(const Context& dev_ctx,
 }
 
 size_t GetOffset(const DenseTensor& i, const phi::DeviceContext& dev_ctx) {
-  PADDLE_ENFORCE_EQ(i.numel(),
-                    1,
-                    platform::errors::InvalidArgument(
-                        "Input(I) must have numel 1. "
-                        "But received %d, and it's shape is [%s].",
-                        i.numel(),
-                        i.dims()));
+  PADDLE_ENFORCE_EQ(
+      i.numel(),
+      1,
+      errors::InvalidArgument("Input(I) must have numel 1. "
+                              "But received %d, and it's shape is [%s].",
+                              i.numel(),
+                              i.dims()));
   size_t offset;
-  if (platform::is_gpu_place(i.place()) || platform::is_xpu_place(i.place()) ||
-      platform::is_custom_place(i.place())) {
+  if (i.place() == phi::AllocationType::GPU ||
+      i.place() == phi::AllocationType::XPU ||
+      i.place() == phi::AllocationType::CUSTOM) {
     // FIXME: Avoid copy from GPU to CPU
     phi::DenseTensor t;
     phi::Copy(dev_ctx, i, phi::CPUPlace(), false, &t);
@@ -63,7 +64,6 @@ void ArrayWriteKernel(const Context& dev_ctx,
                       TensorArray* out) {
   size_t offset = GetOffset(i, dev_ctx);
   if (offset >= out->size()) {
-    VLOG(10) << "Resize out from " << out->size() << " to " << offset + 1;
     out->resize(offset + 1);
   }
   auto* out_tensor = &out->at(offset);
