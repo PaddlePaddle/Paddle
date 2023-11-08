@@ -17,10 +17,14 @@ import logging
 from collections import defaultdict
 
 from paddle.jit import not_to_static, to_static
-from paddle.jit.dy2static.program_translator import StaticFunction
+from paddle.jit.dy2static.program_translator import (
+    ProgramTranslator,
+    StaticFunction,
+)
 from paddle.jit.dy2static.utils import as_not_paddle_func
 from paddle.nn import Layer
 from paddle.static import Parameter, global_scope, program_guard
+from paddle.static.amp.fp16_utils import prepare_op_should_auto_cast
 
 from .converter import Converter
 from .utils import get_logger, to_list
@@ -350,7 +354,14 @@ class ProgramHelper:
 
     @property
     def main_program(self):
-        return self.concrete_program.main_program
+        main_program = self.concrete_program.main_program
+        prepare_op_should_auto_cast(
+            main_program, ProgramTranslator.get_instance()._amp_records
+        )
+        for block in main_program.blocks:
+            for op in block.ops:
+                print(op.should_auto_cast)
+        return main_program
 
     @property
     def startup_program(self):

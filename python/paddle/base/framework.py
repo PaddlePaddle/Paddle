@@ -2935,6 +2935,9 @@ class Operator:
             # attr for static graph mode cuda graph
             self._cuda_graph_attr = _current_cuda_graph_mode
 
+            # attr for OP should cast in AMP mode
+            self._should_auto_cast: bool = False
+
             op_maker = core.op_proto_and_checker_maker
 
             if op_maker.kOpRoleAttrName() not in op_attrs:
@@ -3691,6 +3694,25 @@ class Operator:
         Set distributed attribute of this Variable.
         """
         self.desc.dist_attr = dist_attr
+
+    def set_auto_cast(self, auto_cast):
+        """
+        Set auto cast attribute of this Operator.
+
+        Args:
+            auto_cast(bool): True if this Operator should cast in AMP mode.
+        """
+        self._should_auto_cast = auto_cast
+
+    @property
+    def should_auto_cast(self):
+        """
+        Get auto cast attribute of this Operator.
+
+        Returns:
+            bool: True if this Operator should cast in AMP mode.
+        """
+        return self._should_auto_cast
 
 
 @signature_safe_contextmanager

@@ -609,10 +609,10 @@ def map_block(block, fn, parent_op=None):
         map_block(sub_block, fn, op)
 
 
-def prepare_ranged_cast_info(
+def prepare_op_should_auto_cast(
     program: paddle.static.Program,
     ranged_cast_info: dict[int, list[tuple[AmpOptions, int, int]]],
-) -> dict[paddle.static.Operator, bool]:
+):
     amp_enable_op_map: dict[paddle.static.Operator, bool] = {}
 
     def fill_amp_enable_op_map(block, parent_op):
@@ -629,7 +629,8 @@ def prepare_ranged_cast_info(
             amp_enable_op_map[op] = current_op_amp_options
 
     map_block(program.global_block(), fill_amp_enable_op_map)
-    return amp_enable_op_map
+    for op, enable in amp_enable_op_map.items():
+        op.set_auto_cast(enable)
 
 
 def cast_model_to_fp16(
@@ -639,7 +640,6 @@ def cast_model_to_fp16(
     dest_type=core.VarDesc.VarType.FP16,
     level='O2',
     use_promote=False,
-    ranged_cast_info={},
 ):
     """
     Traverse all ops in the whole model and set their inputs and outputs
@@ -685,10 +685,6 @@ def cast_model_to_fp16(
     )
     keep_fp32_var_names = keep_fp32_var_names.union(fp32_var_names)
 
-    # step 2: prepare ranged cast info
-    amp_enable_op_map = prepare_ranged_cast_info(program, ranged_cast_info)
-    print([enable for op, enable in amp_enable_op_map.items()])
-
     def need_process(op):
         need_process = True
         if op.type in ["set_value"]:
@@ -709,12 +705,8 @@ def cast_model_to_fp16(
 
         return need_process
 
-    # step 3: divide op into different sets according to the black/unsupported and white lists.
-    def collect_cast_ops(block, parent_op):
-        nonlocal keep_fp32_ops
-        nonlocal keep_fp16_ops
-        nonlocal to_fp16_var_names
-
+    # step 2: divide op into different sets according to the black/unsupported and white lists.
+    for block in program.blocks:
         ops = block.ops
         for op in ops:
             _logger.debug(f"-- process op: {op}  --")
@@ -725,10 +717,6 @@ def cast_model_to_fp16(
             op_keep_fp32, fp16_var_names_in_fp32_op = op_need_keep_fp32(
                 op, amp_lists, use_fp16_guard, all_params
             )
-            op_keep_fp32 = op_keep_fp32 or (amp_enable_op_map[op] is False)
-            # print((amp_enable_op_map[op] is False))
-            # if amp_enable_op_map[op] is False:
-            #     breakpoint()
             to_fp16_var_names = to_fp16_var_names.union(
                 fp16_var_names_in_fp32_op
             )
@@ -802,11 +790,8 @@ def cast_model_to_fp16(
                         "----  Add into keep_fp32_ops because it should be promoted to fp32 ----"
                     )
 
-    map_block(program.global_block(), collect_cast_ops, parent_op=None)
-    print(len(keep_fp16_ops), len(keep_fp32_ops))
-
-    # step 4: insert cast op for op's inputs.
-    def insert_cast_op_for_block(block, parent_op):
+    # step 3: insert cast op for op's inputs.
+    for block in program.blocks:
         ops = block.ops
         idx = 0
         while idx < len(ops):
@@ -832,8 +817,6 @@ def cast_model_to_fp16(
                 num_cast_ops += in_var_cast_num
 
             idx += num_cast_ops + 1
-
-    map_block(program.global_block(), insert_cast_op_for_block, parent_op=None)
 
     _logger.debug("---- after cast model to fp16 ----")
     _logger.debug(program)
