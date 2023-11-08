@@ -16,6 +16,7 @@ import numpy as np
 
 import paddle
 from paddle import _C_ops
+from paddle.base.libpaddle import DataType
 from paddle.common_ops_import import VarDesc
 from paddle.utils.inplace_utils import inplace_apis_in_dygraph_only
 
@@ -717,7 +718,7 @@ def dist(x, y, p=2, name=None):
             Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
             0.)
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.dist(x, y, p)
 
     check_variable_and_dtype(
@@ -1785,10 +1786,15 @@ def bincount(x, weights=None, minlength=0, name=None):
             Tensor(shape=[6], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.        , 2.19999981, 0.40000001, 0.        , 0.50000000, 0.50000000])
     """
-    if x.dtype not in [paddle.int32, paddle.int64]:
+    if x.dtype not in [
+        paddle.int32,
+        paddle.int64,
+        DataType.INT32,
+        DataType.INT64,
+    ]:
         raise TypeError("Elements in Input(x) should all be integers")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.bincount(x, weights, minlength)
     else:
         helper = LayerHelper('bincount', **locals())
@@ -2818,7 +2824,7 @@ def eigh(x, UPLO='L', name=None):
              [ 0.3826833963394165j    , -0.9238795042037964j    ]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.eigh(x, UPLO)
     else:
 
@@ -3324,7 +3330,7 @@ def eigvalsh(x, UPLO='L', name=None):
             Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
             [0.17157286, 5.82842731])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         values, _ = _C_ops.eigvalsh(x, UPLO, x.stop_gradient)
         return values
     else:

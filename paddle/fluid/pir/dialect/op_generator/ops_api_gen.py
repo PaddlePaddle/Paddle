@@ -115,6 +115,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'seed',
     'send_v2',
     'shadow_feed',
+    'sparse_momentum',
 ]
 
 
