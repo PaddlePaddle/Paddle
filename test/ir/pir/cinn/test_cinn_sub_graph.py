@@ -64,8 +64,7 @@ class CINNSubGraphNet(paddle.nn.Layer):
         super().__init__()
         self.fn = exp_sub
 
-    def forward(self, x, axis=1):
-        # out = self.fn(x, axis=axis)
+    def forward(self, x):
         out = self.fn(x)
         return out
 
@@ -103,6 +102,11 @@ class TestCinnSubGraphBase(unittest.TestCase):
         out = net(self.x, self.axis)
         return out
 
+    def test_forward(self):
+        cinn_out = self.train(use_cinn=True)
+        dy_out = self.train(use_cinn=False)
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
 
 class TestCinnSoftmax(TestCinnSubGraphBase):
     def train(self, use_cinn):
@@ -112,11 +116,6 @@ class TestCinnSoftmax(TestCinnSubGraphBase):
         net.eval()
         out = net(self.x, self.axis)
         return out
-
-    def test_forward(self):
-        cinn_out = self.train(use_cinn=True)
-        dy_out = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':
