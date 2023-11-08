@@ -184,7 +184,7 @@ static PyObject *static_api_array_write_(PyObject *self,
     auto i = CastPyArg2Value(i_obj, "array_write_", 2);
 
     // Call ir static api
-    auto static_api_out = paddle::dialect::array_length(array, x, i);
+    auto static_api_out = paddle::dialect::array_write_(array, x, i);
 
     return ToPyObject(static_api_out);
   } catch (...) {
