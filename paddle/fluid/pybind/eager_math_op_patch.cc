@@ -258,19 +258,29 @@ static PyObject* tensor__add__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -279,26 +289,17 @@ static PyObject* tensor__add__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -411,19 +412,29 @@ static PyObject* tensor__sub__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -432,26 +443,17 @@ static PyObject* tensor__sub__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -558,19 +560,29 @@ static PyObject* tensor__rsub__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -579,26 +591,17 @@ static PyObject* tensor__rsub__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -707,19 +710,29 @@ static PyObject* tensor__mul__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -728,26 +741,17 @@ static PyObject* tensor__mul__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -868,19 +872,29 @@ static PyObject* tensor__div__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -889,26 +903,17 @@ static PyObject* tensor__div__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1033,19 +1038,29 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1054,26 +1069,17 @@ static PyObject* tensor__rdiv__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1201,19 +1207,29 @@ static PyObject* tensor__gt__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1222,26 +1238,17 @@ static PyObject* tensor__gt__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1341,19 +1348,29 @@ static PyObject* tensor__ge__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1362,26 +1379,17 @@ static PyObject* tensor__ge__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1572,19 +1580,29 @@ static PyObject* tensor__matmul__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1593,26 +1611,17 @@ static PyObject* tensor__matmul__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1730,19 +1739,29 @@ static PyObject* tensor__lt__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1751,26 +1770,17 @@ static PyObject* tensor__lt__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -1870,19 +1880,29 @@ static PyObject* tensor__le__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -1891,26 +1911,17 @@ static PyObject* tensor__le__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -2010,19 +2021,29 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -2031,26 +2052,17 @@ static PyObject* tensor__floordiv__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases or not
@@ -2155,19 +2167,29 @@ static PyObject* tensor__pow__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -2176,26 +2198,17 @@ static PyObject* tensor__pow__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -2291,19 +2304,29 @@ static PyObject* tensor__rpow__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -2312,26 +2335,17 @@ static PyObject* tensor__rpow__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
   // 1. scalar exists cases or not
   // there is no scalar case for rpow, but alse need to cast self_tensor in
@@ -2431,19 +2445,29 @@ static PyObject* tensor__ne__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -2452,26 +2476,17 @@ static PyObject* tensor__ne__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases
@@ -2571,19 +2586,29 @@ static PyObject* tensor__eq__method(TensorObject* self,
       PyBool_Check(other_obj) || PyComplex_Check(other_obj)) {
     if (PyCheckInteger(other_obj)) {
       other_obj_dtype = DataType::INT64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyFloat_Check(other_obj)) {
       other_obj_dtype = DataType::FLOAT32;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyComplex_Check(other_obj)) {
       other_obj_dtype = DataType::COMPLEX64;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else if (PyBool_Check(other_obj)) {
       other_obj_dtype = DataType::BOOL;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     } else {
-      std::cout << "got unknow Py_TYPE(other_obj): " << Py_TYPE(other_obj)
-                << " other_obj: " << other_obj << std::endl;
       other_obj_dtype = DataType::UNDEFINED;
+      LOG(INFO) << "c++ got sclar compute with tensor, x: " << self_obj_dtype
+                << " y: " << other_obj_dtype;
     }
   } else if (IsAllNumpyType(other_obj)) {
     other_obj_dtype = Numpy2DataType(other_obj);
+    LOG(INFO) << "c++ got numpy sclar compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else if (PyCheckTensor(other_obj)) {
     paddle::Tensor tmp_other_tensor = CastPyArg2Tensor(other_obj, 0);
     other_obj_dtype = tmp_other_tensor.dtype();
@@ -2592,26 +2617,17 @@ static PyObject* tensor__eq__method(TensorObject* self,
     paddle::Tensor tmp_other_tensor = paddle::Tensor(place);
     InitTensorWithNumpyValue(numpy_value, place, &tmp_other_tensor);
     other_obj_dtype = tmp_other_tensor.dtype();
+    LOG(INFO) << "c++ got numpy array compute with tensor, x: "
+              << self_obj_dtype << " y: " << other_obj_dtype;
   } else {
-    std::cout << "c++ , got unknow dtype for y: " << other_obj << std::endl;
+    LOG(INFO) << "c++ , got unknow dtype for y: " << other_obj << std::endl;
     other_obj_dtype = DataType::UNDEFINED;
   }
 
   // check diff
-  if ((other_obj_dtype == DataType::FLOAT16 ||
-       other_obj_dtype == DataType::FLOAT32 ||
-       other_obj_dtype == DataType::FLOAT64 ||
-       other_obj_dtype == DataType::BFLOAT16) &&
-      (self_obj_dtype == DataType::FLOAT16 ||
-       self_obj_dtype == DataType::FLOAT32 ||
-       self_obj_dtype == DataType::FLOAT64 ||
-       self_obj_dtype == DataType::BFLOAT16)) {
-    // only check float + float diff
-    PADDLE_ENFORCE_EQ(
-        other_obj_dtype,
-        self_obj_dtype,
-        paddle::platform::errors::Fatal(
-            "got diff type x: %s, y:%s", self_obj_dtype, other_obj_dtype));
+  if (other_obj_dtype != self_obj_dtype) {
+    LOG(INFO) << "got diff type x: " << self_obj_dtype
+              << " y: " << other_obj_dtype;
   }
 
   // 1. scalar exists cases

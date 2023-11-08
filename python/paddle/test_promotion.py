@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import inspect
+import logging
 from functools import wraps
 from typing import Callable, Optional, Sequence
 
@@ -30,6 +31,7 @@ Number_float = (
     VarDesc.VarType.BF16,
 )
 Numpy_float = (np.float16, np.float32, np.float64)
+logger = logging.getLogger()
 
 
 class judge_dtype_for_type_promotion:
@@ -59,7 +61,7 @@ class judge_dtype_for_type_promotion:
                 x_dtype = x.dtype
                 got_numpy = True
             else:
-                print("got unknown type: ", x)
+                logger.warning(f"got unknown type: x: {x}")
                 x_dtype = None
 
             if isinstance(y, (Variable, paddle.Tensor)):
@@ -71,7 +73,7 @@ class judge_dtype_for_type_promotion:
                 y_dtype = y.dtype
                 got_numpy = True
             else:
-                print("got unknown type: ", y)
+                logger.warning(f"got unknown type: x: {y}")
                 y_dtype = None
 
             if x_dtype != y_dtype:
@@ -119,14 +121,19 @@ class judge_dtype_for_type_promotion:
                             and x.dtype == VarDesc.VarType.COMPLEX64
                         )
                     ):
-                        print(
-                            "got sclar compute with tensor, x.dtype: ",
-                            x_dtype,
-                            " y.dtype: ",
-                            y_dtype,
+                        logger.warning(
+                            "got common sclar compute with tensor, x: {}, y: {}".format(
+                                x_dtype, y_dtype
+                            )
                         )
                         result = fn(**bound.arguments)
                         return result
+                    else:
+                        logger.warning(
+                            "got diff sclar compute with tensor, x: {}, y: {}".format(
+                                x_dtype, y_dtype
+                            )
+                        )
                 if got_numpy:
                     # numpy array + tensor, int=int64, float=float64, bool=bool, complex=complex128
                     if (
@@ -179,26 +186,22 @@ class judge_dtype_for_type_promotion:
                             and x.dtype == VarDesc.VarType.COMPLEX128
                         )
                     ):
-                        print(
-                            "got numpy array compute with tensor, x.dtype: ",
-                            x_dtype,
-                            " y.dtype: ",
-                            y_dtype,
+                        logger.warning(
+                            "got common numpy array compute with tensor, x: {}, y: {}".format(
+                                x_dtype, y_dtype
+                            )
                         )
                         result = fn(**bound.arguments)
                         return result
-                # only float + float raise error
-                if (
-                    x_dtype in Number_float
-                    or isinstance(x_dtype, float)
-                    or (isinstance(x, np.ndarray) and x.dtype in Numpy_float)
-                ) and (
-                    y_dtype in Number_float
-                    or isinstance(y_dtype, float)
-                    or (isinstance(y, np.ndarray) and y.dtype in Numpy_float)
-                ):
-                    raise ValueError(
-                        f"got different float dtype for x: ({x_dtype}), y: ({y_dtype})."
+                    else:
+                        logger.warning(
+                            "got diff numpy array compute with tensor, x: {}, y: {}".format(
+                                x_dtype, y_dtype
+                            )
+                        )
+                if not got_sclar and not got_numpy:
+                    logger.warning(
+                        f"got different dtype for x: {x_dtype}, y: {y_dtype}"
                     )
 
             result = fn(**bound.arguments)
