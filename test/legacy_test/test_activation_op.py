@@ -2410,7 +2410,7 @@ class TestRelu(TestActivation):
         )
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -3906,7 +3906,10 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestSTanhScaleA(TestSTanh):
@@ -3953,6 +3956,7 @@ class TestSTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3972,6 +3976,7 @@ class TestSTanhAPI(unittest.TestCase):
             for r in [out]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4822,7 +4827,11 @@ create_test_act_fp16_class(TestAsinh, check_pir=True)
 create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestGelu,
@@ -4889,6 +4898,7 @@ def create_test_act_bf16_class(
     check_prim=False,
     enable_cinn=False,
     check_pir=False,
+    check_prim_pir=False,
     grad_atol=1e-2,
     **kwargs
 ):
@@ -4921,6 +4931,7 @@ def create_test_act_bf16_class(
                 atol=atol,
                 check_prim=check_prim,
                 check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
             )
 
         def test_check_grad(self):
@@ -4933,6 +4944,7 @@ def create_test_act_bf16_class(
                     max_relative_error=grad_atol,
                     check_prim=check_prim,
                     check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
@@ -4975,7 +4987,9 @@ create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
 create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
