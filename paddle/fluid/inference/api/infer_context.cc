@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/infer_context.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/runtime.h"
