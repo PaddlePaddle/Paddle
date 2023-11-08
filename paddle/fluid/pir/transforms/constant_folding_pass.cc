@@ -72,10 +72,10 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         op->isa<paddle::dialect::FeedOp>())
       return false;
 
-    // inputs must come from get parameter op
-    for (uint32_t i = 0; i < op->num_operands(); ++i)
-      if (!pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>())
-        return false;
+    if (!ValidOp(op)) {
+      return false;
+    }
+
     return true;
   }
 
@@ -106,6 +106,26 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
  private:
+  bool ValidOp(pir::Operation* op) const {
+    for (uint32_t i = 0; i < op->num_operands(); i++) {
+      // 1. inputs must come from get_parameter op
+      // 2. inputs must be a dense tensor type
+      if (!pir::GetDefiningOpForInput(op, i)->isa<pir::GetParameterOp>() ||
+          !op->operand_source(i)
+               .type()
+               .isa<paddle::dialect::DenseTensorType>()) {
+        return false;
+      }
+      // 3. outputs must be a dense tensor type
+      for (uint32_t i = 0; i < op->num_results(); i++) {
+        if (!op->result(i).type().isa<paddle::dialect::DenseTensorType>()) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   std::string BuildProgramFromOperation(pir::Operation* op,
                                         pir::Program* new_program) const {
     pir::Builder builder = pir::Builder(ir_context(), new_program->block());
@@ -113,12 +133,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
     // prepare op inputs
     std::vector<pir::Value> op_inputs;
     for (uint32_t i = 0; i < op->num_operands(); i++) {
-      // PADDLE_ENFORCE_EQ(
-      //     op->operand_source(i).type().isa<paddle::dialect::DenseTensorType>(),
-      //     true,
-      //     phi::errors::InvalidArgument(
-      //         "Op [%s] input must be a dense tensor type.", op->name()));
-
       const auto& param_name =
           pir::GetParameterNameFromValue(op->operand_source(i));
       auto* param_var = scope_->FindVar(param_name);
@@ -145,11 +159,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     // TODO(liuyuanle): support multiple output
     // for (uint32_t i = 0; i < op->num_results(); i++) {
-    // PADDLE_ENFORCE_EQ(
-    //     temp_op->result(0).type().isa<paddle::dialect::DenseTensorType>(),
-    //     true,
-    //     phi::errors::InvalidArgument(
-    //         "Op [%s] output must be a dense tensor type.", temp_op->name()));
 
     std::stringstream ss;
     ss << std::chrono::high_resolution_clock::now().time_since_epoch().count();
