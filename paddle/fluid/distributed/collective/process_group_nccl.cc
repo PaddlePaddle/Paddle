@@ -819,6 +819,7 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
     const auto& nccl_id_wrapper = store_->get(store_key);
     std::memcpy(nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
+  group_key_ = store_key;
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
@@ -836,8 +837,6 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   BroadcastUniqueNCCLID(&nccl_id, is_p2p_op, place_key, p2p_rank);
 
-  VLOG(0) << "init comm group,gid:" << gid_ << ",local_rank:" << rank_
-          << ",size:" << size_;
   VLOG(3) << "init nccl rank_in_group: " << rank_ << ", nranks: " << size_
           << ", gid: " << gid_ << ", place key: " << place_key
           << ", nccl uniqueid: " << SerializeNCCLUniqueId(nccl_id);
@@ -854,6 +853,28 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   NCCL_CHECK(
       phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
+
+  // gather global ranks in current group
+  int* global_ranks_gpu = nullptr;
+  size_t global_ranks_gpu_size = size_ * sizeof(int);
+  cudaMalloc((void**)&global_ranks_gpu, global_ranks_gpu_size);
+  NCCL_CHECK(phi::dynload::ncclAllGather(
+      &global_rank_, global_ranks.data(), 1, ncclInt, nccl_comm));
+
+  std::vector<int> global_ranks(size_);
+  cudaMemoryCopy(global_ranks.data(),
+                 global_ranks_gpu,
+                 global_ranks_gpu_size,
+                 cudaMemcpyDeviceToHost);
+  cudaFree(global_ranks_gpu);
+
+  // store global_ranks in current group_key
+  std::once_flag flag;
+  std::call_once(flag, []() {
+    phi::distributed::CommContextManager.GetInstance().SetStore(store_);
+  });
+  phi::distributed::CommContextManager.GetInstance().AddGroupRank(group_key_,
+                                                                  global_ranks);
 
   VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
           << " on rank_in_group: " << rank << " nranks: " << num_ranks
@@ -917,6 +938,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   } else {
     auto comm_task =
         std::make_shared<phi::distributed::NCCLCommTask>(place,
+                                                         group_key_,
                                                          rank_,
                                                          size_,
                                                          gid_,
@@ -968,6 +990,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
+  comm_seq_++;
   const auto& place = tensor.place();
 
   int p2p_rank = 0;
@@ -1006,6 +1029,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
 
   auto comm_task =
       std::make_shared<phi::distributed::NCCLCommTask>(place,
+                                                       group_key_,
                                                        rank_,
                                                        size_,
                                                        gid_,
@@ -1015,7 +1039,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
                                                        use_calc_stream,
                                                        nccl_comm,
                                                        nccl_stream,
-                                                       comm_type);
+                                                       comm_type,
+                                                       pg_timeout_);
 
   if (!FLAGS_enable_async_trace) {
     fn(nccl_comm, nccl_stream, p2p_target_rank);
