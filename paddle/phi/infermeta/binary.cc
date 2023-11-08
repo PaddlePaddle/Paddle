@@ -1249,7 +1249,9 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   paddle::experimental::DataTypeSet dtype_set{x.dtype()};
   dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
   DataType promote_result = PromoteTypes(dtype_set);
-
+  if (promote_result == DataType::UNDEFINED) {
+    promote_result = x.dtype();
+  }
   out->set_dtype(promote_result);
   out->set_layout(x.layout());
   out->share_lod(x);
