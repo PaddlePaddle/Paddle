@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base, static
+from paddle import base
 from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
@@ -27,7 +27,7 @@ class LinalgLstsqTestCase(unittest.TestCase):
         self.devices = ["cpu"]
         self.init_config()
         if core.is_compiled_with_cuda() and self.driver == "gels":
-            self.devices.append("gpu:0")
+            self.devices.append("gpu")
         self.generate_input()
         self.generate_output()
         np.random.seed(2022)
@@ -98,7 +98,9 @@ class LinalgLstsqTestCase(unittest.TestCase):
         for dev in self.devices:
             paddle.set_device(dev)
             place = base.CPUPlace() if dev == "cpu" else base.CUDAPlace(0)
-            with static.program_guard(static.Program(), static.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x = paddle.static.data(
                     name="x",
                     shape=self._input_shape_1,

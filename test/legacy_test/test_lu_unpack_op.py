@@ -139,7 +139,9 @@ class TestLU_UnpackOp(OpTest):
             lu = lu.numpy()
             pivots = pivots.numpy()
         else:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 place = base.CPUPlace()
                 if core.is_compiled_with_cuda():
                     place = base.CUDAPlace(0)
@@ -149,7 +151,6 @@ class TestLU_UnpackOp(OpTest):
                 lu, p = paddle.linalg.lu(xv)
                 exe = base.Executor(place)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"input": x},
                     fetch_list=[lu, p],
                 )
@@ -277,7 +278,9 @@ class TestLU_UnpackAPI(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                with base.program_guard(base.Program(), base.Program()):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     sP, sL, sU = scipy_lu_unpack(a)
 
                     x = paddle.static.data(
@@ -287,7 +290,6 @@ class TestLU_UnpackAPI(unittest.TestCase):
                     pP, pL, pU = paddle.linalg.lu_unpack(lu, p)
                     exe = base.Executor(place)
                     fetches = exe.run(
-                        base.default_main_program(),
                         feed={"input": a},
                         fetch_list=[pP, pL, pU],
                     )

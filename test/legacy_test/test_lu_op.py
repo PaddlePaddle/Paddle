@@ -259,7 +259,9 @@ class TestLUAPI(unittest.TestCase):
             if core.is_compiled_with_cuda():
                 places.append(base.CUDAPlace(0))
             for place in places:
-                with base.program_guard(base.Program(), base.Program()):
+                with paddle.static.program_guard(
+                    paddle.static.Program(), paddle.static.Program()
+                ):
                     batch_size = a.size // (a.shape[-1] * a.shape[-2])
                     sP, sl, sU = scipy_lu(a, pivot)
                     sL = np.tril(sl, -1)
