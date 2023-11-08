@@ -125,7 +125,7 @@ static bool IsNoNeedBuffer(pir::Operation* op, pir::Value value) {
         op_info.GetInterfaceImpl<paddle::dialect::OpYamlInfoInterface>();
     if (info_interface) {
       paddle::dialect::OpYamlInfoParser info_parser(
-          info_interface->get_op_info_());
+          info_interface->get_op_info_(), paddle::dialect::IsLegacyOp(op_name));
       auto& no_need_buffer_ids = info_parser.NoNeedBufferIds();
       for (size_t id = 0; id < no_need_buffer_ids.size(); id++) {
         if (value == op->operand_source(no_need_buffer_ids[id])) {

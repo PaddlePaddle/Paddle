@@ -99,6 +99,10 @@ if(WITH_TESTING)
   if(CINN_ONLY)
     return()
   endif()
+  # The following unittests only run in PR-CI-CINN
+  if(WITH_CINN AND NOT CINN_ONMLY)
+    add_subdirectory(ir/pir/cinn)
+  endif()
 
   add_subdirectory(amp)
   add_subdirectory(asp)

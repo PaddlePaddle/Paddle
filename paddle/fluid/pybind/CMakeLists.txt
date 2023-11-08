@@ -39,10 +39,9 @@ set(PYBIND_DEPS
     phi_utils
     phi
     pir_adaptor
-    pd_op_dialect
+    op_dialect_vjp
     program_translator
-    pd_inplace_pass
-    fusion_passes
+    transform
     pir
     new_profiler
     jit_layer
@@ -51,6 +50,10 @@ set(PYBIND_DEPS
     static_tensor_operants
     type_info
     auto_parallel)
+
+if(WITH_CINN)
+  set(PYBIND_DEPS ${PYBIND_DEPS} transform op_with_group_merge_pass)
+endif()
 
 if(WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)

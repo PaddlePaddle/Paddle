@@ -30,6 +30,7 @@ from ..base.data_feeder import (
 from ..base.framework import Variable
 from ..framework import (
     LayerHelper,
+    _current_expected_place,
     convert_np_dtype_to_dtype_,
     core,
     dygraph_only,
@@ -585,7 +586,7 @@ def unstack(x, axis=0, num=None):
         raise ValueError(f'`axis` must be in the range [-{x.ndim}, {x.ndim})')
     if num is not None and (num < 0 or num > x.shape[axis]):
         raise ValueError(f'`num` must be in the range [0, {x.shape[axis]})')
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if num is None:
             num = x.shape[axis]
         if num == 0:
@@ -2481,7 +2482,7 @@ def unique_consecutive(
     else:
         axis = [axis]
     attr_dtype = convert_np_dtype_to_dtype_(dtype)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         out, inverse, counts = _C_ops.unique_consecutive(
             x, return_inverse, return_counts, axis, attr_dtype
         )
@@ -3052,7 +3053,7 @@ def scatter(
                 [6., 6.],
                 [1., 1.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.scatter(
             x, index, updates, overwrite, axis, reduce, include_self
         )
@@ -3172,7 +3173,7 @@ def scatter_nd_add(x, index, updates, name=None):
             >>> print(output.shape)
             [3, 5, 9, 10]
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.scatter_nd_add(x, index, updates)
     else:
         if x.dtype != updates.dtype:
@@ -3509,6 +3510,16 @@ def broadcast_to(x, shape, name=None):
     """
     if in_dynamic_mode():
         return _C_ops.expand(x, shape)
+    elif in_pir_mode():
+        place = _current_expected_place()
+        if isinstance(shape, (list, tuple)):
+            if paddle.utils._contain_var(shape):
+                shape = paddle.utils.get_int_tensor_list(shape, place)
+        elif isinstance(shape, paddle.pir.OpResult):
+            shape.stop_gradient = True
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
+        return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
             assert len(shape.shape) == 1, 'shape must be an 1-D Tensor.'
@@ -3626,6 +3637,8 @@ def expand(x, shape, name=None):
         elif isinstance(shape, (list, tuple)):
             if paddle.utils._contain_var(shape):
                 shape = paddle.utils._convert_to_tensor_list(shape)
+        else:
+            TypeError("Shape only supports OpReslut, or list, or tuple.")
         return _C_ops.expand(x, shape)
     else:
         if isinstance(shape, Variable):
@@ -4894,7 +4907,7 @@ def take_along_axis(arr, indices, axis):
     if not broadcast_shape:
         # if indices matrix have larger size than arr, arr should broadcast into indices shape.
         broadcast_shape = indices.shape
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         indices = paddle.broadcast_to(indices, broadcast_shape)
         broadcast_shape_list = list(broadcast_shape)
         broadcast_shape_list[axis] = list(arr.shape)[axis]
@@ -5070,7 +5083,7 @@ def index_add(x, index, axis, value, name=None):
              [1., 1., 1.],
              [2., 2., 2.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_add(x, index, value, axis)
 
     helper = LayerHelper("index_add", **locals())
@@ -5206,7 +5219,7 @@ def index_put(x, indices, value, accumulate=False, name=None):
              [0., 0., 1.],
              [0., 1., 0.]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.index_put(x, indices, value, accumulate)
 
     helper = LayerHelper("index_put", **locals())

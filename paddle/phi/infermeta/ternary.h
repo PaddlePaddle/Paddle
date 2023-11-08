@@ -205,6 +205,12 @@ void SendURecvInferMeta(const MetaTensor& x,
                         MetaTensor* out,
                         MetaTensor* dst_count);
 
+void SparseMomentumInferMeta(const MetaTensor& param,
+                             const MetaTensor& learning_rate,
+                             const MetaTensor& velocity,
+                             MetaTensor* param_out,
+                             MetaTensor* velocity_out,
+                             MetaTensor* master_param_out);
 void SpectralNormInferMeta(const MetaTensor& weight,
                            const MetaTensor& u,
                            const MetaTensor& v,
