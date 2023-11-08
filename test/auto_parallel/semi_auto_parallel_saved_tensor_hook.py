@@ -37,7 +37,7 @@ class TestSavedTensorHookForSemiAutoParallel(unittest.TestCase):
         x.stop_gradient = False
         y.stop_gradient = False
 
-        x_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=['x', None])
+        x_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
         y_dist_attr = dist.DistAttr(mesh=mesh, sharding_specs=[None, None])
 
         dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
