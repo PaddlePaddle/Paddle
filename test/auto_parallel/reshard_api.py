@@ -28,6 +28,7 @@ class TestReshardAPI:
         self._seeds = eval(os.getenv("seeds"))
         self._backend = os.getenv("backend")
         self._shard = eval(os.getenv("shard"))
+        self._inplace = eval(os.getenv("inplace"))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
     def run_test_cases(self):
@@ -121,7 +122,10 @@ class TestReshardAPI:
         )
         dist_output.stop_gradient = False
 
-        dist_output = dist.reshard(dist_output, dist_attr=out_dist_attr)
+        if self._inplace:
+            dist_output.reshard_(out_dist_attr)
+        else:
+            dist_output = dist.reshard(dist_output, dist_attr=out_dist_attr)
 
         local_label = paddle.to_tensor(label_numpy)
         dist_label = dist.shard_tensor(

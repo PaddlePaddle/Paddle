@@ -3124,6 +3124,25 @@ static PyObject* tensor_method__is_string_tensor_hold_allocation(
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+#ifdef PADDLE_WITH_DISTRIBUTE
+static PyObject* tensor_method_reshard_(TensorObject* self,
+                                        PyObject* args,
+                                        PyObject* kwargs) {
+  EAGER_TRY
+  paddle::Tensor& src_tensor = self->tensor;
+  const phi::distributed::TensorDistAttr& dist_attr =
+      CastPyArg2DistAttr(PyTuple_GET_ITEM(args, 0), 0);
+
+  VLOG(6) << "Start reshard DistTensor " << src_tensor.name() << " inplace.";
+  reshard_ad_function(src_tensor, dist_attr, true);
+  VLOG(6) << "Finished reshard DistTensor " << src_tensor.name() << " inplace.";
+
+  RETURN_PY_NONE
+
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+#endif
+
 PyMethodDef variable_methods[] = {  // NOLINT
     {"numpy",
      (PyCFunction)(void (*)())tensor_method_numpy,
@@ -3388,6 +3407,12 @@ PyMethodDef variable_methods[] = {  // NOLINT
 #if defined(PADDLE_WITH_CUDA)
     {"_tensor_uva",
      (PyCFunction)(void (*)())tensor_method__uva,
+     METH_VARARGS | METH_KEYWORDS,
+     nullptr},
+#endif
+#if defined(PADDLE_WITH_DISTRIBUTE)
+    {"reshard_",
+     (PyCFunction)(void (*)(void))tensor_method_reshard_,
      METH_VARARGS | METH_KEYWORDS,
      nullptr},
 #endif

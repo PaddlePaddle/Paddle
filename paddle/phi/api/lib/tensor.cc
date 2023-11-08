@@ -438,11 +438,19 @@ void Tensor::bump_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     inplace_version_counter.Bump();
   } else if (is_dist_tensor()) {
-    auto &inplace_version_counter =
-        static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->unsafe_mutable_value()
-            ->InplaceVersionCounter();
-    inplace_version_counter.Bump();
+    auto *dist_tensor =
+        static_cast<phi::distributed::DistTensor *>(impl_.get());
+    if (!dist_tensor->initialized()) {
+      VLOG(3) << "DistTensor(" << name()
+              << ") is not initialized, bump_inplace_version function will do "
+                 "nothing.";
+    } else {
+      auto &inplace_version_counter =
+          static_cast<phi::distributed::DistTensor *>(impl_.get())
+              ->unsafe_mutable_value()
+              ->InplaceVersionCounter();
+      inplace_version_counter.Bump();
+    }
   } else {
     PADDLE_THROW(
         phi::errors::Unimplemented("bump_inplace_version is only supported on "
@@ -456,14 +464,23 @@ uint32_t Tensor::current_inplace_version() {
         static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
     return inplace_version_counter.CurrentVersion();
   } else if (is_dist_tensor()) {
-    auto &inplace_version_counter =
-        static_cast<phi::distributed::DistTensor *>(impl_.get())
-            ->unsafe_mutable_value()
-            ->InplaceVersionCounter();
-    return inplace_version_counter.CurrentVersion();
+    auto *dist_tensor =
+        static_cast<phi::distributed::DistTensor *>(impl_.get());
+    if (!dist_tensor->initialized()) {
+      VLOG(3) << "DistTensor(" << name()
+              << ") is not initialized, current_inplace_version function will "
+                 "return 0.";
+      return 0;
+    } else {
+      auto &inplace_version_counter =
+          static_cast<phi::distributed::DistTensor *>(impl_.get())
+              ->unsafe_mutable_value()
+              ->InplaceVersionCounter();
+      return inplace_version_counter.CurrentVersion();
+    }
   } else {
     LOG_FIRST_N(WARNING, 1) << "current_inplace_version is only supported on "
-                               "DenseTensor DistTensor now.";
+                               "DenseTensor and DistTensor now.";
   }
   return 0;
 }
@@ -475,11 +492,19 @@ void Tensor::reset_inplace_version(bool set_to_zero) {
           static_cast<phi::DenseTensor *>(impl_.get())->InplaceVersionCounter();
       inplace_version_counter.SetInplaceVersionToZero();
     } else if (is_dist_tensor()) {
-      auto &inplace_version_counter =
-          static_cast<phi::distributed::DistTensor *>(impl_.get())
-              ->unsafe_mutable_value()
-              ->InplaceVersionCounter();
-      return inplace_version_counter.SetInplaceVersionToZero();
+      auto *dist_tensor =
+          static_cast<phi::distributed::DistTensor *>(impl_.get());
+      if (!dist_tensor->initialized()) {
+        VLOG(3) << "DistTensor(" << name()
+                << ") is not initialized, reset_inplace_version function will "
+                   "do nothing.";
+      } else {
+        auto &inplace_version_counter =
+            static_cast<phi::distributed::DistTensor *>(impl_.get())
+                ->unsafe_mutable_value()
+                ->InplaceVersionCounter();
+        inplace_version_counter.SetInplaceVersionToZero();
+      }
     }
   }
 }

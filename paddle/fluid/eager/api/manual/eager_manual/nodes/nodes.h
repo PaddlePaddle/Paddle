@@ -438,9 +438,15 @@ class ReshardGradNode : public egr::GradNodeBase {
     input_ = egr::TensorWrapper(input, true);
   }
 
+  // SetAttributeIsInplace
+  void SetAttributeIsInplace(const bool& is_inplace) {
+    is_inplace_ = is_inplace;
+  }
+
  private:
   // TensorWrappers
   egr::TensorWrapper input_;
+  bool is_inplace_;
 };
 
 namespace sparse {

@@ -52,8 +52,9 @@ sync_batch_norm__ad_func(const paddle::Tensor& x,
                          bool trainable_statistics);
 
 paddle::Tensor reshard_ad_function(
-    const paddle::Tensor& tensor,
-    const phi::distributed::TensorDistAttr dist_attr);
+    paddle::Tensor& tensor,  // NOLINT
+    const phi::distributed::TensorDistAttr dist_attr,
+    bool is_inplace = false);
 
 namespace sparse {
 std::tuple<paddle::Tensor,

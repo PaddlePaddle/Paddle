@@ -19,8 +19,9 @@
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 
 paddle::Tensor reshard_ad_function(
-    const paddle::Tensor& input,
-    const phi::distributed::TensorDistAttr dist_attr) {
+    paddle::Tensor& input,  // NOLINT
+    const phi::distributed::TensorDistAttr dist_attr,
+    bool is_inplace) {
 #ifdef PADDLE_WITH_DISTRIBUTE
   VLOG(3) << "Running AD API: "
           << "reshard dygraph";
@@ -51,15 +52,28 @@ paddle::Tensor reshard_ad_function(
 
     // Set TensorWrappers for Forward Inputs if needed
     grad_node->SetTensorWrapperNoNeedBufferInput(input);
+    grad_node->SetAttributeIsInplace(is_inplace);
   }
 
   // Forward API Call
   // reshard_func(input, api_result, dist_attr);
   auto dist_out_ptr = paddle::reshard(input, dist_attr);
-  auto api_result = paddle::Tensor(dist_out_ptr);
+  paddle::Tensor api_result;
+  if (is_inplace) {
+    VLOG(3) << "reshard_ad_function input Tensor(" << input.name()
+            << ") use Inplace Strategy.";
+    input.set_impl(dist_out_ptr);
+    VLOG(3) << "Input distAttr"
+            << static_cast<phi::distributed::DistTensor*>(input.impl().get())
+                   ->dist_attr();
+    egr::EagerUtils::CheckInplace(input, input_autograd_meta, require_any_grad);
+  } else {
+    api_result = paddle::Tensor(dist_out_ptr);
+  }
+  // auto api_result = paddle::Tensor(dist_out_ptr);
 
   // Get Outputs
-  auto& out = api_result;
+  auto& out = is_inplace ? input : api_result;
 
   // Get Output AutoGradMeta
   egr::AutogradMeta* out_autograd_meta = egr::EagerUtils::autograd_meta(&out);

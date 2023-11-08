@@ -28,6 +28,7 @@ class TestReshardAPI(test_base.CommunicationTestDistBase):
         }
         self._changeable_envs = {
             "backend": ["cpu", "gpu"],
+            "inplace": ["True", "False"],
         }
 
     def test_reshard_api(self):
