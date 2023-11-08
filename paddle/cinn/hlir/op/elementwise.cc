@@ -157,23 +157,31 @@ std::shared_ptr<OpStrategy> StrategyForScale(
         CHECK(pack_args[1].is_string());
         std::string tensor_name = pack_args[1].operator std::string();
 
-        if (bias_after_scale) {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(),
-                                      Expr(scale) * A(indice) + Expr(bias));
-              },
-              tensor_name);
-        } else {
-          out = Compute(
-              A->shape,
-              [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(),
-                                      Expr(scale) * (A(indice) + Expr(bias)));
-              },
-              tensor_name);
-        }
+        bool should_up_scale_fp32 =
+            A->type() == common::F16() || A->type() == common::BF16();
+
+        out = Compute(
+            A->shape,
+            [=](const std::vector<Expr> &indice) {
+              Expr cast_scale = should_up_scale_fp32
+                                    ? ir::Cast::Make(common::F32(), Expr(scale))
+                                    : ir::Cast::Make(A->type(), Expr(scale));
+              Expr cast_bias = should_up_scale_fp32
+                                   ? ir::Cast::Make(common::F32(), Expr(bias))
+                                   : ir::Cast::Make(A->type(), Expr(bias));
+              Expr cast_A_indice =
+                  should_up_scale_fp32
+                      ? ir::Cast::Make(common::F32(), A(indice))
+                      : A(indice);
+              Expr add_result = bias_after_scale
+                                    ? cast_scale * cast_A_indice + cast_bias
+                                    : cast_scale * (cast_A_indice + cast_bias);
+              return should_up_scale_fp32
+                         ? ir::Cast::Make(A->type(), add_result)
+                         : add_result;
+            },
+            tensor_name);
+
         auto stages = CreateStages({out});
         *ret = CINNValuePack{{CINNValue(Expr(out.get())), CINNValue(stages)}};
       });
