@@ -78,10 +78,64 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
+class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ScaleOp>::OpRewritePattern;
+
+  bool MatchAndRewrite(paddle::dialect::ScaleOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto scale_factor_gen_op =
+        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
+
+    if (auto full_op =
+            scale_factor_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      // sacle is generator by full op
+      // get attribute value from full op
+      auto scale_value =
+          full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
+
+      auto cinn_scale = rewriter.Build<cinn::dialect::ScaleFOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(),
+          scale_value,
+          op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data(),
+          op->attributes()
+              .at("bias_after_scale")
+              .dyn_cast<pir::BoolAttribute>()
+              .data());
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_scale.result(0));
+      rewriter.EraseOp(op);
+      rewriter.EraseOp(full_op);
+    } else {
+      // using mul op
+      auto bias =
+          op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data();
+
+      auto mul_in = op.operand_source(0);
+      if (bias != 0.0f) {
+        auto full_op = rewriter.Build<paddle::dialect::FullOp>(
+            std::vector<int64_t>({1}), bias, phi::DataType::FLOAT32);
+        auto add_op = rewriter.Build<paddle::dialect::AddOp>(
+            op.operand_source(0), full_op.result(0));
+        mul_in = add_op.result(0);
+      }
+
+      auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          mul_in, op->operand_source(1));
+
+      rewriter.ReplaceOp(op, std::vector<pir::Value>{mul_op.result(0)});
+      rewriter.EraseOp(op);
+    }
+
+    return true;
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
+  ps.Add<ScaleOpPattern>(
+      context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
 

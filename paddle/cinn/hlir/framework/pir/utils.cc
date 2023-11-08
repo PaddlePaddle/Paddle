@@ -38,11 +38,12 @@ const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.add", "elementwise_add"},
     {"pd_op.subtract", "subtract"},
     {"pd_op.divide", "divide"},
-    {"cinn_op.broadcast", "broadcast_to"}};
+    {"cinn_op.broadcast", "broadcast_to"},
+    {"cinn_op.scale_f", "scale"}};
 
 // Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
 const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
-    "subtract", "divide", "broadcast_to", "multiply"};
+    "subtract", "divide", "broadcast_to", "multiply", "scale_f"};
 
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
   return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
