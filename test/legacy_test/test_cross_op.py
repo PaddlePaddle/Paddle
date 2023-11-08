@@ -19,7 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle import base
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -141,13 +141,16 @@ class TestCrossAPI(unittest.TestCase):
     def test_cross_api(self):
         self.input_data()
 
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         # case 1:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y, axis=1)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
+                main,
                 feed={'x': self.data_x, 'y': self.data_y},
                 fetch_list=[z.name],
                 return_numpy=False,
@@ -158,12 +161,13 @@ class TestCrossAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 2:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name='x', shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype="float32")
             z = paddle.cross(x, y)
             exe = base.Executor(base.CPUPlace())
             (res,) = exe.run(
+                main,
                 feed={'x': self.data_x, 'y': self.data_y},
                 fetch_list=[z.name],
                 return_numpy=False,
@@ -174,7 +178,7 @@ class TestCrossAPI(unittest.TestCase):
         np.testing.assert_allclose(expect_out, np.array(res), rtol=1e-05)
 
         # case 3:
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(main, startup):
             x = paddle.static.data(name="x", shape=[-1, 3], dtype="float32")
             y = paddle.static.data(name='y', shape=[-1, 3], dtype='float32')
 

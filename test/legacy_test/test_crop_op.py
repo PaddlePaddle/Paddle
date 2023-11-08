@@ -46,7 +46,6 @@ def crop(data, offsets, crop_shape):
 
 class TestCropOp(OpTest):
     def setUp(self):
-        self.op_type = "crop"
         self.crop_by_input = False
         self.offset_by_input = False
         self.attrs = {}
@@ -80,10 +79,10 @@ class TestCropOp(OpTest):
         self.offsets = [1, 2]
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X'], 'Out', check_pir=True)
+        self.check_grad(['X'], 'Out')
 
 
 class TestCase1(TestCropOp):
