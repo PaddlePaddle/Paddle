@@ -39,15 +39,6 @@ class MetaInfo:
     @staticmethod
     def from_tensor(tensor):
         # We always use float32 in simulation if AMP is enabled.
-        dtype = tensor.dtype
-        current_amp_state = amp_state()
-        if (
-            dtype == paddle.float16
-            and current_amp_state is not None
-            and current_amp_state["dtype"] == "float16"
-        ):
-            dtype = paddle.float32
-        # TODO(@xiongkun) remove after pir become default state.
         if isinstance(tensor, paddle.pir.OpResult):
             name = "OpResult@NoName"
             persistable = tensor.is_persistable
@@ -56,6 +47,14 @@ class MetaInfo:
             name = tensor.name
             persistable = tensor.persistable
             dtype = tensor.dtype
+        current_amp_state = amp_state()
+        if (
+            dtype == paddle.float16
+            and current_amp_state is not None
+            and current_amp_state["dtype"] == "float16"
+        ):
+            dtype = paddle.float32
+        # TODO(@xiongkun) remove after pir become default state.
         return MetaInfo(
             list(tensor.shape),
             dtype,
