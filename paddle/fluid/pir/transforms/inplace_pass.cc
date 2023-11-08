@@ -80,16 +80,18 @@ static bool CanDoInplace(const std::unordered_set<pir::Value>& eager_dels,
     int64_t in_numel = 1;
     int64_t out_numel = 1;
     for (int i = 0; i < input_alloc_tensor_type.dims().size(); i++) {
-      if (input_alloc_tensor_type.dims()[i] == -1) {
-        VLOG(9) << "     -- input's shape has -1, can't do inplace";
+      if (input_alloc_tensor_type.dims()[i] == -1 && i != 0) {
+        VLOG(9) << "     -- input's shape has -1 and not in first dim, can't "
+                   "do inplace";
         return false;
       }
       in_numel *= input_alloc_tensor_type.dims()[i];
     }
 
     for (int i = 0; i < output_alloc_tensor_type.dims().size(); i++) {
-      if (output_alloc_tensor_type.dims()[i] == -1) {
-        VLOG(9) << "     -- output's shape has -1, can't do inplace";
+      if (output_alloc_tensor_type.dims()[i] == -1 && i != 0) {
+        VLOG(9) << "     -- output's shape has -1 and not in first dim, can't "
+                   "do inplace";
         return false;
       }
       out_numel *= output_alloc_tensor_type.dims()[i];
@@ -241,6 +243,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
 
   for (auto& op : *block) {
     for (size_t i = 0; i < op->num_operands(); ++i) {
+      VLOG(6) << "operand: " << op->num_operands() << " " << i;
       visited_values.insert(op->operand_source(i));
     }
 
@@ -279,6 +282,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         upper_op_attrs.at("is_inplace").dyn_cast<pir::BoolAttribute>().data()) {
       VLOG(6) << upper_op_name << " is already an inplace op.";
       for (size_t i = 0; i < op->num_operands(); ++i) {
+        VLOG(6) << "operand: " << op->num_operands() << " " << i;
         reused_input_values.insert(op->operand_source(i));
       }
       for (auto& result : op->results()) {
@@ -339,6 +343,7 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
     for (auto& kv : inplace_out_2_in) {
       uint32_t out_slot = kv.first;
       uint32_t in_slot = kv.second;
+      VLOG(6) << "operand: " << op->num_operands() << " " << in_slot;
       if ((in_slot >= op->num_operands()) || (out_slot >= op->num_results()) ||
           (!CanDoInplace(eager_dels.at(op),
                          op->operand_source(in_slot),
@@ -351,23 +356,30 @@ static std::unordered_map<pir::Operation*, std::string> GetInplaceOps(
         VLOG(6) << upper_op_name
                 << "'s value has been visited or reused by other inplace op, "
                    "so that can't do inplace.";
-        VLOG(8) << " -- operand " << in_slot << " and result " << out_slot
-                << " can do inplace: "
-                << CanDoInplace(eager_dels.at(op),
-                                op->operand_source(in_slot),
-                                op->result(out_slot));
-        VLOG(8) << " -- result " << out_slot << " visited: "
-                << (visited_values.count(op->result(out_slot)) > 0);
-        VLOG(8) << " -- operand " << in_slot << " has been reused: "
-                << (reused_input_values.count(op->operand_source(in_slot)) > 0);
-        VLOG(8) << " -- result " << out_slot << " has been reused: "
-                << (reused_output_values.count(op->result(out_slot)) > 0);
+        VLOG_IF(
+            8,
+            ((in_slot < op->num_operands()) && (out_slot < op->num_results())))
+            << " -- operand " << in_slot << " and result " << out_slot
+            << " can do inplace: "
+            << CanDoInplace(eager_dels.at(op),
+                            op->operand_source(in_slot),
+                            op->result(out_slot));
+        VLOG_IF(8, out_slot < op->num_results())
+            << " -- result " << out_slot
+            << " visited: " << (visited_values.count(op->result(out_slot)) > 0);
+        VLOG_IF(8, in_slot < op->num_operands())
+            << " -- operand " << in_slot << " has been reused: "
+            << (reused_input_values.count(op->operand_source(in_slot)) > 0);
+        VLOG_IF(8, out_slot < op->num_results())
+            << " -- result " << out_slot << " has been reused: "
+            << (reused_output_values.count(op->result(out_slot)) > 0);
         break;
       }
     }
     if (can_do_inplace) {
       inplace_ops[op] = upper_op_name + "_";
       for (auto& kv : inplace_out_2_in) {
+        VLOG(6) << "operand: " << op->num_operands() << " " << kv.second;
         reused_input_values.insert(op->operand_source(kv.second));
         reused_output_values.insert(op->result(kv.first));
       }
