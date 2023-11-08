@@ -94,6 +94,10 @@ class DygraphShardingOptimizer:
         self.fuse_optimizer = strategy.hybrid_configs[
             'sharding_configs'
         ].fuse_optimizer
+        if self.fuse_optimizer:
+            assert (
+                self.tensor_fusion
+            ), "fuse optimizer only available when tensor fusion has been enabled"
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
