@@ -1,15 +1,13 @@
-cc_test(
+paddle_test(
   type_test
-  SRCS type_test.cc
-  DEPS pir gtest op_dialect_vjp)
-cc_test(
-  ir_attribute_test
-  SRCS ir_attribute_test.cc
-  DEPS pir gtest)
-cc_test(
-  ir_value_test
-  SRCS ir_value_test.cc
-  DEPS pir gtest)
+  SRCS
+  type_test.cc
+  DEPS
+  pir
+  gtest
+  op_dialect_vjp)
+paddle_test(ir_attribute_test SRCS ir_attribute_test.cc DEPS pir gtest)
+paddle_test(ir_value_test SRCS ir_value_test.cc DEPS pir gtest)
 paddle_test(
   ir_op_test
   SRCS
@@ -19,28 +17,36 @@ paddle_test(
   gtest
   test_dialect
   op_dialect_vjp)
-cc_test(
-  ir_region_test
-  SRCS ir_region_test.cc
-  DEPS pir gtest)
-cc_test(
-  ir_builder_test
-  SRCS ir_builder_test.cc
-  DEPS pir gtest)
-cc_test(
+paddle_test(ir_region_test SRCS ir_region_test.cc DEPS pir gtest)
+paddle_test(ir_builder_test SRCS ir_builder_test.cc DEPS pir gtest)
+paddle_test(
   ir_program_test
-  SRCS ir_program_test.cc
-  DEPS op_dialect_vjp pir phi gtest)
+  SRCS
+  ir_program_test.cc
+  DEPS
+  op_dialect_vjp
+  pir
+  phi
+  gtest)
 
-cc_test(
+paddle_test(
   ir_infershape_test
-  SRCS ir_infershape_test.cc
-  DEPS op_dialect_vjp pir phi gtest)
+  SRCS
+  ir_infershape_test.cc
+  DEPS
+  op_dialect_vjp
+  pir
+  phi
+  gtest)
 
-cc_test(
+paddle_test(
   scalar_attribute_test
-  SRCS scalar_attribute_test.cc
-  DEPS op_dialect_vjp pir gtest)
+  SRCS
+  scalar_attribute_test.cc
+  DEPS
+  op_dialect_vjp
+  pir
+  gtest)
 
 file(
   DOWNLOAD https://paddle-ci.gz.bcebos.com/ir_translator_test/resnet50_main.prog
@@ -67,20 +73,33 @@ file(
 copy_if_different(${CMAKE_CURRENT_SOURCE_DIR}/TestParserText.txt
                   ${CMAKE_CURRENT_BINARY_DIR}/TestParserText.txt)
 
-cc_test(
+paddle_test(
   program_translator_test
-  SRCS program_translator_test.cc
-  DEPS program_translator gtest op_dialect_vjp pir)
+  SRCS
+  program_translator_test.cc
+  DEPS
+  program_translator
+  gtest
+  op_dialect_vjp
+  pir)
 
-cc_test(
+paddle_test(
   add_dialect_parser_test
-  SRCS add_dialect_parser_test.cc
-  DEPS gtest op_dialect_vjp pir)
+  SRCS
+  add_dialect_parser_test.cc
+  DEPS
+  gtest
+  op_dialect_vjp
+  pir)
 
-cc_test(
+paddle_test(
   ir_parser_test
-  SRCS ir_parser_test.cc
-  DEPS gtest op_dialect_vjp pir)
+  SRCS
+  ir_parser_test.cc
+  DEPS
+  gtest
+  op_dialect_vjp
+  pir)
 
 paddle_test(ir_op_info_test SRCS op_info_test.cc DEPS gtest pir)
 paddle_test(
