@@ -144,6 +144,11 @@ void AllToAllInferMeta(const MetaTensor& x, MetaTensor* out) {
   out->set_dims(dim);
 }
 
+void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
+  out->set_dtype(phi::DataType::INT64);
+  out->set_dims(make_ddim({1}));
+}
+
 void ArgMinMaxInferMeta(const MetaTensor& x,
                         const Scalar& axis,
                         bool keepdims,

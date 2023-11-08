@@ -4419,10 +4419,5 @@ void FullWithTensorInferMeta(const MetaTensor& shape,
   out->set_dtype(dtype);
 }
 
-void ArrayLengthInferMeta(const MetaTensor& x, MetaTensor* out) {
-  out->set_dtype(phi::DataType::INT64);
-  out->set_dims(make_ddim({1}));
-}
-
 }  // namespace phi
 PD_REGISTER_INFER_META_FN(batch_norm_infer, phi::BatchNormInferInferMeta);

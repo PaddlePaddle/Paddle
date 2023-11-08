@@ -33,6 +33,50 @@ void ArrayLengthKernel(const Context& dev_ctx,
   *out->data<int64_t>() = static_cast<int64_t>(x.size());
 }
 
+size_t GetOffset(const DenseTensor& i, const phi::DeviceContext& dev_ctx) {
+  PADDLE_ENFORCE_EQ(i.numel(),
+                    1,
+                    platform::errors::InvalidArgument(
+                        "Input(I) must have numel 1. "
+                        "But received %d, and it's shape is [%s].",
+                        i.numel(),
+                        i.dims()));
+  size_t offset;
+  if (platform::is_gpu_place(i.place()) || platform::is_xpu_place(i.place()) ||
+      platform::is_custom_place(i.place())) {
+    // FIXME: Avoid copy from GPU to CPU
+    phi::DenseTensor t;
+    phi::Copy(dev_ctx, i, phi::CPUPlace(), false, &t);
+    dev_ctx.Wait();
+    offset = static_cast<size_t>(*t.data<int64_t>());
+  } else {
+    offset = static_cast<size_t>(*i.data<int64_t>());
+  }
+  return offset;
+}
+
+template <typename T, typename Context>
+void ArrayWriteKernel(const Context& dev_ctx,
+                      const TensorArray& array,
+                      const DenseTensor& x,
+                      const DenseTensor& i,
+                      TensorArray* out) {
+  size_t offset = GetOffset(i, dev_ctx);
+  if (offset >= out->size()) {
+    VLOG(10) << "Resize out from " << out->size() << " to " << offset + 1;
+    out->resize(offset + 1);
+  }
+  auto* out_tensor = &out->at(offset);
+  out_tensor->set_lod(x.lod());
+  if (x.memory_size() > 0) {
+    phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out_tensor);
+  } else {
+    VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
+                "nothing has been written to output array["
+             << offset << "].";
+  }
+}
+
 }  // namespace phi
 PD_REGISTER_KERNEL(create_array,
                    CPU,
@@ -49,3 +93,6 @@ PD_REGISTER_KERNEL(array_length,
                    float,
                    double,
                    bool) {}
+
+PD_REGISTER_KERNEL(
+    array_write, CPU, ALL_LAYOUT, phi::ArrayWriteKernel, float, double, bool) {}

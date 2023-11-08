@@ -29,4 +29,11 @@ void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out);
 
+template <typename T, typename Context>
+void ArrayWriteKernel(const Context& dev_ctx,
+                      const TensorArray& array,
+                      const DenseTensor& x,
+                      const DenseTensor& i,
+                      TensorArray* out);
+
 }  // namespace phi
