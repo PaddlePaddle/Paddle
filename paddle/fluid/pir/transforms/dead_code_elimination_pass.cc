@@ -35,8 +35,7 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>() ||
-        op->isa<paddle::dialect::ShadowOutputOp>()) {
+    if (op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>()) {
       return false;
     }
     return op->use_empty();
