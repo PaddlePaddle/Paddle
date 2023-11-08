@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.framework import in_dynamic_mode
 
 
 def adaptive_start_index(index, input_size, output_size):
@@ -298,11 +299,12 @@ def pool2d_wrapper_not_use_cudnn(
     adaptive=False,
     padding_algorithm="EXPLICIT",
 ):
-    tmp = X._use_gpudnn(False)
+    if in_dynamic_mode():
+        X = X._use_gpudnn(False)
     if data_format == "AnyLayout":
         data_format = "NCDHW"
     return paddle._C_ops.pool2d(
-        tmp,
+        X,
         ksize,
         strides,
         paddings,
