@@ -2609,7 +2609,7 @@ def measure_real_op_cost_wrt_program_and_place(
     run_iters: int = 8,
     profile_strategy: str = 'stable_average',
     verbose_level: int = 0,
-) -> str:
+):
     '''
     Description
     -----------
@@ -2708,37 +2708,6 @@ def measure_real_op_cost_wrt_program_and_place(
             'might be inaccurate.'
         )
 
-    profile_message = ""
-
-    def _verbose_print(s, length=None, align='left'):
-        nonlocal profile_message
-        assert align in [
-            'left',
-            'middle',
-            'right',
-        ], 'invalid text alignment setting.'
-        if align in ['middle', 'right'] and length is None:
-            pad = 0
-        else:
-            pad = (
-                0
-                if align == 'left'
-                else (
-                    length - len(s)
-                    if align == 'right'
-                    else (length - len(s)) // 2
-                )
-            )
-        message = ' ' * pad + s + '\n'
-        profile_message += message
-        if verbose_level >= 1:
-            sys.stdout.write(message)
-            sys.stdout.flush()
-
-    _verbose_print("* Started op runtime profiling.")
-    _verbose_print("* Current program being profiled:\n" + str(program))
-    _verbose_print("* Profile strategy: %s" % str(profile_strategy))
-
     # run profiling multiple times and record op run time of each run
     prof_results = _measure_real_op_cost_wrt_program_and_place_multipass(
         program, place, run_iters, verbose=(verbose_level >= 2)
@@ -2765,51 +2734,3 @@ def measure_real_op_cost_wrt_program_and_place(
             and check_if_op_supports_runtime_profiling(op)
         ):
             op.dist_attr.run_time_us = op_runtime_us_final
-
-    # print out profiling results if needed then return
-    TABLE_WIDTH = 64
-
-    def _format_single_line(idx, op):
-        profile_run_success = (
-            check_if_op_supports_runtime_profiling(op)
-            and op.desc.dist_attr.run_time_us >= 0.0
-        )
-        bg_str = ' .' * (TABLE_WIDTH // 2)
-        left_str = '[%s] %5d, %s' % (
-            '*' if profile_run_success else ' ',
-            idx,
-            op.type,
-        )
-        right_str = ''
-        if profile_run_success:
-            # op supports runtime profiling and profiling info is correctly set
-            right_str = '%d us' % int(op.dist_attr.run_time_us)
-        elif check_if_op_supports_runtime_profiling(op):
-            # op supports runtime profiling but no runtime info found
-            right_str = 'skipped'
-        else:
-            # op does not support runtime profiling
-            right_str = 'not supported'
-        out_str = (
-            left_str
-            + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]
-            + right_str
-        )
-        return out_str
-
-    main_block = program.global_block()
-    _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print(
-        "Op Runtime Profiling Result",
-        length=TABLE_WIDTH,
-        align='middle',
-    )
-    _verbose_print("-" * TABLE_WIDTH)
-    for op_idx, op in zip(range(len(main_block.ops)), main_block.ops):
-        _verbose_print(_format_single_line(op_idx, op))
-    _verbose_print("=" * TABLE_WIDTH)
-    _verbose_print("[*]/[ ]: OK/FAIL, Op ID, Op Name, Execution Time (us)")
-    _verbose_print("NOTE: 1. Op ID does not represent Op execution order.")
-    _verbose_print("      2. Profiling is only performed for the main block.")
-
-    return profile_message
