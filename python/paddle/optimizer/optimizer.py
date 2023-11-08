@@ -855,10 +855,13 @@ class Optimizer:
             device = self._get_device_for_param(param.name)
 
         if in_pir_mode():
-            var = paddle.full(
-                shape, float(fill_value), dtype or param.dtype, var_name
-            )
-            var.is_persistable = True
+            with paddle.static.program_guard(
+                paddle.static.default_startup_program()
+            ):
+                var = paddle.full(
+                    shape, float(fill_value), dtype or param.dtype, var_name
+                )
+                var.is_persistable = True
         else:
             assert isinstance(self.helper, LayerHelper)
             var = self.helper.create_global_variable(
