@@ -208,6 +208,23 @@ def array_write(x, i, array=None):
         else:
             array.append(x)
         return array
+    elif in_pir_mode():
+        check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
+        if not isinstance(x, paddle.pir.OpResult):
+            raise TypeError(
+                f"x should be pir.OpResult, but recevied {type(x)}."
+            )
+        if array is not None:
+            if (
+                not isinstance(array, paddle.pir.OpResult)
+                or not array.is_dense_tensor_array_type()
+            ):
+                raise TypeError("array should be tensor array vairable")
+        if array is None:
+            array = paddle._pir_ops.create_array(x.dtype)
+
+        array = paddle._pir_ops.array_write_(array, x, i)
+        return array
     else:
         check_variable_and_dtype(i, 'i', ['int64'], 'array_write')
         check_type(x, 'x', (Variable), 'array_write')
