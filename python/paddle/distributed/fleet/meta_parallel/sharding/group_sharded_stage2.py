@@ -222,7 +222,6 @@ class GroupShardedStage2(nn.Layer):
             if (
                 not self._offload
             ):
-                print(f"_clear_gradients, dtype : { dtype}")
                 for rank in range(0, self._group.nranks):
                     self._grad_storages[dtype][rank].buffer.zero_()
 
