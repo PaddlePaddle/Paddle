@@ -7,23 +7,9 @@ paddle_test(
   pir
   gtest)
 
-paddle_test(
-  shape_struct_test
-  SRCS
-  shape_struct_test.cc
-  DEPS
-  op_dialect_vjp
-  pir
-  gtest)
+paddle_test(shape_struct_test SRCS shape_struct_test.cc DEPS pir)
 
-paddle_test(
-  constraint_pass_test
-  SRCS
-  constraint_pass_test.cc
-  DEPS
-  gtest
-  op_dialect_vjp
-  pir)
+paddle_test(constraint_pass_test SRCS constraint_pass_test.cc DEPS pir)
 
 set_tests_properties(constraint_pass_test
                      PROPERTIES ENVIRONMENT "FLAGS_enable_pir_in_executor=true")

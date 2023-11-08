@@ -5,7 +5,7 @@ if(WITH_DISTRIBUTE)
                                 parallel_executor)
 endif()
 
-cc_test_old(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
+paddle_test(pattern_rewrite_test SRCS pattern_rewrite_test.cc DEPS
             ${PATTERN_REWRITE_TEST_DEPS})
 
 cc_test(
