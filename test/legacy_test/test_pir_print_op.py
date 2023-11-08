@@ -132,12 +132,13 @@ class TestPrintOpGPU(TestPrintOpCPU):
         self.x_tensor.set_recursive_sequence_lengths([[1, 1]])
 
 
+@unittest.skip("fc is not supported in pir")
 class TestPrintOpBackward(unittest.TestCase):
     def check_backward(self, use_cuda):
         main = paddle.static.Program()
         startup = paddle.static.Program()
 
-        with program_guard(main, startup):
+        with paddle.static.program_guard(main, startup):
             loss = simple_fc_net()
             loss = paddle.static.Print(loss)
             paddle.optimizer.Adam().minimize(loss)
