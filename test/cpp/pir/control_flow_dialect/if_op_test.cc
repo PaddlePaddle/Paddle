@@ -56,10 +56,7 @@ TEST(if_op_test, base) {
       std::vector<int64_t>{3}, true, phi::DataType::BOOL);
   builder.Build<pir::YieldOp>(std::vector<pir::Value>{full_op_2.out()});
 
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  LOG(INFO) << program;
 }
 
 TEST(if_op_test, build_by_block) {
@@ -96,10 +93,7 @@ TEST(if_op_test, build_by_block) {
   EXPECT_FALSE(false_block);
   EXPECT_EQ(full_op_2->GetParentProgram(), &program);
 
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  LOG(INFO) << program;
 }
 
 TEST(if_op_test, network_with_backward) {
@@ -175,8 +169,5 @@ TEST(if_op_test, network_with_backward) {
 
   builder.SetInsertionPointToEnd(block);
 
-  std::stringstream ss;
-  program.Print(ss);
-
-  LOG(INFO) << ss.str();
+  LOG(INFO) << program;
 }
