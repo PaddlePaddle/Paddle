@@ -615,7 +615,6 @@ class GroupShardedOptimizerStage2(Optimizer):
         if self._delay_scale_loss:
             for param in self._local_params:
                 if hasattr(param, "main_grad") and param.main_grad is not None:
-                    assert param.grad is None
                     param.main_grad = param.main_grad.scale_(
                         1.0 / self._accumulate_steps
                     )
