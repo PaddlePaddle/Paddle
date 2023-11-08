@@ -72,6 +72,7 @@ message DygraphShardingConfig {
   optional bool tensor_fusion = 2 [ default = false ];
   optional int32 accumulate_steps = 3 [ default = 1 ];
   optional bool comm_overlap = 4 [ default = false ];
+  optional bool fuse_optimizer = 5 [ default = true ];
 }
 
 message HybridConfig {

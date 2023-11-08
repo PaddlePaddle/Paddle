@@ -87,6 +87,7 @@ class DygraphShardingOptimizer:
                     self._parameter_list.append(param)
         else:
             self._parameter_list = optimizer._parameter_list
+        self._origin_parameter_list = self._parameter_list
 
         self._inner_opt = optimizer
         self._hcg = hcg
@@ -103,6 +104,9 @@ class DygraphShardingOptimizer:
         self.comm_overlap = strategy.hybrid_configs[
             'sharding_configs'
         ].comm_overlap
+        self.fuse_optimizer = strategy.hybrid_configs[
+            'sharding_configs'
+        ].fuse_optimizer
         pp_overlap = strategy.hybrid_configs['pp_configs'].sharding_comm_overlap
         if self.tensor_fusion or self.comm_overlap:
             assert (
@@ -378,7 +382,12 @@ class DygraphShardingOptimizer:
         origin_clip = self._inner_opt._grad_clip
         if not self._using_param_groups:
             params_grads = []
-            for param in self._parameter_list:
+            target_param_list = (
+                self._origin_parameter_list
+                if (not self.tensor_fusion or not self.fuse_optimizer)
+                else self._parameter_list
+            )
+            for param in target_param_list:
                 if (
                     hasattr(param, "regularizer")
                     and param.regularizer is not None
@@ -401,7 +410,7 @@ class DygraphShardingOptimizer:
 
             rank_params = (
                 self._rank2params[self._sharding_rank]
-                if not self.tensor_fusion
+                if (not self.tensor_fusion or not self.fuse_optimizer)
                 else self._rank2fused[self._sharding_rank]
             )
             update_param_names = [p.name for p in rank_params]
