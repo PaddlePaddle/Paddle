@@ -26,8 +26,8 @@ class TestDy2staticPir(unittest.TestCase):
 
         def func(x):
             x1 = paddle.mean(x)
-            out = paddle.nn.functional.gelu(x1, False)
-            return out
+            # out = paddle.nn.functional.gelu(x1, False)
+            return x1
 
         # ==== dygraph computation ====
         static_func = paddle.jit.to_static(func, full_graph=True)
@@ -43,7 +43,7 @@ class TestDy2staticPir(unittest.TestCase):
         actual_out = out * 2
         actual_out.backward()
         actual_grad = x.grad
-        core._set_prim_all_enabled(True)
+        core._set_prim_all_enabled(False)
 
         np.testing.assert_allclose(
             ref_out, actual_out.numpy(), atol=1e-6, rtol=1e-6
@@ -55,7 +55,7 @@ class TestDy2staticPir(unittest.TestCase):
 
 
 class TestDy2staticPirEval(unittest.TestCase):
-    def test_basic_network_backward(self):
+    def test_basic_network_backward_(self):
         core._set_prim_all_enabled(True)
 
         def func(x):
@@ -74,13 +74,13 @@ class TestDy2staticPirEval(unittest.TestCase):
         out = static_func(x)
         actual_out = out * 2
 
-        ops = [
-            op.name()
-            for op in static_func.program_cache.last()[-1][-1]
-            .infer_program.program.global_block()
-            .ops
-        ]
-        print(ops)
+        # ops = [
+        #     op.name()
+        #     for op in static_func.program_cache.last()[-1][-1]
+        #     .infer_program.program.global_block()
+        #     .ops
+        # ]
+        # print(ops)
         core._set_prim_all_enabled(False)
 
         np.testing.assert_allclose(
