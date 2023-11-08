@@ -560,7 +560,6 @@ class RNNCellBase(Layer):
         dtype=None,
         init_value=0.0,
         batch_dim_idx=0,
-        proj_size=None,
     ):
         r"""
         Generate initialized states according to provided shape, data type and
