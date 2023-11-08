@@ -240,9 +240,7 @@ def dynamic_flops(model, inputs, custom_ops=None, print_detail=False):
         else:
             if m_type not in types_collection:
                 print(
-                    "Cannot find suitable count function for {}. Treat it as zero FLOPs.".format(
-                        m_type
-                    )
+                    f"Cannot find suitable count function for {m_type}. Treat it as zero FLOPs."
                 )
 
         if flops_fn is not None:

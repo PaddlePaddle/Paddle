@@ -1,8 +1,7 @@
 # skip win32 since wget is not installed by default on windows machine.
 
 if(NOT WIN32)
-  paddle_test(standalone_executor_new_ir_test SRCS
-              standalone_executor_new_ir_test.cc)
+  paddle_test(standalone_executor_pir_test SRCS standalone_executor_pir_test.cc)
 endif()
 
 set(OPS

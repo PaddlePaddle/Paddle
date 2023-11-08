@@ -8,12 +8,12 @@ cc_library(
 cc_library(
   transform_general_functions
   SRCS transform_general_functions.cc
-  DEPS pd_op_dialect_core)
+  DEPS op_dialect)
 
 cc_library(
   pd_op_to_kernel_pass
   SRCS pd_op_to_kernel_pass.cc
-  DEPS pd_kernel_dialect pd_op_dialect pd_op_dialect_utils)
+  DEPS op_dialect op_dialect_vjp)
 
 cc_library(
   pd_constant_folding_pass
@@ -21,13 +21,23 @@ cc_library(
   DEPS standalone_executor pd_op_to_kernel_pass transform_general_functions)
 
 cc_library(
+  dead_code_elimination_pass
+  SRCS dead_code_elimination_pass.cc
+  DEPS op_dialect_vjp pir)
+
+cc_library(
   pd_inplace_pass
   SRCS inplace_pass.cc
-  DEPS pd_op_dialect_core op_yaml_info_parser)
+  DEPS op_dialect)
+
+cc_library(
+  replace_fetch_with_shadow_output_pass
+  SRCS replace_fetch_with_shadow_output_pass.cc
+  DEPS op_dialect_vjp pir)
 
 if(WITH_CINN)
   cc_library(
     pd_build_cinn_pass
     SRCS build_cinn_pass.cc
-    DEPS pd_op_dialect cinn_op_dialect pir cinnapi)
+    DEPS op_dialect_vjp cinn_op_dialect pir cinnapi)
 endif()
