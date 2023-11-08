@@ -17,10 +17,7 @@ import random
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 from paddle import base
@@ -321,9 +318,8 @@ def train(to_static):
         return np.array(ret)
 
 
-@dy2static_unittest
-class TestWord2Vec(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestWord2Vec(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_dygraph_static_same_loss(self):
         dygraph_loss = train(to_static=False)
         static_loss = train(to_static=True)

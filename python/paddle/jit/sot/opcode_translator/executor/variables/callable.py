@@ -266,7 +266,7 @@ class TensorFunctionVariable(FunctionVariable):
 
     def call_function(self, /, *args, **kwargs):
         if is_break_graph_tensor_methods(self.method_name):
-            raise BreakGraphError()
+            raise BreakGraphError("call break_graph_tensor_method.")
         return self.graph.call_tensor_method(self.method_name, *args, **kwargs)
 
     def bind(self, instance: VariableBase, name: str):
@@ -522,7 +522,10 @@ class PaddleLayerVariable(LayerVariable):
 
     def call_function(self, /, *args, **kwargs):
         self.graph.add_global_guarded_variable(self)
-        return self.graph.call_layer(self, *args, **kwargs)
+        # when layer is created in forward function, we use strong ref because it can't have
+        # weigths and buffers, see PaddleLayerClassVariable for details.
+        weak_ref = not isinstance(self.tracker, CreateLayerTracker)
+        return self.graph.call_layer(self, weak_ref, *args, **kwargs)
 
     def make_stringify_guard(self) -> list[StringifyExpression]:
         if isinstance(self.tracker, CreateLayerTracker):
@@ -740,10 +743,18 @@ class PaddleLayerClassVariable(ClassVariable):
     def __init__(self, class_: type, graph: FunctionGraph, tracker: Tracker):
         super().__init__(class_, graph, tracker)
 
+    def check_no_weight_and_buffers(self, paddle_layer):
+        has_parameters = len(paddle_layer.parameters()) > 0
+        has_buffers = len(paddle_layer.buffers()) > 0
+        return not has_parameters and not has_buffers
+
     def call_function(self, /, *args, **kwargs):
         input_py_args = [var.get_py_value() for var in args]
         input_py_kwargs = {k: v.get_py_value() for k, v in kwargs.items()}
         new_layer = self.value(*input_py_args, **input_py_kwargs)
+        assert self.check_no_weight_and_buffers(
+            new_layer
+        ), "You have created a layer in to_static function which may have Potential bugs. please create it in __init__/main function."
         return PaddleLayerVariable(
             new_layer, self.graph, CreateLayerTracker(self, args, kwargs)
         )
