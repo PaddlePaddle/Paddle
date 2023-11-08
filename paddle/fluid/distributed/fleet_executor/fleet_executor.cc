@@ -28,6 +28,8 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/variable.h"
 
+PHI_DECLARE_bool(use_mkldnn);
+
 namespace paddle {
 namespace distributed {
 
@@ -156,6 +158,9 @@ void FleetExecutor::Init(
                     0,
                     platform::errors::InvalidArgument(
                         "Fleet executor is inited with empty task node"));
+  if (!platform::is_cpu_place(place)) {
+    FLAGS_use_mkldnn = false;
+  }
   // Set the unused var after running while op
   std::set<TaskNode*> sub_block_tasks;
   std::vector<std::string> while_block_vars;

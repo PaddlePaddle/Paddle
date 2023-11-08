@@ -70,7 +70,11 @@ ExecutorPrepareContext::~ExecutorPrepareContext() {
   VLOG(5) << "destroy ExecutorPrepareContext";
 }
 
-Executor::Executor(const platform::Place& place) : place_(place) {}
+Executor::Executor(const platform::Place& place) : place_(place) {
+  if (!platform::is_cpu_place(place_)) {
+    FLAGS_use_mkldnn = false;
+  }
+}
 
 Executor::~Executor() {
 #ifdef PADDLE_WITH_DNNL

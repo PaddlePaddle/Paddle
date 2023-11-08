@@ -30,6 +30,7 @@
 PHI_DECLARE_bool(enable_pir_in_executor);
 PHI_DECLARE_bool(enable_pir_api);
 PHI_DECLARE_bool(pir_apply_inplace_pass);
+PHI_DECLARE_bool(use_mkldnn);
 
 namespace paddle {
 namespace framework {
@@ -37,6 +38,9 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
                                        const interpreter::Plan& plan,
                                        Scope* scope)
     : place_(place), plan_(plan), scope_(scope) {
+  if (!platform::is_cpu_place(place_)) {
+    FLAGS_use_mkldnn = false;
+  }
   int64_t micro_batch_num = plan_.MicroBatchNum();
   vec_force_events_to_wait_.resize(micro_batch_num);
   for (int64_t i = 0; i < micro_batch_num; ++i) {
