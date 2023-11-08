@@ -59,6 +59,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
     if (FLAGS_enable_pir_api || FLAGS_enable_pir_in_executor) {
       ir_program = plan_.IrProgram(job_type);
     } else {
+      // NOTE (liuchenghao): std::make_shared will duplicate ProgramDesc object,
+      // maybe std::make_unique is better?
       program = std::make_shared<ProgramDesc>(*(plan_.Program(job_type)));
     }
 
@@ -235,6 +237,42 @@ paddle::framework::FetchList StandaloneExecutor::Run(
       return {};
     }
   }
+}
+
+std::shared_ptr<framework::ProgramDesc> StandaloneExecutor::RunProfile(
+    const std::vector<std::string>& feed_names) {
+  platform::RecordEvent record_event("StandaloneExecutor::run_profile",
+                                     platform::TracerEventType::UserDefined,
+                                     1);
+
+  VLOG(1) << "Profile run started.";
+
+  // in profiling run, there can be one and only one job ("default")
+  const auto& job = plan_.JobList()[0];
+
+  std::map<std::string, size_t> type_to_first_id;
+  if (!is_interpretercore_build_result_shared_) {
+    type_to_first_id[job->Type()] = 0;
+    is_interpretercore_build_result_shared_ = true;
+  }
+
+  VLOG(6) << "Run profiling job (0), type = " << job->Type()
+          << ", micro_batch_id =" << job->MicroBatchId();
+
+  interpretercores_[0]->RunProfile(feed_names);
+
+  // Don't return program desc directly, instead, return a copy of it,
+  // since we don't know how the program desc will be further processed
+  // in Python side. If we return a raw shared_ptr, the program desc
+  // will be easily altered externally, result in unexpected behavior
+  // during the next profiling run.
+  // NOTE: std::make_shared will always try to copy the objects that we
+  // passed in, that is what we expect it to do here.
+  std::shared_ptr<framework::ProgramDesc> copy_desc =
+      std::make_shared<framework::ProgramDesc>(
+          *(interpretercores_[0]->GetMutableCopyProgram()));
+
+  return copy_desc;
 }
 
 }  // namespace framework

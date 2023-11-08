@@ -604,6 +604,8 @@ void BuildOpFuncList(const platform::Place& place,
       }
     }
 
+    op->SetId(i);
+
     VLOG(6) << "Build OpFuncNode from : " << op_type;
 
     // Print new executor log if grad op is used.

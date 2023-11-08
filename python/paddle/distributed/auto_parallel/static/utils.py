@@ -15,6 +15,7 @@
 import copy
 import logging
 import os
+import sys
 import threading
 import warnings
 from functools import reduce
@@ -22,6 +23,13 @@ from functools import reduce
 import numpy as np
 
 import paddle
+from paddle.base.data_feeder import convert_dtype
+from paddle.base.executor import (
+    _as_lodtensor,
+    _StandaloneExecutor,
+    check_feed_shape_type,
+)
+from paddle.base.framework import Program
 from paddle.base.wrapped_decorator import wrap_decorator
 from paddle.framework import core
 from paddle.framework.io_utils import is_belong_to_optimizer, is_parameter
@@ -2386,3 +2394,408 @@ def get_dist_tensor_spec(dist_op, name, is_input=True):
     else:
         tensor_dist_attr = dist_op.dist_attr.get_output_dist_attr(name)
     return DistTensorSpec(tensor_shape, tensor_dist_attr)
+
+
+def _measure_real_op_cost_wrt_program_and_place_multipass(
+    program, place, run_iters, verbose
+):
+    '''
+    Run op profiling for a single pass. Internal function, do not call this directly.
+    '''
+
+    # clone the program to avoid accidental change made to the vanilla program.
+    cloned_program = program.clone()
+    cloned_main_block = cloned_program.global_block()
+
+    # We will run the executor in a newly created scope, so that our
+    # executor will not pollute the global scope when running. Since
+    # we created a brand new scope, we need to manually create input
+    # tensors and network parameters and feed fake data into them.
+    scope = core.Scope()
+
+    def _config_feed_ops():
+        """
+        configure feed op,
+        1. alloc feed op output var storage
+        2. fill feed op's input var
+        return feed var names
+        """
+        num_micro_batches = (
+            cloned_program._pipeline_opt["standalone_opt"]["num_micro_batches"]
+            if (
+                cloned_program._pipeline_opt
+                and "standalone_opt" in cloned_program._pipeline_opt
+            )
+            else 1
+        )
+        if num_micro_batches != 1:
+            warnings.warn(
+                'num_micro_batches should be 1 here, but got %d'
+                % num_micro_batches
+            )
+
+        feed_names = []
+        has_feed_op = False
+        for op in cloned_main_block.ops:
+            if op.type == "feed":
+                has_feed_op = True
+                out_var_name = op.desc.output('Out')[0]
+                in_var_name = op.desc.input('X')[0]  # this is usually "feed"
+                out_var = cloned_main_block.var(out_var_name)
+                out_var: Variable
+                out_var_shape = out_var.shape
+                out_var_dtype = out_var.dtype
+                input_index = op.desc.attr('col')
+                for dim_shape in out_var_shape:
+                    assert dim_shape > 0, (
+                        "Program profiler currently does not support "
+                        "dynamic shape variable. Found a variable with dynamic shape: "
+                        f"name=\"{out_var_name}\", shape={out_var_shape}."
+                    )
+                # feed random gaussian noises
+                out_var_np_dtype = (
+                    convert_dtype(out_var_dtype)
+                    if isinstance(out_var_dtype, core.VarDesc.VarType)
+                    else out_var_dtype
+                )
+                if str(out_var_dtype).find('int') != -1:
+                    # target variable's type is int* (uint*, int*), it is highly possible that
+                    # the target variable contains indices (such as lookup_table op's input var)
+                    # for safety we need to fill it with all one instead of random numbers
+                    # NOTE: filling with zero will generate "division by zero" error in mod ops,
+                    # so filling with one seems to be the simplest way to make it work, although
+                    # it is possible that for array with only one element, index "1" is invalid,
+                    # that situation is very rare and we don't need to care about it now.
+                    out_cur_feed = np.array(np.ones(out_var_shape)).astype(
+                        out_var_np_dtype
+                    )
+                else:
+                    # target variable's type is float*, we treat it as an ordinary tensor
+                    out_cur_feed = np.array(
+                        np.random.randn(*out_var_shape)
+                    ).astype(out_var_np_dtype)
+                out_cur_feed = _as_lodtensor(out_cur_feed, place, out_var_dtype)
+                check_feed_shape_type(out_var, out_cur_feed)
+                sys.stdout.write(
+                    '[+] feed var: "{}", shape={}, dtype="{}".\n'.format(
+                        out_var_name, str(out_var_shape), str(out_var_dtype)
+                    )
+                ) if verbose else None
+                core.set_variable(
+                    scope, out_cur_feed, out_var_name
+                )  # TODO: try to comment this line to see if VMEM drops
+                core.set_feed_variable(
+                    scope, out_cur_feed, in_var_name, input_index
+                )
+                feed_names.append(out_var_name)
+        if not has_feed_op:
+            sys.stdout.write(
+                "WARNING: program does not have any feed op.\n"
+            ) if verbose else None
+        return feed_names
+
+    def _init_persist_vars_and_parameters():
+        """
+        create and initialize persist vars and parameters in program
+        """
+        all_var_names = []
+        supported_var_dtypes = [
+            "paddle.float16",
+            "paddle.float32",
+            "paddle.float64",
+            "paddle.int8",
+            "paddle.int16",
+            "paddle.int32",
+            "paddle.int64",
+            "paddle.bool",
+        ]
+        for block in cloned_program.blocks:
+            all_var_names += block.vars
+        for var_name in all_var_names:
+            if var_name in ['feed', 'fetch']:
+                continue  # skip special variables, they don't need to be created.
+            var = cloned_main_block.var(var_name)
+            var: Variable
+            if var.persistable or var.is_parameter:
+                var_shape = var.shape
+                var_dtype = var.dtype
+                assert str(var_dtype) in supported_var_dtypes, (
+                    "Found unsupported variable dtype: \"{}\", current supported "
+                    "dtype(s) is/are: [{}]. ".format(
+                        str(var_dtype), ", ".join(supported_var_dtypes)
+                    )
+                )
+                if scope.find_var(var_name) is None:
+                    sys.stdout.write(
+                        '[+] var: "{}", shape={}, dtype="{}".\n'.format(
+                            var_name, str(var_shape), str(var_dtype)
+                        )
+                    ) if verbose else None
+                    # feed random gaussian noises
+                    np_dtype = (
+                        convert_dtype(var_dtype)
+                        if isinstance(var_dtype, core.VarDesc.VarType)
+                        else var_dtype
+                    )
+                    if str(var_dtype).find('int') != -1:
+                        # target variable's type is int* (uint*, int*), it is highly possible that
+                        # the target variable contains indices (such as lookup_table op's input var)
+                        # for safety we need to fill it with all one instead of random numbers
+                        # NOTE: filling with zero will generate "division by zero" error in mod ops,
+                        # so filling with one seems to be the simplest way to make it work, although
+                        # it is possible that for array with only one element, index "1" is invalid,
+                        # that situation is very rare and we don't need to care about it now.
+                        cur_feed = np.array(np.ones(var_shape)).astype(np_dtype)
+                    else:
+                        # target variable's type is float*, we treat it as an ordinary tensor
+                        cur_feed = np.array(np.random.randn(*var_shape)).astype(
+                            np_dtype
+                        )
+                    cur_feed = _as_lodtensor(cur_feed, place, var_dtype)
+                    check_feed_shape_type(var, cur_feed)
+                    core.set_variable(scope, cur_feed, var_name)
+                else:
+                    sys.stdout.write(
+                        '[ ] var: "{}", shape={}, dtype="{}".\n'.format(
+                            var_name, str(var_shape), str(var_dtype)
+                        )
+                    ) if verbose else None
+
+    feed_names = _config_feed_ops()
+    _init_persist_vars_and_parameters()
+
+    # build a simple plan from program and run profiling
+    plan = core.Plan([core.Job("default")], {"default": cloned_program.desc})
+    exe = _StandaloneExecutor(place, plan, scope)
+
+    num_ops = len(cloned_main_block.ops)
+    prof_results = [[None for _ in range(run_iters)] for _ in range(num_ops)]
+
+    for iter_id in range(run_iters):
+        # for each iteration, run profiling and retrieve modified version of program desc
+        program_desc = exe.run_profile(feed_names)
+
+        # rebuild program object from the new program desc
+        temp_program = cloned_program.clone()
+        temp_program._rebuild_from_desc(program_desc)
+        temp_main_block = temp_program.global_block()
+
+        # collect profiling result
+        for op_id, temp_op in zip(
+            range(len(temp_main_block.ops)), temp_main_block.ops
+        ):
+            prof_results[op_id][iter_id] = (
+                temp_op.get_runtime_us()
+                if temp_op.supports_runtime_profiling()
+                else None
+            )
+    return prof_results
+
+
+def measure_real_op_cost_wrt_program_and_place(
+    program: paddle.static.Program,
+    place,
+    run_iters: int = 8,
+    profile_strategy: str = 'stable_average',
+    verbose_level: int = 0,
+) -> str:
+    '''
+    Description
+    -----------
+    Measuring real op run time (us) with respect to the given "program" and "place".
+    Parameters
+    -----------
+    @param program: paddle.static.Program
+        The program object waiting to be executed.
+    @param place: paddle.CPUPlace | paddle.CUDAPlace | ...
+        Where the program is going to be executed.
+    @param run_iters: int
+        Specify how many iterations will be run during profiling. Larger value tends
+        to give more accurate profiling result but requires more time.
+    @param profile_strategy: str
+        Specify strategy used during profiling. Can be one of the following: 'average',
+        'last', 'stable_average'.
+        'average': simply average the results from multiple runs,
+        'last': only take the last run as its profiling result,
+        'stable_average': first remove the outliers then average the remained result.
+    @param verbose_level: int
+        Set up verbose level during profiling. Can be set to one of the following:
+        0 = turn off, don't print anything,
+        1 = print profiling message only,
+        2 = print profiling and debug message.
+    Returns
+    -----------
+    Returns profiling report (as Python string). This API will write op run time
+    directly into program object. For example, to retrieve the run time for the first
+    op in program, use:
+    >>> program.global_block().ops[0].get_runtime_us()
+    Note
+    -----------
+    Not all ops support runtime profiling. Currently communication ops do not support
+    runtime profiling feature since their execution times rely on other ops. To check
+    if an op supports runtime profiling, use:
+    >>> op.supports_runtime_profiling()
+    where "op" is an instance of "paddle.base.framework.Operator".
+    Example
+    -----------
+    * Profiling a simple program from scratch:
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
+    >>> program = ... # build your own program object here.
+    >>> measure_real_op_cost_wrt_program_and_place(
+    >>>     program, paddle.CUDAPlace(0), verbose_level=1
+    >>> )
+    >>> print("first op execution time: %d us." % \\
+    >>>     program.global_block().ops[0].get_runtime_us()
+    >>> )
+    * Profiling a program which is already embedded into an Executor or
+    some other class instance (inspect mode):
+    >>> import paddle
+    >>> from paddle.distributed.auto_parallel.static.utils import measure_real_op_cost_wrt_program_and_place
+    >>> place: str = paddle.device.get_device() # here we assume place = "cuda:x"
+    >>> place = paddle.CUDAPlace(int(place.split(':')[1]))
+    >>> # here "program" is an inner object that has alredy been built before
+    >>> profiled_message = measure_real_op_cost_wrt_program_and_place(program, place, verbose_level=1)
+    >>> save_log = "./profile[pid=%d].log" % os.getpid()
+    >>> with open(save_log, 'w') as f:
+    >>>     f.write(profiled_message)
+    '''
+
+    # parameter checks
+    assert isinstance(program, Program), (
+        '"program" should be a instance of "paddle.base.framework.Program" but got type "%s".'
+        % type(program).__name__
+    )
+    valid_place = False
+    supported_places = [
+        paddle.CPUPlace,
+        paddle.CUDAPlace,
+        paddle.IPUPlace,
+        paddle.XPUPlace,
+        paddle.CUDAPinnedPlace,
+        paddle.CustomPlace,
+    ]
+    for supported_place in supported_places:
+        if isinstance(place, supported_place):
+            valid_place = True
+    if not valid_place:
+        raise AssertionError(
+            'Invalid place given. "place" should be one of the following: %s.'
+            % str(supported_places)
+        )
+    assert isinstance(run_iters, int) and run_iters >= 1, (
+        'Invalid parameter run_iters set. run_iters '
+        'should be an integer >= 1.'
+    )
+    supported_strategies = ['average', 'last', 'stable_average']
+    assert profile_strategy in supported_strategies, (
+        'Invalid profile_strategy given, should be one '
+        'of the following: %s' % str(supported_strategies)
+    )
+    if run_iters == 1:
+        warnings.warn(
+            'run_iters was set to 1, profile_strategy will not work and profiling results '
+            'might be inaccurate.'
+        )
+
+    profile_message = ""
+
+    def _verbose_print(s, length=None, align='left'):
+        nonlocal profile_message
+        assert align in [
+            'left',
+            'middle',
+            'right',
+        ], 'invalid text alignment setting.'
+        if align in ['middle', 'right'] and length is None:
+            pad = 0
+        else:
+            pad = (
+                0
+                if align == 'left'
+                else (
+                    length - len(s)
+                    if align == 'right'
+                    else (length - len(s)) // 2
+                )
+            )
+        message = ' ' * pad + s + '\n'
+        profile_message += message
+        if verbose_level >= 1:
+            sys.stdout.write(message)
+            sys.stdout.flush()
+
+    _verbose_print("* Started op runtime profiling.")
+    _verbose_print("* Current program being profiled:\n" + str(program))
+    _verbose_print("* Profile strategy: %s" % str(profile_strategy))
+
+    # run profiling multiple times and record op run time of each run
+    prof_results = _measure_real_op_cost_wrt_program_and_place_multipass(
+        program, place, run_iters, verbose=(verbose_level >= 2)
+    )
+    op_num = len(prof_results)
+    for op_id, op in zip(range(op_num), program.global_block().ops):
+        op_runtime_us_final = None
+        if prof_results[op_id][0] is not None:
+            if profile_strategy == 'average':
+                op_runtime_us_final = np.mean(prof_results[op_id])
+            elif profile_strategy == 'last':
+                op_runtime_us_final = prof_results[op_id][-1]
+            elif profile_strategy == 'stable_average':
+                keep = 1 if run_iters // 2 < 1 else run_iters // 2
+                op_runtime_us_final = np.mean(
+                    sorted(prof_results[op_id])[:keep]
+                )
+            else:
+                raise RuntimeError(
+                    'unknwon profile_strategy "%s" given.' % profile_strategy
+                )
+        if op_runtime_us_final is not None and op.supports_runtime_profiling():
+            op.set_runtime_us(op_runtime_us_final)
+
+    # print out profiling results if needed then return
+    TABLE_WIDTH = 64
+
+    def _format_single_line(idx, op):
+        profile_run_success = (
+            op.supports_runtime_profiling()
+            and op.desc.dist_attr.run_time_us >= 0.0
+        )
+        bg_str = ' .' * (TABLE_WIDTH // 2)
+        left_str = '[%s] %5d, %s' % (
+            '*' if profile_run_success else ' ',
+            idx,
+            op.type,
+        )
+        right_str = ''
+        if profile_run_success:
+            # op supports runtime profiling and profiling info is correctly set
+            right_str = '%d us' % int(op.get_runtime_us())
+        elif op.supports_runtime_profiling():
+            # op supports runtime profiling but no runtime info found
+            right_str = 'skipped'
+        else:
+            # op does not support runtime profiling
+            right_str = 'not supported'
+        out_str = (
+            left_str
+            + bg_str[len(left_str) : TABLE_WIDTH - len(right_str)]
+            + right_str
+        )
+        return out_str
+
+    main_block = program.global_block()
+    _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print(
+        "Op Runtime Profiling Result",
+        length=TABLE_WIDTH,
+        align='middle',
+    )
+    _verbose_print("-" * TABLE_WIDTH)
+    for op_idx, op in zip(range(len(main_block.ops)), main_block.ops):
+        _verbose_print(_format_single_line(op_idx, op))
+    _verbose_print("=" * TABLE_WIDTH)
+    _verbose_print("[*]/[ ]: OK/FAIL, Op ID, Op Name, Execution Time (us)")
+    _verbose_print("NOTE: 1. Op ID does not represent Op execution order.")
+    _verbose_print("      2. Profiling is only performed for the main block.")
+
+    return profile_message

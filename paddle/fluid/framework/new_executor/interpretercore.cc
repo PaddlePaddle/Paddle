@@ -75,6 +75,14 @@ FetchList InterpreterCore::Run(const std::vector<std::string>& feed_names,
   return impl_->Run(feed_names, need_fetch);
 }
 
+void InterpreterCore::RunProfile(const std::vector<std::string>& feed_names) {
+  return impl_->RunProfile(feed_names);
+}
+
+std::shared_ptr<ProgramDesc> InterpreterCore::GetMutableCopyProgram() {
+  return impl_->GetMutableCopyProgram();
+}
+
 void InterpreterCore::ShareWorkQueueFrom(std::shared_ptr<InterpreterCore> src) {
   impl_->ShareWorkQueueFrom(const_cast<InterpreterBaseImpl*>(src->Impl()));
 }
