@@ -18,4 +18,9 @@ if(WITH_CUSTOM_DEVICE)
   list(APPEND DISTRIBUTED_COMMON_SRCS xccl_comm_context.cc)
 endif()
 
+if(WITH_MKLDNN)
+  list(APPEND DISTRIBUTED_COMMON_SRCS mkldnn)
+  list(APPEND DISTRIBUTED_COMMON_SRCS mkldnn)
+endif()
+
 collect_srcs(core_srcs SRCS ${DISTRIBUTED_COMMON_SRCS})

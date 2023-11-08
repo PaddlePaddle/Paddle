@@ -18,7 +18,6 @@
 #include "paddle/phi/core/device_context.h"
 
 namespace phi {
-
 template <typename T, typename Context>
 void FlashAttnUnpaddedKernel(
     const Context& ctx,
