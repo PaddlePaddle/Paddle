@@ -571,10 +571,14 @@ phi::distributed::DistTensor* SetKernelDistOutput(
 std::shared_ptr<phi::distributed::DistTensor> CreateKernelDistOutput(
     Tensor* out,
     bool set_dist_output_as_tensor_impl,
-    const phi::distributed::TensorDistAttr& dist_attr) {
+    const phi::distributed::ArgDistAttr& dist_attr) {
   if (out) {
-    auto dist_output =
-        std::make_shared<phi::distributed::DistTensor>(phi::DDim(), dist_attr);
+    PADDLE_ENFORCE_EQ(
+        paddle::holds_alternative<phi::distributed::TensorDistAttr>(dist_attr),
+        true,
+        phi::errors::PreconditionNotMet("Arg must be a single TensorDistAttr"));
+    auto dist_output = std::make_shared<phi::distributed::DistTensor>(
+        phi::DDim(), paddle::get<0>(dist_attr));
     if (set_dist_output_as_tensor_impl) {
       VLOG(3) << "CreateKernelDistOutput function set generated output "
                  "dist_tensor as Tensor's impl";

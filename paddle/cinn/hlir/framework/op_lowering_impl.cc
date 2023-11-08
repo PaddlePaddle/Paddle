@@ -19,10 +19,13 @@
 #include "paddle/cinn/hlir/framework/graph_compiler_util.h"
 #include "paddle/cinn/hlir/framework/op_lowering_util.h"
 #include "paddle/cinn/hlir/op/external_api_registry.h"
+#include "paddle/cinn/ir/group_schedule/st_shape_group_scheduler.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/optim/transform_gpu_forloop.h"
+#include "paddle/cinn/runtime/flags.h"
 
 PD_DECLARE_bool(cinn_use_cuda_vectorize);
+PD_DECLARE_bool(cinn_new_group_scheduler);
 
 namespace cinn {
 namespace hlir {
@@ -123,7 +126,10 @@ std::vector<ir::LoweredFunc> OpLowererImpl::LowerGroup(
   ir::IRSchedule ir_sch(mod_expr);
   ir_sch.MergeExprs();
   VLOG(3) << "After lower, ir is: \n" << ir_sch.GetModule().GetExprs().at(0);
-  if (apply_group_schedule) {
+  auto& op_pattern_dict = Operator::GetAttrs<OpPatternKind>("OpPattern");
+  if (apply_group_schedule &&
+      !(nodes.size() == 1 &&
+        op_pattern_dict[nodes[0]->op()] == OpPatternKind::kNonFusible)) {
     DoGroupSchedule(ir_sch, group, tensor_map);
     VLOG(3) << "After group schedule, ir is: \n"
             << ir_sch.GetModule().GetExprs().at(0);
@@ -463,6 +469,23 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
     ir::IRSchedule& ir_sch,
     const GroupPtr& group,
     const std::unordered_map<std::string, ir::Tensor>& tensor_map) {
+  if (FLAGS_cinn_new_group_scheduler) {
+    std::unordered_set<std::string> output_tensor_names;
+    std::transform(
+        group->output_nodes.begin(),
+        group->output_nodes.end(),
+        std::inserter(output_tensor_names, output_tensor_names.begin()),
+        [](const Node* node) {
+          NodeData* node_data =
+              (*node->outlinks().begin())->sink()->safe_as<NodeData>();
+          CHECK(node_data);
+          return node_data->id();
+        });
+    ir::StaticShapeGroupScheduler group_scheduler(
+        &ir_sch, output_tensor_names, target_);
+    group_scheduler.Schedule();
+    return ir_sch.GetModule().GetExprs().at(0);
+  }
   // topological order.
   auto nodes_set = group->NodeSet();
   auto v_consumers = BuildVirtualConsumer(group, this->shape_dict_);

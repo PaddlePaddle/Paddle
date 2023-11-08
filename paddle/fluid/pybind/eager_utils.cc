@@ -50,6 +50,7 @@ extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
+extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
@@ -1521,6 +1522,8 @@ pir::Value CastPyArg2Value(PyObject* obj,
                            size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+    return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "

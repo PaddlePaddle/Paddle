@@ -56,9 +56,11 @@ class ValueExecutionInfo {
 
   Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, std::string var_name);
+  void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+  void Rename(pir::Value value,
+              const std::string& new_name,
+              const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 

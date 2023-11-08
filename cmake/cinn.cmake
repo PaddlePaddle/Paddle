@@ -164,8 +164,8 @@ cinn_cc_library(
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
 add_dependencies(cinnapi GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
 if(NOT CINN_ONLY)
-  target_link_libraries(cinnapi pd_op_dialect pir phi)
-  add_dependencies(cinnapi pd_op_dialect pir phi)
+  target_link_libraries(cinnapi op_dialect_vjp pir phi)
+  add_dependencies(cinnapi op_dialect_vjp pir phi)
 endif()
 
 target_link_libraries(cinnapi ${PYTHON_LIBRARIES})
@@ -222,8 +222,13 @@ function(gen_cinncore LINKTYPE)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ZLIB::ZLIB)
   add_dependencies(${CINNCORE_TARGET} GEN_LLVM_RUNTIME_IR_HEADER ${core_deps})
   if(NOT CINN_ONLY)
+<<<<<<< HEAD
     target_link_libraries(${CINNCORE_TARGET} pd_op_dialect pir phi)
     add_dependencies(${CINNCORE_TARGET} pd_op_dialect pir phi)
+=======
+    target_link_libraries(${CINNCORE_TARGET} op_dialect_vjp phi)
+    add_dependencies(${CINNCORE_TARGET} op_dialect_vjp phi)
+>>>>>>> develop
   endif()
 
   add_dependencies(${CINNCORE_TARGET} pybind)

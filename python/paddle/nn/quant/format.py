@@ -18,7 +18,8 @@ from typing import List, Tuple
 import paddle
 from paddle import _legacy_C_ops as _C_ops
 from paddle.framework import in_dynamic_mode
-from paddle.nn import Layer
+
+from ..layer.layers import Layer
 
 
 class LinearQuanterDequanter(Layer):
