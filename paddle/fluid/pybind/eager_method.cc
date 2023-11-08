@@ -3130,6 +3130,13 @@ static PyObject* tensor_method_reshard_(TensorObject* self,
                                         PyObject* kwargs) {
   EAGER_TRY
   paddle::Tensor& src_tensor = self->tensor;
+  PADDLE_ENFORCE_EQ(
+      phi::distributed::DistTensor::classof(src_tensor.impl().get()),
+      true,
+      paddle::platform::errors::InvalidArgument(
+          "We can only support reshard with DistTensor, and Tensor %s is not "
+          "DistTensor.",
+          src_tensor.name()));
   const phi::distributed::TensorDistAttr& dist_attr =
       CastPyArg2DistAttr(PyTuple_GET_ITEM(args, 0), 0);
 
