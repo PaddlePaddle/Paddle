@@ -42,9 +42,9 @@ size_t GetOffset(const DenseTensor& i, const phi::DeviceContext& dev_ctx) {
                               i.numel(),
                               i.dims()));
   size_t offset;
-  if (i.place() == phi::AllocationType::GPU ||
-      i.place() == phi::AllocationType::XPU ||
-      i.place() == phi::AllocationType::CUSTOM) {
+  if (i.place().GetType() == phi::AllocationType::GPU ||
+      i.place().GetType() == phi::AllocationType::XPU ||
+      i.place().GetType() == phi::AllocationType::CUSTOM) {
     // FIXME: Avoid copy from GPU to CPU
     phi::DenseTensor t;
     phi::Copy(dev_ctx, i, phi::CPUPlace(), false, &t);
@@ -70,10 +70,6 @@ void ArrayWriteKernel(const Context& dev_ctx,
   out_tensor->set_lod(x.lod());
   if (x.memory_size() > 0) {
     phi::Copy(dev_ctx, x, dev_ctx.GetPlace(), false, out_tensor);
-  } else {
-    VLOG(10) << "WARNING: The input tensor 'x_tensor' holds no memory, so "
-                "nothing has been written to output array["
-             << offset << "].";
   }
 }
 
