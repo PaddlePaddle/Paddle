@@ -1350,24 +1350,18 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 
 paddle::Tensor* CreateTensorFromVarDesc(
     const paddle::framework::VarDesc& var_desc) {
-  auto tensor =
-      new paddle::Tensor(egr::Controller::Instance().GetExpectedPlace());
+  auto tensor = new paddle::Tensor();
 
-  auto stop_gradient = var_desc.StopGradient();
   auto dtype = var_desc.GetDataType();
-  std::vector<int64_t> shape = var_desc.GetShape();
-  std::vector<int> cast_shape = std::vector<int>();
-  for (int64_t dim : shape) {
-    cast_shape.emplace_back(static_cast<int>(dim));
-  }
-  auto dims = cast_shape;
+  std::vector<int64_t> dims = var_desc.GetShape();
+
   auto var_type = var_desc.GetType();
 
   auto ddims = phi::make_ddim(dims);
   tensor->set_name(var_desc.Name());
   auto autograd_meta = egr::EagerUtils::autograd_meta(tensor);
   autograd_meta->SetPersistable(false);
-  autograd_meta->SetStopGradient(static_cast<bool>(stop_gradient));
+  autograd_meta->SetStopGradient(var_desc.StopGradient());
 
   if (var_type == paddle::framework::proto::VarType::LOD_TENSOR) {
     // TODO(jiabin): Maybe support LOD later
@@ -1424,6 +1418,7 @@ std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
   }
 
   std::vector<paddle::Tensor*> result;
+  std::unordered_map<std::string, paddle::Tensor*> out_tensor_map;
 
   if (PyList_Check(list)) {
     Py_ssize_t len = PyList_Size(list);
@@ -1438,8 +1433,14 @@ std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
     for (Py_ssize_t i = 0; i < len; i++) {
       auto var_desc =
           PyObjectCast<paddle::framework::VarDesc>(PyList_GetItem(list, i));
-      paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
-      result.emplace_back(tensor);
+      auto var_name = var_desc.Name();
+      if (out_tensor_map.find(var_name) == out_tensor_map.end()) {
+        paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
+        out_tensor_map[var_name] = tensor;
+        result.emplace_back(tensor);
+      } else {
+        result.emplace_back(out_tensor_map[var_name]);
+      }
     }
   } else if (PyTuple_Check(list)) {
     Py_ssize_t len = PyTuple_Size(list);
@@ -1454,8 +1455,14 @@ std::vector<paddle::Tensor*> GetTensorsWithVarDescFromArgs(
     for (Py_ssize_t i = 0; i < len; i++) {
       auto var_desc =
           PyObjectCast<paddle::framework::VarDesc>(PyTuple_GetItem(list, i));
-      paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
-      result.emplace_back(tensor);
+      auto var_name = var_desc.Name();
+      if (out_tensor_map.find(var_name) == out_tensor_map.end()) {
+        paddle::Tensor* tensor = CreateTensorFromVarDesc(var_desc);
+        out_tensor_map[var_name] = tensor;
+        result.emplace_back(tensor);
+      } else {
+        result.emplace_back(out_tensor_map[var_name]);
+      }
     }
   } else if (list == Py_None) {
     return {};
