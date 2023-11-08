@@ -70,7 +70,7 @@ class SmoothL1Loss(unittest.TestCase):
                 smooth_l1_loss = paddle.nn.loss.SmoothL1Loss()
                 ret = smooth_l1_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_ret,) = exe.run(
                     feed={
                         'input': input_np,
@@ -118,7 +118,7 @@ class SmoothL1Loss(unittest.TestCase):
                 smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='sum')
                 ret = smooth_l1_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_ret,) = exe.run(
                     feed={
                         'input': input_np,
@@ -166,7 +166,7 @@ class SmoothL1Loss(unittest.TestCase):
                 smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(reduction='none')
                 ret = smooth_l1_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_ret,) = exe.run(
                     feed={
                         'input': input_np,
@@ -215,7 +215,7 @@ class SmoothL1Loss(unittest.TestCase):
                 smooth_l1_loss = paddle.nn.loss.SmoothL1Loss(delta=delta)
                 ret = smooth_l1_loss(input, label)
 
-                exe = base.Executor(place)
+                exe = paddle.static.Executor(place)
                 (static_ret,) = exe.run(
                     feed={
                         'input': input_np,

@@ -46,42 +46,46 @@ class TestFunctionalL1Loss(unittest.TestCase):
 
     @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[10, 10, 5], dtype='float32'
-        )
-        label = paddle.static.data(
-            name='label', shape=[10, 10, 5], dtype='float32'
-        )
-        result0 = paddle.nn.functional.l1_loss(input, label)
-        result1 = paddle.nn.functional.l1_loss(input, label, reduction='sum')
-        result2 = paddle.nn.functional.l1_loss(input, label, reduction='none')
-        y = paddle.nn.functional.l1_loss(input, label, name='aaa')
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[10, 10, 5], dtype='float32'
+            )
+            result0 = paddle.nn.functional.l1_loss(input, label)
+            result1 = paddle.nn.functional.l1_loss(
+                input, label, reduction='sum'
+            )
+            result2 = paddle.nn.functional.l1_loss(
+                input, label, reduction='none'
+            )
+            y = paddle.nn.functional.l1_loss(input, label, name='aaa')
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
-        exe = base.Executor(place)
-        static_result = exe.run(
-            feed={"input": self.input_np, "label": self.label_np},
-            fetch_list=[result0, result1, result2],
-        )
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = paddle.static.Executor(place)
+            static_result = exe.run(
+                feed={"input": self.input_np, "label": self.label_np},
+                fetch_list=[result0, result1, result2],
+            )
 
-        expected = np.mean(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
-        expected = np.sum(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
-        expected = np.abs(self.input_np - self.label_np)
-        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
+            expected = np.mean(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
+            expected = np.sum(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
+            expected = np.abs(self.input_np - self.label_np)
+            np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
 
-        self.assertTrue('aaa' in y.name)
+            self.assertTrue('aaa' in y.name)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
         if not base.core.is_compiled_with_cuda():
@@ -91,10 +95,7 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):
@@ -141,45 +142,45 @@ class TestClassL1Loss(unittest.TestCase):
 
     @test_with_pir_api
     def run_static(self, use_gpu=False):
-        input = paddle.static.data(
-            name='input', shape=[10, 10, 5], dtype='float32'
-        )
-        label = paddle.static.data(
-            name='label', shape=[10, 10, 5], dtype='float32'
-        )
-        l1_loss = paddle.nn.loss.L1Loss()
-        result0 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
-        result1 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(reduction='none')
-        result2 = l1_loss(input, label)
-        l1_loss = paddle.nn.loss.L1Loss(name='aaa')
-        result3 = l1_loss(input, label)
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name='input', shape=[10, 10, 5], dtype='float32'
+            )
+            label = paddle.static.data(
+                name='label', shape=[10, 10, 5], dtype='float32'
+            )
+            l1_loss = paddle.nn.loss.L1Loss()
+            result0 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(reduction='sum')
+            result1 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(reduction='none')
+            result2 = l1_loss(input, label)
+            l1_loss = paddle.nn.loss.L1Loss(name='aaa')
+            result3 = l1_loss(input, label)
 
-        place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
-        exe = base.Executor(place)
-        static_result = exe.run(
-            feed={"input": self.input_np, "label": self.label_np},
-            fetch_list=[result0, result1, result2],
-        )
+            place = base.CUDAPlace(0) if use_gpu else base.CPUPlace()
+            exe = paddle.static.Executor(place)
+            static_result = exe.run(
+                feed={"input": self.input_np, "label": self.label_np},
+                fetch_list=[result0, result1, result2],
+            )
 
-        expected = np.mean(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
-        expected = np.sum(np.abs(self.input_np - self.label_np))
-        np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
-        expected = np.abs(self.input_np - self.label_np)
-        np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
-        self.assertTrue('aaa' in result3.name)
+            expected = np.mean(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[0], expected, rtol=1e-05)
+            expected = np.sum(np.abs(self.input_np - self.label_np))
+            np.testing.assert_allclose(static_result[1], expected, rtol=1e-05)
+            expected = np.abs(self.input_np - self.label_np)
+            np.testing.assert_allclose(static_result[2], expected, rtol=1e-05)
+            self.assertTrue('aaa' in result3.name)
 
     def test_cpu(self):
         paddle.disable_static(place=paddle.base.CPUPlace())
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            self.run_static()
+        self.run_static()
 
     def test_gpu(self):
         if not base.core.is_compiled_with_cuda():
@@ -189,10 +190,7 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with paddle.static.program_guard(
-            paddle.static.Program(), paddle.static.Program()
-        ):
-            self.run_static(use_gpu=True)
+        self.run_static(use_gpu=True)
 
     # test case the raise message
     def test_errors(self):

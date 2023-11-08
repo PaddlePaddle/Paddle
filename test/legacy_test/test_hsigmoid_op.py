@@ -340,7 +340,7 @@ class TestHSigmoidOpWithSparseGrad(unittest.TestCase):
             main_program = base.default_main_program()
             place = base.CPUPlace()
             feeder = base.DataFeeder(feed_list=data_list, place=place)
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
 
             exe.run(start_up)
             result = []
@@ -652,7 +652,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
                 path_code=path_code,
             )
 
-            exe = base.Executor(self.place)
+            exe = paddle.static.Executor(self.place)
             feed_dict = {'x': self.x_np, 'labels': self.labels_np}
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
