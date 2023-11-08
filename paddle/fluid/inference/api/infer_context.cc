@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/infer_context.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/phi/core/dense_tensor.h"
 #ifdef PADDLE_WITH_XPU
 #include "xpu/runtime.h"
@@ -137,81 +138,89 @@ void InferXPUContext::SetL3Info(size_t l3_size,
 }
 
 void InferXPUContext::SetConvAutotuneInfo(std::string conv_autotune_file,
-                        int conv_autotune_level,
-                        bool conv_autotune_file_writeback,
-                        const phi::Place& place) {
+                                          int conv_autotune_level,
+                                          bool conv_autotune_file_writeback,
+                                          const phi::Place& place) {
   phi::backends::xpu::XPUDeviceGuard guard(place.GetDeviceId());
 
-  VLOG(5)<<"Conv Autotune File:"<<conv_autotune_file<<std::endl;
-  
-  if(conv_autotune_file.empty()){
-    VLOG(5)<<"Conv autotune file is empty:"<<conv_autotune_file<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_CONV_AUTOTUNE_FILE", conv_autotune_file.c_str());
-    if(ret !=0){
-       VLOG(5)<<"Set conv autotune file is error:";
-    }
-  }
+  VLOG(5) << "XPU conv autotune level:" << conv_autotune_level;
+  VLOG(5) << "XPU conv autotune file:" << conv_autotune_file;
+  VLOG(5) << "XPU conv autotune file writeback:"
+          << conv_autotune_file_writeback;
 
-  if(conv_autotune_level==0){
-    VLOG(5)<<"Conv autotune level is 0"<<conv_autotune_level<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_CONV_AUTOTUNE", (std::to_string(conv_autotune_level)).c_str());
-    if(ret !=0){
-       VLOG(5)<<"Set conv autotune  level is error:";
-    }
+  if (!conv_autotune_file.empty()) {
+    int ret;
+    ret = x_context()->set_option("XPU_CONV_AUTOTUNE_FILE",
+                                  conv_autotune_file.c_str());
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        platform::errors::Unavailable(
+            "Failed to set XPU conv autotune file %s.", conv_autotune_file));
   }
-
-  if(conv_autotune_file_writeback==false){
-    VLOG(5)<<"Conv autotune file writeback is false"<<conv_autotune_file_writeback<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_AUTOTUNE_WRITEBACK", "true");
-    if(ret !=0){
-       VLOG(5)<<"Set autotune file writeback  is error:";
-    }
+  if (conv_autotune_level > 0) {
+    int ret;
+    ret = x_context()->set_option(
+        "XPU_CONV_AUTOTUNE", (std::to_string(conv_autotune_level)).c_str());
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        platform::errors::Unavailable("Failed to set XPU conv autotune  %d.",
+                                      conv_autotune_level));
   }
-
+  if (conv_autotune_file_writeback) {
+    int ret;
+    ret = x_context()->set_option(
+        "XPU_AUTOTUNE_WRITEBACK",
+        (std::to_string(conv_autotune_file_writeback)).c_str());
+    PADDLE_ENFORCE_EQ(ret,
+                      0,
+                      platform::errors::Unavailable(
+                          "Failed to set XPU conv autotune writeback %d.",
+                          conv_autotune_file_writeback));
+  }
 }
 
 void InferXPUContext::SetFcAutotuneInfo(std::string fc_autotune_file,
-                int fc_autotune_level, 
-                bool fc_autotune_file_writeback, 
-                const phi::Place& place) {
+                                        int fc_autotune_level,
+                                        bool fc_autotune_file_writeback,
+                                        const phi::Place& place) {
   phi::backends::xpu::XPUDeviceGuard guard(place.GetDeviceId());
 
-  VLOG(5)<<"Fc Autotune File:"<<fc_autotune_file<<std::endl;
+  VLOG(5) << "XPU fc autotune level:" << fc_autotune_level;
+  VLOG(5) << "XPU fc autotune file:" << fc_autotune_file;
+  VLOG(5) << "XPU fc autotune file writeback:" << fc_autotune_file_writeback;
 
-  if(fc_autotune_file.empty()){
-    VLOG(5)<<"Fc autotune file is empty:"<<fc_autotune_file<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_FC_AUTOTUNE_FILE", fc_autotune_file.c_str());
-    if(ret !=0){
-       VLOG(5)<<"Set Fc autotune file is error:";
-    }
+  if (!fc_autotune_file.empty()) {
+    int ret;
+    ret = x_context()->set_option("XPU_FC_AUTOTUNE_FILE",
+                                  fc_autotune_file.c_str());
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        platform::errors::Unavailable("Failed to set XPU fc autotune file %s.",
+                                      fc_autotune_file));
   }
-
-  if(fc_autotune_level==0){
-    VLOG(5)<<"Fc autotune level is 0"<<fc_autotune_level<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_FC_AUTOTUNE", (std::to_string(fc_autotune_level)).c_str());
-    if(ret !=0){
-       VLOG(5)<<"Set fc autotune level is error:";
-    }
+  if (fc_autotune_level > 0) {
+    int ret;
+    ret = x_context()->set_option("XPU_FC_AUTOTUNE",
+                                  (std::to_string(fc_autotune_level)).c_str());
+    PADDLE_ENFORCE_EQ(
+        ret,
+        0,
+        platform::errors::Unavailable("Failed to set XPU fc autotune  %d.",
+                                      fc_autotune_level));
   }
-
-  if(fc_autotune_file_writeback==false){
-    VLOG(5)<<"Fc autotune file writeback is false"<<fc_autotune_file_writeback<<std::endl;
-  }else{
-    int ret=0;
-    ret=x_context()->set_option("XPU_FC_AUTOTUNE_WRITEBACK", "true");
-    if(ret !=0){
-       VLOG(5)<<"Set fc autotune file writeback is error:";
-    }
+  if (fc_autotune_file_writeback) {
+    int ret;
+    ret = x_context()->set_option(
+        "XPU_FC_AUTOTUNE_WRITEBACK",
+        (std::to_string(fc_autotune_file_writeback)).c_str());
+    PADDLE_ENFORCE_EQ(ret,
+                      0,
+                      platform::errors::Unavailable(
+                          "Failed to set XPU fc autotune writeback %d.",
+                          fc_autotune_file_writeback));
   }
 }
 

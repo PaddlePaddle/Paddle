@@ -531,14 +531,16 @@ void AnalysisPredictor::InitDeviceContexts() {
           auto &instance = memory::allocation::AllocatorFacade::Instance();
           auto *xpu_context =
               new InferXPUContext(place_, config_.xpu_config().context_gm_size);
-          xpu_context->SetConvAutotuneInfo(config_.xpu_config_.conv_autotune_file,
-                             config_.xpu_config_.conv_autotune_level,
-                             config_.xpu_config_.conv_autotune_file_writeback,
-                             place_);
-          xpu_context->SetFcAutotuneInfo(config_.xpu_config_.fc_autotune_file,
-                             config_.xpu_config_.fc_autotune_level,
-                             config_.xpu_config_.fc_autotune_file_writeback,
-                             place_);
+          xpu_context->SetConvAutotuneInfo(
+              config_.xpu_config_.conv_autotune_file,
+              config_.xpu_config_.conv_autotune_level,
+              config_.xpu_config_.conv_autotune_file_writeback,
+              place_);
+          xpu_context->SetFcAutotuneInfo(
+              config_.xpu_config_.fc_autotune_file,
+              config_.xpu_config_.fc_autotune_level,
+              config_.xpu_config_.fc_autotune_file_writeback,
+              place_);
           xpu_context->SetAllocator(instance.GetAllocator(place_).get());
           xpu_context->SetGenerator(
               phi::DefaultXPUGenerator(place_.GetDeviceId()).get());
