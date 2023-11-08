@@ -14,6 +14,7 @@
 
 import copy
 import enum
+import os
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
@@ -29,9 +30,15 @@ from paddle.base.framework import (
     OpProtoHolder,
     convert_np_dtype_to_dtype_,
 )
+from paddle.static.log_helper import get_logger
 from paddle.static.quantization import (
     QuantizationFreezePass,
     QuantizationTransformPass,
+)
+
+LOGLEVEL = os.environ.get("PADDLE_TEST_LOGLEVEL", "INFO").upper()
+logging = get_logger(
+    __name__, LOGLEVEL, fmt='%(asctime)s-%(levelname)s: %(message)s'
 )
 
 
@@ -290,6 +297,13 @@ class ProgramConfig:
             np.float16,
             None,
         ], "PaddleTRT only supports FP32 / FP16 IO"
+
+        ver = paddle.inference.get_trt_compile_version()
+        trt_version = ver[0] * 1000 + ver[1] * 100 + ver[2] * 10
+        if trt_version < 8600:
+            logging.info("set_input_type is ignored for TRT version < 8600")
+            return
+
         self.input_type = _type
 
     def get_feed_data(self) -> Dict[str, Dict[str, Any]]:
