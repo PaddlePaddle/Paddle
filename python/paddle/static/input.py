@@ -17,7 +17,11 @@ import os
 import paddle
 from paddle.base import Variable, core
 from paddle.base.data_feeder import check_type
-from paddle.base.framework import convert_np_dtype_to_dtype_, static_only
+from paddle.base.framework import (
+    convert_np_dtype_to_dtype_,
+    in_pir_mode,
+    static_only,
+)
 from paddle.base.layer_helper import LayerHelper
 
 from ..base.variable_index import _setitem_impl_, _setitem_static
@@ -99,50 +103,63 @@ def data(name, shape, dtype=None, lod_level=0):
 
     """
 
-    if not dtype:
+    def _reset_data_op_insertion_point():
+        default_main_program = paddle.pir.core.default_main_program()
+        ops = default_main_program.global_block().ops
+        if len(ops) == 0:
+            return
+        for op in ops:
+            if op.name() != 'pd_op.data':
+                paddle.pir.set_insertion_point(op)
+                return
+
+    helper = LayerHelper('data', **locals())
+    check_type(name, 'name', (bytes, str), 'data')
+    check_type(shape, 'shape', (list, tuple), 'data')
+
+    shape = list(shape)
+    for i in range(len(shape)):
+        if shape[i] is None:
+            shape[i] = -1
+
+    if dtype is None:
         dtype = paddle.get_default_dtype()
-    if paddle.ir.core._use_new_ir_api():
-        ir_dtype = paddle.ir.core.convert_np_dtype_to_dtype_(dtype)
-        return paddle._ir_ops.data(name, shape, ir_dtype, core.Place())
 
-    else:
-        helper = LayerHelper('data', **locals())
-        check_type(name, 'name', (bytes, str), 'data')
-        check_type(shape, 'shape', (list, tuple), 'data')
-
-        shape = list(shape)
-        for i in range(len(shape)):
-            if shape[i] is None:
-                shape[i] = -1
-
-        out = helper.create_global_variable(
-            name=name,
-            shape=shape,
-            dtype=dtype,
-            type=core.VarDesc.VarType.LOD_TENSOR,
-            stop_gradient=True,
-            lod_level=lod_level,
-            is_data=True,
-            need_check_feed=True,
-        )
-
-        is_new_ir_mode = os.environ.get("FLAGS_enable_new_ir_in_executor", None)
-        if evaluate_flag(is_new_ir_mode):
-            helper = LayerHelper('data', **locals())
-            if not isinstance(dtype, core.VarDesc.VarType):
-                dtype = convert_np_dtype_to_dtype_(dtype)
-            helper.append_op(
-                type='data',
-                inputs={},
-                outputs={'out': out},
-                attrs={
-                    'shape': shape,
-                    'dtype': dtype,
-                    'place': 0,
-                    'name': name,
-                },
-            )
+    if in_pir_mode():
+        ir_dtype = paddle.pir.core.convert_np_dtype_to_dtype_(dtype)
+        _reset_data_op_insertion_point()
+        out = paddle._pir_ops.data(name, shape, ir_dtype, core.Place())
+        paddle.pir.reset_insertion_point_to_end()
         return out
+
+    out = helper.create_global_variable(
+        name=name,
+        shape=shape,
+        dtype=dtype,
+        type=core.VarDesc.VarType.LOD_TENSOR,
+        stop_gradient=True,
+        lod_level=lod_level,
+        is_data=True,
+        need_check_feed=True,
+    )
+
+    is_pir_mode = os.environ.get("FLAGS_enable_pir_in_executor", None)
+    if evaluate_flag(is_pir_mode):
+        helper = LayerHelper('data', **locals())
+        if not isinstance(dtype, core.VarDesc.VarType):
+            dtype = convert_np_dtype_to_dtype_(dtype)
+        helper.append_op(
+            type='data',
+            inputs={},
+            outputs={'out': out},
+            attrs={
+                'shape': shape,
+                'dtype': dtype,
+                'place': 0,
+                'name': name,
+            },
+        )
+    return out
 
 
 class InputSpec:
@@ -163,6 +180,7 @@ class InputSpec:
             uint8. Default: float32.
         name (str): The name/alias of the variable, see :ref:`api_guide_Name`
             for more details.
+        stop_gradient (bool, optional): A boolean that mentions whether gradient should flow. Default is False, means don't stop calculate gradients.
 
     Examples:
         .. code-block:: python

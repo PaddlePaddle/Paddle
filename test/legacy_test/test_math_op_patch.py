@@ -14,7 +14,6 @@
 
 import unittest
 
-import numpy
 import numpy as np
 from decorator_helper import prog_scope
 

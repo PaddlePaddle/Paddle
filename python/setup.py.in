@@ -154,29 +154,34 @@ def show():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            # Case 1: paddle is tagged with 2.2.0
-            paddle.version.show()
-            # full_version: 2.2.0
-            # major: 2
-            # minor: 2
-            # patch: 0
-            # rc: 0
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 1: paddle is tagged with 2.2.0
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            full_version: 2.2.0
+            major: 2
+            minor: 2
+            patch: 0
+            rc: 0
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
 
-            # Case 2: paddle is not tagged
-            paddle.version.show()
-            # commit: cfa357e984bfd2ffa16820e354020529df434f7d
-            # cuda: '10.2'
-            # cudnn: '7.6.5'
-            # xpu: '20230114'
-            # xpu_xccl: '1.0.7'
-            # cinn: False
+            >>> # Case 2: paddle is not tagged
+            >>> paddle.version.show()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            commit: cfa357e984bfd2ffa16820e354020529df434f7d
+            cuda: '10.2'
+            cudnn: '7.6.5'
+            xpu: '20230114'
+            xpu_xccl: '1.0.7'
+            cinn: False
+            >>> # doctest: -SKIP
+
     """
     if istaged:
         print('full_version:', full_version)
@@ -204,10 +209,11 @@ def cuda():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cuda()
-            # '10.2'
+            >>> paddle.version.cuda()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '10.2'
 
     """
     return cuda_version
@@ -221,10 +227,11 @@ def cudnn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cudnn()
-            # '7.6.5'
+            >>> paddle.version.cudnn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '7.6.5'
 
     """
     return cudnn_version
@@ -238,10 +245,11 @@ def xpu():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu()
-            # '20230114'
+            >>> paddle.version.xpu()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '20230114'
 
     """
     return xpu_version
@@ -255,10 +263,11 @@ def xpu_xccl():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.xpu_xccl()
-            # '1.0.7'
+            >>> paddle.version.xpu_xccl()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            '1.0.7'
 
     """
     return xpu_xccl_version
@@ -272,10 +281,11 @@ def cinn():
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
 
-            paddle.version.cinn()
-            # False
+            >>> paddle.version.cinn()
+            >>> # doctest: +SKIP('Different environments yield different output.')
+            False
 
     """
     return cinn_version
@@ -419,6 +429,14 @@ packages=['paddle',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
+          'paddle.jit.pir_dy2static',
+          'paddle.jit.sot',
+          'paddle.jit.sot.opcode_translator',
+          'paddle.jit.sot.opcode_translator.executor',
+          'paddle.jit.sot.opcode_translator.executor.variables',
+          'paddle.jit.sot.opcode_translator.instruction_utils',
+          'paddle.jit.sot.symbolic',
+          'paddle.jit.sot.utils',
           'paddle.inference',
           'paddle.inference.contrib',
           'paddle.inference.contrib.utils',
@@ -499,7 +517,7 @@ packages=['paddle',
           'paddle.geometric',
           'paddle.geometric.message_passing',
           'paddle.geometric.sampling',
-          'paddle.ir',
+          'paddle.pir',
           'paddle.decomposition',
           ]
 
@@ -548,7 +566,7 @@ if('${WITH_SHARED_PHI}' == 'ON'):
     shutil.copy('${PHI_LIB}', libs_path)
 
 if('${WITH_SHARED_IR}' == 'ON'):
-    package_data['paddle.libs'] += [('libir' if os.name != 'nt' else 'ir') + ext_name]
+    package_data['paddle.libs'] += [('libpir' if os.name != 'nt' else 'pir') + ext_name]
     shutil.copy('${IR_LIB}', libs_path)
 
 package_data['paddle.libs']+=[
@@ -718,7 +736,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of phi.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
-                # change rpath of ir.ext for loading 3rd party libb
+                # change rpath of pir.ext for loading 3rd party libb
                 commands.append("install_name_tool -add_rpath '@loader_path' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         else:
             commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/base/${FLUID_CORE_NAME}" + '.so']
@@ -726,7 +744,7 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
                 # change rpath of phi.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${PHI_NAME}")
             if('${WITH_SHARED_IR}' == 'ON'):
-                # change rpath of ir.ext for loading 3rd party lib
+                # change rpath of pir.ext for loading 3rd party lib
                 commands.append("patchelf --set-rpath '$ORIGIN' ${PADDLE_BINARY_DIR}/python/paddle/libs/${IR_NAME}")
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':

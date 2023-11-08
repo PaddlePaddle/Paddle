@@ -14,7 +14,7 @@ limitations under the License. */
 
 #include <string>
 
-#include "paddle/fluid/ir/dialect/paddle_dialect/ir/pd_meta_tensor.h"
+#include "paddle/fluid/pir/dialect/operator/ir/meta_tensor.h"
 #include "paddle/phi/backends/cpu/cpu_context.h"
 #include "paddle/phi/backends/custom/custom_context.h"
 #include "paddle/phi/backends/gpu/gpu_context.h"

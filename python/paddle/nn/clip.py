@@ -47,14 +47,18 @@ def clip_by_norm(x, max_norm, name=None):
 
 
     Examples:
+
         .. code-block:: python
 
-            import paddle
-            from paddle.nn import clip
+            >>> import paddle
+            >>> from paddle.nn import clip
 
-            input = paddle.to_tensor([[2.0, 2.0], [2.0, 2.0]], dtype='float32')
-            reward = clip.clip_by_norm(x=input, max_norm=1.0)
-            # [[0.5, 0.5], [0.5, 0.5]]
+            >>> input = paddle.to_tensor([[2.0, 2.0], [2.0, 2.0]], dtype='float32')
+            >>> reward = clip.clip_by_norm(x=input, max_norm=1.0)
+            >>> print(reward)
+            Tensor(shape=[2, 2], dtype=float32, place=Place(cpu), stop_gradient=True,
+            [[0.50000000, 0.50000000],
+             [0.50000000, 0.50000000]])
     """
 
     if in_dynamic_mode():
@@ -98,14 +102,17 @@ def merge_selected_rows(x, name=None):
         out(${out_type}): ${out_comment}
 
     Examples:
+
         .. code-block:: python
 
-            import paddle.base as base
-            b = base.default_main_program().global_block()
-            var = b.create_var(
-                name="X", dtype="float32", persistable=True,
-                type=base.core.VarDesc.VarType.SELECTED_ROWS)
-            y = nn.merge_selected_rows(var)
+            >>> import paddle
+            >>> import paddle.base as base
+
+            >>> b = paddle.static.default_main_program().global_block()
+            >>> var = b.create_var(
+            ...     name="X", dtype="float32", persistable=True,
+            ...     type=base.core.VarDesc.VarType.SELECTED_ROWS)
+            >>> y = paddle.nn.clip.merge_selected_rows(var)
     """
     if in_dynamic_mode():
         return _C_ops.merge_selected_rows(x)
@@ -152,10 +159,19 @@ def get_tensor_from_selected_rows(x, name=None):
     Examples:
         .. code-block:: python
 
-            from paddle import nnp.py
-            b = base.default_main_program().global_block()
-            input = b.create_var(name="X", dtype="float32", persistable=True, type=base.core.VarDesc.VarType.SELECTED_ROWS)
-            out = nn.get_tensor_from_selected_rows(input)
+            >>> import paddle
+            >>> import paddle.base as base
+            >>> from paddle.base import core
+            >>> paddle.enable_static()
+            >>> scope = core.Scope()
+            >>> block = paddle.static.default_main_program().global_block()
+            >>> x_rows = [0, 5, 5, 4, 19]
+            >>> height = 20
+            >>> x = scope.var('X').get_selected_rows()
+            >>> x.set_rows(x_rows)
+            >>> x.set_height(height)
+            >>> x = block.create_var(name="X", dtype="float32", persistable=True, type=base.core.VarDesc.VarType.SELECTED_ROWS)
+            >>> z = paddle.nn.clip.get_tensor_from_selected_rows(x)
     """
 
     check_type(x, 'x', Variable, 'get_tensor_from_selected_rows')
@@ -253,28 +269,25 @@ class ErrorClipByValue(BaseErrorClipAttr):
     Examples:
         .. code-block:: python
 
-            import paddle.base as base
-            import paddle
-            paddle.enable_static()
-            BATCH_SIZE = 128
-            CLIP_MAX = 2e-6
-            CLIP_MIN = -1e-6
-            prog = base.framework.Program()
-            with base.program_guard(main_program=prog):
-                image = base.layers.data(
-                    name='x', shape=[784], dtype='float32')
-                hidden1 = base.layers.fc(input=image, size=128, act='relu')
-                hidden2 = base.layers.fc(input=hidden1, size=64, act='relu')
-                predict = base.layers.fc(
-                    input=hidden2, size=10, act='softmax')
-                label = base.layers.data(name='y', shape=[1], dtype='int64')
-                cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
-                avg_cost = paddle.mean(cost)
-            prog_clip = prog.clone()
-            prog_clip.block(0).var(hidden1.name)._set_error_clip(
-                paddle.nn.clip.ErrorClipByValue(
-                    max=CLIP_MAX, min=CLIP_MIN)
-                    )
+            >>> import paddle
+
+            >>> paddle.enable_static()
+            >>> BATCH_SIZE = 128
+            >>> CLIP_MAX = 2e-6
+            >>> CLIP_MIN = -1e-6
+            >>> prog = paddle.static.Program()
+            >>> with paddle.static.program_guard(main_program=prog):
+            ...     image = paddle.static.data(name='x', shape=[None, 784], dtype='float32')
+            ...     hidden1 = paddle.static.nn.fc(image, size=128, activation='relu')
+            ...     hidden2 = paddle.static.nn.fc(hidden1, size=64, activation='relu')
+            ...     predict = paddle.static.nn.fc(hidden2, size=10, activation='softmax')
+            ...     label = paddle.static.data(name='y', shape=[1], dtype='int64')
+            ...     cost = paddle.nn.functional.cross_entropy(input=predict, label=label)
+            ...     avg_cost = paddle.mean(cost)
+            >>> prog_clip = prog.clone()
+            >>> prog_clip.block(0).var(hidden1.name)._set_error_clip(
+            ...     paddle.nn.clip.ErrorClipByValue(
+            ...         max=CLIP_MAX, min=CLIP_MIN))
     """
 
     def __init__(self, max, min=None):
@@ -376,19 +389,18 @@ class ClipGradByValue(ClipGradBase):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
+            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
+            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
 
-            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10,
-                                      weight_attr=paddle.ParamAttr(need_clip=True),
-                                      bias_attr=paddle.ParamAttr(need_clip=False))
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
-
-            clip = paddle.nn.ClipGradByValue(min=-1, max=1)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.step()
+            >>> clip = paddle.nn.ClipGradByValue(min=-1, max=1)
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            >>> sdg.step()
     """
 
     def __init__(self, max, min=None):
@@ -482,19 +494,18 @@ class ClipGradByNorm(ClipGradBase):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
+            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
+            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
 
-            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10,
-                                      weight_attr=paddle.ParamAttr(need_clip=True),
-                                      bias_attr=paddle.ParamAttr(need_clip=False))
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
-
-            clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.step()
+            >>> clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            >>> sdg.step()
     """
 
     def __init__(self, clip_norm):
@@ -610,19 +621,18 @@ class ClipGradByGlobalNorm(ClipGradBase):
     Examples:
         .. code-block:: python
 
-            import paddle
+            >>> import paddle
+            >>> x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
+            >>> linear = paddle.nn.Linear(in_features=10, out_features=10,
+            ...                           weight_attr=paddle.ParamAttr(need_clip=True),
+            ...                           bias_attr=paddle.ParamAttr(need_clip=False))
+            >>> out = linear(x)
+            >>> loss = paddle.mean(out)
+            >>> loss.backward()
 
-            x = paddle.uniform([10, 10], min=-1.0, max=1.0, dtype='float32')
-            linear = paddle.nn.Linear(in_features=10, out_features=10,
-                                      weight_attr=paddle.ParamAttr(need_clip=True),
-                                      bias_attr=paddle.ParamAttr(need_clip=False))
-            out = linear(x)
-            loss = paddle.mean(out)
-            loss.backward()
-
-            clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
-            sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
-            sdg.step()
+            >>> clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0)
+            >>> sdg = paddle.optimizer.SGD(learning_rate=0.1, parameters=linear.parameters(), grad_clip=clip)
+            >>> sdg.step()
     """
 
     def __init__(
@@ -633,6 +643,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self.group_name = group_name
         assert isinstance(auto_skip_clip, bool)
         self.auto_skip_clip = auto_skip_clip
+        # TODO(zhiqiu): Now, in dygraph mode async_add_n is always used.
+        # However, in static mode, it is only used in auto_parallel mode
+        # by setting self._async_add_n to True. The reason is that there
+        # are so many hard code depends on `add_n` in the legacy static
+        # manual hybrid-parallel.
+        self._async_add_n = None
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
@@ -678,21 +694,24 @@ class ClipGradByGlobalNorm(ClipGradBase):
         ):
             return params_grads
 
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
         global_norm_var = []
         if len(sum_square_list_fp16) > 0:
-            global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+            global_norm_var_fp16 = async_add_n(sum_square_list_fp16)
             global_norm_var.append(global_norm_var_fp16.astype(sum_dtype))
         if len(sum_square_list_fp32) > 0:
-            global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+            global_norm_var_fp32 = async_add_n(sum_square_list_fp32)
             if sum_dtype == 'float32':
                 global_norm_var.append(global_norm_var_fp32)
             else:
                 global_norm_var.append(global_norm_var_fp32.astype(sum_dtype))
         if len(sum_square_list) > 0:
-            global_norm_var_fp64 = paddle.add_n(sum_square_list)
+            global_norm_var_fp64 = async_add_n(sum_square_list)
             global_norm_var.append(global_norm_var_fp64)
-        global_norm_var = paddle.add_n(global_norm_var)
+        global_norm_var = async_add_n(global_norm_var)
         global_norm_var = paddle.sqrt(global_norm_var)
         max_global_norm = paddle.full(
             shape=[], dtype=global_norm_var.dtype, fill_value=self.clip_norm
@@ -736,6 +755,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list_fp16 = []
         sum_square_list_bf16 = []
         sum_square_list_fp32 = []
+
+        def _add_n(var_list):
+            if self._async_add_n:
+                return paddle.stack(var_list).sum()
+            else:
+                return paddle.add_n(var_list)
+
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -781,7 +807,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+                    global_norm_var_fp16 = _add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -793,7 +819,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_bf16) > 0:
-                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    global_norm_var_bf16 = _add_n(sum_square_list_bf16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -805,7 +831,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+                    global_norm_var_fp32 = _add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -814,11 +840,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
+                    global_norm_var_other_dtype = _add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    paddle.add_n(global_norm_var)
+                    _add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
@@ -906,9 +932,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self.context = context
 
     def _create_operators(self, param, grad):
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
-            group_norm_var = paddle.add_n(self.context[self.group_name])
+            group_norm_var = async_add_n(self.context[self.group_name])
             group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = paddle.divide(
@@ -937,22 +966,22 @@ def set_gradient_clip(clip, param_list=None, program=None):
         and it may be removed in future releases, so it is not recommended.
         It is recommended to set ``grad_clip`` when initializing the ``optimizer`` ,
         this is a better method to clip gradient. There are three clipping strategies:
-         :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-         :ref:`api_base_clip_GradientClipByValue` .
+         :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+         :ref:`api_paddle_nn_ClipGradByValue` .
 
     To specify parameters that require gradient clip.
 
     Args:
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_base_clip_GradientClipByGlobalNorm` , :ref:`api_base_clip_GradientClipByNorm` ,
-            :ref:`api_base_clip_GradientClipByValue` ). Default value: None, and there is no
+            ( :ref:`api_paddle_nn_ClipGradByGlobalNorm` , :ref:`api_paddle_nn_ClipGradByNorm` ,
+            :ref:`api_paddle_nn_ClipGradByValue` ). Default value: None, and there is no
             gradient clipping.
         param_list (list(Variable), optional): Parameters that require gradient clip.
                 It can be a list of parameter or a list of parameter's name.
                 Default None, meaning that all parameters in the program will be included.
         program (Program, optional): The program where parameters are located.
-                Default None, meaning that using :ref:`api_base_default_main_program` .
+                Default None, meaning that using :ref:`api_paddle_static_default_main_program` .
 
     Returns:
         None
@@ -960,62 +989,61 @@ def set_gradient_clip(clip, param_list=None, program=None):
     Examples:
         .. code-block:: python
 
-            import paddle
-            import paddle.base as base
+            >>> import paddle
 
-            paddle.enable_static()
+            >>> paddle.enable_static()
 
-            def network():
-                image = paddle.static.data(name='image', shape=[
-                                   None, 28], dtype='float32')
-                param_attr1 = base.ParamAttr("fc1_param")
-                fc1 = base.layers.fc(image, size=10, param_attr=param_attr1)
-                param_attr2 = base.ParamAttr("fc2_param")
-                fc2 = base.layers.fc(fc1, size=10, param_attr=param_attr2)
-                loss = paddle.mean(fc2)
-                return loss
+            >>> def network():
+            ...     image = paddle.static.data(name='image', shape=[
+            ...                        None, 28], dtype='float32')
+            ...     param_attr1 = paddle.ParamAttr("fc1_param")
+            ...     fc1 = paddle.static.nn.fc(image, size=10, weight_attr=param_attr1)
+            ...     param_attr2 = paddle.ParamAttr("fc2_param")
+            ...     fc2 = paddle.static.nn.fc(fc1, size=10, weight_attr=param_attr2)
+            ...     loss = paddle.mean(fc2)
+            ...     return loss
 
 
-            # network 1: clip all parameter gradient
-            with base.program_guard(base.Program(), base.Program()):
-                loss = network()
-                paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
-                sgd = base.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
+            >>> # network 1: clip all parameter gradient
+            >>> with paddle.static.program_guard(paddle.static.Program(), paddle.static.Program()):
+            ...     loss = network()
+            ...     paddle.nn.clip.set_gradient_clip(
+            ...         paddle.nn.ClipGradByGlobalNorm(clip_norm=2.0))
+            ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+            ...     sgd.minimize(loss)
 
-            # network 2: clip parameter gradient by name
-            with base.program_guard(base.Program(), base.Program()):
-                loss = network()
-                paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
-                    param_list=["fc1_param", "fc2_param"])
-                sgd = base.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
+            >>> # network 2: clip parameter gradient by name
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
+            ...     loss = network()
+            ...     paddle.nn.clip.set_gradient_clip(
+            ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
+            ...         param_list=["fc1_param", "fc2_param"])
+            ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+            ...     sgd.minimize(loss)
 
-            # network 3: clip parameter gradient by value
-            with base.program_guard(base.Program(), base.Program()):
-                loss = network()
-                param_var1 = base.default_main_program().global_block().var("fc1_param")
-                param_var2 = base.default_main_program().global_block().var("fc2_param")
-                paddle.nn.clip.set_gradient_clip(
-                    paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
-                    param_list=[param_var1, param_var2])
-                sgd = base.optimizer.SGD(learning_rate=1e-3)
-                sgd.minimize(loss)
+            >>> # network 3: clip parameter gradient by value
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
+            ...     loss = network()
+            ...     param_var1 = paddle.static.default_main_program().global_block().var("fc1_param")
+            ...     param_var2 = paddle.static.default_main_program().global_block().var("fc2_param")
+            ...     paddle.nn.clip.set_gradient_clip(
+            ...         paddle.nn.ClipGradByValue(min=-1.0, max=1.0),
+            ...         param_list=[param_var1, param_var2])
+            ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3)
+            ...     sgd.minimize(loss)
 
-            # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
-            with base.program_guard(base.Program(), base.Program()):
-                loss = network()
-                clip1 = paddle.nn.ClipGradByValue(min=-1.0, max=1.0)
-                clip2 = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-                # Set the gradient clipping strategy: clip1
-                paddle.nn.clip.set_gradient_clip(clip1)
-                # Set the gradient clipping strategy: clip2
-                sgd = base.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
-                sgd.minimize(loss)
-                # 'set_gradient_clip' will not take effect when setting has a conflict,
-                # and the gradient clipping strategy will be 'clip2'
+            >>> # network 4: use 'set_gradient_clip' and 'optimize(grad_clip=clip)' together
+            >>> with paddle.static.program_guard(base.Program(), paddle.static.Program()):
+            ...     loss = network()
+            ...     clip1 = paddle.nn.ClipGradByValue(min=-1.0, max=1.0)
+            ...     clip2 = paddle.nn.ClipGradByNorm(clip_norm=1.0)
+            ...     # Set the gradient clipping strategy: clip1
+            ...     paddle.nn.clip.set_gradient_clip(clip1)
+            ...     # Set the gradient clipping strategy: clip2
+            ...     sgd = paddle.optimizer.SGD(learning_rate=1e-3, grad_clip=clip2)
+            ...     sgd.minimize(loss)
+            ...     # 'set_gradient_clip' will not take effect when setting has a conflict,
+            ...     # and the gradient clipping strategy will be 'clip2'
 
 
     """

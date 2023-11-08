@@ -22,6 +22,8 @@ import numpy as np
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "2"
 
+from dygraph_to_static_utils_new import Dy2StTestBase
+
 import paddle
 from paddle import _legacy_C_ops, base
 from paddle.base.dygraph import to_variable
@@ -513,7 +515,7 @@ def create_dataloader(reader, place):
     return data_loader
 
 
-class TestLACModel(unittest.TestCase):
+class TestLACModel(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
@@ -624,9 +626,7 @@ class TestLACModel(unittest.TestCase):
             dy_out,
             st_out,
             rtol=1e-05,
-            err_msg='dygraph output:\n{},\nstatic output:\n {}.'.format(
-                dy_out, st_out
-            ),
+            err_msg=f'dygraph output:\n{dy_out},\nstatic output:\n {st_out}.',
         )
         # Prediction needs trained models, so put `test_predict` at last of `test_train`
         # self.verify_predict()

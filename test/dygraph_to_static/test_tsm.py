@@ -19,7 +19,7 @@ import sys
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import test_and_compare_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 from tsm_config_utils import merge_configs, parse_config, print_configs
 
 import paddle
@@ -384,8 +384,8 @@ def train(args, fake_data_reader, to_static):
         return ret
 
 
-class TestTsm(unittest.TestCase):
-    @test_and_compare_with_new_ir(False)
+class TestTsm(Dy2StTestBase):
+    @test_legacy_and_pir
     def test_dygraph_static_same_loss(self):
         if base.is_compiled_with_cuda():
             base.set_flags({"FLAGS_cudnn_deterministic": True})

@@ -445,6 +445,14 @@ void UnStackGradInferMeta(const std::vector<const MetaTensor*>& out_grad,
                           int axis,
                           MetaTensor* x_grad);
 
+void WeightOnlyLinearGradInferMeta(const MetaTensor& x,
+                                   const MetaTensor& weight,
+                                   const MetaTensor& bias,
+                                   const MetaTensor& weight_scale,
+                                   const MetaTensor& out_grad,
+                                   const std::string& weight_dtype,
+                                   MetaTensor* x_grad);
+
 void YoloLossGradInferMeta(const MetaTensor& x,
                            const MetaTensor& gt_box,
                            const MetaTensor& gt_label,

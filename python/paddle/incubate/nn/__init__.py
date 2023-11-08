@@ -12,19 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401
-from .layer.fused_transformer import FusedFeedForward  # noqa: F401
-from .layer.fused_transformer import FusedTransformerEncoderLayer  # noqa: F401
-from .layer.fused_transformer import FusedMultiTransformer  # noqa: F401
-from .layer.fused_linear import FusedLinear  # noqa: F401
+from .layer.fused_dropout_add import FusedDropoutAdd
+from .layer.fused_dropout_nd import FusedDropout  # noqa: F401
+from .layer.fused_ec_moe import FusedEcMoe
+from .layer.fused_linear import FusedLinear
 from .layer.fused_transformer import (
     FusedBiasDropoutResidualLayerNorm,
-)  # noqa: F401
-from .layer.fused_ec_moe import FusedEcMoe  # noqa: F401
-from .layer.fused_dropout_add import FusedDropoutAdd  # noqa: F401
-from .layer.fused_dropout_nd import FusedDropout  # noqa: F401
+    FusedFeedForward,
+    FusedMultiHeadAttention,
+    FusedMultiTransformer,
+    FusedTransformerEncoderLayer,
+)
 
-__all__ = [  # noqa
+__all__ = [
     'FusedMultiHeadAttention',
     'FusedFeedForward',
     'FusedTransformerEncoderLayer',

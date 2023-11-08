@@ -497,8 +497,8 @@ def _reset_so_rpath(so_path):
     if OS_NAME.startswith("darwin"):
         origin_runtime_path = "@loader_path/../libs/"
         rpath = f"@rpath/{_get_core_name()}"
-        cmd = 'install_name_tool -change {} {} {}'.format(
-            origin_runtime_path, rpath, so_path
+        cmd = (
+            f'install_name_tool -change {origin_runtime_path} {rpath} {so_path}'
         )
 
         run_cmd(cmd)
@@ -512,9 +512,9 @@ def _get_include_dirs_when_compiling(compile_dir):
     include_dirs_file = 'includes.txt'
     path = os.path.abspath(compile_dir)
     include_dirs_file = os.path.join(path, include_dirs_file)
-    assert os.path.isfile(include_dirs_file), "File {} does not exist".format(
+    assert os.path.isfile(
         include_dirs_file
-    )
+    ), f"File {include_dirs_file} does not exist"
     with open(include_dirs_file, 'r') as f:
         include_dirs = [line.strip() for line in f.readlines() if line.strip()]
 
@@ -943,9 +943,7 @@ def parse_op_info(op_name):
     """
     if op_name not in OpProtoHolder.instance().op_proto_map:
         raise ValueError(
-            "Please load {} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`".format(
-                op_name
-            )
+            f"Please load {op_name} shared library file firstly by `paddle.utils.cpp_extension.load_op_meta_info_and_register_op(...)`"
         )
     op_proto = OpProtoHolder.instance().get_op_proto(op_name)
 
@@ -1314,27 +1312,19 @@ def _jit_compile(file_path, verbose=False):
         py_version = subprocess.check_output([interpreter, '-V'])
         py_version = py_version.decode()
         log_v(
-            "Using Python interpreter: {}, version: {}".format(
-                interpreter, py_version.strip()
-            ),
+            f"Using Python interpreter: {interpreter}, version: {py_version.strip()}",
             verbose,
         )
     except Exception:
         _, error, _ = sys.exc_info()
         raise RuntimeError(
-            'Failed to check Python interpreter with `{}`, errors: {}'.format(
-                interpreter, error
-            )
+            f'Failed to check Python interpreter with `{interpreter}`, errors: {error}'
         )
 
     if IS_WINDOWS:
-        compile_cmd = 'cd /d {} && {} {} build'.format(
-            ext_dir, interpreter, setup_file
-        )
+        compile_cmd = f'cd /d {ext_dir} && {interpreter} {setup_file} build'
     else:
-        compile_cmd = 'cd {} && {} {} build'.format(
-            ext_dir, interpreter, setup_file
-        )
+        compile_cmd = f'cd {ext_dir} && {interpreter} {setup_file} build'
 
     print("Compiling user custom op, it will cost a few seconds.....")
     run_cmd(compile_cmd, verbose)
@@ -1437,9 +1427,7 @@ def check_abi_compatibility(compiler, verbose=False):
         # check compiler version failed
         _, error, _ = sys.exc_info()
         warnings.warn(
-            'Failed to check compiler version for {}: {}'.format(
-                compiler, error
-            )
+            f'Failed to check compiler version for {compiler}: {error}'
         )
         return False
 

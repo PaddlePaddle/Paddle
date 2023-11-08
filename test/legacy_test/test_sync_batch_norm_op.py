@@ -26,11 +26,7 @@ from shlex import quote
 
 import numpy as np
 from decorator_helper import prog_scope
-from eager_op_test import (
-    OpTest,
-    _set_use_system_allocator,
-    convert_float_to_uint16,
-)
+from op_test import OpTest, _set_use_system_allocator, convert_float_to_uint16
 
 import paddle
 from paddle import base, nn
@@ -220,9 +216,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         for id in range(core.get_cuda_device_count()):
             filepath = os.path.join(
                 self.data_dir.name,
-                'input_{}_{}_{}_{}.npy'.format(
-                    id, only_forward, str(self.dtype.__name__), layout
-                ),
+                f'input_{id}_{only_forward}_{str(self.dtype.__name__)}_{layout}.npy',
             )
             np.save(filepath, data[id * stride : (id + 1) * stride])
         data = create_or_get_tensor(
@@ -286,9 +280,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
             bn_val = bn_fetches[i]
             file_path = os.path.join(
                 self.data_dir.name,
-                'output_{}_{}_{}_{}.npy'.format(
-                    0, only_forward, self.dtype.__name__, i
-                ),
+                f'output_{0}_{only_forward}_{self.dtype.__name__}_{i}.npy',
             )
             sync_bn_val = np.load(file_path)
             if sync_bn_val.shape != bn_val.shape:

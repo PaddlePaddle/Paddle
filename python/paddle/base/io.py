@@ -12,54 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import errno
-import warnings
 import logging
-import pickle
-import contextlib
-from functools import reduce
-import sys
-from io import BytesIO
 
-import numpy as np
-import math
-import paddle
-from paddle.base import layers
-from paddle.base.executor import Executor, global_scope
-from paddle.base.framework import (
-    Program,
-    Parameter,
-    default_main_program,
-    default_startup_program,
-    Variable,
-    program_guard,
-    dygraph_not_support,
-    static_only,
-)
-from paddle.reader import (
-    cache,
-    map_readers,
-    buffered,
-    compose,
-    chain,
-    shuffle,
-    ComposeNotAligned,
-    firstn,
-    xmap_readers,
-    multiprocess_reader,
-)
-from .wrapped_decorator import signature_safe_contextmanager
-from paddle.base.compiler import CompiledProgram
 from paddle.base.log_helper import get_logger
-from . import reader
-from . import unique_name
-from .reader import *
-from . import core
-from paddle.utils import deprecated
-from paddle.base.framework import static_only
 
-__all__ = reader.__all__
+from . import reader  # noqa: F401
+from .reader import DataLoader, PyReader  # noqa: F401
+
+__all__ = []
 
 
 _logger = get_logger(

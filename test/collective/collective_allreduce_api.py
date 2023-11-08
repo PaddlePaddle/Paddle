@@ -63,8 +63,6 @@ def all_reduce_new(tensor, reduce_type=str(dist.ReduceOp.SUM), group=None):
         attrs={'ring_id': ring_id, 'reduce_type': int(reduce_type)},
     )
 
-    return None
-
 
 class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
     def __init__(self):
@@ -91,6 +89,20 @@ class TestCollectiveAllreduceAPI(TestCollectiveAPIRunnerBase):
                 name="tindata", shape=[10, 1000], dtype=dtype
             )
             all_reduce_new(tindata, reduce_type)
+            return [tindata]
+
+    def get_model_new_comm(
+        self,
+        main_prog,
+        startup_program,
+        rank,
+        dtype='float32',
+    ):
+        with base.program_guard(main_prog, startup_program):
+            tindata = paddle.static.data(
+                name="tindata", shape=[10, 1000], dtype=dtype
+            )
+            paddle.distributed.all_reduce(tindata)
             return [tindata]
 
 

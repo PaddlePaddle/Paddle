@@ -42,7 +42,7 @@ namespace interpreter {
 size_t CountDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   size_t count = 0;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     count += pair.second.size();
   }
   return count;
@@ -50,7 +50,7 @@ size_t CountDownstreamMap(
 const std::string StringizeDownstreamMap(
     const std::map<size_t, std::set<size_t>>& downstream_map) {
   std::ostringstream oss;
-  for (auto pair : downstream_map) {
+  for (auto const& pair : downstream_map) {
     oss << pair.first << " -> ";
     std::copy(pair.second.begin(),
               pair.second.end(),
@@ -144,7 +144,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       auto outputs = instructions_->at(op_idx).Outputs().at("Output");
 
       auto is_read = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Inputs()) {
+        for (auto const& pair : inst.Inputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -155,7 +155,7 @@ void DependencyBuilder::AddDependencyForCoalesceTensorOp() {
       };
 
       auto is_write = [](const Instruction& inst, size_t var_id) -> bool {
-        for (auto pair : inst.Outputs()) {
+        for (auto const& pair : inst.Outputs()) {
           for (size_t item : pair.second) {
             if (item == var_id) {
               return true;
@@ -547,13 +547,13 @@ void DependencyBuilder::UpdateVarMinRwOp(
 /// ======================== ///
 ///        For new ir        ///
 /// ======================== ///
-NewIrDependencyBuilder::NewIrDependencyBuilder() {
+PirDependencyBuilder::PirDependencyBuilder() {
   is_build_ = false;
   op_downstream_map_ = std::make_shared<std::map<size_t, std::set<size_t>>>();
   op_happens_before_ = std::make_shared<std::vector<std::vector<bool>>>();
 }
 
-const std::map<size_t, std::set<size_t>>& NewIrDependencyBuilder::Build(
+const std::map<size_t, std::set<size_t>>& PirDependencyBuilder::Build(
     std::vector<paddle::framework::InstructionBase*> instructions) {
   if (is_build_) {
     return *op_downstream_map_;
@@ -590,7 +590,7 @@ const std::map<size_t, std::set<size_t>>& NewIrDependencyBuilder::Build(
   return *op_downstream_map_;
 }
 
-void NewIrDependencyBuilder::BuildDownstreamMap() {
+void PirDependencyBuilder::BuildDownstreamMap() {
   auto var2min_rw_op =
       std::map<size_t, std::list<size_t>>();  // # map from variable id to read
                                               //  write op id.
@@ -664,8 +664,8 @@ void NewIrDependencyBuilder::BuildDownstreamMap() {
   }
 }
 
-void NewIrDependencyBuilder::ShareDependencyFrom(
-    const NewIrDependencyBuilder& src) {
+void PirDependencyBuilder::ShareDependencyFrom(
+    const PirDependencyBuilder& src) {
   std::tie(op_downstream_map_, op_happens_before_) = src.GetDependency();
   is_build_ = true;
 }

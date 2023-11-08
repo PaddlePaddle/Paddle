@@ -20,7 +20,7 @@ import numpy as np
 import paddle
 from paddle.base import core
 
-# from eager_op_test import OpTest
+# from op_test import OpTest
 
 
 def np_nan_to_num(

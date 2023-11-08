@@ -43,9 +43,15 @@ class TensorWrapper {
                          bool no_need_buffer = false) {
     // set inplace_version_snapshot_ according to tensor's current inplace
     // version.
-    if (tensor.impl() && phi::DenseTensor::classof(tensor.impl().get())) {
+    if (tensor.initialized() && tensor.is_dense_tensor()) {
       phi::DenseTensor* dense_tensor =
           static_cast<phi::DenseTensor*>(tensor.impl().get());
+      auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
+      inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
+    } else if (tensor.initialized() && tensor.is_dist_tensor()) {
+      phi::DenseTensor* dense_tensor =
+          static_cast<phi::distributed::DistTensor*>(tensor.impl().get())
+              ->unsafe_mutable_value();
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
       inplace_version_snapshot_ = inplace_version_counter.CurrentVersion();
     }
@@ -69,15 +75,16 @@ class TensorWrapper {
             std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
             dense_tensor->meta()));
       } else if (phi::distributed::DistTensor::classof(tensor.impl().get())) {
-        // Only Copy Meta
+        // Copy Global dims, DistAttr and DenseTensorMeta
         phi::distributed::DistTensor* dist_tensor =
             static_cast<phi::distributed::DistTensor*>(tensor.impl().get());
-        intermidiate_tensor_.set_impl(
+        auto no_buffer_dist_tensor =
             std::make_shared<phi::distributed::DistTensor>(
-                phi::DenseTensor(std::make_shared<phi::Allocation>(
-                                     nullptr, 0, tensor.place()),
-                                 dist_tensor->value().meta()),
-                dist_tensor->dist_attr()));
+                dist_tensor->dims(), dist_tensor->dist_attr());
+        *no_buffer_dist_tensor->unsafe_mutable_value() = phi::DenseTensor(
+            std::make_shared<phi::Allocation>(nullptr, 0, tensor.place()),
+            dist_tensor->value().meta());
+        intermidiate_tensor_.set_impl(no_buffer_dist_tensor);
       } else {
         PADDLE_THROW(paddle::platform::errors::Fatal(
             "Unrecognized tensor type for no_need_buffer feature"));
@@ -199,10 +206,20 @@ class TensorWrapper {
                  "no_need_buffer_ is true.";
       return;
     }
-    if (intermidiate_tensor_.impl() &&
-        phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
-      phi::DenseTensor* dense_tensor =
-          static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
+    if (intermidiate_tensor_.impl()) {
+      phi::DenseTensor* dense_tensor = nullptr;
+      if (phi::DenseTensor::classof(intermidiate_tensor_.impl().get())) {
+        dense_tensor =
+            static_cast<phi::DenseTensor*>(intermidiate_tensor_.impl().get());
+      } else if (phi::distributed::DistTensor::classof(
+                     intermidiate_tensor_.impl().get())) {
+        dense_tensor = static_cast<phi::distributed::DistTensor*>(
+                           intermidiate_tensor_.impl().get())
+                           ->unsafe_mutable_value();
+      } else {
+        return;
+      }
+
       auto& inplace_version_counter = dense_tensor->InplaceVersionCounter();
 
       uint32_t wrapper_version_snapshot = inplace_version_snapshot_;

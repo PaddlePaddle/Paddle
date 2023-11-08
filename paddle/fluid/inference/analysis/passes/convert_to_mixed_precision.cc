@@ -184,7 +184,7 @@ void ConvertToMixedPrecisionPass::SaveMixedModel() {
   auto SerializeProg = [&](const std::string& path) {
     auto str = mixed_program_desc.Proto()->SerializeAsString();
     std::ofstream file(path.c_str(), std::ios::binary);
-    file.write(str.c_str(), str.size());
+    file.write(str.c_str(), str.size());  // NOLINT
     file.close();
   };
 

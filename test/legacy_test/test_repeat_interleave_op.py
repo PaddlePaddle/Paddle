@@ -15,7 +15,7 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import base
@@ -104,14 +104,15 @@ class TestRepeatInterleaveOp2(OpTest):
 
 class TestIndexSelectAPI(unittest.TestCase):
     def input_data(self):
-        self.data_zero_dim_x = np.array(0.5)
+        self.data_zero_dim_x = np.array(0.5).astype('float32')
         self.data_x = np.array(
             [
                 [1.0, 2.0, 3.0, 4.0],
                 [5.0, 6.0, 7.0, 8.0],
                 [9.0, 10.0, 11.0, 12.0],
             ]
-        )
+        ).astype('float32')
+        self.data_zero_dim_index = np.array(2)
         self.data_index = np.array([0, 1, 2, 1]).astype('int32')
 
     def test_repeat_interleave_api(self):
@@ -265,6 +266,17 @@ class TestIndexSelectAPI(unittest.TestCase):
             z = paddle.repeat_interleave(x, index, None)
             np_z = z.numpy()
         expect_out = np.repeat(self.data_zero_dim_x, index, axis=None)
+        np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
+
+        # case 4 zero_dim_index
+        with base.dygraph.guard():
+            x = base.dygraph.to_variable(self.data_zero_dim_x)
+            index = base.dygraph.to_variable(self.data_zero_dim_index)
+            z = paddle.repeat_interleave(x, index, None)
+            np_z = z.numpy()
+        expect_out = np.repeat(
+            self.data_zero_dim_x, self.data_zero_dim_index, axis=None
+        )
         np.testing.assert_allclose(expect_out, np_z, rtol=1e-05)
 
 

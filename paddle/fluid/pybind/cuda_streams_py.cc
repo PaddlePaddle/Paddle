@@ -98,23 +98,22 @@ void BindCudaStream(py::module *m_ptr) {
       The handle of the CUDA stream.
 
       Parameters:
-        device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream.
-        If device is None or negative integer, device will be the current device.
-        If device is positive integer, it must less than the device count. Default: None.
-
-        priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
-        If priority is None, the priority is 2(normal). Default: None.
+          device(paddle.CUDAPlace()|int|None, optional): The device which wanted to allocate the stream.
+              If device is None or negative integer, device will be the current device.
+              If device is positive integer, it must less than the device count. Default: None.
+          priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
+              If priority is None, the priority is 2(normal). Default: None.
 
       Examples:
-        .. code-block:: python
+          .. code-block:: python
 
-            # required: gpu
-            import paddle
-            s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.device.cuda.Stream(0, 1)
-            s3 = paddle.device.cuda.Stream()
+              >>> # doctest: +REQUIRES(env:GPU)
+              >>> import paddle
+              >>> s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+              >>> s2 = paddle.device.cuda.Stream(0, 1)
+              >>> s3 = paddle.device.cuda.Stream()
 
-  )DOC")
+      )DOC")
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "wait_event",
@@ -122,21 +121,20 @@ void BindCudaStream(py::module *m_ptr) {
             self.WaitEvent(event.GetRawCudaEvent());
           },
           R"DOC(
-      Makes all future work submitted to stream wait for all work captured in event.
+          Makes all future work submitted to stream wait for all work captured in event.
 
-      Parameters:
-        event(CUDAEvent): The event to wait on.
+          Parameters:
+              event(CUDAEvent): The event to wait on.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-          # required: gpu
-          import paddle
-          s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-          event = paddle.device.cuda.Event()
-          s.wait_event(event)
-
-           )DOC")
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> event = paddle.device.cuda.Event()
+                  >>> s.wait_event(event)
+          )DOC")
       .def(
           "wait_stream",
           [](phi::CUDAStream &self, phi::CUDAStream &stream) {
@@ -145,53 +143,53 @@ void BindCudaStream(py::module *m_ptr) {
             self.WaitEvent(event.GetRawCudaEvent());
           },
           R"DOC(
-      Synchronizes with the given stream.
+          Synchronizes with the given stream.
 
-      Parameters:
-        stream(CUDAStream): The stream to synchronize with.
+          Parameters:
+              stream(CUDAStream): The stream to synchronize with.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-            # required: gpu
-            import paddle
-            s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s2 = paddle.device.cuda.Stream(0, 1)
-            s1.wait_stream(s2)
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s1 = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> s2 = paddle.device.cuda.Stream(0, 1)
+                  >>> s1.wait_stream(s2)
 
-           )DOC")
+          )DOC")
       .def(
           "query",
           [](phi::CUDAStream &self) { return self.Query(); },
           R"DOC(
-      Return the status whether if all operations in stream have completed.
+          Return the status whether if all operations in stream have completed.
 
-      Returns: A boolean value.
+          Returns: A boolean value.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-            # required: gpu
-            import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            is_done = s.query()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> is_done = s.query()
 
-           )DOC")
+          )DOC")
       .def(
           "synchronize",
           [](phi::CUDAStream &self) { self.Synchronize(); },
           R"DOC(
-      Waits for stream tasks to complete.
+          Waits for stream tasks to complete.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-            # required: gpu
-            import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            s.synchronize()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> s.synchronize()
 
-           )DOC")
+          )DOC")
       .def(
           "record_event",
           [](phi::CUDAStream &self, paddle::platform::CudaEvent *event) {
@@ -202,24 +200,24 @@ void BindCudaStream(py::module *m_ptr) {
             return event;
           },
           R"DOC(
-      Record a CUDA event in the stream.
+          Record a CUDA event in the stream.
 
-      Parameters:
-          event(CUDAEvent, optional): The event to be record. If event is None, a new event is created.
-          Default: None.
+          Parameters:
+              event(CUDAEvent, optional): The event to be record. If event is None, a new event is created.
+                  Default: None.
 
-      Returns:
-          The record event.
+          Returns:
+              The record event.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-            # required: gpu
-            import paddle
-            s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
-            event = s.record_event()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> s = paddle.device.cuda.Stream(paddle.CUDAPlace(0), 1)
+                  >>> event = s.record_event()
 
-           )DOC",
+          )DOC",
           py::arg("event") = nullptr)
       .def_property_readonly(
           "cuda_stream",
@@ -228,21 +226,21 @@ void BindCudaStream(py::module *m_ptr) {
             return reinterpret_cast<std::uintptr_t>(self.raw_stream());
           },
           R"DOC(
-      retrun the raw cuda stream of type cudaStream_t as type int.
+          retrun the raw cuda stream of type cudaStream_t as type int.
 
-      Examples:
-        .. code-block:: python
+          Examples:
+              .. code-block:: python
 
-            # required: gpu
-            import paddle
-            import ctypes
-            cuda_stream = paddle.device.cuda.current_stream().cuda_stream
-            print(cuda_stream)
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> import ctypes
+                  >>> cuda_stream = paddle.device.cuda.current_stream().cuda_stream
+                  >>> print(cuda_stream)
 
-            ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
-            print(ptr)
+                  >>> ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
+                  >>> print(ptr)
 
-           )DOC")
+          )DOC")
       .def_property_readonly("place",
                              [](phi::CUDAStream &self) {
                                return platform::CUDAPlace(self.place());
@@ -322,18 +320,18 @@ void BindCudaStream(py::module *m_ptr) {
       The handle of the CUDA event.
 
       Parameters:
-        enable_timing(bool, optional): Whether the event will measure time. Default: False.
-        blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
-        interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
+          enable_timing(bool, optional): Whether the event will measure time. Default: False.
+          blocking(bool, optional): Whether the wait() func will be blocking. Default: False;
+          interprocess(bool, optional): Whether the event can be shared between processes. Default: False.
 
       Examples:
-        .. code-block:: python
+          .. code-block:: python
 
-            # required: gpu
-            import paddle
-            event = paddle.device.cuda.Event()
+              >>> # doctest: +REQUIRES(env:GPU)
+              >>> import paddle
+              >>> event = paddle.device.cuda.Event()
 
-  )DOC")
+      )DOC")
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       .def(
           "record",
@@ -347,17 +345,18 @@ void BindCudaStream(py::module *m_ptr) {
           Records the event in the given stream.
 
           Parameters:
-            stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
+              stream(CUDAStream, optional): The handle of CUDA stream. If None, the stream is the current stream. Default: None.
 
           Examples:
-            .. code-block:: python
+              .. code-block:: python
 
-              # required: gpu
-              import paddle
-              event = paddle.device.cuda.Event()
-              event.record()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> paddle.device.set_device('gpu')
+                  >>> event = paddle.device.cuda.Event()
+                  >>> event.record()
 
-        )DOC",
+          )DOC",
           py::arg("stream") = nullptr)
       .def(
           "query",
@@ -368,14 +367,15 @@ void BindCudaStream(py::module *m_ptr) {
           Returns: A boolean which indicates all work currently captured by the event has been completed.
 
           Examples:
-            .. code-block:: python
+              .. code-block:: python
 
-                # required: gpu
-                import paddle
-                event = paddle.device.cuda.Event()
-                is_done = event.query()
+                  >>> # doctest: +REQUIRES(env:GPU)
+                  >>> import paddle
+                  >>> paddle.device.set_device('gpu')
+                  >>> event = paddle.device.cuda.Event()
+                  >>> is_done = event.query()
 
-           )DOC")
+          )DOC")
       .def(
           "synchronize",
           [](paddle::platform::CudaEvent &self) { self.Synchronize(); },
@@ -383,14 +383,15 @@ void BindCudaStream(py::module *m_ptr) {
             Waits for an event to complete.
 
             Examples:
-              .. code-block:: python
+                .. code-block:: python
 
-                # required: gpu
-                import paddle
-                event = paddle.device.cuda.Event()
-                event.synchronize()
+                    >>> # doctest: +REQUIRES(env:GPU)
+                    >>> import paddle
+                    >>> paddle.device.set_device('gpu')
+                    >>> event = paddle.device.cuda.Event()
+                    >>> event.synchronize()
 
-           )DOC")
+          )DOC")
 #endif
       .def(
           "__init__",

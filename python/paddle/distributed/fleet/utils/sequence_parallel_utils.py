@@ -258,10 +258,8 @@ class ColumnSequenceParallelLinear(Layer):
 
         self.gather_output = gather_output
         assert out_features % self.world_size == 0, (
-            "Number of column of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                out_features, self.world_size
-            )
+            f"Number of column of the weight for linear ({out_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
         self.output_size_per_partition = out_features // self.world_size
 
@@ -380,10 +378,8 @@ class RowSequenceParallelLinear(Layer):
 
         self.is_mp = self.world_size > 1
         assert in_features % self.world_size == 0, (
-            "Number of row of the weight for linear ({}) must be"
-            " divisible by model parallel size ({})".format(
-                in_features, self.world_size
-            )
+            f"Number of row of the weight for linear ({in_features}) must be"
+            f" divisible by model parallel size ({self.world_size})"
         )
 
         self.input_size_per_partition = in_features // self.world_size

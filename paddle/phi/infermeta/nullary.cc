@@ -16,6 +16,24 @@ limitations under the License. */
 
 namespace phi {
 
+void ArangeInferMeta(const Scalar& start,
+                     const Scalar& end,
+                     const Scalar& step,
+                     DataType dtype,
+                     MetaTensor* out) {
+  if (!start.FromTensor() && !end.FromTensor() && !step.FromTensor()) {
+    double start_value = start.to<double>();
+    double end_value = end.to<double>();
+    double step_value = step.to<double>();
+    int numel =
+        static_cast<int>(std::ceil((end_value - start_value) / step_value));
+    out->set_dims(phi::make_ddim(std::vector<int64_t>(1, numel)));
+  } else {
+    out->set_dims({-1});
+  }
+  out->set_dtype(dtype);
+}
+
 void AssignValueInferMeta(const std::vector<int>& shape,
                           DataType dtype,
                           MetaTensor* out) {
@@ -41,13 +59,11 @@ void CreateInferMeta(const IntArray& shape, DataType dtype, MetaTensor* out) {
   CreateInferMetaBase(shape.GetData(), dtype, DataLayout::NCHW, out);
 }
 
-void CreateIntArrayInferMeta(const IntArray& data,
+void CreateVecShapeInferMeta(const std::vector<int64_t>& shape,
                              DataType dtype,
                              MetaTensor* out) {
-  CreateInferMetaBase({static_cast<int64_t>(data.GetData().size())},
-                      dtype,
-                      DataLayout::NCHW,
-                      out);
+  CreateInferMetaBase(
+      {static_cast<int64_t>(shape.size())}, dtype, DataLayout::NCHW, out);
 }
 
 void CreateInferMetaBase(const std::vector<int64_t>& shape,
@@ -74,7 +90,7 @@ void EyeInferMeta(const Scalar& num_rows,
                   DataType dtype,
                   MetaTensor* out,
                   MetaConfig config) {
-  int64_t rows, columns;
+  int64_t rows = 0, columns = 0;
   if (!config.is_runtime && num_rows.FromTensor()) {
     rows = -1;
   } else {
@@ -221,6 +237,11 @@ void RecvV2InferMeta(const int ring_id,
     out->set_dims(phi::make_ddim(out_shape));
   }
   out->set_dtype(dtype);
+}
+
+void SeedInferMeta(int seed, MetaTensor* out) {
+  out->set_dims(phi::make_ddim({1}));
+  out->set_dtype(DataType::INT32);
 }
 
 void TruncatedGaussianRandomInferMeta(const std::vector<int>& shape,

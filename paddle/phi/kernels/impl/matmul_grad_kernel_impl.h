@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/phi/kernels/funcs/reduce_functor.h"
 #include "paddle/phi/kernels/impl/dot_grad_kernel_impl.h"
 #include "paddle/phi/kernels/impl/matmul_kernel_impl.h"
+#include "paddle/phi/kernels/reduce_sum_kernel.h"
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "paddle/phi/kernels/gpu/reduce.h"
@@ -60,8 +61,8 @@ struct ReduceSumForMatmulGrad<GPUContext, T> {
                   const DenseTensor& input,
                   DenseTensor* output,
                   const std::vector<int>& reduce_dims) {
-    funcs::ReduceKernel<T, T, kps::AddFunctor, kps::IdentityFunctor<T>>(
-        dev_ctx, input, output, kps::IdentityFunctor<T>(), reduce_dims);
+    phi::SumKernel<T, GPUContext>(
+        dev_ctx, input, reduce_dims, input.dtype(), false, output);
   }
 };
 #endif

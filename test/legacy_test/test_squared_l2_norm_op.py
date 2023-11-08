@@ -15,8 +15,8 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
 from numpy import linalg as LA
+from op_test import OpTest
 
 import paddle
 from paddle import _C_ops, _legacy_C_ops

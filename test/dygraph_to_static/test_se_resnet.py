@@ -20,7 +20,11 @@ import time
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import ast_only_test
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
+)
 from predictor_utils import PredictorTools
 
 import paddle
@@ -29,6 +33,7 @@ from paddle.base.dygraph.base import to_variable
 from paddle.jit.api import to_static
 from paddle.jit.translated_layer import INFER_MODEL_SUFFIX, INFER_PARAMS_SUFFIX
 from paddle.nn import BatchNorm, Linear
+from paddle.static import InputSpec
 
 SEED = 2020
 np.random.seed(SEED)
@@ -224,9 +229,7 @@ class SeResNeXt(paddle.nn.Layer):
         supported_layers = [50, 101, 152]
         assert (
             layers in supported_layers
-        ), "supported layers are {} but input layer is {}".format(
-            supported_layers, layers
-        )
+        ), f"supported layers are {supported_layers} but input layer is {layers}"
 
         if layers == 50:
             cardinality = 32
@@ -318,7 +321,7 @@ class SeResNeXt(paddle.nn.Layer):
             ),
         )
 
-    @to_static
+    @to_static(full_graph=True)
     def forward(self, inputs, label):
         if self.layers == 50 or self.layers == 101:
             y = self.conv0(inputs)
@@ -348,7 +351,7 @@ class SeResNeXt(paddle.nn.Layer):
         return out, avg_loss, acc_top1, acc_top5
 
 
-class TestSeResnet(unittest.TestCase):
+class TestSeResnet(Dy2StTestBase):
     def setUp(self):
         self.train_reader = paddle.batch(
             paddle.dataset.flowers.train(use_xmap=False, cycle=True),
@@ -370,6 +373,7 @@ class TestSeResnet(unittest.TestCase):
     def tearDown(self):
         self.temp_dir.cleanup()
 
+    @compare_legacy_with_pir
     def train(self, train_reader, to_static):
         paddle.jit.enable_to_static(to_static)
 
@@ -452,9 +456,15 @@ class TestSeResnet(unittest.TestCase):
                             paddle.jit.save(
                                 se_resnext,
                                 self.model_save_prefix,
-                                [img, label],
                                 output_spec=[pred],
-                                input_names_after_prune=[img.name],
+                                input_names_after_prune=['x'],
+                                input_spec=[
+                                    InputSpec(
+                                        shape=[None, 3, 224, 224], name='x'
+                                    ),
+                                    InputSpec(shape=[None, 1], name='y'),
+                                ],
+                                clip_extra=False,
                             )
                         else:
                             paddle.save(
@@ -485,6 +495,7 @@ class TestSeResnet(unittest.TestCase):
 
             return pred_res.numpy()
 
+    @compare_legacy_with_pir
     def predict_static(self, data):
         paddle.enable_static()
         exe = base.Executor(place)
@@ -542,9 +553,7 @@ class TestSeResnet(unittest.TestCase):
             dy_jit_pre,
             st_pre,
             rtol=1e-05,
-            err_msg='dy_jit_pre:\n {}\n, st_pre: \n{}.'.format(
-                dy_jit_pre, st_pre
-            ),
+            err_msg=f'dy_jit_pre:\n {dy_jit_pre}\n, st_pre: \n{st_pre}.',
         )
 
         flat_st_pre = st_pre.flatten()
@@ -560,7 +569,7 @@ class TestSeResnet(unittest.TestCase):
                 ),
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_check_result(self):
         pred_1, loss_1, acc1_1, acc5_1 = self.train(
             self.train_reader, to_static=False

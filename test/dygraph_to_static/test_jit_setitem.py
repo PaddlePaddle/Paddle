@@ -12,14 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 
 import paddle
+import paddle.nn.functional as F
 
 
-class TestSetItemBase(unittest.TestCase):
+class TestSetItemBase(Dy2StTestBase):
     def setUp(self) -> None:
         pass
 
@@ -228,6 +231,28 @@ class TestCase14(TestSetItemBase):
 
     def run_dygraph(self, func):
         y = func()
+        return (y,)
+
+
+class TestCase15(TestSetItemBase):
+    # Test gradient of value tensor
+    def init_func(self):
+        def foo(x, H, W):
+            B, _, _, C = x.shape
+            pad_list = paddle.zeros([4], dtype="int32")
+            pad_list[3] = H // 2
+            pad_list[1] = W // 2
+
+            x = F.pad(x, pad_list, data_format="NHWC")
+            return x
+
+        return foo
+
+    def run_dygraph(self, func):
+        x = paddle.ones((1, 6, 6, 3))
+        H = paddle.full([1], 6, dtype='int32')
+        W = paddle.full([1], 6, dtype='int32')
+        y = func(x, H, W)
         return (y,)
 
 

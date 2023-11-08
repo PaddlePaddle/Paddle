@@ -12,22 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import core
-import numpy as np
-import os
-import multiprocessing
-import warnings
 import struct
 
+import numpy as np
+
+from ..pir import OpResult
+from ..pir.core import ParameterMeta
+from . import core
 from .framework import (
     Variable,
+    _cpu_num,
+    _cuda_ids,
     default_main_program,
     in_dygraph_mode,
-    _current_expected_place,
+    in_pir_mode,
 )
-from .framework import _cpu_num, _cuda_ids
 
-__all__ = ['DataFeeder']
+__all__ = []
 
 _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.BOOL: 'bool',
@@ -42,6 +43,21 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.UINT8: 'uint8',
     core.VarDesc.VarType.COMPLEX64: 'complex64',
     core.VarDesc.VarType.COMPLEX128: 'complex128',
+}
+
+_PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
+    core.DataType.BOOL: 'bool',
+    core.DataType.FLOAT16: 'float16',
+    core.DataType.BFLOAT16: 'uint16',
+    core.DataType.FLOAT32: 'float32',
+    core.DataType.FLOAT64: 'float64',
+    core.DataType.INT8: 'int8',
+    core.DataType.INT16: 'int16',
+    core.DataType.INT32: 'int32',
+    core.DataType.INT64: 'int64',
+    core.DataType.UINT8: 'uint8',
+    core.DataType.COMPLEX64: 'complex64',
+    core.DataType.COMPLEX128: 'complex128',
 }
 
 
@@ -75,6 +91,9 @@ def convert_dtype(dtype):
     if isinstance(dtype, core.VarDesc.VarType):
         if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
             return _PADDLE_DTYPE_2_NUMPY_DTYPE[dtype]
+    if isinstance(dtype, core.DataType):
+        if dtype in _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE:
+            return _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE[dtype]
     elif isinstance(dtype, type):
         # This branch is for NumPy scalar types
         if dtype in [
@@ -128,7 +147,12 @@ def convert_dtype(dtype):
 def check_variable_and_dtype(
     input, input_name, expected_dtype, op_name, extra_message=''
 ):
-    check_type(input, input_name, Variable, op_name, extra_message)
+    if in_pir_mode():
+        check_type(
+            input, input_name, (OpResult, ParameterMeta), op_name, extra_message
+        )
+    else:
+        check_type(input, input_name, Variable, op_name, extra_message)
     check_dtype(input.dtype, input_name, expected_dtype, op_name, extra_message)
 
 
@@ -143,27 +167,26 @@ def check_type(input, input_name, expected_type, op_name, extra_message=''):
     if in_dygraph_mode():
         return
 
-    # NOTE: `in_declarative_mode` is used to determined whether this op is called under
+    # NOTE: `in_to_static_mode` is used to determined whether this op is called under
     # @to_static in transformation from dygrah to static layer. We add Tensor in
     # expected_type to skip checking because Tensor may be created and used in unusual way.
-    from .dygraph.base import in_declarative_mode
+    from .dygraph.base import in_to_static_mode
 
     # Need a better design to be fix this.
-    if in_declarative_mode():
+    if in_to_static_mode():
         if not isinstance(expected_type, tuple):
             expected_type = (expected_type,)
         expected_type += (core.eager.Tensor,)
     elif isinstance(input, core.eager.Tensor):
         raise TypeError(
             "Please use `with base.dygraph.guard()` as context or `base.enable_dygraph()` to switch to imperative mode firstly. "
-            "Because received '{}' in {} is a imperative Variable.".format(
-                input_name, op_name
-            )
+            f"Because received '{input_name}' in {op_name} is a imperative Variable."
         )
     if not isinstance(input, expected_type):
         raise TypeError(
-            "The type of '%s' in %s must be %s, but received %s. %s"
-            % (input_name, op_name, expected_type, type(input), extra_message)
+            "The type of '{}' in {} must be {}, but received {}. {}".format(
+                input_name, op_name, expected_type, type(input), extra_message
+            )
         )
 
 
@@ -173,24 +196,10 @@ def check_dtype(
     # See NOTE [ Why skip dynamic graph check ]
     if in_dygraph_mode():
         return
-    if convert_dtype(input_dtype) in ['float16']:
-        warnings.warn(
-            "The data type of '%s' in %s only support float16 in GPU now. %s"
-            % (input_name, op_name, extra_message)
-        )
-    if convert_dtype(input_dtype) in ['uint16'] and op_name not in [
-        'reshape',
-        'lookup_table',
-        'scale',
-    ]:
-        warnings.warn(
-            "The data type of '%s' in %s only support bfloat16 in OneDNN now. %s"
-            % (input_name, op_name, extra_message)
-        )
+
     if convert_dtype(input_dtype) not in expected_dtype:
         raise TypeError(
-            "The data type of '%s' in %s must be %s, but received %s. %s"
-            % (
+            "The data type of '{}' in {} must be {}, but received {}. {}".format(
                 input_name,
                 op_name,
                 expected_dtype,
@@ -342,7 +351,7 @@ class DataFeeder:
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
             please using :code:`base.CPUPlace()`.
-        program (:ref:`api_base_Program` , optional): The Program that will
+        program (:ref:`api_paddle_static_Program` , optional): The Program that will
             feed data into, if program is None, it will use default_main_program().
             Default None.
 
@@ -350,40 +359,43 @@ class DataFeeder:
         :code:`ValueError` - If some Variables are not in this Program.
 
     Example:
-        ..  code-block:: python
+        .. code-block:: python
 
-            import numpy as np
-            import paddle
-            import paddle.base as base
+            >>> import numpy as np
+            >>> import paddle
+            >>> from paddle import base
 
-            place = base.CPUPlace()
-            def reader():
-                for _ in range(4):
-                    yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
+            >>> paddle.enable_static()
+            >>> place = paddle.CPUPlace()
+            >>> def reader():
+            ...     for _ in range(4):
+            ...         yield np.random.random([4]).astype('float32'), np.random.random([3]).astype('float32'),
+            ...
+            >>> main_program = paddle.static.Program()
+            >>> startup_program = paddle.static.Program()
 
-            main_program = base.Program()
-            startup_program = base.Program()
+            >>> with paddle.static.program_guard(main_program, startup_program):
+            ...     data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
+            ...     data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
+            ...     out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
+            ...     # ...
+            >>> feeder = base.DataFeeder([data_1, data_2], place)
 
-            with base.program_guard(main_program, startup_program):
-                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 2], dtype='float32')
-                data_2 = paddle.static.data(name='data_2', shape=[None, 1, 3], dtype='float32')
-                out = paddle.static.nn.fc(x=[data_1, data_2], size=2)
-                # ...
-            feeder = base.DataFeeder([data_1, data_2], place)
+            >>> exe = paddle.static.Executor(place)
+            >>> exe.run(startup_program)
 
-            exe = base.Executor(place)
-            exe.run(startup_program)
+            >>> feed_data = feeder.feed(reader())
 
-            feed_data = feeder.feed(reader())
+            >>> # print feed_data to view feed results
+            >>> # print(feed_data['data_1'])
+            >>> # print(feed_data['data_2'])
 
-            # print feed_data to view feed results
-            # print(feed_data['data_1'])
-            # print(feed_data['data_2'])
-
-            outs = exe.run(program=main_program,
-                            feed=feed_data,
-                            fetch_list=[out])
-            print(outs)
+            >>> outs = exe.run(
+            ...     program=main_program,
+            ...     feed=feed_data,
+            ...     fetch_list=[out]
+            ... )
+            >>> print(outs)
 
     """
 
@@ -418,30 +430,32 @@ class DataFeeder:
             :code:`dict`: a :code:`dict` that contains (variable name - converted tensor) pairs
 
         Example:
-            ..  code-block:: python
+            .. code-block:: python
 
-                # In this example, reader - generator will return a list of ndarray of 3 elements
-                # feed API will convert each ndarray input into a tensor
-                # the return result is a dict with keys: data_1, data_2, data_3
-                # result['data_1']  a LoD-Tensor with shape of  [5, 2, 1, 3]. 5 is batch size, and [2, 1, 3] is the real shape of data_1.
-                # result['data_2'], result['data_3'] are similar.
-                import numpy as np
-                import paddle.base as base
+                >>> # In this example, reader - generator will return a list of ndarray of 3 elements
+                >>> # feed API will convert each ndarray input into a tensor
+                >>> # the return result is a dict with keys: data_1, data_2, data_3
+                >>> # result['data_1']  a LoD-Tensor with shape of  [5, 2, 1, 3]. 5 is batch size, and [2, 1, 3] is the real shape of data_1.
+                >>> # result['data_2'], result['data_3'] are similar.
+                >>> import numpy as np
+                >>> import paddle
+                >>> from paddle import base
 
-                def reader(limit=5):
-                    for i in range(1, limit + 1):
-                        yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
+                >>> paddle.enable_static()
 
-                data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
-                data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
-                data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
-                feeder = base.DataFeeder(['data_1','data_2', 'data_3'], base.CPUPlace())
+                >>> def reader(limit=5):
+                ...     for i in range(1, limit + 1):
+                ...         yield np.ones([6]).astype('float32') * i , np.ones([1]).astype('int64') * i, np.random.random([9]).astype('float32')
+                ...
+                >>> data_1 = paddle.static.data(name='data_1', shape=[None, 2, 1, 3])
+                >>> data_2 = paddle.static.data(name='data_2', shape=[None, 1], dtype='int64')
+                >>> data_3 = paddle.static.data(name='data_3', shape=[None, 3, 3], dtype='float32')
+                >>> feeder = base.DataFeeder(['data_1','data_2', 'data_3'], paddle.CPUPlace())
 
-
-                result = feeder.feed(reader())
-                print(result['data_1'])
-                print(result['data_2'])
-                print(result['data_3'])
+                >>> result = feeder.feed(reader())
+                >>> print(result['data_1'])
+                >>> print(result['data_2'])
+                >>> print(result['data_3'])
 
         """
         converter = []

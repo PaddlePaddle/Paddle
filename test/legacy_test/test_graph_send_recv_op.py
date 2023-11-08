@@ -15,9 +15,10 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 def graph_send_recv_wrapper(
@@ -49,10 +50,12 @@ class TestGraphSendRecvMaxOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        )
 
 
 class TestGraphSendRecvMinOp(OpTest):
@@ -77,10 +80,12 @@ class TestGraphSendRecvMinOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', user_defined_grads=[self.gradient])
+        self.check_grad(
+            ['X'], 'Out', user_defined_grads=[self.gradient], check_pir=True
+        )
 
 
 class TestGraphSendRecvSumOp(OpTest):
@@ -103,10 +108,10 @@ class TestGraphSendRecvSumOp(OpTest):
         self.outputs = {'Out': out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestGraphSendRecvMeanOp(OpTest):
@@ -131,10 +136,10 @@ class TestGraphSendRecvMeanOp(OpTest):
         self.outputs = {'Out': out, 'Dst_count': dst_count}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 def compute_graph_send_recv_for_sum_mean(inputs, attributes):
@@ -216,6 +221,7 @@ def compute_graph_send_recv_for_min_max(inputs, attributes):
 
 
 class API_GraphSendRecvOpTest(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -343,6 +349,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
             np_res_set_outsize, res_set_outsize, rtol=1e-05, atol=1e-06
         )
 
+    @test_with_pir_api
     def test_out_size_tensor_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -378,6 +385,7 @@ class API_GraphSendRecvOpTest(unittest.TestCase):
 
 
 class API_GeometricSendURecvTest(unittest.TestCase):
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -489,6 +497,7 @@ class API_GeometricSendURecvTest(unittest.TestCase):
             np_res_set_outsize, res_set_outsize, rtol=1e-05, atol=1e-06
         )
 
+    @test_with_pir_api
     def test_out_size_tensor_static(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):

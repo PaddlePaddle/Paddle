@@ -13,37 +13,32 @@
 # limitations under the License.
 
 import inspect
-import numpy as np
-import warnings
-import weakref
 import sys
+import warnings
+
+import numpy as np
 
 import paddle
-from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
-from .. import core
-from .. import unique_name
+from paddle import _C_ops, profiler
+from paddle.base.data_feeder import (
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+    convert_uint16_to_float,
+)
+from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
+
+from .. import core, framework, unique_name
 from ..framework import (
-    Variable,
-    Parameter,
-    _getitem_static,
-    _setitem_static,
-    _setitem_impl_,
     EagerParamBase,
-    in_dygraph_mode,
+    Parameter,
+    Variable,
+    _getitem_static,
+    _setitem_impl_,
+    _setitem_static,
+    convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.base.data_feeder import (
-    convert_uint16_to_float,
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-)
-import paddle.utils.deprecated as deprecated
-import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops, _legacy_C_ops
-from paddle.device import get_all_custom_device_type
-from paddle.base.framework import _global_flags
 
 _grad_scalar = None
 
@@ -100,15 +95,14 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle.base as base
-                from paddle.base.dygraph.base import to_variable
-                import numpy as np
+                >>> import paddle.base as base
+                >>> from paddle.base.dygraph.base import to_variable
+                >>> import numpy as np
 
-                data = np.ones([3, 1024], dtype='float32')
-                with base.dygraph.guard():
-                    tensor = to_variable(data)
-                    static_var = tensor._to_static_var()
-
+                >>> data = np.ones([3, 1024], dtype='float32')
+                >>> with base.dygraph.guard():
+                ...     tensor = to_variable(data)
+                ...     static_var = tensor._to_static_var()
         """
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
@@ -172,20 +166,19 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle.base as base
-                from paddle.base.dygraph.base import to_variable
-                from paddle.nn import Linear
-                import numpy as np
+                >>> import paddle.base as base
+                >>> from paddle.base.dygraph.base import to_variable
+                >>> from paddle.nn import Linear
+                >>> import numpy as np
 
-                data = np.ones([3, 1024], dtype='float32')
-                with base.dygraph.guard():
-                    linear = Linear(1024, 4)
-                    t = to_variable(data)
-                    linear(t)  # call with default weight
-                    custom_weight = np.random.randn(1024, 4).astype("float32")
-                    linear.weight.set_value(custom_weight)  # change existing weight
-                    out = linear(t)  # call with different weight
-
+                >>> data = np.ones([3, 1024], dtype='float32')
+                >>> with base.dygraph.guard():
+                ...     linear = Linear(1024, 4)
+                ...     t = to_variable(data)
+                ...     linear(t)  # call with default weight
+                ...     custom_weight = np.random.randn(1024, 4).astype("float32")
+                ...     linear.weight.set_value(custom_weight)  # change existing weight
+                ...     out = linear(t)  # call with different weight
         """
         base_tensor = core.eager.Tensor
         assert isinstance(
@@ -252,33 +245,43 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                x = paddle.to_tensor(5., stop_gradient=False)
-                for i in range(5):
-                    y = paddle.pow(x, 4.0)
-                    y.backward()
-                    print("{}: {}".format(i, x.grad))
-                # 0: [500.]
-                # 1: [1000.]
-                # 2: [1500.]
-                # 3: [2000.]
-                # 4: [2500.]
+                >>> import paddle
+                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> for i in range(5):
+                ...     y = paddle.pow(x, 4.0)
+                ...     y.backward()
+                ...     print("{}: {}".format(i, x.grad))
+                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                500.)
+                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1000.)
+                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1500.)
+                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2000.)
+                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2500.)
 
-                x.clear_grad()
-                print("{}".format(x.grad))
-                # 0.
+                >>> x.clear_grad()
+                >>> print("{}".format(x.grad))
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                0.)
 
-                grad_tensor=paddle.to_tensor(2.)
-                for i in range(5):
-                    y = paddle.pow(x, 4.0)
-                    y.backward(grad_tensor)
-                    print("{}: {}".format(i, x.grad))
-                # 0: [1000.]
-                # 1: [2000.]
-                # 2: [3000.]
-                # 3: [4000.]
-                # 4: [5000.]
-
+                >>> grad_tensor=paddle.to_tensor(2.)
+                >>> for i in range(5):
+                ...     y = paddle.pow(x, 4.0)
+                ...     y.backward(grad_tensor)
+                ...     print("{}: {}".format(i, x.grad))
+                0: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                1000.)
+                1: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                2000.)
+                2: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                3000.)
+                3: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                4000.)
+                4: Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=False,
+                5000.)
         """
         if framework.in_dygraph_mode():
             if in_profiler_mode():
@@ -334,13 +337,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                x = paddle.to_tensor(5., stop_gradient=False)
-                y = paddle.pow(x, 4.0)
-                y.backward()
-                print("grad of x: {}".format(x.gradient()))
-                # [500.]
+                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> y = paddle.pow(x, 4.0)
+                >>> y.backward()
+                >>> print("grad of x: {}".format(x.gradient()))
+                grad of x: 500.0
 
         """
         if self.grad is None:
@@ -372,41 +375,46 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                # hook function return None
-                def print_hook_fn(grad):
-                    print(grad)
+                >>> # hook function return None
+                >>> def print_hook_fn(grad):
+                ...     print(grad)
+                ...
+                >>> # hook function return Tensor
+                >>> def double_hook_fn(grad):
+                ...     grad = grad * 2
+                ...     return grad
+                ...
+                >>> x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
+                >>> y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
+                >>> z = paddle.to_tensor([1., 2., 3., 4.])
 
-                # hook function return Tensor
-                def double_hook_fn(grad):
-                    grad = grad * 2
-                    return grad
+                >>> # one Tensor can register multiple hooks
+                >>> h = x.register_hook(print_hook_fn)
+                >>> x.register_hook(double_hook_fn)
 
-                x = paddle.to_tensor([0., 1., 2., 3.], stop_gradient=False)
-                y = paddle.to_tensor([4., 5., 6., 7.], stop_gradient=False)
-                z = paddle.to_tensor([1., 2., 3., 4.])
+                >>> w = x + y
+                >>> # register hook by lambda function
+                >>> w.register_hook(lambda grad: grad * 2)
 
-                # one Tensor can register multiple hooks
-                h = x.register_hook(print_hook_fn)
-                x.register_hook(double_hook_fn)
+                >>> o = z.matmul(w)
+                >>> o.backward()
+                >>> # print_hook_fn print content in backward
+                Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [2., 4., 6., 8.])
 
-                w = x + y
-                # register hook by lambda function
-                w.register_hook(lambda grad: grad * 2)
+                >>> print("w.grad:", w.grad)
+                w.grad: None
+                >>> print("x.grad:", x.grad)
+                x.grad: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [4. , 8. , 12., 16.])
+                >>> print("y.grad:", y.grad)
+                y.grad: Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=False,
+                [2., 4., 6., 8.])
 
-                o = z.matmul(w)
-                o.backward()
-                # print_hook_fn print content in backward
-                # Tensor(shape=[4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
-                #        [2., 4., 6., 8.])
-
-                print("w.grad:", w.grad) # w.grad: [1. 2. 3. 4.]
-                print("x.grad:", x.grad) # x.grad: [ 4.  8. 12. 16.]
-                print("y.grad:", y.grad) # y.grad: [2. 4. 6. 8.]
-
-                # remove hook
-                h.remove()
+                >>> # remove hook
+                >>> h.remove()
         """
         if self.stop_gradient is True:
             raise RuntimeError(
@@ -519,13 +527,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                x = paddle.to_tensor(5., stop_gradient=False)
-                y = paddle.pow(x, 4.0)
-                y.backward()
-                print("grad of x: {}".format(x.grad))
-                # Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=False, 500.)
+                >>> x = paddle.to_tensor(5., stop_gradient=False)
+                >>> y = paddle.pow(x, 4.0)
+                >>> y.backward()
+                >>> print("grad of x: {}".format(x.grad))
+                grad of x: Tensor(shape=[], dtype=float32, place=CUDAPlace(0), stop_gradient=False, 500.)
 
         """
         msg = (
@@ -564,27 +572,37 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
+                >>> import paddle
 
-                x = paddle.to_tensor(1)
-                print(x.item())             #1
-                print(type(x.item()))       #<class 'int'>
+                >>> x = paddle.to_tensor(1)
+                >>> print(x.item())
+                1
+                >>> print(type(x.item()))
+                <class 'int'>
 
-                x = paddle.to_tensor(1.0)
-                print(x.item())             #1.0
-                print(type(x.item()))       #<class 'float'>
+                >>> x = paddle.to_tensor(1.0)
+                >>> print(x.item())
+                1.0
+                >>> print(type(x.item()))
+                <class 'float'>
 
-                x = paddle.to_tensor(True)
-                print(x.item())             #True
-                print(type(x.item()))       #<class 'bool'>
+                >>> x = paddle.to_tensor(True)
+                >>> print(x.item())
+                True
+                >>> print(type(x.item()))
+                <class 'bool'>
 
-                x = paddle.to_tensor(1+1j)
-                print(x.item())             #(1+1j)
-                print(type(x.item()))       #<class 'complex'>
+                >>> x = paddle.to_tensor(1+1j)
+                >>> print(x.item())
+                (1+1j)
+                >>> print(type(x.item()))
+                <class 'complex'>
 
-                x = paddle.to_tensor([[1.1, 2.2, 3.3]])
-                print(x.item(2))            #3.3
-                print(x.item(0, 2))         #3.3
+                >>> x = paddle.to_tensor([[1.1, 2.2, 3.3]])
+                >>> print(x.item(2))
+                3.299999952316284
+                >>> print(x.item(0, 2))
+                3.299999952316284
 
         """
         scalar = self._getitem_from_offset(*args)
@@ -601,14 +619,16 @@ def monkey_patch_tensor():
         **Notes: This is a read-only property**
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            import paddle
-            var = paddle.ones(shape=[4, 2, 3], dtype="float32")
-            print(var.inplace_version)  # 0
+                >>> import paddle
+                >>> var = paddle.ones(shape=[4, 2, 3], dtype="float32")
+                >>> print(var.inplace_version)
+                0
 
-            var[1] = 2.2
-            print(var.inplace_version)  # 1
+                >>> var[1] = 2.2
+                >>> print(var.inplace_version)
+                1
 
         """
         return self._inplace_version()
@@ -622,13 +642,13 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                x = paddle.rand([2, 5])
-                print(x)
-
-                # Tensor(shape=[2, 5], dtype=float32, place=CPUPlace,
-                #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
-                #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
+                >>> import paddle
+                >>> paddle.seed(2023)
+                >>> x = paddle.rand([2, 5])
+                >>> print(x)
+                Tensor(shape=[2, 5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0.86583614, 0.52014720, 0.25960937, 0.90525323, 0.42400089],
+                 [0.40641287, 0.97020894, 0.74437362, 0.51785129, 0.73292869]])
         """
         from paddle.tensor.to_string import tensor_to_string
 
@@ -641,24 +661,17 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                import copy
-                x = paddle.to_tensor(2.)
-                y = copy.deepcopy(x)
-
-                print(x)
-                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        2.)
-
-                print(y)
-                # Tensor(shape=[], dtype=float32, place=CPUPlace, stop_gradient=True,
-                #        2.)
-
+                >>> import paddle
+                >>> import copy
+                >>> x = paddle.to_tensor(2.)
+                >>> y = copy.deepcopy(x)
+                >>> print(x)
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                2.)
+                >>> print(y)
+                Tensor(shape=[], dtype=float32, place=Place(cpu), stop_gradient=True,
+                2.)
         """
-        if not self.is_leaf:
-            raise RuntimeError(
-                "Only Leaf Tensor support the deepcopy at the moment, non-Leaf Tensors contains graph information that does't support deepcopy"
-            )
         new_tensor = core.eager.Tensor()
         new_tensor.name = self.name + unique_name.generate("_deepcopy")
         memo[id(self)] = new_tensor
@@ -694,13 +707,15 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                import numpy as np
-                x = paddle.randn([2, 2])
-                x_array = np.array(x)
+                >>> import paddle
+                >>> import numpy as np
+                >>> x = paddle.randn([2, 2])
+                >>> x_array = np.array(x)
 
-                print(type(x_array))      #<class 'numpy.ndarray'>
-                print(x_array.shape)      #(2, 2)
+                >>> print(type(x_array))
+                <class 'numpy.ndarray'>
+                >>> print(x_array.shape)
+                (2, 2)
         """
         array = self.numpy(False)
         if dtype:
@@ -821,11 +836,12 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-              # required: gpu
-              import paddle
-              x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
-              x._uva()
-              print(x)
+                >>> # doctest: +REQUIRES(env:GPU)
+                >>> import paddle
+                >>> paddle.device.set_device('gpu')
+                >>> x = paddle.to_tensor([1, 2, 3], place=paddle.CPUPlace())
+                >>> x._uva()
+                >>> print(x)
         '''
         self._tensor_uva(device_id)
 
@@ -853,7 +869,7 @@ def monkey_patch_tensor():
         if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(res_place, True)
+            res = self._copy_to(res_place, blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -881,13 +897,14 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                values = [1, 2, 3, 4, 5]
-                dense_shape = [3, 4]
-                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                print(sparse_x.values())
-                #[1, 2, 3, 4, 5]
+                >>> import paddle
+                >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                >>> values = [1, 2, 3, 4, 5]
+                >>> dense_shape = [3, 4]
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int32'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> print(sparse_x.values())
+                Tensor(shape=[5], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [1., 2., 3., 4., 5.])
         """
         return _C_ops.sparse_values(self)
 
@@ -904,15 +921,17 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
-                values = [1, 2, 3, 4, 5]
-                dense_shape = [3, 4]
-                sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
-                dense_x = sparse_x.to_dense()
-                #[[0., 1., 0., 2.],
-                # [0., 0., 3., 0.],
-                # [4., 5., 0., 0.]]
+                >>> import paddle
+                >>> indices = [[0, 0, 1, 2, 2], [1, 3, 2, 0, 1]]
+                >>> values = [1, 2, 3, 4, 5]
+                >>> dense_shape = [3, 4]
+                >>> sparse_x = paddle.sparse.sparse_coo_tensor(paddle.to_tensor(indices, dtype='int64'), paddle.to_tensor(values, dtype='float32'), shape=dense_shape)
+                >>> dense_x = sparse_x.to_dense()
+                >>> print(dense_x)
+                Tensor(shape=[3, 4], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [[0., 1., 0., 2.],
+                 [0., 0., 3., 0.],
+                 [4., 5., 0., 0.]])
         """
 
         return _C_ops.sparse_to_dense(self)
@@ -930,19 +949,53 @@ def monkey_patch_tensor():
         Examples:
             .. code-block:: python
 
-                import paddle
-                dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
-                dense_x = paddle.to_tensor(dense_x, dtype='float32')
-                sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
-                #indices=[[0, 0, 1, 1],
-                #         [1, 3, 2, 3]],
-                #values=[1., 2., 3., 4.]
+                >>> import paddle
+                >>> dense_x = [[0, 1, 0, 2], [0, 0, 3, 4]]
+                >>> dense_x = paddle.to_tensor(dense_x, dtype='float32')
+                >>> sparse_x = dense_x.to_sparse_coo(sparse_dim=2)
+                >>> print(sparse_x)
+                Tensor(shape=[2, 4], dtype=paddle.float32, place=Place(cpu), stop_gradient=True,
+                       indices=[[0, 0, 1, 1],
+                                [1, 3, 2, 3]],
+                       values=[1., 2., 3., 4.])
         """
 
         return _C_ops.sparse_to_sparse_coo(self, sparse_dim)
 
     def __hash__(self):
         return hash(id(self))
+
+    @framework.dygraph_only
+    def coalesce(self, name=None):
+        r"""
+        the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+        Parameters:
+            x (Tensor): the input SparseCooTensor.
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            Tensor: return the SparseCooTensor after coalesced.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> indices = [[0, 0, 1], [1, 1, 2]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                >>> sp_x = sp_x.coalesce()
+                >>> print(sp_x.indices())
+                Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1],
+                [1, 2]])
+                >>> print(sp_x.values())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [3., 3.])
+        """
+        return _C_ops.sparse_coalesce(self)
 
     if not hasattr(core, "eager"):
         return
@@ -970,6 +1023,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("coalesce", coalesce),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -989,7 +1043,7 @@ def monkey_patch_tensor():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__str__")
+        origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1002,7 +1056,7 @@ def monkey_patch_tensor():
                 # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__str__", dtype_str)
+        core.VarDesc.VarType.__str__ = dtype_str
         _already_patch_repr = True
 
     # patch math methods for tensor

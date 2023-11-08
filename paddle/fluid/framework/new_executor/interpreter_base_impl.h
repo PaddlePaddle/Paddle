@@ -47,7 +47,7 @@ PHI_DECLARE_bool(check_nan_inf);
 PD_DECLARE_bool(benchmark);
 PHI_DECLARE_uint64(executor_log_deps_every_microseconds);
 PHI_DECLARE_bool(new_executor_use_cuda_graph);
-PHI_DECLARE_bool(enable_new_ir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PHI_DECLARE_bool(sync_nccl_allreduce);
 #endif
@@ -67,7 +67,8 @@ class InterpreterBaseImpl {
   virtual ~InterpreterBaseImpl() = default;
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names,
-      const std::vector<phi::DenseTensor>& feed_tensors) = 0;
+      const std::vector<phi::DenseTensor>& feed_tensors,
+      bool need_fetch = true) = 0;
 
   virtual paddle::framework::FetchList Run(
       const std::vector<std::string>& feed_names, bool need_fetch = true) = 0;
@@ -97,6 +98,12 @@ class InterpreterBaseImpl {
   virtual std::shared_ptr<std::vector<size_t>> GetDependencyCount() const = 0;
 
   virtual bool IsSharedResultsBuild() const = 0;
+
+  virtual void Build(
+      const std::vector<std::string>& feed_names,
+      std::vector<paddle::framework::OpFuncNode>* op_func_nodes) = 0;
+
+  virtual bool IsStaticBuild() const = 0;
 };
 
 inline void SetDeviceId(const platform::Place& place) {

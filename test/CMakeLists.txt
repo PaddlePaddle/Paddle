@@ -1,3 +1,4 @@
+remove_definitions(-DPADDLE_DLL_EXPORT)
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")
@@ -98,6 +99,10 @@ if(WITH_TESTING)
   if(CINN_ONLY)
     return()
   endif()
+  # The following unittests only run in PR-CI-CINN
+  if(WITH_CINN AND NOT CINN_ONMLY)
+    add_subdirectory(ir/pir/cinn)
+  endif()
 
   add_subdirectory(amp)
   add_subdirectory(asp)
@@ -137,6 +142,7 @@ if(WITH_TESTING)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
   add_subdirectory(sequence)
+  add_subdirectory(sot)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)
@@ -181,7 +187,7 @@ if(${len} GREATER_EQUAL 1)
         target_link_libraries(${test_name} $<TARGET_LINKER_FILE:phi>)
       endif()
       if(WITH_SHARED_IR)
-        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:ir>)
+        target_link_libraries(${test_name} $<TARGET_LINKER_FILE:pir>)
       endif()
       add_dependencies(${test_name} ${paddle_lib} paddle_gtest_main_new)
       if(WITH_GPU)
@@ -194,7 +200,7 @@ if(${len} GREATER_EQUAL 1)
       if(APPLE)
         target_link_libraries(
           ${test_name}
-          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:ir>"
+          "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
         )
       endif()
       if(NOT ((NOT WITH_PYTHON) AND ON_INFER))

@@ -214,7 +214,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
   for (size_t i = 0; i < inputs.size(); ++i) {
     auto &input = feed_tensors_[i];
     framework::DDim ddim = phi::make_ddim(inputs[i].shape);
-    void *input_ptr;
+    void *input_ptr = nullptr;
     if (inputs[i].dtype == PaddleDType::INT64) {
       input_ptr = input.mutable_data<int64_t>(ddim, place_);
     } else if (inputs[i].dtype == PaddleDType::FLOAT32) {
@@ -287,7 +287,7 @@ bool NativePaddlePredictor::SetFeed(const std::vector<PaddleTensor> &inputs,
     input.set_lod(lod);
     int idx = -1;
     if (config_.specify_input_name) {
-      idx = feed_names_[inputs[i].name];
+      idx = static_cast<int>(feed_names_[inputs[i].name]);
     } else {
       idx = PADDLE_GET_CONST(int, feeds_[i]->GetAttr("col"));
     }

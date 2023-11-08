@@ -19,9 +19,9 @@
 
 #include "paddle/cinn/cinn.h"
 #include "paddle/cinn/common/context.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/lang/lower.h"
 #include "paddle/cinn/utils/string.h"
 #include "paddle/cinn/utils/type_defs.h"
@@ -95,7 +95,7 @@ std::vector<ir::LoweredFunc> LowerCompute(
 IRSchedule MakeIRSchedule(const std::vector<ir::LoweredFunc>& lowered_funcs) {
   std::vector<Expr> exprs;
   for (auto&& func : lowered_funcs) {
-    exprs.emplace_back(optim::IRCopy(func->body));
+    exprs.emplace_back(ir::ir_utils::IRCopy(func->body));
   }
   return ir::IRSchedule(ir::ModuleExpr(exprs));
 }
@@ -106,10 +106,11 @@ std::string SourceCodeGen(const ModuleExpr& module_expr,
                           const Target& target) {
   auto exprs = module_expr.GetExprs();
   CHECK_EQ(exprs.size(), lowered_funcs.size()) << "size of func is not euqal";
-  std::vector<ir::LoweredFunc> updated_funcs = optim::IRCopy(lowered_funcs);
+  std::vector<ir::LoweredFunc> updated_funcs =
+      ir::ir_utils::IRCopy(lowered_funcs);
   Module::Builder builder("test_module", target);
   for (auto i = 0; i < lowered_funcs.size(); ++i) {
-    updated_funcs[i]->body = optim::IRCopy(exprs.at(i));
+    updated_funcs[i]->body = ir::ir_utils::IRCopy(exprs.at(i));
     builder.AddFunction(updated_funcs[i]);
   }
   auto module = builder.Build();
@@ -839,12 +840,14 @@ TEST_F(TestScheduleDesc, StepKind_MergeExprs) {
   auto funcs_1 =
       LowerCompute({32, 32, 32}, target, true, "elementwise-add_const");
 
-  ir::IRSchedule ir_sch = ir::IRSchedule(ir::ModuleExpr(
-      {optim::IRCopy(funcs_0[0]->body), optim::IRCopy(funcs_0[0]->body)}));
+  ir::IRSchedule ir_sch =
+      ir::IRSchedule(ir::ModuleExpr({ir::ir_utils::IRCopy(funcs_0[0]->body),
+                                     ir::ir_utils::IRCopy(funcs_0[0]->body)}));
   ir_sch.MergeExprs();
   trace.Append(ScheduleDesc::Step("MergeExprs", {}, {}, {}));
-  ir::IRSchedule replay_sch = ir::IRSchedule(ir::ModuleExpr(
-      {optim::IRCopy(funcs_0[0]->body), optim::IRCopy(funcs_0[0]->body)}));
+  ir::IRSchedule replay_sch =
+      ir::IRSchedule(ir::ModuleExpr({ir::ir_utils::IRCopy(funcs_0[0]->body),
+                                     ir::ir_utils::IRCopy(funcs_0[0]->body)}));
   trace.Replay(&replay_sch);
 
   auto lhs_exprs = ir_sch.GetModule().GetExprs();

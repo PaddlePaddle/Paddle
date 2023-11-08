@@ -11,7 +11,7 @@ limitations under the License. */
 
 #include "paddle/fluid/pybind/eager_utils.h"
 #include <Python.h>
-#include "paddle/ir/core/value.h"
+#include "paddle/pir/core/value.h"
 // Avoid a problem with copysign defined in pyconfig.h on Windows.
 #ifdef copysign
 #undef copysign
@@ -50,6 +50,7 @@ extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
+extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
@@ -138,14 +139,46 @@ bool PyObject_CheckIROpResult(PyObject* obj) {
   return PyObject_TypeCheck(obj, g_ir_opresult_pytype);
 }
 
+bool PyObject_CheckIRVectorOfOpResult(PyObject* obj) {
+  if (PyList_Check(obj)) {
+    Py_ssize_t len = PyList_Size(obj);
+    PyObject* item = nullptr;
+    // if obj is [], parse it as std::vector<scalar>
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyList_GetItem(obj, i);
+      if (!PyObject_CheckIROpResult(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else if (PyTuple_Check(obj)) {
+    Py_ssize_t len = PyTuple_Size(obj);
+    PyObject* item = nullptr;
+    if (len == 0) {
+      return false;
+    }
+    for (Py_ssize_t i = 0; i < len; i++) {
+      item = PyTuple_GetItem(obj, i);
+      if (!PyObject_CheckIROpResult(item)) {
+        return false;
+      }
+    }
+    return true;
+  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
+    return true;
+  } else {
+    return false;
+  }
+}
 bool CastPyArg2AttrBoolean(PyObject* obj, ssize_t arg_pos) {
-  if (obj == Py_None) {
+  if (obj == Py_None || obj == Py_False) {
     return false;  // To be compatible with QA integration testing. Some
                    // test cases pass in None.
   } else if (obj == Py_True) {
     return true;
-  } else if (obj == Py_False) {
-    return false;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "argument (position %d) must be "
@@ -205,8 +238,8 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
 
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, static_cast<size_t>(size));
   } else {
@@ -888,13 +921,13 @@ PyObject* ToPyObject(const phi::DenseTensor* value) {
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const ir::OpResult& value) {
+PyObject* ToPyObject(const pir::OpResult& value) {
   auto obj = ::pybind11::cast(value);
   obj.inc_ref();
   return obj.ptr();
 }
 
-PyObject* ToPyObject(const std::vector<ir::OpResult>& value) {
+PyObject* ToPyObject(const std::vector<pir::OpResult>& value) {
   PyObject* result = PyList_New((Py_ssize_t)value.size());
 
   for (size_t i = 0; i < value.size(); i++) {
@@ -1007,8 +1040,8 @@ PyObject* ToPyObject(const paddle::framework::Vocab& value) {
   PyObject* dict = PyDict_New();
   for (const auto& map_iter : value) {
     // Convert Key
-    PyObject* key_string =
-        PyUnicode_FromWideChar(map_iter.first.c_str(), map_iter.first.size());
+    PyObject* key_string = PyUnicode_FromWideChar(
+        map_iter.first.c_str(), map_iter.first.size());  // NOLINT
     if (!key_string) {
       PADDLE_THROW(platform::errors::Fatal(
           "Unable to convert std::wstring to PyObject"));
@@ -1091,9 +1124,8 @@ static paddle::Tensor& GetTensorFromPyObject(const std::string& op_type,
     return emptytensor;
   }
 
-  if (PyObject_TypeCheck(obj, p_tensor_type)) {
-    return reinterpret_cast<TensorObject*>(obj)->tensor;
-  } else if (PyObject_TypeCheck(obj, p_string_tensor_type)) {
+  if (PyObject_TypeCheck(obj, p_tensor_type) ||
+      PyObject_TypeCheck(obj, p_string_tensor_type)) {
     return reinterpret_cast<TensorObject*>(obj)->tensor;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1485,13 +1517,13 @@ paddle::experimental::Scalar CastNumpy2Scalar(PyObject* obj,
   }
 }
 
-ir::OpResult CastPyArg2OpResult(PyObject* obj,
-                                const std::string& op_type,
-                                size_t arg_pos) {
+pir::Value CastPyArg2Value(PyObject* obj,
+                           const std::string& op_type,
+                           size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return ::pybind11::handle(obj).cast<ir::OpResult>();
-  } else if (obj == nullptr || obj == Py_None) {
-    return ir::OpResult();
+    return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+    return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1502,17 +1534,27 @@ ir::OpResult CastPyArg2OpResult(PyObject* obj,
   }
 }
 
-std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
+paddle::optional<pir::Value> CastPyArg2OptionalValue(PyObject* obj,
                                                      const std::string& op_type,
                                                      size_t arg_pos) {
-  std::vector<ir::OpResult> result_list;
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<pir::Value>(
+      CastPyArg2Value(obj, op_type, arg_pos));
+}
+
+std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
+                                                const std::string& op_type,
+                                                size_t arg_pos) {
+  std::vector<pir::Value> value_list;
   if (PyList_Check(obj)) {
     Py_ssize_t len = PyList_Size(obj);
     PyObject* item = nullptr;
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1531,7 +1573,7 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_TypeCheck(item, g_ir_opresult_pytype)) {
-        result_list.emplace_back(::pybind11::handle(item).cast<ir::OpResult>());
+        value_list.emplace_back(::pybind11::handle(item).cast<pir::OpResult>());
       } else if (item == Py_None) {
         continue;
       } else {
@@ -1544,10 +1586,6 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<ir::OpResult>()};
-  } else if (obj == Py_None) {
-    return {};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1556,7 +1594,16 @@ std::vector<ir::OpResult> CastPyArg2VectorOfOpResult(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-  return result_list;
+  return value_list;
+}
+
+paddle::optional<std::vector<pir::Value>> CastPyArg2OptionalVectorOfValue(
+    PyObject* obj, const std::string& op_type, size_t arg_pos) {
+  if (obj == nullptr || obj == Py_None) {
+    return paddle::none;
+  }
+  return paddle::make_optional<std::vector<pir::Value>>(
+      CastPyArg2VectorOfValue(obj, op_type, arg_pos));
 }
 
 paddle::experimental::Scalar CastPyArg2Scalar(PyObject* obj,
@@ -1697,7 +1744,6 @@ paddle::experimental::IntArray CastPyArg2IntArray(PyObject* obj,
         arg_pos + 1,
         ((PyTypeObject*)obj->ob_type)->tp_name));  // NOLINT
   }
-
   // Fake a IntArray
   return paddle::experimental::IntArray({1});
 }
@@ -1797,7 +1843,7 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1824,7 +1870,7 @@ void PyVoidHook::operator()() {
   try {
     PyObject_CallFunctionObjArgs(py_func_, nullptr);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1953,6 +1999,121 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
                         "of hooks is allowed at a time."));
 
   return reinterpret_cast<void*>(ret);
+}
+
+/* ------------------ for auto parallel ----------------------- */
+
+void DistTensorTypeParser::operator()(const Tensor& x) {
+  if (x.is_dist_tensor()) {
+    *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                  ->dist_attr()
+                  .process_mesh());
+    result = true;
+  }
+}
+
+void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->is_dist_tensor()) {
+      *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    x.get_ptr()->impl())
+                    ->dist_attr()
+                    .process_mesh());
+      result = true;
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+        result = true;
+        break;
+      }
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(
+    const paddle::optional<std::vector<Tensor>>& x) {
+  if (x) {
+    if (!(x.get_ptr()->empty())) {
+      for (auto& t : *(x.get_ptr())) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+          result = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void DistTensorConverter::convert(Tensor* x) {
+  if (x->is_dist_tensor()) {
+    PADDLE_ENFORCE_EQ(
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+            ->dist_attr()
+            .process_mesh(),
+        *mesh,
+        platform::errors::InvalidArgument(
+            "Input %s has different mesh. However all inputs should "
+            "have the same mesh.",
+            x->name()));
+    return;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        phi::DenseTensor::classof(x->impl().get()),
+        true,
+        platform::errors::InvalidArgument(
+            "Failed to convert input %s impl to phi::distributed::DistTensor "
+            "as it's not phi::DenseTensor.",
+            x->name()));
+    phi::distributed::TensorDistAttr dist_attr(
+        phi::vectorize(x->impl()->dims()));
+    dist_attr.set_process_mesh(*mesh);
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
+    x->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
+  }
+}
+
+void DistTensorConverter::operator()(Tensor* x) {
+  DistTensorConverter::convert(x);
+}
+
+void DistTensorConverter::operator()(paddle::optional<Tensor>* x) {
+  if (*x) {
+    DistTensorConverter::convert(x->get_ptr());
+  }
+}
+
+void DistTensorConverter::operator()(std::vector<Tensor>* x) {
+  if (!x->empty()) {
+    for (auto& t : *x) {
+      DistTensorConverter::convert(&t);
+    }
+  }
+}
+
+void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
+  if (*x) {
+    if (!(x->get_ptr()->empty())) {
+      for (auto& t : *(x->get_ptr())) {
+        if (!t.is_dist_tensor()) {
+          DistTensorConverter::convert(&t);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace pybind

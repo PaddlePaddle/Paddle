@@ -1509,9 +1509,7 @@ class TestBook(LayerTest):
                     dy_result_value,
                     rtol=1e-05,
                     atol=0,
-                    err_msg='Result of function [{}] compare failed'.format(
-                        method.__name__
-                    ),
+                    err_msg=f'Result of function [{method.__name__}] compare failed',
                 )
                 continue
 
@@ -1519,9 +1517,7 @@ class TestBook(LayerTest):
                 np.testing.assert_array_equal(
                     static_result[0],
                     dy_result_value,
-                    err_msg='Result of function [{}] not equal'.format(
-                        method.__name__
-                    ),
+                    err_msg=f'Result of function [{method.__name__}] not equal',
                 )
 
     def _get_np_data(self, shape, dtype, append_batch_size=True):
@@ -2371,6 +2367,16 @@ class TestSubLayerCount(unittest.TestCase):
             mySuperlayer = MySuperLayer()
             self.assertTrue(len(mySuperlayer.sublayers()) == 3)
             self.assertTrue(len(mySuperlayer.sublayers(include_self=True)) == 4)
+
+
+class TestExcludedLayersSupportBool(unittest.TestCase):
+    def test_support_tuple(self):
+        with base.dygraph.guard():
+            model = MyLayer()
+            model.float16(excluded_layers=[paddle.nn.Linear])
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
+            model.bfloat16(excluded_layers=(paddle.nn.Linear))
+            self.assertTrue(model._linear.weight.dtype == paddle.float32)
 
 
 if __name__ == '__main__':

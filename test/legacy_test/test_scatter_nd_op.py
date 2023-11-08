@@ -15,12 +15,13 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest, convert_float_to_uint16
+from op_test import OpTest, convert_float_to_uint16
+from utils import static_guard
 
 import paddle
 from paddle import base
 from paddle.base import core
-from paddle.base.dygraph.base import switch_to_static_graph
+from paddle.pir_utils import test_with_pir_api
 
 
 def numpy_scatter_nd(ref, index, updates, fun):
@@ -93,10 +94,12 @@ class TestScatterNdAddSimpleOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddSimpleFP16Op(TestScatterNdAddSimpleOp):
@@ -124,13 +127,13 @@ class TestScatterNdAddSimpleBF16Op(TestScatterNdAddSimpleOp):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -169,10 +172,12 @@ class TestScatterNdAddWithEmptyIndex(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddWithEmptyIndexFP16(TestScatterNdAddWithEmptyIndex):
@@ -200,13 +205,13 @@ class TestScatterNdAddWithEmptyIndexBF16(TestScatterNdAddWithEmptyIndex):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -248,10 +253,12 @@ class TestScatterNdAddWithHighRankSame(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 class TestScatterNdAddWithHighRankSameFP16(TestScatterNdAddWithHighRankSame):
@@ -279,13 +286,13 @@ class TestScatterNdAddWithHighRankSameBF16(TestScatterNdAddWithHighRankSame):
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
-            self.check_output_with_place(place)
+            self.check_output_with_place(place, check_pir=True)
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             self.check_grad_with_place(
-                place, ['X', 'Updates'], 'Out', check_prim=True
+                place, ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
             )
 
 
@@ -311,10 +318,12 @@ class TestScatterNdAddWithHighRankDiff(OpTest):
         self.outputs = {'Out': expect_np}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True)
+        self.check_output(check_cinn=True, check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X', 'Updates'], 'Out', check_prim=True)
+        self.check_grad(
+            ['X', 'Updates'], 'Out', check_prim=True, check_pir=True
+        )
 
 
 # Test Python API
@@ -324,7 +333,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
     """
 
     def testcase1(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             ref1 = paddle.static.data(
                 name='ref1',
                 shape=[10, 9, 8, 1, 3],
@@ -343,7 +352,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output1 = paddle.scatter_nd_add(ref1, index1, updates1)
 
     def testcase2(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             ref2 = paddle.static.data(
                 name='ref2',
                 shape=[10, 9, 8, 1, 3],
@@ -364,7 +373,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             )
 
     def testcase3(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             shape3 = [10, 9, 8, 1, 3]
             index3 = paddle.static.data(
                 name='index3',
@@ -379,7 +388,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             output3 = paddle.scatter_nd(index3, updates3, shape3)
 
     def testcase4(self):
-        with paddle.base.framework._static_guard():
+        with static_guard():
             shape4 = [10, 9, 8, 1, 3]
             index4 = paddle.static.data(
                 name='index4',
@@ -421,7 +430,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
             np.testing.assert_array_equal(gpu_value.numpy(), cpu_value.numpy())
             paddle.set_device(device)
 
-        @switch_to_static_graph
+        @test_with_pir_api
         def test_static_graph():
             with paddle.static.program_guard(
                 paddle.static.Program(), paddle.static.Program()
@@ -433,15 +442,26 @@ class TestScatterNdOpAPI(unittest.TestCase):
                 val_t = paddle.static.data(
                     name="val", dtype=val.dtype, shape=val.shape
                 )
-                out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
-                feed = {x_t.name: x, index_t.name: index, val_t.name: val}
-                fetch = [out_t]
-
                 gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
-                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
                 cpu_exe = paddle.static.Executor(paddle.CPUPlace())
-                cpu_value = cpu_exe.run(feed=feed, fetch_list=fetch)[0]
-                np.testing.assert_array_equal(gpu_value, cpu_value)
+                out_t = paddle.scatter_nd_add(x_t, index_t, val_t)
+                gpu_value = gpu_exe.run(
+                    feed={
+                        'x': x,
+                        'index': index,
+                        'val': val,
+                    },
+                    fetch_list=[out_t],
+                )
+                cpu_value = cpu_exe.run(
+                    feed={
+                        'x': x,
+                        'index': index,
+                        'val': val,
+                    },
+                    fetch_list=[out_t],
+                )
+            np.testing.assert_array_equal(gpu_value, cpu_value)
 
         test_static_graph()
 
@@ -450,7 +470,7 @@ class TestScatterNdOpAPI(unittest.TestCase):
 class TestScatterNdOpRaise(unittest.TestCase):
     def test_check_raise(self):
         def check_raise_is_test():
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 try:
                     ref5 = paddle.static.data(
                         name='ref5', shape=[-1, 3, 4, 5], dtype='float32'
@@ -471,7 +491,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise2(self):
         with self.assertRaises(ValueError):
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 ref6 = paddle.static.data(
                     name='ref6',
                     shape=[10, 9, 8, 1, 3],
@@ -491,7 +511,7 @@ class TestScatterNdOpRaise(unittest.TestCase):
 
     def test_check_raise3(self):
         def check_raise_is_test():
-            with paddle.base.framework._static_guard():
+            with static_guard():
                 try:
                     shape = [3, 4, 5]
                     index7 = paddle.static.data(

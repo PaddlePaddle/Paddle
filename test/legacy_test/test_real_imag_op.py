@@ -15,10 +15,11 @@
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 import paddle
 from paddle import base, static
+from paddle.pir_utils import test_with_pir_api
 
 numpy_apis = {
     "real": np.real,
@@ -57,7 +58,7 @@ class TestRealOp(OpTest):
         )
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
         self.check_grad(
@@ -65,6 +66,7 @@ class TestRealOp(OpTest):
             'Out',
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out],
+            check_pir=True,
         )
 
 
@@ -99,6 +101,7 @@ class TestRealAPI(unittest.TestCase):
             self.places.append(paddle.CUDAPlace(0))
         self._shape = [2, 20, 2, 3]
 
+    @test_with_pir_api
     def test_in_static_mode(self):
         def init_input_output(dtype):
             input = np.random.random(self._shape).astype(
@@ -114,7 +117,7 @@ class TestRealAPI(unittest.TestCase):
                     out = paddle_apis[self.api](x)
 
                     exe = static.Executor(place)
-                    out_value = exe.run(feed=input_dict, fetch_list=[out.name])
+                    out_value = exe.run(feed=input_dict, fetch_list=[out])
                     np.testing.assert_array_equal(np_res, out_value[0])
 
     def test_in_dynamic_mode(self):

@@ -16,7 +16,7 @@ import unittest
 
 import numpy as np
 import parameterized as param
-from eager_op_test import (
+from op_test import (
     OpTest,
     convert_float_to_uint16,
     convert_uint16_to_float,
@@ -24,6 +24,7 @@ from eager_op_test import (
     skip_check_grad_ci,
 )
 from testsuite import create_op
+from utils import static_guard
 
 import paddle
 from paddle import base
@@ -1154,7 +1155,7 @@ class TestCompositeGroupNorm(unittest.TestCase):
         if len(self.places) < 1:
             return
 
-        with paddle.base.framework._static_guard():
+        with static_guard():
             for place in self.places:
                 fwd_actual.append([])
                 rev_actual.append([])

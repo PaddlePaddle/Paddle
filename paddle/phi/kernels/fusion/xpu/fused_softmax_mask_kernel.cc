@@ -29,22 +29,6 @@ void FusedSoftmaxMaskKernel(const Context& dev_ctx,
 
   auto x_dim = x.dims();
   auto mask_dim = mask.dims();
-  auto query_seq_len = x_dim[2];
-  auto key_seq_len = x_dim[3];
-
-  PADDLE_ENFORCE_GT(query_seq_len,
-                    1,
-                    phi::errors::InvalidArgument(
-                        "Input x's second last dim must be large than 1 but "
-                        "received the second last dimension of x is %d",
-                        query_seq_len));
-
-  PADDLE_ENFORCE_EQ(key_seq_len >= 32 && key_seq_len < 8192,
-                    true,
-                    phi::errors::InvalidArgument(
-                        "Input x's last dim must be between [32, 8192) "
-                        "received the last dimension of x is %d",
-                        key_seq_len));
 
   PADDLE_ENFORCE_EQ(mask_dim[1],
                     1,

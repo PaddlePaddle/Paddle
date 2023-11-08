@@ -69,13 +69,8 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API}
                                    ${utils_modules})
 else()
-  if(WIN32)
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  else()
-    create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
-                      ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
-  endif()
+  create_static_lib(paddle_inference ${phi_modules} ${fluid_modules}
+                    ${ir_targets} ${STATIC_INFERENCE_API} ${utils_modules})
 endif()
 
 if(NOT APPLE)
@@ -103,8 +98,8 @@ set(SHARED_INFERENCE_SRCS
 
 # NOTE(Aurelius84): For inference library, some DEPS is usless
 # such as non-infer operator related targets et.al.
-list(REMOVE_ITEM fluid_modules cinn_dialect)
-# NOTE(Aurelisu84): Remove ir dialect related target DEPS for inference
+list(REMOVE_ITEM fluid_modules cinn_op_dialect)
+# NOTE(Aurelisu84): Remove pir dialect related target DEPS for inference
 # shared library to prune library size.
 list(REMOVE_ITEM fluid_modules ${not_infer_modules})
 

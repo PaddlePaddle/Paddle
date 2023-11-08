@@ -25,6 +25,9 @@ limitations under the License. */
 #include "paddle/fluid/imperative/type_defs.h"
 
 #include "paddle/phi/common/scalar.h"
+#include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/pir/core/block.h"
+#include "paddle/pir/core/value.h"
 #include "paddle/utils/blank.h"
 #include "paddle/utils/small_vector.h"
 #include "paddle/utils/variant.h"
@@ -62,7 +65,9 @@ using Attribute = paddle::variant<paddle::blank,
                                   std::vector<VarDesc*>,
                                   double,
                                   paddle::experimental::Scalar,
-                                  std::vector<paddle::experimental::Scalar>>;
+                                  std::vector<paddle::experimental::Scalar>,
+                                  ::pir::Block*,
+                                  std::vector<::pir::Value>>;
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 using OpCreator =
@@ -98,6 +103,7 @@ using InferVarTypeFN =
     std::function<void(framework::InferVarTypeContext* /*context*/)>;
 
 using InferShapeFN = std::function<void(InferShapeContext*)>;
+using InferMetaFN = std::function<void(phi::InferMetaContext*)>;
 
 using InplacePair = std::unordered_map<std::string, std::string>;
 using InferInplaceOpFN = std::function<InplacePair(bool /*use_cuda*/)>;

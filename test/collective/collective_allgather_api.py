@@ -109,7 +109,7 @@ class TestCollectiveAllgatherAPI(test_base.TestCollectiveAPIRunnerBase):
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
-        if args["use_comm_context"]:
+        if args["use_comm_context"] or args["dynamic_static_unified_comm"]:
             paddle.distributed.collective._init_parallel_env(args["backend"])
         else:
             paddle.distributed.init_parallel_env()

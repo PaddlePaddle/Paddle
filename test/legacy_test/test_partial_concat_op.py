@@ -16,7 +16,7 @@ import random
 import unittest
 
 import numpy as np
-from eager_op_test import OpTest
+from op_test import OpTest
 
 
 def np_partial_concat(inputs, start, length):

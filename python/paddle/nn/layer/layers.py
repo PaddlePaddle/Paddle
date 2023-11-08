@@ -26,9 +26,10 @@ from paddle import nn, profiler
 from paddle.base import core, framework, unique_name
 from paddle.base.core import VarDesc
 from paddle.base.dygraph import no_grad
+from paddle.base.dygraph.base import in_declarative_mode  # noqa: F401
 from paddle.base.dygraph.base import (
     _convert_into_variable,
-    in_declarative_mode,
+    in_to_static_mode,
     program_desc_tracing_guard,
 )
 from paddle.base.dygraph_utils import _append_activation_in_dygraph
@@ -70,8 +71,6 @@ def record_program_ops_pre_hook(layer, inputs):
                 )
             )
 
-    return None
-
 
 def set_op_customized_attrs_post_hook(layer, inputs, outputs):
     """
@@ -93,8 +92,6 @@ def set_op_customized_attrs_post_hook(layer, inputs, outputs):
         # remove pre-hook and post-hook
         for hook_helper in layer._op_recorder.hooks:
             hook_helper.remove()
-
-    return None
 
 
 def _scope_dist2single(dist_scope):
@@ -1109,10 +1106,9 @@ class Layer:
             if layer is None:
                 continue
             layer_prefix = prefix + ('.' if prefix else '') + key
-            for p, l in layer.named_sublayers(
+            yield from layer.named_sublayers(
                 prefix=layer_prefix, include_self=True, layers_set=layers_set
-            ):
-                yield p, l
+            )
 
     def register_buffer(self, name, tensor, persistable=True):
         """
@@ -1336,7 +1332,7 @@ class Layer:
 
     def __call__(self, *inputs, **kwargs):
         if (
-            (not in_declarative_mode())
+            (not in_to_static_mode())
             and (not self._forward_pre_hooks)
             and (not self._forward_post_hooks)
             and (not self._built)
@@ -1521,9 +1517,7 @@ class Layer:
 
         if not isinstance(attrs, dict):
             raise TypeError(
-                "attrs should be type(dict), but received {}".format(
-                    type(attrs).__name__
-                )
+                f"attrs should be type(dict), but received {type(attrs).__name__}"
             )
 
         # NOTE: Overwrite behavior for same key.
@@ -1561,7 +1555,7 @@ class Layer:
         if '_parameters' in self.__dict__:
             _parameters = self.__dict__['_parameters']
             if name in self._parameters:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(self._parameters[name])
                 return self._parameters[name]
         if '_sub_layers' in self.__dict__:
@@ -1571,7 +1565,7 @@ class Layer:
         if '_buffers' in self.__dict__:
             _buffers = self.__dict__['_buffers']
             if name in _buffers:
-                if in_declarative_mode():
+                if in_to_static_mode():
                     return _convert_into_variable(_buffers[name])
                 return _buffers[name]
         return object.__getattribute__(self, name)
@@ -1591,12 +1585,15 @@ class Layer:
             if len(self._loaddict_holder) > 0:
                 assert (
                     value.name in self._loaddict_holder
-                ), "Parameter not found, Can't not find [ {} ] in state_dict".format(
-                    value.name
-                )
+                ), f"Parameter not found, Can't not find [ {value.name} ] in state_dict"
 
                 value.set_value(self._loaddict_holder[value.name])
 
+            _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
+            params[name] = value
+        elif isinstance(value, paddle.pir.OpResult) and value.is_persistable:
+            if params is None:
+                raise ValueError("super().__init__() should be called first")
             _remove_if_exist(self.__dict__, self._buffers, self._sub_layers)
             params[name] = value
         elif params is not None and name in params:
@@ -1653,12 +1650,10 @@ class Layer:
                         # but should all non-Variable _buffers[name] be re-assign? We
                         # should consider it in the future. I current wrote this as
                         # conservative code.
-                        if in_declarative_mode() and _buffers[name] is None:
+                        if in_to_static_mode() and _buffers[name] is None:
                             raise RuntimeError(
-                                'In Dy2stat, self.{0} is a buffer and self.{0} is '
-                                'not allowed to be set to Variable when self.{0} is None.'.format(
-                                    name
-                                )
+                                f'In Dy2stat, self.{name} is a buffer and self.{name} is '
+                                f'not allowed to be set to Variable when self.{name} is None.'
                             )
                         elif (
                             _buffers[name] is None
@@ -1963,10 +1958,8 @@ class Layer:
                 if len(state) != len(param):
                     missing_keys.append(key)
                     raise ValueError(
-                        "{} receieves the length of {}, "
-                        "but the expected shape is {}".format(
-                            key, len(state), len(param)
-                        )
+                        f"{key} receieves the length of {len(state)}, "
+                        f"but the expected shape is {len(param)}"
                     )
                 else:
                     match_keys.add(key)
@@ -2274,7 +2267,7 @@ class Layer:
         Casts all floating point parameters and buffers to ``float`` data type.
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers. Default: None.
 
         Returns:
             Layer: self
@@ -2307,8 +2300,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2330,7 +2323,7 @@ class Layer:
 
 
         Parameters:
-           excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+           excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2372,8 +2365,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",
@@ -2395,7 +2388,7 @@ class Layer:
 
 
         Parameters:
-            excluded_layers(nn.Layer|list|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
+            excluded_layers(nn.Layer|list|tuple|None, optional): Specify the layers that need to be kept original data type. if excluded_layers is None, casts all floating point parameters and buffers except ``nn.BatchNorm``. Default: None.
 
         Returns:
             Layer: self
@@ -2438,8 +2431,8 @@ class Layer:
 
         if isinstance(excluded_layers, type):
             excluded_layers = [excluded_layers]
-        elif isinstance(excluded_layers, list):
-            pass
+        elif isinstance(excluded_layers, (list, tuple)):
+            excluded_layers = list(excluded_layers)
         else:
             raise TypeError(
                 "excluded_layers should be type nn.Layer or list, but got %s.",

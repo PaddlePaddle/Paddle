@@ -16,11 +16,7 @@ import math
 import unittest
 
 import numpy as np
-from eager_op_test import (
-    OpTest,
-    convert_float_to_uint16,
-    convert_uint16_to_float,
-)
+from op_test import OpTest, convert_float_to_uint16, convert_uint16_to_float
 
 import paddle
 from paddle.base import core
@@ -67,7 +63,7 @@ class TestPoissonOp1(OpTest):
         np.testing.assert_allclose(hist, prob, rtol=0.01)
 
     def test_check_output(self):
-        self.check_output_customized(self.verify_output)
+        self.check_output_customized(self.verify_output, check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
@@ -77,6 +73,7 @@ class TestPoissonOp1(OpTest):
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype(self.dtype)
             ],
+            check_pir=True,
         )
 
 
@@ -412,7 +409,9 @@ class TestPoissonBF16Op(OpTest):
 
     def test_check_output(self):
         place = core.CUDAPlace(0)
-        self.check_output_with_place_customized(self.verify_output, place)
+        self.check_output_with_place_customized(
+            self.verify_output, place, check_pir=True
+        )
 
     def test_check_grad(self):
         place = core.CUDAPlace(0)
@@ -424,6 +423,7 @@ class TestPoissonBF16Op(OpTest):
             user_defined_grad_outputs=[
                 np.random.rand(2048, 1024).astype("float32")
             ],
+            check_pir=True,
         )
 
 

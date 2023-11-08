@@ -14,9 +14,11 @@
 
 import copy
 import logging
+import os
 import time
 
 from paddle.distributed.passes import PassManager, new_pass
+from paddle.framework import get_flags
 from paddle.static import append_backward, program_guard
 from paddle.utils import unique_name
 
@@ -25,7 +27,13 @@ from ..random import init_auto_parallel_rng
 from .partitioner import Partitioner
 from .process_group import get_world_process_group
 from .reshard import Resharder
-from .utils import get_pp_stage, set_grad_var_shape, use_new_executor
+from .utils import get_pp_stage, is_sequential_run, use_new_executor
+
+NEW_IR_PASS = [
+    'fused_gemm_epilogue_pass',
+    'fused_linear_param_grad_add_pass',
+    'fused_dropout_add_pass',
+]
 
 
 class Parallelizer:
@@ -116,7 +124,7 @@ class Parallelizer:
                     time.time() - time0, self._mode
                 )
             )
-            set_grad_var_shape(dist_main_prog, self._dist_context)
+
             resharder = Resharder(
                 dist_main_prog,
                 dist_startup_prog,
@@ -354,6 +362,21 @@ class Parallelizer:
             )
             params_grads = self._pass_context.get_attr("params_grads")
 
+        if self._strategy.mp_optimization.allreduce_matmul_grad_overlapping:
+            if int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1:
+                self._logger.warning(
+                    "You set mp_optimization.allreduce_matmul_grad_overlapping=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
+
+            allreduce_matmul_grad_overlapping_pass = new_pass(
+                "allreduce_matmul_grad_overlapping", {}
+            )
+            allreduce_matmul_grad_overlapping_pass.apply(
+                [main_program], [startup_program], self._pass_context
+            )
+
         if self.is_train:
             # GradClip is train-only optimization
             config = copy.deepcopy(self._strategy.sharding.to_dict())
@@ -367,6 +390,7 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        if not is_sequential_run():
             # deps for newexe
             config = {}
             config["dist_context"] = self._dist_context
@@ -406,21 +430,44 @@ class Parallelizer:
                 [main_program], [startup_program], self._pass_context
             )
 
+        enable_ir = get_flags("FLAGS_enable_pir_in_executor")[
+            'FLAGS_enable_pir_in_executor'
+        ]
+        ir_pass_list = []
         if self.is_train and self._strategy.fused_passes.enable:
             if len(self._strategy.fused_passes.fused_passes_list) > 0:
                 new_pass_list = []
-                for op in self._strategy.fused_passes.fused_passes_list:
-                    new_pass_list.append(new_pass(op))
+                for p in self._strategy.fused_passes.fused_passes_list:
+                    if p in NEW_IR_PASS and enable_ir:
+                        ir_pass_list.append(p)
+                    else:
+                        new_pass_list.append(new_pass(p))
                 pass_manager = PassManager(new_pass_list)
                 pass_manager.apply([main_program], [startup_program])
+
+        main_program._pass_opt = {}
+        main_program._pass_opt['pass_list'] = ir_pass_list
 
         if (
             self.is_train
             and self._strategy.pipeline.enable
             and use_new_executor()
         ):
+            enable_send_recv_overlap = (
+                self._strategy.pipeline.enable_send_recv_overlap
+            )
+            if (
+                enable_send_recv_overlap
+                and int(os.getenv("CUDA_DEVICE_MAX_CONNECTIONS", "0")) != 1
+            ):
+                self._logger.warning(
+                    "You set pipeline.enable_send_recv_overlap=True, but you did not set environment "
+                    "variable CUDA_DEVICE_MAX_CONNECTIONS=1, which may leads to performance "
+                    "loss. Try to export CUDA_DEVICE_MAX_CONNECTIONS=1 for better performance."
+                )
             main_program._pipeline_opt = {}
             main_program._pipeline_opt["standalone_opt"] = {
+                "enable_send_recv_overlap": enable_send_recv_overlap,
                 "schedule_mode": self._strategy.pipeline.schedule_mode,
                 "num_micro_batches": self._strategy.pipeline.accumulate_steps,
                 "pp_degree": len(self._dist_context.process_meshes),

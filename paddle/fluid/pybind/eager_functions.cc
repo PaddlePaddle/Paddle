@@ -62,9 +62,16 @@ typedef SSIZE_T ssize_t;
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #endif
 
+#include "paddle/fluid/eager/custom_operator/custom_operator_utils.h"
 #include "paddle/phi/api/include/operants_manager.h"
 #include "paddle/phi/api/include/tensor_operants.h"
+#include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/flags.h"
+#ifdef PADDLE_WITH_DISTRIBUTE
+#include "paddle/phi/api/lib/api_gen_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
+#include "paddle/phi/infermeta/spmd_rules/rules.h"
+#endif
 
 PHI_DECLARE_string(tensor_operants_mode);
 
@@ -279,7 +286,7 @@ PyObject* eager_api_get_grads_types(PyObject* self,
 
     auto& grad = meta->Grad();
     if (meta && grad.initialized()) {
-      if (grad.is_dense_tensor() &&
+      if ((grad.is_dense_tensor() || grad.is_dist_tensor()) &&
           (tensor.dtype() == phi::DataType::FLOAT32 ||
            tensor.dtype() == phi::DataType::FLOAT16 ||
            tensor.dtype() == phi::DataType::BFLOAT16)) {
@@ -361,7 +368,7 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " inputs: " << inputs_names[j] << " related to No." << i
                   << " grad_outputs: " << grad_outputs_names[i];
-          in_out_map[op_type][0][0][j] = i;
+          in_out_map[op_type][0][0][j] = i;  // NOLINT
         }
       }
     }
@@ -374,7 +381,7 @@ static void ConstructFwdAndBwdMap(
             VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                     << " outputs: " << outputs_names[j] << " related to No."
                     << i << " grad_inputs's grad: " << grad_inputs_names[i];
-            in_out_map[op_type][0][1][j] = i;
+            in_out_map[op_type][0][1][j] = i;  // NOLINT
           }
         }
       } else {
@@ -387,7 +394,7 @@ static void ConstructFwdAndBwdMap(
                       << " outputs: " << outputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd outputs: " << grad_inputs_names[i];
-              in_out_map[op_type][0][2][j] = i;
+              in_out_map[op_type][0][2][j] = i;  // NOLINT
             }
           }
         } else {
@@ -397,7 +404,7 @@ static void ConstructFwdAndBwdMap(
                       << " inputs: " << inputs_names[j] << " related to No."
                       << i
                       << " grad_inputs fwd inputs: " << grad_inputs_names[i];
-              in_out_map[op_type][0][3][j] = i;
+              in_out_map[op_type][0][3][j] = i;  // NOLINT
             }
           }
         }
@@ -420,7 +427,7 @@ static void ConstructFwdAndBwdMap(
           VLOG(7) << " ==== Custom Operator: " << op_type << "'s No." << j
                   << " attrs: " << attrs_names[j] << " related to No." << i
                   << " grad_attrs: " << grad_attrs_names[i];
-          in_out_map[op_type][0][4][j] = i;
+          in_out_map[op_type][0][4][j] = i;  // NOLINT
         }
       }
     }
@@ -481,7 +488,7 @@ static PyObject* eager_api__get_custom_operator_inplace_reverse_idx(
                               "the input of `Inplace` again and make "
                               "sure you registered your op accurately. ",
                               input));
-    inplace_idx_map[distance(outputs.begin(), out_iter)] = in_idx;
+    inplace_idx_map[distance(outputs.begin(), out_iter)] = in_idx;  // NOLINT
   }
 
   return ToPyObject(inplace_idx_map);
@@ -534,6 +541,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
   const auto& attrs = paddle::OpMetaInfoHelper::GetAttrs(vec_map[0]);
   const auto& outputs = paddle::OpMetaInfoHelper::GetOutputs(vec_map[0]);
   const auto& inplace_map = paddle::OpMetaInfoHelper::GetInplaceMap(vec_map[0]);
+
   for (size_t i = 0; i < inputs.size(); ++i) {
     const auto& input = inputs.at(i);
     // Parse op_type first, so that use i + 1
@@ -549,18 +557,23 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       continue;
     }
     if (paddle::framework::detail::IsDuplicableVar(input)) {
-      ctx.EmplaceBackInputs(std::move(CastPyArg2VectorOfTensor(obj, i + 1)));
+      std::vector<paddle::Tensor> tensors =
+          std::move(CastPyArg2VectorOfTensor(obj, i + 1));  // NOLINT
+      ctx.EmplaceBackInputs(std::move(tensors));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add vector<Tensor> size = "
               << ctx.InputRangeAt(i).second - ctx.InputRangeAt(i).first;
     } else {
-      ctx.EmplaceBackInput(std::move(CastPyArg2Tensor(obj, i + 1)));
+      paddle::Tensor tensor =
+          std::move(CastPyArg2Tensor(obj, i + 1));  // NOLINT
+      ctx.EmplaceBackInput(std::move(tensor));
       VLOG(7) << "Custom operator add input " << input
               << " to CustomOpKernelContext. Add Tensor for general case.";
     }
   }
+
   // Parse op_type and inputs first, so that use 1 + inputs.size() + i
-  int attr_start_idx = 1 + inputs.size();
+  int attr_start_idx = static_cast<int>(1 + inputs.size());
   for (size_t i = 0; i < attrs.size(); ++i) {
     const auto& attr = attrs.at(i);
     std::vector<std::string> attr_name_and_type = paddle::ParseAttrStr(attr);
@@ -569,23 +582,30 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             << " to CustomOpKernelContext. Attribute type = " << attr_type_str;
     PyObject* obj = PyTuple_GET_ITEM(args, attr_start_idx + i);
     if (attr_type_str == "bool") {
-      ctx.EmplaceBackAttr(CastPyArg2AttrBoolean(obj, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2AttrBoolean(obj, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "int") {
-      ctx.EmplaceBackAttr(CastPyArg2AttrInt(obj, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2AttrInt(obj, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "float") {
-      ctx.EmplaceBackAttr(CastPyArg2AttrFloat(obj, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2AttrFloat(obj, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "int64_t") {
-      ctx.EmplaceBackAttr(CastPyArg2Long(obj, op_type, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2Long(obj, op_type, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "std::string") {
-      ctx.EmplaceBackAttr(CastPyArg2AttrString(obj, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2AttrString(obj, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "std::vector<int>") {
       ctx.EmplaceBackAttr(CastPyArg2VectorOfInt(obj, attr_start_idx + i));
     } else if (attr_type_str == "std::vector<float>") {
       ctx.EmplaceBackAttr(CastPyArg2VectorOfFloat(obj, attr_start_idx + i));
     } else if (attr_type_str == "std::vector<int64_t>") {
-      ctx.EmplaceBackAttr(CastPyArg2Longs(obj, op_type, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2Longs(obj, op_type, attr_start_idx + i));  // NOLINT
     } else if (attr_type_str == "std::vector<std::string>") {
-      ctx.EmplaceBackAttr(CastPyArg2VectorOfString(obj, attr_start_idx + i));
+      ctx.EmplaceBackAttr(
+          CastPyArg2VectorOfString(obj, attr_start_idx + i));  // NOLINT
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Unsupported `%s` type value as custom attribute now. "
@@ -597,6 +617,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           attr_type_str));
     }
   }
+
   {
     eager_gil_scoped_release guard;
     ctx.ConstructInplaceIndex(inputs, outputs, inplace_map);
@@ -629,7 +650,7 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
           VLOG(7) << "Custom operator add output " << output
                   << " to CustomOpKernelContext. Add vector<tensor> size = "
                   << empty_tensors.size();
-          ctx.EmplaceBackOutputs(std::move(empty_tensors));
+          ctx.EmplaceBackOutputs(empty_tensors);
           continue;
         }
       }
@@ -640,11 +661,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
       ctx.EmplaceBackOutput(std::move(InitializedEmptyTensor()));
     }
 
-    // handle inplace map
-    ctx.UpdatePlainOutputs(inputs, outputs, inplace_map);
     VLOG(7) << "Run Kernel of Custom Op: " << op_type;
-    (*paddle::OpMetaInfoHelper::GetKernelFn(vec_map[0]))(&ctx);
-    ctx.AssignInplaceOutputs();
+    egr::run_custom_op_impl(vec_map[0], true, false, ctx);
 
     // handle optional None output when construct backward graph
     for (size_t i = 0; i < ctx.OutputRange().size(); i++) {
@@ -653,7 +671,8 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
             ctx.MutableOutputAt(ctx.OutputRangeAt(i).first);
         if (!out_tensor->initialized()) {
           PADDLE_ENFORCE(
-              paddle::framework::detail::IsOptionalVar(outputs.at(i)),
+              paddle::framework::detail::IsOptionalVar(outputs.at(i)) ||
+                  out_tensor->is_dist_tensor(),
               phi::errors::InvalidArgument(
                   "Custom operator's %d-th output is not initialized. "
                   "Please check your implementation again. If you are "
@@ -733,8 +752,9 @@ static PyObject* eager_api_run_custom_op(PyObject* self,
         const std::vector<paddle::Tensor>& in_tensors = ctx.InputsBetween(
             ctx.InputRangeAt(i).first, ctx.InputRangeAt(i).second);
 
-        if (slot_map[0][0].find(i) != slot_map[0][0].end()) {
-          grad_node->SetGradOutMeta(in_tensors, slot_map[0][0].at(i));
+        if (slot_map[0][0].find(static_cast<int>(i)) != slot_map[0][0].end()) {
+          grad_node->SetGradOutMeta(in_tensors,
+                                    slot_map[0][0].at(static_cast<int>(i)));
         } else {
           grad_node->SetGradOutMeta(in_tensors, slot_ins_num - 1 - no_grad_cnt);
           no_grad_cnt++;
