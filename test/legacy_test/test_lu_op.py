@@ -288,7 +288,6 @@ class TestLUAPI(unittest.TestCase):
                     lu, p = paddle.linalg.lu(x, pivot=pivot)
                     exe = base.Executor(place)
                     fetches = exe.run(
-                        base.default_main_program(),
                         feed={"input": a},
                         fetch_list=[lu, p],
                     )
