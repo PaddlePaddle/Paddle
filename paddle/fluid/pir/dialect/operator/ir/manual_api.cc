@@ -133,5 +133,12 @@ pir::OpResult array_length(pir::Value x) {
   return array_length_op.out();
 }
 
+pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
+  auto array_write_op = APIBuilder::Instance()
+                            .GetBuilder()
+                            ->Build<paddle::dialect::ArrayWrite_Op>(x);
+  return array_write_op.out();
+}
+
 }  // namespace dialect
 }  // namespace paddle

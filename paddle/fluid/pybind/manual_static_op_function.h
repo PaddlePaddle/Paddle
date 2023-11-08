@@ -168,6 +168,31 @@ static PyObject *static_api_array_length(PyObject *self,
   }
 }
 
+static PyObject *static_api_array_write_(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add array_write_ op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get Value from args
+    PyObject *array_obj = PyTuple_GET_ITEM(args, 0);
+    auto array = CastPyArg2Value(array_obj, "array_write_", 0);
+    PyObject *x_obj = PyTuple_GET_ITEM(args, 1);
+    auto x = CastPyArg2Value(x_obj, "array_write_", 1);
+    PyObject *i_obj = PyTuple_GET_ITEM(args, 2);
+    auto i = CastPyArg2Value(i_obj, "array_write_", 2);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::array_length(array, x, i);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyMethodDef ManualOpsAPI[] = {
     {"set_parameter",
      (PyCFunction)(void (*)(void))static_api_set_parameter,
@@ -185,6 +210,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_array_length,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for array_length."},
+    {"array_write_",
+     (PyCFunction)(void (*)(void))static_api_array_write_,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for array_write_."},
     {nullptr, nullptr, 0, nullptr}};
 
 }  // namespace pybind

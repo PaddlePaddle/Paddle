@@ -64,5 +64,7 @@ pir::OpResult create_array(phi::DataType dtype);
 
 pir::OpResult array_length(pir::Value x);
 
+pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i);
+
 }  // namespace dialect
 }  // namespace paddle

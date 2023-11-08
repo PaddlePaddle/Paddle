@@ -276,9 +276,9 @@ def create_array(dtype, initialized_list=None):
 
     # NOTE: Only support plain list like [x, y,...], not support nested list in static graph mode.
     for val in array:
-        if not isinstance(val, Variable):
+        if not isinstance(val, (Variable, paddle.pir.OpResult)):
             raise TypeError(
-                "All values in `initialized_list` should be Variable, but recevied {}.".format(
+                "All values in `initialized_list` should be Variable or pir.OpResult, but recevied {}.".format(
                     type(val)
                 )
             )
@@ -286,7 +286,10 @@ def create_array(dtype, initialized_list=None):
     if in_dynamic_mode():
         return array
     elif in_pir_mode():
-        return paddle._pir_ops.create_array(dtype)
+        out = paddle._pir_ops.create_array(dtype)
+        for val in array:
+            out = paddle._pir_ops.array_write_(out, val, array_length(out))
+        return out
     else:
         helper = LayerHelper("array", **locals())
         tensor_array = helper.create_variable(
