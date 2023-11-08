@@ -29,3 +29,4 @@ from .sampler import Sampler
 from .sampler import SequenceSampler
 from .sampler import RandomSampler
 from .sampler import WeightedRandomSampler
+from .sampler import SubsetRandomSampler
