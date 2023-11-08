@@ -109,8 +109,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   std::string BuildProgramFromOperation(pir::Operation* op,
                                         pir::Program* new_program) const {
     pir::Builder builder = pir::Builder(ir_context(), new_program->block());
-    std::string output_var_name =
-        "constant_folding@" + std::to_string((*counter_)++);
 
     // prepare op inputs
     std::vector<pir::Value> op_inputs;
@@ -127,7 +125,6 @@ class ConstantFoldingPattern : public pir::RewritePattern {
       PADDLE_ENFORCE_NOT_NULL(
           param_var,
           phi::errors::InvalidArgument("Parameter var not in scope."));
-      output_var_name = output_var_name + "_" + param_name;
       deleted_vars_->push_back(param_name);
 
       auto get_parameter_op = builder.Build<pir::GetParameterOp>(
@@ -151,6 +148,10 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         true,
         phi::errors::InvalidArgument(
             "Op's output must be a dense tensor type."));
+
+    std::stringstream ss;
+    ss << std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    std::string output_var_name = ss.str() + std::to_string((*counter_)++);
 
     builder.Build<pir::ShadowOutputOp>(temp_op->result(0), output_var_name);
     // }
