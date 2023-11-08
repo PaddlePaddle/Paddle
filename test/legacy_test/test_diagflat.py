@@ -71,17 +71,19 @@ class TestDiagFlatAPI(unittest.TestCase):
 
     @test_with_pir_api
     def run_static(self, use_gpu=False):
-        x = paddle.static.data(name='input', shape=[10, 10], dtype='float64')
-        x2 = paddle.static.data(name='input2', shape=[20], dtype='float64')
-        result0 = paddle.diagflat(x)
-        result3 = paddle.diagflat(x2)
-
-        place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
         main = paddle.static.Program()
         startup = paddle.static.Program()
         with paddle.static.program_guard(main, startup):
+            x = paddle.static.data(
+                name='input', shape=[10, 10], dtype='float64'
+            )
+            x2 = paddle.static.data(name='input2', shape=[20], dtype='float64')
+            result0 = paddle.diagflat(x)
+            result3 = paddle.diagflat(x2)
+
+            place = paddle.CUDAPlace(0) if use_gpu else paddle.CPUPlace()
             exe = paddle.static.Executor(place)
-            exe.run(startup) 
+            exe.run(startup)
             res0, res3 = exe.run(
                 main,
                 feed={"input": self.input_np, 'input2': self.input_np2},
