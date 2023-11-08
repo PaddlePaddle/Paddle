@@ -151,7 +151,8 @@ class ConstantFoldingPattern : public pir::RewritePattern {
 
     std::stringstream ss;
     ss << std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    std::string output_var_name = ss.str() + std::to_string((*counter_)++);
+    std::string output_var_name =
+        "constant_folding@_" + ss.str() + std::to_string((*counter_)++);
 
     builder.Build<pir::ShadowOutputOp>(temp_op->result(0), output_var_name);
     // }
