@@ -184,6 +184,9 @@ class Partitioner:
         dist_op_context = self._dist_context.dist_op_context
         dist_op_context.dst_main_program = partitioned_main_prog
 
+        # init mapping
+        self.forward_op_id2forward_op = {}
+
         for idx in range(self._dist_context.block_state.nblock):
             ref_block = serial_main_program.blocks[idx]
 
@@ -239,11 +242,9 @@ class Partitioner:
         if last_fwd_op_idx == -1:
             last_fwd_op_idx = len(ref_block.ops)
 
-        # init mapping
-        forward_op_id2forward_op = {}
         for idx in range(len(serial_ops)):
             if idx <= last_fwd_op_idx:
-                forward_op_id2forward_op[
+                self.forward_op_id2forward_op[
                     serial_ops[idx].desc.original_id()
                 ] = serial_ops[idx]
 
@@ -318,7 +319,7 @@ class Partitioner:
             elif is_backward_op(op):
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_backward_impl = _get_dist_op_backward_implement(
-                    op, self._dist_context, forward_op_id2forward_op
+                    op, self._dist_context, self.forward_op_id2forward_op
                 )
                 grad_var_to_var = (
                     self._dist_context.dist_op_context.grad_var_to_var[
@@ -335,7 +336,7 @@ class Partitioner:
                 # NOTE: BACKWARD_ONLY_DIST_OPS's op_role must be 2 because of 1F1B PASS
                 kinputs, koutputs = dist_op_context.prepare_context(op)
                 dist_op_opt_impl = _get_dist_op_backward_implement(
-                    op, self._dist_context, forward_op_id2forward_op
+                    op, self._dist_context, self.forward_op_id2forward_op
                 )
                 dist_op_opt_impl.backward(
                     self._dist_context,
