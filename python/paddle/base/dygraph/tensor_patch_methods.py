@@ -516,11 +516,12 @@ def monkey_patch_tensor():
     def to(self, *args, **kwargs):
         """
         Performs Tensor dtype and/or device conversion. A paddle.dtype and place
-        are inferred from the arguments of self.to(*args, **kwargs).There are three ways
-        to call `to`
-            to(dtype, blocking=True)
-            to(device, dtype=None, blocking=True)
-            to(other, blocking=True)
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are 
+        three ways to call `to`:
+        
+            1. to(dtype, blocking=True)
+            2. to(device, dtype=None, blocking=True)
+            3. to(other, blocking=True)
 
         Returns:
             Tensor: self
