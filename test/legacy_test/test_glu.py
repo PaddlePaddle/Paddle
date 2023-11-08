@@ -75,7 +75,7 @@ class TestnnGLU(unittest.TestCase):
                 y_var = act(x_var)
                 y_np = y_var.numpy()
                 out = glu(self.x, dim)
-                np.testing.assert_allclose(y_np, out, rtol=1e-05)
+                np.testing.assert_allclose(y_np, out)
 
     def test_case(self):
         self.check_identity(base.CPUPlace())
