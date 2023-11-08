@@ -30,14 +30,19 @@ namespace hlir {
 namespace framework {
 namespace pir {
 
+// Mapping PaddleDialect Op into CINN AST Compute register Op
 const std::unordered_map<std::string, std::string> CompatibleInfo::OP_NAMES = {
     {"pd_op.full", "fill_constant"},
     {"pd_op.sum", "reduce_sum"},
     {"pd_op.max", "reduce_max"},
-    {"pd_op.add", "elementwise_add"}};
+    {"pd_op.add", "elementwise_add"},
+    {"pd_op.subtract", "subtract"},
+    {"pd_op.divide", "divide"},
+    {"cinn_op.broadcast", "broadcast_to"}};
 
+// Tagging PaddleDialect Op with REGITER_OP_MAPPER(OP)
 const std::unordered_set<std::string> CompatibleInfo::CINN_WHITE_OPS = {
-    "subtract"};
+    "subtract", "divide", "broadcast_to", "multiply"};
 
 bool CompatibleInfo::IsSupportCinn(const ::pir::Operation& op) {
   return CINN_WHITE_OPS.find(CompatibleInfo::OpName(op)) !=
@@ -59,8 +64,9 @@ std::string CompatibleInfo::OpName(const ::pir::Operation& op) {
 }
 
 std::string CompatibleInfo::ValueName(const ::pir::Value& value) {
-  return CompatibleInfo::kNamePrefix +
-         std::to_string(std::hash<::pir::Value>()(value));
+  size_t hash_key = std::hash<::pir::Value>()(value);
+  return cinn::common::Context::Global().PrettyUniqName(
+      hash_key, CompatibleInfo::kNamePrefix);
 }
 
 std::string CompatibleInfo::OpFuncName(const ::pir::Operation& op) {
@@ -139,6 +145,30 @@ utils::Attribute CompatibleInfo::ConvertAttribute(
   } else if (src_attr.isa<paddle::dialect::DataTypeAttribute>()) {
     auto dtype = src_attr.dyn_cast<paddle::dialect::DataTypeAttribute>().data();
     dst_attr = phi::DataTypeToString(dtype);
+  } else if (src_attr.isa<::pir::ArrayAttribute>()) {
+    auto attr_vec = src_attr.dyn_cast<::pir::ArrayAttribute>().AsVector();
+    if (attr_vec.size() > 0) {
+      if (attr_vec[0].isa<::pir::Int32Attribute>()) {
+        std::vector<int> vec_int32;
+        for (auto vec_element : attr_vec) {
+          vec_int32.push_back(
+              vec_element.dyn_cast<::pir::Int32Attribute>().data());
+        }
+        dst_attr = vec_int32;
+
+      } else if (attr_vec[0].isa<::pir::Int64Attribute>()) {
+        std::vector<int64_t> vec_int64;
+        for (auto vec_element : attr_vec) {
+          vec_int64.push_back(
+              vec_element.dyn_cast<::pir::Int64Attribute>().data());
+        }
+
+        dst_attr = vec_int64;
+      } else {
+        LOG(FATAL)
+            << "only suuport int32 and int64 attribute in ArrayAttribute";
+      }
+    }
   } else {
     LOG(FATAL) << "unknown Attribute: " << src_attr;
   }
