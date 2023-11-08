@@ -21,7 +21,7 @@ from test_attribute_var import UnittestBase
 
 import paddle
 import paddle.nn.functional as F
-from paddle.base import Program, core, program_guard
+from paddle.base import core
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -405,7 +405,6 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
     def test_case(self):
         import paddle
         import paddle.nn.functional as F
-        from paddle import base
         from paddle.base import core
 
         paddle.enable_static()
@@ -425,11 +424,9 @@ class TestUnpoolOpAPI_st(unittest.TestCase):
             place = core.CUDAPlace(0)
         else:
             place = core.CPUPlace()
-        exe = base.Executor(place)
-        exe.run(base.default_startup_program())
+        exe = paddle.static.Executor(place)
 
         results = exe.run(
-            paddle.base.default_main_program(),
             feed={"x": input_data},
             fetch_list=[unpool_out],
             return_numpy=True,
@@ -451,9 +448,9 @@ class TestOutputSizeTensor(UnittestBase):
 
     @test_with_pir_api
     def test_static(self):
-        main_prog = Program()
-        starup_prog = Program()
-        with program_guard(main_prog, starup_prog):
+        main_prog = paddle.static.Program()
+        starup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, starup_prog):
             fc = paddle.nn.Linear(6, 6)
             x = paddle.randn(self.shapes[0])
             x.stop_gradient = False
@@ -466,7 +463,6 @@ class TestOutputSizeTensor(UnittestBase):
             self.assertTrue(self.var_prefix() in str(main_prog))
 
             exe = paddle.static.Executor()
-            exe.run(starup_prog)
             res = exe.run(fetch_list=[out])
             np.testing.assert_array_equal(res[0].shape, [1, 3, 7, 7])
             paddle.static.save_inference_model(self.save_path, [x], [out], exe)

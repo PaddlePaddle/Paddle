@@ -135,7 +135,7 @@ class TestPool1D_API(unittest.TestCase):
                 input_np, ksize=[2], strides=[2], paddings=[0], ceil_mode=False
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
                 feed={"input": input_np},
                 fetch_list=[result],
@@ -222,7 +222,7 @@ class TestPool1D_API(unittest.TestCase):
                 input_np, ksize=[2], strides=[2], paddings=[0]
             )
 
-            exe = base.Executor(place)
+            exe = paddle.static.Executor(place)
             fetches = exe.run(
                 feed={"input": input_np},
                 fetch_list=[result],
