@@ -64,10 +64,6 @@ if(WIN32)
   target_link_libraries(paddle_inference_api phi)
 endif()
 
-set(PIR_PASS_DEPS
-    pd_constant_folding_pass dead_code_elimination_pass pd_op_to_kernel_pass
-    pd_inplace_pass replace_fetch_with_shadow_output_pass)
-
 set(inference_deps
     ${analysis_deps}
     paddle_inference_api
@@ -75,7 +71,7 @@ set(inference_deps
     analysis_config
     naive_executor
     ${GLOB_PASS_LIB}
-    ${PIR_PASS_DEPS})
+    transform)
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
