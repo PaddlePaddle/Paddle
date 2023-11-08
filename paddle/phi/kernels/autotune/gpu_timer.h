@@ -52,7 +52,6 @@ class GpuTimer {
         start_, phi::errors::PreconditionNotMet("Start Event is not ready."));
     PADDLE_ENFORCE_NOT_NULL(
         stop_, phi::errors::PreconditionNotMet("Stop Event is not ready."));
-    is_start_ = false;
   }
 
   ~GpuTimer() {
@@ -71,7 +70,6 @@ class GpuTimer {
 #else
     cudaEventRecord(start_, stream);
 #endif
-    is_start_ = true;
   }
 
   void Stop(gpuStream_t stream) {
@@ -80,45 +78,9 @@ class GpuTimer {
 #else
     cudaEventRecord(stop_, stream);
 #endif
-    is_start_ = false;
   }
 
-  void Start() {
-    // Note(sonder): Since it is not possible to directly obtain the start time
-    // of the event, "gettimeofday" is used here to retrieve it. The callback is
-    // used to record the start time of the event.
-    Start(stream_);
-#ifdef PADDLE_WITH_HIP
-    hipStreamAddCallback(stream_,
-                         RecordEventTimerCallback,
-                         reinterpret_cast<void *>(&start_time_),
-                         0);
-#else
-    cudaStreamAddCallback(stream_,
-                          RecordEventTimerCallback,
-                          reinterpret_cast<void *>(&start_time_),
-                          0);
-#endif
-  }
-
-  void Stop() {
-    Stop(stream_);
-#ifdef PADDLE_WITH_HIP
-    hipStreamAddCallback(stream_,
-                         RecordEventTimerCallback,
-                         reinterpret_cast<void *>(&end_time_),
-                         0);
-#else
-    cudaStreamAddCallback(stream_,
-                          RecordEventTimerCallback,
-                          reinterpret_cast<void *>(&end_time_),
-                          0);
-#endif
-  }
-
-  void SetStream(gpuStream_t stream) { stream_ = stream; }
-
-  double ElapsedTime() {
+  float ElapsedTime() {
     float milliseconds = 0;
 #ifdef PADDLE_WITH_HIP
     hipEventSynchronize(stop_);
@@ -130,33 +92,96 @@ class GpuTimer {
     return milliseconds;
   }
 
-  double StartTime() {
+ private:
+  gpuEvent_t start_;
+  gpuEvent_t stop_;
+};
+
+class CalculatedStreamTimer {
+ public:
+  CalculatedStreamTimer()
+      : calculated_stream_(nullptr),
+        start_time_(0),
+        end_time_(0),
+        is_started_(false) {}
+
+  void Start() {
+    // Note(sonder): Since it is not possible to directly obtain the start time
+    // of the event, "gettimeofday" is used here to retrieve it. The callback is
+    // used to record the start time of the event.
+    if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(stream_);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipStreamAddCallback(calculated_stream_,
+                               RecordEventTimerCallback,
+                               reinterpret_cast<void *>(&start_time_),
+                               0));
 #else
-    cudaStreamSynchronize(stream_);
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaStreamAddCallback(calculated_stream_,
+                                RecordEventTimerCallback,
+                                reinterpret_cast<void *>(&start_time_),
+                                0));
 #endif
+      is_started_ = true;
+    }
+  }
+
+  void Stop() {
+    if (calculated_stream_ != nullptr) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          hipStreamAddCallback(calculated_stream_,
+                               RecordEventTimerCallback,
+                               reinterpret_cast<void *>(&end_time_),
+                               0));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(
+          cudaStreamAddCallback(calculated_stream_,
+                                RecordEventTimerCallback,
+                                reinterpret_cast<void *>(&end_time_),
+                                0));
+#endif
+      is_started_ = false;
+    }
+  }
+
+  double StartTime() {
+    if (calculated_stream_ != nullptr) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(calculated_stream_));
+#else
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream_));
+#endif
+    }
     return start_time_;
   }
 
   double EndTime() {
+    if (calculated_stream_ != nullptr) {
 #ifdef PADDLE_WITH_HIP
-    hipStreamSynchronize(stream_);
+      PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(calculated_stream_));
 #else
-    cudaStreamSynchronize(stream_);
+      PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream_));
 #endif
+    }
     return end_time_;
   }
 
-  bool IsStart() { return is_start_; }
+  bool IsStarted() { return is_started_; }
+
+  void SetStream(gpuStream_t stream) { calculated_stream_ = stream; }
+
+  void ResetTime() {
+    start_time_ = 0;
+    end_time_ = 0;
+  }
 
  private:
-  gpuEvent_t start_;
-  gpuEvent_t stop_;
-  gpuStream_t stream_;
+  gpuStream_t calculated_stream_;
   double start_time_;
   double end_time_;
-  bool is_start_;
+  bool is_started_;
 };
 
 }  // namespace phi

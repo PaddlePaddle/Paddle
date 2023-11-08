@@ -44,7 +44,7 @@ def parse_args():
     return args
 
 
-def process_job_log(log_data, device_id, start_step):
+def process_job_log(log_data, device_id):
     log_pattern = r'.*?Profiler Info: Job \((\d+)\), type = (\w+), micro_batch_id = (\d+), job_start_time = (\d+.\d+), job_end_time = (\d+.\d+)'
     matches = re.findall(log_pattern, log_data)
     events = []
@@ -66,34 +66,32 @@ def process_job_log(log_data, device_id, start_step):
             step_start_time = start_time
         step_end_time = end_time
 
-        if len(step_times) >= start_step:
-            event_start = {
-                "name": job_type + "_" + str(job_id),
-                "cat": job_type,
-                "ph": "B",
-                "ts": start_time,
-                "pid": 0,
-                "tid": "GPU" + str(device_id),
-            }
-            event_end = {
-                "name": job_type + "_" + str(job_id),
-                "cat": job_type,
-                "ph": "E",
-                "pid": 0,
-                "ts": end_time,
-                "tid": "GPU" + str(device_id),
-            }
-            if job_type in color_map:
-                event_start["cname"] = color_map[job_type]
-                event_end["cname"] = color_map[job_type]
+        event_start = {
+            "name": job_type + "_" + str(job_id),
+            "cat": job_type,
+            "ph": "B",
+            "ts": start_time,
+            "pid": 0,
+            "tid": "GPU" + str(device_id),
+        }
+        event_end = {
+            "name": job_type + "_" + str(job_id),
+            "cat": job_type,
+            "ph": "E",
+            "pid": 0,
+            "ts": end_time,
+            "tid": "GPU" + str(device_id),
+        }
+        if job_type in color_map:
+            event_start["cname"] = color_map[job_type]
+            event_end["cname"] = color_map[job_type]
 
-            events.append(event_start)
-            events.append(event_end)
+        events.append(event_start)
+        events.append(event_end)
 
         last_end_time = end_time
 
     step_times.append([step_start_time, step_end_time])
-    step_times = step_times[start_step:]
     return events, step_times
 
 
@@ -118,7 +116,7 @@ def main():
             int(start_step_match[0]) if len(start_step_match) > 0 else 0
         )
 
-        events, step_times = process_job_log(log_data, device_id, start_step)
+        events, step_times = process_job_log(log_data, device_id)
         all_events.extend(events)
         for i, info in enumerate(step_times):
             if len(step_infos) <= i:

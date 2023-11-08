@@ -2023,7 +2023,6 @@ All parameter, weight, gradient are variables in Paddle.
 
       .def("set_enable_auto_parallel_profiler",
            [](StandaloneExecutor &self, bool enable_auto_parallel_profiler) {
-             pybind11::gil_scoped_release release;
              self.SetEnableAutoParallelProfiler(enable_auto_parallel_profiler);
            });
 

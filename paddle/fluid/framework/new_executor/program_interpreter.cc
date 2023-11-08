@@ -138,6 +138,17 @@ FetchList ProgramInterpreter::Run(const std::vector<std::string>& feed_names,
                                   bool need_fetch,
                                   bool enable_auto_parallel_profiler) {
   enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
+
+  if (enable_auto_parallel_profiler_) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    gpuStream_t calculated_stream =
+        dynamic_cast<phi::GPUContext*>(
+            platform::DeviceContextPool::Instance().Get(place_))
+            ->stream();
+    calculated_stream_timer_.SetStream(calculated_stream);
+#endif
+  }
+
   std::vector<paddle::framework::OpFuncNode> op_func_nodes;
   Build(feed_names, &op_func_nodes);
 
@@ -639,34 +650,9 @@ void ProgramInterpreter::ClearLoDTensorArrayInLocalScope() {
 std::tuple<double, double> ProgramInterpreter::InterpreterRunTime() {
   double start_time, end_time;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  //   double remaining_time = std::numeric_limits<double>::max();
-  //   double event_time, wait_time;
   start_time = calculated_stream_timer_.StartTime();
   end_time = calculated_stream_timer_.EndTime();
-//   gpuEvent_t stop_event = calculated_stream_timer_.StopEvent();
-
-//   for (auto& inst : vec_instruction_) {
-//     for (auto event_inter : inst.EventsToWait()) {
-//       auto* wrapper = static_cast<paddle::platform::CUDADeviceEventWrapper*>(
-//           event_inter.event_->GetEvent().get());
-
-//       gpuEvent_t start_event = wrapper->inner_event_.GetRawCudaEvent();
-//       event_time = 0;
-//       PADDLE_ENFORCE_GPU_SUCCESS(cudaEventElapsedTime(
-//           reinterpret_cast<float*>(&event_time), start_event, stop_event));
-//       remaining_time = std::min(remaining_time, event_time);
-//       VLOG(0) << "event time: " << std::to_string(event_time)
-//               << " remaining: " << std::to_string(remaining_time);
-//     }
-//   }
-//   if (remaining_time == std::numeric_limits<double>::max()) {
-//     remaining_time = 0;
-//   }
-//   wait_time = end_time - start_time - remaining_time;
-//   start_time = start_time + wait_time;
-//   VLOG(0) << "wait time: " << std::to_string(wait_time)
-//           << " start time: " << std::to_string(start_time)
-//           << " end time: " << std::to_string(end_time);
+  calculated_stream_timer_.ResetTime();
 #endif
   return std::make_tuple(start_time, end_time);
 }
@@ -708,16 +694,6 @@ void ProgramInterpreter::Convert(
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     vec_instruction_.back().UpdataRecordStreamForGcInfo();
-#endif
-  }
-
-  if (enable_auto_parallel_profiler_) {
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    gpuStream_t calculate_stream =
-        dynamic_cast<phi::GPUContext*>(
-            platform::DeviceContextPool::Instance().Get(place_))
-            ->stream();
-    calculated_stream_timer_.SetStream(calculate_stream);
 #endif
   }
 
@@ -1091,7 +1067,7 @@ void ProgramInterpreter::RunInstruction(const Instruction& instr_node) {
     if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       if (!interpreter::IsCommunicationOp(instr_node) &&
-          !calculated_stream_timer_.IsStart()) {
+          !calculated_stream_timer_.IsStarted()) {
         VLOG(3) << "Start calculated stream timer from op: " << op->Type();
         calculated_stream_timer_.Start();
       }
@@ -1275,7 +1251,8 @@ void ProgramInterpreter::RunInstructionAsync(size_t instr_id) {
 
     if (enable_auto_parallel_profiler_) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-      if (instr_id == last_calculated_instr_id) {
+      if (instr_id == last_calculated_instr_id &&
+          calculated_stream_timer_.IsStarted()) {
         VLOG(3) << "Stop calculated stream timer from op: "
                 << instr_node.OpBase()->Type();
         calculated_stream_timer_.Stop();

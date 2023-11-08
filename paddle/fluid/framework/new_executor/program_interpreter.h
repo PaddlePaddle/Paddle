@@ -221,7 +221,7 @@ class ProgramInterpreter : public InterpreterBaseImpl {
   std::vector<HookFunc> hookfuncs_;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  phi::GpuTimer calculated_stream_timer_;
+  phi::CalculatedStreamTimer calculated_stream_timer_;
 #endif
   size_t last_calculated_instr_id;
   bool enable_auto_parallel_profiler_;
