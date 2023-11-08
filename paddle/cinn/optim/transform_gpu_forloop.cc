@@ -378,6 +378,12 @@ void UpdateBufferAxisPass(ir::Expr *expr) {
             optim::ReplaceVarWithExpr(&indice, loop_var, ir::Expr(0));
             indice = common::AutoSimplify(indice);
           }
+          // Also need to deal with ir::Store.value
+          if (store) {
+            auto &value = store->value;
+            optim::ReplaceVarWithExpr(&value, loop_var, ir::Expr(0));
+            value = common::AutoSimplify(value);
+          }
         }
       }
     }
