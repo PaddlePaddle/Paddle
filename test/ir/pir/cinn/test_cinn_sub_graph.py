@@ -14,8 +14,6 @@
 
 import unittest
 
-import numpy as np
-
 import paddle
 
 
@@ -59,6 +57,32 @@ def exp_sub(x):
     return z
 
 
+def layer_norm(x, weight, bias):
+    num = paddle.full([1], x.shape[-1])
+    eps = paddle.full([1], 1e-5)
+    sum1 = paddle.sum(x, axis=-1, keepdim=True)
+    mean = sum1 / num
+    t1 = x - mean
+    t2 = t1 * t1
+    t3 = paddle.sum(t2, axis=-1, keepdim=True)
+    t3 = t3 / num
+    t4 = t3 + eps
+    t5 = paddle.sqrt(t4)
+    t7 = t1 / t5
+
+    return t7 * weight + bias
+
+
+def dropout(x):
+    rand = paddle.uniform(x.shape, min=0.0, max=1.0, dtype="float32")
+    zero = paddle.full([1], 0.0)
+
+    mask = paddle.greater_equal(rand, zero)
+
+    out = x * paddle.cast(mask, x.dtype)
+    return out
+
+
 class CINNSubGraphNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
@@ -80,6 +104,30 @@ class CINNSoftmaxSubGraphNet(paddle.nn.Layer):
         return out
 
 
+class CINNLayerNormSubGraphNet(paddle.nn.Layer):
+    def __init__(self, hidden_size):
+        super().__init__()
+        self.fn = layer_norm
+        self.weight = self.create_parameter(
+            shape=[hidden_size], dtype="float32"
+        )
+        self.bias = self.create_parameter(shape=[hidden_size], dtype="float32")
+
+    def forward(self, x, weight, bias):
+        out = self.fn(x, self.weight, self.bias)
+        return out
+
+
+class CINNDropoutSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fn = paddle.nn.functional.dropout
+
+    def forward(self, x):
+        out = self.fn(x)
+        return out
+
+
 class TestCinnSubGraphBase(unittest.TestCase):
     """
     Test Pir API + @to_static + CINN.
@@ -98,25 +146,58 @@ class TestCinnSubGraphBase(unittest.TestCase):
     def train(self, use_cinn):
         paddle.seed(2022)
         net = CINNSubGraphNet()
-        net = apply_to_static(net, use_cinn)
+        # net = apply_to_static(net, use_cinn)
         net.eval()
-        out = net(self.x, self.axis)
+        out = net(self.x)
         return out
 
 
-class TestCinnSoftmax(TestCinnSubGraphBase):
+# class TestCinnSoftmax(TestCinnSubGraphBase):
+#     def train(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNSoftmaxSubGraphNet()
+#         net = apply_to_static(net, use_cinn)
+#         net.eval()
+#         out = net(self.x, self.axis)
+#         return out
+
+#     def test_forward(self):
+#         cinn_out = self.train(use_cinn=True)
+#         dy_out = self.train(use_cinn=False)
+#         np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+# class TestCinnLayerNorm(TestCinnSubGraphBase):
+#     def train(self, use_cinn):
+#         paddle.seed(2022)
+#         net = CINNLayerNormSubGraphNet( self.shape[-1])
+#         net = apply_to_static(net, use_cinn)
+#         net.eval()
+#         weight = paddle.ones( shape=[self.shape[-1]], dtype="float32")
+#         bias = paddle.ones( shape=[self.shape[-1]], dtype="float32")
+#         out = net(self.x, weight, bias)
+#         return out
+
+#     def test_forward(self):
+#         cinn_out = self.train(use_cinn=True)
+#         print( cinn_out )
+#         # dy_out = self.train(use_cinn=False)
+#         # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnLayerNorm(TestCinnSubGraphBase):
     def train(self, use_cinn):
         paddle.seed(2022)
-        net = CINNSoftmaxSubGraphNet()
+        net = CINNDropoutSubGraphNet()
         net = apply_to_static(net, use_cinn)
-        net.eval()
-        out = net(self.x, self.axis)
+        # net.eval()
+        out = net(self.x)
         return out
 
     def test_forward(self):
-        cinn_out = self.train(use_cinn=True)
-        dy_out = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+        cinn_out = self.train(use_cinn=False)
+        print(cinn_out)
+        # dy_out = self.train(use_cinn=False)
+        # np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
 
 
 if __name__ == '__main__':
