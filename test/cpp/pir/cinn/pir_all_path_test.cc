@@ -223,7 +223,65 @@ TEST(GroupOp, TestBuildLayerNorm) {
   //       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 }
 
-std::shared_ptr<::pir::Program> BuildScaleGroupProgram() {
+// std::shared_ptr<::pir::Program> BuildScaleGroupProgram() {
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+
+//   auto program = std::make_shared<::pir::Program>(ctx);
+//   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
+
+//   // full -> softmax(max -> subtract -> exp -> sum -> divide)
+//   const float value_one = 1.0;
+//   const std::vector<int64_t> shape = {16, 16};
+//   auto x = builder
+//                .Build<paddle::dialect::FullOp>(
+//                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
+//                .result(0);
+
+//   auto out =
+//       builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
+
+//   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
+//   return program;
+// }
+
+// TEST(GroupOp, TestBuildScale) {
+//   // Step 1: Construct pir::Program
+//   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
+//   std::shared_ptr<::pir::Program> program = BuildScaleGroupProgram();
+//   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+//   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
+
+//   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
+
+//   pir::PassManager pm(ctx);
+//   pm.AddPass(
+//       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
+//   pm.AddPass(pir::CreateBuildCinnPass());
+//   CHECK_EQ(pm.Run(program.get()), true);
+
+//   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
+
+//   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
+
+//   auto kernel_program =
+//       paddle::dialect::PdOpLowerToKernelPass(res.get(), place);
+
+//   paddle::framework::Scope exe_scope;
+
+//   paddle::framework::InterpreterCore executor(
+//       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
+
+//   executor.Run({}, true);
+
+//   auto out_tensor =
+//       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+
+//   bool res0 = simple_cmp(out_tensor.data<float>()[0], 0.5);
+//   EXPECT_EQ(res0, true);
+// }
+
+std::shared_ptr<::pir::Program> BuildScaleTensorGroupProgram() {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
 
@@ -231,24 +289,28 @@ std::shared_ptr<::pir::Program> BuildScaleGroupProgram() {
   ::pir::Builder builder = ::pir::Builder(ctx, program->block());
 
   // full -> softmax(max -> subtract -> exp -> sum -> divide)
-  const float value_one = 1.0;
+  const float value_one = 0.5;
   const std::vector<int64_t> shape = {16, 16};
   auto x = builder
                .Build<paddle::dialect::FullOp>(
                    shape, value_one, phi::DataType::FLOAT32, phi::GPUPlace())
                .result(0);
-
+  auto scale = builder
+                   .Build<paddle::dialect::OnesOp>(std::vector<int64_t>({1}),
+                                                   phi::DataType::FLOAT32,
+                                                   phi::GPUPlace())
+                   .result(0);
   auto out =
-      builder.Build<paddle::dialect::ScaleOp>(x, 0.5, 0.0, false).result(0);
+      builder.Build<paddle::dialect::ScaleOp>(x, scale, 0.0, false).result(0);
 
   builder.Build<paddle::dialect::FetchOp>(out, "out", 0);
   return program;
 }
 
-TEST(GroupOp, TestBuildScale) {
+TEST(GroupOp, TestBuildScaleTensor) {
   // Step 1: Construct pir::Program
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::shared_ptr<::pir::Program> program = BuildScaleGroupProgram();
+  std::shared_ptr<::pir::Program> program = BuildScaleTensorGroupProgram();
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
