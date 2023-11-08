@@ -75,6 +75,58 @@ PyObject* tensor_properties_get_name(TensorObject* self, void* closure) {
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
 
+#ifdef PADDLE_WITH_XPU
+PyDoc_STRVAR(tensor_scale__doc__,
+             R"DOC(scale
+
+Tensor's scale value, only available in XPU.
+
+Returns:
+    str: Tensor's scale value.
+
+Examples:
+    .. code-block:: python
+
+        >>> import paddle
+
+        >>> x = paddle.to_tensor(1.)
+        >>> print(x.scale)
+        -1
+        >>> x.name = -1.2
+        >>> print(x.scale)
+        -1.2
+)DOC");
+
+PyObject* tensor_properties_get_scale(TensorObject* self, void* closure) {
+  EAGER_TRY
+  phi::DenseTensor tmp;
+  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor) {
+    float scale_value = dense_tensor->meta().scale_value;
+    return ToPyObject(scale_value);
+  }
+  float scale_value = -1.0f;
+  return ToPyObject(scale_value);
+  EAGER_CATCH_AND_THROW_RETURN_NULL
+}
+
+int tensor_properties_set_scale(TensorObject* self,
+                                PyObject* value,
+                                void* closure) {
+  EAGER_TRY
+  phi::DenseTensor tmp;
+  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+  if (dense_tensor) {
+    float new_scale_value = CastPyArg2AttrFloat(value, 0);
+    phi::DenseTensorMeta meta = dense_tensor->meta();
+    meta.scale_value = new_scale_value;
+    dense_tensor->set_meta(meta);
+  }
+  return 0;
+  EAGER_CATCH_AND_THROW_RETURN_NEG
+}
+#endif
+
 PyDoc_STRVAR(tensor_type__doc__,
              R"DOC(type
 
@@ -767,6 +819,13 @@ struct PyGetSetDef variable_properties[] = {  // NOLINT
      (setter)tensor_properties_set_name,
      tensor_name__doc__,
      nullptr},
+#ifdef PADDLE_WITH_XPU
+    {"scale",
+     (getter)tensor_properties_get_scale,
+     (setter)tensor_properties_set_scale,
+     tensor_scale__doc__,
+     nullptr},
+#endif
     {"stop_gradient",
      (getter)tensor_properties_get_stop_gradient,
      (setter)tensor_properties_set_stop_gradient,

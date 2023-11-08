@@ -319,10 +319,13 @@ class Optimizer:
                 >>> state_dict = adam.state_dict()
 
         '''
+        scale_arr = []
         state_dict = {}
         for k, v in self._accumulators.items():
             for para_name, var_tmp in v.items():
                 state_dict[var_tmp.name] = var_tmp
+                if core.is_compiled_with_xpu():
+                    scale_arr.append(var_tmp.scale)
         # if has master weight and then save master weight
         if hasattr(self, "_master_weights"):
             if len(self._master_weights) != 0:
@@ -330,6 +333,12 @@ class Optimizer:
         # global step if use lr decay
         if isinstance(self._learning_rate, LRScheduler):
             state_dict["LR_Scheduler"] = self._learning_rate.state_dict()
+
+        # convert scale_arr to paddle tensor
+        if core.is_compiled_with_xpu():
+            scale_tensor = paddle.to_tensor(scale_arr)
+            state_dict["XPU_TENSOR_SCALE_VALUES"] = scale_tensor
+
         return state_dict
 
     @framework.dygraph_only
@@ -370,6 +379,17 @@ class Optimizer:
         # NOTE: exclude learning rate scheduler's state from
         # _accumulators_holder.
         state_dict = state_dict.copy()
+
+        xpu_tensor_scale_values_available = False
+        if (
+            core.is_compiled_with_xpu()
+            and "XPU_TENSOR_SCALE_VALUES" in state_dict
+        ):
+            xpu_tensor_scale_values_available = True
+            scale_tensor = state_dict["XPU_TENSOR_SCALE_VALUES"]
+            state_dict.pop("XPU_TENSOR_SCALE_VALUES")
+            scale_tensor_np = scale_tensor.numpy()
+
         if "LR_Scheduler" in state_dict:
             state_dict.pop("LR_Scheduler")
         if "master_weights" in state_dict:
@@ -412,6 +432,10 @@ class Optimizer:
                 )
 
                 tensor.set(load_para_np, framework._current_expected_place())
+                if xpu_tensor_scale_values_available:
+                    new_scale_value = scale_tensor_np[0]
+                    var_tmp.scale = new_scale_value
+                    scale_tensor_np = np.delete(scale_tensor_np, 0)
 
     def get_opti_var_name_list(self):
         return self._opti_name_list
