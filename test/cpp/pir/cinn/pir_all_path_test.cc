@@ -216,9 +216,7 @@ TEST(GroupOp, TestBuildLayerNorm) {
   paddle::framework::InterpreterCore executor(
       place, {"out@fetch"}, kernel_program->block(), &exe_scope);
 
-  // TODO(phlrain): fix exec error
-  //   executor.Run({}, true);
-
-  //   auto out_tensor =
-  //       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
+  executor.Run({}, true);
+  auto out_tensor =
+      executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 }
