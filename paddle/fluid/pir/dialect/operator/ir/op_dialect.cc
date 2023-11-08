@@ -63,7 +63,8 @@ void OperatorDialect::initialize() {
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,
               paddle::dialect::CreateArrayOp,
-              paddle::dialect::ArrayLengthOp>();
+              paddle::dialect::ArrayLengthOp,
+              paddle::dialect::ArrayWrite_Op>();
 
   RegisterInterfaces<ParameterConvertInterface>();
 }

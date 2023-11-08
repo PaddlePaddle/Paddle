@@ -287,8 +287,7 @@ def create_array(dtype, initialized_list=None):
         return array
     elif in_pir_mode():
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
-            dtype = paddle.base.convert_np_dtype_to_dtype_(dtype)
-        dtype = paddle.pir.core.vartype_to_datatype[dtype]
+            dtype = paddle.base.framework.convert_np_dtype_to_dtype_(dtype)
         out = paddle._pir_ops.create_array(dtype)
         for val in array:
             out = paddle._pir_ops.array_write_(out, val, array_length(out))
