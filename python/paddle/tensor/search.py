@@ -28,6 +28,7 @@ from ..framework import (
     core,
     in_dynamic_mode,
     in_dynamic_or_pir_mode,
+    in_pir_mode,
 )
 
 # from ..base.layers import has_inf  #DEFINE_ALIAS
@@ -1214,6 +1215,12 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
+            return _C_ops.kthvalue(x, k, -1, keepdim)
+    elif in_pir_mode():
+        if isinstance(axis, int):
+            return _C_ops.kthvalue(x, k, axis, keepdim)
+        elif isinstance(axis, paddle.pir.OpResult):
+            axis.stop_gradient = True
             return _C_ops.kthvalue(x, k, -1, keepdim)
 
     helper = LayerHelper("kthvalue", **locals())
