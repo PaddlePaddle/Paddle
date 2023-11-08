@@ -146,7 +146,12 @@ bool NeedFallBackFromGPUDNN2GPU(pir::Operation* op,
       return true;
     }
   }
-
+  if (op->isa<paddle::dialect::FusedElemwiseAddActivationOp>() ||
+      op->isa<paddle::dialect::FusedElemwiseAddActivationGradOp>()) {
+    if (kernel_key.backend() == phi::Backend::GPUDNN) {
+      return true;
+    }
+  }
   return false;
 }
 
