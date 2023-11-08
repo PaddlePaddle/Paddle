@@ -66,6 +66,14 @@ const std::vector<std::shared_ptr<Job>>& Plan::JobList() const {
   return job_list_;
 }
 
+const std::vector<std::string> Plan::JobTypes() const {
+  std::vector<std::string> res;
+  for (auto kv : type_to_ir_program_) {
+    res.emplace_back(kv.first);
+  }
+  return res;
+}
+
 const std::shared_ptr<ProgramDesc> Plan::Program(
     const std::string& job_type) const {
   return type_to_program_.at(job_type);
@@ -76,8 +84,8 @@ std::shared_ptr<::pir::Program> Plan::IrProgram(
   return type_to_ir_program_.at(job_type);
 }
 
-void Plan::UpdateIrProgram(const std::string& job_type,
-                           std::shared_ptr<::pir::Program> ir_prog) {
+void Plan::SetIrProgram(const std::string& job_type,
+                        std::shared_ptr<::pir::Program> ir_prog) {
   type_to_ir_program_[job_type] = ir_prog;
 }
 
