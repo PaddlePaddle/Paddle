@@ -609,7 +609,6 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             out2 = m(x, labels, path_table, path_code)
 
             exe = paddle.static.Executor(self.place)
-            exe.run(startup_program)
             feed_dict = {
                 'x': self.x_np,
                 'labels': self.labels_np,
@@ -619,9 +618,7 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            ret1, ret2 = exe.run(
-                train_program, feed=feed_dict, fetch_list=[out1, out2]
-            )
+            ret1, ret2 = exe.run(feed=feed_dict, fetch_list=[out1, out2])
 
             for ret in [ret1, ret2]:
                 np.testing.assert_allclose(self.out_np, ret, rtol=1e-05)
@@ -656,12 +653,11 @@ class TestHSigmoidLossAPI(unittest.TestCase):
             )
 
             exe = base.Executor(self.place)
-            exe.run(startup_program)
             feed_dict = {'x': self.x_np, 'labels': self.labels_np}
             if self.is_custom:
                 feed_dict["path_code"] = self.path_code_np
                 feed_dict["path_table"] = self.path_table_np
-            (ret,) = exe.run(train_program, feed=feed_dict, fetch_list=[out])
+            (ret,) = exe.run(feed=feed_dict, fetch_list=[out])
 
             np.testing.assert_allclose(ret, self.out_np, rtol=1e-05)
 

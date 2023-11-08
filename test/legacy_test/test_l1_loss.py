@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base, static
+from paddle import base
 from paddle.pir_utils import test_with_pir_api
 
 
@@ -78,7 +78,9 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with static.program_guard(static.Program(), static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             self.run_static()
 
     def test_gpu(self):
@@ -89,7 +91,9 @@ class TestFunctionalL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with static.program_guard(static.Program(), static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             self.run_static(use_gpu=True)
 
     # test case the raise message
@@ -172,7 +176,9 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with static.program_guard(static.Program(), static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             self.run_static()
 
     def test_gpu(self):
@@ -183,7 +189,9 @@ class TestClassL1Loss(unittest.TestCase):
         self.run_imperative()
         paddle.enable_static()
 
-        with static.program_guard(static.Program(), static.Program()):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             self.run_static(use_gpu=True)
 
     # test case the raise message
