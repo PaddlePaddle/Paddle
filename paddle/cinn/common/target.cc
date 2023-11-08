@@ -212,10 +212,10 @@ std::array<int, 3> GetCUDAMaxBlockDims() {
   std::array<int, 3> ret;
 #ifdef CINN_WITH_CUDA
   cudaDeviceProp prop;
-  CUDA_CALL(cudaGetDeviceProperties(&prop));
-  ret.at[0] = prop.maxThreadsDim[0];
-  ret.at[1] = prop.maxThreadsDim[1];
-  ret.at[2] = prop.maxThreadsDim[2];
+  CUDA_CALL(cudaGetDeviceProperties(&prop, 0));
+  ret[0] = prop.maxThreadsDim[0];
+  ret[1] = prop.maxThreadsDim[1];
+  ret[2] = prop.maxThreadsDim[2];
 #endif
   return ret;
 }
@@ -240,10 +240,10 @@ std::array<int, 3> GetCUDAMaxGridDims() {
   std::array<int, 3> ret;
 #ifdef CINN_WITH_CUDA
   cudaDeviceProp prop;
-  CUDA_CALL(cudaGetDeviceProperties(&prop));
-  ret.at[0] = prop.maxGridSize[0];
-  ret.at[1] = prop.maxGridSize[1];
-  ret.at[2] = prop.maxGridSize[2];
+  CUDA_CALL(cudaGetDeviceProperties(&prop, 0));
+  ret[0] = prop.maxGridSize[0];
+  ret[1] = prop.maxGridSize[1];
+  ret[2] = prop.maxGridSize[2];
 #endif
   return ret;
 }
