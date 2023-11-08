@@ -1350,7 +1350,8 @@ paddle::Tensor* GetTensorPtrFromArgs(const std::string& op_type,
 
 paddle::Tensor* CreateTensorFromVarDesc(
     const paddle::framework::VarDesc& var_desc) {
-  auto tensor = new paddle::Tensor();
+  auto tensor =
+      new paddle::Tensor(egr::Controller::Instance().GetExpectedPlace());
 
   auto stop_gradient = var_desc.StopGradient();
   auto dtype = var_desc.GetDataType();
