@@ -120,6 +120,13 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
     int new_kh = static_cast<int>(dilations[0] * (kh - 1) + 1);
     int new_kw = static_cast<int>(dilations[1] * (kw - 1) + 1);
     // New weights
+    if (!(weights->dtype() == phi::DataType::FLOAT32 ||
+          weights->dtype() == phi::DataType::FLOAT16)) {
+      VLOG(3)
+          << "Transfilter only support float32/float16 dtype of weights -- do "
+             "nothing and break.";
+      return;  // Only support fp32/fp16 dtype
+    }
     auto new_weights_name = weights_name + "_dilation_trans";
     auto* new_weights =
         scope->Var(new_weights_name)->GetMutable<phi::DenseTensor>();
@@ -158,11 +165,6 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::conv2d_dilation_trans(
           new_kw,
           dilations[0],
           dilations[1]);
-    } else {
-      VLOG(3)
-          << "Transfilter only support float32/float16 dtype of weights -- do "
-             "nothing and break.";
-      return;  // Only support fp32/fp16 dtype
     }
 
     VarDesc new_weights_desc(new_weights_name);
