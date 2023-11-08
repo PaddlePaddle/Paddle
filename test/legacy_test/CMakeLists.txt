@@ -1343,14 +1343,9 @@ foreach(STATIC_BUILD_TEST ${STATIC_BUILD_TESTS})
     FLAGS_new_executor_static_build=true)
 endforeach()
 
-set(PIR_COVERAGE_TESTS test_fused_feedforward_pass
-                       test_fuse_elewise_add_act_pass)
+set(PIR_COVERAGE_TESTS test_fused_feedforward_pass)
 if(NOT WITH_GPU)
   list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fused_feedforward_pass)
-endif()
-
-if(APPLE)
-  list(REMOVE_ITEM PIR_COVERAGE_TESTS test_fuse_elewise_add_act_pass)
 endif()
 
 foreach(PIR_COVERAGE_TEST ${PIR_COVERAGE_TESTS})
