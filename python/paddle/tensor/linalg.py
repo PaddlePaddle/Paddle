@@ -2445,7 +2445,7 @@ def lu(x, pivot=True, get_infos=False, name=None):
             >>> # one can verify : X = P @ L @ U ;
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         lu, p, info = _C_ops.lu(x, pivot)
     else:
         check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'lu')
@@ -2548,7 +2548,7 @@ def lu_unpack(x, y, unpack_ludata=True, unpack_pivots=True, name=None):
         raise ValueError(
             f"The shape of Pivots should be (*, K), but received ndim is [{y.ndim} < 1]"
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         P, L, U = _C_ops.lu_unpack(x, y, unpack_ludata, unpack_pivots)
         return P, L, U
     else:
@@ -3474,7 +3474,7 @@ def lstsq(x, y, rcond=None, driver=None, name=None):
         elif x.dtype == paddle.float64:
             rcond = 1e-15 * max(x.shape[-2], x.shape[-1])
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         solution, residuals, rank, singular_values = _C_ops.lstsq(
             x, y, rcond, driver
         )

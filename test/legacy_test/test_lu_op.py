@@ -24,6 +24,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def scipy_lu(A, pivot):
@@ -156,10 +157,10 @@ class TestLUOp(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['Out'])
+        self.check_grad(['X'], ['Out'], check_pir=True)
 
 
 # m = n 2D
@@ -238,6 +239,7 @@ class TestLUAPI(unittest.TestCase):
         for tensor_shape, dtype in itertools.product(tensor_shapes, dtypes):
             run_lu_dygraph(tensor_shape, dtype)
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
 

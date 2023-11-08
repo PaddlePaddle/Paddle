@@ -17,8 +17,9 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle import base
+from paddle import base, static
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 class LinalgLstsqTestCase(unittest.TestCase):
@@ -91,12 +92,13 @@ class LinalgLstsqTestCase(unittest.TestCase):
             self._result_sg_values = results[3].numpy()
             self.assert_np_close()
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         for dev in self.devices:
             paddle.set_device(dev)
             place = base.CPUPlace() if dev == "cpu" else base.CUDAPlace(0)
-            with base.program_guard(base.Program(), base.Program()):
+            with static.program_guard(static.Program(), static.Program()):
                 x = paddle.static.data(
                     name="x",
                     shape=self._input_shape_1,
@@ -112,7 +114,6 @@ class LinalgLstsqTestCase(unittest.TestCase):
                 )
                 exe = base.Executor(place)
                 fetches = exe.run(
-                    base.default_main_program(),
                     feed={"x": self._input_data_1, "y": self._input_data_2},
                     fetch_list=[results],
                 )
@@ -282,6 +283,7 @@ class TestLinalgLstsqAPIError(unittest.TestCase):
     def setUp(self):
         pass
 
+    @test_with_pir_api
     def test_api_errors(self):
         def test_x_bad_shape():
             x = paddle.to_tensor(np.random.random(size=(5)), dtype=np.float32)
