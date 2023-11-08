@@ -17,6 +17,7 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
@@ -854,15 +855,22 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
       phi::dynload::ncclCommInitRank(&nccl_comm, num_ranks, nccl_id, rank));
   NCCL_CHECK(phi::dynload::ncclGroupEnd());
 
+  VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
+          << " on rank_in_group: " << rank << " nranks: " << num_ranks
+          << " gid: " << gid_;
+
+  auto comm_ctx = std::make_unique<phi::GPUContext>(place);
+  comm_ctx->set_nccl_comm(nccl_comm);
+
   // gather global ranks in current group
   int* global_ranks_gpu = nullptr;
   size_t global_ranks_gpu_size = size_ * sizeof(int);
   cudaMalloc((void**)&global_ranks_gpu, global_ranks_gpu_size);
   NCCL_CHECK(phi::dynload::ncclAllGather(
-      &global_rank_, global_ranks.data(), 1, ncclInt, nccl_comm));
+      &global_rank_, global_ranks_gpu, 1, ncclInt, nccl_comm, comm_ctx->stream()));
 
   std::vector<int> global_ranks(size_);
-  cudaMemoryCopy(global_ranks.data(),
+  cudaMemcpy(global_ranks.data(),
                  global_ranks_gpu,
                  global_ranks_gpu_size,
                  cudaMemcpyDeviceToHost);
@@ -870,18 +878,11 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
 
   // store global_ranks in current group_key
   std::once_flag flag;
-  std::call_once(flag, []() {
-    phi::distributed::CommContextManager.GetInstance().SetStore(store_);
+  std::call_once(flag, [this]() {
+    phi::distributed::CommContextManager::GetInstance().SetStore(store_);
   });
-  phi::distributed::CommContextManager.GetInstance().AddGroupRank(group_key_,
+  phi::distributed::CommContextManager::GetInstance().AddGroupRanks(group_key_,
                                                                   global_ranks);
-
-  VLOG(3) << "Get nccl comm: " << nccl_comm << " for place_key: " << place_key
-          << " on rank_in_group: " << rank << " nranks: " << num_ranks
-          << " gid: " << gid_;
-
-  auto comm_ctx = std::make_unique<phi::GPUContext>(place);
-  comm_ctx->set_nccl_comm(nccl_comm);
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));

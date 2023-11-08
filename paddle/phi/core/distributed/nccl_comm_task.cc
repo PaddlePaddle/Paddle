@@ -17,6 +17,7 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/trace_utils.h"
@@ -189,7 +190,7 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto time_elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
       current_timepoint - start_time_);
   auto global_ranks =
-      phi::distributed::CommContextManager.GetInstance().GetGroupRank(
+      phi::distributed::CommContextManager::GetInstance().GetGroupRanks(
           group_key_);
   return "gid:" + std::to_string(gid_) +
          ",group_ranks:" + VectorToString(global_ranks) +
