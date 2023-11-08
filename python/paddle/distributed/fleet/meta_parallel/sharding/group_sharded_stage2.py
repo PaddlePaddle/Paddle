@@ -38,7 +38,6 @@ from .group_sharded_utils import Type, device_guard
 
 logger_ = get_logger(logging.WARNING)
 
-
 def _trainable(param):
     return param.trainable
 
@@ -70,7 +69,7 @@ class GroupShardedStage2(nn.Layer):
         dp_group=None,
     ):
         super().__init__()
-
+        buffer_max_size = 0 if buffer_max_size is not None else buffer_max_size
         # training options
         self._layer = layer
         self._sharding_optimizers = (
@@ -211,12 +210,21 @@ class GroupShardedStage2(nn.Layer):
         Set zero to the gradient of the optimizer's current rank trainable parameters.
         """
         # Release grad storages
+        # for dtype in self._grad_storages.keys():   
+        #     if (
+        #         not self._offload
+        #         and self._rank in self._grad_storages[dtype].keys()
+        #     ):
+        #         print(f"_clear_gradients, dtype : { dtype}")
+        #         self._grad_storages[dtype][self._rank].buffer.zero_()
+
         for dtype in self._grad_storages.keys():
             if (
                 not self._offload
-                and self._rank in self._grad_storages[dtype].keys()
             ):
-                self._grad_storages[dtype][self._rank].buffer.zero_()
+                print(f"_clear_gradients, dtype : { dtype}")
+                for rank in range(0, self._group.nranks):
+                    self._grad_storages[dtype][rank].buffer.zero_()
 
         # Release grads of params
         for param in self._trainable_params:
@@ -445,7 +453,7 @@ class GroupShardedStage2(nn.Layer):
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
 
-                    cleanup()
+                    # cleanup()
 
         else:
             # Buffer reduction
@@ -502,7 +510,7 @@ class GroupShardedStage2(nn.Layer):
                             )
                         )
 
-                        cleanup()
+                        # cleanup()
 
                     # Clear the task flow and trigger callback to clear the redundant gradient
                     # self._clear_task_flow()
