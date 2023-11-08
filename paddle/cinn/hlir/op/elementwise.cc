@@ -161,16 +161,16 @@ std::shared_ptr<OpStrategy> StrategyForScale(
           out = Compute(
               A->shape,
               [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) * A(indice) +
-                       ir::Cast::Make(A->type(), Expr(bias));
+                return ir::Cast::Make(A->type(),
+                                      Expr(scale) * A(indice) + Expr(bias));
               },
               tensor_name);
         } else {
           out = Compute(
               A->shape,
               [=](const std::vector<Expr> &indice) {
-                return ir::Cast::Make(A->type(), Expr(scale)) *
-                       (A(indice) + ir::Cast::Make(A->type(), Expr(bias)));
+                return ir::Cast::Make(A->type(),
+                                      Expr(scale) * (A(indice) + Expr(bias)));
               },
               tensor_name);
         }
