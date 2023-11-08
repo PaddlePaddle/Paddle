@@ -134,9 +134,10 @@ pir::OpResult array_length(pir::Value x) {
 }
 
 pir::OpResult array_write_(pir::Value array, pir::Value x, pir::Value i) {
-  auto array_write_op = APIBuilder::Instance()
-                            .GetBuilder()
-                            ->Build<paddle::dialect::ArrayWrite_Op>(x);
+  auto array_write_op =
+      APIBuilder::Instance()
+          .GetBuilder()
+          ->Build<paddle::dialect::ArrayWrite_Op>(array, x, i);
   return array_write_op.out();
 }
 
