@@ -28,8 +28,8 @@ if(WITH_GLOO)
 endif()
 
 if(WITH_MKLDNN)
-  list(APPEND COMM_CONTEXT_MANAGER_DEPS mkldnn extern_mkldnn)
-  list(APPEND COMM_TASK_MANAGER_DEPS mkldnn extern_mkldnn)
+  list(APPEND COMM_CONTEXT_MANAGER_DEPS mkldnn)
+  list(APPEND COMM_TASK_MANAGER_DEPS mkldnn)
 endif()
 
 cc_library(
