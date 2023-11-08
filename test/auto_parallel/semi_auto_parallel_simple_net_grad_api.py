@@ -71,3 +71,7 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
 
     def run_test_case(self):
         self.test_demo_net()
+
+
+if __name__ == '__main__':
+    TestSimpleNetWithGradApiForSemiAutoParallel().run_test_case()
