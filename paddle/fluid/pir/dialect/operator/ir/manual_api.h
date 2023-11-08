@@ -60,6 +60,8 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
                     phi::DataType dtype = phi::DataType::FLOAT32,
                     const Place& place = phi::CPUPlace());
 
+pir::OpResult create_array(phi::DataType dtype);
+
 pir::OpResult array_length(pir::Value x);
 
 }  // namespace dialect

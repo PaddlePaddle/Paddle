@@ -285,6 +285,8 @@ def create_array(dtype, initialized_list=None):
 
     if in_dynamic_mode():
         return array
+    elif in_pir_mode():
+        return paddle._pir_ops.create_array(dtype)
     else:
         helper = LayerHelper("array", **locals())
         tensor_array = helper.create_variable(

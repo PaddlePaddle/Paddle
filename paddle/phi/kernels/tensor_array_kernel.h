@@ -19,9 +19,13 @@
 #include "paddle/phi/core/tensor_array.h"
 
 namespace phi {
+template <typename T, typename Context>
+void CreateArrayKernel(const Context& dev_ctx,
+                       DataType dtype,
+                       TensorArray* out);
 
 template <typename T, typename Context>
-void ArrayLengthKernel(const Context& ctx,
+void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out);
 

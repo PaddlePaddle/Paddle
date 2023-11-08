@@ -119,6 +119,13 @@ pir::OpResult zeros(const std::vector<int64_t>& shape,
   return paddle::dialect::full(shape, 0, dtype, place);
 }
 
+pir::OpResult create_array(phi::DataType dtype) {
+  auto create_array_op = APIBuilder::Instance()
+                             .GetBuilder()
+                             ->Build<paddle::dialect::CreateArrayOp>(dtype);
+  return create_array_op.out();
+}
+
 pir::OpResult array_length(pir::Value x) {
   auto array_length_op = APIBuilder::Instance()
                              .GetBuilder()

@@ -125,6 +125,28 @@ PyObject *static_api_full(PyObject *self, PyObject *args, PyObject *kwargs) {
   }
 }
 
+static PyObject *static_api_create_array(PyObject *self,
+                                         PyObject *args,
+                                         PyObject *kwargs) {
+  try {
+    VLOG(6) << "Add create_array op into program";
+    VLOG(8) << "args count: " << (PyTuple_Size(args) / 2);
+
+    // Get dtype from args
+    PyObject *dtype_obj = PyTuple_GET_ITEM(args, 0);
+    phi::DataType dtype =
+        CastPyArg2DataTypeDirectly(dtype_obj, "create_array", 0);
+
+    // Call ir static api
+    auto static_api_out = paddle::dialect::create_array(dtype);
+
+    return ToPyObject(static_api_out);
+  } catch (...) {
+    ThrowExceptionToPython(std::current_exception());
+    return nullptr;
+  }
+}
+
 static PyObject *static_api_array_length(PyObject *self,
                                          PyObject *args,
                                          PyObject *kwargs) {
@@ -155,6 +177,10 @@ static PyMethodDef ManualOpsAPI[] = {
      (PyCFunction)(void (*)(void))static_api_get_parameter,
      METH_VARARGS | METH_KEYWORDS,
      "C++ interface function for get_parameter."},
+    {"create_array",
+     (PyCFunction)(void (*)(void))static_api_create_array,
+     METH_VARARGS | METH_KEYWORDS,
+     "C++ interface function for create_array."},
     {"array_length",
      (PyCFunction)(void (*)(void))static_api_array_length,
      METH_VARARGS | METH_KEYWORDS,

@@ -20,15 +20,27 @@
 
 namespace phi {
 template <typename T, typename Context>
-void ArrayLengthKernel(const Context& ctx,
+void CreateArrayKernel(const Context& dev_ctx,
+                       DataType dtype,
+                       TensorArray* out) {}
+
+template <typename T, typename Context>
+void ArrayLengthKernel(const Context& dev_ctx,
                        const TensorArray& x,
                        DenseTensor* out) {
   out->Resize({1});
-  ctx.template Alloc<int64_t>(out);
+  dev_ctx.template Alloc<int64_t>(out);
   *out->data<int64_t>() = static_cast<int64_t>(x.size());
 }
 
 }  // namespace phi
+PD_REGISTER_KERNEL(create_array,
+                   CPU,
+                   ALL_LAYOUT,
+                   phi::CreateArrayKernel,
+                   float,
+                   double,
+                   bool) {}
 
 PD_REGISTER_KERNEL(array_length,
                    CPU,
