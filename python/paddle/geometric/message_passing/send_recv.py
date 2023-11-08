@@ -128,7 +128,7 @@ def send_u_recv(
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
     if in_dynamic_or_pir_mode():
-        out_size = convert_out_size_to_list(out_size)
+        out_size = convert_out_size_to_list(out_size, 'graph_send_recv')
         return _C_ops.send_u_recv(
             x, src_index, dst_index, reduce_op.upper(), out_size
         )
@@ -313,7 +313,7 @@ def send_ue_recv(
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
 
     if in_dynamic_or_pir_mode():
-        out_size = convert_out_size_to_list(out_size)
+        out_size = convert_out_size_to_list(out_size, 'graph_send_ue_recv')
         return _C_ops.send_ue_recv(
             x,
             y,

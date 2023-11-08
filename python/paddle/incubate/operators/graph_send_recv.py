@@ -137,7 +137,7 @@ def graph_send_recv(
 
     # TODO(daisiming): Should we add judgement for out_size: max(dst_index) + 1.
     if in_dynamic_or_pir_mode():
-        out_size = convert_out_size_to_list(out_size)
+        out_size = convert_out_size_to_list(out_size, 'graph_send_recv')
         return _C_ops.send_u_recv(
             x, src_index, dst_index, pool_type.upper(), out_size
         )
