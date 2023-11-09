@@ -1020,11 +1020,17 @@ void AppendSetParameters(Program *forward_program,
                          int start_point,
                          std::string name_prefix) {
   int counter = 0;
+  std::unordered_set<pir::OpResult> added_op_result;
+
   for (const auto &result : outputs_op_result) {
-    std::string parameter_name = name_prefix + std::to_string(counter);
-    AppendSetParameter(
-        forward_program, result, parameter_name, start_point + counter);
-    counter += 1;
+    if (!added_op_result.count(result)) {
+      std::string parameter_name = name_prefix + std::to_string(counter);
+      AppendSetParameter(
+          forward_program, result, parameter_name, start_point + counter);
+      counter += 1;
+
+      added_op_result.insert(result);
+    }
   }
 }
 
@@ -1137,6 +1143,7 @@ SplitedResult SplitForwardBackward(
     // calling SplitForwardBackward multi-times.
     std::string parameter_name =
         std::string("output_") + std::to_string(counter);
+    std::unordered_set<pir::Value> inserted_value;
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();
          ++it) {
@@ -1149,9 +1156,14 @@ SplitedResult SplitForwardBackward(
                   << " has been inserted SetParameterOp, skip it now.";
           return;
         }
+
+        inserted_value.insert(op->operand_source(0));
       }
     }
 
+    if (inserted_value.count(forward_value_map[v])) {
+      return;
+    }
     auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
     pir::AttributeMap attribute_map = {
         {"parameter_name", pir::StrAttribute::get(ctx, parameter_name)},
@@ -1455,8 +1467,9 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
+
   pass_manager.Run(&forward_program);
-  VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
+  VLOG(3) << "after BuildCinnPass, sforward_program:\n" << forward_program;
   std::unique_ptr<pir::Program> new_program =
       cinn::dialect::ir::CINNGroupLoweringPass(&forward_program);
   VLOG(3) << "after CINNGroupLoweringPass, forward_program:\n" << *new_program;
