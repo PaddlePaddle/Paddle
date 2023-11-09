@@ -21,7 +21,11 @@ from functools import lru_cache
 
 import numpy as np
 
-from ..pir import OpResult, Value, translate_to_pir
+from paddle import pir
+
+from ..pir import OpResult
+from ..pir import Program as PirProgram
+from ..pir import Value, translate_to_pir
 from . import compiler, core, framework, get_flags, set_flags, unique_name
 from .data_feeder import convert_dtype
 from .framework import (
@@ -594,6 +598,10 @@ def _to_name_str(var):
             return str(var)
         elif isinstance(var, Operator):
             return str(id(var))
+        elif isinstance(var, OpResult):
+            return str(var)
+        elif isinstance(var, Value):
+            return str(var)
         else:
             raise TypeError(str(var) + " should be Variable, Operator or str")
 
@@ -628,11 +636,18 @@ def _prepare_fleet_executor():
 
 
 def _get_strong_program_cache_key_for_new_exe(program, scope, feed, fetch_list):
-    return (
-        program.desc.cached_hash_str()
-        + str(scope.raw_address())
-        + _get_program_cache_key(feed, fetch_list)
-    )
+    if isinstance(program, PirProgram):
+        return (
+            str(program)
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
+    else:
+        return (
+            program.desc.cached_hash_str()
+            + str(scope.raw_address())
+            + _get_program_cache_key(feed, fetch_list)
+        )
 
 
 def _get_strong_program_cache_key(program, feed, fetch_list):
@@ -876,6 +891,9 @@ class _ExecutorCache:
         self._get_cached_program_and_executor = lru_cache(maxsize=8)(
             self._get_program_and_executor
         )
+        self._get_cached_program_and_executor_pir_mode = lru_cache(maxsize=8)(
+            self._get_pir_program_and_executor
+        )
 
     def clear(self):
         self._get_cached_program_and_executor.cache_clear()
@@ -1020,6 +1038,18 @@ class _ExecutorCache:
                 type_to_program = {"default": new_program.desc}
             plan = core.Plan([default_job], type_to_program)
 
+        if (
+            new_program._pass_opt
+            and "pass_list" in new_program._pass_opt
+            and len(new_program._pass_opt['pass_list']) > 0
+        ):
+            pm = pir.PassManager()
+            for p in new_program._pass_opt['pass_list']:
+                pm.add_pass(p)
+            for job_type in plan.job_types():
+                ir_program = plan.ir_program(job_type)
+                pm.run(ir_program)
+
         new_exe = _StandaloneExecutor(place, plan, scope)
         return new_program, new_exe
 
@@ -1033,6 +1063,27 @@ class _ExecutorCache:
         place,
         scope,
     ):
+        return self._get_cached_program_and_executor_pir_mode(
+            self._CachedData(
+                program,
+                feed,
+                fetch_list,
+                feed_var_name,
+                fetch_var_name,
+                place,
+                scope,
+            )
+        )
+
+    def _get_pir_program_and_executor(self, cached_data):
+        program = cached_data.program
+        feed = cached_data.feed
+        fetch_list = cached_data.fetch_list
+        feed_var_name = cached_data.feed_var_name
+        fetch_var_name = cached_data.fetch_var_name
+        place = cached_data.place
+        scope = cached_data.scope
+
         _add_pir_fetch_ops(
             program, fetch_list=fetch_list, fetch_var_name=fetch_var_name
         )

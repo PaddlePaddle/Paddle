@@ -710,6 +710,7 @@ class TestMoveAxis(unittest.TestCase):
         self.assertEqual(out.shape, [2, 3])
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_error(self):
         x = paddle.randn([2, 3, 4, 5])
         # src must have the same number with dst
