@@ -21,6 +21,7 @@ import unittest
 import numpy as np
 
 import paddle
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestNanInfBase(unittest.TestCase):
@@ -299,6 +300,7 @@ class TestCheckNumericsAPI(TestNanInfBase):
                 debug_mode=paddle.amp.debugging.DebugMode.CHECK_ALL,
             )
 
+    @test_with_pir_api
     def test_static(self):
         paddle.enable_static()
         shape = [8, 8]
