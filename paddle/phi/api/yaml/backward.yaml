@@ -2289,6 +2289,7 @@
   infer_meta :
     func : StackGradInferMeta
     param: [out_grad, axis]
+    spmd_rule : StackGradInferSpmd
   kernel :
     func : stack_grad
     param : [out_grad, axis]
