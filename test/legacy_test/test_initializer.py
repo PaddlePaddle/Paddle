@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import framework
 from paddle.base.core import VarDesc
+from paddle.pir_utils import test_with_pir_api
 from paddle.regularizer import L2Decay
 
 DELTA = 0.00001
@@ -541,6 +542,7 @@ class TestMSRAInitializer(unittest.TestCase):
 
 
 class TestBilinearInitializer(unittest.TestCase):
+    @test_with_pir_api
     def test_bilinear_initializer(self, dtype="float32"):
         """Test the bilinear initializer with supplied arguments"""
         program = framework.Program()
@@ -628,6 +630,7 @@ class TestBilinearInitializerDygraphAPI(unittest.TestCase):
 
 
 class TestNumpyArrayInitializer(unittest.TestCase):
+    @test_with_pir_api
     def test_numpy_array_initializer(self, dtype="float32"):
         """Test the numpy array initializer with supplied arguments"""
         import numpy
@@ -876,6 +879,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
             return w
 
+        @test_with_pir_api
         def run_static_graph(dtype):
             with static_guard():
                 exe = paddle.static.Executor(paddle.CPUPlace())
@@ -914,6 +918,7 @@ class TesetconsistencyOfDynamicAndStaticGraph(unittest.TestCase):
                 )
             return w
 
+        @test_with_pir_api
         def run_static_graph(dtype):
             with static_guard():
                 exe = paddle.static.Executor(paddle.CPUPlace())
