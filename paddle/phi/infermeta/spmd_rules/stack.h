@@ -21,18 +21,16 @@ limitations under the License. */
 
 namespace phi {
 namespace distributed {
-SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis);
 
-SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
-                                const DistMetaTensor& output,
-                                int axis);
+SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis);
 
-SpmdInfo ConcatInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
-                                const Scalar& axis);
+SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
+                               const DistMetaTensor& output,
+                               int axis);
 
-SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
-                                    const DistMetaTensor& output_grad,
-                                    const Scalar& axis);
+SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
+                            const DistMetaTensor& output_grad,
+                            int axis);
 
 }  // namespace distributed
 }  // namespace phi
