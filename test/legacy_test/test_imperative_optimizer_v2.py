@@ -22,6 +22,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.distributed.fleet.meta_optimizers import DGCMomentumOptimizer
+from paddle.pir_utils import test_with_pir_api
 
 # Note(wangzhongpu)
 # In dygraph, don't support ModelAverage, DGCMomentumOptimizer, ExponentialMovingAverage, PipelineOptimizer, LookaheadOptimizer, RecomputeOptimizer.
@@ -783,6 +784,7 @@ class TestImperativeLambOptimizer(TestImperativeOptimizerBase):
         )
         return optimizer
 
+    @test_with_pir_api
     def get_optimizer(self):
         optimizer = paddle.optimizer.Lamb(
             learning_rate=0.002, exclude_from_weight_decay_fn=exclude_fn
