@@ -61,8 +61,8 @@ typedef SSIZE_T ssize_t;
 #include "paddle/phi/api/lib/data_transform.h"
 #include "paddle/phi/core/ddim.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/tensor_utils.h"
 #include "paddle/phi/kernels/funcs/math_function.h"
@@ -1319,8 +1319,8 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
           "tensor %s has not been initialized, we can only slice initialized "
           "tensor please init it first with numpy or other tensor.",
           self->tensor.name()));
-  auto tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  ParseIndexingSlice(tensor,
+
+  ParseIndexingSlice(self->tensor.dims(),
                      _index,
                      &slice_axes,
                      &slice_starts,
@@ -1388,7 +1388,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
     // NOTE(zoooo0820): When all axes are decreased, the output will be 1-D
     // with FLAGS_set_to_1d=True. In this case, one `None` should be pop out,
     // otherwise the output shape will be not correct.
-    if (static_cast<int>(decrease_axis.size()) == tensor->dims().size()) {
+    if (static_cast<int>(decrease_axis.size()) == self->tensor.dims().size()) {
       VLOG(1)
           << "Warning: In Tensor '__getitem__', if the number of scalar "
              "elements "
@@ -1570,8 +1570,6 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   EAGER_TRY
   VLOG(4) << "Call __setitem_eager_tensor";
 
-  auto self_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   PyObject* value_obj = PyTuple_GET_ITEM(args, 1);
   // NOTE(zhiqiu): PyTuple_Pack increases refcount while PyTuple_New
@@ -1609,7 +1607,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
     bool list_select_flag = false;
-    ParseIndexingSlice(self_tensor,
+    ParseIndexingSlice(self->tensor.dims(),
                        index_ptr,
                        &axes,
                        &starts,
@@ -1775,6 +1773,12 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
       }
     }
   } else {
+    PADDLE_ENFORCE_EQ(self->tensor.is_dense_tensor(),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "This setitem mode only support DenseTensor."));
+    auto self_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
     auto self_numpy = TensorToPyArray(*self_tensor, true);
     VLOG(4) << "parse_index is false";
     if (PyCheckTensor(_index)) {

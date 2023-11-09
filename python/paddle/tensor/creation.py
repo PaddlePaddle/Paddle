@@ -309,20 +309,20 @@ def linspace(start, stop, num, dtype=None, name=None):
     tensor_num = num
     tensor_start = start
     tensor_stop = stop
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         check_type(num, 'num', (int), 'linspace')
     if not isinstance(dtype, core.VarDesc.VarType):
         dtype = convert_np_dtype_to_dtype_(dtype)
-    if not isinstance(start, Variable):
+    if not isinstance(start, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_start = fill_constant([1], dtype, start, force_cpu=True)
-    if not isinstance(stop, Variable):
+    if not isinstance(stop, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_stop = fill_constant([1], dtype, stop, force_cpu=True)
-    if not isinstance(num, Variable):
+    if not isinstance(num, (Variable, paddle.pir.OpResult)):
         with device_guard("cpu"):
             tensor_num = fill_constant([1], 'int32', num, force_cpu=True)
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.linspace(
             tensor_start,
             tensor_stop,
@@ -893,6 +893,9 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         if not isinstance(dtype, (core.VarDesc.VarType, core.DataType)):
             dtype = convert_np_dtype_to_dtype_(dtype)
 
+        if in_pir_mode() and isinstance(dtype, core.VarDesc.VarType):
+            dtype = paddle.pir.core.vartype_to_datatype[dtype]
+
         if in_dynamic_mode():
             value = float(value)
             if isinstance(shape, (list, tuple)):
@@ -1432,7 +1435,17 @@ def _tril_triu_op(helper):
     check_variable_and_dtype(
         x,
         'x',
-        ['float16', 'uint16', 'float32', 'float64', 'int32', 'int64', 'bool'],
+        [
+            'float16',
+            'uint16',
+            'float32',
+            'float64',
+            'int32',
+            'int64',
+            'bool',
+            'complex64',
+            'complex128',
+        ],
         op_type,
     )
     if len(x.shape) < 2:
@@ -1471,7 +1484,7 @@ def tril(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``bool``, ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and below the main diagonal are
             retained. A positive value includes just as many diagonals above the main
@@ -1546,7 +1559,7 @@ def triu(x, diagonal=0, name=None):
 
     Args:
         x (Tensor): The input x which is a Tensor.
-            Support data types: ``float64``, ``float32``, ``int32``, ``int64``.
+            Support data types: ``float64``, ``float32``, ``int32``, ``int64``, ``complex64``, ``complex128``.
         diagonal (int, optional): The diagonal to consider, default value is 0.
             If :attr:`diagonal` = 0, all elements on and above the main diagonal are
             retained. A positive value excludes just as many diagonals above the main
@@ -2006,7 +2019,7 @@ def diag(x, offset=0, padding_value=0, name=None):
             Tensor(shape=[1], dtype=int64, place=Place(cpu), stop_gradient=True,
             [4])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diag(x, offset, padding_value)
     else:
         check_type(x, 'x', (Variable), 'diag_v2')

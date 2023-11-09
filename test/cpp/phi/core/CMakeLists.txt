@@ -24,7 +24,10 @@ cc_test(
   test_op_utils
   SRCS test_op_utils.cc
   DEPS op_compat_infos)
-cc_test_old(test_meta_fn_utils SRCS test_meta_fn_utils.cc DEPS phi)
+cc_test(
+  test_meta_fn_utils
+  SRCS test_meta_fn_utils.cc
+  DEPS phi)
 
 cc_test(
   test_ddim

@@ -28,9 +28,3 @@ per-file-ignores =
 
     # Ignore compare with True in sot unittest
     test/sot/test_dup_top.py:E712
-
-    # temp ignore base directory
-    python/paddle/base/*:
-        E712,
-        E266,
-        E714
