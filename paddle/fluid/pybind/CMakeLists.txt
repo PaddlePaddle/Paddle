@@ -52,7 +52,8 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass
+                  add_broadcast_to_elementwise_pass pd_to_cinn_pass)
 endif()
 
 if(WITH_PSCORE)
