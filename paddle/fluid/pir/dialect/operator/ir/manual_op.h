@@ -45,10 +45,9 @@ class AddNOp : public pir::Op<AddNOp,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs);
+                    const std::vector<pir::Value> &inputs);
 
   void VerifySig();
-  pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
   static void InferMeta(phi::InferMetaContext *infer_meta);
   static std::vector<std::vector<pir::OpResult>> Vjp(
@@ -72,10 +71,9 @@ class AddN_Op : public pir::Op<AddN_Op,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs_);
+                    const std::vector<pir::Value> &inputs);
 
   void VerifySig();
-  pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
 
   static void InferMeta(phi::InferMetaContext *infer_meta);
@@ -92,12 +90,10 @@ class AddNWithKernelOp : public pir::Op<AddNWithKernelOp,
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
                     pir::OperationArgument &argument,  // NOLINT
-                    pir::Value inputs_);
+                    const std::vector<pir::Value> &inputs);
 
   void VerifySig();
-  pir::Value inputs() { return operand_source(0); }
   pir::OpResult out() { return result(0); }
-
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 

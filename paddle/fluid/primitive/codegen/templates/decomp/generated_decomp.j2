@@ -55,6 +55,13 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
   }
 
         {% else %}
+          {% if fwd_name == "add_n" %}
+  std::vector<Tensor> {{item.name}};
+  for (size_t idx = 0; idx < op_obj->num_operands(); idx++) {
+      {{item.name}}.emplace_back(
+          std::make_shared<primitive::LazyTensor>(op_obj->operand_source(idx)));
+  }
+          {% else %} 
   pir::CombineOp combine_op_obj_{{item.name}} =
     op_obj.{{item.name}}().dyn_cast<pir::OpResult>().owner()->dyn_cast<pir::CombineOp>();
   std::vector<Tensor> {{item.name}};
@@ -62,6 +69,7 @@ std::vector<std::vector<pir::OpResult>> {{class_name}}::Decomp(pir::Operation* o
       {{item.name}}.emplace_back(
           std::make_shared<primitive::LazyTensor>(combine_op_obj_{{item.name}}.inputs()[idx]));
   }
+          {% endif %}
         {% endif %}
       {% endif %}
     {% endfor %}

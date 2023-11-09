@@ -399,22 +399,29 @@ class CodeGen:
                     )
         return ret
 
-    def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
+    def _gen_in_combine(
+        self, op_type, op_info, is_mutable_attr, is_vector_mutable_attr
+    ):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
         optional_list = op_info.input_optional_list
         assert len(name_list) == len(type_list) == len(optional_list)
         combine_op = ''
         combine_op_list = []
-        for name, type, optional in zip(name_list, type_list, optional_list):
-            if optional == 'false' and VECTOR_TYPE in type:
-                op_name = f'{name}_combine_op'
-                combine_op += COMBINE_OP_TEMPLATE.format(
-                    op_name=op_name, in_name=name
-                )
-                combine_op_list.append(op_name)
-            else:
-                combine_op_list.append(None)
+        if op_type in {'add_n', 'add_n_', 'add_n_with_kernel'}:
+            combine_op_list.append(None)
+        else:
+            for name, type, optional in zip(
+                name_list, type_list, optional_list
+            ):
+                if optional == 'false' and VECTOR_TYPE in type:
+                    op_name = f'{name}_combine_op'
+                    combine_op += COMBINE_OP_TEMPLATE.format(
+                        op_name=op_name, in_name=name
+                    )
+                    combine_op_list.append(op_name)
+                else:
+                    combine_op_list.append(None)
 
         if is_mutable_attr:
             name_list = op_info.mutable_attribute_name_list
@@ -522,7 +529,7 @@ class CodeGen:
     ):
         ret_type = self._gen_ret_type(op_info, op_name)
         in_combine, in_combine_op_list = self._gen_in_combine(
-            op_info, is_mutable_attr, is_vector_mutable_attr
+            op_name, op_info, is_mutable_attr, is_vector_mutable_attr
         )
         compute_op, op_inst_name = self._gen_compute_op(
             op_info, op_name, in_combine_op_list, is_mutable_attr
