@@ -66,6 +66,7 @@ class Conll05st(Dataset):
     Examples:
 
         .. code-block:: python
+            :name: code-example1
 
             >>> import paddle
             >>> from paddle.text.datasets import Conll05st
