@@ -51,6 +51,10 @@ std::unordered_map<std::string, std::shared_ptr<CommTask>>
     CommTaskManager::init_comm_task_map_;
 std::unordered_map<std::string, std::shared_ptr<CommTask>>
     CommTaskManager::start_comm_task_map_;
+std::unordered_map<std::string, std::shared_ptr<CommTask>>
+    CommTaskManager::group_last_comm_task_;
+std::chrono::time_point<std::chrono::steady_clock>
+    CommTaskManager::last_update_time_ = std::chrono::steady_clock::now();
 
 CommTaskManager::CommTaskManager() {
   terminated_.store(false);
@@ -93,27 +97,38 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
+    if (IsTimeout()) {
+        std::once_flag flag;
+        std::call_once(flag, [this]() {
+            LOG(WARNING) << "CommTaskLoop timeout";
+            for (auto iter: group_last_comm_task_) {
+                LOG(INFO) << "all trace comm task:" << iter.second->GetTraceMsg();
+            }
+        });
+    }
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
       if (task->IsTimeout()) {
         if (!task->IsStarted()) {
-          LOG(ERROR) << "Find timeout init but not start task: "
-                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
-                     << ",stream:" << task->nccl_stream();
+          LOG(WARNING) << "Find timeout init but not start task:" << task->GetTraceMsg();
           std::string task_key = task->UniqueKey();
           init_comm_task_map_[task_key] = task;
         } else if (!task->IsCompleted()) {
-          LOG(ERROR) << "Find timeout start but not finish task: "
-                     << task->GetTraceMsg() << ",comm:" << task->nccl_comm()
-                     << ",stream:" << task->nccl_stream();
+          LOG(WARNING) << "Find timeout start but not finish task:" << task->GetTraceMsg();
+          for (auto iter: group_last_comm_task_) {
+              LOG(INFO) << "All trace comm task:" << iter.second->GetTraceMsg();
+          }
           std::string task_key = task->UniqueKey();
           start_comm_task_map_[task_key] = task;
         }
         iter = comm_task_list_.erase(iter);
       } else {
-        if (task->IsStarted() && task->IsCompleted()) {
-          task->ClearRecord();
-          iter = comm_task_list_.erase(iter);
+        if (task->IsStarted()) {
+            if (task->IsCompleted()) {
+                task->ClearRecord();
+                iter = comm_task_list_.erase(iter);
+            }
+            UpdateLastCommTask(task);
         } else {
           ++iter;
         }
@@ -138,6 +153,7 @@ void CommTaskManager::CommTaskLoop() {
       auto task = iter->second;
       if (task->IsCompleted()) {
         task->ClearRecord();
+        UpdateLastCommTask(task);
         iter = start_comm_task_map_.erase(iter);
         LOG(INFO) << "Finish timeout task: " << task->GetTraceMsg();
       } else {
@@ -154,5 +170,20 @@ void CommTaskManager::CommTaskLoop() {
   }
 }
 
+void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
+    std::string task_key = task->UniqueKey();
+    group_last_comm_task_[task_key] = task;
+    last_update_time_ = std::chrono::steady_clock::now();
+}
+
+void CommTaskManager::SetTimeout(int64_t timeout) {
+  timeout_ = std::chrono::milliseconds(timeout);
+}
+
+bool CommTaskManager::IsTimeout() {
+  auto current_timepoint = std::chrono::steady_clock::now();
+  return std::chrono::duration_cast<std::chrono::milliseconds>(
+          current_timepoint - last_update_time_) >= timeout_;
+}
 }  // namespace distributed
 }  // namespace phi

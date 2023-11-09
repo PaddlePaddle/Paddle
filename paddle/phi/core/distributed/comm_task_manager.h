@@ -48,9 +48,12 @@ class CommTaskManager {
 
   void CommTaskEnqueue(std::shared_ptr<CommTask> comm_task);
   void Stop();
+  void UpdateLastCommTask(std::shared_ptr<CommTask> comm_task);
+  void SetTimeout(int64_t timeout);
 
  private:
   void CommTaskLoop();
+  bool IsTimeout();
 
   static std::thread comm_task_loop_thread_;
   static const int64_t loop_thread_sleep_millis;
@@ -67,7 +70,11 @@ class CommTaskManager {
   static std::unordered_map<std::string, std::shared_ptr<CommTask>>
       start_comm_task_map_;
   std::shared_ptr<Store> store_;
-  bool store_error_{false};
+  // record last comm task in current group, eg: group_key->comm_task 
+  static std::unordered_map<std::string, std::shared_ptr<CommTask>>
+      group_last_comm_task_;
+  static std::chrono::time_point<std::chrono::steady_clock> last_update_time_;
+  std::chrono::milliseconds timeout_;
 };
 
 }  // namespace distributed
