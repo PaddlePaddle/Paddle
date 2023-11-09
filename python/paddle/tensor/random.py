@@ -24,6 +24,7 @@ from paddle.framework import (
     in_pir_mode,
 )
 
+
 from ..base.data_feeder import (
     check_dtype,
     check_shape,
