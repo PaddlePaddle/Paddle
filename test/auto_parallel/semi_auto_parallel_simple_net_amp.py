@@ -27,14 +27,12 @@ from paddle import nn
 class TestSimpleNetWithAmpForSemiAutoParallel(TestSimpleNetForSemiAutoParallel):
     def __init__(self):
         self._dtype = os.getenv("dtype")
-        print("Dtype: ", self._dtype)
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._use_master_grad = bool(eval(os.getenv("use_master_grad")))
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
         self.init_single_card_net_result()
 
     def check_tensor_eq(self, tensor_a, tensor_b):
