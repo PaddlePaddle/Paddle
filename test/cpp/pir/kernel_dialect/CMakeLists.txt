@@ -3,7 +3,7 @@ cc_test_old(
   SRCS
   ir_kernel_dialect_pass_test.cc
   DEPS
-  transform
+  pir_transforms
   program_translator
   op_dialect
   pir

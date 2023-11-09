@@ -41,7 +41,7 @@ set(PYBIND_DEPS
     pir_adaptor
     op_dialect_vjp
     program_translator
-    transform
+    pir_transforms
     pir
     new_profiler
     jit_layer
@@ -52,7 +52,7 @@ set(PYBIND_DEPS
     auto_parallel)
 
 if(WITH_CINN)
-  set(PYBIND_DEPS ${PYBIND_DEPS} transform op_with_group_merge_pass)
+  set(PYBIND_DEPS ${PYBIND_DEPS} pir_transforms op_with_group_merge_pass)
 endif()
 
 if(WITH_PSCORE)
