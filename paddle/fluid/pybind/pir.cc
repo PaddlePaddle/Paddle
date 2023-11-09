@@ -37,11 +37,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/program.h"
@@ -50,12 +52,14 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #endif
@@ -64,6 +68,7 @@ namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
+using pir::Attribute;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -804,6 +809,15 @@ void BindType(py::module *m) {
       });
 }
 
+void BindAttribute(py::module *m) {
+  py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
+  ir_attr.def("__str__", [](Attribute &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
+}
+
 Operation *BuildOpFrom(
     Operation *to_copy_op,
     std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
@@ -1402,7 +1416,13 @@ void BindUtils(pybind11::module *m) {
 std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
@@ -1472,6 +1492,7 @@ void BindPir(pybind11::module *module) {
   BindOpOperand(&ir_module);
   BindOpResult(&ir_module);
   BindType(&ir_module);
+  BindAttribute(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
