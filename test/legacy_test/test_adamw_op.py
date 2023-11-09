@@ -11,7 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import sys
 
+sys.path.append("/workspace/Paddle/test")
 import random
 import unittest
 from functools import partial
@@ -151,7 +153,7 @@ class TestAdamW(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
 
 @unittest.skipIf(
@@ -208,7 +210,7 @@ class TestAdamW2(OpTest):
         }
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
 
 class TestAdamWOp(unittest.TestCase):
@@ -277,6 +279,47 @@ class TestAdamWOp(unittest.TestCase):
         rets = exe.run(train_prog, feed={"data": data_np}, fetch_list=[loss])
         assert rets[0] is not None
         paddle.disable_static()
+
+    def test_pir_adam_op(self):
+        with paddle.pir_utils.IrGuard():
+            place = base.CPUPlace()
+            shape = [2, 3, 8, 8]
+            exe = base.Executor(place)
+            train_prog = paddle.static.Program()
+            startup = paddle.static.Program()
+            with paddle.static.program_guard(train_prog, startup):
+                with base.unique_name.guard():
+                    data = paddle.static.data(name="data", shape=shape)
+                    conv_layer = paddle.nn.Conv2D(3, 8, 3)
+                    conv = conv_layer(data)
+                    loss = paddle.mean(conv)
+
+                    beta1 = paddle.pir.core.create_parameter(
+                        'float32',
+                        [1],
+                        initializer=paddle.nn.initializer.Constant(0.85),
+                    )
+                    beta2 = paddle.pir.core.create_parameter(
+                        'float32',
+                        [1],
+                        initializer=paddle.nn.initializer.Constant(0.95),
+                    )
+                    betas = [beta1, beta2]
+                    opt = paddle.optimizer.AdamW(
+                        learning_rate=1e-5,
+                        beta1=beta1,
+                        beta2=beta2,
+                        weight_decay=0.01,
+                        epsilon=1e-8,
+                    )
+                    opt.minimize(loss)
+
+            exe.run(startup)
+            data_np = np.random.random(shape).astype('float32')
+            rets = exe.run(
+                train_prog, feed={"data": data_np}, fetch_list=[loss]
+            )
+            assert rets[0] is not None
 
     def test_adamw_op_invalid_input(self):
         paddle.disable_static()
@@ -753,7 +796,8 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             np.testing.assert_allclose(linear2.weight.numpy(), fc2_w, rtol=1e-6)
             np.testing.assert_allclose(linear2.bias.numpy(), fc2_b, rtol=1e-6)
 
-    def test_adamw_op(self):
+    # @test_with_pir_api
+    def test_pir_adamw_op(self):
         paddle.enable_static()
         place = base.CUDAPlace(0)
 
@@ -763,9 +807,9 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
         weight_decay = 0.01
         epsilon = 1e-8
 
-        train_prog = base.Program()
-        startup = base.Program()
-        with base.program_guard(train_prog, startup):
+        train_prog = paddle.static.Program()
+        startup = paddle.static.Program()
+        with paddle.static.program_guard(train_prog, startup):
             with base.unique_name.guard():
                 x = paddle.static.data(
                     name='x', shape=[None, 10], dtype='float32'

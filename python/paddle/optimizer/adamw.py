@@ -17,11 +17,19 @@ from collections import defaultdict
 from collections.abc import Callable
 
 import paddle
+from paddle import pir
+from paddle.base.libpaddle import DataType
+from paddle.pir import OpResult
 
 from .. import _C_ops
 from ..base import core, framework
 from ..base.dygraph import base as imperative_base
-from ..base.framework import Parameter, Variable
+from ..base.framework import (
+    Parameter,
+    Variable,
+    in_dynamic_or_pir_mode,
+    in_pir_mode,
+)
 from ..nn.clip import GradientClipBase
 from .lr import LRScheduler
 from .optimizer import Optimizer
@@ -174,7 +182,7 @@ class AdamW(Optimizer):
         if not 0 <= epsilon:
             raise ValueError("Invaild value of epsilon, expect epsilon >= 0.")
         if not isinstance(weight_decay, float) and not isinstance(
-            weight_decay, framework.Variable
+            weight_decay, (framework.Variable, OpResult)
         ):
             raise TypeError("weight_decay should be float or Tensor.")
         if lr_ratio is not None:
@@ -307,7 +315,7 @@ class AdamW(Optimizer):
             different optimization options.
         """
         params = param_group['params']
-        if isinstance(params, Parameter):
+        if isinstance(params, (Parameter, pir.core.ParameterMeta)):
             param_group['params'] = [params]
         elif isinstance(params, set):
             raise TypeError(
@@ -340,7 +348,10 @@ class AdamW(Optimizer):
     def _add_moments_pows(self, p):
         acc_dtype = p.dtype
         if self._is_dtype_fp16_or_bf16(acc_dtype):
-            acc_dtype = core.VarDesc.VarType.FP32
+            if in_pir_mode():
+                acc_dtype = DataType.FLOAT32
+            else:
+                acc_dtype = core.VarDesc.VarType.FP32
         if core.is_compiled_with_xpu():
             import os
 
@@ -365,7 +376,7 @@ class AdamW(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.9
-            if isinstance(self._beta1, Variable)
+            if isinstance(self._beta1, (Variable, OpResult))
             else self._beta1,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -376,7 +387,7 @@ class AdamW(Optimizer):
             param=p,
             dtype=acc_dtype,
             fill_value=0.999
-            if isinstance(self._beta2, Variable)
+            if isinstance(self._beta2, (Variable, OpResult))
             else self._beta2,
             shape=[1],
             type=core.VarDesc.VarType.LOD_TENSOR,
@@ -384,7 +395,7 @@ class AdamW(Optimizer):
         )
 
     def _create_accumulators(self, block, parameters):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
 
@@ -409,7 +420,7 @@ class AdamW(Optimizer):
             self._already_create_accumulater.add(p.name)
 
     def _append_optimize_op(self, block, param_and_grad):
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, pir.Block))
         if isinstance(param_and_grad, dict):
             param_and_grad = self._update_param_group(param_and_grad)
         param, grad = param_and_grad
@@ -445,7 +456,7 @@ class AdamW(Optimizer):
         lr = self._create_param_lr(param_and_grad)
 
         # create the adamw optimize op
-        if framework.in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             lr_ratio_ = (
                 1.0
                 if self._lr_ratio is None
