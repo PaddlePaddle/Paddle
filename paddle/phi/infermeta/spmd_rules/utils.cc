@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
+#include <queue>
+
 #include "glog/logging.h"
 
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
@@ -130,15 +132,17 @@ std::unordered_map<std::string, int64_t> ShardingMergeForTensors(
   return axis_to_dim_map;
 }
 
-TensorDistAttr CopyTensorDistAttrForOutput(
-    const TensorDistAttr& src_dist_attr) {
+TensorDistAttr CopyTensorDistAttrForOutput(const TensorDistAttr& src_dist_attr,
+                                           bool clear_partial) {
   TensorDistAttr new_dist_attr = TensorDistAttr();
   new_dist_attr.set_process_mesh(src_dist_attr.process_mesh());
   new_dist_attr.set_batch_dim(src_dist_attr.batch_dim());
   // new_dist_attr.set_dynamic_dims(src_dist_attr.dynamic_dims());
   // new_dist_attr.set_annotated(false); TODO unset field is false by default.
-  new_dist_attr.clean_partial_status();  // in partial-stage I, partial is allow
-                                         // to propagate
+  if (clear_partial) {
+    new_dist_attr.clean_partial_status();  // in partial-stage I, partial is
+                                           // allow to propagate
+  }
   return new_dist_attr;
 }
 
@@ -172,6 +176,14 @@ TensorDistAttr ReplicateTensorDim(const TensorDistAttr& dist_attr, int dim) {
   return dst_dist_attr;
 }
 
+TensorDistAttr UnShardTensorDim(const TensorDistAttr& dist_attr, int dim) {
+  TensorDistAttr dst_dist_attr = CopyTensorDistAttrForOutput(dist_attr, false);
+  std::vector<int64_t> dims_mapping = dist_attr.dims_mapping();
+  dims_mapping[dim] = kReplicateDim;
+  dst_dist_attr.set_dims_mapping(dims_mapping);
+  return dst_dist_attr;
+}
+
 bool IsDimSharded(const TensorDistAttr& dist_attr, int dim) {
   return dist_attr.is_shard(-1, dim);
 }
@@ -199,6 +211,199 @@ bool PlacementEqual(const std::shared_ptr<PlacementStatus>& a,
   auto a_shard = std::dynamic_pointer_cast<ShardStatus>(a);
   auto b_shard = std::dynamic_pointer_cast<ShardStatus>(b);
   return a_shard->get_axis() == b_shard->get_axis();
+}
+
+void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
+                       const std::vector<std::vector<int64_t>>& tensor_shapes,
+                       const std::vector<std::string>& axis_names,
+                       const std::set<int64_t>& skip_mesh_dims,
+                       const std::string& align_axis,
+                       bool allow_partial) {
+  auto& input_attrs = *input_attrs_ptr;
+  size_t n_inputs = input_attrs.size();
+  PADDLE_ENFORCE_EQ(
+      n_inputs, tensor_shapes.size(), phi::errors::InvalidArgument(""));
+  PADDLE_ENFORCE_EQ(
+      n_inputs, axis_names.size(), phi::errors::InvalidArgument(""));
+
+  PADDLE_ENFORCE_EQ(
+      !align_axis.empty(), true, phi::errors::InvalidArgument(""));
+
+  std::map<std::pair<int64_t, char>, int64_t> axis_name_to_dim;
+
+  for (size_t i = 0; i < n_inputs; i++) {
+    // 1、check all inputs have the align_axis
+    for (char axi : align_axis) {
+      if (axis_names[i].find(axi) == std::string::npos) {
+        PADDLE_THROW(phi::errors::PreconditionNotMet(
+            "[%s] some axis not in  input [%d],[%s]",
+            align_axis,
+            i,
+            axis_names[i]));
+      }
+    }
+    // 2、build axis map
+    for (size_t j = 0; j < axis_names[i].size(); j++) {
+      auto axi = axis_names[i][j];
+      axis_name_to_dim[{i, axi}] = j;
+    }
+  }
+  // 3、check all inputs have the same align_axis
+  auto non_empty_iter =
+      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
+        return !IsEmpty(shape);
+      });
+  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
+
+  // 3、align non-concat dimensions according to cost
+  std::vector<std::vector<std::shared_ptr<PlacementStatus>>> inputs_placements;
+  std::transform(
+      input_attrs.begin(),
+      input_attrs.end(),
+      std::back_inserter(inputs_placements),
+      [](const TensorDistAttr& attr) { return attr.to_placement(); });
+
+  const auto& process_mess = input_attrs[non_empty_index].process_mesh();
+  auto has_mismatch = [&](int32_t mesh_dim) {
+    bool mismatch = false;
+    for (size_t i = 0; i < n_inputs; i++) {
+      if (IsEmpty(tensor_shapes[i])) {
+        continue;
+      }
+      auto& p_a = inputs_placements[non_empty_index][mesh_dim];
+      auto& p_b = inputs_placements[i][mesh_dim];
+      if (!p_a->is_shard()) {
+        if (!PlacementEqual(p_a, p_b)) {
+          mismatch = true;
+          break;
+        }
+      }
+      if (!p_b->is_shard()) {
+        mismatch = true;
+        break;
+      }
+      auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
+      auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
+      auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
+      auto b_axis = axis_names[i][b_shard->get_axis()];
+      if (a_axis != b_axis) {
+        mismatch = true;
+        break;
+      }
+    }
+    return mismatch;
+  };
+
+  // a dim can not be sharded twice along diffrent mesh_dim
+  std::set<char> sharded_axis;
+  std::map<int32_t, ReduceType> partial_dim_to_type;
+  std::map<int32_t, char> mesh_dim_to_axis;
+
+  // 4、find already shard axis
+  for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
+    if (!has_mismatch(mesh_dim)) {
+      auto& old = inputs_placements[non_empty_index][mesh_dim];
+      if (old->is_shard()) {
+        auto shard_placement = std::dynamic_pointer_cast<ShardStatus>(old);
+        auto axis_name =
+            axis_names[non_empty_index][shard_placement->get_axis()];
+        if (align_axis.find(axis_name) == std::string::npos) {
+          continue;
+        }
+        sharded_axis.insert(axis_name);
+        mesh_dim_to_axis[mesh_dim] = axis_name;
+      } else if (old->is_partial()) {
+        auto partial_placement = std::dynamic_pointer_cast<PartialStatus>(old);
+        auto reduce_type = partial_placement->get_reduce_type();
+        if (allow_partial && (reduce_type == ReduceType::kRedSum ||
+                              reduce_type == ReduceType::kRedAvg)) {
+          partial_dim_to_type[mesh_dim] = reduce_type;
+        }
+      }
+    }
+  }
+  // 4、align axis
+  for (int32_t mesh_dim = 0; mesh_dim < process_mess.ndim(); ++mesh_dim) {
+    if (!has_mismatch(mesh_dim)) {
+      continue;
+    }
+    if (skip_mesh_dims.count(mesh_dim)) {
+      continue;
+    }
+    if (partial_dim_to_type.count(mesh_dim)) {
+      continue;
+    }
+    std::priority_queue<std::pair<double, char>,
+                        std::vector<std::pair<double, char>>,
+                        std::greater<std::pair<double, char>>>
+        cost_queue;
+
+    for (auto axis_name : align_axis) {
+      double cost = std::numeric_limits<double>::infinity();
+      if (!sharded_axis.count(axis_name)) {
+        cost = 0.0;
+        for (size_t i = 0; i < n_inputs; i++) {
+          auto& tensor_shape = tensor_shapes[i];
+          auto& tensor_dist_attr = input_attrs[i];
+          if (IsEmpty(tensor_shape)) {
+            continue;
+          }
+          auto shard_dim = axis_name_to_dim[{i, axis_name}];
+          if (tensor_shape[shard_dim] < process_mess.dim_size(mesh_dim)) {
+            // should not be selected
+            cost += std::numeric_limits<double>::infinity();
+            continue;
+          }
+          if (IsDimSharded(tensor_dist_attr, shard_dim)) {
+            continue;
+          }
+          int64_t num = std::accumulate(tensor_shape.begin(),
+                                        tensor_shape.end(),
+                                        1,
+                                        std::multiplies<int64_t>());
+          if (num == static_cast<int64_t>(0)) {
+            continue;
+          }
+          std::vector<int64_t> local_shape =
+              GetLocalShape(tensor_shape, process_mess, inputs_placements[i]);
+          cost += std::accumulate(local_shape.begin(),
+                                  local_shape.end(),
+                                  1,
+                                  std::multiplies<int64_t>()) *
+                  process_mess.dim_size(mesh_dim);
+        }
+      }
+      cost_queue.push(std::make_pair(cost, axis_name));
+    }
+    while (!cost_queue.empty()) {
+      auto cost_axis = cost_queue.top();
+      cost_queue.pop();
+      if (sharded_axis.count(cost_axis.second)) {
+        continue;
+      }
+      if (cost_axis.first == std::numeric_limits<double>::infinity()) {
+        continue;
+      }
+      sharded_axis.insert(cost_axis.second);
+      mesh_dim_to_axis[mesh_dim] = cost_axis.second;
+      break;
+    }
+  }
+  std::vector<TensorDistAttr> new_input_attrs;
+  for (size_t i = 0; i < n_inputs; i++) {
+    auto& e = input_attrs[i];
+    std::vector<std::shared_ptr<PlacementStatus>> placements(
+        process_mess.ndim(), std::make_shared<ReplicatedStatus>());
+    for (auto pair : mesh_dim_to_axis) {
+      auto shard_dim = axis_name_to_dim[{i, pair.second}];
+      placements[pair.first] = std::make_shared<ShardStatus>(shard_dim);
+    }
+    for (auto pair : partial_dim_to_type) {
+      placements[pair.first] = std::make_shared<PartialStatus>(pair.second);
+    }
+    new_input_attrs.emplace_back(FromPlacements(e, placements));
+  }
+  std::swap(input_attrs, new_input_attrs);
 }
 
 TensorDistAttr FromPlacements(

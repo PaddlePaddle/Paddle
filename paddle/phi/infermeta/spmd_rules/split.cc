@@ -215,5 +215,11 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
   return SplitWithNumInferSpmdReverse(x, outs, num, axis);
 }
 
+SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
+                                      int num,
+                                      const Scalar& axis) {
+  return SplitWithNumInferSpmdDynamic(x, num, axis.to<int32_t>());
+}
+
 }  // namespace distributed
 }  // namespace phi
