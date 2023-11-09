@@ -1044,8 +1044,6 @@
     scale_in : Scale_in
     scale_weights : Scale_weights
     scale_out : Scale_out
-  extra :
-    attrs : [ bool @ALL_KERNELS_MUST_COMPUTE_RUNTIME_SHAPE@ = true]
 
 - op : feed
   outputs: {out: Out}

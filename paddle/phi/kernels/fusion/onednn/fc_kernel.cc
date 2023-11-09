@@ -183,6 +183,13 @@ class FCOneDNNHandler
     }
     AppendActivation(dev_ctx, post_operations, activation_scale);
 
+    if (dev_ctx.HasDnnAttr("fused_output_scale")) {
+      float scale_alpha =
+          PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fused_output_scale"));
+      post_operations.append_eltwise(
+          dnnl::algorithm::eltwise_linear, scale_alpha, 0.0f);
+    }
+
     attributes.set_post_ops(post_operations);
     return attributes;
   }
@@ -207,7 +214,6 @@ class FCOneDNNHandler
         dev_ctx.HasDnnAttr("fuse_beta")
             ? PADDLE_GET_CONST(float, dev_ctx.GetDnnAttr("fuse_beta"))
             : 0.0f;
-
     const auto activation_map = phi::funcs::OneDNNActivationMap();
     const auto& activation_type = activation_map.find(fuse_activation);
 
