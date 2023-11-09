@@ -20,6 +20,7 @@ from ...base import core, framework, unique_name
 from ...base.framework import _current_expected_place, in_dynamic_or_pir_mode
 from .initializer import Initializer
 
+
 __all__ = []
 
 
