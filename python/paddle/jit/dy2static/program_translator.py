@@ -1497,9 +1497,7 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                 new_start_index = (
                     len(whole_program.global_block().ops) - backward_length
                 )
-                # print(whole_program)
                 return whole_program, new_start_index, dst_vars
-            # print(whole_program)
             return whole_program, forward_end_idx, src_vars
 
     def after_infer(self, infer_program):
@@ -1513,7 +1511,6 @@ class PirPrimHooker(PirPartialProgramLayerHook):
                     0,
                     len(infer_program.program.global_block().ops),
                 )
-                return
             return
 
 

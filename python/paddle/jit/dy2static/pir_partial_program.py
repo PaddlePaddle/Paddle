@@ -410,7 +410,6 @@ class PartialProgramLayer:
             infer_program = PirPassContext.apply(
                 infer_program, self._build_strategy
             )
-            # TODO(Aurelius84): Support this later.
             if self._hooker:
                 self._hooker.after_infer(infer_program)
             return infer_program
