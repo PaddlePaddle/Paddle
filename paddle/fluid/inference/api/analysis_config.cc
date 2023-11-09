@@ -938,6 +938,12 @@ void AnalysisConfig::Update() {
     }
   }
 
+  if (!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) {
+    pass_builder()->ClearPasses();
+    pass_builder_ = std::make_unique<CpuPassStrategy>(
+        *static_cast<CpuPassStrategy *>(pass_builder_.get()));
+  }
+
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
     for (const auto &pass : kTRTSubgraphPasses) {
@@ -987,12 +993,7 @@ void AnalysisConfig::Update() {
       // default enable mkldnn when device is cpu and enable_ir_optim
       pass_builder()->EnableMKLDNN();
 #endif
-    } else if (!use_mkldnn_) {
-      pass_builder()->DisableMKLDNN();
     }
-  } else {
-    // mkldnn need disable when open gpu, xpu or xpu
-    pass_builder()->DisableMKLDNN();
   }
 
   // Quantization passes must come after all other optimization passes
