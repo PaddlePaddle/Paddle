@@ -166,10 +166,10 @@ std::shared_ptr<OpStrategy> StrategyForScale(
             A->shape,
             [=](const std::vector<Expr> &indice) {
               Expr cast_scale = should_upscale_fp32
-                                    ? ir::Cast::Make(common::F32(), Expr(scale))
+                                    ? Expr(scale)
                                     : ir::Cast::Make(A->type(), Expr(scale));
               Expr cast_bias = should_upscale_fp32
-                                   ? ir::Cast::Make(common::F32(), Expr(bias))
+                                   ? Expr(bias)
                                    : ir::Cast::Make(A->type(), Expr(bias));
               Expr cast_A_indice =
                   should_upscale_fp32 ? ir::Cast::Make(common::F32(), A(indice))
