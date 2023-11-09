@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.jit import not_to_static
 
 
 def apply_to_static(net, use_cinn):
@@ -28,8 +27,6 @@ def apply_to_static(net, use_cinn):
     )
 
 
-# TODO(Aurelius84): support in next PR
-@not_to_static
 def softmax(x, axis):
     """define composite rule of op softmax"""
     is_amp = False
@@ -66,12 +63,19 @@ class CINNSubGraphNet(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
         self.fn = exp_sub
-        # TODO(Aurelius84): support in next PR
-        # self.fn = softmax
 
-    def forward(self, x, axis=1):
-        # out = self.fn(x, axis=axis)
+    def forward(self, x):
         out = self.fn(x)
+        return out
+
+
+class CINNSoftmaxSubGraphNet(paddle.nn.Layer):
+    def __init__(self):
+        super().__init__()
+        self.fn = softmax
+
+    def forward(self, x, axis=-1):
+        out = self.fn(x, axis=axis)
         return out
 
 
@@ -95,13 +99,23 @@ class TestCinnSubGraphBase(unittest.TestCase):
         net = CINNSubGraphNet()
         net = apply_to_static(net, use_cinn)
         net.eval()
-        out = net(self.x, self.axis)
+        out = net(self.x)
         return out
 
     def test_forward(self):
         cinn_out = self.train(use_cinn=True)
         dy_out = self.train(use_cinn=False)
-        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy())
+        np.testing.assert_allclose(cinn_out.numpy(), dy_out.numpy(), atol=1e-8)
+
+
+class TestCinnSoftmax(TestCinnSubGraphBase):
+    def train(self, use_cinn):
+        paddle.seed(2022)
+        net = CINNSoftmaxSubGraphNet()
+        net = apply_to_static(net, use_cinn)
+        net.eval()
+        out = net(self.x, self.axis)
+        return out
 
 
 if __name__ == '__main__':
