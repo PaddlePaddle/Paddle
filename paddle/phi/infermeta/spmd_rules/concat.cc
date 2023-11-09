@@ -89,9 +89,16 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
 SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
                                 const DistMetaTensor& output,
                                 int axis) {
-  // TODO(liuzhenhai): add latter
-  return SpmdInfo();
+  auto out_dist_attr = output.dist_attr();
+  out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
+  auto n_inputs = x.size();
+  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr, false);
+  const auto& input_dim_mapping = out_dist_attr.dims_mapping();
+  input_attr.set_dims_mapping(input_dim_mapping);
+  std::vector<TensorDistAttr> input_attrs(n_inputs, input_attr);
+  return {{input_attrs}, {output.dist_attr()}};
 }
+
 SpmdInfo ConcatInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
                                 const Scalar& axis) {
   return ConcatInferSpmd(x, axis.to<int32_t>());
@@ -168,6 +175,106 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
   input_attr.set_dims_mapping(dim_mapping);
   std::vector<TensorDistAttr> input_attrs(n_inputs, input_attr);
   return {{input_attrs}, {output.dist_attr()}};
+}
+
+SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
+                                    const DistMetaTensor& output_grad,
+                                    const Scalar& axis) {
+  // 1、check tensors shapes
+  std::vector<std::vector<int64_t>> tensor_shapes;
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(tensor_shapes),
+                 [](const DistMetaTensor& meta) {
+                   return phi::vectorize<int64_t>(meta.dims());
+                 });
+  bool all_empty =
+      std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
+  if (all_empty) {
+    return SpmdInfo();
+  }
+
+  auto non_empty_iter =
+      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
+        return !IsEmpty(shape);
+      });
+  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
+  int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
+  auto dim = axis.to<int64_t>();
+  // normlize dim
+  dim = dim < 0 ? ndim + dim : dim;
+  std::vector<TensorDistAttr> input_attrs;
+  std::transform(
+      x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
+        return meta.dist_attr();
+      });
+  input_attrs.push_back(output_grad.dist_attr());
+  std::string all_aixs;
+  std::string align_axis;
+  std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), all_aixs);
+  AlignDimsSharding(
+      &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
+  auto output_grad_attr = input_attrs.back();
+  input_attrs.pop_back();
+  std::vector<TensorDistAttr> inputs_grad = input_attrs;
+  return {{input_attrs, output_grad_attr}, {inputs_grad}};
+}
+
+std::tuple<std::string, std::string> FillStackGradNotation(int64_t n_axis,
+                                                           int64_t stack_dim) {
+  static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
+  PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis + 1),
+                    true,
+                    phi::errors::InvalidArgument("n_axis %d", n_axis));
+  std::string input_axis = alphabet.substr(0, n_axis);
+  std::string output_axis = input_axis.substr(0, stack_dim) +
+                            alphabet[stack_dim] + input_axis.substr(stack_dim);
+}
+
+SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
+                            const DistMetaTensor& output_grad,
+                            int axis) {
+  // 1、check tensors shapes
+  std::vector<std::vector<int64_t>> tensor_shapes;
+  std::transform(x.begin(),
+                 x.end(),
+                 std::back_inserter(tensor_shapes),
+                 [](const DistMetaTensor& meta) {
+                   return phi::vectorize<int64_t>(meta.dims());
+                 });
+  bool all_empty =
+      std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
+  if (all_empty) {
+    return SpmdInfo();
+  }
+
+  auto non_empty_iter =
+      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
+        return !IsEmpty(shape);
+      });
+  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
+  int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
+  int64_t dim = axis;
+  // normlize dim
+  dim = dim < 0 ? ndim + dim : dim;
+  std::vector<TensorDistAttr> input_attrs;
+  std::transform(
+      x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
+        return meta.dist_attr();
+      });
+  input_attrs.push_back(output_grad.dist_attr());
+  std::string inputs_axis;
+  std::string output_axis;
+  std::tie(inputs_axis, output_axis) = FillStackGradNotation(ndim, dim);
+  std::vector<std::string> axis_names(input_attrs.size(), inputs_axis);
+  axis_names.push_back((output_axis));
+  AlignDimsSharding(
+      &input_attrs, tensor_shapes, axis_names, {}, inputs_axis, true);
+  auto output_grad_attr = input_attrs.back();
+  input_attrs.pop_back();
+  std::vector<TensorDistAttr> inputs_grad = input_attrs;
+  return {{input_attrs, output_grad_attr}, {inputs_grad}};
 }
 
 }  // namespace distributed
