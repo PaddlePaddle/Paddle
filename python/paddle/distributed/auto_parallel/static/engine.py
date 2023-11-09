@@ -1485,9 +1485,10 @@ class Engine:
         ):
             self._prepare_reader()
 
-        self._executor.enable_auto_parallel_profiler = (
-            self.enable_auto_parallel_profiler
-        )
+        if self._strategy.pipeline.auto_parallel_profiler:
+            self._executor.enable_auto_parallel_profiler = (
+                self.enable_auto_parallel_profiler
+            )
 
         outs = self._executor.run(
             self.main_program,

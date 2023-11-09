@@ -1184,7 +1184,7 @@ class Executor:
 
         self.op_role_key = core.op_proto_and_checker_maker.kOpRoleAttrName()
 
-        self.enable_auto_parallel_profiler = False
+        self.enable_auto_parallel_profiler = None
 
     def _is_optimizer_op(self, op):
         return self.op_role_key in op.attr_names and int(
@@ -1895,7 +1895,7 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
-            if self.enable_auto_parallel_profiler:
+            if self.enable_auto_parallel_profiler is not None:
                 new_exe.set_enable_auto_parallel_profiler(
                     self.enable_auto_parallel_profiler
                 )
