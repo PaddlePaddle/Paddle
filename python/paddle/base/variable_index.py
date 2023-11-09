@@ -272,7 +272,7 @@ def replace_none(item):
 def is_integer_or_scalar_tensor(ele):
     from .framework import Variable
 
-    if isinstance(ele, int):
+    if type(ele) is int:
         return True
     elif isinstance(ele, Variable):
         # NOTE(zoooo0820): For compatibility, if FLAGS_set_to_1d is set to True,
@@ -722,12 +722,12 @@ def parse_index(x, indices):
         elif isinstance(slice_item, bool):
             # single bool is advanced-indexing
             none_axes.append(dim)
-            estimated_dim += 1
             advanced_index[estimated_dim] = (
                 estimated_dim,
-                paddle.to_tensor(slice_item),
+                paddle.to_tensor([slice_item]),
             )
             has_advanced_index = True
+            estimated_dim += 1
         elif isinstance(slice_item, slice):
             start = slice_item.start
             end = slice_item.stop

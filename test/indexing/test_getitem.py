@@ -326,6 +326,45 @@ class TestGetitemInDygraph(unittest.TestCase):
         np.testing.assert_allclose(y.numpy(), np_res)
         np.testing.assert_allclose(y.numpy(), y_index_tensor.numpy())
 
+    def test_indexing_is_boolean_true(self):
+        # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3)).astype(self.ndtype)
+        )
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex32':
+            np_data = np_data + 1j * np_data
+
+        np_res = np_data[True]
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        y = x[True]
+
+        if self.dtype == 'bfloat16':
+            y = paddle.cast(y, dtype='float32')
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
+    def test_indexing_is_boolean_false(self):
+        # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
+        np_data = (
+            np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3)).astype(self.ndtype)
+        )
+
+        if self.dtype == 'bfloat16':
+            np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
+        if self.dtype == 'complex64' or self.dtype == 'complex32':
+            np_data = np_data + 1j * np_data
+
+        np_res = np_data[1, False, 0]
+
+        x = paddle.to_tensor(np_data, dtype=self.dtype)
+        y = x[1, False, 0]
+
+        np.testing.assert_allclose(y.numpy(), np_res)
+
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda()
@@ -1002,6 +1041,36 @@ class TestGetitemInStatic(unittest.TestCase):
         np.testing.assert_allclose(res[0], np_res)
         np.testing.assert_allclose(res[1], np_res)
 
+    def test_indexing_is_boolean_true(self):
+        # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_res = np_data[True]
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(x, True)
+
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+
+    def test_indexing_is_boolean_false(self):
+        # indexing is boolean, should improve rank of tensor and then treat it as advanced indexing.
+        np_data = np.arange(3 * 4 * 5 * 6).reshape((6, 5, 4, 3))
+        np_res = np_data[1, False, 0]
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.to_tensor(np_data)
+            y = _getitem_static(x, (1, False, 0))
+
+            res = self.exe.run(fetch_list=[y.name])
+
+        np.testing.assert_allclose(res[0], np_res)
+
 
 class TestGetitemBasicIndexOutputView(unittest.TestCase):
     def setUp(self):
@@ -1077,3 +1146,8 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = paddle.randn((4, 3, 2))
         with self.assertRaises(IndexError):
             y = _getitem_static(x, (1, paddle.to_tensor([True, False]), [0, 1]))
+
+    def test_bool_error(self):
+        x = paddle.randn((4, 3, 2))
+        with self.assertRaises(ValueError):
+            y = _getitem_static(x, (True, [0, 1]))
