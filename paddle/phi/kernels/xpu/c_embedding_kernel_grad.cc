@@ -41,8 +41,10 @@ void CEmbeddingGradKernel(const Context& dev_ctx,
            << ", table_grad_t memory_size:" << table_grad_t_mem_size
            << ", start_index:" << start_index;
 
-  int r = xpu::constant(
-      dev_ctx.x_context(), table_grad_data, w_grad->numel(), (T)0);
+  int r = xpu::constant(dev_ctx.x_context(),
+                        reinterpret_cast<XPUType*>(table_grad_data),
+                        w_grad->numel(),
+                        (T)0);
   PADDLE_ENFORCE_XDNN_SUCCESS(r, "constant");
   const T* d_output_data = out_grad.data<T>();
 
