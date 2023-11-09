@@ -1473,6 +1473,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
   std::cerr << "after convert\n";
   forward_program.Print(std::cout);
+
   pass_manager.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
