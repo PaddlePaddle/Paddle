@@ -491,7 +491,7 @@ class PartialProgramLayer:
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
         params = self._param_values
-        print("add otput size ", len(outputs))
+
         paddle.base.libpaddle.pir.append_set_parameters(
             self._origin_main_program,
             outputs,
@@ -546,7 +546,6 @@ class PartialProgramLayer:
                 self._hooker.after_infer(infer_program)
             return infer_program
         else:
-            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             train_program: RunableProgram = self.origin_runable_program.clone()
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
@@ -568,7 +567,6 @@ class PartialProgramLayer:
                 )
                 return fwd, bwd
 
-            print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
             train_program.apply_pir_program_pass(pass_fn)
             return train_program
 
