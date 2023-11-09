@@ -67,7 +67,6 @@ TEST_META_WRONG_SHAPE_DATA = {
 }
 
 
-@test_with_pir_api
 def run_static(x_np, y_np, op_str, use_gpu=False, binary_op=True):
     paddle.enable_static()
     startup_program = paddle.static.Program()
@@ -135,6 +134,7 @@ def np_data_generator(np_shape, dtype, *args, **kwargs):
         return np.random.normal(0, 1, np_shape).astype(dtype)
 
 
+@test_with_pir_api
 def test(unit_test, use_gpu=False, test_error=False):
     for op_data in TEST_META_OP_DATA:
         meta_data = dict(op_data)
