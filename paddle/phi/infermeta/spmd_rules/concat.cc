@@ -28,7 +28,10 @@ using phi::distributed::auto_parallel::str_join;
 std::tuple<std::string, std::string> FillConcatNotation(int64_t n_axis,
                                                         int64_t concat_axis) {
   PADDLE_ENFORCE_EQ(
-      n_axis > concat_axis, true, phi::errors::InvalidArgument(""));
+      n_axis > concat_axis,
+      true,
+      phi::errors::InvalidArgument(
+          "n_axis [%d] and concat_axis[%d]", n_axis, concat_axis));
   static const std::string alphabet = "abcdefghijlopqrstuvwxyz";
   PADDLE_ENFORCE_EQ(alphabet.size() > static_cast<size_t>(n_axis),
                     true,
