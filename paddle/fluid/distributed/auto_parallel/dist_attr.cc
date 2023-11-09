@@ -50,19 +50,14 @@ std::vector<std::string> OperatorDistAttr::fields_{"process_mesh",
                                                    "stream_priority",
                                                    "scheduling_priority"};
 
-OperatorDistAttr::OperatorDistAttr(const OpDesc& op) {
-  VLOG(4) << "[OperatorDistAttr constructor] op type: " << op.Type();
-  initialize(&op);
-}
+OperatorDistAttr::OperatorDistAttr(const OpDesc& op) { initialize(&op); }
 
 OperatorDistAttr::OperatorDistAttr(const OperatorDistAttr& dist_attr) {
-  VLOG(4) << "[OperatorDistAttr copy constructor]";
   copy_from(dist_attr);
 }
 
 OperatorDistAttr& OperatorDistAttr::operator=(
     const OperatorDistAttr& dist_attr) {
-  VLOG(4) << "[OperatorDistAttr assign constructor]";
   if (this == &dist_attr) return *this;
   OperatorDistAttr tmp(dist_attr);
   std::swap(this->input_dist_attrs_, tmp.input_dist_attrs_);

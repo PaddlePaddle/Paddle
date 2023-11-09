@@ -204,6 +204,10 @@ class ProcessMesh(core.ProcessMesh):
             else:
                 return ProcessMesh([new_mesh])
 
+    def get_dim_size(self, dim_name):
+        assert dim_name in self._dim_names
+        return self._shape[self._dim_names.index(dim_name)]
+
     def get_mesh_with_dim(self, dim_name):
         assert (
             dim_name in self._dim_names
