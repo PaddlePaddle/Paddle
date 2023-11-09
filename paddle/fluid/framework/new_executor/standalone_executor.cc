@@ -274,10 +274,10 @@ void StandaloneExecutor::SetEnableAutoParallelProfiler(
       dynamic_cast<phi::GPUContext*>(
           platform::DeviceContextPool::Instance().Get(place_))
           ->stream();
-#if defined(PADDLE_WITH_CUDA)
-  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream));
-#elif defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_HIP)
   PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(calculated_stream));
+#elif defined(PADDLE_WITH_CUDA)
+  PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream));
 #endif
   enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
 #endif
