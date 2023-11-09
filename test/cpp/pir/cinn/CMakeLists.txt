@@ -7,26 +7,24 @@ if(WITH_TESTING AND WITH_CINN)
               cinn_runtime_dialect pir_compiler)
   set_tests_properties(test_jit_instruction PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     dialect_convert_test
     SRCS
     dialect_convert_test.cc
     DEPS
     drr
-    gtest
     pd_to_cinn_pass
     op_dialect_vjp
     cinn_op_dialect
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     add_broadcast_to_elementwise_test
     SRCS
     add_broadcast_to_elementwise_test.cc
     DEPS
     drr
-    gtest
     pd_to_cinn_pass
     op_dialect_vjp
     cinn_op_dialect
@@ -34,7 +32,7 @@ if(WITH_TESTING AND WITH_CINN)
     pir)
   set_tests_properties(dialect_convert_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
-  cc_test_old(
+  paddle_test(
     ir_op_fusion_test
     SRCS
     ir_op_fusion_test.cc
@@ -42,9 +40,7 @@ if(WITH_TESTING AND WITH_CINN)
     op_with_group_merge_pass
     op_dialect_vjp
     cinn_op_dialect
-    pir
-    gtest
-    glog)
+    pir)
   set_tests_properties(ir_op_fusion_test PROPERTIES LABELS "RUN_TYPE=CINN")
 
   paddle_test(
