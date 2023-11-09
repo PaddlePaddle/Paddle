@@ -122,6 +122,22 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         strides = dist_tensor.strides
         offsets = dist_tensor.offset
 
+    def test_tensor_set_data(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor_a = paddle.randn([10, 20])
+        dist_tensor_a = dist.shard_tensor(
+            dense_tensor_a,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+
+        dense_tensor_b = paddle.randn([5, 8])
+        dist_tensor_b = dist.shard_tensor(
+            dense_tensor_b,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+
+        dist_tensor_b.data = dist_tensor_a
+
 
 if __name__ == "__main__":
     unittest.main()
