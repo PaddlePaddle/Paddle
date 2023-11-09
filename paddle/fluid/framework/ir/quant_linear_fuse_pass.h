@@ -26,7 +26,8 @@ namespace ir {
 class Graph;
 
 /*
- * Fuse the matmul_v2, quantize_linear and dequantize_linear to a quant_linear op.
+ * Fuse the matmul_v2, quantize_linear and dequantize_linear to a quant_linear
+ * op.
  */
 class QuantLinearFusePass : public FusePassBase {
  public:
@@ -36,10 +37,7 @@ class QuantLinearFusePass : public FusePassBase {
  protected:
   void ApplyImpl(Graph* graph) const override;
 
-  void ApplyDeleteWeightDequantPattern(Graph* graph) const;
-  void ApplyDeleteQuantDequantPattern(Graph* graph) const;
-  int ApplyQuantLinearFusePattern(Graph* graph) const;
-
+  int ApplyQuantLinearFusePattern(Graph* graph, bool with_relu) const;
 };
 
 }  // namespace ir
