@@ -123,15 +123,14 @@ class TestKronBF16Op(TestKronOp):
 
 class TestKronLayer(unittest.TestCase):
     def test_case(self):
-        self.a = np.random.randn(10, 10).astype(np.float64)
-        self.b = np.random.randn(10, 10).astype(np.float64)
-        self.out_np = np.kron(self.a, self.b)
+        a = np.random.randn(10, 10).astype(np.float64)
+        b = np.random.randn(10, 10).astype(np.float64)
         place = base.CPUPlace()
         with dg.guard(place):
-            a_var = dg.to_variable(self.a)
-            b_var = dg.to_variable(self.b)
+            a_var = dg.to_variable(a)
+            b_var = dg.to_variable(b)
             c_var = paddle.kron(a_var, b_var)
-            np.testing.assert_allclose(c_var.numpy(), self.out_np)
+            np.testing.assert_allclose(c_var.numpy(), np.kron(a, b))
 
     @test_with_pir_api
     def test_case_with_output(self):
