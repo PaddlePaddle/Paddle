@@ -873,7 +873,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
              cudaMemcpyHostToDevice);
 
   int* gpu_global_ranks = nullptr;
-  size_t gpu_global_ranks_size = size_ * sizeof(int);
+  size_t gpu_global_ranks_size = num_ranks * sizeof(int);
   cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size);
 
   NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
@@ -883,7 +883,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                                          nccl_comm,
                                          comm_ctx->stream()));
 
-  std::vector<int> global_ranks(size_);
+  std::vector<int> global_ranks(num_ranks);
   cudaMemcpy(global_ranks.data(),
              gpu_global_ranks,
              gpu_global_ranks_size,
@@ -895,6 +895,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   std::once_flag flag;
   std::call_once(flag, [this]() {
     phi::distributed::CommContextManager::GetInstance().SetStore(store_);
+    phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
   });
   phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
       group_key_, global_ranks);
