@@ -73,7 +73,7 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             with_backward=False,
             axis=0,
         )
-        self.check_dim_mapping(outputs, [-1, -1, -1, 0])
+        self.check_dim_mapping(outputs, [-1, 0, -1, -1])
 
     def run_test_case(self):
         if self._backend == "cpu":

@@ -110,6 +110,7 @@ std::string FillStackNotation(int64_t n_axis) {
                     true,
                     phi::errors::InvalidArgument("n_axis %d", n_axis));
   std::string all_axis = alphabet.substr(0, n_axis);
+  return all_axis;
 }
 
 SpmdInfo StackInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
@@ -209,6 +210,7 @@ SpmdInfo ConcatGradInferSpmdDynamic(const std::vector<DistMetaTensor>& x,
         return meta.dist_attr();
       });
   input_attrs.push_back(output_grad.dist_attr());
+  tensor_shapes.push_back(phi::vectorize<int64_t>(output_grad.dims()));
   std::string all_aixs;
   std::string align_axis;
   std::tie(all_aixs, align_axis) = FillConcatNotation(ndim, dim);
@@ -230,6 +232,7 @@ std::tuple<std::string, std::string> FillStackGradNotation(int64_t n_axis,
   std::string input_axis = alphabet.substr(0, n_axis);
   std::string output_axis = input_axis.substr(0, stack_dim) +
                             alphabet[stack_dim] + input_axis.substr(stack_dim);
+  return {input_axis, output_axis};
 }
 
 SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
@@ -263,12 +266,15 @@ SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
       x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
         return meta.dist_attr();
       });
-  input_attrs.push_back(output_grad.dist_attr());
+
   std::string inputs_axis;
   std::string output_axis;
   std::tie(inputs_axis, output_axis) = FillStackGradNotation(ndim, dim);
   std::vector<std::string> axis_names(input_attrs.size(), inputs_axis);
   axis_names.push_back((output_axis));
+  input_attrs.push_back(output_grad.dist_attr());
+  tensor_shapes.push_back(phi::vectorize<int64_t>(output_grad.dims()));
+
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, inputs_axis, true);
   auto output_grad_attr = input_attrs.back();
