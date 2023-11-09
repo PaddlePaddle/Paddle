@@ -32,6 +32,11 @@ void SaveQuantInfoInTheGraph(
 std::unordered_map<std::string, std::vector<float>> GetQuantInfoFromTheGraph(
     ir::Graph* graph, const std::string& flag, const std::string& key_suffix);
 
+std::unordered_map<std::string, std::vector<float>>
+GetQuantInfoFromTheGraphHelp(ir::Graph* graph,
+                             const std::string& flag,
+                             const std::string& key_suffix);
+
 bool AreScalesPresentForNodes(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     std::initializer_list<Node*> nodes);
@@ -44,6 +49,20 @@ std::vector<float> GetScaleVecValueForNode(
     std::unordered_map<std::string, std::vector<float>>* var_quant_scales,
     Node* node);
 
+template <typename T>
+inline std::string Vec2Str(const std::vector<T>& vec) {
+  std::ostringstream os;
+  if (vec.empty()) {
+    os << "()";
+    return os.str();
+  }
+  os << "(";
+  for (size_t i = 0; i < vec.size() - 1; ++i) {
+    os << vec[i] << ",";
+  }
+  os << vec[vec.size() - 1] << ")";
+  return os.str();
+}
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
