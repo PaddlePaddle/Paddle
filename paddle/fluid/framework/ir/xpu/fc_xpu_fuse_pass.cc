@@ -55,7 +55,6 @@ struct FcXPUPattern : public PatternBase {
   PATTERN_DECL_NODE(act);
   // declare variable node's name
   PATTERN_DECL_NODE(mul_x);
-  PATTERN_DECL_NODE(mul_w);
   PATTERN_DECL_NODE(mul_out);
   PATTERN_DECL_NODE(bias);
   PATTERN_DECL_NODE(add_out);
@@ -91,12 +90,6 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_x = pattern->NewNode(mul_x_repr())
                     ->assert_is_op_input(mul_type_, "X")
                     ->assert_var_not_persistable();
-  auto* mul_w = pattern->NewNode(mul_w_repr())
-                    ->assert_is_op_input(mul_type_, "Y")
-                    ->assert_is_persistable_var()
-                    ->assert_more([](Node* node) {
-                      return node->Var()->GetShape().size() == 2;
-                    });
   auto* mul =
       pattern->NewNode(mul_repr())
           ->assert_is_op(mul_type_)
@@ -114,7 +107,7 @@ FcXPUPattern::FcXPUPattern(PDPattern* pattern,
   auto* mul_out = pattern->NewNode(mul_out_repr())
                       ->assert_is_op_output(mul_type_, "Out")
                       ->assert_var_not_persistable();
-  mul->LinksFrom({mul_x, mul_w}).LinksTo({mul_out});
+  mul->LinksFrom({mul_x}).LinksTo({mul_out});
   PDNode* bias = nullptr;
   PDNode* add = nullptr;
   PDNode* add_out = nullptr;
@@ -283,8 +276,54 @@ class FcXPUFusePass : public FusePassBase {
       std::string pattern_node_name,
       std::string node_name) const;
 
+  void CreateTheReplicatedWeights(
+      ir::Graph* graph,
+      Scope* scope,
+      BlockDesc* block,
+      const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+      const;
+
   const std::string name_scope_{"fc_xpu_fuse_pass"};
 };
+
+void FcXPUFusePass::CreateTheReplicatedWeights(
+    ir::Graph* graph,
+    Scope* scope,
+    BlockDesc* block,
+    const std::map<std::string, std::map<std::string, Node*>>& nodes_map)
+    const {
+  // Get Node
+  auto* mul = GetNodeFromNodesMap(nodes_map, "mul", "mul");
+  PADDLE_ENFORCE_EQ(
+      mul != nullptr,
+      true,
+      platform::errors::InvalidArgument("mul node ptr can not be null"));
+  auto mul_w_name = mul->Op()->Input("Y")[0];
+  std::string replicated_w_name =
+      mul_w_name + "_copy_" + std::to_string(mul->id());
+  auto* replicated_w_var = scope->FindVar(replicated_w_name);
+  if (replicated_w_var == nullptr) {
+    auto* filter_tensor =
+        scope->FindVar(mul_w_name)->GetMutable<phi::DenseTensor>();
+    phi::DenseTensor replicated_filter_tensor;
+    Assign(*filter_tensor, &replicated_filter_tensor);
+
+    VarDesc replicated_filter_desc(replicated_w_name);
+    replicated_filter_desc.SetPersistable(true);
+    replicated_filter_desc.SetShape(vectorize(replicated_filter_tensor.dims()));
+    replicated_filter_desc.SetDataType(
+        framework::TransToProtoVarType(replicated_filter_tensor.dtype()));
+    graph->CreateVarNode(&replicated_filter_desc);
+    auto* block_replicated_filter_desc = block->Var(replicated_w_name);
+    block_replicated_filter_desc->SetPersistable(
+        replicated_filter_desc.Persistable());
+    block_replicated_filter_desc->SetShape(replicated_filter_desc.GetShape());
+    block_replicated_filter_desc->SetDataType(
+        replicated_filter_desc.GetDataType());
+    Assign(replicated_filter_tensor,
+           scope->Var(replicated_w_name)->GetMutable<phi::DenseTensor>());
+  }
+}
 
 Node* FcXPUFusePass::GetNodeFromNodesMap(
     const std::map<std::string, std::map<std::string, Node*>>& nodes_map,
@@ -353,16 +392,15 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       mul != nullptr,
       true,
       platform::errors::InvalidArgument("mul node ptr can not be null"));
-  auto* mul_w = GetNodeFromNodesMap(nodes_map, "mul", "mul_w");
-  PADDLE_ENFORCE_EQ(
-      mul_w != nullptr,
-      true,
-      platform::errors::InvalidArgument("mul_w node ptr can not be null"));
-
+  auto mul_w_name = mul->Op()->Input("Y")[0];
+  Node* mul_w = FindNodeWithName(graph, mul_w_name);
+  CreateTheReplicatedWeights(graph, scope, block, nodes_map);
+  std::string replicated_w_name =
+      mul_w_name + "_copy_" + std::to_string(mul->id());
+  auto* mul_w_replicated_node = FindNodeWithName(graph, replicated_w_name);
   // transfilter fp16 --> fp32
-  auto* filter_t =
-      scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>();
-  auto filter_len = filter_t->numel();
+  auto* filter_t = scope->FindVar(mul_w_replicated_node->Name())
+                       ->GetMutable<phi::DenseTensor>();
   auto filter_dtype = filter_t->dtype();
   if (filter_dtype == phi::DataType::FLOAT16) {
     CastToFp32(filter_t, nullptr);
@@ -433,7 +471,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     auto filter_h = filter_t->dims()[0];
     auto filter_w = filter_t->dims()[1];
     float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
-    if (!with_bias) {  // prev node is conv
+    if (!with_bias) {
       PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
     }
 
@@ -493,7 +531,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     PrepareWeight<float, int16_t>(graph,
                                   scope,
                                   block,
-                                  mul_w,
+                                  mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
                                   !transpose_w,
@@ -502,7 +540,7 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
                                   block,
-                                  mul_w,
+                                  mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
                                   !transpose_w,
@@ -719,7 +757,6 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                      Graph* graph) {
     VLOG(4) << "handle FcXPUFusePass fuse";
     GET_IR_NODE(mul_x);
-    GET_IR_NODE(mul_w);
     GET_IR_NODE(mul);
     GET_IR_NODE(mul_out);
     GET_IR_NODE(bias);
@@ -738,11 +775,8 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
     GET_IR_NODE(act);
     GET_IR_NODE(act_out);
     std::map<std::string, std::map<std::string, Node*>> nodes_map;
-    nodes_map.insert({"mul",
-                      {{"mul", mul},
-                       {"mul_x", mul_x},
-                       {"mul_w", mul_w},
-                       {"mul_out", mul_out}}});
+    nodes_map.insert(
+        {"mul", {{"mul", mul}, {"mul_x", mul_x}, {"mul_out", mul_out}}});
     nodes_map.insert({"ew_bias_add",
                       {{"ew_bias_add", add},
                        {"ew_bias_add_bias", bias},
@@ -769,8 +803,15 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
-    auto filter_data_type =
-        scope->FindVar(mul_w->Name())->GetMutable<phi::DenseTensor>()->dtype();
+    auto filter_data_type = scope->FindVar(mul->Op()->Input("Y")[0])
+                                ->GetMutable<phi::DenseTensor>()
+                                ->dtype();
+    auto mul_w_name = mul->Op()->Input("Y")[0];
+    Node* mul_w = FindNodeWithName(graph, mul_w_name);
+    if (mul_w->Var()->GetShape().size() != 2) {
+      VLOG(4) << "FC fusion fuse pass only support weight shape size is 2!";
+      return;
+    }
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
       op_weights_precision = "int8";
