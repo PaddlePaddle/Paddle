@@ -40,10 +40,13 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
             )
 
     def test_simple_net_single_strategy_with_amp(self):
-        self._changeable_envs = {"backend": ["gpu"]}
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
+        changeable_envs = {
+            "backend": ["gpu"],
+            "use_master_grad": ["0", "1"],
+            "dtype": ["bfloat16", "float16"],
+            "seed": ["2023"],
+        }
+        envs_list = test_base.gen_product_envs_list({}, changeable_envs)
         for envs in envs_list:
             self.run_test_case(
                 "semi_auto_parallel_simple_net_amp.py",
@@ -122,16 +125,16 @@ class TestSemiAutoParallelSingleStrategy(test_base.CommunicationTestDistBase):
                 user_defined_envs=envs,
             )
 
-    def test_simple_net_custom_relu(self):
-        self._changeable_envs = {"backend": ["gpu"]}
-        envs_list = test_base.gen_product_envs_list(
-            self._default_envs, self._changeable_envs
-        )
-        for envs in envs_list:
-            self.run_test_case(
-                "semi_auto_parallel_simple_net_custom_relu.py",
-                user_defined_envs=envs,
+        def test_simple_net_custom_relu(self):
+            self._changeable_envs = {"backend": ["gpu"]}
+            envs_list = test_base.gen_product_envs_list(
+                self._default_envs, self._changeable_envs
             )
+            for envs in envs_list:
+                self.run_test_case(
+                    "semi_auto_parallel_simple_net_custom_relu.py",
+                    user_defined_envs=envs,
+                )
 
 
 if __name__ == "__main__":
