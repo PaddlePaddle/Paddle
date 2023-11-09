@@ -288,7 +288,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   group->output_names.clear();
   VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
+  // TODO(phlrain): output list not stable here
   for (auto& op : group->output_ops) {
+    std::cerr << "output op name " << op->name() << std::endl;
     // collect all output tensor.
     for (auto opresult : op->results()) {
       if (tensor_map.count(opresult) == 0) {
@@ -324,6 +326,9 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
                                    ir::Argument::IO::kOutput);
     }
   }
+
+  std::cerr << "group output name size " << group->output_names.size()
+            << std::endl;
 
   auto func_body = ir_sch->GetModule().GetExprs().at(0);
 #ifdef CINN_WITH_CUDA

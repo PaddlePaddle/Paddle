@@ -1065,6 +1065,9 @@ class GeneralFusionMergePassHelper {
     DoFusionMerge();
     for (auto& group : fusion_groups_) {
       VLOG(3) << "Fusion Group -> " << group->group_id;
+      for (auto op : group->output_ops) {
+        std::cerr << "@@@ " << op->name() << std::endl;
+      }
       for (auto& sub_group : group->fused_sub_groups) {
         VLOG(3) << "  Fused Sub-Group -> " << sub_group->group_id;
       }
@@ -1585,6 +1588,10 @@ class GeneralFusionMergePassHelper {
       fused_group->input_ops = producer->input_ops;
 
       fused_group->ops = producer->ops;
+      fused_group->output_ops = producer->output_ops;
+      for (auto op : fused_group->output_ops) {
+        std::cerr << "11111 \t " << op->name() << std::endl;
+      }
       for (size_t i = 0; i < consumer->ops.size(); ++i) {
         fused_group->ops.push_back(consumer->ops[i]);
       }
@@ -1646,6 +1653,7 @@ class GeneralFusionMergePassHelper {
 
       // output nodes
       for (auto& node : consumer->output_ops) {
+        std::cerr << "insert   " << node->name() << std::endl;
         fused_group->output_ops.insert(node);
       }
 
@@ -1695,6 +1703,10 @@ class GeneralFusionMergePassHelper {
         fused_group->fused_sub_groups.push_back(consumer);
       }
       consumer->belong_groups.insert(fused_group);
+
+      for (auto op : fused_group->output_ops) {
+        std::cerr << "@@@@@@ " << op->name() << std::endl;
+      }
 
       fused_groups.push_back(fused_group);
       CHECK(fusion_groups_index_.count(consumer))

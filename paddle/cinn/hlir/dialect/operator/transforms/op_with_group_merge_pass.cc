@@ -511,6 +511,17 @@ GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
   auto op_fusion_helper = OpFusionPassHelper(op_list);
   auto res = op_fusion_helper();
 
+  std::cerr << "op fusion res " << res.size() << std::endl;
+
+  for (size_t i = 0; i < res.size(); ++i) {
+    auto group = res[i];
+
+    std::cerr << "!!!!!\n";
+    for (auto op : group->output_ops) {
+      std::cerr << op->name() << std::endl;
+    }
+  }
+
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;

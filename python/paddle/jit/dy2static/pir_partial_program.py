@@ -345,12 +345,14 @@ class PirPassContext:
         # and we just use forward_program because backward_program
         # is empty.
         if not build_strategy.build_cinn_pass:
+            print("not build")
             return runable_program
         elif not paddle.is_compiled_with_cinn():
             raise RuntimeError(
                 "Please install PaddlePaddle compiled with CINN while setting build_strategy.build_cinn_pass = True."
             )
 
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         fwd_program = paddle.base.libpaddle.pir.apply_pir_pass(
             runable_program.forward_program
         )
@@ -489,6 +491,7 @@ class PartialProgramLayer:
             filter(lambda x: isinstance(x, OpResult), self._outputs.tolist())
         )
         params = self._param_values
+        print("add otput size ", len(outputs))
         paddle.base.libpaddle.pir.append_set_parameters(
             self._origin_main_program,
             outputs,
@@ -544,6 +547,7 @@ class PartialProgramLayer:
             #     infer_program = self._hooker.after_infer(infer_program)
             return infer_program
         else:
+            print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             train_program: RunableProgram = self.origin_runable_program.clone()
             train_program = self._append_backward_desc(train_program)
             # Note: Only set grad type once after initializing train program. So we put it here.
@@ -551,14 +555,21 @@ class PartialProgramLayer:
 
             # (NOTE:@xiongkun) HOW TO APPLY PASS: this is a example for forward/backward clone pass, just replace with your cases.
             def pass_fn(forward_program, backward_program, name_attr):
+                print("###############################")
                 fwd, _ = paddle.base.libpaddle.pir.clone_program(
                     forward_program
                 )
+                print("before pass")
+                print(fwd)
+                fwd = paddle.base.libpaddle.pir.apply_pir_pass(fwd)
+                print("after pass")
+                print(fwd)
                 bwd, _ = paddle.base.libpaddle.pir.clone_program(
                     backward_program
                 )
                 return fwd, bwd
 
+            print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
             train_program.apply_pir_program_pass(pass_fn)
             return train_program
 
