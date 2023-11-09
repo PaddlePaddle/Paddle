@@ -389,7 +389,7 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.second[2], {1, 0});
   VLOG(4) << "test2 done.";
 
-  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, -1, 1], i[0], i[0], y=jk,
+  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, -1, -1], i[0], i[0], y=jk,
   // begin_norm_axis=1
   begin_norm_axis = 1;
   x_dist_attr.set_dims_mapping({0, -1, -1});
@@ -408,8 +408,8 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
   check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {0, -1});
-  check_dim_mapping(infered_dist_attrs.second[2], {0, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {0});
+  check_dim_mapping(infered_dist_attrs.second[2], {0});
   VLOG(4) << "test3 done.";
 }
 
