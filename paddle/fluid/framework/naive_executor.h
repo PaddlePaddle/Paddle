@@ -45,7 +45,7 @@ class NaiveExecutor {
  public:
   using HookFunc = std::function<void(OperatorBase*, Scope*)>;
 
-  explicit NaiveExecutor(const platform::Place& place) : place_(place) {}
+  explicit NaiveExecutor(const platform::Place& place);
 
   ~NaiveExecutor();
 
