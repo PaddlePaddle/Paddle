@@ -326,7 +326,7 @@ def nanmedian(x, axis=None, keepdim=False, name=None):
     elif isinstance(axis, int):
         axis = [axis]
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.nanmedian(x, axis, keepdim)
     else:
         check_variable_and_dtype(
