@@ -44,10 +44,7 @@ from .common import (
 )
 
 __op_not_need_param_init__ = ["while", "cond"]
-__op_has_shape_attr__ = [
-    "fill_constant_batch_size_like",
-    "fill_constant",
-]
+__op_has_shape_attr__ = ["fill_constant_batch_size_like", "fill_constant"]
 
 
 def prim_operator_data_parallel_functor(ctx, src_op):
