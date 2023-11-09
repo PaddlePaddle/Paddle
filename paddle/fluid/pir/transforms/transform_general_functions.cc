@@ -22,8 +22,7 @@
 
 namespace pir {
 
-std::pair<std::string, pir::Parameter*> GetParameterFromValue(
-    pir::Value value) {
+std::string GetParameterNameFromValue(pir::Value value) {
   pir::GetParameterOp op =
       value.dyn_cast<OpResult>().owner()->dyn_cast<pir::GetParameterOp>();
   PADDLE_ENFORCE_NOT_NULL(
@@ -37,10 +36,7 @@ std::pair<std::string, pir::Parameter*> GetParameterFromValue(
                          .at(op.attributes_name[0])
                          .dyn_cast<pir::StrAttribute>()
                          .AsString();
-  pir::Parameter* param = program->GetParameter(name);
-  PADDLE_ENFORCE_NOT_NULL(
-      param, phi::errors::InvalidArgument("Parameter should not be null."));
-  return {name, param};
+  return name;
 }
 
 const phi::DDim& GetShapeFromValue(pir::Value value) {

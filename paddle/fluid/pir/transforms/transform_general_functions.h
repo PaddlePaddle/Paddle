@@ -25,16 +25,16 @@
 namespace pir {
 
 /**
- * @brief Get the [name, parameter] pair of pararmeter from a value.
+ * @brief Get the name of pararmeter from a value.
  *
  * @note The value must be a output of a GetParameterOp.
  *
  * @param pir::Value
  *
- * @return std::pair<std::string, pir::Parameter*>
+ * @return std::string
  */
 
-std::pair<std::string, pir::Parameter*> GetParameterFromValue(pir::Value value);
+std::string GetParameterNameFromValue(pir::Value value);
 
 /**
  * @brief Get tensor's shape from a value.
