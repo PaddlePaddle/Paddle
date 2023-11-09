@@ -346,7 +346,7 @@ class DataFeeder:
     Parameters:
         feed_list (list): Variables or names of Variables that need
             to feed.
-        place (:ref:`api_base_CPUPlace` | :ref:`api_base_CUDAPlace` ):
+        place (:ref:`api_paddle_CPUPlace` | :ref:`api_paddle_CUDAPlace` ):
             place indicates the device (CPU | GPU) the data will be fed into, if
             you want to feed data into GPU, please using :code:`base.CUDAPlace(i)`
             (:code:`i` represents the GPU id), or if you want to feed data into CPU,
