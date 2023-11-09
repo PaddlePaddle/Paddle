@@ -105,23 +105,17 @@ struct PD_INFER_DECL XpuConfig {
   void* stream{nullptr};
 
   // Conv autotune level. Default 0 means no autotune.
-  // Note: Paddle-Lite only.
   int conv_autotune_level{0};
   // Base conv autotune info is read from conv_autotune_file.
-  // Note: Paddle-Lite only.
   std::string conv_autotune_file;
   // Whether write new conv autotune info to conv_autotune_file.
-  // Note: Paddle-Lite only.
   bool conv_autotune_file_writeback{false};
 
   // Fc autotune level. The Optional values are 0-9. Default 0 means no
-  // autotune. Note: Paddle-Lite only.
   int fc_autotune_level{0};
   // Base fc autotune info is read from fc_autotune_file.
-  // Note: Paddle-Lite only.
   std::string fc_autotune_file;
   // Whether write new fc autotune info to fc_autotune_file.
-  // Note: Paddle-Lite only.
   bool fc_autotune_file_writeback{false};
 
   // Gemm compute precision. Optional values are 0(int8),1(int16),2(int31).
@@ -880,6 +874,10 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   int tensorrt_optimization_level() { return trt_optimization_level_; }
 
+  void EnableNewExecutor(bool x = true) { use_new_executor_ = x; }
+
+  bool new_executor_enabled() const { return use_new_executor_; }
+
   void EnableDlnne(
       int min_subgraph_size = 3,
       int max_batch_size = 1,
@@ -1304,6 +1302,8 @@ struct PD_INFER_DECL AnalysisConfig {
   bool enable_ir_optim_{true};
   bool use_feed_fetch_ops_{true};
   bool ir_debug_{false};
+
+  bool use_new_executor_{false};
 
   bool specify_input_name_{false};
 

@@ -22,7 +22,7 @@ from paddle.static.nn.control_flow import Assert
 from paddle.utils import deprecated
 
 from ...base.data_feeder import check_variable_and_dtype
-from ...base.framework import _current_expected_place
+from ...base.framework import _current_expected_place, in_pir_mode
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
 from ...tensor.manipulation import reshape
@@ -1337,13 +1337,13 @@ def l1_loss(input, label, reduction='mean', name=None):
         check_variable_and_dtype(
             input,
             'input',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
         check_variable_and_dtype(
             label,
             'label',
-            ['float32', 'float64', 'int32', 'int64'],
+            ['float32', 'float64', 'int32', 'int64', 'float16'],
             'l1_loss',
         )
 
@@ -2935,24 +2935,31 @@ def cross_entropy(
             ['uint8', 'int8', 'int16', 'int32', 'int64', 'float32', 'float64'],
             'softmax_cross_entropy',
         )
-        attrs = {
-            'soft_label': soft_label,
-            'ignore_index': ignore_index,
-            'numeric_stable_mode': True,
-            'axis': axis,
-            'use_softmax': use_softmax,
-        }
-        helper = LayerHelper('softmax_with_cross_entropy', **locals())
-        softmax = helper.create_variable_for_type_inference(dtype=input.dtype)
-        out = helper.create_variable_for_type_inference(dtype=input.dtype)
+        if in_pir_mode():
+            softmax, out = _C_ops.cross_entropy_with_softmax(
+                input, label, soft_label, use_softmax, True, ignore_index, axis
+            )
+        else:
+            attrs = {
+                'soft_label': soft_label,
+                'ignore_index': ignore_index,
+                'numeric_stable_mode': True,
+                'axis': axis,
+                'use_softmax': use_softmax,
+            }
+            helper = LayerHelper('softmax_with_cross_entropy', **locals())
+            softmax = helper.create_variable_for_type_inference(
+                dtype=input.dtype
+            )
+            out = helper.create_variable_for_type_inference(dtype=input.dtype)
 
-        outputs = {'Softmax': softmax, 'Loss': out}
-        helper.append_op(
-            type='softmax_with_cross_entropy',
-            inputs={'Logits': input, 'Label': label},
-            outputs=outputs,
-            attrs=attrs,
-        )
+            outputs = {'Softmax': softmax, 'Loss': out}
+            helper.append_op(
+                type='softmax_with_cross_entropy',
+                inputs={'Logits': input, 'Label': label},
+                outputs=outputs,
+                attrs=attrs,
+            )
 
         if weight is not None:
             check_variable_and_dtype(
@@ -3036,19 +3043,21 @@ def cross_entropy(
                 if weight is None:
                     mask = paddle.cast(mask, dtype=out_sum.dtype)
                     count = paddle.sum(mask, name=name)
-                    ret = out_sum / (count + (count == 0.0))
+                    ret = out_sum / (count + paddle.equal(count, 0.0))
                 else:
                     mask = paddle.cast(mask, weight_gather_reshape.dtype)
                     weight_ignored = paddle.multiply(
                         mask, weight_gather_reshape
                     )
                     weight_sum = paddle.sum(weight_ignored, name=name)
-                    ret = out_sum / (weight_sum + (weight_sum == 0.0))
+                    ret = out_sum / (weight_sum + paddle.equal(weight_sum, 0.0))
                 return ret
             elif weight is not None:
                 out_sum = paddle.sum(out, name=name)
                 total_weight = paddle.sum(weight_gather_reshape)
-                return out_sum / (total_weight + (total_weight == 0.0))
+                return out_sum / (
+                    total_weight + paddle.equal(total_weight, 0.0)
+                )
             else:
                 return paddle.mean(out, name=name)
 
@@ -3301,7 +3310,7 @@ def multi_label_soft_margin_loss(
     if reduction not in ['sum', 'mean', 'none']:
         raise ValueError(
             "'reduction' in 'multi_label_soft_margin_loss' should be 'sum', 'mean' or 'none', "
-            "but received {}.".format(reduction)
+            f"but received {reduction}."
         )
 
     if not (input.shape == label.shape):

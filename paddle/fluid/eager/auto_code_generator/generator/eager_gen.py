@@ -580,6 +580,18 @@ CHECK_NAN_AND_INF_TEMPLATE_BACKWARD = """
   }}
 """
 
+FILL_ZERO_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);
+"""
+
+FILL_ZERO_PLAIN_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);
+"""
+
+FILL_ZERO_OPTIONAL_PLAIN_GRAD_TEMPLATE_BACKWARD = """
+  egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);
+"""
+
 inplace_optional_out_type_map = {
     "Tensor": "paddle::optional<paddle::Tensor>&",
     "std::vector<Tensor>": "paddle::optional<std::vector<paddle::Tensor>>&",
@@ -1059,7 +1071,11 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
                             or IsVectorTensorType(atype)
                             or (name in self.optional_inputs)
                         ):
-                            set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            if for_backward is False:
+                                set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name});"
+                            else:
+                                set_tensor_wrappers = f"{indent}if({name}_optional) grad_node->SetTensorWrapper{name}(*{name}_optional);"
+
                         else:
                             need_pre_contiguous_set.add(name)
                             set_tensor_wrappers = f"{indent}if({name}) grad_node->SetTensorWrapper{name}(*{name}_tmp);"
@@ -1138,7 +1154,10 @@ class DygraphFunctionGeneratorBase(FunctionGeneratorBase):
             )
 
             if is_optional:
-                set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                if for_backward is False:
+                    set_grad_out_meta = f"{indent}if({name}.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}.get_ptr()), {pos});"
+                else:
+                    set_grad_out_meta = f"{indent}if({name}_optional.get_ptr() != nullptr) grad_node->SetGradOutMeta(*({name}_optional.get_ptr()), {pos});"
             else:
                 if (
                     is_special_forward_api
@@ -2217,12 +2236,22 @@ class DygraphNodeGenerator(DygraphFunctionGeneratorBase):
             ) in backward_grad_inputs_map.items():
                 if name in self.optional_inputs:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyOptionalGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += FILL_ZERO_OPTIONAL_PLAIN_GRAD_TEMPLATE_BACKWARD.format(
+                            fwd_position=fwd_position
+                        )
                 else:
                     if IsPlainTensorType(ttype):
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}][0], input_metas[{fwd_position}][0]);\n"
+                        fill_zero_str += (
+                            FILL_ZERO_PLAIN_GRAD_TEMPLATE_BACKWARD.format(
+                                fwd_position=fwd_position
+                            )
+                        )
                     else:
-                        fill_zero_str += f"{indent}egr::EagerUtils::FillZeroForEmptyGradInput(&grads[{fwd_position}], input_metas[{fwd_position}]);\n"
+                        fill_zero_str += (
+                            FILL_ZERO_GRAD_TEMPLATE_BACKWARD.format(
+                                fwd_position=fwd_position
+                            )
+                        )
 
         inplace_grad_input_str = ""
         inplace_check_str = ""

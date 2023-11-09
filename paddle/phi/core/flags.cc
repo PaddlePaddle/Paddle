@@ -1273,13 +1273,13 @@ PHI_DEFINE_EXPORTED_string(tensor_operants_mode,
 
 /**
  * Using new IR in executor  FLAG
- * Name: enable_new_ir_in_executor
+ * Name: enable_pir_in_executor
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, executor will use new IR
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor,
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor,
                          false,
                          "Enable new IR in executor");
 
@@ -1295,29 +1295,34 @@ PHI_DEFINE_EXPORTED_bool(enable_pir_api, false, "Enable new IR API in Python");
 
 /**
  * Using new IR in executor FLAG
- * Name: enable_new_ir_in_executor_trace_run
+ * Name: enable_pir_in_executor_trace_run
  * Since Version: 2.6.0
  * Value Range: bool, default=false
  * Example:
  * Note: If Ture, executor will use new IR and run in beta version by for trace
  * version.
  */
-PHI_DEFINE_EXPORTED_bool(enable_new_ir_in_executor_trace_run,
+PHI_DEFINE_EXPORTED_bool(enable_pir_in_executor_trace_run,
                          false,
                          "Enable new IR in executor");
 
 /**
  * Apply inplace pass to new IR FLAG
- * Name: new_ir_apply_inplace_pass
+ * Name: pir_apply_inplace_pass
  * Since Version: 2.6.0
  * Value Range: bool, default=true
  * Example:
  * Note: If Ture, will apply inplace pass to new IR.
  */
-PHI_DEFINE_EXPORTED_bool(new_ir_apply_inplace_pass,
+PHI_DEFINE_EXPORTED_bool(pir_apply_inplace_pass,
                          true,
                          "Whether to apply inplace pass on lowering "
                          "::pir::Program to Kernel Dialect");
+
+PHI_DEFINE_EXPORTED_string(
+    ir_inplace_kernel_blacklist,
+    "",
+    "It controls the ir inplace kernel subset do not use.");
 
 PHI_DEFINE_EXPORTED_bool(enable_record_memory, false, "Enable memory recorder");
 

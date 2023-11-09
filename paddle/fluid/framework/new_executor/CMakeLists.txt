@@ -6,18 +6,17 @@ add_subdirectory(pir_adaptor)
 
 set(STANDALONE_EXECUTOR_SRCS
     feed_fetch_utils.cc interpretercore.cc new_executor_defs.cc
-    standalone_executor.cc program_interpreter.cc new_ir_interpreter.cc)
+    standalone_executor.cc program_interpreter.cc pir_interpreter.cc)
 
 set(STANDALONE_EXECUTOR_DEPS
     interpreter
     interpretercore_garbage_collector
     workqueue
-    pd_op_dialect
-    pd_op_to_kernel_pass
+    op_dialect_vjp
+    transform
     pir_adaptor
     program_translator
     instruction_base
-    pd_inplace_pass
     pir
     plan)
 

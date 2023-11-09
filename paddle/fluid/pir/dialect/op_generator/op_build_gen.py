@@ -22,6 +22,7 @@ _INFERMETA_NEED_META_CONFIG = {
     'ReshapeWithXShapeInferMeta',
     'SliceRawInferMeta',
     'StackInferMeta',
+    'Conv2dTransposeInferMeta',
 }
 
 _PREPARE_DATA_WITH_VECTOR_INT64_MTTABLE_ATTRIBUTE = {'FrobeniusNormOp'}
@@ -356,14 +357,37 @@ def GenBuildOutputs(
     meta_{name}.push_back(&vec_meta_{name}[i]);
   }}
  """
+
+    CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE = """  std::vector<paddle::dialect::IrMetaTensor> vec_ir_meta_tensor_{name};
+  if ({name}_.impl() != nullptr) {{
+    pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>();
+    for (size_t i=0; i < static_cast<size_t>({name}.size()); i++) {{
+        vec_ir_meta_tensor_{name}.push_back(paddle::dialect::IrMetaTensor(paddle::dialect::TransToPhiDataType({name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dtype()),
+                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().dims(),
+                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().data_layout(),
+                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().lod(),
+                                                                        {name}[i].dyn_cast<paddle::dialect::DenseTensorType>().offset()));
+    }}
+  }}
+
+  std::vector<phi::MetaTensor> vec_meta_{name};
+  for (size_t i=0; i < vec_ir_meta_tensor_{name}.size(); i++) {{
+    vec_meta_{name}.push_back(phi::MetaTensor(&vec_ir_meta_tensor_{name}[i]));
+  }}
+
+  std::vector<const phi::MetaTensor*> meta_{name};
+  for (size_t i=0; i < static_cast<size_t>(vec_meta_{name}.size()); i++) {{
+    meta_{name}.push_back(&vec_meta_{name}[i]);
+  }}
+
+"""
+
     CREATE_INTARRAY_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  phi::IntArray {name};
   if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = std::move(phi::IntArray({name}_.dyn_cast<pir::OpResult>().owner()
+    {name} = std::move(phi::IntArray(paddle::dialect::GetInt64Vector(
+                          {name}_.dyn_cast<pir::OpResult>().owner()
                           ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                          .attribute("value")
-                          .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                          .data()
-                          .GetData()));
+                          .attribute("value"))));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::move(phi::IntArray(std::vector<int64_t>({name}_size, -1)));
@@ -378,12 +402,10 @@ def GenBuildOutputs(
 
     CREATE_VECTOR_INT_MUTABLE_ATTRIBUE_WITH_UNKONW_DATA_TEMPLATE = """  std::vector<int64_t> {name};
   if ({name}_.dyn_cast<pir::OpResult>().owner()->isa<paddle::dialect::FullIntArrayOp>()) {{
-    {name} = {name}_.dyn_cast<pir::OpResult>().owner()
+    {name} = paddle::dialect::GetInt64Vector(
+                    {name}_.dyn_cast<pir::OpResult>().owner()
                     ->dyn_cast<paddle::dialect::FullIntArrayOp>()
-                    .attribute("value")
-                    .dyn_cast<paddle::dialect::IntArrayAttribute>()
-                    .data()
-                    .GetData();
+                    .attribute("value"));
   }} else if ({name}_.type().isa<pir::VectorType>()) {{
     size_t {name}_size = {name}_.type().dyn_cast<pir::VectorType>().size();
     {name} = std::vector<int64_t>({name}_size, -1);
@@ -425,9 +447,10 @@ def GenBuildOutputs(
     for idx in range(len(op_input_name_list)):
         # is a vector<Tensor>
         if 'pir::VectorType' in op_input_type_list[idx]:
-            build_output_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
-                name=op_input_name_list[idx]
-            )
+            if op_input_optional_list[idx] == 'false':
+                build_output_str += "  pir::VectorType {name} = {name}_.type().dyn_cast<pir::VectorType>(); (void){name};\n".format(
+                    name=op_input_name_list[idx]
+                )
         # is a Tensor
         else:
             if op_input_optional_list[idx] == 'false':
@@ -482,11 +505,19 @@ def GenBuildOutputs(
                         )
                     ]
                 ):
-                    build_output_str += (
-                        CREATE_INPUT_VEC_METATENSOR_TEMPLATE.format(
+                    input_index = op_input_name_list.index(
+                        op_infer_meta_map['param'][idx]
+                    )
+                    if op_input_optional_list[input_index] == 'true':
+                        build_output_str += CREATE_OPTIONAL_INPUT_VEC_METATENSOR_TEMPLATE.format(
                             name=op_infer_meta_map['param'][idx]
                         )
-                    )
+                    else:
+                        build_output_str += (
+                            CREATE_INPUT_VEC_METATENSOR_TEMPLATE.format(
+                                name=op_infer_meta_map['param'][idx]
+                            )
+                        )
                 # is a Tensor
                 else:
                     input_index = op_input_name_list.index(
