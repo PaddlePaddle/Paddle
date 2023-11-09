@@ -1895,6 +1895,11 @@ class Executor:
                 else:
                     tensor._copy_from(cpu_tensor, self.place)
 
+            if self.enable_auto_parallel_profiler:
+                new_exe.set_enable_auto_parallel_profiler(
+                    self.enable_auto_parallel_profiler
+                )
+
             ret = new_exe.run(list(feed.keys()), return_numpy)
             set_flags(stored_flag)
             return ret
