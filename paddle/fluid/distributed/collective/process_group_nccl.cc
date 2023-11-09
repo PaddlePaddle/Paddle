@@ -17,11 +17,11 @@
 #include "paddle/fluid/distributed/collective/common.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/device/gpu/nccl_helper.h"
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/api/lib/utils/allocator.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
 #include "paddle/phi/core/distributed/check/nccl_dynamic_check.h"
 #include "paddle/phi/core/distributed/check/static_check.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/comm_task_manager.h"
 #include "paddle/phi/core/distributed/nccl_comm_task.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
@@ -867,20 +867,27 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   size_t gpu_global_rank_size = sizeof(int);
   cudaMalloc(&gpu_global_rank, gpu_global_rank_size);
 
-  cudaMemcpy(gpu_global_rank, &global_rank_, gpu_global_rank_size, cudaMemcpyHostToDevice);
+  cudaMemcpy(gpu_global_rank,
+             &global_rank_,
+             gpu_global_rank_size,
+             cudaMemcpyHostToDevice);
 
   int* gpu_global_ranks = nullptr;
   size_t gpu_global_ranks_size = size_ * sizeof(int);
   cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size);
 
-  NCCL_CHECK(phi::dynload::ncclAllGather(
-      gpu_global_rank, gpu_global_ranks, 1, ncclInt, nccl_comm, comm_ctx->stream()));
+  NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
+                                         gpu_global_ranks,
+                                         1,
+                                         ncclInt,
+                                         nccl_comm,
+                                         comm_ctx->stream()));
 
   std::vector<int> global_ranks(size_);
   cudaMemcpy(global_ranks.data(),
-                 gpu_global_ranks,
-                 gpu_global_ranks_size,
-                 cudaMemcpyDeviceToHost);
+             gpu_global_ranks,
+             gpu_global_ranks_size,
+             cudaMemcpyDeviceToHost);
   cudaFree(gpu_global_rank);
   cudaFree(gpu_global_ranks);
 
@@ -889,8 +896,8 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   std::call_once(flag, [this]() {
     phi::distributed::CommContextManager::GetInstance().SetStore(store_);
   });
-  phi::distributed::CommContextManager::GetInstance().AddGroupRanks(group_key_,
-                                                                  global_ranks);
+  phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
+      group_key_, global_ranks);
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));

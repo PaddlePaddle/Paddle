@@ -17,8 +17,8 @@
 #include "gflags/gflags.h"
 #include "glog/logging.h"
 
-#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/backends/gpu/gpu_info.h"
+#include "paddle/phi/core/distributed/comm_context_manager.h"
 #include "paddle/phi/core/distributed/nccl_tools.h"
 #include "paddle/phi/core/distributed/trace_utils.h"
 #include "paddle/phi/core/utils/data_type.h"
