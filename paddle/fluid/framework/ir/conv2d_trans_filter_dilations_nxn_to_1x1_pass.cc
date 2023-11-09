@@ -74,23 +74,23 @@ void Conv2dTransFilterDilationsNxNTo1x1Pass::ApplyImpl(ir::Graph* graph) const {
 template <class T>
 static void conv2d_dilation_trans_fn(const T* weights_data,
                                      T* new_weights_data,
-                                     uint kn,
-                                     uint kc,
-                                     uint kh,
-                                     uint kw,
-                                     uint new_kh,
-                                     uint new_kw,
-                                     uint dilation_h,
-                                     uint dilation_w) {
-  for (auto n = 0; n < kn; n++) {
-    for (auto c = 0; c < kc; c++) {
-      for (auto h = 0; h < kh; h++) {
-        auto h_offset = dilation_h * h;
-        for (auto w = 0; w < kw; w++) {
-          auto w_offset = dilation_w * w;
-          auto new_offset = n * kc * new_kh * new_kw + c * new_kh * new_kw +
-                            h_offset * new_kw + w_offset;
-          auto old_offset = n * kc * kh * kw + c * kh * kw + h * kw + w;
+                                     uint64_t kn,
+                                     uint64_t kc,
+                                     uint64_t kh,
+                                     uint64_t kw,
+                                     uint64_t new_kh,
+                                     uint64_t new_kw,
+                                     uint64_t dilation_h,
+                                     uint64_t dilation_w) {
+  for (uint64_t n = 0; n < kn; n++) {
+    for (uint64_t c = 0; c < kc; c++) {
+      for (uint64_t h = 0; h < kh; h++) {
+        uint64_t h_offset = dilation_h * h;
+        for (uint64_t w = 0; w < kw; w++) {
+          uint64_t w_offset = dilation_w * w;
+          uint64_t new_offset = n * kc * new_kh * new_kw + c * new_kh * new_kw +
+                                h_offset * new_kw + w_offset;
+          uint64_t old_offset = n * kc * kh * kw + c * kh * kw + h * kw + w;
           new_weights_data[new_offset] = weights_data[old_offset];
         }
       }
