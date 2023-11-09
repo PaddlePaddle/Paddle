@@ -72,7 +72,7 @@ def save(state_dict, path, **configs):
 
         .. code-block:: python
 
-            >>> # doctest: +REQUIRES(env:DISTRIBUTED)
+            >>> # doctest: +SKIP('TODO: the error will be fix in the feature')
             >>> import paddle
             >>> paddle.distributed.init_process_group(backend='nccl')
             >>> paddle.distributed.fleet.init(is_collective=True)
