@@ -12,13 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-####################################
-export path_list=("python/paddle/distributed"
-                  "python/paddle/base"
-                  "paddle/fluid/distributed"
-                  "paddle/fluid/framework/new_executor"
-                  "paddle/phi/infermeta/spmd_rules"
-                  "paddle/phi/core/distributed")
+
+source ./target_path_lists.sh
+
 export paddle=$1
 export nlp_dir=/workspace/PaddleNLP
 mkdir -p /workspace/PaddleNLP/model_logs
@@ -27,14 +23,13 @@ export case_list=()
 
 cd /workspace/Paddle
 
-####################################
 # Insatll paddlepaddle-gpu
 install_paddle(){
     echo -e "\033[31m ---- Install paddlepaddle-gpu  \033"
     python -m pip install --user ${paddle} --force-reinstall --no-dependencies;
     python -c "import paddle; print('paddle version:',paddle.__version__,'\npaddle commit:',paddle.version.commit)";
 }
-####################################
+
 get_diff_TO_case(){
 for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{print $NF}'`;do
     arr_file_name=(${file_name//// })
@@ -49,8 +44,8 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
     elif [[ ${file_name##*.} == "md" ]] || [[ ${file_name##*.} == "rst" ]] || [[ ${dir1} == "docs" ]];then
         continue
     else
-        for ((i=0; i<${#path_list[@]}; i++)); do
-            if [[ ${file_item} == *${path_list[i]}* ]];then
+        for ((i=0; i<${#target_lists_for_hybrid_ci[@]}; i++)); do
+            if [[ ${file_item} == *${target_lists_for_hybrid_ci[i]}* ]];then
                 case_list[${#case_list[*]}]=gpt-3
                 break
             else
@@ -61,7 +56,7 @@ for file_name in `git diff --numstat upstream/${AGILE_COMPILE_BRANCH} |awk '{pri
 
 done
 }
-####################################
+
 print_info(){
 if [ $1 -ne 0 ];then
     EXCODE=2
@@ -77,7 +72,7 @@ else
     echo -e "\033[32m run CI SUCCESS \033"
 fi
 }
-####################################
+
 get_diff_TO_case # 获取待执行case列表
 case_list=($(awk -v RS=' ' '!a[$1]++' <<< ${case_list[*]}))  # 去重并将结果存储回原列表
 if [[ ${#case_list[*]} -ne 0 ]];then

@@ -2452,6 +2452,57 @@ set -x
     fi
 }
 
+function parallel_test_base_hybrid() {
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit hybrid tests ...
+    ========================================
+EOF
+
+set +x
+        ut_startTime_s=`date +%s`
+        test_cases=$(ctest -N -V)        # get all test cases
+        get_quickly_disable_ut||disable_ut_quickly='disable_ut'   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+                matchstr=$(echo $line|grep -oEi 'Test[ \t]+#') || true
+                if [[ "$matchstr" == "" ]]; then
+                    # Any test case with LABELS property would be parse here
+                    # RUN_TYPE=HYBRID mean the case would run in HYBRID CI.
+                    is_hybrid=$(echo "$line"|grep -oEi "RUN_TYPE=HYBRID") || true
+                    continue
+                fi
+                testcase=$(echo "$line"|grep -oEi "\w+$")
+                if [[ "$is_hybrid" != "" ]]; then
+                    if [[ "$eight_cards_tests" == "" ]]; then
+                        eight_cards_tests="^$testcase$"
+                    else
+                        eight_cards_tests="$eight_cards_tests|^$testcase$"
+                    fi
+                fi
+                is_hybrid=''
+                matchstr=''
+                testcase=''
+        done <<< "$test_cases";
+        card_test "$eight_cards_tests" 8
+        collect_failed_tests
+set -x
+        ut_endTime_s=`date +%s`
+        echo "HYBRID testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
+            exit 8;
+        fi
+    fi
+}
+
 function parallel_test_base_gpu_test() {
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
@@ -2805,8 +2856,15 @@ function parallel_test() {
     fi
     cp ${PADDLE_ROOT}/build/test/legacy_test/testsuite.py ${PADDLE_ROOT}/build/python
     cp -r ${PADDLE_ROOT}/build/test/white_list ${PADDLE_ROOT}/build/python
+    run_hybrid_ci=${1:-"false"}
     ut_total_startTime_s=`date +%s`
-    if [ "$WITH_CINN" == "ON" ];then
+    if [ "$run_hybrid_ci" == "true" ] && [ "$WITH_DISTRIBUTE" == "ON" ];then
+        if [ "$WITH_GPU" == "ON" ] || [ "$WITH_ROCM" == "ON" ];then
+            parallel_test_base_hybrid
+        else
+            echo "skip parallel_test_base_hybrid when compiling PaddlePaddle without NVIDIA GPU or ROCM platform"
+        fi
+    elif [ "$WITH_CINN" == "ON" ];then
         parallel_test_base_cinn
     elif [ "$WITH_GPU" == "ON" ] && [ "$WITH_HETERPS" == "ON" ];then
         parallel_test_base_gpups
@@ -4096,6 +4154,10 @@ function main() {
         export FLAGS_PIR_OPTEST=True
         parallel_test
         check_coverage
+        ;;
+      gpu_cicheck_coverage)
+        export FLAGS_PIR_OPTEST=True
+        parallel_test true
         ;;
       nv_cicheck_coverage)
         parallel_test
