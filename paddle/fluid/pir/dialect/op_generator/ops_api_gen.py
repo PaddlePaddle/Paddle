@@ -87,6 +87,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fused_attention',
     'fused_feedforward',
     'fc',
+    'self_dp_attention',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [

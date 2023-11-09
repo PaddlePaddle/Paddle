@@ -260,6 +260,7 @@ class ParameterMeta:
 def create_parameter(
     dtype,
     shape,
+    name=None,
     **kwargs,
 ):
     if 'initializer' not in kwargs:
@@ -269,7 +270,9 @@ def create_parameter(
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = unique_name.generate('parameter')
+    op_result_name = name
+    if not op_result_name:
+        op_result_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
