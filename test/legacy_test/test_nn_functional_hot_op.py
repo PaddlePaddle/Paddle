@@ -23,9 +23,14 @@ from paddle.base import core
 from paddle.nn import functional
 
 
+def one_hot_wrapper(x, depth_tensor, **keargs):
+    return paddle.nn.functional.one_hot(x, depth_tensor)
+
+
 class TestOneHotOp(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
         depth = 10
         depth_np = np.array(10).astype('int32')
         dimension = 12
@@ -49,6 +54,7 @@ class TestOneHotOp(OpTest):
 class TestOneHotOp_attr(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
         depth = 10
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
@@ -73,6 +79,7 @@ class TestOneHotOp_attr(OpTest):
 class TestOneHotOp_default_dtype(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
         depth = 10
         depth_np = np.array(10).astype('int32')
         dimension = 12
@@ -96,6 +103,7 @@ class TestOneHotOp_default_dtype(OpTest):
 class TestOneHotOp_default_dtype_attr(OpTest):
     def setUp(self):
         self.op_type = 'one_hot_v2'
+        self.python_api = one_hot_wrapper
         depth = 10
         dimension = 12
         x_lod = [[4, 1, 3, 3]]
