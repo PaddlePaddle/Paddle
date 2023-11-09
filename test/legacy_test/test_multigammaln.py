@@ -68,6 +68,47 @@ class TestMultigammalnAPICase1(TestMultigammalnAPI):
         self.x = np.random.rand(10, 20).astype('float64') + 1.0
 
 
+class TestMultigammalnGrad(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(1024)
+        self.dtype = 'float32'
+        self.x = np.array([2, 3, 4, 5, 6, 7, 8]).astype(dtype=self.dtype)
+        self.p = 3
+        self.place = (
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
+        )
+
+    def test_backward(self):
+        paddle.disable_static(self.place)
+        expected_x_grad = np.array(
+            [
+                -0.117942,
+                2.048725,
+                3.282059,
+                4.151106,
+                4.823328,
+                5.371814,
+                5.835183,
+            ]
+        ).astype('float32')
+
+        x = paddle.to_tensor(self.x, dtype=self.dtype, place=self.place)
+        x.stop_gradient = False
+        out = x.multigammaln(self.p)
+        loss = out.sum()
+        loss.backward()
+
+        np.testing.assert_allclose(
+            x.grad.numpy().astype('float32'),
+            expected_x_grad,
+            rtol=1e-6,
+            atol=1e-6,
+        )
+        paddle.enable_static()
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()
