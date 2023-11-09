@@ -288,7 +288,7 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
 
   group->output_names.clear();
   VLOG(3) << "group->output_ops.size(): " << group->output_ops.size();
-  // TODO(phlrain): output list not stable here
+  // TODO(phlrain): output values not stable here
   for (auto& op : group->output_ops) {
     std::cerr << "output op name " << op->name() << std::endl;
     // collect all output tensor.
@@ -300,6 +300,8 @@ std::vector<ir::LoweredFunc> OpLowererImpl::PostProcess(
       if (arg_name_set.count(tensor->buffer->name) != 0) {
         continue;
       }
+
+      group->output_values.push_back(opresult);
       // output arg tensors
       group_func_arg_tensors->push_back(tensor);
       // output args

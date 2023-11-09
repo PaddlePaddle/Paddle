@@ -1588,7 +1588,7 @@ class GeneralFusionMergePassHelper {
       fused_group->input_ops = producer->input_ops;
 
       fused_group->ops = producer->ops;
-      fused_group->output_ops = producer->output_ops;
+      // fused_group->output_ops = producer->output_ops;
       for (auto op : fused_group->output_ops) {
         std::cerr << "11111 \t " << op->name() << std::endl;
       }

@@ -150,11 +150,14 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
-        // auto group1 =
-        //     std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
-        // group1->output_ops = group->output_ops;
+        auto group1 =
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
+        group1->output_ops = group->output_ops;
         std::cerr << "before compile\n";
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
+
+        std::cerr << "group !!!!!!\t" << group1->output_values.size()
+                  << std::endl;
 
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
@@ -169,18 +172,30 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
           vec_new_ins.push_back(value_map.at(vec_ins[i]));
         }
 
-        auto vec_outs = GetBlockOutsideOutput(group->ops, group_op.ops());
+        // using yield op to sort
+        std::unordered_map<::pir::Value, size_t> value2id;
+        auto yeild_op = group_op.ops().back();
+        for (size_t i = 0; i < yeild_op->num_operands(); ++i) {
+          value2id[yeild_op->operand_source(i)] = i;
+        }
+
+        std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
-        for (auto& out : vec_outs) {
-          vec_types.push_back(out.type());
+        for (size_t i = 0; i < group1->output_values.size(); ++i) {
+          vec_types.push_back(group1->output_values[i].type());
+          codegen2orig[value2id.at(group1->output_values[i])] = i;
         }
+
+        std::cerr << "out size " << vec_types.size() << std::endl;
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
 
+        std::cerr << "cinn op out " << cinn_op->num_results() << std::endl;
+
         for (size_t i = 0; i < group_op.num_results(); ++i) {
-          value_map[group_op.result(i)] = cinn_op->result(i);
+          value_map[group_op.result(i)] = cinn_op->result(codegen2orig.at(i));
         }
 
         ir_program->block()->push_back(cinn_op);
