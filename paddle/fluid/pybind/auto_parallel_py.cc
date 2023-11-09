@@ -42,6 +42,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
 #include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
@@ -205,6 +206,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToSReshardFunction>(
+      *m, "PToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
