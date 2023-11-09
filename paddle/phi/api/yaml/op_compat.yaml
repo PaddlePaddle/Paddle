@@ -2929,6 +2929,7 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : sum (reduce_sum)
   backward : sum_grad (reduce_sum_grad), sum_double_grad

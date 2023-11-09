@@ -845,11 +845,11 @@ class TestComplexElementwiseSubOp(OpTest):
         self.out = self.x - self.y
 
     def test_check_output(self):
-        self.check_output(check_pir=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_pir=False
+            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_pir=True
         )
 
     def test_check_grad_ingore_x(self):
@@ -858,7 +858,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=self.check_prim,
-            check_pir=False,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -867,7 +867,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
-            check_pir=False,
+            check_pir=True,
         )
 
     def if_enable_cinn(self):
