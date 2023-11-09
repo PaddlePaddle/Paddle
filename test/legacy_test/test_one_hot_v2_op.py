@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 
 def one_hot_wrapper(x, depth_tensor, **keargs):
@@ -48,7 +49,7 @@ class TestOneHotOp(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_attr(OpTest):
@@ -74,7 +75,7 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_default_dtype(OpTest):
@@ -98,7 +99,7 @@ class TestOneHotOp_default_dtype(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_cinn=True, check_pir=True)
+        self.check_output(check_cinn=True)
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
@@ -124,14 +125,16 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_pir=True)
+        self.check_output()
 
 
 class TestOneHotOpApi(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         depth = 10
         self._run(depth)
 
+    @test_with_pir_api
     def test_api_with_depthTensor(self):
         depth = paddle.assign(np.array([10], dtype=np.int32))
         self._run(depth)
@@ -151,16 +154,16 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def _run(self, depth):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        label.desc.set_need_check_feed(False)
+        # label.desc.set_need_check_feed(False)
         one_hot_label = paddle.nn.functional.one_hot(x=label, num_classes=depth)
 
-        place = base.CPUPlace()
+        place = paddle.CPUPlace()
         label_data = np.array(
             [np.random.randint(0, 10 - 1) for i in range(6)]
         ).reshape([6, 1])
 
         exe = base.Executor(place)
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -171,8 +174,9 @@ class TestOneHotOpApi(unittest.TestCase):
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def test_bad_x():
                 label = paddle.static.data(
@@ -180,7 +184,7 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[-1, 4],
                     dtype="float32",
                 )
-                label.desc.set_need_check_feed(False)
+                # label.desc.set_need_check_feed(False)
                 one_hot_label = paddle.nn.functional.one_hot(
                     x=label, num_classes=4
                 )

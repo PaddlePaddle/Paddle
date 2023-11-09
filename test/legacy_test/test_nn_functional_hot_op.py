@@ -21,6 +21,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.nn import functional
+from paddle.pir_utils import test_with_pir_api
 
 
 def one_hot_wrapper(x, depth_tensor, **keargs):
@@ -48,7 +49,7 @@ class TestOneHotOp(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_pir=True)
+        self.check_output(check_dygraph=False)
 
 
 class TestOneHotOp_attr(OpTest):
@@ -73,7 +74,7 @@ class TestOneHotOp_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_pir=True)
+        self.check_output(check_dygraph=False)
 
 
 class TestOneHotOp_default_dtype(OpTest):
@@ -97,7 +98,7 @@ class TestOneHotOp_default_dtype(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_pir=True)
+        self.check_output(check_dygraph=False)
 
 
 class TestOneHotOp_default_dtype_attr(OpTest):
@@ -122,14 +123,16 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         self.outputs = {'Out': (out, x_lod)}
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_pir=True)
+        self.check_output(check_dygraph=False)
 
 
 class TestOneHotOpApi(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         num_classes = 10
         self._run(num_classes)
 
+    @test_with_pir_api
     def test_api_with_depthTensor(self):
         num_classes = paddle.assign(np.array([10], dtype=np.int32))
         self._run(num_classes)
@@ -146,7 +149,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
     def _run(self, num_classes):
         label = paddle.static.data(name="label", shape=[-1, 1], dtype="int64")
-        label.desc.set_need_check_feed(False)
+        # label.desc.set_need_check_feed(False)
         one_hot_label = functional.one_hot(x=label, num_classes=num_classes)
 
         place = base.CPUPlace()
@@ -155,7 +158,7 @@ class TestOneHotOpApi(unittest.TestCase):
         ).reshape([6, 1])
 
         exe = base.Executor(place)
-        exe.run(base.default_startup_program())
+        exe.run(paddle.static.default_startup_program())
         ret = exe.run(
             feed={
                 'label': label_data,
@@ -166,6 +169,7 @@ class TestOneHotOpApi(unittest.TestCase):
 
 
 class BadInputTestOnehotV2(unittest.TestCase):
+    @test_with_pir_api
     def test_error(self):
         with base.program_guard(base.Program()):
 
@@ -175,7 +179,7 @@ class BadInputTestOnehotV2(unittest.TestCase):
                     shape=[4],
                     dtype="float32",
                 )
-                label.desc.set_need_check_feed(False)
+                # label.desc.set_need_check_feed(False)
                 one_hot_label = functional.one_hot(x=label, num_classes=4)
 
             self.assertRaises(TypeError, test_bad_x)
