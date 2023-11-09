@@ -32,7 +32,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.zeros((3, 4, 5, 6), dtype='float32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         x = paddle.to_tensor(np_data, dtype=self.dtype)
@@ -47,7 +47,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.ones((3, 4, 5, 6), dtype='float32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
 
@@ -62,7 +62,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.ones((3, 4, 5, 6), dtype='int32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
 
@@ -77,7 +77,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.ones((3, 4, 5, 6), dtype='int32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
 
@@ -93,7 +93,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.ones((3, 4, 5, 6), dtype='int32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         np_value = np.zeros((6,), dtype='float32')
         x = paddle.to_tensor(np_data, dtype=self.dtype)
@@ -111,7 +111,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_data = np.ones((3, 4, 5, 6), dtype='float32').astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         np_value = np.zeros((6,), dtype='int64')
 
@@ -132,7 +132,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         )
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
 
@@ -151,7 +151,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         )
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
 
@@ -178,7 +178,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         )
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
         x = paddle.to_tensor(np_data, dtype=self.dtype)
         np_data[np.array([[2, 3, 4], [1, 2, 5]])] = 100
@@ -196,7 +196,7 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         x = paddle.to_tensor(np_data, dtype=self.dtype)
@@ -216,7 +216,7 @@ class TestSetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         x = paddle.to_tensor(np_data, dtype=self.dtype)
@@ -232,7 +232,7 @@ class TestSetitemInDygraph(unittest.TestCase):
         np_v = np.random.randn(3, 1).astype(self.ndtype)
         if self.dtype == 'bfloat16':
             np_v = convert_uint16_to_float(convert_float_to_uint16(np_v))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_v = np_v + 1j * np_v
         v = paddle.to_tensor(np_v, dtype=self.dtype)
         v.stop_gradient = False

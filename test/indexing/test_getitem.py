@@ -34,7 +34,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[[0, 1], :, [1, 2]]
@@ -52,7 +52,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         x = paddle.to_tensor(np_data, dtype=self.dtype)
@@ -70,7 +70,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[[1, 0], :, [1, 4], 1:5:2, 4]
@@ -89,7 +89,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[:, [1, 0], 0:4:2, [2, 3], 4]
@@ -107,7 +107,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[::2, [1, 0], [2, 3], 0:4:2]
@@ -125,7 +125,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[::2, [1, 0], [2, 3], 0:4:2, [4, 6]]
@@ -143,7 +143,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[::2, [[1, 0]], [[2, 3]], 0:4:2, [[4, 6]]]
@@ -161,7 +161,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[
@@ -181,7 +181,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[[[1, 0]], [1, 0], 0:4:2, [[3, 5], [4, 2]]]
@@ -199,7 +199,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[:, [True, False, True, False], 4]
@@ -220,7 +220,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[:, [False, False, False, False], 4]
@@ -240,7 +240,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[:, range(3), 4]
@@ -261,7 +261,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[[True, False, True], [False, False, False, True]]
@@ -282,7 +282,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[
@@ -311,7 +311,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[np.array([[2, 3, 4], [1, 2, 5]])]
@@ -334,7 +334,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[True]
@@ -355,7 +355,7 @@ class TestGetitemInDygraph(unittest.TestCase):
 
         if self.dtype == 'bfloat16':
             np_data = convert_uint16_to_float(convert_float_to_uint16(np_data))
-        if self.dtype == 'complex64' or self.dtype == 'complex32':
+        if self.dtype == 'complex64' or self.dtype == 'complex128':
             np_data = np_data + 1j * np_data
 
         np_res = np_data[1, False, 0]
