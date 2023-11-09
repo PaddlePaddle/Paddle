@@ -593,23 +593,24 @@ PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
     RETURN_PY_NONE;
   }
 
+  size_t offset = 0;
   if (self->tensor.is_dense_tensor()) {
     auto dense_tensor =
         std::dynamic_pointer_cast<phi::DenseTensor>(self->tensor.impl());
     if (dense_tensor == nullptr) {
       RETURN_PY_NONE;
-    } else {
-      return ToPyObject(dense_tensor->offset());
     }
+    offset = dense_tensor->offset();
   } else if (self->tensor.is_dist_tensor()) {
-    auto dense_tensor =
-        std::dynamic_pointer_cast<phi::DistTensor>(self->tensor.impl());
-    if (dense_tensor == nullptr) {
+    auto dist_tensor = std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+        self->tensor.impl());
+    if (dist_tensor == nullptr) {
       RETURN_PY_NONE;
-    } else {
-      return ToPyObject(dense_tensor->offset());
     }
+    offset = dist_tensor->value().offset();
   }
+
+  return ToPyObject(offset);
 
   EAGER_CATCH_AND_THROW_RETURN_NULL
 }
