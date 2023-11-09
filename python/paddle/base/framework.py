@@ -5698,6 +5698,7 @@ class Program:
 
         # assigned if this program has been parsed by a pipeline optimizer
         self._pipeline_opt = None
+        self._pass_opt = None
 
         # assigned if this program has been parsed by a heter pipeline parameter server optimizer
         self._heter_pipeline_opt = None
@@ -6335,7 +6336,8 @@ class Program:
                 p.lr_scheduler = self.lr_scheduler
             if hasattr(self, '_pipeline_opt'):
                 p._pipeline_opt = self._pipeline_opt
-
+            if hasattr(self, '_pass_opt'):
+                p._pass_opt = self._pass_opt
             # NOTE(zhiqiu): we sync the cloned program, to update its program by
             # its desc.
             p._sync_with_cpp()
