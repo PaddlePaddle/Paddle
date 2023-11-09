@@ -362,11 +362,11 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
   check_dim_mapping(infered_dist_attrs.second[0], {1, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {1});
-  check_dim_mapping(infered_dist_attrs.second[2], {1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, -1});
+  check_dim_mapping(infered_dist_attrs.second[2], {1, -1});
   VLOG(4) << "test1 done.";
 
-  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, -1, -1],z[1],z[1],
+  // ijk[1, 0, -1],k[0],k[0] --> ijk[1, -1, -1],z[1, 0],z[1, 0],
   // begin_norm_axis=2
   begin_norm_axis = 2;
   x_dist_attr.set_dims_mapping({1, 0, -1});
@@ -381,15 +381,15 @@ TEST(LayerNormSPMDRule, Ctor) {
                                            {epsilon, begin_norm_axis});
   infered_dist_attrs = layer_norm_rule.InferForward(ctx);
 
-  check_dim_mapping(infered_dist_attrs.first[0], {1, -1, -1});
+  check_dim_mapping(infered_dist_attrs.first[0], {1, 0, -1});
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
-  check_dim_mapping(infered_dist_attrs.second[0], {1, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {1});
-  check_dim_mapping(infered_dist_attrs.second[2], {1});
+  check_dim_mapping(infered_dist_attrs.second[0], {1, 0, -1});
+  check_dim_mapping(infered_dist_attrs.second[1], {1, 0});
+  check_dim_mapping(infered_dist_attrs.second[2], {1, 0});
   VLOG(4) << "test2 done.";
 
-  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, 1, -1], i[0], i[0], y=jk,
+  // ijk[0, -1, -1],y[-1],y[1] --> ijk[0, -1, 1], i[0], i[0], y=jk,
   // begin_norm_axis=1
   begin_norm_axis = 1;
   x_dist_attr.set_dims_mapping({0, -1, -1});
@@ -408,8 +408,8 @@ TEST(LayerNormSPMDRule, Ctor) {
   check_dim_mapping(infered_dist_attrs.first[1], {-1});
   check_dim_mapping(infered_dist_attrs.first[2], {-1});
   check_dim_mapping(infered_dist_attrs.second[0], {0, -1, -1});
-  check_dim_mapping(infered_dist_attrs.second[1], {0});
-  check_dim_mapping(infered_dist_attrs.second[2], {0});
+  check_dim_mapping(infered_dist_attrs.second[1], {0, -1});
+  check_dim_mapping(infered_dist_attrs.second[2], {0, -1});
   VLOG(4) << "test3 done.";
 }
 
