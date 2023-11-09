@@ -14,6 +14,8 @@
 
 import paddle
 from paddle.amp.auto_cast import amp_state
+from paddle.base import framework
+from paddle.base.data_feeder import convert_dtype
 from paddle.base.unique_name import UniqueNameGenerator
 from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.static import Program
@@ -37,7 +39,14 @@ class MetaInfo:
     @staticmethod
     def from_tensor(tensor):
         # We always use float32 in simulation if AMP is enabled.
-        dtype = tensor.dtype
+        if isinstance(tensor, paddle.pir.OpResult):
+            name = "OpResult@NoName"
+            persistable = tensor.is_persistable
+            dtype = framework.paddle_type_to_proto_type[tensor.dtype]
+        else:
+            name = tensor.name
+            persistable = tensor.persistable
+            dtype = tensor.dtype
         current_amp_state = amp_state()
         if (
             dtype == paddle.float16
@@ -45,12 +54,13 @@ class MetaInfo:
             and current_amp_state["dtype"] == "float16"
         ):
             dtype = paddle.float32
+        # TODO(@xiongkun) remove after pir become default state.
         return MetaInfo(
             list(tensor.shape),
             dtype,
             tensor.stop_gradient,
-            tensor.name,
-            tensor.persistable,
+            name,
+            persistable,
             tensor.type,
             tensor.place,
         )
@@ -104,11 +114,22 @@ class VariableCreator:
         return name
 
     def create_var(self, meta):
-        var = self.main_program.global_block().create_var(
-            shape=meta.shape,
-            dtype=meta.dtype,
-            stop_gradient=meta.stop_gradient,
-        )
+        if paddle.base.framework.use_pir_api():
+            with paddle.static.program_guard(
+                self.main_program, self.startup_program
+            ):
+                var = paddle.static.input.data(
+                    name=self.gen_name(meta),
+                    shape=meta.shape,
+                    dtype=convert_dtype(meta.dtype),
+                )
+                var.stop_gradient = meta.stop_gradient
+        else:
+            var = self.main_program.global_block().create_var(
+                shape=meta.shape,
+                dtype=meta.dtype,
+                stop_gradient=meta.stop_gradient,
+            )
         assert not isinstance(
             var, paddle.Tensor
         ), "Expect a Variable, but got a Tensor."
@@ -163,9 +184,14 @@ def convert_meta_to_input_spec(args):
 
 
 def convert_variable_to_meta_info(args):
+    static_variable_type = (
+        paddle.static.Variable
+        if not paddle.base.framework.use_pir_api()
+        else paddle.pir.OpResult
+    )
     return map_if_extend(
         args,
-        pred=lambda x: isinstance(x, paddle.static.Variable),
+        pred=lambda x: isinstance(x, static_variable_type),
         true_fn=lambda x: MetaInfo.from_tensor(x),
         false_fn=lambda x: x,
     )
