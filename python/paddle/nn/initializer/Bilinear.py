@@ -17,7 +17,7 @@ import numpy as np
 from paddle import _C_ops
 
 from ...base import core, framework, unique_name
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import _current_expected_place, in_dynamic_or_pir_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -140,7 +140,7 @@ class Bilinear(Initializer):
         if np.prod(shape) > 1024 * 1024:
             raise ValueError("The size of input is too big. ")
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.assign_value_(
                 out_var,
                 list(shape),
