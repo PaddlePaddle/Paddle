@@ -95,7 +95,8 @@ Examples:
 
 PyObject* tensor_properties_get_type(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined() || self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() || self->tensor.is_dense_tensor() ||
+      self->tensor.is_dist_tensor()) {
     // be same to old dygraph
     return ToPyObject(paddle::framework::proto::VarType::LOD_TENSOR);
   }
@@ -239,9 +240,19 @@ int tensor_properties_set_data(TensorObject* self,
   auto src = CastPyArg2Tensor(value, 0);
   self->tensor = src;
   phi::DenseTensor tmp;
-  auto dense_tensor = static_cast<phi::DenseTensor*>(self->tensor.impl().get());
-  if (dense_tensor) {
-    dense_tensor->ShareInplaceVersionCounterWith(tmp);
+  if (self->tensor.is_dense_tensor()) {
+    auto dense_tensor =
+        static_cast<phi::DenseTensor*>(self->tensor.impl().get());
+    if (dense_tensor) {
+      dense_tensor->ShareInplaceVersionCounterWith(tmp);
+    }
+  } else if (self->tensor.is_dist_tensor()) {
+    auto dist_tensor =
+        static_cast<phi::distributed::DistTensor*>(self->tensor.impl().get())
+            ->unsafe_mutable_value();
+    if (dist_tensor) {
+      dist_tensor->ShareInplaceVersionCounterWith(tmp);
+    }
   }
   return 0;
   EAGER_CATCH_AND_THROW_RETURN_NEG
@@ -552,7 +563,8 @@ Examples:
 PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor()) {
+  if (!self->tensor.defined() || !self->tensor.is_dense_tensor() ||
+      !self->tensor.is_dist_tensor()) {
     return ToPyObject(value);
   }
 
