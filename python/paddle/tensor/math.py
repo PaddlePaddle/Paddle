@@ -3287,7 +3287,7 @@ def log1p(x, name=None):
              [0.69314718]])
     """
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.log1p(x)
     else:
         check_variable_and_dtype(
@@ -5042,7 +5042,7 @@ def lgamma(x, name=None):
             Tensor(shape=[4], dtype=float32, place=Place(cpu), stop_gradient=True,
             [1.31452453, 1.76149762, 2.25271273, 1.09579790])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.lgamma(x)
     else:
         check_variable_and_dtype(
