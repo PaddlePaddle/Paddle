@@ -1166,6 +1166,7 @@ class Executor:
     """
 
     def __init__(self, place=None):
+        set_flags({"FLAGS_use_mkldnn": False})
         if place is None:
             expected_place = framework._current_expected_place_()
             self.place = expected_place
