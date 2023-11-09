@@ -112,7 +112,7 @@ class DygraphShardingOptimizer:
             local_params = self._rank2params[self._sharding_rank]
             self._set_inner_opt_attr('_parameter_list', local_params)
             self._set_inner_opt_attr('_param_groups', local_params)
-        else:
+        elif self.tensor_fusion:
             self._tensor_fusion()
 
             decay_params = [
@@ -151,6 +151,8 @@ class DygraphShardingOptimizer:
             # won't change. To avoid failure on some other applications (such as some nvtx
             # operations), here we manulay let the allocator release the cached memory.
             paddle.device.cuda.empty_cache()
+        else: # self.comm_overlap
+            self._build_comm_buffers()
 
     def clear_grad(self, set_to_zero=True):
         """
@@ -173,6 +175,21 @@ class DygraphShardingOptimizer:
                         p.grad = None
                 else:
                     p.clear_gradient(set_to_zero)
+
+    def _build_comm_buffers(self, group_size=256 * 1024 * 1024):
+        if self.pp_overlap:
+            return
+
+        comm_group = self._hcg.get_sharding_parallel_group()
+        var_groups = assign_group_by_size(self._parameter_list, group_size)
+        for group_idx, parameters in var_groups.items():
+            buffer = FusedCommBuffer(
+                group_idx,
+                parameters,
+                comm_group,
+                act=HOOK_ACTION.REDUCE_SCATTER,
+            )
+            self._comm_buffers.append(buffer)
 
     def _tensor_fusion(self):
         comm_group = self._hcg.get_sharding_parallel_group()
