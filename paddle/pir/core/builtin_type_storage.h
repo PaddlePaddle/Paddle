@@ -53,11 +53,11 @@ struct DenseTensorTypeStorage : public pir::TypeStorage {
   using DataLayout = phi::DataLayout;
   using Dim = phi::DDim;
   using LoD = std::vector<std::vector<size_t>>;
-  using ParamKey = std::tuple<pir::Type, Dim, DataLayout, LoD, size_t>;
+  using ParamKey = std::tuple<Type, Dim, DataLayout, LoD, size_t>;
 
-  DenseTensorTypeStorage(const pir::Type& dtype,
+  DenseTensorTypeStorage(Type dtype,
                          const Dim& dims,
-                         const DataLayout& layout,
+                         DataLayout layout,
                          const LoD& lod,
                          size_t offset)
       : dtype_(dtype),
