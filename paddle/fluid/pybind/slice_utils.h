@@ -141,7 +141,7 @@ static int _PySlice_GetIndices(PySliceObject* r,
   return 0;
 }
 
-static void ParseIndexingSlice(phi::DenseTensor* tensor,
+static void ParseIndexingSlice(phi::DDim shape,
                                PyObject* _index,
                                std::vector<int>* slice_axes,
                                std::vector<int>* slice_starts,
@@ -164,11 +164,7 @@ static void ParseIndexingSlice(phi::DenseTensor* tensor,
       VLOG(4) << "Call Py_DECREF";
     }
   });
-  PADDLE_ENFORCE_EQ(
-      tensor->IsInitialized(),
-      true,
-      platform::errors::InvalidArgument("tensor has not been initialized"));
-  const auto& shape = tensor->dims();
+
   const int rank = shape.size();
   const int size = PyTuple_GET_SIZE(index);
 
