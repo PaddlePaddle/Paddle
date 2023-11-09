@@ -63,19 +63,30 @@ class LocalAutoCastLayer2(paddle.nn.Layer):
 
 
 class TestLocalCast(unittest.TestCase):
+    def get_auto_cast_ops_info_from_program(self, program):
+        auto_cast_ops_info = []
+        for block in program.blocks:
+            current_block_should_auto_cast = []
+            auto_cast_ops_info.append(current_block_should_auto_cast)
+            for op in block.ops:
+                current_block_should_auto_cast.append(op.should_auto_cast)
+        return auto_cast_ops_info
+
     def should_auto_cast_for_each_ops(self, layer, input):
         concrete_program, _ = layer.forward.get_concrete_program(input)
         program = concrete_program.main_program
         prepare_op_should_auto_cast(
             program, ProgramTranslator.get_instance()._amp_records
         )
-        actual = []
-        for block in program.blocks:
-            current_block_should_auto_cast = []
-            actual.append(current_block_should_auto_cast)
-            for op in block.ops:
-                current_block_should_auto_cast.append(op.should_auto_cast)
-        return actual
+        auto_cast_ops_info = self.get_auto_cast_ops_info_from_program(program)
+        paddle.enable_static()
+        cloned_program = program.clone()
+        paddle.disable_static()
+        cloned_auto_cast_ops_info = self.get_auto_cast_ops_info_from_program(
+            cloned_program
+        )
+        self.assertEqual(auto_cast_ops_info, cloned_auto_cast_ops_info)
+        return auto_cast_ops_info
 
     def test_should_auto_cast_1(self):
         layer = LocalAutoCastLayer1()
