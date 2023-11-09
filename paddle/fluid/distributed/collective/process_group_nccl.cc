@@ -863,18 +863,26 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   comm_ctx->set_nccl_comm(nccl_comm);
 
   // gather global ranks in current group
-  int* global_ranks_gpu = nullptr;
-  size_t global_ranks_gpu_size = size_ * sizeof(int);
-  cudaMalloc((void**)&global_ranks_gpu, global_ranks_gpu_size);
+  int* gpu_global_rank = nullptr;
+  size_t gpu_global_rank_size = sizeof(int);
+  cudaMalloc(&gpu_global_rank, gpu_global_rank_size);
+
+  cudaMemcpy(gpu_global_rank, &global_rank_, gpu_global_rank_size, cudaMemcpyHostToDevice);
+
+  int* gpu_global_ranks = nullptr;
+  size_t gpu_global_ranks_size = size_ * sizeof(int);
+  cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size);
+
   NCCL_CHECK(phi::dynload::ncclAllGather(
-      &global_rank_, global_ranks_gpu, 1, ncclInt, nccl_comm, comm_ctx->stream()));
+      gpu_global_rank, gpu_global_ranks, 1, ncclInt, nccl_comm, comm_ctx->stream()));
 
   std::vector<int> global_ranks(size_);
   cudaMemcpy(global_ranks.data(),
-                 global_ranks_gpu,
-                 global_ranks_gpu_size,
+                 gpu_global_ranks,
+                 gpu_global_ranks_size,
                  cudaMemcpyDeviceToHost);
-  cudaFree(global_ranks_gpu);
+  cudaFree(gpu_global_rank);
+  cudaFree(gpu_global_ranks);
 
   // store global_ranks in current group_key
   std::once_flag flag;
