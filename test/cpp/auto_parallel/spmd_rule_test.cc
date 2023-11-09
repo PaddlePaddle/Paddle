@@ -895,14 +895,8 @@ TEST(StackRule, Ctor) {
   check_dim_mapping(infered_reverse_attrs.second[0],
                     output_dist_attr.dims_mapping());
   // test grad
-  auto infered_grad_attrs =
-      phi::distributed::StackGradInferSpmd(inputs, output, 0);
-  auto& inputs_infer1_grad = paddle::get<1>(infered_grad_attrs.first[0]);
-  for (auto e : inputs_infer1_grad) {
-    check_dim_mapping(e, {-1, 1, 0});
-    check_partial_dims(e, {});
-  }
-  check_dim_mapping(infered_grad_attrs.first[1],
+  auto infered_grad_attrs = phi::distributed::StackGradInferSpmd(output, 0);
+  check_dim_mapping(infered_grad_attrs.first[0],
                     output_dist_attr.dims_mapping());
   auto& infered_grad = paddle::get<1>(infered_grad_attrs.second[0]);
   for (auto e : infered_grad) {
