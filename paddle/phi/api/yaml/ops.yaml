@@ -667,7 +667,7 @@
   args : (Tensor x)
   output : Tensor
   infer_meta :
-    func : UnchangedInferMeta
+    func : DetInferMeta
   kernel :
     func : determinant
   backward : det_grad

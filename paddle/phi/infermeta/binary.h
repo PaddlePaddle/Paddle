@@ -173,6 +173,7 @@ void DistributeFpnProposalsInferMeta(
     MetaTensor* restore_index,
     MetaConfig config = MetaConfig());
 
+void DetInferMeta(const MetaTensor& x, MetaTensor* out);
 void DotInferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void DropoutInferMeta(const MetaTensor& x,
