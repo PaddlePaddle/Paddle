@@ -16,7 +16,7 @@ from paddle import _C_ops
 
 from ...base import core, framework, unique_name
 from ...base.data_feeder import check_type
-from ...base.framework import _current_expected_place, in_dygraph_mode
+from ...base.framework import _current_expected_place, in_dynamic_or_pir_mode
 from .initializer import Initializer
 
 __all__ = []
@@ -98,7 +98,7 @@ class NumpyArrayInitializer(Initializer):
                 "saving it to file and 'load_op' to load it"
             )
 
-        if in_dygraph_mode():
+        if in_dynamic_or_pir_mode():
             _C_ops.assign_value_(
                 out_var,
                 list(self._value.shape),
