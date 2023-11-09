@@ -308,14 +308,10 @@ def _convert_into_opresult(tensor):
         is_persistable = True
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
-        elif isinstance(tensor, framework.EagerParamBase):
-            # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+        else:
             new_var = _global_parameter_recorder.get(
                 paddle.pir.core.default_main_program(), tensor
             )
-        else:
-            # TODO(xiongkun): add this logic, we should call paddle.data() to create a non-parameter variable.
-            raise NotImplementedError("Not implemented, for buffers.")
         # add param into parameter recorder to collect all the params used in this program.
         return new_var
     else:

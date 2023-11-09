@@ -2929,6 +2929,7 @@
   extra :
     attrs : [bool use_mkldnn = false, str mkldnn_data_type = "float32",
              bool use_quantizer = false, float Scale_x = 1.0f, float Scale_y = 1.0f, float Scale_out = 1.0f]
+  complex_promote : [X, Y]
 
 - op : sum (reduce_sum)
   backward : sum_grad (reduce_sum_grad), sum_double_grad
@@ -3404,6 +3405,16 @@
     {x: X, label: Label}
   outputs :
     out : Out
+
+- op: sparse_momentum
+  inputs :
+    {param: Param, grad: Grad, velocity: Velocity, index: Index, axis: Axis, learning_rate: LearningRate,master_param: MasterParam}
+  outputs :
+    {param_out: ParamOut, velocity_out: VelocityOut, master_param_out: MasterParamOut}
+  scalar:
+   axis:
+     datatype : int
+     tensor_name : Axis
 
 - op: squared_l2_norm
   backward: squared_l2_norm_grad
