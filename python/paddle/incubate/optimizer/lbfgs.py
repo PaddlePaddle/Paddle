@@ -232,7 +232,7 @@ class LBFGS(Optimizer):
 
         Args:
             closure (callable): A closure that reevaluates the model
-                and returns the loss
+                and returns the loss.
 
         """
 
