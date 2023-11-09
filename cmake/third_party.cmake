@@ -386,7 +386,7 @@ if(WITH_GPU)
   elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
          OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
     include(external/cccl)
-    list(APPEND third_party_deps extern_cccl)
+    add_definitions(-DPADDLE_WITH_CCCL)
   endif()
   set(URL
       "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg_20210928.tar.gz"
