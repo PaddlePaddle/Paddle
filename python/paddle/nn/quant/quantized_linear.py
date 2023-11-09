@@ -15,7 +15,11 @@
 from paddle import _C_ops
 from paddle.base.data_feeder import check_dtype
 from paddle.base.framework import convert_np_dtype_to_dtype_
-from paddle.framework import LayerHelper, in_dynamic_mode, in_dynamic_or_pir_mode
+from paddle.framework import (
+    LayerHelper,
+    in_dynamic_mode,
+    in_dynamic_or_pir_mode,
+)
 
 
 def weight_quantize(x, algo="weight_only_int8"):
