@@ -16,8 +16,6 @@ from paddle import _legacy_C_ops
 from paddle.base.data_feeder import check_variable_and_dtype
 from paddle.base.layer_helper import LayerHelper
 from paddle.framework import in_dynamic_or_pir_mode
-
-
 def identity_loss(x, reduction="none"):
     r"""Marks a tensor as being part of the loss calculation for IPU.
 
