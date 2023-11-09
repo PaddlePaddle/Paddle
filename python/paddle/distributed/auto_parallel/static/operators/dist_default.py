@@ -47,7 +47,6 @@ __op_not_need_param_init__ = ["while", "cond"]
 __op_has_shape_attr__ = [
     "fill_constant_batch_size_like",
     "fill_constant",
-    "expand_v2",
 ]
 
 
