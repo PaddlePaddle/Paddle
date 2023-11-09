@@ -19,6 +19,7 @@ from op_test import OpTest, convert_float_to_uint16
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(102)
 
@@ -79,6 +80,7 @@ class TestNanmedian(unittest.TestCase):
             [0, 2, 1, 3],
         ]
 
+    @test_with_pir_api
     def test_api_static(self):
         data = self.fake_data["col_nan_odd"]
         paddle.enable_static()
@@ -150,6 +152,7 @@ class TestNanmedian(unittest.TestCase):
 
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_errors(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
@@ -257,10 +260,10 @@ class TestNanmedianFP16Op(OpTest):
         self.outputs = {'Out': Out}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 @unittest.skipIf(
