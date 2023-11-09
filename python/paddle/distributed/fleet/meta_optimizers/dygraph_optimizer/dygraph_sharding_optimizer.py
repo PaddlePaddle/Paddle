@@ -397,7 +397,10 @@ class DygraphShardingOptimizer:
             if (not self.tensor_fusion or not self.fuse_optimizer)
             else self._parameter_list
         )
-        if not isinstance(target_param_list[0], dict) or if not self._using_param_groups:
+        if (
+            not isinstance(target_param_list[0], dict)
+            or not self._using_param_groups
+        ):
             params_grads = []
             for param in target_param_list:
                 if (
