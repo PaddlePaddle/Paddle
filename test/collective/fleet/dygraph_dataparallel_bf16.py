@@ -1,5 +1,3 @@
-# -*- coding: UTF-8 -*-
-
 # Copyright (c) 2023 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,73 +13,21 @@
 # limitations under the License.
 
 import numpy as np
+from dist_amp_base import MLP, RandomDataset, create_optimizer
 
 import paddle
-from paddle.distributed.fleet.utils import mix_precision_utils
 from paddle.distributed.fleet.utils.hybrid_parallel_util import (
     fused_allreduce_gradients,
 )
-from paddle.nn import Linear, ReLU
-
-seed = 2022
-epoch = 2
-linear_size = 1000
-
-np.random.seed(seed)
-paddle.seed(seed)
-
-
-class MLP(paddle.nn.Layer):
-    def __init__(self, linear_size=1000):
-        super().__init__()
-
-        self._linear1 = Linear(linear_size, linear_size)
-        self._linear2 = Linear(linear_size, linear_size)
-        self._linear3 = Linear(linear_size, 10)
-        self._relu = ReLU()
-
-    def forward(self, inputs):
-        y = self._linear1(inputs)
-        y = self._linear2(y)
-        y = self._linear3(y)
-        y = self._relu(y)
-        return y
-
-
-class RandomDataset(paddle.io.Dataset):
-    def __init__(self, num_samples=200, linear_size=1000):
-        self.num_samples = num_samples
-        self.linear_size = linear_size
-
-    def __getitem__(self, idx):
-        img = np.random.rand(self.linear_size).astype('float32')
-        return img
-
-    def __len__(self):
-        return self.num_samples
-
-
-def optimizer_setting(model, use_pure_bf16, use_main_grad):
-    if use_main_grad:
-        assert use_pure_bf16
-        model = mix_precision_utils.MixPrecisionLayer(model, dtype="bfloat16")
-    optimizer = paddle.optimizer.AdamW(
-        parameters=model.parameters(),
-        learning_rate=0.00001,
-        weight_decay=0.00001,
-        grad_clip=paddle.nn.ClipGradByGlobalNorm(clip_norm=1.0),
-        multi_precision=use_pure_bf16,
-    )
-    if use_main_grad:
-        optimizer = mix_precision_utils.MixPrecisionOptimizer(optimizer)
-
-    return optimizer
 
 
 def train_mlp(
-    model, use_pure_bf16=False, use_main_grad=False, accumulate_grad=False
+    model, train_loader, use_pure_bf16=False, use_main_grad=False, acc_steps=1
 ):
-    optimizer = optimizer_setting(
+    print(
+        f"-- Train Info: use_pure_bf16={use_pure_bf16}, use_main_grad={use_main_grad}, acc_steps={acc_steps}"
+    )
+    optimizer = create_optimizer(
         model=model, use_pure_bf16=use_pure_bf16, use_main_grad=use_main_grad
     )
     if use_pure_bf16:
@@ -102,15 +48,6 @@ def train_mlp(
         ]
     model = paddle.DataParallel(model)
 
-    paddle.seed(2023)
-    np.random.seed(2023)
-    train_loader = paddle.io.DataLoader(
-        RandomDataset(),
-        batch_size=100,
-        shuffle=False,
-        drop_last=True,
-        num_workers=0,
-    )
     if not use_pure_bf16:
         for param in model.parameters():
             t = paddle.cast(
@@ -118,7 +55,10 @@ def train_mlp(
             )
             param.set_value(t)
 
+    local_rank = paddle.distributed.get_rank()
+
     losses = []
+    epoch = 2
     for eop in range(epoch):
         model.train()
 
@@ -135,43 +75,52 @@ def train_mlp(
                     out = model(data)
                     loss = paddle.mean(out)
 
-                losses.append(loss)
-
+                losses.append(loss.astype("float32").item())
                 loss.backward()
 
-            if not accumulate_grad:
+            if (batch_id + 1) % acc_steps == 0:
                 fused_allreduce_gradients(list(model.parameters()), None)
 
                 optimizer.step()
                 optimizer.clear_grad()
-
-        if accumulate_grad:
-            fused_allreduce_gradients(list(model.parameters()), None)
-
-            optimizer.step()
-            optimizer.clear_grad()
-
+                print(
+                    f"-- [rank={local_rank}] epoch {eop}, batch {batch_id}, loss: {loss.astype(paddle.float32).numpy()}"
+                )
     return losses
 
 
 def test_dp_bf16():
     if not paddle.amp.is_bfloat16_supported():
+        print("BFloat16 is not supported!")
         return
+
     paddle.distributed.init_parallel_env()
-    mlp = MLP()
-    state_dict = mlp.state_dict()
+    local_rank = paddle.distributed.get_rank()
+    paddle.seed(2023 + local_rank)
+    np.random.seed(2023 + local_rank)
+
+    # For DataParallel, DataLoader should feed different data for different GPUs.
+    train_loader = paddle.io.DataLoader(
+        RandomDataset(),
+        batch_size=100,
+        shuffle=False,
+        drop_last=True,
+        num_workers=0,
+    )
+
+    single_mlp = MLP()
+    state_dict = single_mlp.state_dict()
 
     # dp bf16 O1 vs dp bf16 O2 main_grad
     mlp1 = MLP()
     mlp2 = MLP()
     mlp1.set_state_dict(state_dict)
     mlp2.set_state_dict(state_dict)
-    losses_o1 = train_mlp(mlp1, use_pure_bf16=False)
-    losses_o2 = train_mlp(mlp2, use_pure_bf16=True, use_main_grad=True)
-    for i in range(len(losses_o2)):
-        loss_o2 = paddle.cast(losses_o2[i], dtype='float32').detach()
-        loss_o1 = paddle.cast(losses_o1[i], dtype='float32').detach()
-        np.testing.assert_array_equal(loss_o2, loss_o1)
+    losses_o1 = train_mlp(mlp1, train_loader, use_pure_bf16=False)
+    losses_o2 = train_mlp(
+        mlp2, train_loader, use_pure_bf16=True, use_main_grad=True
+    )
+    np.testing.assert_array_equal(losses_o2, losses_o1)
 
     # grad accumulation test
     mlp3 = MLP()
@@ -179,19 +128,12 @@ def test_dp_bf16():
     mlp3.set_state_dict(state_dict)
     mlp4.set_state_dict(state_dict)
     losses_acc_grad_o1 = train_mlp(
-        mlp3, use_pure_bf16=False, accumulate_grad=True
+        mlp3, train_loader, use_pure_bf16=False, acc_steps=2
     )
     losses_acc_grad_o2 = train_mlp(
-        mlp4, use_pure_bf16=True, use_main_grad=True, accumulate_grad=True
+        mlp4, train_loader, use_pure_bf16=True, use_main_grad=True, acc_steps=2
     )
-    for i in range(len(losses_acc_grad_o2)):
-        loss_acc_grad_o2 = paddle.cast(
-            losses_acc_grad_o2[i], dtype='float32'
-        ).detach()
-        loss_acc_grad_o1 = paddle.cast(
-            losses_acc_grad_o1[i], dtype='float32'
-        ).detach()
-        np.testing.assert_array_equal(loss_acc_grad_o2, loss_acc_grad_o1)
+    np.testing.assert_array_equal(losses_acc_grad_o2, losses_acc_grad_o1)
 
 
 if __name__ == '__main__':
