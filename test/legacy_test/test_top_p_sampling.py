@@ -83,7 +83,7 @@ class TestTopPAPI(unittest.TestCase):
                 self.dtype,
             ).reshape((-1, 1))
             # test case for basic test case 1
-            paddle_result = paddle.top_p_sampling(
+            paddle_result = paddle.tensor.top_p_sampling(
                 input_tensor, topp_tensor, seed=self.seed
             )
             ref_res = TopPProcess(input_tensor, self.topp)
@@ -108,7 +108,7 @@ class TestTopPAPI(unittest.TestCase):
             topp_tensor = paddle.static.data(
                 name="topp", shape=[6, 1], dtype=self.dtype
             )
-            result = paddle.top_p_sampling(
+            result = paddle.tensor.top_p_sampling(
                 input_tensor, topp_tensor, seed=self.seed
             )
             ref_res = TopPProcess(input_tensor, self.topp)
