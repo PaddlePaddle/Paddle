@@ -25,6 +25,7 @@ from paddle.base.framework import dygraph_only
 
 from ..framework import LayerHelper, in_dynamic_or_pir_mode
 
+
 __all__ = [
     "DebugMode",
     "TensorCheckerConfig",
