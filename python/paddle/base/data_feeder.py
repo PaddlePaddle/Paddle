@@ -45,6 +45,21 @@ _PADDLE_DTYPE_2_NUMPY_DTYPE = {
     core.VarDesc.VarType.COMPLEX128: 'complex128',
 }
 
+_NUMPY_DTYPE_2_PADDLE_DTYPE = {
+    'bool': core.VarDesc.VarType.BOOL,
+    'float16': core.VarDesc.VarType.FP16,
+    'uint16': core.VarDesc.VarType.BF16,
+    'float32': core.VarDesc.VarType.FP32,
+    'float64': core.VarDesc.VarType.FP64,
+    'int8': core.VarDesc.VarType.INT8,
+    'int16': core.VarDesc.VarType.INT16,
+    'int32': core.VarDesc.VarType.INT32,
+    'int64': core.VarDesc.VarType.INT64,
+    'uint8': core.VarDesc.VarType.UINT8,
+    'complex64': core.VarDesc.VarType.COMPLEX64,
+    'complex128': core.VarDesc.VarType.COMPLEX128,
+}
+
 _PADDLE_PIR_DTYPE_2_NUMPY_DTYPE = {
     core.DataType.BOOL: 'bool',
     core.DataType.FLOAT16: 'float16',
