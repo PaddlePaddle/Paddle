@@ -70,7 +70,7 @@ class CommTaskManager {
   static std::unordered_map<std::string, std::shared_ptr<CommTask>>
       start_comm_task_map_;
   std::shared_ptr<Store> store_;
-  // record last comm task in current group, eg: group_key->comm_task 
+  // record last comm task in current group, eg: group_key->comm_task
   static std::unordered_map<std::string, std::shared_ptr<CommTask>>
       group_last_comm_task_;
   static std::chrono::time_point<std::chrono::steady_clock> last_update_time_;

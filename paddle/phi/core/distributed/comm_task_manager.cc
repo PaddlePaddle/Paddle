@@ -98,25 +98,27 @@ void CommTaskManager::CommTaskLoop() {
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
     if (IsTimeout()) {
-        std::once_flag flag;
-        std::call_once(flag, [this]() {
-            LOG(WARNING) << "CommTaskLoop timeout";
-            for (auto iter: group_last_comm_task_) {
-                LOG(INFO) << "all trace comm task:" << iter.second->GetTraceMsg();
-            }
-        });
+      std::once_flag flag;
+      std::call_once(flag, [this]() {
+        LOG(WARNING) << "CommTaskLoop timeout";
+        for (auto iter : group_last_comm_task_) {
+          LOG(INFO) << "all trace comm task:" << iter.second->GetTraceMsg();
+        }
+      });
     }
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
       if (task->IsTimeout()) {
         if (!task->IsStarted()) {
-          LOG(WARNING) << "Find timeout init but not start task:" << task->GetTraceMsg();
+          LOG(WARNING) << "Find timeout init but not start task:"
+                       << task->GetTraceMsg();
           std::string task_key = task->UniqueKey();
           init_comm_task_map_[task_key] = task;
         } else if (!task->IsCompleted()) {
-          LOG(WARNING) << "Find timeout start but not finish task:" << task->GetTraceMsg();
-          for (auto iter: group_last_comm_task_) {
-              LOG(INFO) << "All trace comm task:" << iter.second->GetTraceMsg();
+          LOG(WARNING) << "Find timeout start but not finish task:"
+                       << task->GetTraceMsg();
+          for (auto iter : group_last_comm_task_) {
+            LOG(INFO) << "All trace comm task:" << iter.second->GetTraceMsg();
           }
           std::string task_key = task->UniqueKey();
           start_comm_task_map_[task_key] = task;
@@ -124,11 +126,11 @@ void CommTaskManager::CommTaskLoop() {
         iter = comm_task_list_.erase(iter);
       } else {
         if (task->IsStarted()) {
-            if (task->IsCompleted()) {
-                task->ClearRecord();
-                iter = comm_task_list_.erase(iter);
-            }
-            UpdateLastCommTask(task);
+          if (task->IsCompleted()) {
+            task->ClearRecord();
+            iter = comm_task_list_.erase(iter);
+          }
+          UpdateLastCommTask(task);
         } else {
           ++iter;
         }
@@ -171,9 +173,9 @@ void CommTaskManager::CommTaskLoop() {
 }
 
 void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
-    std::string task_key = task->UniqueKey();
-    group_last_comm_task_[task_key] = task;
-    last_update_time_ = std::chrono::steady_clock::now();
+  std::string task_key = task->UniqueKey();
+  group_last_comm_task_[task_key] = task;
+  last_update_time_ = std::chrono::steady_clock::now();
 }
 
 void CommTaskManager::SetTimeout(int64_t timeout) {
@@ -183,7 +185,7 @@ void CommTaskManager::SetTimeout(int64_t timeout) {
 bool CommTaskManager::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
   return std::chrono::duration_cast<std::chrono::milliseconds>(
-          current_timepoint - last_update_time_) >= timeout_;
+             current_timepoint - last_update_time_) >= timeout_;
 }
 }  // namespace distributed
 }  // namespace phi

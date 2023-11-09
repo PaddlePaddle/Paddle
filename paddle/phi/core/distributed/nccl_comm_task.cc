@@ -163,19 +163,21 @@ std::string NCCLCommTask::GetCommErrors() {
   return comm_error_;
 }
 
-bool NCCLCommTask::IsStarted() { 
-    if (!start_event_created_) {
-        LOG(ERROR) << "query start event failed, task:" << GetTraceMsg();
-        return false;
-    }
-    return CudaEventQuery(nccl_start_event_); }
+bool NCCLCommTask::IsStarted() {
+  if (!start_event_created_) {
+    LOG(ERROR) << "query start event failed, task:" << GetTraceMsg();
+    return false;
+  }
+  return CudaEventQuery(nccl_start_event_);
+}
 
-bool NCCLCommTask::IsCompleted() { 
-    if (!end_event_created_) {
-        LOG(ERROR) << "query end event failed, task:" << GetTraceMsg();
-        return false;
-    }
-    return CudaEventQuery(nccl_end_event_); }
+bool NCCLCommTask::IsCompleted() {
+  if (!end_event_created_) {
+    LOG(ERROR) << "query end event failed, task:" << GetTraceMsg();
+    return false;
+  }
+  return CudaEventQuery(nccl_end_event_);
+}
 
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();
@@ -210,8 +212,7 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",op:" + CommTypeToString(comm_type_) +
          ",started:" + std::to_string(IsStarted()) +
          ",completed:" + std::to_string(IsCompleted()) +
-         ",size:" + std::to_string(size_) + 
-         ",numel:" + std::to_string(numel_) +
+         ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
          ",sync_op:" + std::to_string(sync_op_) +
          ",use_calc_stream:" + std::to_string(use_calc_stream_) +
          ",timeout:" + std::to_string(timeout_.count()) +
