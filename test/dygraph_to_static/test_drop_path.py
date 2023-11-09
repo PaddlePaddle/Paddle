@@ -15,7 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 
@@ -31,19 +34,18 @@ class DropPath(paddle.nn.Layer):
     def __init__(self):
         super().__init__()
 
-    @paddle.jit.to_static
     def forward(self, x):
         return drop_path(x, self.training)
 
 
 class TestTrainEval(Dy2StTestBase):
     def setUp(self):
-        self.model = DropPath()
+        self.model = paddle.jit.to_static(DropPath())
 
     def tearDown(self):
         pass
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_train_and_eval(self):
         x = paddle.to_tensor([1, 2, 3]).astype("int64")
         eval_out = x.numpy()

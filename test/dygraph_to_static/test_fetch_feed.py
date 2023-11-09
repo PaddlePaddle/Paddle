@@ -15,11 +15,13 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, compare_legacy_with_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 from paddle import base
-from paddle.jit.api import to_static
 
 SEED = 2020
 
@@ -29,7 +31,6 @@ class Pool2D(paddle.nn.Layer):
         super().__init__()
         self.pool2d = paddle.nn.AvgPool2D(kernel_size=2, stride=1)
 
-    @to_static
     def forward(self, x):
         # Add func `get_result` for testing arg_name_to_idx in ast transformation.
         def get_result(x):
@@ -54,7 +55,6 @@ class Linear(paddle.nn.Layer):
         )
         self.act = paddle.nn.ReLU()
 
-    # @to_static
     def forward(self, x):
         pre = self.fc(x)
         pre = self.act(pre)
@@ -71,7 +71,7 @@ class TestPool2D(Dy2StTestBase):
         paddle.jit.enable_to_static(to_static)
 
         with base.dygraph.guard():
-            dy_layer = self.dygraph_class()
+            dy_layer = paddle.jit.to_static(self.dygraph_class())
             x = base.dygraph.to_variable(self.data)
             prediction = dy_layer(x)
             if isinstance(prediction, (list, tuple)):
@@ -79,13 +79,13 @@ class TestPool2D(Dy2StTestBase):
 
             return prediction.numpy()
 
-    @compare_legacy_with_pir
     def train_static(self):
         return self.train(to_static=True)
 
     def train_dygraph(self):
         return self.train(to_static=False)
 
+    @test_legacy_and_pir_exe_and_pir_api
     def test_declarative(self):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()

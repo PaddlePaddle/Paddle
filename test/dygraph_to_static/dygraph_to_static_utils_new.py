@@ -202,12 +202,6 @@ class Dy2StTestMeta(type):
             )
             # Generate all test cases
             for to_static_mode, ir_mode in to_static_with_ir_modes:
-                # NOTE(gouzil): Temporarily not supported SOT + PIR, link: https://github.com/PaddlePaddle/Paddle/pull/58630
-                if (
-                    to_static_mode == ToStaticMode.SOT
-                    and ir_mode == IrMode.PIR_API
-                ):
-                    continue
                 new_attrs[
                     Dy2StTestMeta.test_case_name(
                         fn_name, to_static_mode, ir_mode

@@ -18,13 +18,15 @@ import unittest
 
 import gym
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 import paddle.nn.functional as F
 from paddle import base
 from paddle.base.dygraph import to_variable
-from paddle.jit.api import to_static
 from paddle.nn import Layer
 
 SEED = 2020
@@ -41,7 +43,6 @@ class Policy(Layer):
         self.saved_log_probs = []
         self.rewards = []
 
-    @to_static
     def forward(self, x):
         x = paddle.reshape(x, shape=[1, 4])
         x = self.affine1(x)
@@ -71,7 +72,7 @@ def train(args, place, to_static):
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
-        policy = Policy()
+        policy = paddle.jit.to_static(Policy())
 
         eps = np.finfo(np.float32).eps.item()
         optimizer = paddle.optimizer.Adamax(
@@ -212,7 +213,7 @@ class TestDeclarative(Dy2StTestBase):
         )
         self.args = Args()
 
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_train(self):
         st_out = train(self.args, self.place, to_static=True)
         dy_out = train(self.args, self.place, to_static=False)
