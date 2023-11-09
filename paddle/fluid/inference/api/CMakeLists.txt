@@ -71,7 +71,7 @@ set(inference_deps
     analysis_config
     naive_executor
     ${GLOB_PASS_LIB}
-    transform)
+    pir_transforms)
 
 if(WITH_GPU AND TENSORRT_FOUND)
   set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
