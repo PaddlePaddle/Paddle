@@ -1260,10 +1260,10 @@ void FusedRopeGradInferMeta(const MetaTensor& sin,
   }
 }
 
-void SetValueGradInferMeta(const MetaTensor& out_grad,
-                           const MetaTensor& values,
-                           MetaTensor* x_grad,
-                           MetaTensor* value_grad) {
+void SetValueWithTensorGradInferMeta(const MetaTensor& out_grad,
+                                     const MetaTensor& values,
+                                     MetaTensor* x_grad,
+                                     MetaTensor* value_grad) {
   if (x_grad) {
     x_grad->set_dims(out_grad.dims());
     x_grad->set_dtype(out_grad.dtype());
@@ -1276,4 +1276,11 @@ void SetValueGradInferMeta(const MetaTensor& out_grad,
   }
 }
 
+void SetValueGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad) {
+  if (x_grad) {
+    x_grad->set_dims(out_grad.dims());
+    x_grad->set_dtype(out_grad.dtype());
+    x_grad->share_lod(out_grad);
+  }
+}
 }  // namespace phi

@@ -1,6 +1,17 @@
 # The apis in this file are unstandardized that may caused by a variety of reasons,
 # we are trying to fix these apis and will move standardized apis into ops.yaml.
 
+# - op : set_value_with_tensor_
+#   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+#   output : Tensor(out)
+#   inplace: (x -> out)
+#   infer_meta:
+#     func: SetValueInferMeta
+#     param: [x]
+#   kernel:
+#     func: set_value_with_tensor
+#   backward: set_value_with_tensor_grad
+
 - op : adadelta_
   args : (Tensor param, Tensor grad, Tensor avg_squared_grad, Tensor avg_squared_update, Tensor learning_rate, Tensor master_param, float rho, float epsilon, bool multi_precision)
   output : Tensor(param_out), Tensor(moment_out), Tensor(inf_norm_out), Tensor(master_param_out)
@@ -960,6 +971,17 @@
     data_type : x
   intermediate : noise
   backward : rrelu_grad
+
+- op : set_value_
+  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  output : Tensor(out)
+  inplace: (x -> out)
+  infer_meta :
+    func : SetValueInferMeta
+    param : [x]
+  kernel :
+    func : set_value
+  backward: set_value_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
