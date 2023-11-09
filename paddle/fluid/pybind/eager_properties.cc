@@ -563,8 +563,8 @@ Examples:
 PyObject* tensor_properties_get_strides(TensorObject* self, void* closure) {
   EAGER_TRY
   std::vector<int64_t> value;
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor() ||
-      !self->tensor.is_dist_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     return ToPyObject(value);
   }
 
@@ -600,8 +600,8 @@ Examples:
 )DOC");
 PyObject* tensor_properties_get_offset(TensorObject* self, void* closure) {
   EAGER_TRY
-  if (!self->tensor.defined() || !self->tensor.is_dense_tensor() ||
-      !self->tensor.is_dist_tensor()) {
+  if (!self->tensor.defined() ||
+      (!self->tensor.is_dense_tensor() && !self->tensor.is_dist_tensor())) {
     RETURN_PY_NONE;
   }
 
