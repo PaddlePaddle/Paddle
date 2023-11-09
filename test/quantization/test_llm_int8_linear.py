@@ -23,6 +23,7 @@ from paddle import base
 from paddle.base import core
 from paddle.base.framework import default_main_program
 from paddle.framework import set_default_dtype
+from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(123)
 paddle.seed(123)
@@ -86,6 +87,7 @@ class LLMInt8LinearTestCase(unittest.TestCase):
         )
         return out.numpy()
 
+    @test_with_pir_api
     def get_llm_int8_linear_out_static(self):
         paddle.enable_static()
         main = base.Program()
