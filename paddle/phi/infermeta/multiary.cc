@@ -2931,10 +2931,19 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
           "The batch size of Query, Key, Value should be equal."));
 
   PADDLE_ENFORCE_EQ(
-      ((query_num_head == key_num_head) && (key_num_head == value_num_head)),
+      (key_num_head == value_num_head),
       true,
       phi::errors::InvalidArgument(
           "The head number of Query, Key, Value should be equal."));
+
+  PADDLE_ENFORCE_EQ(
+      query_num_head % key_num_head,
+      0,
+      errors::InvalidArgument(
+          "The num_head of query must be divisible by the num_head of key, but "
+          "recived num_head of query is %d, and the num_head of key is %d",
+          query_num_head,
+          key_num_head));
 
   PADDLE_ENFORCE_EQ(query_head_size == key_head_size,
                     true,
