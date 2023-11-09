@@ -63,8 +63,8 @@
 PHI_DECLARE_bool(dynamic_static_unified_comm);
 #endif
 
-PHI_DECLARE_bool(enable_new_ir_in_executor);
-PHI_DECLARE_bool(enable_new_ir_in_executor_trace_run);
+PHI_DECLARE_bool(enable_pir_in_executor);
+PHI_DECLARE_bool(enable_pir_in_executor_trace_run);
 
 namespace paddle {
 namespace framework {
@@ -274,17 +274,17 @@ void PirInterpreter::ShareBuildResultsFrom(const InterpreterBaseImpl& src) {
     return;
   }
   // share op dependency
-  ir_dependency_builder_.ShareDependencyFrom(impl.GetNewIrDependencyBuilder());
+  ir_dependency_builder_.ShareDependencyFrom(impl.GetPirDependencyBuilder());
   dependecy_count_ = impl.GetDependencyCount();
   // share event analysis
-  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetNewIrStreamAnalyzer());
+  ir_stream_analyzer_.ShareEventInfoFrom(impl.GetPirStreamAnalyzer());
   is_shared_results_build_ = true;
   VLOG(8) << "Share Build Results from InterpreterCore(" << &impl
           << ") to InterpreterCore(" << this << ")";
 }
 
-const interpreter::NewIrDependencyBuilder&
-PirInterpreter::GetNewIrDependencyBuilder() const {
+const interpreter::PirDependencyBuilder&
+PirInterpreter::GetPirDependencyBuilder() const {
   return ir_dependency_builder_;
 }
 
@@ -293,7 +293,7 @@ std::shared_ptr<std::vector<size_t>> PirInterpreter::GetDependencyCount()
   return dependecy_count_;
 }
 
-const interpreter::NewIrStreamAnalyzer& PirInterpreter::GetNewIrStreamAnalyzer()
+const interpreter::PirStreamAnalyzer& PirInterpreter::GetPirStreamAnalyzer()
     const {
   return ir_stream_analyzer_;
 }
@@ -425,7 +425,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.c_reduce_prod",
       "pd_op.c_reducescatter",
       "pd_op.c_broadcast",
-      "pd_op.c_broadcast_",
       "pd_op.c_scatter",
       "pd_op.partial_send",
       "pd_op.partial_recv",
@@ -439,7 +438,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.distributed_fused_lamb",
       "pd_op.margin_cross_entropy",
       "pd_op.sync_batch_norm",
-      "pd_op.sync_batch_norm_",
       "pd_op.data_norm",
       "pd_op.class_center_sample",
       "pd_op.all_to_all",
@@ -474,7 +472,6 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.global_gather_grad",
       "pd_op.distributed_fused_lamb_grad",
       "pd_op.margin_cross_entropy_grad",
-      "pd_op.margin_cross_entropy_grad_",
       "pd_op.sync_batch_norm_grad",
       "pd_op.data_norm_grad",
       "pd_op.class_center_sample_grad",
@@ -486,7 +483,77 @@ void PirInterpreter::UpdateNcclOpNum() {
       "pd_op.p_send_grad",
       "pd_op.reduce_scatter_grad",
       "pd_op.all_reduce_grad",
-      "pd_op.reduce_grad"};
+      "pd_op.reduce_grad",
+      "pd_op.c_softmax_with_cross_entropy_",
+      "pd_op.c_allgather_",
+      "pd_op.c_allreduce_max_",
+      "pd_op.c_allreduce_min_",
+      "pd_op.c_allreduce_sum_",
+      "pd_op.c_allreduce_prod_",
+      "pd_op.c_reduce_max_",
+      "pd_op.c_reduce_min_",
+      "pd_op.c_reduce_prod_",
+      "pd_op.c_reducescatter_",
+      "pd_op.c_broadcast_",
+      "pd_op.c_scatter_",
+      "pd_op.partial_send_",
+      "pd_op.partial_recv_",
+      "pd_op.partial_allgather_",
+      "pd_op.recv_v2_",
+      "pd_op.send_v2_",
+      "pd_op.mp_allreduce_sum_",
+      "pd_op.barrier_",
+      "pd_op.alltoall_",
+      "pd_op.global_gather_",
+      "pd_op.distributed_fused_lamb_",
+      "pd_op.margin_cross_entropy_",
+      "pd_op.sync_batch_norm_",
+      "pd_op.data_norm_",
+      "pd_op.class_center_sample_",
+      "pd_op.all_to_all_",
+      "pd_op.dist_concat_",
+      "pd_op.all_gather_",
+      "pd_op.broadcast_",
+      "pd_op.p_recv_",
+      "pd_op.p_send_",
+      "pd_op.reduce_scatter_",
+      "pd_op.all_reduce_",
+      "pd_op.reduce_",
+      "pd_op.c_softmax_with_cross_entropy_grad_",
+      "pd_op.c_allgather_grad_",
+      "pd_op.c_allreduce_max_grad_",
+      "pd_op.c_allreduce_min_grad_",
+      "pd_op.c_allreduce_sum_grad_",
+      "pd_op.c_allreduce_prod_grad_",
+      "pd_op.c_reduce_max_grad_",
+      "pd_op.c_reduce_min_grad_",
+      "pd_op.c_reduce_prod_grad_",
+      "pd_op.c_reducescatter_grad_",
+      "pd_op.c_broadcast_grad_",
+      "pd_op.c_scatter_grad_",
+      "pd_op.partial_send_grad_",
+      "pd_op.partial_recv_grad_",
+      "pd_op.partial_allgather_grad_",
+      "pd_op.recv_v2_grad_",
+      "pd_op.send_v2_grad_",
+      "pd_op.mp_allreduce_sum_grad_",
+      "pd_op.barrier_grad_",
+      "pd_op.alltoall_grad_",
+      "pd_op.global_gather_grad_",
+      "pd_op.distributed_fused_lamb_grad_",
+      "pd_op.margin_cross_entropy_grad_",
+      "pd_op.sync_batch_norm_grad_",
+      "pd_op.data_norm_grad_",
+      "pd_op.class_center_sample_grad_",
+      "pd_op.all_to_all_grad_",
+      "pd_op.dist_concat_grad_",
+      "pd_op.all_gather_grad_",
+      "pd_op.broadcast_grad_",
+      "pd_op.p_recv_grad_",
+      "pd_op.p_send_grad_",
+      "pd_op.reduce_scatter_grad_",
+      "pd_op.all_reduce_grad_",
+      "pd_op.reduce_grad_"};
   int64_t nccl_op_num = 0;
   for (auto& ins : vec_instruction_base_) {
     if (nccl_op_set.count(ins->Name())) {
@@ -1069,7 +1136,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1085,7 +1152,7 @@ paddle::framework::FetchList PirInterpreter::Run(
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1143,7 +1210,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     VLOG(4) << "Done PreAnalysis";
 
     // Run
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {
@@ -1159,7 +1226,7 @@ FetchList PirInterpreter::Run(const std::vector<std::string>& feed_names,
     is_build_ = true;
     is_shared_results_build_ = true;
   } else {
-    if (FLAGS_enable_new_ir_in_executor_trace_run || nccl_op_num_ > 1 ||
+    if (FLAGS_enable_pir_in_executor_trace_run || nccl_op_num_ > 1 ||
         execution_config_.used_for_inference ||
         ((execution_config_.used_for_jit || execution_config_.used_for_cinn) &&
          (sync_op_num_ == 0))) {

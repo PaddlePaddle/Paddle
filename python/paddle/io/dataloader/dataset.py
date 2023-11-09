@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import bisect
+from typing import Iterable
 
 import paddle
 
@@ -619,7 +620,7 @@ class ConcatDataset(Dataset):
             s += l
         return r
 
-    def __init__(self, datasets):
+    def __init__(self, datasets: Iterable[Dataset]):
         self.datasets = list(datasets)
         assert (
             len(self.datasets) > 0

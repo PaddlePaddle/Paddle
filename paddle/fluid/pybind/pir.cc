@@ -37,11 +37,13 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_api.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
+#include "paddle/fluid/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_dropout_add_pass.h"
 #include "paddle/fluid/pir/transforms/fusion/fused_linear_param_grad_add_pass.h"
 #include "paddle/fluid/pir/transforms/inplace_pass.h"
 #include "paddle/fluid/pir/transforms/replace_fetch_with_shadow_output_pass.h"
 #include "paddle/phi/core/enforce.h"
+#include "paddle/pir/core/attribute.h"
 #include "paddle/pir/core/block.h"
 #include "paddle/pir/core/builtin_attribute.h"
 #include "paddle/pir/core/program.h"
@@ -50,12 +52,14 @@
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_manager.h"
 #include "paddle/pir/pass/pass_registry.h"
-#include "paddle/pir/transforms/dead_code_elimination_pass.h"
 #include "paddle/utils/flags.h"
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #endif
@@ -64,6 +68,7 @@ namespace py = pybind11;
 using paddle::dialect::APIBuilder;
 using paddle::dialect::DenseTensorType;
 using paddle::dialect::SelectedRowsType;
+using pir::Attribute;
 using pir::Block;
 using pir::Operation;
 using pir::OpOperand;
@@ -128,7 +133,8 @@ std::string GetValueInfo(Value v) {
 }
 
 void BindProgram(py::module *m) {
-  py::class_<Program, std::shared_ptr<Program>> program(*m, "Program", R"DOC(
+  py::class_<Program, std::shared_ptr<Program>> program(
+      *m, "Program", py::dynamic_attr(), R"DOC(
     Create Python Program. Program is an abstraction of model structure, divided into
     computational graphs and weights. The Program has a main block that stores the computational
     graphs.
@@ -803,6 +809,15 @@ void BindType(py::module *m) {
       });
 }
 
+void BindAttribute(py::module *m) {
+  py::class_<Attribute> ir_attr(*m, "Attribute", py::module_local());
+  ir_attr.def("__str__", [](Attribute &self) {
+    std::ostringstream print_stream;
+    print_stream << self;
+    return print_stream.str();
+  });
+}
+
 Operation *BuildOpFrom(
     Operation *to_copy_op,
     std::unordered_map<pir::Value, pir::Value> &value_map) {  // NOLINT
@@ -1254,7 +1269,7 @@ void BindUtils(pybind11::module *m) {
         ->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   });
   m->def(
-      "translate_to_new_ir",
+      "translate_to_pir",
       [](const ::paddle::framework::ProgramDesc &legacy_program) {
         std::shared_ptr<Program> ret =
             std::move(paddle::TranslateLegacyProgramToProgram(legacy_program));
@@ -1278,7 +1293,7 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> pir_flag = 'FLAGS_enable_pir_in_executor'
                 >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
@@ -1297,9 +1312,9 @@ void BindUtils(pybind11::module *m) {
                 ...    y_s = paddle.matmul(x_s, x_s)
                 ...    z_s = paddle.add(y_s, y_s)
                 ...    k_s = paddle.tanh(z_s)
-                >>> newir_program = pir.translate_to_new_ir(main_program.desc)
+                >>> pir_program = pir.translate_to_pir(main_program.desc)
 
-                >>> print(newir_program)
+                >>> print(pir_program)
                 {
                  (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
                  (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
@@ -1325,7 +1340,7 @@ void BindUtils(pybind11::module *m) {
         list[str] : List of unregistered operators in paddle dialect, the name is expressed by origin op name.
     )DOC");
   m->def(
-      "translate_to_new_ir_with_param_map",
+      "translate_to_pir_with_param_map",
       [](const framework::ProgramDesc &legacy_program) {
         auto ir_ctx = pir::IrContext::Instance();
         auto program = std::make_shared<pir::Program>(ir_ctx);
@@ -1353,7 +1368,7 @@ void BindUtils(pybind11::module *m) {
 
                 >>> import os
                 >>> # Paddle will remove this flag in the next version
-                >>> pir_flag = 'FLAGS_enable_new_ir_in_executor'
+                >>> pir_flag = 'FLAGS_enable_pir_in_executor'
                 >>> os.environ[pir_flag] = 'True'
 
                 >>> import paddle
@@ -1372,9 +1387,9 @@ void BindUtils(pybind11::module *m) {
                 ...     y_s = paddle.matmul(x_s, x_s)
                 ...     z_s = paddle.add(y_s, y_s)
                 ...     k_s = paddle.tanh(z_s)
-                >>> newir_program, mappings = pir.translate_to_new_ir_with_param_map(main_program.desc)
+                >>> pir_program, mappings = pir.translate_to_pir_with_param_map(main_program.desc)
 
-                >>> print(newir_program)
+                >>> print(pir_program)
                 {
                  (%0) = "pd_op.data" () {dtype:(pd_op.DataType)float32,is_persisable:[false],name:"x",place:(pd_op.Place)Place(undefined:0),shape:(pd_op.IntArray)[4,4],stop_gradient:[false]} : () -> pd_op.tensor<4x4xf32>
                  (%1) = "pd_op.matmul" (%0, %0) {is_persisable:[false],stop_gradient:[false],transpose_x:false,transpose_y:false} : (pd_op.tensor<4x4xf32>, pd_op.tensor<4x4xf32>) -> pd_op.tensor<4x4xf32>
@@ -1389,8 +1404,8 @@ void BindUtils(pybind11::module *m) {
   m->def("clear_pir_compiler_manager", []() {
 #ifdef PADDLE_WITH_CINN
     pybind11::gil_scoped_release release;
-    VLOG(4) << "clear PIRCompilerManager and free PIRCompiler resources.";
-    cinn::hlir::framework::PIRCompilerManager::Instance().clear();
+    VLOG(4) << "clear PirCompilerManager and free PirCompiler resources.";
+    cinn::hlir::framework::PirCompilerManager::Instance().clear();
 #endif
   });
 }
@@ -1401,7 +1416,13 @@ void BindUtils(pybind11::module *m) {
 std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;
@@ -1411,7 +1432,7 @@ std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
   return std::move(new_program);
 #endif
   PADDLE_THROW(platform::errors::Unimplemented(
-      "Currently we only support CINN Pass for PIR under @to_static, please "
+      "Currently we only support CINN Pass for Pir under @to_static, please "
       "compile PaddlePaddle with CINN"));
 }
 void BindIrPass(pybind11::module *m) {
@@ -1462,7 +1483,7 @@ void BindPassManager(pybind11::module *m) {
       .def("empty", &PassManager::Empty);
 }
 
-void BindPIR(pybind11::module *module) {
+void BindPir(pybind11::module *module) {
   auto ir_module = module->def_submodule("pir");
   BindProgram(&ir_module);
   BindBlock(&ir_module);
@@ -1471,6 +1492,7 @@ void BindPIR(pybind11::module *module) {
   BindOpOperand(&ir_module);
   BindOpResult(&ir_module);
   BindType(&ir_module);
+  BindAttribute(&ir_module);
   BindUtils(&ir_module);
   BindIrPass(&ir_module);
   BindPassManager(&ir_module);
