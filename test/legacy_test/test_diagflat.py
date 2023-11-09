@@ -112,6 +112,7 @@ class TestDiagFlatAPI(unittest.TestCase):
         with paddle.static.program_guard(Program()):
             self.run_static(use_gpu=True)
 
+    @test_with_pir_api
     def test_fp16_with_gpu(self, use_gpu=False):
         if paddle.base.core.is_compiled_with_cuda():
             place = paddle.CUDAPlace(0)
