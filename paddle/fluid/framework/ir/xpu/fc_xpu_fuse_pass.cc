@@ -430,7 +430,8 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     float* bn_mean_ptr = bn_mean_t->data<float>();
     float* bn_var_ptr = bn_var_t->data<float>();
     auto mean_len = bn_mean_t->numel();
-    auto filter_stride = filter_len / mean_len;
+    auto filter_h = filter_t->dims()[0];
+    auto filter_w = filter_t->dims()[1];
     float epsilon = PADDLE_GET_CONST(float, bn->Op()->GetAttr("epsilon"));
     if (!with_bias) {  // prev node is conv
       PrepareBias(graph, scope, block, bn_bias, &fusion_bias_node);
@@ -447,8 +448,8 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
     if (op_weights_precision != "int8") {
       float* filter_ptr = filter_t->data<float>();
       for (int i = 0; i < mean_len; ++i) {
-        for (int j = 0; j < filter_stride; j++) {
-          filter_ptr[i * filter_stride + j] *= bn_scale_ptr[i];
+        for (int j = 0; j < filter_h; j++) {
+          filter_ptr[j * filter_w + i] *= bn_scale_ptr[i];
         }
       }
     } else {
@@ -463,8 +464,8 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
       }
       for (int i = 0; i < mean_len; i++) {
         if (bn_scale_ptr[i] < 0) {
-          for (int j = 0; j < filter_stride; ++j) {
-            filter_ptr[i * filter_stride + j] *= -1;
+          for (int j = 0; j < filter_h; ++j) {
+            filter_ptr[j * filter_w + i] *= -1;
           }
         }
       }

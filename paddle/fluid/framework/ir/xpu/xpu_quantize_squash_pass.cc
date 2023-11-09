@@ -331,10 +331,8 @@ void XPUQuantizeSquashPass::ApplyImpl(ir::Graph* graph) const {
   FindNodesToKeep(graph, &nodes_keep_counter);
   DequantQuantSquash(graph, &nodes_keep_counter);
   OpDequantSquash(graph);
-  QuantOpSquash(graph);  // If the quant op is fused into conv2d_xpu, the
-                         // performance will become worse.
+  QuantOpSquash(graph);
   QuantConv2dFusionDequantSquash(graph);
-
   MultipleQuantizeSquash(graph);
 }
 
