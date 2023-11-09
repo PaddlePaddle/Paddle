@@ -680,6 +680,18 @@ class TestReshapeAPI_ZeroDim(unittest.TestCase):
             self.assertEqual(result[3].shape, (1,))
 
 
+class TestReshapePirOpResultListShape(unittest.TestCase):
+    def test_opresult_list_shape(self):
+        with paddle.pir_utils.IrGuard():
+            x = paddle.static.data(
+                'x',
+                [3],
+            )
+            shape = [1, paddle.full([], 3)]
+            out = paddle.reshape(x, shape)
+            np.testing.assert_array_equal(tuple(out.shape), (-1, -1))
+
+
 if __name__ == "__main__":
     paddle.enable_static()
     unittest.main()
