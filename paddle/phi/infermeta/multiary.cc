@@ -2930,11 +2930,10 @@ void VariableLengthMemoryEfficientAttentionInferMeta(
       phi::errors::InvalidArgument(
           "The batch size of Query, Key, Value should be equal."));
 
-  PADDLE_ENFORCE_EQ(
-      (key_num_head == value_num_head),
-      true,
-      phi::errors::InvalidArgument(
-          "The head number of Query, Key, Value should be equal."));
+  PADDLE_ENFORCE_EQ((key_num_head == value_num_head),
+                    true,
+                    phi::errors::InvalidArgument(
+                        "The head number of Key, Value should be equal."));
 
   PADDLE_ENFORCE_EQ(
       query_num_head % key_num_head,
