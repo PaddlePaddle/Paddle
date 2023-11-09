@@ -556,4 +556,9 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
                                       const std::string& fc_activation,
                                       MetaTensor* out,
                                       MetaTensor* fc_out);
+
+void SelfDPAttenInferMeta(const MetaTensor& x,
+                          const float alpha,
+                          const int head_number,
+                          MetaTensor* out);
 }  // namespace phi
