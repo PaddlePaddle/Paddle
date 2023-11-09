@@ -37,6 +37,63 @@ namespace cub = hipcub;
 namespace phi {
 
 template <typename T>
+std::string PrintValue(const T& value) {
+  std::stringstream ss;
+  if (std::is_floating_point<T>::value) {
+    ss << std::showpoint;
+  }
+  ss << std::setprecision(std::numeric_limits<T>::max_digits10);
+
+  if (std::is_integral<T>::value) {
+    if (std::is_unsigned<T>::value) {
+      ss << static_cast<uint64_t>(value);
+    } else {
+      ss << static_cast<int64_t>(value);
+    }
+  } else {
+    ss << value;
+  }
+  return ss.str();
+}
+
+template <typename T, typename Context>
+std::string DebugString(const DenseTensor& tensor, const Context& dev_ctx) {
+  DenseTensor tmp;
+  phi::Copy(dev_ctx, tensor, CPUPlace(), true, &tmp);
+
+  std::stringstream ss;
+  ss << "adamw print data=[";
+  size_t numel = tmp.numel();
+  const T* data = tmp.data<T>();
+  size_t print_num = 20L;
+
+  if (numel <= 2 * print_num) {
+    for (size_t i = 0; i < numel; ++i) {
+      if (i > 0) {
+        ss << ", ";
+      }
+      ss << PrintValue(data[i]);
+    }
+  } else {
+    for (size_t i = 0; i < print_num; ++i) {
+      if (i > 0) {
+        ss << ", ";
+      }
+      ss << PrintValue(data[i]);
+    }
+    ss << ", ... , ";
+    for (size_t i = numel - print_num; i < numel; ++i) {
+      ss << PrintValue(data[i]);
+      if (i != numel - 1) {
+        ss << ", ";
+      }
+    }
+  }
+  ss << "]";
+  return ss.str();
+}
+
+template <typename T>
 __global__ void SoftLabelCrossEntropyGradientKernel(T* logit_grad,
                                                     const T* loss_grad,
                                                     const T* labels,
@@ -121,10 +178,10 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
                                                      const int64_t d,
                                                      const int ignore_index) {
   int64_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int64_t idx_n = idx / (d * dim);
-  int64_t idx_dim = (idx / d) % dim;
-  int64_t idx_d = idx % d;
-  int64_t ids = idx_n * d + idx_d;
+  int64_t idx_n = idx / (d * dim);    // row
+  int64_t idx_dim = (idx / d) % dim;  // col
+  int64_t idx_d = idx % d;            // 0
+  int64_t ids = idx_n * d + idx_d;    // row
 
   if (idx < n * dim * d) {
     auto lbl = static_cast<int64_t>(labels[ids]);
@@ -135,6 +192,12 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(T* logits_grad,
     } else {
       logits_grad[idx] = softmax[idx] * loss_grad[ids];
     }
+    printf("idx: %d, softmax:%f logits_grad:%f loss_grad:%f\n",
+           idx,
+           softmax[idx],
+           logits_grad[idx],
+           loss_grad[ids]);
+    // printf("%f %f\n", softmax_val, logit_grad);
   }
 }
 
@@ -215,9 +278,19 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
     SoftCrossEntropyGradientKernel<T><<<grid, block, 0, stream>>>(
         logit_grad_data, loss_grad_data, label_data, n, d, remain);
   } else {
+    // std::cout << "****** logits_grad *******" << std::endl;
+    // std::cout << DebugString<T>(*logits_grad, dev_ctx) << std::endl;
+    std::cout << "****** softmax *******" << std::endl;
+    std::cout << DebugString<T>(softmax, dev_ctx) << std::endl;
+    std::cout << "****** loss_grad *******" << std::endl;
+    std::cout << "loss_grad numel: " << loss_grad.numel() << std::endl;
+    std::cout << DebugString<T>(loss_grad, dev_ctx) << std::endl;
+    // std::cout << "****** labels *******" << std::endl;
+    // std::cout << DebugString<int64_t>(label, dev_ctx) << std::endl;
     const T* softmax_data = softmax.data<T>();
     const auto* label_data = label.data<LabelT>();
     int grid = (n * d + block - 1) / block;
+    // cudaDeviceSynchronize();
     SoftmaxWithCrossEntropyGradHardLabel<T>
         <<<grid, block, 0, stream>>>(logit_grad_data,
                                      loss_grad_data,
@@ -227,6 +300,9 @@ void CrossEntropyWithSoftmaxGradGPUKernel(const GPUContext& dev_ctx,
                                      d / remain,
                                      remain,
                                      ignore_index);
+    // cudaDeviceSynchronize();
+    // std::cout << "****** logits_grad_final *******" << std::endl;
+    // std::cout << DebugString<T>(*logits_grad, dev_ctx) << std::endl;
   }
 }
 

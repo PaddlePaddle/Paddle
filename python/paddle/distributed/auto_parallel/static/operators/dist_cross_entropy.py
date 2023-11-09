@@ -32,7 +32,9 @@ from ..utils import (
 from .common import (
     DistributedOperatorImpl,
     DistributedOperatorImplContainer,
+    ParallelMode,
     copy_op_without_infer_shape,
+    get_data_parallel_group,
     infer_shape,
     naive_copy_op_dist_attr_for_program,
     register_distributed_operator_impl,
@@ -294,8 +296,27 @@ class DistributedCrossEntropyImpl0(DistributedOperatorImpl):
         for output_name in backward_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        # naive_copy_op_dist_attr_for_program(
-        #     cross_entropy_grad_op, backward_op, ctx
+        # data parallel gradient synchronization
+        # act_grad_names = []
+        # for input_name in backward_op.desc.input_names():
+        #     for varname in backward_op.desc.input(input_name):
+        #         if "@GRAD" not in varname and not is_parameter_related(
+        #             varname, main_block
+        #         ):
+        #             act_grad_names.append(varname)
+
+        # out_grad_names = []
+        # for output_name in backward_op.desc.output_names():
+        #     for varname in backward_op.desc.output(output_name):
+        #         if varname in kwargs["grad_var_to_var"]:
+        #             fwd_name = kwargs["grad_var_to_var"][varname]
+        #             if not main_block._find_var_recursive(fwd_name):
+        #                 continue
+        #             if is_parameter_related(fwd_name, main_block):
+        #                 out_grad_names.append(varname)
+
+        # gradient_synchronization(
+        #     ctx, backward_op, act_grad_names, out_grad_names, rank_id
         # )
 
 
@@ -414,6 +435,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         group_ranks = _get_comm_group(
             process_mesh_group, process_mesh_shape, parallel_axis, rank_id
         )
+        print("group_ranks:", group_ranks)
         group = new_process_group(group_ranks)
         print("rank:", rank_id, "group:", group)
 
@@ -429,9 +451,9 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
             },
             attrs={
                 'ring_id': group.id,
-                'rank': rank_id,
+                'rank': group.local_rank(rank_id),
                 'nranks': group.nranks,
-                'ignore_index': -100,
+                'ignore_index': src_op.desc.attr('ignore_index'),
                 OP_ROLE_KEY: src_op.attr('op_role'),
             },
         )
@@ -485,7 +507,9 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         ), "input [Label] take 1 variable but got {}".format(kwargs['Label'])
         assert (
             len(kwargs['Loss@GRAD']) == 1
-        ), "input [Loss@GRAD] take 1 variable but got {}".format(kwargs['Out'])
+        ), "input [Loss@GRAD] take 1 variable but got {}".format(
+            kwargs['Loss@GRAD']
+        )
         assert (
             len(kwargs['Logits@GRAD']) == 1
         ), "output [Logits@GRAD] take 1 variable but got {}".format(
@@ -501,6 +525,45 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
             rank_id = _get_corresponding_rank(
                 ctx, op_dist_attr.process_mesh, rank_id
             )
+
+        # reduce_mean = False
+        for op in main_block.ops:
+            # print("op_type:", op.type, "input_names:", op.input_names, "input_arg_names:", op.input_arg_names)
+            if (
+                op.type == "reduce_mean_grad"
+                and kwargs['Loss@GRAD'][0] in op.output_arg_names
+            ):
+                loss_grad_var = main_block._var_recursive(
+                    kwargs['Loss@GRAD'][0]
+                )
+                dp_group = get_data_parallel_group(
+                    ctx, backward_op, kwargs['Loss@GRAD'], rank_id
+                )
+                dp_degree = len(dp_group.ranks)
+                scale_op = main_block.append_op(
+                    type='scale',
+                    inputs={'X': loss_grad_var},
+                    outputs={'Out': loss_grad_var},
+                    attrs={
+                        'scale': 1.0 / dp_degree,
+                        OP_ROLE_KEY: OpRole.Backward,
+                    },
+                )
+                scale_op._set_attr(
+                    'op_namescope', '/' + ParallelMode.DataParallel
+                )
+                dims_mapping = op_dist_attr.get_input_dims_mapping(
+                    loss_grad_var.name
+                )
+                scale_op_attr = OperatorDistAttr()
+                scale_op_attr.process_mesh = op_dist_attr.process_mesh
+                scale_op_attr.set_output_dims_mapping(
+                    loss_grad_var.name, dims_mapping
+                )
+                scale_op_attr.set_input_dims_mapping(
+                    loss_grad_var.name, dims_mapping
+                )
+                ctx.set_op_dist_attr_for_program(scale_op, scale_op_attr)
 
         # TODO calculate ring id
         softmax_axis = backward_op.desc.attr('axis')
@@ -532,7 +595,7 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         # causing an error.
         cross_entropy_grad_op_desc._set_int64_attr('ignore_index', ignore_index)
         cross_entropy_grad_op_desc._set_attr('ring_id', group.id)
-        cross_entropy_grad_op_desc._set_attr('rank', rank_id)
+        cross_entropy_grad_op_desc._set_attr('rank', group.local_rank(rank_id))
         cross_entropy_grad_op_desc._set_attr('nranks', group.nranks)
         cross_entropy_grad_op_desc._set_attr(OP_ROLE_KEY, OpRole.Backward)
 
@@ -540,6 +603,30 @@ class DistributedCrossEntropyImpl1(DistributedOperatorImpl):
         naive_copy_op_dist_attr_for_program(
             cross_entropy_grad_op, backward_op, ctx
         )
+
+        # data parallel gradient synchronization
+        # act_grad_names = []
+        # for input_name in backward_op.desc.input_names():
+        #     for varname in backward_op.desc.input(input_name):
+        #         if "@GRAD" not in varname and not is_parameter_related(
+        #             varname, main_block
+        #         ):
+        #             act_grad_names.append(varname)
+
+        # out_grad_names = []
+        # for output_name in backward_op.desc.output_names():
+        #     for varname in backward_op.desc.output(output_name):
+        #         if varname in kwargs["grad_var_to_var"]:
+        #             fwd_name = kwargs["grad_var_to_var"][varname]
+        #             if not main_block._find_var_recursive(fwd_name):
+        #                 continue
+        #             if is_parameter_related(fwd_name, main_block):
+        #                 out_grad_names.append(varname)
+
+        # print(act_grad_names)
+        # gradient_synchronization(
+        #     ctx, backward_op, act_grad_names, out_grad_names, rank_id
+        # )
 
 
 register_distributed_operator_impl(
