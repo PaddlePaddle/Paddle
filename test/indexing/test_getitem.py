@@ -1146,8 +1146,3 @@ class TestGetItemErrorCase(unittest.TestCase):
         x = paddle.randn((4, 3, 2))
         with self.assertRaises(IndexError):
             y = _getitem_static(x, (1, paddle.to_tensor([True, False]), [0, 1]))
-
-    def test_bool_error(self):
-        x = paddle.randn((4, 3, 2))
-        with self.assertRaises(ValueError):
-            y = _getitem_static(x, (True, [0, 1]))
