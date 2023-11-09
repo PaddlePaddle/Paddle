@@ -269,16 +269,18 @@ paddle::framework::FetchList StandaloneExecutor::Run(
 
 void StandaloneExecutor::SetEnableAutoParallelProfiler(
     bool enable_auto_parallel_profiler) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   gpuStream_t calculated_stream =
       dynamic_cast<phi::GPUContext*>(
           platform::DeviceContextPool::Instance().Get(place_))
           ->stream();
-#ifdef PADDLE_WITH_HIP
-  PADDLE_ENFORCE_GPU_SUCCESS(hipStreamSynchronize(calculated_stream));
-#else
+#if defined(PADDLE_WITH_CUDA)
   PADDLE_ENFORCE_GPU_SUCCESS(cudaStreamSynchronize(calculated_stream));
+#elif defined(PADDLE_WITH_HIP)
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(calculated_stream));
 #endif
   enable_auto_parallel_profiler_ = enable_auto_parallel_profiler;
+#endif
 }
 
 }  // namespace framework
