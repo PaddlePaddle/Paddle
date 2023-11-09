@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/program.h"
 #include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
@@ -36,10 +37,7 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>() ||
-        op->isa<pir::YieldOp>()) {
-      return false;
-    }
+    if (op->HasTrait<pir::SideEffectTrait>()) return false;
     return op->use_empty();
   }
 
