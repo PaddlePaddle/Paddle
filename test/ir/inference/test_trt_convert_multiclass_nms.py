@@ -65,15 +65,13 @@ class TrtConvertMulticlassNMSTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_boxes(batch, num_boxes):
-            return (
-                np.arange(batch * num_boxes * 4, dtype=np.float32)
-                .reshape([batch, num_boxes, 4])
-                .astype(np.float32)
+            return np.arange(batch * num_boxes * 4, dtype=np.float32).reshape(
+                [batch, num_boxes, 4]
             )
 
         def generate_scores(batch, num_boxes, num_classes):
             max_value = batch * num_classes * num_boxes
-            out = (1 / max_value) * np.arange(
+            return (1 / max_value) * np.arange(
                 max_value, dtype=np.float32
             ).reshape([batch, num_classes, num_boxes])
 

@@ -65,17 +65,14 @@ class TrtConvertMulticlassNMS3Test(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_boxes(batch, num_boxes):
-            return (
-                np.arange(batch * num_boxes * 4, dtype=np.float32)
-                .reshape([batch, num_boxes, 4])
-                .astype(np.float32)
+            return np.arange(batch * num_boxes * 4, dtype=np.float32).reshape(
+                [batch, num_boxes, 4]
             )
 
         def generate_scores(batch, num_boxes, num_classes):
-            out = np.arange(
+            return np.arange(
                 batch * num_classes * num_boxes, dtype=np.float32
             ).reshape([batch, num_classes, num_boxes])
-            return out.astype(np.float32)
             # return np.random.rand(batch, num_classes, num_boxes).astype(np.float32)
 
         for batch in [1, 2]:
