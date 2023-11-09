@@ -1373,9 +1373,115 @@ TEST(EmbeddingGradInferSpmd, Ctor) {
 
   EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
             std::vector<int64_t>({-1, -1}));
-  EXPECT_EQ(paddle::get<0>(spmdinfo.second[0]).is_partial(), true);
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      true);
   VLOG(4) << "Test EmbeddingGradInferSpmd with sharding indices and "
              "replicating weight"
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  // indices'rank is greater than 1,  x and weight is replicated, out_grad is
+  // sharded along axis 1
+  x_dist_attr.set_dims_mapping({-1, -1});
+  w_dist_attr.set_dims_mapping({-1, 1});
+  out_grad_dist_attr.set_dims_mapping({-1, 1, -1});
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, 1, -1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      false);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with replicating indices and "
+             "sharding weight along col axis."
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  // Indices's rank equals 1, indices and out_grad is sharded.
+  x_shape = {5};
+  w_shape = {10, 3};
+  out_grad_shape = {5, 3};
+
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({0}));
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, 1}));
+
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]), std::vector<int64_t>({0}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]), std::vector<int64_t>({-1, 1}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 1}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      true);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding weight and out_grad."
+          << std::endl
+          << std::endl
+          << std::endl;
+
+  x_shape = {12, 16};
+  w_shape = {10, 4};
+  out_grad_shape = {12, 16, 4};
+
+  x_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1}));
+  w_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -0}));
+  out_grad_dist_attr.set_dims_mapping(std::vector<int64_t>({-1, -1, 0}));
+
+  x = phi::distributed::DistMetaTensor(phi::make_ddim(x_shape), x_dist_attr);
+  w = phi::distributed::DistMetaTensor(phi::make_ddim(w_shape), w_dist_attr);
+  out_grad = phi::distributed::DistMetaTensor(phi::make_ddim(out_grad_shape),
+                                              out_grad_dist_attr);
+
+  spmdinfo = EmbeddingGradInferSpmd(x, w, out_grad, -1, false);
+
+  EXPECT_EQ(spmdinfo.first.size(), 3UL);
+  EXPECT_EQ(spmdinfo.second.size(), 1UL);
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[0]),
+            std::vector<int64_t>({-1, -1}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[1]), std::vector<int64_t>({-1, 0}));
+  EXPECT_EQ(get_dims_mapping(spmdinfo.first[2]),
+            std::vector<int64_t>({-1, -1, 0}));
+
+  EXPECT_EQ(get_dims_mapping(spmdinfo.second[0]),
+            std::vector<int64_t>({-1, 0}));
+  EXPECT_EQ(
+      PADDLE_GET_CONST(phi::distributed::TensorDistAttr, spmdinfo.second[0])
+          .is_partial(),
+      false);
+  VLOG(4) << "Test EmbeddingGradInferSpmd with sharding weight and out_grad."
           << std::endl
           << std::endl
           << std::endl;

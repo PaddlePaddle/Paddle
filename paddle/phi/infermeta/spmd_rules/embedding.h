@@ -29,18 +29,18 @@ namespace distributed {
 SpmdInfo EmbeddingInferSpmd(const DistMetaTensor& x,
                             const DistMetaTensor& weight,
                             int padding_idx,
-                            bool sparse);
+                            bool sparse = false);
 
 SpmdInfo EmbeddingInferSpmdReverse(const DistMetaTensor& x,
                                    const DistMetaTensor& weight,
                                    const DistMetaTensor& out,
                                    int padding_idx,
-                                   bool sparse);
+                                   bool sparse = false);
 
 SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
                                 const DistMetaTensor& weight,
                                 const DistMetaTensor& out_grad,
                                 int64_t padding_idx,
-                                bool sparse);
+                                bool sparse = false);
 }  // namespace distributed
 }  // namespace phi

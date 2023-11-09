@@ -223,93 +223,101 @@ SpmdInfo EmbeddingGradInferSpmd(const DistMetaTensor& x,
                         out_grad.dims(),
                         out_grad.dist_attr().dims_mapping().size()));
 
-  // padding_idx s not supported by c_embedding kernel.
-  // (TODO) might be could reshard as replicated when padding_idx != -1
-  if (padding_idx != -1) {
-    PADDLE_ENFORCE_EQ(
-        weight.dist_attr().dims_mapping()[0],
-        -1,
-        phi::errors::InvalidArgument(
-            "Row-wise parallel of embedding table does NOT support Padding "
-            "Idx, "
-            "but got padding_idx [%d] and row axis of embedding table is "
-            "sharded by mesh dimension [%d].",
-            padding_idx,
-            weight.dims().size()));
-  }
-
-  // (TODO) might be could reshard as replicated when sparse
   if (sparse) {
-    PADDLE_ENFORCE_EQ(
-        weight.dist_attr().dims_mapping()[0],
-        -1,
-        phi::errors::InvalidArgument(
-            "Row-wise parallel of embedding table does NOT support Sparse, but "
-            "row axis of embedding table is sharded by mesh dimension [%d].",
-            weight.dist_attr().dims_mapping()[0]));
+    PADDLE_THROW(phi::errors::InvalidArgument(
+        "EmbeddingGradInferSpmd does't support sparse currently."));
   }
 
-  VLOG(6) << "EmbeddingGradInferSpmd Inputs: "
-          << "X shape: [" << str_join(phi::vectorize(x.dims()))
-          << "], x_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
-          << "]; "
-          << "Weight shape: [" << str_join(phi::vectorize(weight.dims()))
-          << "], weight_dims_mapping: ["
-          << str_join(weight.dist_attr().dims_mapping()) << "]; padding_idx: "
-          << "[" << padding_idx << "]; "
-          << "sparse: "
-          << "[" << (sparse ? "true" : "false") << "]; ";
+  // Propagate sharding info using primitive operators.
+  // NOTE: Reshard happend on intemediate operators must be ensure propagated
+  // back to first inputs.
+  // The whole mathematical expression of EmbeddingGrad is:
+  // w_grad = matmul(transpose(reshape(onehot(x, w.shape[0]), (-1, 0))),
+  // reshape(out_grad, (-1, 0))).
+  // TODO(cxxly): Simplifies the code logic of sharding propagation using
+  // primitive operators.
 
-  // The mathematical expression of EmbeddingGrad is:
-  // w_grad = matmul(transpose(reshape(onehot(x, w.shape[1]), (-1, 0))),
-  // reshape(out_grad, (0, -1)))
-  TensorDistAttr x_dst_dist_attr(x.dist_attr());
-  TensorDistAttr w_dst_dist_attr(weight.dist_attr());
-  TensorDistAttr out_grad_dst_dist_attr(out_grad.dist_attr());
-  TensorDistAttr w_grad_dist_attr(weight.dist_attr());
+  DistMetaTensor x_dst(x.dims(), x.dist_attr());
+  DistMetaTensor w_dst(weight.dims(), weight.dist_attr());
+  DistMetaTensor out_grad_dst(out_grad.dims(), out_grad.dist_attr());
+  DistMetaTensor w_grad(out_grad.dims(), out_grad.dist_attr());
 
-  // t0 = onehot(x, num_classes) = eye(num_classes)[x]
-  // TODO(cxxly): Implement index(Tensor) spmd rule, and use it to replace this
-  // logic.
-  TensorDistAttr t0_dist_attr(x.dist_attr());
-  auto t0_dims_mapping = t0_dist_attr.dims_mapping();
+  // Step1: t0 = onehot(x_dst, w.shape[0]) = eye(num_classes)[x_dst]
+  auto t0_dims_mapping = x_dst.dist_attr().dims_mapping();
   t0_dims_mapping.emplace_back(-1);
+  TensorDistAttr t0_dist_attr(x.dist_attr());
   t0_dist_attr.set_dims_mapping(t0_dims_mapping);
   auto t0_shape = phi::vectorize(x.dims());
-  t0_shape.emplace_back(weight.dims()[0]);
+  t0_shape.emplace_back(w_dst.dims()[0]);
   DistMetaTensor t0(phi::make_ddim(t0_shape), t0_dist_attr);
 
-  // t1 = reshape(t0, (-1, 0))
-  // t2 = reshape(out_grad_dst, (0, -1))
+  // Step2: t1 = reshape(t0, (-1, 0))
   std::vector<int64_t> t1_shape = {
-      std::accumulate(phi::vectorize(t0.dims()).begin(),
-                      phi::vectorize(t0.dims()).end() - 1,
+      std::accumulate(
+          t0_shape.begin(), t0_shape.end() - 1, 1, std::multiplies<int64_t>()),
+      t0.dims()[t0.dims().size() - 1]};
+  auto reshape1_spmd = ReshapeInferSpmd(t0, t1_shape);
+  // Step2.1: update inputs info.
+  t0 = DistMetaTensor(t0.dims(),
+                      PADDLE_GET_CONST(TensorDistAttr, reshape1_spmd.first[0]));
+  const auto t0_dims = t0.dist_attr().dims_mapping();
+  if (x_dst.dist_attr().dims_mapping() !=
+      std::vector<int64_t>(t0_dims.begin(), t0_dims.end() - 1)) {
+    TensorDistAttr t0_new(t0.dist_attr());
+    t0_new.set_dims_mapping(
+        std::vector<int64_t>(t0_dims.begin(), t0_dims.end() - 1));
+    x_dst = DistMetaTensor(x_dst.dims(), t0_new);
+  }
+  // Step2.2: create output.
+  DistMetaTensor t1(phi::make_ddim(t1_shape),
+                    PADDLE_GET_CONST(TensorDistAttr, reshape1_spmd.second[0]));
+
+  // Step3: t2 = reshape(out_grad_dst, (-1, 0))
+  auto out_grad_dst_shape = phi::vectorize(out_grad_dst.dims());
+  std::vector<int64_t> t2_shape = {
+      std::accumulate(out_grad_dst_shape.begin(),
+                      out_grad_dst_shape.end() - 1,
                       1,
                       std::multiplies<int64_t>()),
-      t0.dims()[t0.dims().size() - 1]};
-  std::vector<int64_t> t2_shape = {
-      out_grad.dims()[0],
-      std::accumulate(phi::vectorize(out_grad.dims()).begin() + 1,
-                      phi::vectorize(out_grad.dims()).end(),
-                      1,
-                      std::multiplies<int64_t>())};
-  auto t1_dims_mapping = ReshapeInferSpmd(t0, t1_shape).second;
-  auto reshape2_spmd = ReshapeInferSpmd(out_grad, t2_shape);
-  auto t2_dims_mapping = reshape2_spmd.second;
-  out_grad_dst_dist_attr.set_dims_mapping(reshape2_spmd.first);
+      out_grad.dims()[out_grad_dst.dims().size() - 1]};
+  auto reshape2_spmd = ReshapeInferSpmd(out_grad_dst, t2_shape);
+  // Step3.1: update inputs info.
+  out_grad_dst =
+      DistMetaTensor(out_grad_dst.dims(),
+                     PADDLE_GET_CONST(TensorDistAttr, reshape2_spmd.first[0]));
+  // Step3.2: create output.
+  DistMetaTensor t2(phi::make_ddim(t2_shape),
+                    PADDLE_GET_CONST(TensorDistAttr, reshape2_spmd.second[0]));
 
-  TensorDistAttr t1_dist_attr(t0.dist_attr());
-  t1_dist_attr.set_dims_mapping(t1_dims_mapping);
-  TensorDistAttr t2_dist_attr(out_grad.dist_attr());
-  t2_dist_attr.set_dims_mapping(t2_dims_mapping);
-  DistMetaTensor t1(phi::make_ddim(t1_shape), t1_dist_attr);
-  DistMetaTensor t2(phi::make_ddim(t2_shape), t2_dist_attr);
-
-  // x_grad = matmul(t1, t2, trans_x=true, trans_y=false)
+  // Step4: x_grad = matmul(t1, t2, trans_x=true, trans_y=false)
   auto matmul_spmd = MatmulInferSpmd(t1, t2, true, false);
+  // Step4.1: update inputs info.
+  // Step4.2: create output.
+  w_grad = DistMetaTensor(
+      w_grad.dims(), PADDLE_GET_CONST(TensorDistAttr, matmul_spmd.second[0]));
 
-  return {{x.dist_attr(), matmul_spmd.first[0], matmul_spmd.first[1]},
-          {matmul_spmd.second[0]}};
+  VLOG(6) << "EmbeddingGradInferSpmd:\n"
+          << "Input x shape: [" << str_join(phi::vectorize(x.dims()))
+          << "], src_dims_mapping: [" << str_join(x.dist_attr().dims_mapping())
+          << "], dst_dims_mapping: ["
+          << str_join(x_dst.dist_attr().dims_mapping()) << "]\n"
+          << "Input weight shape: [" << str_join(phi::vectorize(weight.dims()))
+          << "], src_dims_mapping: ["
+          << str_join(weight.dist_attr().dims_mapping())
+          << "], dst_dims_mapping: ["
+          << str_join(w_dst.dist_attr().dims_mapping()) << "]\n"
+          << "Input out_grad shape: ["
+          << str_join(phi::vectorize(out_grad.dims()))
+          << "], src_dims_mapping: ["
+          << str_join(out_grad.dist_attr().dims_mapping())
+          << "], dst_dims_mapping: ["
+          << str_join(out_grad_dst.dist_attr().dims_mapping()) << "]\n"
+          << "Output w_grad shape: [" << str_join(phi::vectorize(w_grad.dims()))
+          << "], dims_mapping: [" << str_join(w_grad.dist_attr().dims_mapping())
+          << "]\n\n";
+
+  return {{x_dst.dist_attr(), w_dst.dist_attr(), out_grad_dst.dist_attr()},
+          {w_grad.dist_attr()}};
 }
 }  // namespace distributed
 }  // namespace phi
