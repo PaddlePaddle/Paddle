@@ -21,7 +21,11 @@ from paddle.utils import deprecated
 from ...base.data_feeder import check_type, check_variable_and_dtype
 from ...base.layer_helper import LayerHelper
 from ...common_ops_import import Variable
-from ...framework import convert_np_dtype_to_dtype_, core
+from ...framework import (
+    convert_np_dtype_to_dtype_,
+    core,
+    in_dynamic_or_pir_mode,
+)
 
 __all__ = []
 
@@ -206,7 +210,7 @@ def gather_tree(ids, parents):
     if ids.ndim != parents.ndim:
         raise ValueError("The ids's shape must be the same as parents' shape. ")
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.gather_tree(ids, parents)
     else:
         helper = LayerHelper('gather_tree', **locals())
@@ -292,7 +296,7 @@ def temporal_shift(x, seg_num, shift_ratio=0.25, name=None, data_format="NCHW"):
             "Attr(data_format) should be 'NCHW' or 'NHWC'. "
             f"Received Attr(data_format): {data_format}."
         )
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.temporal_shift(x, seg_num, shift_ratio, data_format)
     else:
         helper = LayerHelper("temporal_shift", **locals())
