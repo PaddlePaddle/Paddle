@@ -42,6 +42,8 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.exp", OpPatternKind::kElementWise},
     {"pd_op.sin", OpPatternKind::kElementWise},
     {"pd_op.cos", OpPatternKind::kElementWise},
+    {"pd_op.cast", OpPatternKind::kElementWise},
+    {"pd_op.greater_than", OpPatternKind::kElementWise},
     {"pd_op.sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
