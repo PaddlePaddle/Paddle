@@ -165,6 +165,7 @@ test_prelu_op
 test_prior_box_op
 test_psroi_pool_op
 test_put_along_axis_op
+test_randint_op
 test_range
 test_reduce_op
 test_reduce_op_static_build
@@ -188,6 +189,7 @@ test_sign_op
 test_size_op
 test_slice_op
 test_solve_op
+test_sparse_momentum_op
 test_spectral_norm_op
 test_spectral_op
 test_squared_l2_norm_op
