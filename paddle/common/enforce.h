@@ -14,7 +14,8 @@ limitations under the License. */
 #ifdef __GNUC__
 #include <cxxabi.h>  // for __cxa_demangle
 #endif               // __GNUC__
-
+#include <exception>
+#include <iostream>
 #if !defined(_WIN32)
 #include <dlfcn.h>   // dladdr
 #include <unistd.h>  // sleep, usleep
@@ -40,6 +41,15 @@ limitations under the License. */
 
 namespace common {
 class ErrorSummary;
+class CommonNotMetException : public std::exception {
+ public:
+  explicit CommonNotMetException(const std::string& str) : err_str_(str) {}
+
+  const char* what() const noexcept override { return err_str_.c_str(); }
+
+ private:
+  std::string err_str_;
+};
 }  // namespace common
 
 namespace common {
@@ -258,36 +268,33 @@ struct EnforceNotMet : public std::exception {
     END_HANDLE_THE_ERROR                                          \
   } while (0)
 
-#define __COMMON_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)       \
-  do {                                                                       \
-    auto __val1 = (__VAL1);                                                  \
-    auto __val2 = (__VAL2);                                                  \
-    using __TYPE1__ = decltype(__val1);                                      \
-    using __TYPE2__ = decltype(__val2);                                      \
-    using __COMMON_TYPE1__ =                                                 \
-        ::common::details::CommonType1<__TYPE1__, __TYPE2__>;                \
-    using __COMMON_TYPE2__ =                                                 \
-        ::common::details::CommonType2<__TYPE1__, __TYPE2__>;                \
-    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(      \
-        static_cast<__COMMON_TYPE2__>(__val2));                              \
-    if (UNLIKELY(!__is_not_error)) {                                         \
-      auto __summary__ = common::ErrorSummary(__VA_ARGS__);                  \
-      constexpr bool __kCanToString__ =                                      \
-          ::common::details::CanToString<__TYPE1__>::kValue &&               \
-          ::common::details::CanToString<__TYPE2__>::kValue;                 \
-      auto __message__ = ::paddle::string::Sprintf(                          \
-          "%s\n  [Hint: Expected %s " #__CMP                                 \
-          " %s, but received %s " #__INV_CMP " %s.]",                        \
-          __summary__.error_message(),                                       \
-          #__VAL1,                                                           \
-          #__VAL2,                                                           \
-          ::common::details::BinaryCompareMessageConverter<                  \
-              __kCanToString__>::Convert(#__VAL1, __val1),                   \
-          ::common::details::BinaryCompareMessageConverter<                  \
-              __kCanToString__>::Convert(#__VAL2, __val2));                  \
-      __THROW_ERROR_INTERNAL__(                                              \
-          common::ErrorSummary(__summary__.code(), std::move(__message__))); \
-    }                                                                        \
+#define __COMMON_BINARY_COMPARE(__VAL1, __VAL2, __CMP, __INV_CMP, ...)         \
+  do {                                                                         \
+    auto __val1 = (__VAL1);                                                    \
+    auto __val2 = (__VAL2);                                                    \
+    using __TYPE1__ = decltype(__val1);                                        \
+    using __TYPE2__ = decltype(__val2);                                        \
+    using __COMMON_TYPE1__ =                                                   \
+        ::common::details::CommonType1<__TYPE1__, __TYPE2__>;                  \
+    using __COMMON_TYPE2__ =                                                   \
+        ::common::details::CommonType2<__TYPE1__, __TYPE2__>;                  \
+    bool __is_not_error = (static_cast<__COMMON_TYPE1__>(__val1))__CMP(        \
+        static_cast<__COMMON_TYPE2__>(__val2));                                \
+    if (UNLIKELY(!__is_not_error)) {                                           \
+      auto __message__ =                                                       \
+          ::paddle::string::Sprintf("%s\n  [Hint: Expected %s " #__CMP         \
+                                    " %s,but received %s " #__INV_CMP " %s.]", \
+                                    #__VAL1,                                   \
+                                    #__VAL2,                                   \
+                                    #__VAL1,                                   \
+                                    #__VAL2);                                  \
+      try {                                                                    \
+        throw common::CommonNotMetException(__message__);                      \
+      } catch (const std::exception& e) {                                      \
+        std::cout << e.what() << std::endl;                                    \
+        throw;                                                                 \
+      }                                                                        \
+    }                                                                          \
   } while (0)
 
 #define COMMON_ENFORCE_EQ(__VAL0, __VAL1, ...) \
