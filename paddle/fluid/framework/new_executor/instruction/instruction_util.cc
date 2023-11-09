@@ -269,7 +269,7 @@ std::unordered_set<pir::Value> GetBlockInnerInputs(pir::Block* block) {
 std::vector<pir::Value> GetOutsideOpInputs(
     pir::Block* block,
     const ValueExecutionInfo& value_exec_info,
-    std::unordered_map<pir::Value, st d::vector<int>>* input_ids) {
+    std::unordered_map<pir::Value, std::vector<int>>* input_ids) {
   std::unordered_set<pir::Value> inner_outputs;
   inner_outputs = GetBlockInnerOutputs(block);
 
