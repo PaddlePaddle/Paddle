@@ -130,6 +130,10 @@ if(WITH_DISTRIBUTE AND WITH_GPU)
                   test_semi_auto_parallel_single_strategy)
   set_tests_properties(test_semi_auto_parallel_single_strategy
                        PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
+  py_test_modules(test_semi_auto_parallel_in_framework MODULES
+                  test_semi_auto_parallel_in_framework)
+  set_tests_properties(test_semi_auto_parallel_in_framework
+                       PROPERTIES LABELS "RUN_TYPE=EXCLUSIVE" TIMEOUT 300)
   py_test_modules(test_semi_auto_parallel_hybrid_strategy MODULES
                   test_semi_auto_parallel_hybrid_strategy)
   set_tests_properties(test_semi_auto_parallel_hybrid_strategy
