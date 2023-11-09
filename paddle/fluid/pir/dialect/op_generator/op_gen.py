@@ -213,6 +213,7 @@ PD_MANUAL_OP_LIST = {
     'add_n_',
     'add_n_with_kernel',
     'split_grad',
+    'expand',
 }
 
 
