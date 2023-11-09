@@ -925,4 +925,5 @@ __all__ = [
     'hypot_',
     'index_fill',
     "index_fill_",
+    'diagonal_scatter',
 ]
