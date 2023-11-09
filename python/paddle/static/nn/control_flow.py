@@ -1772,7 +1772,7 @@ def Print(
         attrs={
             'first_n': first_n,
             'summarize': summarize,
-            'message': message,
+            'message': message or "",
             'print_tensor_name': print_tensor_name,
             'print_tensor_type': print_tensor_type,
             'print_tensor_shape': print_tensor_shape,

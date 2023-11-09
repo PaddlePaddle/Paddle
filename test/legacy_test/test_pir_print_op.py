@@ -69,27 +69,32 @@ class TestPrintOpCPU(unittest.TestCase):
 
     @test_with_pir_api
     def test_all_parameters(self):
-        x = paddle.static.data('x', shape=[-1, 3], dtype='float32', lod_level=1)
-        x.stop_gradient = False
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            x = paddle.static.data(
+                'x', shape=[-1, 3], dtype='float32', lod_level=1
+            )
+            x.stop_gradient = False
 
-        for print_tensor_name in [True, False]:
-            for print_tensor_type in [True, False]:
-                for print_tensor_shape in [True, False]:
-                    for print_tensor_lod in [True, False]:
-                        paddle.static.Print(
-                            input=x,
-                            print_tensor_name=print_tensor_name,
-                            print_tensor_type=print_tensor_type,
-                            print_tensor_shape=print_tensor_shape,
-                            print_tensor_lod=print_tensor_lod,
-                        )
-        loss = paddle.mean(x)
-        # append_backward is not supported in pir
-        # paddle.static.append_backward(loss=loss)
-        exe = paddle.static.Executor(self.place)
-        outs = exe.run(
-            feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
-        )
+            for print_tensor_name in [True, False]:
+                for print_tensor_type in [True, False]:
+                    for print_tensor_shape in [True, False]:
+                        for print_tensor_lod in [True, False]:
+                            paddle.static.Print(
+                                input=x,
+                                print_tensor_name=print_tensor_name,
+                                print_tensor_type=print_tensor_type,
+                                print_tensor_shape=print_tensor_shape,
+                                print_tensor_lod=print_tensor_lod,
+                            )
+            loss = paddle.mean(x)
+            # append_backward is not supported in pir
+            # paddle.static.append_backward(loss=loss)
+            exe = paddle.static.Executor(self.place)
+            outs = exe.run(
+                feed={'x': self.x_tensor}, fetch_list=[loss], return_numpy=False
+            )
 
     @test_with_pir_api
     def test_no_summarize(self):
