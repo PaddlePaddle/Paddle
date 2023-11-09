@@ -110,6 +110,18 @@ class TestSemiAutoParallelFunctionalInSingleCard(unittest.TestCase):
         )
         dist_tensor._uva()
 
+    def test_tensor_properties(self):
+        mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
+        dense_tensor = paddle.randn([10, 20])
+        dense_tensor = dense_tensor.reshape([20, 10])
+        dist_tensor = dist.shard_tensor(
+            dense_tensor,
+            dist_attr=dist.DistAttr(mesh=mesh, sharding_specs=[None, None]),
+        )
+        type = dist_tensor.type
+        strides = dist_tensor.strides
+        offsets = dist_tensor.offset
+
 
 if __name__ == "__main__":
     unittest.main()
