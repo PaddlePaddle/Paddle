@@ -47,8 +47,7 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
-    {"cinn_op.broadcast", OpPatternKind::kBroadcast},
-    {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
+    {"cinn_op.broadcast", OpPatternKind::kBroadcast}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
