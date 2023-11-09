@@ -2345,9 +2345,10 @@ IRSchedule::IRSchedule(const ModuleExpr& module_expr,
                        utils::LinearRandomEngine::StateType rand_seed,
                        bool debug_flag,
                        utils::ErrorMessageLevel err_msg_level,
-                       bool is_dynamic_shape) {
-  impl_ = std::move(ScheduleBase::Make(
-      module_expr, debug_flag, err_msg_level, is_dynamic_shape));
+                       bool is_dynamic_shape)
+    : impl_(ScheduleBase::Make(
+          module_expr, debug_flag, err_msg_level, is_dynamic_shape)),
+      is_dynamic_shape_(is_dynamic_shape) {
   this->InitSeed(rand_seed);
 }
 
@@ -2356,7 +2357,8 @@ IRSchedule::IRSchedule(ir::ModuleExpr&& mod_expr,
                        utils::LinearRandomEngine::StateType rand_seed,
                        bool is_dynamic_shape)
     : impl_(ScheduleBase::Make(std::move(mod_expr), is_dynamic_shape)),
-      trace_(std::move(trace)) {
+      trace_(std::move(trace)),
+      is_dynamic_shape_(is_dynamic_shape) {
   this->InitSeed(rand_seed);
 }
 
