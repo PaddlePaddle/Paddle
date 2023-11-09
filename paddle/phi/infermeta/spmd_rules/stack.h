@@ -28,9 +28,7 @@ SpmdInfo StackInferSpmdReverse(const std::vector<DistMetaTensor>& x,
                                const DistMetaTensor& output,
                                int axis);
 
-SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
-                            const DistMetaTensor& output_grad,
-                            int axis);
+SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis);
 
 }  // namespace distributed
 }  // namespace phi

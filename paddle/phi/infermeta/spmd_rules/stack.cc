@@ -109,52 +109,21 @@ std::tuple<std::string, std::string> FillStackGradNotation(int64_t n_axis,
   return {input_axis, output_axis};
 }
 
-SpmdInfo StackGradInferSpmd(const std::vector<DistMetaTensor>& x,
-                            const DistMetaTensor& output_grad,
-                            int axis) {
-  // 1、check tensors shapes
-  std::vector<std::vector<int64_t>> tensor_shapes;
-  std::transform(x.begin(),
-                 x.end(),
-                 std::back_inserter(tensor_shapes),
-                 [](const DistMetaTensor& meta) {
-                   return phi::vectorize<int64_t>(meta.dims());
-                 });
-  bool all_empty =
-      std::all_of(tensor_shapes.begin(), tensor_shapes.end(), IsEmpty);
-  if (all_empty) {
-    return SpmdInfo();
+SpmdInfo StackGradInferSpmd(const DistMetaTensor& output_grad, int axis) {
+  auto out_dist_attr = output_grad.dist_attr();
+  out_dist_attr = UnShardTensorDim(out_dist_attr, axis);
+  auto n_inputs = output_grad.dims().at(axis);
+  TensorDistAttr input_attr = CopyTensorDistAttrForOutput(out_dist_attr, false);
+  auto ndim = output_grad.dims().size();
+  std::vector<int64_t> dim_mapping(ndim - 1, -1);
+  const auto& input_dim_mapping = out_dist_attr.dims_mapping();
+  for (size_t i = 0; i < static_cast<size_t>(ndim - 1); i++) {
+    size_t out_index = i < static_cast<size_t>(axis) ? i : (i + 1);
+    dim_mapping[i] = input_dim_mapping[out_index];
   }
-
-  auto non_empty_iter =
-      std::find_if(tensor_shapes.begin(), tensor_shapes.end(), [](auto& shape) {
-        return !IsEmpty(shape);
-      });
-  auto non_empty_index = non_empty_iter - tensor_shapes.begin();
-  int64_t ndim = static_cast<int64_t>(tensor_shapes[non_empty_index].size());
-  int64_t dim = axis;
-  // normlize dim
-  dim = dim < 0 ? ndim + dim : dim;
-  std::vector<TensorDistAttr> input_attrs;
-  std::transform(
-      x.begin(), x.end(), std::back_inserter(input_attrs), [](auto& meta) {
-        return meta.dist_attr();
-      });
-
-  std::string inputs_axis;
-  std::string output_axis;
-  std::tie(inputs_axis, output_axis) = FillStackGradNotation(ndim, dim);
-  std::vector<std::string> axis_names(input_attrs.size(), inputs_axis);
-  axis_names.push_back((output_axis));
-  input_attrs.push_back(output_grad.dist_attr());
-  tensor_shapes.push_back(phi::vectorize<int64_t>(output_grad.dims()));
-
-  AlignDimsSharding(
-      &input_attrs, tensor_shapes, axis_names, {}, inputs_axis, true);
-  auto output_grad_attr = input_attrs.back();
-  input_attrs.pop_back();
-  std::vector<TensorDistAttr> inputs_grad = input_attrs;
-  return {{input_attrs, output_grad_attr}, {inputs_grad}};
+  input_attr.set_dims_mapping(dim_mapping);
+  std::vector<TensorDistAttr> input_attrs(n_inputs, input_attr);
+  return {{out_dist_attr}, {input_attrs}};
 }
 
 }  // namespace distributed
