@@ -42,11 +42,13 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"pd_op.exp", OpPatternKind::kElementWise},
     {"pd_op.sin", OpPatternKind::kElementWise},
     {"pd_op.cos", OpPatternKind::kElementWise},
+    {"pd_op.cast", OpPatternKind::kElementWise},
+    {"pd_op.greater_than", OpPatternKind::kElementWise},
     {"pd_op.sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
-};
+    {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {
   auto found_it = OpKindMap.find(op_name);
@@ -58,6 +60,9 @@ OpPatternKind GetOpKind(const std::string& op_name) {
 }
 
 phi::DDim GetFirstInputShape(const ::pir::Operation* op) {
+  if (op->num_operands() == 0) {
+    return phi::DDim({});
+  }
   auto in = op->operand_source(0);
 
   return in.type().dyn_cast<paddle::dialect::DenseTensorType>().dims();
@@ -90,7 +95,7 @@ bool WithoutLastDimInReduce(const std::vector<int64_t>& inshape,
 int GetSharedSize(::pir::Operation* op) {
   auto inshape = phi::vectorize<int64_t>(GetValueShape(op->result(0)));
 
-  auto axes = GetVectorAttr(op, "axis");
+  auto axes = GetVectorAttr(op, "dim");
 
   if (WithoutLastDimInReduce(inshape, axes)) {
     int lane = 1;
@@ -504,12 +509,6 @@ GroupList OpFusionPassInternal(const std::vector<pir::Operation*>& op_list) {
   auto op_fusion_helper = OpFusionPassHelper(op_list);
   auto res = op_fusion_helper();
 
-  for (size_t i = 0; i < res.size(); ++i) {
-    auto group = res[i];
-
-    for (size_t j = 0; j < group->ops.size(); ++j) {
-    }
-  }
   VLOG(3) << "OpFusionPass Finish...!";
 
   return res;
