@@ -2487,7 +2487,7 @@ set +x
                 matchstr=''
                 testcase=''
         done <<< "$test_cases";
-        card_test "$eight_cards_tests" 8
+        card_test "$eight_cards_tests" 8 1
         collect_failed_tests
 set -x
         ut_endTime_s=`date +%s`
@@ -4155,7 +4155,7 @@ function main() {
         parallel_test
         check_coverage
         ;;
-      gpu_cicheck_coverage)
+      gpu_cicheck_hybrid)
         export FLAGS_PIR_OPTEST=True
         parallel_test true
         ;;

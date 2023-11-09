@@ -46,23 +46,6 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self.init_input_data()
         self.init_single_card_net_result()
 
-    def test_dp_mp_demo_net(self):
-        model = dist.shard_layer(
-            DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
-        )
-
-        (
-            self.dp_mp_loss,
-            self.dp_mp_parameters,
-        ) = self.run_dynamic(model, shard_input=True)
-
-        self.check_tensor_eq(self.dp_mp_loss, self.base_loss)
-        for param, param_base in zip(
-            self.dp_mp_parameters, self.base_parameters
-        ):
-            self.check_tensor_eq(param, param_base)
-            self.check_tensor_eq(param.grad, param_base.grad)
-
     def dp_mp_pp_shard_fn(self, layer_name, layer, process_mesh):
         if layer_name == 'linear_0':
             # shard_layer doens't support cross-mesh now.
@@ -90,7 +73,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             )
             layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
 
-    def dp_mp_pp_demo_net(self):
+    def test_dp_mp_pp_demo_net(self):
         model = dist.shard_layer(
             DemoNet(
                 "dp_mp_pp_hybrid_strategy",
@@ -129,13 +112,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             )
 
     def run_test_case(self):
-        self.test_dp_mp_demo_net()
-        # TODO(GhostScreaming): Paddle-CI-Coverage doesn't support 8-cards
-        # testcase now. Enable it later. It can be tested with
-        # modify test_semi_auto_parallel_hybrid_strategy.py `setUp` function,
-        # just set num_of_devices=8, nnode =1 and _changeable_envs = {"backend": ["gpu"]}
-        # to test it.
-        # self.dp_mp_pp_demo_net()
+        self.test_dp_mp_pp_demo_net()
 
 
 if __name__ == '__main__':
