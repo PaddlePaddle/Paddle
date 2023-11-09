@@ -173,8 +173,7 @@ void CommTaskManager::CommTaskLoop() {
 }
 
 void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
-  std::string task_key = task->UniqueKey();
-  group_last_comm_task_[task_key] = task;
+  group_last_comm_task_[task->GroupKey()] = task;
   last_update_time_ = std::chrono::steady_clock::now();
 }
 

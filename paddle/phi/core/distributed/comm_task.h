@@ -70,6 +70,9 @@ class CommTask {
     return "group_key:" + group_key_ + ",op:" + CommTypeToString(comm_type_) +
            ",gid:" + std::to_string(gid_) + ",seq:" + std::to_string(seq_);
   }
+  std::string GroupKey() {
+    return group_key_;
+  }
   std::string GetBackend() { return backend_; }
   phi::Place GetPlace() { return place_; }
   int GetGlobalRank() { return global_rank_; }
