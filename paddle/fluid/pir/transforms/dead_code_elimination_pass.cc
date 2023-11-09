@@ -17,6 +17,7 @@
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/program.h"
+#include "paddle/pir/dialect/control_flow/ir/cf_op.h"
 #include "paddle/pir/pass/pass.h"
 #include "paddle/pir/pass/pass_registry.h"
 #include "paddle/pir/pattern_rewrite/frozen_rewrite_pattern_set.h"
@@ -35,16 +36,16 @@ class DeadCodeEliminationPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<paddle::dialect::FetchOp>() ||
-        op->isa<paddle::dialect::ShadowOutputOp>())
+    if (op->isa<paddle::dialect::FetchOp>() || op->isa<pir::ShadowOutputOp>() ||
+        op->isa<pir::YieldOp>()) {
       return false;
-
+    }
     return op->use_empty();
   }
 
   void Rewrite(pir::Operation* op,
                pir::PatternRewriter& rewriter) const override {  // NOLINT
-    if (op->dyn_cast<pir::GetParameterOp>()) {
+    if (op->isa<pir::GetParameterOp>()) {
       // Delete parameter from program.
       pir::GetParameterOp get_parameter_op =
           op->dyn_cast<pir::GetParameterOp>();
