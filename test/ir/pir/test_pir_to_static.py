@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import unittest
 
 import numpy as np
@@ -167,7 +168,7 @@ class TestDy2staticPir5(unittest.TestCase):
                     m = self.linear(x)
                     return m * m
 
-        def train_step(to_static=True):
+        def train_step(to_static=True, full_graph=True):
             paddle.seed(2023)
             x = paddle.randn((10, 10), dtype='float32')
             y = paddle.randn((10, 10), dtype='float32')
@@ -177,7 +178,7 @@ class TestDy2staticPir5(unittest.TestCase):
                 learning_rate=0.1, parameters=net.parameters()
             )
             if to_static:
-                net = paddle.jit.to_static(net, full_graph=True)
+                net = paddle.jit.to_static(net, full_graph=full_graph)
             losses = []
             for step in range(100):
                 y_pred = net(x, step % 2 == 1)
@@ -193,6 +194,9 @@ class TestDy2staticPir5(unittest.TestCase):
         np.testing.assert_allclose(
             losses, expected_losses, rtol=1e-05, atol=1e-8
         )
+        os.environ['MIN_GRAPH_SIZE'] = '0'
+        sot_losses = train_step(True, False)
+        np.testing.assert_allclose(losses, sot_losses, rtol=1e-05, atol=1e-8)
 
 
 class TestDy2staticPir6(unittest.TestCase):
