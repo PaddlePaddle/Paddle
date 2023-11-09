@@ -2626,7 +2626,7 @@ def logsumexp(x, axis=None, keepdim=False, name=None):
     """
     reduce_all, axis = _get_reduce_axis(axis, x)
 
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.logsumexp(x, axis, keepdim, reduce_all)
     else:
         check_variable_and_dtype(
