@@ -298,18 +298,20 @@ cc_library(
   SRCS async_ssa_graph_executor.cc
   DEPS ${ASYNC_SSA_GRAPH_EXECUTOR_DEPS})
 
-cc_test(
+paddle_test(
   broadcast_op_test
-  SRCS broadcast_op_handle_test.cc
-  DEPS var_handle
-       op_handle_base
-       scope
-       phi
-       memory
-       device_context
-       broadcast_op_handle)
+  SRCS
+  broadcast_op_handle_test.cc
+  DEPS
+  var_handle
+  op_handle_base
+  scope
+  phi
+  memory
+  device_context
+  broadcast_op_handle)
 
-paddle_test(gather_op_test SRCS gather_op_handle_test.cc)
+cc_test_old(gather_op_test SRCS gather_op_handle_test.cc)
 
 cc_library(
   scope_buffered_monitor
