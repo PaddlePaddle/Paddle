@@ -696,6 +696,24 @@ void GradNodeBase::HandleComplexGradToRealGrad(
             fwd_data_type, curr_data_type, *grad_dense_tensor, out.get());
 
         (*out_grads)[slot_id][rank_id].set_impl(out);
+      } else if (phi::distributed::DistTensor::classof(grad.impl().get())) {
+        auto grad_dense_tensor =
+            static_cast<phi::distributed::DistTensor*>(grad.impl().get())
+                ->value();
+
+        auto curr_data_type =
+            paddle::framework::TransToProtoVarType(grad_dense_tensor.type());
+        if (!paddle::framework::IsComplexType(curr_data_type)) continue;
+        if (grad_dense_tensor.dims().size() == -1) continue;
+
+        // Convert Complex GradOut to Real
+        auto out = std::make_shared<phi::DenseTensor>();
+        paddle::framework::TransComplexToReal(
+            fwd_data_type, curr_data_type, grad_dense_tensor, out.get());
+
+        *(static_cast<phi::distributed::DistTensor*>(
+              (*out_grads)[slot_id][rank_id].impl().get())
+              ->unsafe_mutable_value()) = *(out.get());
       }
     }
   }
