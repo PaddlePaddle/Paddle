@@ -51,6 +51,7 @@ def save(state_dict, path, **configs):
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
             Default: 4.
         **configs(dict, optional): optional keyword arguments. The following options are currently supported:
+
             1. use_binary_format(bool):
                 To be used in paddle.save. When the saved object is static graph variable, you can specify ``use_binary_for_var``.
                 If True, save the file in the c++ binary format when saving a single static graph variable; otherwise, save it in pickle format.
