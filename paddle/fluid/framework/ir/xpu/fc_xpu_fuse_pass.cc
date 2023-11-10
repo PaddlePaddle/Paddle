@@ -527,6 +527,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
   Node* filter_intx = nullptr;
   Node* filter_max = nullptr;
   Node* scale_max = nullptr;
+  LOG(INFO) << "mul_w_replicated_node SHAPE:"
+            << Vec2Str(mul_w_replicated_node->Var()->GetShape());
+  bool per_channel_quant =
+      std::getenv("FLAGS_fc_gemm_use_per_channel") == nullptr ? false : true;
   if (op_weights_precision != "int8") {
     PrepareWeight<float, int16_t>(graph,
                                   scope,
@@ -534,8 +538,10 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
+                                  &scale_max,
                                   !transpose_w,
-                                  weight_scale);
+                                  weight_scale,
+                                  per_channel_quant);
   } else {
     PrepareWeight<int8_t, int8_t>(graph,
                                   scope,
@@ -543,49 +549,14 @@ void FcXPUFusePass::CreateFusionWeightsAndBias(
                                   mul_w_replicated_node,
                                   &filter_intx,
                                   &filter_max,
+                                  &scale_max,
                                   !transpose_w,
-                                  weight_scale);
+                                  weight_scale,
+                                  per_channel_quant);
   }
-
-  bool is_per_channel_need_create_scale_max_node =
-      !weight_scale.empty() && !IsPerTensorQuant(weight_scale);
-  if (is_per_channel_need_create_scale_max_node) {
-    phi::DenseTensor ones_weight_max_tensor;
-    auto* cpu_ctx = static_cast<phi::CPUContext*>(
-        platform::DeviceContextPool::Instance().Get(phi::CPUPlace()));
-    int max_ptr_size = phi::backends::xpu::get_xpu_max_ptr_size(-1);
-    if (weight_scale.size() != 1) {
-      max_ptr_size = weight_scale.size();
-    }
-    ones_weight_max_tensor.set_type(phi::DataType::FLOAT32);
-    ones_weight_max_tensor.Resize({max_ptr_size});
-    std::vector<float> ones_weight(max_ptr_size, 1.0);
-    memcpy(cpu_ctx->Alloc<float>(&ones_weight_max_tensor),
-           ones_weight.data(),
-           max_ptr_size * sizeof(float));
-
-    std::string scale_max_name = mul_w->Name() + "_scale_max";
-    VarDesc scale_max_desc(scale_max_name);
-    scale_max_desc.SetPersistable(true);
-    scale_max_desc.SetShape(vectorize(ones_weight_max_tensor.dims()));
-    scale_max_desc.SetDataType(proto::VarType::Type::VarType_Type_FP32);
-    scale_max = graph->CreateVarNode(&scale_max_desc);
-    auto* block_scale_max_desc = block->Var(scale_max_name);
-    block_scale_max_desc->SetPersistable(scale_max_desc.Persistable());
-    block_scale_max_desc->SetShape(scale_max_desc.GetShape());
-    block_scale_max_desc->SetDataType(scale_max_desc.GetDataType());
-    Assign(ones_weight_max_tensor,
-           scope->Var(scale_max_name)->GetMutable<phi::DenseTensor>());
-  }
-
   (*fusion_nodes_map)["w"] = filter_intx;
-  if (is_per_channel_need_create_scale_max_node) {
-    (*fusion_nodes_map)["w_max"] = scale_max;
-    (*fusion_nodes_map)["scale_max"] = filter_max;
-  } else {
-    (*fusion_nodes_map)["w_max"] = filter_max;
-    (*fusion_nodes_map)["scale_max"] = scale_max;
-  }
+  (*fusion_nodes_map)["w_max"] = filter_max;
+  (*fusion_nodes_map)["scale_max"] = scale_max;
 }
 
 void FcXPUFusePass::CreateFusionOutputs(
