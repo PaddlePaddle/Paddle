@@ -21,6 +21,7 @@
 
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
@@ -92,6 +93,22 @@ class ConstantFoldingPattern : public pir::RewritePattern {
         place_, {}, kernel_program->block(), scope_, *exe_config_);
 
     core.Run({});
+
+    auto* output_var = scope_->FindVar(output_var_name);
+    PADDLE_ENFORCE_EQ(
+        output_var->IsType<phi::DenseTensor>(),
+        true,
+        phi::errors::InvalidArgument("Output var must be a densetensor type."));
+    auto* output_tensor = output_var->GetMutable<phi::DenseTensor>();
+    if (output_tensor->place().GetType() == phi::AllocationType::CPU) {
+      paddle::platform::CPUPlace cpu_place;
+      phi::DenseTensor temp_tensor;
+      temp_tensor.Resize(output_tensor->dims());
+      paddle::framework::TensorCopySync(
+          *output_tensor, cpu_place, &temp_tensor);
+      output_tensor->clear();
+      paddle::framework::TensorCopySync(temp_tensor, place_, output_tensor);
+    }
 
     // TODO(liuyuanle): support multiple output
     auto get_parameter_op = rewriter.Build<pir::GetParameterOp>(
