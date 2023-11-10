@@ -3758,7 +3758,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
              [0.97020894, 0.97786582]])
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.diagonal(x, offset, axis1, axis2)
     else:
 
