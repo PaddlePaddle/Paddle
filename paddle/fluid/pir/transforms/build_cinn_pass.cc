@@ -145,6 +145,10 @@ bool IsSupportCinn(pir::Operation* op) {
     }
   }
 
+  if (op->isa<paddle::dialect::DropoutOp>()) {
+    return false;
+  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(*op);
   if (CompatibleInfo::IsSupportCinn(*op)) {
@@ -184,6 +188,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       pending_count[op] = 0;
     }
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
@@ -207,6 +214,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       --pending_count[defined_op];
       if (pending_count[defined_op] == 0) {
@@ -234,6 +244,9 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 
   std::vector<pir::Operation*> vec_res;
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     if (!producers.count(source_op)) {
       producers.insert(source_op);
@@ -257,6 +270,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     producers.insert(source_op);
   }
