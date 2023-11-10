@@ -102,7 +102,7 @@ def to_sot_test(fn):
 
 def to_legacy_ir_test(fn):
     def impl(*args, **kwargs):
-        logger.info("[Program] running legacy ir")
+        logger.info("[LEGACY_IR] running legacy ir")
         return fn(*args, **kwargs)
 
     return impl
@@ -117,8 +117,8 @@ def to_pir_exe_test(fn):
             return
         with static.scope_guard(static.Scope()):
             with static.program_guard(static.Program()):
+                pir_flag = 'FLAGS_enable_pir_in_executor'
                 try:
-                    pir_flag = 'FLAGS_enable_pir_in_executor'
                     os.environ[pir_flag] = 'True'
                     set_flags({pir_flag: True})
                     ir_outs = fn(*args, **kwargs)
