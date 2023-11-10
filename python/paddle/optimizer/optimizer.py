@@ -748,21 +748,12 @@ class Optimizer:
         if param.name in self._master_weights:
             var = self._master_weights[param.name]
         else:
+            assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
-            if in_pir_mode():
-                with paddle.static.program_guard(
-                    paddle.static.default_startup_program()
-                ):
-                    var = paddle.full(
-                        shape=param.shape,
-                        fill_value=0,
-                        dtype='float32',
-                        name=var_name,
-                    )
-                    var.is_persistable = True
-                    var = paddle.cast(param, 'float32')
+            if framework.in_dygraph_mode():
+                var = paddle.cast(param, 'float32')
+                var.name = var_name
             else:
-                assert isinstance(self.helper, LayerHelper)
                 var = paddle.static.create_global_var(
                     name=var_name,
                     shape=param.shape,
