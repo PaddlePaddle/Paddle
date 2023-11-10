@@ -23,3 +23,13 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+
+- op : uniform_random_batch_size_like
+  args : (Tensor input, int[] shape, int input_dim_idx=0, int output_dim_idx=0, float min=-1.0f, float max=1.0f, int seed=0,  int diag_step=0, float diag_val=1.0f, DataType dtype=DataType::FLOAT32)
+  output : Tensor(out)
+  infer_meta :
+    func : BatchSizeLikeInferMeta
+    param : [input,shape,input_dim_idx,output_dim_idx]
+  kernel :
+    func : uniform_random_batch_size_like
+    data_type : dtype

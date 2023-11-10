@@ -116,6 +116,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor_',
     'shadow_feed',
     'sparse_momentum',
+    'uniform_random_batch_size_like',
 ]
 
 

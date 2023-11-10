@@ -38,7 +38,8 @@ const std::unordered_set<std::string> LegacyOpList = {
     "pd_op.c_allgather",
     "pd_op.seed",
     "pd_op.share_data",
-    "pd_op.sparse_momentum"};
+    "pd_op.sparse_momentum",
+    "pd_op.uniform_random_batch_size_like"};
 
 enum class AttrType {
   UNDEFINED = 0,
