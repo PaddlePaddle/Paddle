@@ -399,17 +399,14 @@ TEST(GroupOp, TestBuildScaleTensor) {
   ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
 
-  program->Print(std::cout);
   cinn::dialect::ir::PdOp2CinnOpConverter(program.get());
 
-  program->Print(std::cout);
   pir::PassManager pm(ctx);
   pm.AddPass(
       std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pm.AddPass(pir::CreateBuildCinnPass());
   CHECK_EQ(pm.Run(program.get()), true);
 
-  program->Print(std::cout);
   auto res = cinn::dialect::ir::CINNGroupLoweringPass(program.get());
 
   paddle::platform::Place place = paddle::platform::CUDAPlace(0);
@@ -427,7 +424,6 @@ TEST(GroupOp, TestBuildScaleTensor) {
   auto out_tensor =
       executor.local_scope()->FindVar("out@fetch")->Get<phi::DenseTensor>();
 
-  std::cerr << out_tensor << std::endl;
   bool res0 = simple_cmp(out_tensor.data<float>()[0], 0.5);
   EXPECT_EQ(res0, true);
 }
