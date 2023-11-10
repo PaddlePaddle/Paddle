@@ -487,10 +487,8 @@ void IndexPutGradInferMeta(const MetaTensor& x,
                            MetaTensor* x_grad,
                            MetaTensor* value_grad);
 
-void SetValueWithTensorGradInferMeta(const MetaTensor& out_grad,
-                                     const MetaTensor& values,
-                                     MetaTensor* x_grad,
-                                     MetaTensor* value_grad);
-
-void SetValueGradInferMeta(const MetaTensor& out_grad, MetaTensor* x_grad);
+void SetValueGradInferMeta(const MetaTensor& out_grad,
+                           const MetaTensor& values,
+                           MetaTensor* x_grad,
+                           MetaTensor* value_grad);
 }  // namespace phi
