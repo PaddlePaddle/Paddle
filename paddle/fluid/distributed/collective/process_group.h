@@ -484,7 +484,7 @@ class ProcessGroup {
   }
 
  protected:
-  int global_rank_;
+  int global_rank_{-1};
   int rank_;
   int size_;
   int gid_;

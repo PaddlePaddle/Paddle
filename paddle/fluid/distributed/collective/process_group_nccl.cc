@@ -865,16 +865,16 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
   // gather global ranks in current group
   int* gpu_global_rank = nullptr;
   size_t gpu_global_rank_size = sizeof(int);
-  cudaMalloc(&gpu_global_rank, gpu_global_rank_size);
+  CUDA_CHECK(cudaMalloc(&gpu_global_rank, gpu_global_rank_size));
 
-  cudaMemcpy(gpu_global_rank,
+  CUDA_CHECK(cudaMemcpy(gpu_global_rank,
              &global_rank_,
              gpu_global_rank_size,
-             cudaMemcpyHostToDevice);
+             cudaMemcpyHostToDevice));
 
   int* gpu_global_ranks = nullptr;
   size_t gpu_global_ranks_size = num_ranks * sizeof(int);
-  cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size);
+  CUDA_CHECK(cudaMalloc(&gpu_global_ranks, gpu_global_ranks_size));
 
   NCCL_CHECK(phi::dynload::ncclAllGather(gpu_global_rank,
                                          gpu_global_ranks,
@@ -884,12 +884,12 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
                                          comm_ctx->stream()));
 
   std::vector<int> global_ranks(num_ranks);
-  cudaMemcpy(global_ranks.data(),
+  CUDA_CHECK(cudaMemcpy(global_ranks.data(),
              gpu_global_ranks,
              gpu_global_ranks_size,
-             cudaMemcpyDeviceToHost);
-  cudaFree(gpu_global_rank);
-  cudaFree(gpu_global_ranks);
+             cudaMemcpyDeviceToHost));
+  CUDA_CHECK(cudaFree(gpu_global_rank));
+  CUDA_CHECK(cudaFree(gpu_global_ranks));
 
   // store global_ranks in current group_key
   std::once_flag flag;
@@ -1015,16 +1015,19 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   bool is_batch_p2p = s_group_call_counter > 0;
   std::string key = "";
 
+  int p2p_nrank = 0;
   if (is_batch_p2p) {
     key = GetKeyFromPlace(place);
     p2p_rank = rank_;
     p2p_target_rank = peer;
+    p2p_nrank = GetSize();
   } else {
     int low_rank = rank_ < peer ? rank_ : peer;
     int high_rank = rank_ < peer ? peer : rank_;
     key = std::to_string(low_rank) + "->" + std::to_string(high_rank);
     p2p_rank = rank_ < peer ? 0 : 1;
     p2p_target_rank = 1 - p2p_rank;
+    p2p_nrank = 2;
   }
 
   platform::CUDADeviceGuard cuda_guard(place);
@@ -1048,7 +1051,7 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
       std::make_shared<phi::distributed::NCCLCommTask>(place,
                                                        group_key_,
                                                        p2p_rank,
-                                                       2,
+                                                       p2p_nrank,
                                                        gid_,
                                                        comm_seq_,
                                                        tensor.numel(),
