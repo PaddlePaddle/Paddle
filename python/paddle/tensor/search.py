@@ -1210,7 +1210,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
              [1, 1]]))
             >>> # doctest: -SKIP
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
