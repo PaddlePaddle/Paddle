@@ -329,13 +329,6 @@ std::unordered_map<AnchorIndex, AnchorGroup> PartitionOpStmtsIntoAnchorGroups(
   const auto& equation_graph_view = MakeGlobalEquationGraphViewForPartition(
       EquationCtx4OpStmt, op_stmts, direction_equation_generator);
 
-  Equations graph_equations{};
-  {
-    Variable start = *candidate_anchor_indexes->begin();
-    equation_graph_view.BfsWalkFunction(
-        start, [&](const Function* f) { graph_equations->emplace_back(*f); });
-  }
-
   std::unordered_set<OpStmt> all_visited_op_stmts{};
   while (!candidate_anchor_indexes->empty()) {
     AnchorIndex anchor_index =
