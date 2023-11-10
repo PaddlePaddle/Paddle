@@ -215,13 +215,36 @@ class ArrayLengthOp
   static void InferMeta(phi::InferMetaContext *infer_meta);
 };
 
+class ArrayReadOp
+    : public pir::Op<ArrayReadOp, OpYamlInfoInterface, InferMetaInterface> {
+ public:
+  using Op::Op;
+  static const char *name() { return "pd_op.array_read"; }
+  static constexpr uint32_t attributes_num = 0;
+  static constexpr const char **attributes_name = nullptr;
+  static OpInfoTuple GetOpInfo();
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value array,
+                    int64_t i);
+  static void Build(pir::Builder &builder,             // NOLINT
+                    pir::OperationArgument &argument,  // NOLINT
+                    pir::Value array,
+                    pir::Value i);
+  void VerifySig();
+  pir::Value array() { return operand_source(0); }
+  pir::Value i() { return operand_source(1); }
+  pir::OpResult out() { return result(0); }
+  static void InferMeta(phi::InferMetaContext *infer_meta);
+};
+
 class ArrayWrite_Op : public pir::Op<ArrayWrite_Op,
                                      OpYamlInfoInterface,
                                      InferMetaInterface,
                                      InplaceTrait> {
  public:
   using Op::Op;
-  static const char *name() { return "pd_op.array_write"; }
+  static const char *name() { return "pd_op.array_write_"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static OpInfoTuple GetOpInfo();
@@ -295,5 +318,6 @@ IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::FusedGemmEpilogueGradOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::CreateArrayOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayLengthOp)
+IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayReadOp)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ArrayWrite_Op)
 IR_DECLARE_EXPLICIT_TYPE_ID(paddle::dialect::ExpandOp)

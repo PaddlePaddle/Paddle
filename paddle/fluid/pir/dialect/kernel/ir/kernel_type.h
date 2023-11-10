@@ -120,11 +120,9 @@ class AllocatedDenseTensorArrayType
   static AllocatedDenseTensorArrayType get(pir::IrContext *ctx,
                                            const phi::Place &place,
                                            const pir::Type &dtype,
-                                           const phi::DDim &dims,
-                                           const phi::DataLayout &layout,
-                                           const phi::LoD &lod) {
+                                           const phi::DataLayout &layout) {
     dialect::DenseTensorArrayType type =
-        dialect::DenseTensorArrayType::get(ctx, dtype, dims, layout, lod);
+        dialect::DenseTensorArrayType::get(ctx, dtype, layout);
 
     return pir::TypeManager::template get<AllocatedDenseTensorArrayType>(
         ctx, place, type);

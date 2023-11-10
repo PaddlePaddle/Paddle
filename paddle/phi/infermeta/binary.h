@@ -49,6 +49,11 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          MetaTensor* out,
                          MetaConfig config = MetaConfig());
 
+void ArrayReadInferMeta(const MetaTensor& array,
+                        const Scalar& i,
+                        MetaTensor* out,
+                        MetaConfig config = MetaConfig());
+
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out);
 
 void BCELossInferMeta(const MetaTensor& input,

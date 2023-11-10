@@ -115,9 +115,7 @@ struct DenseTensorArrayTypeStorage : public pir::TypeStorage {
   using ParamKey = std::tuple<pir::Type, phi::DataLayout>;
 
   DenseTensorArrayTypeStorage(const pir::Type& dtype,
-                              const phi::DDim& dims,
-                              const phi::DataLayout& layout,
-                              const phi::LoD& lod)
+                              const phi::DataLayout& layout)
       : dtype_(dtype), layout_(layout) {}
 
   ///

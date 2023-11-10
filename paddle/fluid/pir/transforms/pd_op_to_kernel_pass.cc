@@ -463,9 +463,7 @@ pir::Type BuildOutputType(pir::Type type,
         ctx,
         place,
         dense_tensor_array_type.dtype(),
-        dense_tensor_array_type.dims(),
-        dense_tensor_array_type.data_layout(),
-        dense_tensor_array_type.lod());
+        dense_tensor_array_type.data_layout());
   } else {
     PADDLE_THROW(phi::errors::Unimplemented(
         "BuildOutputType only support DenseTensorType and SelectedRowsType"));
@@ -1487,9 +1485,7 @@ std::vector<pir::Value> BuildOpInputList(
               ctx,
               out_place,
               new_in_alloc_type.dtype(),
-              new_in_alloc_type.dims(),
-              new_in_alloc_type.data_layout(),
-              new_in_alloc_type.lod());
+              new_in_alloc_type.data_layout());
           new_in = AddPlaceTransferOp(
               new_in, out_type, in_place, out_place, kernel_key, block);
         }
