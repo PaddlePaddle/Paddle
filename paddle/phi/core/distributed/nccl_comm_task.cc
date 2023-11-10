@@ -218,7 +218,7 @@ std::string NCCLCommTask::GetTraceMsg() {
   auto global_ranks =
       phi::distributed::CommContextManager::GetInstance().GetGroupRanks(
           group_key_);
-  return "gid:" + std::to_string(gid_) +
+  return "group_key:" + group_key_ +
          ",group_ranks:" + VectorToString(global_ranks) +
          ",global_rank:" + std::to_string(global_rank_) +
          ",local_rank:" + std::to_string(rank_) +

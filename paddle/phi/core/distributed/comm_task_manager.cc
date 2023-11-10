@@ -97,52 +97,50 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
-    VLOG(0) << "debug size comm_task_list_: " << comm_task_list_.size()
+    VLOG(0) << "dkebug size comm_task_list_: " << comm_task_list_.size()
         << ", init_comm_task_map_: " << init_comm_task_map_.size()
         << ", start_comm_task_map_: " << start_comm_task_map_.size();
 
-    if (IsTimeout() && !logged_ && group_last_comm_task_.empty()) {
+    if (IsTimeout() && !logged_) {
         // case 1: all group is empty, has no task
         // report error immediately
-        LOG(ERROR) << "Find no task started in all group";
+        if (group_last_comm_task_.empty()) {
+            LOG(ERROR) << "Find no task started in all group";
+        } else {
+            // case 2: all group is not empty, but all last task is completed
+            // when some group is empty ?
+            bool all_completed = true;
+            for (auto iter: group_last_comm_task_) {
+                if (!iter.second->IsCompleted()) {
+                    all_completed = false;
+                    break;
+                }
+            }
+            if (all_completed) {
+                // report error immediately
+                LOG(ERROR) << "Find no task started with prev task completed in all group";
+            } else {
+                // case 3: all group is not empty, some group task started but not finished
+                // analyze by automated script
+                for (auto iter : group_last_comm_task_) {
+                    LOG(INFO) << "Find last group comm task key:" << iter.first;
+                    LOG(INFO) << "Find last group comm task:" << iter.second->GetTraceMsg();
+                }
+            }
+        }
         logged_ = true;
     }
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
       if (task->IsTimeout()) {
         if (!task->IsStarted()) {
-          if (IsTimeout() && !logged_ && !group_last_comm_task_.empty()) {
-              // case 2: all group is not empty, but all last task is completed
-              // when some group is empty ?
-              bool all_completed = true;
-              for (auto iter: group_last_comm_task_) {
-                  if (!iter.second->IsCompleted()) {
-                      all_completed = false;
-                      break;
-                  }
-              }
-              if (all_completed) {
-                  // report error immediately
-                  LOG(ERROR) << "Find no task started with prev task completed in all group";
-                  logged_ = true;
-              }
-          }
+          LOG(WARNING) << "Find timeout init but not start task:"
+                       << task->GetTraceMsg();
           std::string task_key = task->UniqueKey();
           init_comm_task_map_[task_key] = task;
         } else if (!task->IsCompleted()) {
           LOG(WARNING) << "Find timeout start but not finish task:"
                        << task->GetTraceMsg();
-
-          LOG(INFO) << "debug all group_last_comm_task_ size:" << group_last_comm_task_.size();
-          if (IsTimeout() && !logged_) {
-              // case 3: all group is not empty, some group task started but not finished
-              // analyze by automated script
-              for (auto iter : group_last_comm_task_) {
-                  LOG(INFO) << "Find last group comm task:" << iter.second->GetTraceMsg();
-              }
-              logged_ = true;
-          }
-
           std::string task_key = task->UniqueKey();
           start_comm_task_map_[task_key] = task;
         }

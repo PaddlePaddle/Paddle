@@ -234,6 +234,8 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
       place_to_comm_ctx_;
 
   uint64_t comm_seq_{0};
+  std::unordered_map<std::string, uint64_t> p2p_comm_seq_;
+  std::unordered_map<std::string, std::string> place_to_group_key_;
 
   // TODO(sunyilun): attrs below will be removed later
   std::mutex mutex_;
@@ -244,7 +246,6 @@ class ProcessGroupNCCL final : public ProcessGroupWithStream {
   // optimize memory for process_group
   std::vector<std::pair<std::weak_ptr<phi::Allocation>, gpuStream_t>>
       allocation_stream_pairs;
-  std::string group_key_;
 };
 
 }  //  namespace distributed
