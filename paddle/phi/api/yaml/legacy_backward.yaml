@@ -662,6 +662,7 @@
   infer_meta :
     func : GeneralUnaryGradInferMeta
     param : [x]
+    spmd_rule : StridedGradInferSpmdDynamic
   kernel :
     func : strided_slice_grad
   no_need_buffer : x

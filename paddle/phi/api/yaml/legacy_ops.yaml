@@ -1004,6 +1004,7 @@
   output : Tensor
   infer_meta :
     func : StridedSliceInferMeta
+    spmd_rule : StridedSliceInferSpmdDynamic
   kernel :
     func : strided_slice
   backward : strided_slice_grad
