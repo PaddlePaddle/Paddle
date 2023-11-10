@@ -26,7 +26,11 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    test_legacy_and_pir,
+    test_legacy_and_pir_exe_and_pir_api,
+)
 
 import paddle
 from paddle import nn
@@ -52,7 +56,6 @@ class IsInstanceLayer(nn.Layer):
         super().__init__()
         self.layer = layer
 
-    @paddle.jit.to_static
     def forward(self, x):
         if isinstance(self.layer, (AddAttrLayer,)):
             self.layer.attr = x
@@ -84,7 +87,7 @@ def train(model, to_static):
 
 
 class TestIsinstance(Dy2StTestBase):
-    @test_legacy_and_pir
+    @test_legacy_and_pir_exe_and_pir_api
     def test_isinstance_simple_return_layer(self):
         model = paddle.jit.to_static(IsInstanceLayer(SimpleReturnLayer()))
         self._test_model(model)
