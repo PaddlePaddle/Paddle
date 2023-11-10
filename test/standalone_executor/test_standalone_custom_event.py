@@ -139,13 +139,6 @@ class TestMannulEvent(unittest.TestCase):
         # create jobs
         for program_id in range(prog_num):
             job = core.Job(f"prog_{program_id}")
-            # Set col_attr info for fetch_op to fetch the correct data after running multiple micro batch
-            if program_id == prog_num - 1:
-                for i in range(fetch_op_num):
-                    job.set_col_attr_for_fetch_op(
-                        fetch_op_indics[i],
-                        i * micro_batch_num + micro_batch_id,
-                    )
             job_list.append(job)
 
         job_types = []

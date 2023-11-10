@@ -857,13 +857,13 @@ class ParallelEnv:
         Its value is equal to the value of the environment variable ``PADDLE_PG_TIMEOUT`` . The default value is 30 minutes.
 
         Examples:
-          .. code-block:: python
+            .. code-block:: python
 
-            # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
-            import paddle.distributed as dist
+                >>> # execute this command in terminal: export PADDLE_PG_TIMEOUT=1800000
+                >>> import paddle.distributed as dist
 
-            env = dist.ParallelEnv()
-            # the pg_timeout of process group 1800000
+                >>> env = dist.ParallelEnv()
+                >>> # the pg_timeout of process group 1800000
         """
         return self._pg_timeout
 

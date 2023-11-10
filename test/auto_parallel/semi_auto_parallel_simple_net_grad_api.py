@@ -34,13 +34,12 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
         self._mesh = dist.ProcessMesh([0, 1], dim_names=["x"])
 
         paddle.set_device(self._backend)
-        self.init_input_data()
 
     def run_dynamic_grad_api(self, layer, shard_input=False):
         # create loss
         loss_fn = nn.MSELoss()
         # run forward and backward
-        image = paddle.to_tensor(self.image)
+        image, label = self.init_input_data()
         if shard_input:
             image = dist.shard_tensor(
                 image,
@@ -50,11 +49,13 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
             )
         out = layer(image)
 
-        label = paddle.to_tensor(self.label)
         loss = loss_fn(out, label)
 
         loss.backward()
 
+        grads = paddle.base.core.eager.get_grads_types(
+            [layer.parameters()[0], layer.parameters()[1]]
+        )
         layer.parameters()[0]._reset_grad_inplace_version()
         tmp = layer.parameters()[1]._grad_value()
 
@@ -68,3 +69,7 @@ class TestSimpleNetWithGradApiForSemiAutoParallel(
 
     def run_test_case(self):
         self.test_demo_net()
+
+
+if __name__ == '__main__':
+    TestSimpleNetWithGradApiForSemiAutoParallel().run_test_case()

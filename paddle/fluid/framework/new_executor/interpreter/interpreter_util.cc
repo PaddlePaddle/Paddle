@@ -1207,7 +1207,7 @@ const paddle::framework::Variable* GetVariableByName(
   return nullptr;
 }
 
-std::vector<std::string> GetOriginInputNames(std::string op_name) {
+std::vector<std::string> GetOriginInputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);
@@ -1220,7 +1220,7 @@ std::vector<std::string> GetOriginInputNames(std::string op_name) {
   return ret;
 }
 
-std::vector<std::string> GetOriginOutputNames(std::string op_name) {
+std::vector<std::string> GetOriginOutputNames(const std::string& op_name) {
   std::vector<std::string> ret;
   pir::IrContext* ctx = pir::IrContext::Instance();
   pir::OpInfo op_info = ctx->GetRegisteredOpInfo(op_name);

@@ -121,7 +121,6 @@ class Conv1DTestCase(unittest.TestCase):
             feed_dict["bias"] = self.bias
         exe = base.Executor(place)
         exe.run(start)
-        # breakpoint()
         (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
         return y_np
 

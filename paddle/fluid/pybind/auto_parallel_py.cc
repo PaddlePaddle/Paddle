@@ -40,13 +40,14 @@
 #include "paddle/phi/backends/context_pool.h"
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
-#include "paddle/phi/core/distributed/auto_parallel/nd_mesh_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/p_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_p_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/r_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_r_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/s_to_s_reshard_function.h"
-#include "paddle/phi/core/distributed/auto_parallel/same_status_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/nd_mesh_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/p_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_p_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/r_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_r_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/s_to_s_reshard_function.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/same_status_reshard_function.h"
 #include "paddle/phi/core/enforce.h"
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -74,6 +75,7 @@ using paddle::distributed::auto_parallel::SPMDRuleMap;
 using paddle::framework::BlockDesc;
 using paddle::framework::OpDesc;
 using paddle::framework::VarDesc;
+using phi::distributed::ArgDistAttr;
 using phi::distributed::ProcessMesh;
 using phi::distributed::TensorDistAttr;
 using phi::distributed::auto_parallel::Device;
@@ -143,9 +145,9 @@ static inline void reset_operator_dist_attr(OperatorDistAttr *dist_attr) {
   dist_attr->clear_annotated();
 }
 
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_forward(const phi::distributed::SpmdRule &self, const py::args &args);
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_backward(const phi::distributed::SpmdRule &self, const py::args &args);
 
 void BindAutoParallel(py::module *m) {
@@ -182,8 +184,16 @@ void BindAutoParallel(py::module *m) {
       *m, "RToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
+  py::class_<phi::distributed::RToSReshardFunctionCrossMesh>(
+      *m, "RToSReshardFunctionCrossMesh", ReshardFunction)
+      .def(py::init<>());
+
   py::class_<phi::distributed::SToRReshardFunction>(
       *m, "SToRReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::SToRReshardFunctionCrossMesh>(
+      *m, "SToRReshardFunctionCrossMesh", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::RToPReshardFunction>(
@@ -196,6 +206,10 @@ void BindAutoParallel(py::module *m) {
 
   py::class_<phi::distributed::SToSReshardFunction>(
       *m, "SToSReshardFunction", ReshardFunction)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::PToSReshardFunction>(
+      *m, "PToSReshardFunction", ReshardFunction)
       .def(py::init<>());
 
   py::class_<phi::distributed::SameNdMeshReshardFunction>(
@@ -481,6 +495,9 @@ void BindAutoParallel(py::module *m) {
           static_cast<std::map<std::string, TensorDistAttr> &(
               OperatorDistAttr::*)()>(&OperatorDistAttr::output_dist_attrs),
           &OperatorDistAttr::set_output_dist_attrs)
+      .def_property("run_time_us",
+                    &OperatorDistAttr::run_time_us,
+                    &OperatorDistAttr::set_run_time_us)
       .def("get_input_dist_attr",
            static_cast<TensorDistAttr &(
                OperatorDistAttr::*)(const std::string &)>(
@@ -703,7 +720,7 @@ static void prepare_ctx(phi::distributed::InferSpmdContext *ctx,
     parse_single_pyobject(obj, ctx, i);
   }
 }
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
   VLOG(6) << "infer_forward ";
   phi::distributed::InferSpmdContext ctx;
@@ -711,7 +728,7 @@ infer_forward(const phi::distributed::SpmdRule &self, const py::args &args) {
   return self.InferForward(ctx);
 }
 
-static std::pair<std::vector<TensorDistAttr>, std::vector<TensorDistAttr>>
+static std::pair<std::vector<ArgDistAttr>, std::vector<ArgDistAttr>>
 infer_backward(const phi::distributed::SpmdRule &self, const py::args &args) {
   VLOG(6) << "infer_backward ";
   phi::distributed::InferSpmdContext ctx;
