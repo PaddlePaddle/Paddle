@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.framework import in_dynamic_or_pir_mode
 from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import RoIPool, roi_pool
 
@@ -37,7 +36,7 @@ class TestRoIPool(unittest.TestCase):
         else:
             output_shape = (3, 256, output_size[0], output_size[1])
 
-        if in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             data = paddle.to_tensor(self.data)
             boxes = paddle.to_tensor(self.boxes)
             boxes_num = paddle.to_tensor(self.boxes_num)
@@ -83,6 +82,7 @@ class TestRoIPool(unittest.TestCase):
         self.roi_pool_functional(3)
         self.roi_pool_functional(output_size=(3, 4))
 
+    @test_with_pir_api
     def test_roi_pool_functional_static(self):
         paddle.enable_static()
         self.roi_pool_functional(3)

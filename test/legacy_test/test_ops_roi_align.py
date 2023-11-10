@@ -17,7 +17,6 @@ import unittest
 import numpy as np
 
 import paddle
-from paddle.framework import in_dynamic_or_pir_mode
 from paddle.pir_utils import test_with_pir_api
 from paddle.vision.ops import RoIAlign, roi_align
 
@@ -31,14 +30,13 @@ class TestRoIAlign(unittest.TestCase):
         self.boxes = boxes.astype('float32')
         self.boxes_num = np.array([3], dtype=np.int32)
 
-    @test_with_pir_api
     def roi_align_functional(self, output_size):
         if isinstance(output_size, int):
             output_shape = (3, 256, output_size, output_size)
         else:
             output_shape = (3, 256, output_size[0], output_size[1])
 
-        if in_dynamic_or_pir_mode():
+        if paddle.in_dynamic_mode():
             data = paddle.to_tensor(self.data)
             boxes = paddle.to_tensor(self.boxes)
             boxes_num = paddle.to_tensor(self.boxes_num)
@@ -84,6 +82,7 @@ class TestRoIAlign(unittest.TestCase):
         self.roi_align_functional(3)
         self.roi_align_functional(output_size=(3, 4))
 
+    @test_with_pir_api
     def test_roi_align_functional_static(self):
         paddle.enable_static()
         self.roi_align_functional(3)
