@@ -420,17 +420,22 @@ class TestMathOpPatchesPir(unittest.TestCase):
             self.assertEqual(x.ndim, 3)
 
     def test_setitem(self):
+        paddle.disable_static()
         x_np = np.ones([3, 2, 1]).astype("float32")
+        res_np_b = x_np.copy()
+        res_np_b[0] = 4
+        paddle.enable_static()
         with paddle.pir_utils.IrGuard():
             main_program, exe, program_guard = new_program()
             with program_guard:
                 x = paddle.static.data(name='x', shape=[3, 2, 1])
-                a = paddle.static.setitem(x, (0), 4)
-                (x_np,) = exe.run(
+                b = paddle.static.setitem(x, (0), 4)
+                (b_np,) = exe.run(
                     main_program,
                     feed={"x": x_np},
-                    fetch_list=[a],
+                    fetch_list=[b],
                 )
+                np.testing.assert_array_equal(res_np_b, b_np)
 
     def test_math_exists(self):
         with paddle.pir_utils.IrGuard():
