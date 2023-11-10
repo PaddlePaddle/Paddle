@@ -961,7 +961,7 @@
   intermediate : noise
   backward : rrelu_grad
 
-- op : set_value_
+- op : set_value
   args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
   output : Tensor(out)
   inplace: (x -> out)
@@ -970,9 +970,9 @@
     param : [x]
   kernel :
     func : set_value
-  backward: set_value__grad
+  backward: set_value_grad
 
-- op : set_value_with_tensor_
+- op : set_value_with_tensor
   args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(out)
   inplace: (x -> out)
@@ -981,7 +981,7 @@
     param: [x]
   kernel:
     func: set_value_with_tensor
-  backward: set_value_with_tensor__grad
+  backward: set_value_with_tensor_grad
 
 - op : slice
   args : (Tensor input, int64_t[] axes, IntArray starts, IntArray ends, int64_t[] infer_flags, int64_t[] decrease_axis)
