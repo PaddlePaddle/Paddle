@@ -218,6 +218,8 @@ void OpAttrsToCinn(framework::OpDesc *pb_desc, cpp::OpDesc *cpp_desc) {
       IMPL_ONE(BOOLEAN, bool);
       IMPL_ONE(LONG, int64_t);
       IMPL_ONE(LONGS, std::vector<int64_t>);
+      IMPL_ONE(FLOAT64, double);
+      IMPL_ONE(FLOAT64S, std::vector<double>);
       case AttrType::BLOCK: {
         auto i = pb_desc->GetAttrIfExists<int32_t>(name);
         cpp_desc->SetAttr<int32_t>(name, i);
@@ -254,6 +256,8 @@ void OpAttrsFromCinn(const cpp::OpDesc &cpp_desc, framework::OpDesc *pb_desc) {
       IMPL_ONE(BOOLEAN, bool);
       IMPL_ONE(LONG, int64_t);
       IMPL_ONE(LONGS, std::vector<int64_t>);
+      IMPL_ONE(FLOAT64, double);
+      IMPL_ONE(FLOAT64S, std::vector<double>);
       default:
         PADDLE_THROW(platform::errors::NotFound(
             "Unsupported attr type %d found ", static_cast<int>(type)));
