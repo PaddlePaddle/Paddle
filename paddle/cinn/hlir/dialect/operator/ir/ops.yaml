@@ -23,3 +23,11 @@
     func : ReduceInferMeta
   kernel :
     func : frobenius_norm
+
+- op : reshape_c
+  args : (Tensor x, int[] shape)
+  output : Tensor(out)
+  infer_meta :
+    func : ReshapeInferMeta
+  kernel :
+    func : reshape
