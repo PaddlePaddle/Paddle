@@ -172,11 +172,6 @@ class CalculatedStreamTimer {
 
   void SetStream(gpuStream_t stream) { calculated_stream_ = stream; }
 
-  void ResetTime() {
-    start_time_ = 0;
-    end_time_ = 0;
-  }
-
  private:
   gpuStream_t calculated_stream_;
   double start_time_;
