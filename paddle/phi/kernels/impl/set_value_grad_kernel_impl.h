@@ -73,6 +73,7 @@ void SetValueGradImpl(const Context& dev_ctx,
   std::vector<int64_t> starts_local = starts.GetData();
   std::vector<int64_t> ends_local = ends.GetData();
   std::vector<int64_t> steps_local = steps.GetData();
+
   funcs::StridedSliceOutDims(starts_local,
                              ends_local,
                              steps_local,
@@ -248,16 +249,16 @@ void SetValueGradImpl(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SetValueGradKernel(const Context& dev_ctx,
-                        const DenseTensor& out_grad,
-                        const IntArray& starts,
-                        const IntArray& ends,
-                        const IntArray& steps,
-                        const std::vector<int64_t>& axes,
-                        const std::vector<int64_t>& decrease_axes,
-                        const std::vector<int64_t>& none_axes,
-                        DenseTensor* x_grad,
-                        DenseTensor* value_grad) {
+void SetValueWithTensorGradKernel(const Context& dev_ctx,
+                                  const DenseTensor& out_grad,
+                                  const IntArray& starts,
+                                  const IntArray& ends,
+                                  const IntArray& steps,
+                                  const std::vector<int64_t>& axes,
+                                  const std::vector<int64_t>& decrease_axes,
+                                  const std::vector<int64_t>& none_axes,
+                                  DenseTensor* x_grad,
+                                  DenseTensor* value_grad) {
   const int rank = out_grad.dims().size();
 
   switch (rank) {
@@ -339,6 +340,29 @@ void SetValueGradKernel(const Context& dev_ctx,
           "received %d.",
           rank));
   }
+}
+
+template <typename T, typename Context>
+void SetValueGradKernel(const Context& dev_ctx,
+                        const DenseTensor& out_grad,
+                        const IntArray& starts,
+                        const IntArray& ends,
+                        const IntArray& steps,
+                        const std::vector<int64_t>& axes,
+                        const std::vector<int64_t>& decrease_axes,
+                        const std::vector<int64_t>& none_axes,
+                        DenseTensor* x_grad,
+                        DenseTensor* value_grad) {
+  SetValueWithTensorGradKernel<T, Context>(dev_ctx,
+                                           out_grad,
+                                           starts,
+                                           ends,
+                                           steps,
+                                           axes,
+                                           decrease_axes,
+                                           none_axes,
+                                           x_grad,
+                                           nullptr);
 }
 
 }  // namespace phi
