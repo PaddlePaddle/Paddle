@@ -260,6 +260,7 @@ class ParameterMeta:
 def create_parameter(
     dtype,
     shape,
+    name=None,
     **kwargs,
 ):
     if 'initializer' not in kwargs:
@@ -269,7 +270,9 @@ def create_parameter(
     if dtype is not None:
         if not isinstance(dtype, DataType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-    op_result_name = unique_name.generate('parameter')
+    op_result_name = name
+    if not op_result_name:
+        op_result_name = unique_name.generate('parameter')
     startup_program = default_startup_program()
     main_program = default_main_program()
     parameter_meta = ParameterMeta(shape, dtype)
@@ -308,14 +311,10 @@ def _convert_into_opresult(tensor):
         is_persistable = True
         if new_var is not None:
             assert isinstance(new_var, framework.Variable)
-        elif isinstance(tensor, framework.EagerParamBase):
-            # Convert EagerParamBase into Parameter with same attributes in dy2stat.
+        else:
             new_var = _global_parameter_recorder.get(
                 paddle.pir.core.default_main_program(), tensor
             )
-        else:
-            # TODO(xiongkun): add this logic, we should call paddle.data() to create a non-parameter variable.
-            raise NotImplementedError("Not implemented, for buffers.")
         # add param into parameter recorder to collect all the params used in this program.
         return new_var
     else:
