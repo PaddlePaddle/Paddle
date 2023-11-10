@@ -15,7 +15,7 @@
 
 from paddle import _C_ops
 from paddle.base.layer_helper import LayerHelper
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 
 
 def fused_rotary_position_embedding(
@@ -87,7 +87,7 @@ def fused_rotary_position_embedding(
               [[ 0.07116699, -0.90966797],
                [-0.03628540, -0.20202637]]]])
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.fused_rotary_position_embedding(
             q, k, v, sin, cos, position_ids, use_neox_rotary_style
         )
