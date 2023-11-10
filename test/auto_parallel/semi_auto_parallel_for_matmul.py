@@ -57,6 +57,7 @@ class TestMatmulApiForSemiAutoParallel:
         dist_out = paddle.matmul(
             dist_x, dist_y, transpose_x=trans_x, transpose_y=trans_y
         )
+
         self.check_tensor_eq(out, dist_out)
 
         out.backward()
@@ -227,6 +228,41 @@ class TestMatmulApiForSemiAutoParallel:
         )
         assert dist_y_grad.dist_attr._is_partial() is False
 
+    def test_matmul_with_complex_type(self):
+        paddle.seed(self._seed)
+        np.random.seed(self._seed)
+
+        x_np = np.random.random(size=[64, 32]).astype(np.complex128)
+        y_np = np.random.random(size=[32, 48]).astype(np.float32)
+        x = paddle.to_tensor(x_np)
+        y = paddle.to_tensor(y_np)
+        x.stop_gradient = False
+        y.stop_gradient = False
+
+        x_dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=[None, None]
+        )
+        y_dist_attr = dist.DistAttr(
+            mesh=self._mesh, sharding_specs=[None, None]
+        )
+
+        dist_x = dist.shard_tensor(x_np, dist_attr=x_dist_attr)
+        dist_y = dist.shard_tensor(y_np, dist_attr=y_dist_attr)
+        dist_x.stop_gradient = False
+        dist_y.stop_gradient = False
+
+        out = paddle.matmul(x, y, transpose_x=False, transpose_y=False)
+        dist_out = paddle.matmul(
+            dist_x, dist_y, transpose_x=False, transpose_y=False
+        )
+
+        self.check_tensor_eq(out, dist_out)
+
+        out.backward()
+        dist_out.backward()
+        self.check_tensor_eq(x.grad, dist_x.grad)
+        self.check_tensor_eq(y.grad, dist_y.grad)
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -240,6 +276,7 @@ class TestMatmulApiForSemiAutoParallel:
         self.test_matmul_x_column_shard_trans_x_y()
         self.test_matmul_x_column_shard_trans_x()
         self.test_matmul_x_row_shard_trans_y()
+        self.test_matmul_with_complex_type()
 
 
 if __name__ == '__main__':

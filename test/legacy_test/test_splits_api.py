@@ -19,6 +19,7 @@ import numpy as np
 
 import paddle
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 RTOL = 1e-5
 ATOL = 1e-8
@@ -128,6 +129,8 @@ class BaseTest(unittest.TestCase):
             split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy.
                 For test error, `split_numpy` is None and skip compare result, ensure the error only raised from paddle.
         """
+    @test_with_pir_api
+    def test_static_api(self):
         paddle.enable_static()
 
         for place in PLACES:

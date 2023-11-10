@@ -1041,14 +1041,19 @@ class TestCosh(TestActivation):
 
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
         if self.dtype == np.complex64 or self.dtype == np.complex128:
             # Complex64 [CPU]: AssertionError: 0.006845869 not less than or equal to 0.005
-            self.check_grad(['X'], 'Out', max_relative_error=0.007)
+            self.check_grad(
+                ['X'], 'Out', max_relative_error=0.007, check_pir=True
+            )
         else:
-            self.check_grad(['X'], 'Out')
+            self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestCosh_Complex64(TestCosh):
@@ -1075,13 +1080,16 @@ class TestCoshAPI(unittest.TestCase):
             z_expected = np.cosh(np_x)
             np.testing.assert_allclose(z, z_expected, rtol=1e-05)
 
+    @test_with_pir_api
     def test_api(self):
+        main = paddle.static.Program()
+        startup = paddle.static.Program()
         with static_guard():
             test_data_shape = [11, 17]
-            with base.program_guard(base.Program(), base.Program()):
-                input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
-                    "float32"
-                )
+            input_x = np.random.uniform(0.1, 1, test_data_shape).astype(
+                "float32"
+            )
+            with base.program_guard(main, startup):
                 data_x = paddle.static.data(
                     name="data_x",
                     shape=test_data_shape,
@@ -1090,9 +1098,8 @@ class TestCoshAPI(unittest.TestCase):
 
                 pd_cosh_out = paddle.cosh(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
                 (np_cosh_res,) = exe.run(
-                    base.default_main_program(),
+                    main,
                     feed={"data_x": input_x},
                     fetch_list=[pd_cosh_out],
                 )
@@ -1976,10 +1983,13 @@ class TestTan(TestActivation):
     def init_shape(self):
         self.shape = [10, 12]
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class TestTan_float32(TestTan):
@@ -2020,6 +2030,7 @@ class TestTanAPI(unittest.TestCase):
             out_ref = np.tan(self.x_np)
             np.testing.assert_allclose(out_ref, out_test.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -2410,7 +2421,7 @@ class TestRelu(TestActivation):
         )
 
     def test_check_output(self):
-        self.check_output(check_prim=True, check_pir=True)
+        self.check_output(check_prim=True, check_pir=True, check_prim_pir=True)
 
     def if_enable_cinn(self):
         pass
@@ -3644,13 +3655,17 @@ class TestLog1p(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         with static_guard():
             with static.program_guard(
@@ -3676,6 +3691,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -3696,9 +3712,12 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
-            with base.program_guard(base.Program(), base.Program()):
+            with base.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
                 data_x = paddle.static.data(
                     name="data_x",
@@ -3708,9 +3727,9 @@ class TestLog1pAPI(unittest.TestCase):
 
                 out1 = paddle.log1p(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (res1,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[out1],
                 )
@@ -3906,7 +3925,10 @@ class TestSTanh(TestActivation):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
+
+    def test_check_output(self):
+        self.check_output(check_pir=True)
 
 
 class TestSTanhScaleA(TestSTanh):
@@ -3953,6 +3975,7 @@ class TestSTanhAPI(unittest.TestCase):
             else paddle.CPUPlace()
         )
 
+    @test_with_pir_api
     def test_static_api(self):
         with static_guard():
             with paddle.static.program_guard(paddle.static.Program()):
@@ -3972,6 +3995,7 @@ class TestSTanhAPI(unittest.TestCase):
             for r in [out]:
                 np.testing.assert_allclose(out_ref, r.numpy(), rtol=1e-05)
 
+    @test_with_pir_api
     def test_base_api(self):
         with static_guard():
             with base.program_guard(base.Program()):
@@ -4810,8 +4834,8 @@ create_test_act_fp16_class(
     check_pir=True,
 )
 create_test_act_fp16_class(TestCos, check_pir=True)
-create_test_act_fp16_class(TestTan)
-create_test_act_fp16_class(TestCosh)
+create_test_act_fp16_class(TestTan, check_pir=True)
+create_test_act_fp16_class(TestCosh, check_pir=True)
 create_test_act_fp16_class(TestAcos, check_pir=True)
 create_test_act_fp16_class(TestSin, check_pir=True)
 create_test_act_fp16_class(TestSinh)
@@ -4822,7 +4846,11 @@ create_test_act_fp16_class(TestAsinh, check_pir=True)
 create_test_act_fp16_class(TestAtanh, check_pir=True)
 create_test_act_fp16_class(TestRound, grad_check=False, check_pir=True)
 create_test_act_fp16_class(
-    TestRelu, check_prim=True, enable_cinn=True, check_pir=True
+    TestRelu,
+    check_prim=True,
+    enable_cinn=True,
+    check_pir=True,
+    check_prim_pir=True,
 )
 create_test_act_fp16_class(
     TestGelu,
@@ -4847,7 +4875,7 @@ if core.is_compiled_with_rocm():
 else:
     create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
-create_test_act_fp16_class(TestLog1p)
+create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
@@ -4889,6 +4917,7 @@ def create_test_act_bf16_class(
     check_prim=False,
     enable_cinn=False,
     check_pir=False,
+    check_prim_pir=False,
     grad_atol=1e-2,
     **kwargs
 ):
@@ -4921,6 +4950,7 @@ def create_test_act_bf16_class(
                 atol=atol,
                 check_prim=check_prim,
                 check_pir=check_pir,
+                check_prim_pir=check_prim_pir,
             )
 
         def test_check_grad(self):
@@ -4933,6 +4963,7 @@ def create_test_act_bf16_class(
                     max_relative_error=grad_atol,
                     check_prim=check_prim,
                     check_pir=check_pir,
+                    check_prim_pir=check_prim_pir,
                 )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16OP")
@@ -4964,8 +4995,8 @@ create_test_act_bf16_class(
     TestFloor, grad_check=False, check_prim=True, check_pir=True
 )
 create_test_act_bf16_class(TestCos, check_pir=True)
-create_test_act_bf16_class(TestTan)
-create_test_act_bf16_class(TestCosh)
+create_test_act_bf16_class(TestTan, check_pir=True)
+create_test_act_bf16_class(TestCosh, check_pir=True)
 create_test_act_bf16_class(TestAcos, check_pir=True)
 create_test_act_bf16_class(TestSin, check_pir=True)
 create_test_act_bf16_class(TestSinh)
@@ -4975,7 +5006,9 @@ create_test_act_bf16_class(TestAcosh, check_pir=True)
 create_test_act_bf16_class(TestAsinh, check_pir=True)
 create_test_act_bf16_class(TestAtanh, check_pir=True)
 create_test_act_bf16_class(TestRound, grad_check=False, check_pir=True)
-create_test_act_bf16_class(TestRelu, check_prim=True, check_pir=True)
+create_test_act_bf16_class(
+    TestRelu, check_prim=True, check_pir=True, check_prim_pir=True
+)
 create_test_act_bf16_class(
     TestGelu,
     check_prim=True,
@@ -4997,7 +5030,7 @@ if core.is_compiled_with_rocm():
 else:
     create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
-create_test_act_bf16_class(TestLog1p)
+create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
