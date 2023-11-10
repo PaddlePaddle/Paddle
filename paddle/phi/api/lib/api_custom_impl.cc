@@ -29,7 +29,7 @@ limitations under the License. */
 #include "paddle/phi/infermeta/nullary.h"
 #include "paddle/phi/infermeta/unary.h"
 #ifdef PADDLE_WITH_DISTRIBUTE
-#include "paddle/phi/core/distributed/auto_parallel/reshard_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_utils.h"
 #include "paddle/phi/infermeta/spmd_rules/rules.h"
 #endif
 namespace paddle {
@@ -118,8 +118,8 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
       }
 
       auto meta_dist_input_x = MakeDistMetaTensor(input_x);
-      auto spmd_info =
-          phi::distributed::VariadicReplicatedInferSpmd(meta_dist_input_x);
+      auto spmd_info = phi::distributed::VariadicReplicatedInferSpmdDynamic(
+          meta_dist_input_x);
 
       auto dist_out = SetKernelDistOutput(&api_output);
       auto dense_out = dist_out->unsafe_mutable_value();
@@ -139,7 +139,7 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
       phi::AddNInferMeta(x_metas, &meta_dist_out);
       if (rank_is_in_current_mesh) {
         auto dist_input_x =
-            ReshardApiInputToReplicatedKernelInput(dev_ctx, x, spmd_info.first);
+            ReshardApiInputToKernelInput(dev_ctx, x, spmd_info.first[0]);
         dist_input_x = PrepareDataForDistTensor(
             dist_input_x,
             GetKernelInputArgDef(kernel.InputAt(0), kernel_backend),
@@ -165,7 +165,15 @@ Tensor add_n_impl(const std::vector<Tensor>& x) {
         auto* kernel_fn = kernel.GetVariadicKernelFn<kernel_signature>();
         (*kernel_fn)(*dev_ctx, input_x, dense_out);
       }
-      auto current_process_mesh = spmd_info.first[0].process_mesh();
+      PADDLE_ENFORCE_EQ(paddle::holds_alternative<
+                            std::vector<phi::distributed::TensorDistAttr>>(
+                            spmd_info.first[0]),
+                        true,
+                        phi::errors::PreconditionNotMet(
+                            "Arg must be a vector of TensorDistAttr"));
+
+      auto current_process_mesh =
+          paddle::get<1>(spmd_info.first[0]).at(0).process_mesh();
       SetReplicatedDistAttrForOutput(dist_out, current_process_mesh);
       return api_output;
     }
