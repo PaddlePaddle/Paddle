@@ -1633,8 +1633,8 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
     }
 
     paddle::Tensor value_tensor;
-    std::vector<paddle::experimental::Scalar> values;
-    std::vector<int64_t> shape = std::vector<int64_t>{1};
+    std::vector<phi::Scalar> values;
+    std::vector<int> shape = std::vector<int>{1};
 
     if (PyCheckTensor(value_obj)) {
       value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
@@ -1698,25 +1698,20 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
           PyComplex_Check(value_obj)) {
         if (self->tensor.dtype() == phi::DataType::FLOAT32 ||
             self->tensor.dtype() == phi::DataType::FLOAT16) {
-          values = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<float>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<float>()};
         } else if (self->tensor.dtype() == phi::DataType::FLOAT64) {
-          values = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<double>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<double>()};
         } else if (self->tensor.dtype() == phi::DataType::INT32) {
-          values = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int32_t>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<int32_t>()};
         } else if (self->tensor.dtype() == phi::DataType::INT64) {
-          values = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<int64_t>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<int64_t>()};
         } else if (self->tensor.dtype() == phi::DataType::BOOL) {
-          values = std::vector<paddle::experimental::Scalar>{
-              value_obj_tmp.cast<bool>()};
+          values = std::vector<phi::Scalar>{value_obj_tmp.cast<bool>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX64) {
-          values = std::vector<paddle::experimental::Scalar>{
+          values = std::vector<phi::Scalar>{
               value_obj_tmp.cast<std::complex<float>>()};
         } else if (self->tensor.dtype() == phi::DataType::COMPLEX128) {
-          values = std::vector<paddle::experimental::Scalar>{
+          values = std::vector<phi::Scalar>{
               value_obj_tmp.cast<std::complex<double>>()};
         } else {
           PADDLE_THROW(platform::errors::InvalidArgument(
