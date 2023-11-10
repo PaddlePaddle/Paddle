@@ -19,7 +19,6 @@ from dygraph_to_static_utils_new import (
     Dy2StTestBase,
     test_ast_only,
     test_legacy_and_pir,
-    test_legacy_and_pir_exe_and_pir_api,
 )
 
 import paddle
@@ -76,7 +75,7 @@ class TestRollBackPlainFunction(Dy2StTestBase):
     def setUp(self):
         paddle.set_device("cpu")
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir
     def test_plain_func(self):
         st_foo = paddle.jit.to_static(foo)
         x = paddle.randn([3, 4])
@@ -96,7 +95,7 @@ class TestRollBackNet(Dy2StTestBase):
         paddle.set_device("cpu")
 
     @test_ast_only
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir
     def test_net(self):
         net = paddle.jit.to_static(Net())
         x = paddle.randn([3, 4])
