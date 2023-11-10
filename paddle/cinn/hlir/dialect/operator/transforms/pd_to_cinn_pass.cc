@@ -131,6 +131,54 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
   }
 };
 
+class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &min_full = pattern.Op(paddle::dialect::FullOp::name(),
+                                      {{"shape", pattern.Attr("shape1")},
+                                       {"value", pattern.Attr("min_value")},
+                                       {"dtype", pattern.Attr("dtype_min")},
+                                       {"place", pattern.Attr("place_min")}});
+
+    const auto &max_full = pattern.Op(paddle::dialect::FullOp::name(),
+                                      {{"shape", pattern.Attr("shape2")},
+                                       {"value", pattern.Attr("max_value")},
+                                       {"dtype", pattern.Attr("dtype_max")},
+                                       {"place", pattern.Attr("place_max")}});
+
+    const auto &pd_uniform =
+        pattern.Op(paddle::dialect::UniformOp::name(),
+                   {{"dtype", pattern.Attr("uniform_dtype")},
+                    {"place", pattern.Attr("uniform_place")},
+                    {"seed", pattern.Attr("seed")}});
+    pattern.Tensor("ret") =
+        pd_uniform(full_int_array(), min_full(), max_full());
+    // int64_t[] shape,  float min, float max, int seed, DataType dtype, int
+    // diag_num, int diag_step, float diag_val)
+    //  Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_uniform =
+        res.Op(cinn::dialect::UniformRandomOp::name(),
+               {{"shape", pattern.Attr("axis_info")},
+                {"min", pattern.Attr("min_value")},
+                {"max", pattern.Attr("max_value")},
+                {"seed", pattern.Attr("seed")},
+                {"dtype", pattern.Attr("uniform_dtype")},
+                {"diag_num", pattern.Attr("seed")},
+                {"diag_step", pattern.Attr("seed")},
+                {"diag_val", pattern.Attr("min_value")}});
+    res.Tensor("ret") = cinn_uniform();
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
@@ -139,6 +187,7 @@ bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
       context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
+  // ps.Add(UniformOpPattern().Build(context));
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
