@@ -51,8 +51,16 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
     Model() : Concept(GetElementType, GetShape) {}
   };
 
+  ///
+  /// \brief kDynamic
+  ///
+  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+
   ShapedTypeInterface(Type type, Concept *impl)
-      : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {}
+      : TypeInterfaceBase<ShapedTypeInterface>(type), impl_(impl) {
+    dy_shape_ = vectorize(impl->get_shape(type));
+    std::replace(dy_shape_.begin(), dy_shape_.end(), (int64_t)-1, kDynamic);
+  }
 
   ///
   /// \brief Get the element type.
@@ -62,12 +70,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   /// \brief Get the shape of this type.
   ///
-  DDim GetShape() const;
-
-  ///
-  /// \brief kDynamic
-  ///
-  static constexpr int64_t kDynamic = std::numeric_limits<int64_t>::min();
+  std::vector<int64_t> GetDyShape() const;
 
   ///
   /// \brief Check whether this type is ranked, currently return true.
@@ -79,31 +82,31 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   int64_t GetRank() const {
     IR_ENFORCE((*this).HasRank(), "Cannot query rank of unranked shaped type.");
-    return (*this).GetShape().size();
+    return (*this).GetDyShape().size();
   }
 
   ///
   /// \brief Check whether the given dimension size is a dynamic dimension.
   ///
-  static constexpr bool IsDynamic(int64_t dValue) { return dValue == kDynamic; }
+  static constexpr bool IsDynamic(int64_t dValue) {
+    return dValue == kDynamic || dValue == -1;
+  }
 
   ///
   /// \brief Check whether the given shape has any size indicating a dynamic
   /// dimension.
   ///
-  static bool IsDynamicShape(DDim sizes) {
-    auto size_vec = vectorize(sizes);
-    return std::any_of(size_vec.begin(), size_vec.end(), [](int64_t size_vec) {
-      return IsDynamic(size_vec);
-    });
+  bool IsDynamicShape() const {
+    return std::any_of(
+        dy_shape_.begin(), dy_shape_.end(), [](int64_t size_value) {
+          return IsDynamic(size_value);
+        });
   }
 
   ///
   /// \brief Check whether shape has any size indicating a dynamic dimension.
   ///
-  bool HasStaticShape() const {
-    return (*this).HasRank() && !IsDynamicShape((*this).GetShape());
-  }
+  bool HasStaticShape() const { return (*this).HasRank() && !IsDynamicShape(); }
 
   ///
   /// \brief Check whether the given dimension has a dynamic size.Aborts for
@@ -111,7 +114,7 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   bool IsDynamicDim(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return ShapedTypeInterface::IsDynamic((*this).GetShape()[idx]);
+    return ShapedTypeInterface::IsDynamic(dy_shape_[idx]);
   }
 
   ///
@@ -119,9 +122,8 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   /// Aborts for unranked types.
   ///
   int64_t GetNumDynamicDims() const {
-    auto shape_vec = vectorize((*this).GetShape());
     return std::count_if(
-        shape_vec.begin(), shape_vec.end(), ShapedTypeInterface::IsDynamic);
+        dy_shape_.begin(), dy_shape_.end(), ShapedTypeInterface::IsDynamic);
   }
 
   ///
@@ -130,11 +132,12 @@ class ShapedTypeInterface : public TypeInterfaceBase<ShapedTypeInterface> {
   ///
   int64_t GetDimSize(unsigned idx) const {
     IR_ENFORCE(idx < GetRank(), "Invalid index for shaped type.");
-    return (*this).GetShape()[idx];
+    return dy_shape_[idx];
   }
 
  private:
   Concept *impl_;
+  std::vector<int64_t> dy_shape_;
 };
 
 }  // namespace pir

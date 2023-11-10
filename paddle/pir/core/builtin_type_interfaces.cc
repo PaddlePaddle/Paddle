@@ -21,8 +21,8 @@ Type ShapedTypeInterface::GetElementType() const {
   return impl_->get_element_type(*this);
 }
 
-phi::DDim ShapedTypeInterface::GetShape() const {
-  return impl_->get_shape(*this);
+std::vector<int64_t> ShapedTypeInterface::GetDyShape() const {
+  return dy_shape_;
 }
 
 }  // namespace pir
