@@ -16,9 +16,9 @@
 
 #include "paddle/phi/backends/all_context.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/kernels/cast_kernel.h"
 #include "paddle/phi/kernels/funcs/activation_functor.h"
 #include "paddle/phi/kernels/funcs/blas/blas.h"
-
 namespace phi {
 
 #define ToString(x) #x
@@ -62,23 +62,42 @@ void LogitKernel(const Context& dev_ctx,
   functor(place, eigen_in, eigen_out, eigen_p, eps);
 }
 
+template <typename InT, typename OutT, typename Context>
+void PowImpl(const Context& dev_ctx,
+             const DenseTensor& x,
+             const Scalar& factor,
+             DenseTensor* out) {
+  PADDLE_ENFORCE_NOT_NULL(out,
+                          errors::NotFound("Output Out should not be nullptr"));
+  dev_ctx.template Alloc<OutT>(out, out->numel() * sizeof(OutT));
+  auto x_flatten = phi::EigenVector<InT>::Flatten(x);
+  auto out_flatten = phi::EigenVector<OutT>::Flatten(*out);
+  auto* place = dev_ctx.eigen_device();
+  phi::funcs::PowFunctor<OutT> functor;
+  auto attrs = functor.GetAttrs();
+  *(attrs[0].second) = factor.to<OutT>();
+  functor(*place, x_flatten, out_flatten);
+}
+
 template <typename T, typename Context>
 void PowKernel(const Context& dev_ctx,
                const DenseTensor& x,
                const Scalar& factor,
                DenseTensor* out) {
-  PADDLE_ENFORCE_NOT_NULL(out,
-                          errors::NotFound("Output Out should not be nullptr"));
-  dev_ctx.template Alloc<T>(out);
-  auto x_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(&x, "Input", "X", "Activation"));
-  auto out_flatten = phi::EigenVector<T>::Flatten(
-      GET_DATA_SAFELY(out, "Output", "Out", "Activation"));
-  auto* place = dev_ctx.eigen_device();
-  phi::funcs::PowFunctor<T> functor;
-  auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
-  functor(*place, x_flatten, out_flatten);
+  if (factor.dtype() == DataType::COMPLEX128 &&
+      !(x.dtype() == DataType::COMPLEX64 ||
+        x.dtype() == DataType::COMPLEX128)) {
+    if (x.dtype() == DataType::FLOAT64) {
+      PowImpl<T, phi::dtype::complex<double>, Context>(dev_ctx, x, factor, out);
+    } else {
+      PowImpl<T, phi::dtype::complex<float>, Context>(dev_ctx, x, factor, out);
+    }
+  } else if (factor.dtype() == DataType::FLOAT64 &&
+             (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64)) {
+    PowImpl<T, float, Context>(dev_ctx, x, factor, out);
+  } else {
+    PowImpl<T, T, Context>(dev_ctx, x, factor, out);
+  }
 }
 
 }  // namespace phi

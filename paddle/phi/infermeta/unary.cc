@@ -4351,6 +4351,23 @@ void TileInferMeta(const MetaTensor& x,
   out->set_dtype(x.dtype());
 }
 
+void PowInferMeta(const MetaTensor& x, const Scalar& y, MetaTensor* out) {
+  if (y.dtype() == DataType::COMPLEX128 &&
+      !(x.dtype() == DataType::COMPLEX64 ||
+        x.dtype() == DataType::COMPLEX128)) {
+    if (x.dtype() == DataType::FLOAT64) {
+      out->set_dtype(phi::DataType::COMPLEX128);
+    } else {
+      out->set_dtype(phi::DataType::COMPLEX64);
+    }
+  } else if (y.dtype() == DataType::FLOAT64 &&
+             (x.dtype() == DataType::INT32 || x.dtype() == DataType::INT64)) {
+    out->set_dtype(phi::DataType::FLOAT32);
+  } else {
+    out->set_dtype(x.dtype());
+  }
+}
+
 void TopKInferMeta(const MetaTensor& x,
                    const Scalar& k_scalar,
                    int axis,

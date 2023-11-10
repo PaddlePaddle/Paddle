@@ -2742,30 +2742,29 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
 
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
+  T factor;
+  using AttrPair = std::vector<std::pair<const char*, ELEMENT_TYPE*>>;
+
+  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    out.device(d) = x.pow(static_cast<T>(factor));  // NOLINT
+    out.device(d) = x.template cast<T>().pow(factor);  // NOLINT
   }
 };
 
 template <typename T>
 struct PowGradFunctor : public BaseActivationFunctor<T> {
-  float factor;
-  typename BaseActivationFunctor<T>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
+  T factor;
+  using AttrPair = std::vector<std::pair<const char*, ELEMENT_TYPE*>>;
+
+  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
   template <typename Device,
             typename X,
             typename Out,
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) = dout * static_cast<T>(factor) *
-                   x.pow(static_cast<T>(factor) - static_cast<T>(1));
+    dx.device(d) = dout * factor * x.pow(factor - static_cast<T>(1));
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }
@@ -2774,20 +2773,19 @@ struct PowGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct PowGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
-  float factor;
-  typename BaseActivationFunctor<ComplexType<T>>::AttrPair GetAttrs() {
-    return {{"factor", &factor}};
-  }
+  ComplexType<T> factor;
+  using AttrPair = std::vector<std::pair<const char*, ComplexType<T>*>>;
+
+  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
   template <typename Device,
             typename X,
             typename Out,
             typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out UNUSED, dOut dout, dX dx) const {
-    dx.device(d) = dout * (static_cast<ComplexType<T>>(factor) *
-                           x.pow(static_cast<ComplexType<T>>(factor) -
-                                 static_cast<ComplexType<T>>(1)))
-                              .unaryExpr(Conj<T>());
+    dx.device(d) =
+        dout * (factor * x.pow(factor - static_cast<ComplexType<T>>(1)))
+                   .unaryExpr(Conj<T>());
   }
 
   static constexpr ActBwdOpFwdDeps FwdDeps() { return ActBwdOpFwdDeps::kDepX; }

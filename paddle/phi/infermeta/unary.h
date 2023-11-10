@@ -567,6 +567,8 @@ int GetSplitAxisValue(const MetaTensor& x,
                       const Scalar& axis,
                       MetaConfig config);
 
+void PowInferMeta(const MetaTensor& x, const Scalar& y, MetaTensor* out);
+
 void FillSplitOutDims(const MetaTensor& x,
                       const int axis_value,
                       const std::vector<int64_t>& sections_vec,

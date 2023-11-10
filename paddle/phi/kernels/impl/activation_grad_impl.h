@@ -334,10 +334,11 @@ void PowGradKernel(const Context& dev_ctx,
       GET_DATA_SAFELY(dx, "Output", "X@GRAD", "PowGrad"));
   auto x_flatten =
       EigenVector<T>::Flatten(GET_DATA_SAFELY(&x, "Input", "X", "PowGrad"));
+  std::cout << dout.dtype() << dx->dtype() << std::endl;
   auto* place = dev_ctx.eigen_device();
   phi::funcs::PowGradFunctor<T> functor;
   auto attrs = functor.GetAttrs();
-  *(attrs[0].second) = factor.to<float>();
+  *(attrs[0].second) = factor.to<T>();
   functor(*place, x_flatten, nullptr, dout_flatten, dx_flatten);
 }
 
