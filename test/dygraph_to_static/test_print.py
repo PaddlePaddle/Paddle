@@ -15,13 +15,9 @@
 import unittest
 
 import numpy
-from dygraph_to_static_utils_new import (
-    Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
-from paddle import base
 
 
 # 1. print Tensor
@@ -94,8 +90,7 @@ class TestPrintBase(Dy2StTestBase):
     def _run(self, to_static):
         paddle.jit.enable_to_static(to_static)
 
-        with base.dygraph.guard():
-            paddle.jit.to_static(self.dygraph_func(self.input))
+        paddle.jit.to_static(self.dygraph_func)(self.input)
 
     def get_dygraph_output(self):
         self._run(to_static=False)
@@ -108,7 +103,7 @@ class TestPrintVariable(TestPrintBase):
     def set_test_func(self):
         self.dygraph_func = dyfunc_print_variable
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir
     def test_transformed_static_result(self):
         self.get_dygraph_output()
         self.get_static_output()
