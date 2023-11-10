@@ -29,7 +29,7 @@ __all__ = ['grad', 'calc_gradient', 'calc_gradient_helper']
 
 class ValueSet:
     def __init__(self, iter=None):
-        self._values = []
+        self._values: list = []
         if iter is not None:
             for val in iter:
                 self.add(val)
@@ -358,7 +358,7 @@ def inverse_sort_op(ops):
 
 
 def append_backward_ops(
-    block, effective_forward_ops, no_grad_set, backward_ops, state
+    block, effective_forward_ops, no_grad_set, backward_ops, state: State
 ):
     '''
     add grad_op in order of topological inverse sort
