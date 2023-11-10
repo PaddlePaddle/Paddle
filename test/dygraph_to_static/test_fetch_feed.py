@@ -21,7 +21,6 @@ from dygraph_to_static_utils_new import (
 )
 
 import paddle
-from paddle import base
 
 SEED = 2020
 
@@ -69,15 +68,13 @@ class TestPool2D(Dy2StTestBase):
 
     def train(self, to_static=False):
         paddle.jit.enable_to_static(to_static)
+        dy_layer = paddle.jit.to_static(self.dygraph_class())
+        x = paddle.to_tensor(self.data)
+        prediction = dy_layer(x)
+        if isinstance(prediction, (list, tuple)):
+            prediction = prediction[0]
 
-        with base.dygraph.guard():
-            dy_layer = paddle.jit.to_static(self.dygraph_class())
-            x = base.dygraph.to_variable(self.data)
-            prediction = dy_layer(x)
-            if isinstance(prediction, (list, tuple)):
-                prediction = prediction[0]
-
-            return prediction.numpy()
+        return prediction.numpy()
 
     def train_static(self):
         return self.train(to_static=True)
@@ -86,7 +83,7 @@ class TestPool2D(Dy2StTestBase):
         return self.train(to_static=False)
 
     @test_legacy_and_pir_exe_and_pir_api
-    def test_declarative(self):
+    def test_to_static(self):
         dygraph_res = self.train_dygraph()
         static_res = self.train_static()
 
@@ -94,7 +91,6 @@ class TestPool2D(Dy2StTestBase):
             dygraph_res,
             static_res,
             rtol=1e-05,
-            err_msg=f'dygraph_res is {dygraph_res}\n static_res is \n{static_res}',
         )
 
 
