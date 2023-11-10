@@ -1047,8 +1047,8 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   auto comm_task =
       std::make_shared<phi::distributed::NCCLCommTask>(place,
                                                        group_key_,
-                                                       rank_,
-                                                       size_,
+                                                       p2p_rank,
+                                                       2,
                                                        gid_,
                                                        comm_seq_,
                                                        tensor.numel(),
