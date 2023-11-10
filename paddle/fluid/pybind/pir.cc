@@ -56,7 +56,10 @@
 #include "pybind11/stl.h"
 
 #ifdef PADDLE_WITH_CINN
+#include "paddle/cinn/hlir/dialect/operator/ir/op_dialect.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/add_broadcast_to_elementwise_pass.h"
 #include "paddle/cinn/hlir/dialect/operator/transforms/cinn_group_lowering_pass.h"
+#include "paddle/cinn/hlir/dialect/operator/transforms/pd_to_cinn_pass.h"
 #include "paddle/cinn/hlir/framework/pir_compiler.h"
 #include "paddle/fluid/pir/transforms/build_cinn_pass.h"
 #endif
@@ -973,10 +976,7 @@ static auto GetNoNeedBufferValue(const ::pir::Block *whole_block,
 
 using OpResultMap = std::unordered_map<pir::OpResult, pir::OpResult>;
 std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
-    const Program &program,
-    const std::vector<pir::OpResult> &op_result_forward_inputs,
-    const std::vector<pir::OpResult> &op_result_forward_params,
-    const std::vector<pir::OpResult> &op_result_forward_outputs) {
+    const Program &program) {
   // Limitation of this function:
   // 1. don't support Parameters.
   // 2. don't support Regions in operator.
@@ -993,6 +993,39 @@ std::pair<std::shared_ptr<Program>, OpResultMap> CloneProgram(
         pair.second.dyn_cast<pir::OpResult>();
   }
   return std::make_pair(cloned_program, op_result_map);
+}
+
+void AppendSetParameter(Program *forward_program,
+                        const pir::OpResult &result,
+                        const std::string &name,
+                        size_t start_point) {
+  pir::IrContext *ctx = pir::IrContext::Instance();
+  auto op_info = ctx->GetRegisteredOpInfo(pir::SetParameterOp::name());
+  pir::AttributeMap attribute_map = {
+      {"parameter_name", pir::StrAttribute::get(ctx, name)},
+  };
+  pir::Operation *operation =
+      pir::Operation::Create({result}, attribute_map, {}, op_info);
+  auto position = forward_program->block()->begin();
+  std::advance(position, start_point);
+  if (position == forward_program->block()->end()) {
+    forward_program->block()->push_back(operation);
+  } else {
+    forward_program->block()->insert(position, operation);
+  }
+}
+
+void AppendSetParameters(Program *forward_program,
+                         const std::vector<pir::OpResult> &outputs_op_result,
+                         int start_point,
+                         std::string name_prefix) {
+  int counter = 0;
+  for (const auto &result : outputs_op_result) {
+    std::string parameter_name = name_prefix + std::to_string(counter);
+    AppendSetParameter(
+        forward_program, result, parameter_name, start_point + counter);
+    counter += 1;
+  }
 }
 
 SplitedResult SplitForwardBackward(
@@ -1251,6 +1284,7 @@ SplitedResult SplitForwardBackward(
 void BindUtils(pybind11::module *m) {
   m->def("clone_program", CloneProgram);
   m->def("split_program", SplitForwardBackward);
+  m->def("append_set_parameters", AppendSetParameters);
   m->def("fake_op_result", FakeOpResult);
   m->def("is_fake_op_result", IsFakeOpResult);
   m->def("set_global_program",
@@ -1413,7 +1447,13 @@ void BindUtils(pybind11::module *m) {
 std::shared_ptr<Program> ApplyPirPass(Program &forward_program) {  // NOLINT
 #ifdef PADDLE_WITH_CINN
   pir::IrContext *ctx = pir::IrContext::Instance();
+  ctx->GetOrRegisterDialect<paddle::dialect::OperatorDialect>();
+  ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   pir::PassManager pass_manager(ctx);
+  cinn::dialect::ir::PdOp2CinnOpConverter(&forward_program);
+
+  pass_manager.AddPass(
+      std::make_unique<cinn::dialect::ir::AddBroadcastToElementwisePass>());
   pass_manager.AddPass(pir::CreateBuildCinnPass());
   pass_manager.Run(&forward_program);
   VLOG(3) << "after BuildCinnPass, forward_program:\n" << forward_program;

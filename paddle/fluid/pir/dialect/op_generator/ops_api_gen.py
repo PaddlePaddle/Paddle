@@ -90,6 +90,7 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_seqexpand_concat_fc',
     'fused_attention',
     'fused_feedforward',
+    'self_dp_attention',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
