@@ -25,6 +25,6 @@ PD_DECLARE_int32(call_stack_level);
 namespace common {
 namespace enforce {
 
-TEST_API int GetCallStackLevel() { return FLAGS_call_stack_level; }
+int GetCallStackLevel() { return FLAGS_call_stack_level; }
 }  // namespace enforce
 }  // namespace common

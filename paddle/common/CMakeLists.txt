@@ -1,7 +1,25 @@
 file(GLOB common_srcs "*.cc")
 
+if(WIN32)
+  set(COMMON_NAME
+      common.dll
+      CACHE INTERNAL "" FORCE)
+elseif(APPLE)
+  set(COMMON_NAME
+      libcommon.dylib
+      CACHE INTERNAL "" FORCE)
+else()
+  set(COMMON_NAME
+      libcommon.so
+      CACHE INTERNAL "" FORCE)
+endif()
+
+set(COMMON_LIB
+    "${CMAKE_CURRENT_BINARY_DIR}/${COMMON_NAME}"
+    CACHE FILEPATH "COMMON Library" FORCE)
+
 set(COMMON_BUILD_TYPE
     SHARED
     CACHE INTERNAL "" FORCE)
 
-cc_library(common SHARED SRCS ${common_srcs})
+cc_library(common ${COMMON_BUILD_TYPE} SRCS ${common_srcs})

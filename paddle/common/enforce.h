@@ -112,7 +112,7 @@ using CommonType2 = typename std::add_lvalue_reference<
 #define COMMON_THROW(...)                                         \
   do {                                                            \
     HANDLE_THE_ERROR                                              \
-    throw ::common::CommonNotMetException(                        \
+    throw common::CommonNotMetException(                          \
         ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
     END_HANDLE_THE_ERROR                                          \
   } while (0)
