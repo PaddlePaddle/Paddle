@@ -2197,9 +2197,9 @@ def tensor_split(x, indices_or_sections, axis=0, name=None):
     """
     TODO(megemini)
     """
-    if x.ndim < 1:
+    if x.ndim <= 0 or x.ndim <= axis:
         raise ValueError(
-            f"The input tensor's dimension must be greater than 0, but got {x.ndim}"
+            f"The input tensor's dimension must be greater than 0 or axis which is {axis}, but got {x.ndim}"
         )
 
     total_n = x.shape[axis]
@@ -2254,7 +2254,10 @@ def hsplit(x, num_or_sections, name=None):
         raise ValueError(
             f"The input tensor's dimension must be greater than 0, but got {x.ndim}"
         )
-    return split(x, num_or_sections, axis=1, name=name)
+    if x.ndim > 1:
+        return split(x, num_or_sections, axis=1, name=name)
+    else:
+        return split(x, num_or_sections, axis=0, name=name)
 
 
 def dsplit(x, num_or_sections, name=None):
