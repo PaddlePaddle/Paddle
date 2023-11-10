@@ -139,7 +139,7 @@ void CommTaskManager::CommTaskLoop() {
           LOG(WARNING) << "Find timeout start but not finish task:"
                        << task->GetTraceMsg();
 
-          LOG(INFO) << "debug group_last_comm_task_ size:" << group_last_comm_task_.size();
+          LOG(INFO) << "debug all group_last_comm_task_ size:" << group_last_comm_task_.size();
           for (auto iter : group_last_comm_task_) {
             LOG(INFO) << "Find timeout task, all comm task:" << iter.second->GetTraceMsg();
           }
