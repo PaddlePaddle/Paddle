@@ -15,10 +15,7 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_utils_new import (
-    Dy2StTestBase,
-    test_legacy_and_pir_exe_and_pir_api,
-)
+from dygraph_to_static_utils_new import Dy2StTestBase, test_legacy_and_pir
 
 import paddle
 
@@ -47,20 +44,18 @@ class TestDuplicateOutput(Dy2StTestBase):
     dependent on tensor in Dygraph into Static `base.layers.cond`.
     """
 
-    def setUp(self):
-        self.net = paddle.jit.to_static(SimpleNet())
-        self.x = paddle.to_tensor([1.0])
-
     def _run_static(self):
-        param = self.net.parameters()
+        net = paddle.jit.to_static(SimpleNet())
+        x = paddle.to_tensor([1.0])
+        param = net.parameters()
         param[0].clear_grad()
 
-        loss0, loss1 = self.net(self.x)
+        loss0, loss1 = net(x)
         loss0.backward()
 
         self.assertEqual(param[0].grad.numpy(), 1.0)
 
-    @test_legacy_and_pir_exe_and_pir_api
+    @test_legacy_and_pir
     def test_ast_to_func(self):
         self._run_static()
 
