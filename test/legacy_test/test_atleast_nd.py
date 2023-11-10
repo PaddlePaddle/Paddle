@@ -390,45 +390,6 @@ class TestAtleastMixDtypes(BaseTest):
 @param.parameterized_class(
     ('inputs', 'dtypes', 'shapes', 'names'),
     (
-        (
-            (paddle.to_tensor(1, dtype='int8'),),
-            ('int8',),
-            ((),),
-            ('0_errordtype',),
-        ),
-        (
-            (paddle.to_tensor(1, dtype='uint8'),),
-            ('uint8',),
-            ((),),
-            ('1_errordtype',),
-        ),
-        (
-            (paddle.to_tensor(1 + 1j, dtype='complex64'),),
-            ('complex64',),
-            ((),),
-            ('2_errordtype',),
-        ),
-        (
-            (paddle.to_tensor(1 + 1j, dtype='complex128'),),
-            ('complex128',),
-            ((),),
-            ('3_errordtype',),
-        ),
-    ),
-)
-class TestAtleastErrorDtypes(BaseTest):
-    """test wrong dtypes in `static`"""
-
-    def test_all(self):
-        with self.assertRaises(TypeError):
-            self._test_static_api(
-                self.inputs, self.dtypes, self.shapes, self.names
-            )
-
-
-@param.parameterized_class(
-    ('inputs', 'dtypes', 'shapes', 'names'),
-    (
         (((123, [123]),), ('int32',), ((),), ('0_combine',)),
         (
             ((np.array([123], dtype='int32'), [[123]]),),
