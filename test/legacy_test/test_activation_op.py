@@ -3829,13 +3829,13 @@ class TestPow(TestActivation):
         if self.dtype == np.float16:
             return
         if self.dtype not in [np.complex64, np.complex128]:
-          self.check_grad(
-              ['X'],
-              'Out',
-              check_prim=True,
-              check_prim_pir=True,
-              check_pir=True,
-          )
+            self.check_grad(
+                ['X'],
+                'Out',
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
+            )
         else:
             self.check_grad(
                 ['X'],
