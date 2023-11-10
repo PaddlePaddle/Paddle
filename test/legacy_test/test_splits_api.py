@@ -49,19 +49,7 @@ DTYPE_DYGRAPH_SPLIT = [
     'int8',
     'int64',
 ]
-
-DTYPE_STATIC_SPLIT = [
-    'bool',
-    'bfloat16',
-    'float16',
-    'float32',
-    'float64',
-    'int32',
-    'int64',
-    'uint8',
-    'int8',
-]
-
+DTYPE_STATIC_SPLIT = DTYPE_DYGRAPH_SPLIT
 
 DTYPE_DYGRAPH_H_SPLIT = DTYPE_DYGRAPH_SPLIT
 DTYPE_STATIC_H_SPLIT = DTYPE_STATIC_SPLIT
@@ -126,7 +114,6 @@ class BaseTest(unittest.TestCase):
         name,
         split_paddle,
         split_numpy,
-        compare_result=True,
     ):
         """Test `static`
 
@@ -138,8 +125,8 @@ class BaseTest(unittest.TestCase):
             shape: input tensor's shape
             name: input tensor's name
             split_paddle: num_or_sections or indices_or_sections in paddle
-            split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy
-            compare_result: for test error, we do NOT compare result, which should only raised from paddle
+            split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy.
+                For test error, `split_numpy` is None and skip compare result, ensure the error only raised from paddle.
         """
         paddle.enable_static()
 
@@ -154,7 +141,7 @@ class BaseTest(unittest.TestCase):
                 out = func_paddle(input, split_paddle)
                 res = exe.run(feed=feed, fetch_list=[out])
 
-                if compare_result:
+                if split_numpy is not None:
                     out_ref = func_numpy(x, split_numpy)
 
                     for n, p in zip(out_ref, res):
@@ -170,7 +157,6 @@ class BaseTest(unittest.TestCase):
         name,
         split_paddle,
         split_numpy,
-        compare_result=True,
     ):
         """Test `dygraph`, and check grads"""
         paddle.disable_static()
@@ -178,7 +164,7 @@ class BaseTest(unittest.TestCase):
         for place in PLACES:
             out = func_paddle(paddle.to_tensor(x).astype(dtype), split_paddle)
 
-            if compare_result:
+            if split_numpy is not None:
                 out_ref = func_numpy(x, split_numpy)
 
                 for n, p in zip(out_ref, out):
@@ -305,49 +291,29 @@ class TestHSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
     def test_error_split(self):
         x = generate_data([5])
 
         # test not evenly split
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 2,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
 
         # test bad split sections
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': [2, 1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
         # test more than one `-1`
         with self.assertRaises(ValueError):
             self._test_all(
-                {
-                    **x,
-                    'split_paddle': [-1, 2, -1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
+                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
             )
 
 
@@ -414,61 +380,34 @@ class TestVSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 1-d
         x = generate_data([6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
     def test_error_split(self):
         x = generate_data([5, 4])
 
         # test not evenly split
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 2,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
 
         # test bad split sections
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': [2, 1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
         # test more than one `-1`
         with self.assertRaises(ValueError):
             self._test_all(
-                {
-                    **x,
-                    'split_paddle': [-1, 2, -1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
+                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
             )
 
 
@@ -515,73 +454,39 @@ class TestDSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 1-d
         x = generate_data([6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 2-d
         x = generate_data([4, 6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
     def test_error_split(self):
-        x = generate_data([4, 3, 5])
+        x = generate_data([3, 6, 5])
 
         # test not evenly split
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 2,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 2, 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
 
         # test bad split sections
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': [2, 1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': [2, 1], 'split_numpy': None})
+
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': [2, 4], 'split_numpy': None})
 
         # test more than one `-1`
         with self.assertRaises(ValueError):
             self._test_all(
-                {
-                    **x,
-                    'split_paddle': [-1, 2, -1],
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
+                {**x, 'split_paddle': [-1, 2, -1], 'split_numpy': None}
             )
 
 
@@ -739,14 +644,7 @@ class TestTensorSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # axis 1
         self.func_paddle = functools.partial(paddle.tensor_split, axis=1)
@@ -755,26 +653,12 @@ class TestTensorSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 1-d
         x = generate_data([6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # axis 2
         self.func_paddle = functools.partial(paddle.tensor_split, axis=2)
@@ -783,38 +667,22 @@ class TestTensorSplit(BaseTest):
         # test 0-d
         x = generate_data([])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 1-d
         x = generate_data([6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
 
         # test 2-d
         x = generate_data([4, 6])
         with self.assertRaises(ValueError):
-            self._test_all(
-                {
-                    **x,
-                    'split_paddle': 3,
-                    'split_numpy': None,
-                    'compare_result': False,
-                }
-            )
+            self._test_all({**x, 'split_paddle': 3, 'split_numpy': None})
+
+    def test_error_split(self):
+        x = generate_data([6])
+        with self.assertRaises(ValueError):
+            self._test_all({**x, 'split_paddle': 0, 'split_numpy': None})
 
 
 if __name__ == '__main__':
