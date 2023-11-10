@@ -306,7 +306,6 @@ paddle_test(
   var_handle
   op_handle_base
   scope
-  phi
   memory
   device_context
   broadcast_op_handle)
