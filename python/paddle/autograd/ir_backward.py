@@ -57,8 +57,8 @@ class ValueSet:
     def __len__(self):
         return len(self._values)
 
-    def __getitem__(self, key):
-        return self._value[key]
+    def __iter__(self):
+        return iter(self._values)
 
     def __contains__(self, other_val):
         for value in self._values:
