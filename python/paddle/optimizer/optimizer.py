@@ -750,7 +750,9 @@ class Optimizer:
         else:
             assert isinstance(self.helper, LayerHelper)
             var_name = self._gen_master_weight_var_name(param)
-            if framework.in_dygraph_mode():
+            if in_pir_mode():
+                var = paddle.cast(param, 'float32')
+            elif framework.in_dygraph_mode():
                 var = paddle.cast(param, 'float32')
                 var.name = var_name
             else:
