@@ -165,7 +165,6 @@ inline void run_program_ad_func(
     auto x_names =
         PADDLE_GET_CONST(std::vector<std::string>, attrs.at("x_names"));
 
-    egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
     // Create GradOpNode (1 means [out_grad], 2 means [x_grad, paramx_grad])
     auto grad_node = std::make_shared<GradNodeRunProgram>(1, 2);
 
@@ -270,8 +269,6 @@ inline void pir_run_program_ad_func(
   PirRunProgramAPI(
       x, params, out, middles, step_scope, require_any_grad, attrs);
   if (!is_test && require_any_grad) {
-    egr::EagerUtils::PassStopGradient(false, &p_autograd_outs);
-
     // Set Attributes
     grad_node->SetAttrMap(attrs);
 

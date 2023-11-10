@@ -246,7 +246,6 @@ class PartialProgramLayer:
         for t, name in zip(in_vars, origin_var_names):
             t.name = name
 
-        self._update_stop_gradient(out_vars)
         restored_nest_out = self._restore_out(out_vars)
 
         name_resumer()
