@@ -41,7 +41,7 @@ class MetaInfo:
         # We always use float32 in simulation if AMP is enabled.
         if isinstance(tensor, paddle.pir.OpResult):
             name = "OpResult@NoName"
-            persistable = tensor.is_persistable
+            persistable = tensor.persistable
             dtype = framework.paddle_type_to_proto_type[tensor.dtype]
         else:
             name = tensor.name
