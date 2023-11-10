@@ -35,6 +35,7 @@
 #include "paddle/pir/core/builtin_op.h"
 #include "paddle/pir/core/ir_context.h"
 #include "paddle/pir/core/op_result.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/pir/core/operation.h"
 #include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
@@ -67,11 +68,9 @@ class ConstantFoldingPattern : public pir::RewritePattern {
   }
 
   bool Match(pir::Operation* op) const override {
-    if (op->isa<pir::GetParameterOp>() || op->isa<pir::SetParameterOp>() ||
-        op->isa<pir::ShadowOutputOp>() || op->isa<paddle::dialect::FetchOp>() ||
-        op->isa<paddle::dialect::FeedOp>())
+    if (op->HasTrait<pir::SideEffectTrait>() ||
+        op->isa<pir::GetParameterOp>() || op->isa<paddle::dialect::FeedOp>())
       return false;
-
     if (!ValidOp(op)) {
       return false;
     }

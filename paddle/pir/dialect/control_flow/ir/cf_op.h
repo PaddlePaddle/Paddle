@@ -16,9 +16,10 @@
 #include <functional>
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
 namespace pir {
-class IR_API YieldOp : public Op<YieldOp> {
+class IR_API YieldOp : public Op<YieldOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "cf.yield"; }
@@ -56,7 +57,7 @@ class IR_API CreateStackOp : public Op<CreateStackOp> {
   void Print(pir::IrPrinter &printer);  // NOLINT
 };
 
-class IR_API PushBackOp : public Op<PushBackOp> {
+class IR_API PushBackOp : public Op<PushBackOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "cf.push_back"; }
