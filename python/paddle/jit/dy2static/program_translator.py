@@ -21,7 +21,7 @@ import weakref
 
 import paddle.pir.core as ir_static
 from paddle import decomposition
-from paddle.base import core, framework
+from paddle.base import core, framework, in_pir_mode
 from paddle.base.data_feeder import check_type
 from paddle.base.dygraph.base import (
     _to_static_mode_guard_,
@@ -339,8 +339,12 @@ class StaticFunction:
             self._dygraph_function = function
             self._class_instance = None
 
-        if input_spec is not None and prim_or_cinn_is_enabled(
-            kwargs.get("build_strategy", None), kwargs.get("backend", None)
+        if (
+            input_spec is not None
+            and prim_or_cinn_is_enabled(
+                kwargs.get("build_strategy", None), kwargs.get("backend", None)
+            )
+            and not in_pir_mode()
         ):
             from paddle.static import InputSpec
 
