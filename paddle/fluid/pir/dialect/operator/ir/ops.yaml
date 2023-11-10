@@ -62,6 +62,7 @@
   kernel :
     func : fetch
     param : [x]
+  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)
@@ -224,3 +225,14 @@
     func: FusedFeedForwardInferMeta
   optional: dropout1_seed, dropout2_seed, linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias, ln2_mean, ln2_variance, ln1_mean, ln1_variance, ln1_out
   backward: fused_feedforward_grad
+
+- op: sparse_momentum
+  args: (Tensor param, Tensor grad, Tensor velocity, Tensor index, Tensor learning_rate, Tensor master_param,float mu, Scalar axis=0, bool use_nesterov=false,str regularization_method="", float regularization_coeff=0.0f, bool multi_precision=false, float rescale_grad=1.0f)
+  output: Tensor(param_out), Tensor(velocity_out), Tensor(master_param_out)
+  infer_meta:
+    func: SparseMomentumInferMeta
+    param: [param, learning_rate, velocity]
+  kernel:
+    func: sparse_momentum
+    data_type: param
+  optional: master_param, master_param_out

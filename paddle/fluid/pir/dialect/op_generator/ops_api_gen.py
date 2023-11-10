@@ -84,8 +84,11 @@ NEED_GEN_STATIC_ONLY_APIS = [
     'fusion_gru',
     'fusion_seqconv_eltadd_relu',
     'fusion_seqexpand_concat_fc',
+    'fusion_repeated_fc_relu',
+    'fusion_squared_mat_sub',
     'fused_attention',
     'fused_feedforward',
+    'self_dp_attention',
 ]
 
 NO_NEED_GEN_STATIC_ONLY_APIS = [
@@ -116,6 +119,7 @@ NO_NEED_GEN_STATIC_ONLY_APIS = [
     'set_value_with_tensor',
     'set_value_with_tensor_',
     'shadow_feed',
+    'sparse_momentum',
 ]
 
 
