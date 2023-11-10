@@ -1305,7 +1305,7 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
   EAGER_TRY
   PyObject* _index = PyTuple_GET_ITEM(args, 0);
   VLOG(4) << "Call _getitem_index_not_tensor";
-  std::vector<int> slice_axes, slice_starts, slice_ends, slice_strides,
+  std::vector<int64_t> slice_axes, slice_starts, slice_ends, slice_strides,
       decrease_axis, none_axes, infer_flags;
   std::vector<int64_t> list_select_idxs;
   // if index is a list, list_select_flag will be true
@@ -1352,26 +1352,25 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
         break;
       }
     }
-    std::vector<int64_t> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
-    std::vector<int64_t> infer_flags_tmp(infer_flags.begin(),
-                                         infer_flags.end());
-    std::vector<int64_t> decrease_axis_tmp(decrease_axis.begin(),
-                                           decrease_axis.end());
 
     if (op_type == "slice") {
       eager_gil_scoped_release guard;
       out = slice_ad_func(self->tensor,
-                          slice_axes_tmp,
+                          slice_axes,
                           slice_starts,
                           slice_ends,
-                          infer_flags_tmp,
-                          decrease_axis_tmp);
+                          infer_flags,
+                          decrease_axis);
     } else if (op_type == "strided_slice") {
       eager_gil_scoped_release guard;
-      out = strided_slice_ad_func(
-          self->tensor, slice_axes, slice_starts, slice_ends, slice_strides);
-      if (!decrease_axis_tmp.empty()) {
-        out = squeeze_ad_func(out, decrease_axis_tmp);
+      std::vector<int> slice_axes_tmp(slice_axes.begin(), slice_axes.end());
+      out = strided_slice_ad_func(self->tensor,
+                                  slice_axes_tmp,
+                                  slice_starts,
+                                  slice_ends,
+                                  slice_strides);
+      if (!decrease_axis.empty()) {
+        out = squeeze_ad_func(out, decrease_axis);
       }
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -1604,7 +1603,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
   // TODO(liym27): Try not to call TensorToPyArray because it always
   // copys data to cpu place, which reduces performance.
   if (parse_index) {
-    std::vector<int> axes, starts, ends, steps, decrease_axes, none_axes,
+    std::vector<int64_t> axes, starts, ends, steps, decrease_axes, none_axes,
         infer_flags;
     std::vector<int64_t> list_select_idxs;
     // if index is a list, list_select_flag will be true
@@ -1634,7 +1633,7 @@ static PyObject* tensor_method__setitem_eager_tensor(TensorObject* self,
 
     paddle::Tensor value_tensor;
     std::vector<phi::Scalar> values;
-    std::vector<int> shape = std::vector<int>{1};
+    std::vector<int64_t> shape = std::vector<int64_t>{1};
 
     if (PyCheckTensor(value_obj)) {
       value_tensor = reinterpret_cast<TensorObject*>(value_obj)->tensor;
