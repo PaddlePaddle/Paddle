@@ -122,7 +122,7 @@ void TrtRemoveAMPStrategyOpPass::ApplyImpl(Graph *graph) const {
       auto post_op = out_var->outputs;
       IR_NODE_UNLINK(in_var, op_node);
       IR_NODE_UNLINK(op_node, out_var);
-      for (int i = 0; i < post_op.size(); ++i) {
+      for (size_t i = 0; i < post_op.size(); ++i) {
         IR_NODE_UNLINK(out_var, post_op[i]);
         IR_NODE_LINK_TO(in_var, post_op[i]);
         post_op[i]->Op()->RenameInput(out_var->Var()->Name(),
