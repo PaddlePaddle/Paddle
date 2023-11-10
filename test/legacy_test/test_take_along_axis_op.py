@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 
 import numpy as np
@@ -177,6 +178,20 @@ class TestTakeAlongAxisAPI(unittest.TestCase):
             np.take_along_axis(self.x_np, self.index_np, self.axis)
         )
         np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
+        paddle.enable_static()
+
+    def test_api_dygraph_dtype(self):
+        if sys.platform == 'darwin' or sys.platform == 'win32':
+            return
+        paddle.disable_static(self.place[0])
+        with self.assertRaises(AssertionError):
+            x_tensor = paddle.to_tensor(self.x_np)
+            self.index = paddle.to_tensor(self.index_np).astype("float32")
+            out = paddle.take_along_axis(x_tensor, self.index, self.axis)
+            out_ref = np.array(
+                np.take_along_axis(self.x_np, self.index_np, self.axis)
+            )
+            np.testing.assert_allclose(out.numpy(), out_ref, rtol=0.001)
         paddle.enable_static()
 
 
