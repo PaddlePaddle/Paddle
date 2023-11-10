@@ -607,7 +607,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
              [2, 1]]))
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
