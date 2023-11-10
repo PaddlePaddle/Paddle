@@ -392,44 +392,37 @@ void CpuPassStrategy::EnableMKLDNN() {
 }
 
 void CpuPassStrategy::DisableMKLDNN() {
-  std::vector<std::string> mkldnn_passes_to_erase({
-      "mkldnn_placement_pass",
-      "squeeze2_transpose2_onednn_fuse_pass",
-      "depthwise_conv_mkldnn_pass",              //
-      "conv_bn_fuse_pass",                       // Execute BN passes again to
-      "conv_eltwiseadd_bn_fuse_pass",            // preserve correct pass order
-      "conv_affine_channel_mkldnn_fuse_pass",    //
-      "conv_transpose_bn_fuse_pass",             //
-      "conv_transpose_eltwiseadd_bn_fuse_pass",  //
-      "conv_bias_mkldnn_fuse_pass",              //
-      "conv_transpose_bias_mkldnn_fuse_pass",
-      // TODO(baoachun): Need to support 5-dimensional input.
-      // "conv3d_bias_mkldnn_fuse_pass",  //
-      "conv_elementwise_add_mkldnn_fuse_pass",
-      "conv_activation_mkldnn_fuse_pass",           //
-      "scale_matmul_fuse_pass",                     //
-      "reshape_transpose_matmul_mkldnn_fuse_pass",  //
-      "matmul_transpose_reshape_mkldnn_fuse_pass",  //
-      "matmul_elementwise_add_mkldnn_fuse_pass",    //
-      "matmul_activation_mkldnn_fuse_pass",         //
-      // Disabled due to topology-dependent speed-up
-      "fc_mkldnn_pass",
-      "fc_act_mkldnn_fuse_pass",
-      "self_attention_fuse_pass",              //
-      "batch_norm_act_fuse_pass",              //
-      "softplus_activation_onednn_fuse_pass",  //
-      "shuffle_channel_mkldnn_detect_pass",    //
-      "elementwise_act_onednn_fuse_pass",      //
-      "operator_scale_onednn_fuse_pass",       //
-      "operator_unsqueeze2_onednn_fuse_pass",  //
-      "operator_reshape2_onednn_fuse_pass",    //
-  });
-  for (const auto &pass : mkldnn_passes_to_erase) {
-    int idx = static_cast<int>(GetPassIndex(pass));
-    if (idx != -1) {
-      passes_.erase(std::begin(passes_) + idx);
-    }
-  }
+  ClearPasses();
+  passes_.assign({"simplify_with_basic_ops_pass",  //
+                  "layer_norm_fuse_pass",
+                  "attention_lstm_fuse_pass",       //
+                  "seqconv_eltadd_relu_fuse_pass",  //
+                  // "seqpool_concat_fuse_pass",    //
+                  "seqpool_cvm_concat_fuse_pass",  //
+                  // "embedding_fc_lstm_fuse_pass", //
+                  // TODO(wilber): fix correctness problem.
+                  // "fc_lstm_fuse_pass",                    //
+                  "mul_lstm_fuse_pass",                      //
+                  "fc_gru_fuse_pass",                        //
+                  "mul_gru_fuse_pass",                       //
+                  "seq_concat_fc_fuse_pass",                 //
+                  "gpu_cpu_squeeze2_matmul_fuse_pass",       //
+                  "gpu_cpu_reshape2_matmul_fuse_pass",       //
+                  "gpu_cpu_flatten2_matmul_fuse_pass",       //
+                  "matmul_v2_scale_fuse_pass",               //
+                  "gpu_cpu_map_matmul_v2_to_mul_pass",       //
+                  "gpu_cpu_map_matmul_v2_to_matmul_pass",    //
+                  "matmul_scale_fuse_pass",                  //
+                  "gpu_cpu_map_matmul_to_mul_pass",          //
+                  "fc_fuse_pass",                            //
+                  "repeated_fc_relu_fuse_pass",              //
+                  "squared_mat_sub_fuse_pass",               //
+                  "conv_bn_fuse_pass",                       //
+                  "conv_eltwiseadd_bn_fuse_pass",            //
+                  "conv_transpose_bn_fuse_pass",             //
+                  "conv_transpose_eltwiseadd_bn_fuse_pass",  //
+                  "is_test_pass",                            //
+                  "constant_folding_pass"});
 }
 
 void CpuPassStrategy::EnableMkldnnQuantizer() {

@@ -939,9 +939,7 @@ void AnalysisConfig::Update() {
   }
 
   if (!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) {
-    pass_builder()->ClearPasses();
-    pass_builder_ = std::make_unique<CpuPassStrategy>(
-        *static_cast<CpuPassStrategy *>(pass_builder_.get()));
+    pass_builder()->DisableMKLDNN();
   }
 
   if (use_tensorrt_) {
@@ -991,6 +989,7 @@ void AnalysisConfig::Update() {
     if (use_mkldnn_ && enable_ir_optim_) {
 #ifdef PADDLE_WITH_DNNL
       // default enable mkldnn when device is cpu and enable_ir_optim
+      LOG(INFO) << "pass_builder()->EnableMKLDNN();";
       pass_builder()->EnableMKLDNN();
 #endif
     }
