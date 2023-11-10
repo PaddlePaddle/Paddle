@@ -18,6 +18,8 @@
 
 #include "paddle/phi/core/dense_tensor.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
+#include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 
 namespace phi {
 namespace distributed {
@@ -37,6 +39,13 @@ class DistTensor final
   /// \param dist_attr The distributed attributes of the current tensor.
   DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
              const TensorDistAttr& dist_attr);
+
+  /// \brief Construct a dist tensor based dense tensor.
+  /// \param process_mesh The process mesh of the current tensor.
+  /// \param placements The distributed placements of the current tensor.
+  DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
+             const ProcessMesh& process_mesh,
+             const std::vector<Placement>& placements);
 
   /// \brief Construct a empty dist tensor (for infer spmd)
   /// \param dims The global dimension of the currnet Tensor.
@@ -127,6 +136,8 @@ class DistTensor final
   TensorDistAttr dist_attr_;
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
+
+  DistTensorSpec spec_;
 };
 
 }  // namespace distributed
