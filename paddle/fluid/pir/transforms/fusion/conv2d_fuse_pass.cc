@@ -41,11 +41,11 @@
 namespace {
 
 class Conv2dBnFusePattern
-    : public pir::OpRewritePattern<paddle::dialect::BatchNormOp> {
+    : public pir::OpRewritePattern<paddle::dialect::BatchNorm_Op> {
  public:
-  using pir::OpRewritePattern<paddle::dialect::BatchNormOp>::OpRewritePattern;
+  using pir::OpRewritePattern<paddle::dialect::BatchNorm_Op>::OpRewritePattern;
   bool MatchAndRewrite(
-      paddle::dialect::BatchNormOp op,
+      paddle::dialect::BatchNorm_Op op,
       pir::PatternRewriter &rewriter) const override {  // NOLINT
     // The next op should be batch_norm.
     paddle::dialect::Conv2dOp conv2d_op =
