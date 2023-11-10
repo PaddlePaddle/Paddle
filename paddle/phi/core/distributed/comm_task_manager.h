@@ -75,6 +75,7 @@ class CommTaskManager {
       group_last_comm_task_;
   static std::chrono::time_point<std::chrono::steady_clock> last_update_time_;
   std::chrono::milliseconds timeout_;
+  bool logged_ = false;
 };
 
 }  // namespace distributed
