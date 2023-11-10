@@ -72,7 +72,7 @@ def train(args, place, to_static):
         paddle.framework.random._manual_program_seed(SEED)
         local_random = np.random.RandomState(SEED)
 
-        policy = Policy()
+        policy = paddle.jit.to_static(Policy())
 
         eps = np.finfo(np.float32).eps.item()
         optimizer = paddle.optimizer.Adamax(
