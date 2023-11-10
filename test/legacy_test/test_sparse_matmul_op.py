@@ -93,8 +93,10 @@ def get_cuda_version():
 class TestMatmul2(unittest.TestCase):
     # x: sparse, y: dense, out: dense
     def check_result(self, x_shape, y_shape):
-        origin_x = paddle.rand(x_shape)
-        origin_y = paddle.rand(y_shape)
+        # origin_x = paddle.rand(x_shape)
+        # origin_y = paddle.rand(y_shape)
+        origin_x = paddle.to_tensor([[1, -1], [0, 1]])
+        origin_y = paddle.to_tensor([[1, 1], [1, 1]])
 
         dense_x = origin_x.detach()
         dense_x.stop_gradient = False
