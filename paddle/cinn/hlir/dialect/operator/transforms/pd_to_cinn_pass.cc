@@ -78,30 +78,58 @@ class MaxOpPattern : public pir::drr::DrrPatternBase<MaxOpPattern> {
   }
 };
 
-// class ReshapeOpPattern : public pir::drr::DrrPatternBase<ReshapeOpPattern> {
-//  public:
-//   void operator()(pir::drr::DrrPatternContext *ctx) const override {
-//     // Source Pattern
-//     pir::drr::SourcePattern pattern = ctx->SourcePattern();
-//     const auto &full_int_array =
-//         pattern.Op(paddle::dialect::FullIntArrayOp::name(),
-//                    {{"value", pattern.Attr("axis_info")},
-//                     {"dtype", pattern.Attr("dtype_2")},
-//                     {"place", pattern.Attr("place_2")}});
+class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
+ public:
+  using pir::OpRewritePattern<paddle::dialect::ScaleOp>::OpRewritePattern;
 
-//     const auto &pd_reshape = pattern.Op(paddle::dialect::ReshapeOp::name(),
-//                                     {});
-//     pattern.Tensor("ret") = pd_reshape(pattern.Tensor("arg0"),
-//     full_int_array());
+  bool MatchAndRewrite(paddle::dialect::ScaleOp op,
+                       pir::PatternRewriter &rewriter) const override {
+    auto scale_factor_gen_op =
+        op->operand_source(1).dyn_cast<pir::OpResult>().owner();
 
-//     // Result patterns
-//     pir::drr::ResultPattern res = pattern.ResultPattern();
-//     const auto &cinn_reshape =
-//         res.Op(cinn::dialect::ReshapeCOp::name(),
-//                {{"shape", pattern.Attr("axis_info")}});
-//     res.Tensor("ret") = cinn_reshape(res.Tensor("arg0"));
-//   }
-// };
+    if (auto full_op =
+            scale_factor_gen_op->dyn_cast<paddle::dialect::FullOp>()) {
+      // sacle is generator by full op
+      // get attribute value from full op
+      auto scale_value =
+          full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
+
+      auto cinn_scale = rewriter.Build<cinn::dialect::ScaleOp>(
+          op->operand_source(0).dyn_cast<pir::OpResult>(),
+          scale_value,
+          op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data(),
+          op->attributes()
+              .at("bias_after_scale")
+              .dyn_cast<pir::BoolAttribute>()
+              .data());
+      rewriter.ReplaceAllUsesWith(op.result(0), cinn_scale.result(0));
+      rewriter.EraseOp(op);
+      rewriter.EraseOp(full_op);
+    } else {
+      // using mul op
+      std::cerr << "not full op\n";
+      auto bias =
+          op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data();
+      std::cerr << "bias " << bias << std::endl;
+      auto mul_in = op.operand_source(0);
+      if (bias != 0.0f) {
+        auto full_op = rewriter.Build<paddle::dialect::FullOp>(
+            std::vector<int64_t>({1}), bias, phi::DataType::FLOAT32);
+        auto add_op = rewriter.Build<paddle::dialect::AddOp>(
+            op.operand_source(0), full_op.result(0));
+        mul_in = add_op.result(0);
+      }
+
+      auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
+          mul_in, op->operand_source(1));
+
+      rewriter.ReplaceAllUsesWith(op.result(0), mul_op.result(0));
+      rewriter.EraseOp(op);
+    }
+
+    return true;
+  }
+};
 
 class ReshapeOpPattern
     : public pir::OpRewritePattern<paddle::dialect::ReshapeOp> {
@@ -146,13 +174,64 @@ class ReshapeOpPattern
   }
 };
 
+class UniformOpPattern : public pir::drr::DrrPatternBase<UniformOpPattern> {
+ public:
+  void operator()(pir::drr::DrrPatternContext *ctx) const override {
+    // Source Pattern
+    pir::drr::SourcePattern pattern = ctx->SourcePattern();
+    const auto &full_int_array =
+        pattern.Op(paddle::dialect::FullIntArrayOp::name(),
+                   {{"value", pattern.Attr("axis_info")},
+                    {"dtype", pattern.Attr("dtype_2")},
+                    {"place", pattern.Attr("place_2")}});
+
+    const auto &min_full = pattern.Op(paddle::dialect::FullOp::name(),
+                                      {{"shape", pattern.Attr("shape1")},
+                                       {"value", pattern.Attr("min_value")},
+                                       {"dtype", pattern.Attr("dtype_min")},
+                                       {"place", pattern.Attr("place_min")}});
+
+    const auto &max_full = pattern.Op(paddle::dialect::FullOp::name(),
+                                      {{"shape", pattern.Attr("shape2")},
+                                       {"value", pattern.Attr("max_value")},
+                                       {"dtype", pattern.Attr("dtype_max")},
+                                       {"place", pattern.Attr("place_max")}});
+
+    const auto &pd_uniform =
+        pattern.Op(paddle::dialect::UniformOp::name(),
+                   {{"dtype", pattern.Attr("uniform_dtype")},
+                    {"place", pattern.Attr("uniform_place")},
+                    {"seed", pattern.Attr("seed")}});
+    pattern.Tensor("ret") =
+        pd_uniform(full_int_array(), min_full(), max_full());
+    // int64_t[] shape,  float min, float max, int seed, DataType dtype, int
+    // diag_num, int diag_step, float diag_val)
+    //  Result patterns
+    pir::drr::ResultPattern res = pattern.ResultPattern();
+    const auto &cinn_uniform =
+        res.Op(cinn::dialect::UniformRandomOp::name(),
+               {{"shape", pattern.Attr("axis_info")},
+                {"min", pattern.Attr("min_value")},
+                {"max", pattern.Attr("max_value")},
+                {"seed", pattern.Attr("seed")},
+                {"dtype", pattern.Attr("uniform_dtype")},
+                {"diag_num", pattern.Attr("seed")},
+                {"diag_step", pattern.Attr("seed")},
+                {"diag_val", pattern.Attr("min_value")}});
+    res.Tensor("ret") = cinn_uniform();
+  }
+};
+
 PdOpToCinnOpPass::PdOpToCinnOpPass() : pir::Pass("pd_to_cinn_pass", 1) {}
 
 bool PdOpToCinnOpPass::Initialize(pir::IrContext *context) {
   pir::RewritePatternSet ps(context);
+  ps.Add<ScaleOpPattern>(
+      context);  // NOTE, scale op pattern should before AddBroadcastTo
   ps.Add(SumOpPattern().Build(context));
   ps.Add(MaxOpPattern().Build(context));
   ps.Add<ReshapeOpPattern>(context);
+  // ps.Add(UniformOpPattern().Build(context));
 
   patterns_ = ::pir::FrozenRewritePatternSet(std::move(ps));
   return true;
