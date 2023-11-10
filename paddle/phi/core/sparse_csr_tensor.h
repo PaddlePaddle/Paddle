@@ -68,7 +68,7 @@ class SparseCsrTensor : public TensorBase,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "SparseCsrTensor"; }
+  static constexpr char* name() { return "SparseCsrTensor"; }
 
   /// \brief Returns the compressed row index of non zero elements in original
   /// dense tensor.

@@ -31,7 +31,7 @@ struct BufferUFNode : public common::UnionFindNode {
   const char* type_info() const override { return __type_info__; }
 
   std::string tensor_name;
-  static const char* __type_info__;
+  static constexpr char* __type_info__;
 };
 
 const char* BufferUFNode::__type_info__ = "BufferUFNode";

@@ -45,12 +45,14 @@ enum class OpRole {
 // this class not only make proto but also init attribute checkers.
 class OpProtoAndCheckerMaker {
  public:
-  static const char *OpRoleAttrName() { return "op_role"; }
-  static const char *OpRoleVarAttrName() { return "op_role_var"; }
-  static const char *OpNamescopeAttrName() { return "op_namescope"; }
-  static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
-  static const char *OpDeviceAttrName() { return "op_device"; }
-  static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
+  static constexpr char *OpRoleAttrName() { return "op_role"; }
+  static constexpr char *OpRoleVarAttrName() { return "op_role_var"; }
+  static constexpr char *OpNamescopeAttrName() { return "op_namescope"; }
+  static constexpr char *OpCreationCallstackAttrName() {
+    return "op_callstack";
+  }
+  static constexpr char *OpDeviceAttrName() { return "op_device"; }
+  static constexpr char *OpWithQuantAttrName() { return "with_quant_attr"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 

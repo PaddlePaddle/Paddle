@@ -82,7 +82,7 @@ class XPUContext : public DeviceContext,
 
   XPUStream stream() const;
 
-  static const char* name() { return "XPUContext"; }
+  static constexpr char* name() { return "XPUContext"; }
 
  private:
   struct Impl;

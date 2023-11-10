@@ -23,7 +23,7 @@ class OperatorDialect : public pir::Dialect {
  public:
   explicit OperatorDialect(pir::IrContext* context);
 
-  static const char* name() { return "pd_op"; }
+  static constexpr char* name() { return "pd_op"; }
 
   pir::Type ParseType(pir::IrParser& parser) override;            // NOLINT
   pir::Attribute ParseAttribute(pir::IrParser& parser) override;  // NOLINT

@@ -87,7 +87,7 @@ class SparseCooTensor : public TensorBase,
 
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "SparseCooTensor"; }
+  static constexpr char* name() { return "SparseCooTensor"; }
 
   /// \brief Returns the total number of non zero elements in original
   /// DenseTensor

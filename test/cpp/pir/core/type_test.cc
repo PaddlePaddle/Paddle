@@ -57,7 +57,7 @@ TEST(type_test, type_id) {
 struct FakeDialect : pir::Dialect {
   explicit FakeDialect(pir::IrContext *context)
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
-  static const char *name() { return "fake"; }
+  static constexpr char *name() { return "fake"; }
 };
 IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)
@@ -207,7 +207,7 @@ struct IntegerDialect : pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<IntegerDialect>()) {
     RegisterType<IntegerType>();
   }
-  static const char *name() { return "integer"; }
+  static constexpr char *name() { return "integer"; }
 };
 IR_DECLARE_EXPLICIT_TYPE_ID(IntegerDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(IntegerDialect)

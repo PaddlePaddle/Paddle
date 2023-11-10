@@ -30,7 +30,7 @@ IR_DEFINE_EXPLICIT_TYPE_ID(AttributeA)
 struct FakeDialect : pir::Dialect {
   explicit FakeDialect(pir::IrContext *context)
       : pir::Dialect(name(), context, pir::TypeId::get<FakeDialect>()) {}
-  static const char *name() { return "fake"; }
+  static constexpr char *name() { return "fake"; }
 };
 IR_DECLARE_EXPLICIT_TYPE_ID(FakeDialect)
 IR_DEFINE_EXPLICIT_TYPE_ID(FakeDialect)

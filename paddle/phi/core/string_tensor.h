@@ -63,7 +63,7 @@ class StringTensor : public TensorBase,
  public:
   /// \brief Returns the name of the class for type traits.
   /// \return The name of the class.
-  static const char* name() { return "StringTensor"; }
+  static constexpr char* name() { return "StringTensor"; }
 
   /// \brief Returns the number of elements contained in tensor.
   /// \return The number of elements contained in tensor.

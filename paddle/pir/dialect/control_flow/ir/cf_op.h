@@ -21,7 +21,7 @@ namespace pir {
 class IR_API YieldOp : public Op<YieldOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.yield"; }
+  static constexpr char *name() { return "cf.yield"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
@@ -35,7 +35,7 @@ class PopBackOp;
 class IR_API CreateStackOp : public Op<CreateStackOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.create_stack"; }
+  static constexpr char *name() { return "cf.create_stack"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
   static void Build(Builder &builder,              // NOLINT
@@ -59,7 +59,7 @@ class IR_API CreateStackOp : public Op<CreateStackOp> {
 class IR_API PushBackOp : public Op<PushBackOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.push_back"; }
+  static constexpr char *name() { return "cf.push_back"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
@@ -88,7 +88,7 @@ class IR_API PushBackOp : public Op<PushBackOp> {
 class IR_API PopBackOp : public Op<PopBackOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.pop_back"; }
+  static constexpr char *name() { return "cf.pop_back"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 
@@ -111,7 +111,7 @@ class IR_API PopBackOp : public Op<PopBackOp> {
 class IR_API HasElementsOp : public Op<HasElementsOp> {
  public:
   using Op::Op;
-  static const char *name() { return "cf.has_elements"; }
+  static constexpr char *name() { return "cf.has_elements"; }
   static constexpr uint32_t attributes_num = 0;
   static constexpr const char **attributes_name = nullptr;
 

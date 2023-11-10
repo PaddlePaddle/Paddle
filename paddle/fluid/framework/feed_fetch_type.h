@@ -70,8 +70,8 @@ inline bool data_is_sparse_coo_tensor(const FetchType &data) {
   return false;
 }
 
-static const char kFeedOpType[] = "feed";
-static const char kFetchOpType[] = "fetch";
+static constexpr char kFeedOpType[] = "feed";
+static constexpr char kFetchOpType[] = "fetch";
 
 }  // namespace framework
 }  // namespace paddle

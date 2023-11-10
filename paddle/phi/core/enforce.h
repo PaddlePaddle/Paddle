@@ -222,7 +222,8 @@ struct BinaryCompareMessageConverter {
 template <>
 struct BinaryCompareMessageConverter<false> {
   template <typename T>
-  static const char* Convert(const char* expression, const T& value UNUSED) {
+  static constexpr char* Convert(const char* expression,
+                                 const T& value UNUSED) {
     return expression;
   }
 };

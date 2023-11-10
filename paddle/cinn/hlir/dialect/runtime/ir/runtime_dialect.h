@@ -23,7 +23,7 @@ class RuntimeDialect : public ::pir::Dialect {
  public:
   explicit RuntimeDialect(::pir::IrContext* context);
 
-  static const char* name() { return "cinn_runtime"; }
+  static constexpr char* name() { return "cinn_runtime"; }
 
  private:
   void initialize();

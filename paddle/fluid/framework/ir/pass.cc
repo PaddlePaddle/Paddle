@@ -36,7 +36,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-static const char kParamScopeAttr[] = "__param_scope__";  // NOLINT
+static constexpr char kParamScopeAttr[] = "__param_scope__";  // NOLINT
 
 static const std::vector<std::string> support_subgraph_passes = {
     "simplify_with_basic_ops_pass",

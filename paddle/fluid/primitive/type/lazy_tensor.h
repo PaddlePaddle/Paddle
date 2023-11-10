@@ -30,7 +30,7 @@ class LazyTensor : public phi::ExtendedTensor,
       : value_(value),
         dims_(value.type().dyn_cast<dialect::DenseTensorType>().dims()) {}
 
-  static const char* name() { return "LazyTensor"; }
+  static constexpr char* name() { return "LazyTensor"; }
 
   const phi::DDim& dims() const override { return dims_; }
 

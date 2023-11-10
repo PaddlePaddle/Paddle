@@ -42,9 +42,9 @@ class OperationTest
     : public pir::Op<OperationTest, paddle::dialect::InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "test.operation2"; }
+  static constexpr char *name() { return "test.operation2"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];  // NOLINT
+  static constexpr char *attributes_name[attributes_num];  // NOLINT
   static void VerifySig() {}
   static void InferMeta(phi::InferMetaContext *infer_meta) {
     auto fn = PD_INFER_META(phi::CreateInferMeta);
@@ -65,7 +65,7 @@ class TestDialect : public pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
     initialize();
   }
-  static const char *name() { return "test"; }
+  static constexpr char *name() { return "test"; }
 
  private:
   void initialize() { RegisterOps<OperationTest>(); }

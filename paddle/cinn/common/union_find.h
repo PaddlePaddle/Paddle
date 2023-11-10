@@ -68,7 +68,7 @@ struct UnionFindNode : public Object {
 
   const char* type_info() const override;
 
-  static const char* __type_info__;
+  static constexpr char* __type_info__;
 };
 
 struct UnionFind {

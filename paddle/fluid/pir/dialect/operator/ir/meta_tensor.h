@@ -45,7 +45,7 @@ class IrMetaTensor : public phi::TensorBase,
   virtual ~IrMetaTensor() = default;
 
  public:
-  static const char* name() { return "IrMetaTensor"; }
+  static constexpr char* name() { return "IrMetaTensor"; }
 
   int64_t numel() const override;
 

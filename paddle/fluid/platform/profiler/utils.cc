@@ -145,30 +145,30 @@ float CalculateEstOccupancy(uint32_t DeviceId,
 #endif  // PADDLE_WITH_CUPTI
 
 const char* StringTracerMemEventType(TracerMemEventType type) {
-  static const char* categary_name_[] = {// NOLINT
-                                         "Allocate",
-                                         "Free",
-                                         "ReservedAllocate",
-                                         "ReservedFree"};
+  static constexpr char* categary_name_[] = {// NOLINT
+                                             "Allocate",
+                                             "Free",
+                                             "ReservedAllocate",
+                                             "ReservedFree"};
   return categary_name_[static_cast<int>(type)];
 }
 
 const char* StringTracerEventType(TracerEventType type) {
-  static const char* categary_name_[] = {"Operator",  // NOLINT
-                                         "Dataloader",
-                                         "ProfileStep",
-                                         "CudaRuntime",
-                                         "Kernel",
-                                         "Memcpy",
-                                         "Memset",
-                                         "UserDefined",
-                                         "OperatorInner",
-                                         "Forward",
-                                         "Backward",
-                                         "Optimization",
-                                         "Communication",
-                                         "PythonOp",
-                                         "PythonUserDefined"};
+  static constexpr char* categary_name_[] = {"Operator",  // NOLINT
+                                             "Dataloader",
+                                             "ProfileStep",
+                                             "CudaRuntime",
+                                             "Kernel",
+                                             "Memcpy",
+                                             "Memset",
+                                             "UserDefined",
+                                             "OperatorInner",
+                                             "Forward",
+                                             "Backward",
+                                             "Optimization",
+                                             "Communication",
+                                             "PythonOp",
+                                             "PythonUserDefined"};
   return categary_name_[static_cast<int>(type)];
 }
 

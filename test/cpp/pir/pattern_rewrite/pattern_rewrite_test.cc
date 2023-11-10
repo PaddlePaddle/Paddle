@@ -75,9 +75,9 @@ PD_DECLARE_KERNEL(transpose, CPU, ALL_LAYOUT);
 class Operation1 : public pir::Op<Operation1> {
  public:
   using Op::Op;
-  static const char *name() { return "test.Operation1"; }
+  static constexpr char *name() { return "test.Operation1"; }
   static constexpr uint32_t attributes_num = 2;
-  static const char *attributes_name[attributes_num];  // NOLINT
+  static constexpr char *attributes_name[attributes_num];  // NOLINT
   void VerifySig();
   static void InferShape() { VLOG(2) << "This is op2's InferShape interface."; }
 };
@@ -106,7 +106,7 @@ class TestDialect : public pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
     initialize();
   }
-  static const char *name() { return "test"; }
+  static constexpr char *name() { return "test"; }
 
  private:
   void initialize() { RegisterOps<Operation1>(); }
@@ -361,8 +361,8 @@ class Conv2dFusionOpTest : public pir::Op<Conv2dFusionOpTest,
                                           InferMetaInterface> {
  public:
   using Op::Op;
-  static const char *name() { return "pd_op.conv2d_fusion_test"; }
-  static const char *attributes_name[10];  // NOLINT
+  static constexpr char *name() { return "pd_op.conv2d_fusion_test"; }
+  static constexpr char *attributes_name[10];  // NOLINT
   static constexpr uint32_t attributes_num = 10;
   static OpInfoTuple GetOpInfo();
   static void Build(pir::Builder &builder,             // NOLINT
@@ -933,7 +933,7 @@ class Conv2dFusionTestDialect : public pir::Dialect {
       : pir::Dialect(name(), context, pir::TypeId::get<TestDialect>()) {
     initialize();
   }
-  static const char *name() { return "con2d fusion test"; }
+  static constexpr char *name() { return "con2d fusion test"; }
 
  private:
   void initialize() { RegisterOps<paddle::dialect::Conv2dFusionOpTest>(); }

@@ -23,7 +23,7 @@ class OperatorDialect : public ::pir::Dialect {
  public:
   explicit OperatorDialect(::pir::IrContext* context);
 
-  static const char* name() { return "cinn_op"; }
+  static constexpr char* name() { return "cinn_op"; }
 
   void PrintType(pir::Type type, std::ostream& os) const override;
   void PrintAttribute(pir::Attribute type, std::ostream& os) const override;

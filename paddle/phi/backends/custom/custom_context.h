@@ -56,7 +56,7 @@ class CustomContext : public DeviceContext,
 
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
 
-  static const char* name() { return "CustomContext"; }
+  static constexpr char* name() { return "CustomContext"; }
 
  public:
   // NOTE: DeviceContext hold resources. Used in training scenarios.

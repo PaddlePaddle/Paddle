@@ -34,7 +34,7 @@ class TestParserDialect : public pir::Dialect {
  public:
   explicit TestParserDialect(pir::IrContext* context);
 
-  static const char* name() { return "tp"; }
+  static constexpr char* name() { return "tp"; }
 
   void PrintAttribute(pir::Attribute attr, std::ostream& os) const;
 
