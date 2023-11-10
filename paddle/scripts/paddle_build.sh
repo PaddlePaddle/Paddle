@@ -1429,6 +1429,8 @@ function card_test() {
         run_label_mode="-L (RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_INFER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER)"
+    elif [[ "${UT_RUN_TYPE_SETTING}" == "WITHOUT_HYBRID" ]];then
+        run_label_mode="-LE (RUN_TYPE=HYBRID)"
     elif [[ "${UT_RUN_TYPE_SETTING}" == "OTHER" ]];then
         run_label_mode="-LE (RUN_TYPE=INFER|RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE)"
     fi

@@ -14,7 +14,7 @@
 
 import os
 
-from semi_auto_parallel_simple_net import (
+from auto_parallel.semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
@@ -43,7 +43,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
 
         paddle.set_device(self._backend)
 
-        self.init_input_data()
+        self.set_random_seed(self._seed)
         self.init_single_card_net_result()
 
     def dp_mp_pp_shard_fn(self, layer_name, layer, process_mesh):
@@ -74,6 +74,7 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
 
     def test_dp_mp_pp_demo_net(self):
+        self.set_random_seed(self._seed)
         model = dist.shard_layer(
             DemoNet(
                 "dp_mp_pp_hybrid_strategy",

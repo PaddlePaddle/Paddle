@@ -880,7 +880,7 @@ cc_library(
 cc_library(
   executor_cache
   SRCS executor_cache.cc
-  DEPS parallel_executor standalone_executor pir_adaptor transform pir)
+  DEPS parallel_executor standalone_executor pir_adaptor pir_transforms pir)
 cc_library(
   prune
   SRCS prune.cc

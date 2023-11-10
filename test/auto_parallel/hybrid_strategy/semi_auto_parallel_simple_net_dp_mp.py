@@ -14,7 +14,7 @@
 
 import os
 
-from semi_auto_parallel_simple_net import (
+from auto_parallel.semi_auto_parallel_simple_net import (
     DemoNet,
     TestSimpleNetForSemiAutoParallel,
 )
@@ -34,10 +34,11 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
 
         paddle.set_device(self._backend)
 
-        self.init_input_data()
+        self.set_random_seed(self._seed)
         self.init_single_card_net_result()
 
     def test_dp_mp_demo_net(self):
+        self.set_random_seed(self._seed)
         model = dist.shard_layer(
             DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
         )
