@@ -599,12 +599,7 @@ function(paddle_test_build TARGET_NAME)
                           ${paddle_test_DEPS} paddle_gtest_main_new)
     add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
                      paddle_gtest_main_new)
-    if(WITH_SHARED_PHI)
-      if(NOT WIN32)
-        target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
-        add_dependencies(${TARGET_NAME} phi)
-      endif()
-    endif()
+
     if(WITH_SHARED_IR)
       target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:pir>)
       add_dependencies(${TARGET_NAME} pir)
