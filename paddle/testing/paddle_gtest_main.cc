@@ -27,7 +27,7 @@ int main(int argc, char** argv) {  // NOLINT
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
-  for (int i = 0; i < argc; ++i) {
+  for (size_t i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
 
@@ -50,7 +50,7 @@ int main(int argc, char** argv) {  // NOLINT
   char* env_str = nullptr;
   if (!envs.empty()) {
     std::string env_string = "--tryfromenv=";
-    for (auto t : envs) {
+    for (const auto& t : envs) {
       env_string += t + ",";
     }
     env_string = env_string.substr(0, env_string.length() - 1);
