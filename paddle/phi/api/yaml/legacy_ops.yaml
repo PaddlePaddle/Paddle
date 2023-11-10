@@ -966,6 +966,7 @@
   output : Tensor
   infer_meta :
     func : SliceRawInferMeta
+    spmd_rule : SliceInferSpmdDynamic
   kernel :
     func : slice
   backward : slice_grad

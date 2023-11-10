@@ -17,6 +17,10 @@ from semi_auto_parallel_util import SemiAutoParallelTestBase
 import paddle
 import paddle.distributed as dist
 
+"""
+test for concat、slice 、split
+"""
+
 
 class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
     def __init__(self):
@@ -44,6 +48,60 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             axis=0,
         )
 
+    def test_slice(self):
+        shapes = [64, 4, 4]
+        specs = [None, None, 'x']
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=True,
+            axis=[0, 1],
+            starts=[1, 1],
+            ends=[3, 3],
+        )
+
+    def test_slice_reshard(self):
+        shapes = [64, 4, 4]
+        specs = [None, 'x', None]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=True,
+            axis=[0, 1],
+            starts=[1, 1],
+            ends=[3, 3],
+        )
+
+    def test_stride_slice(self):
+        shapes = [64, 4, 4]
+        specs = [None, None, 'x']
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=True,
+            axis=[0, 1],
+            starts=[1, 3],
+            ends=[3, 1],
+            strides=[1, -1],
+        )
+
+    def test_stride_slice_reshard(self):
+        shapes = [64, 4, 4]
+        specs = [None, 'x', None]
+        inputs, outputs = self.runfunc_and_check(
+            inputs_shape=shapes,
+            inputs_specs=specs,
+            op_func=paddle.concat,
+            with_backward=True,
+            axis=[0, 1],
+            starts=[1, 3],
+            ends=[3, 1],
+            strides=[1, -1],
+        )
+
     def run_test_case(self):
         if self._backend == "cpu":
             paddle.set_device("cpu")
@@ -53,9 +111,13 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
             raise ValueError("Only support cpu or gpu backend.")
 
         self.test_concat_forward()
+        self.test_slice()
+        self.test_stride_slice()
         # all to all is not supported yet for cpu
         if self._backend == "gpu":
             self.test_concat_forward_reshard()
+            self.test_slice_reshard()
+            self.test_stride_slice_reshard()
 
 
 if __name__ == '__main__':
