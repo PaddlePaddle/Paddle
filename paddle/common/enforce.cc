@@ -19,10 +19,6 @@ limitations under the License. */
 #include <memory>
 #include <unordered_map>
 #include <vector>
-
-#include "glog/logging.h"
-// #include "paddle/common/scalar.h"
-#include "paddle/utils/blank.h"
 #include "paddle/utils/flags.h"
 
 PD_DECLARE_int32(call_stack_level);
