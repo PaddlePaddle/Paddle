@@ -50,6 +50,7 @@ extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
+extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
@@ -237,8 +238,8 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
 
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, static_cast<size_t>(size));
   } else {
@@ -1521,6 +1522,8 @@ pir::Value CastPyArg2Value(PyObject* obj,
                            size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+    return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1583,8 +1586,6 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1842,7 +1843,7 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1869,7 +1870,7 @@ void PyVoidHook::operator()() {
   try {
     PyObject_CallFunctionObjArgs(py_func_, nullptr);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -2079,9 +2080,9 @@ void DistTensorConverter::convert(Tensor* x) {
     phi::distributed::TensorDistAttr dist_attr(
         phi::vectorize(x->impl()->dims()));
     dist_attr.set_process_mesh(*mesh);
-    auto dense_t = static_cast<phi::DenseTensor*>(x->impl().get());
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
     x->set_impl(
-        std::make_shared<phi::distributed::DistTensor>(*dense_t, dist_attr));
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
   }
 }
 

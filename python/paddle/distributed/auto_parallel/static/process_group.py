@@ -13,7 +13,6 @@
 # limitations under the License
 
 import hashlib
-import os
 from collections import OrderedDict
 
 import paddle
@@ -63,9 +62,9 @@ def new_process_group(
     global _g_process_group_map
     if not force_new_group:
         # A key constructed from ranks is used for avoiding duplication
-        new_key = ''.join(map(str, ranks))
+        new_key = '_'.join(map(str, ranks))
         for pg_id, pg in _g_process_group_map.items():
-            cur_key = ''.join(map(str, pg.ranks))
+            cur_key = '_'.join(map(str, pg.ranks))
             if pg_id != 0 and new_key == cur_key:
                 return pg
     # If not matching the existing one, construct a new process group
@@ -158,10 +157,10 @@ class ProcessGroup:
             strategy.nrings = 1
             if core.is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
-                use_new_comm = os.getenv(
-                    "FLAGS_dynamic_static_unified_comm", "0"
-                )
-                if use_new_comm in ["1", "True", "true"]:
+                use_new_comm = paddle.get_flags(
+                    "FLAGS_dynamic_static_unified_comm"
+                )["FLAGS_dynamic_static_unified_comm"]
+                if use_new_comm:
                     store = core.create_or_get_global_tcp_store()
                     endpoints_str = ""
                     for endpoint in strategy.trainer_endpoints:

@@ -102,16 +102,19 @@ class TestPrimBackwardBlacklistFlags(unittest.TestCase):
         x = paddle.randn([2, 4])
         x.stop_gradient = False
         net = PrimeNet()
-        net = paddle.jit.to_static(net)
+        net.forward = paddle.jit.to_static(full_graph=True)(net.forward)
         out = net(x)
         loss = paddle.mean(out)
         loss.backward()
         self.check_prim(net)
 
     def check_prim(self, net):
-        block = net.forward.program_cache.last()[-1][
-            -1
-        ].train_program.global_block()
+        program = net.forward.program_cache.last()[-1][-1].train_program
+        if isinstance(
+            program, paddle.jit.dy2static.pir_partial_program.RunableProgram
+        ):
+            program = program.program
+        block = program.global_block()
         ops = [op.name() for op in block.ops]
         self.assertTrue('pd_op.tanh_grad' in ops)
         self.assertTrue('pd_op.exp_grad' in ops)

@@ -18,6 +18,7 @@ import time
 import unittest
 
 import numpy as np
+from dygraph_to_static_utils_new import Dy2StTestBase
 from seq2seq_dygraph_model import AttentionModel, BaseModel
 from seq2seq_utils import Seq2SeqModelHyperParams, get_data_iter
 
@@ -174,7 +175,7 @@ def infer(args, attn_model=False):
         return outputs.numpy()
 
 
-class TestSeq2seq(unittest.TestCase):
+class TestSeq2seq(Dy2StTestBase):
     def setUp(self):
         self.args = Seq2SeqModelHyperParams
         self.temp_dir = tempfile.TemporaryDirectory()

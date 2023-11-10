@@ -22,11 +22,11 @@ namespace distributed {
 phi::DDim DistMetaTensor::dims() const {
   // member values in tensor_ have higher priority than those in DistMetaTensor
   if (tensor_ != nullptr) {
-    PADDLE_ENFORCE_EQ(this->is_dist(),
-                      true,
-                      phi::errors::InvalidArgument(
-                          "The current MetaTensor doesn't contains "
-                          "DistTensor when call `dist_attr` method."));
+    PADDLE_ENFORCE_EQ(
+        this->is_dist(),
+        true,
+        phi::errors::InvalidArgument("The current MetaTensor doesn't contains "
+                                     "DistTensor when call `dims` method."));
     return MetaTensor::dims();
   } else {
     return dims_;

@@ -24,6 +24,7 @@ from .creation import create_tensor  # noqa: F401
 from .creation import to_tensor  # noqa: F401
 from .creation import diag  # noqa: F401
 from .creation import diagflat  # noqa: F401
+from .creation import diag_embed  # noqa: F401
 from .creation import eye  # noqa: F401
 from .creation import linspace  # noqa: F401
 from .creation import fill_constant  # noqa: F401
@@ -165,6 +166,10 @@ from .manipulation import as_strided  # noqa: F401
 from .manipulation import view  # noqa: F401
 from .manipulation import view_as  # noqa: F401
 from .manipulation import unfold  # noqa: F401
+from .manipulation import masked_fill  # noqa: F401
+from .manipulation import masked_fill_  # noqa: F401
+from .manipulation import index_fill  # noqa: F401
+from .manipulation import index_fill_  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import abs_  # noqa: F401
 from .math import acos  # noqa: F401
@@ -329,6 +334,8 @@ from .math import polygamma  # noqa: F401
 from .math import polygamma_  # noqa: F401
 from .math import renorm  # noqa: F401
 from .math import renorm_  # noqa: F401
+from .math import hypot  # noqa: F401
+from .math import hypot_  # noqa: F401
 
 from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
@@ -381,7 +388,7 @@ from ..signal import istft  # noqa: F401
 from ..signal import stft  # noqa: F401
 
 # this list used in math_op_patch.py for _binary_creator_
-tensor_method_func = [  # noqa
+tensor_method_func = [
     'create_parameter',
     'create_tensor',
     'matmul',
@@ -464,6 +471,8 @@ tensor_method_func = [  # noqa
     'sum',
     'nan_to_num',
     'nan_to_num_',
+    'hypot',
+    'hypot_',
     'nansum',
     'nanmean',
     'count_nonzero',
@@ -690,6 +699,9 @@ tensor_method_func = [  # noqa
     'i1e',
     'polygamma',
     'polygamma_',
+    'masked_fill',
+    'masked_fill_',
+    'diag_embed',
     'atan2',
     'diagflat',
     'multinomial',
@@ -714,38 +726,9 @@ tensor_method_func = [  # noqa
     'acosh_',
     'asinh_',
     'diag',
-    'eye',
-    'linspace',
-    'fill_constant',
-    'ones',
-    'ones_like',
-    'zeros',
-    'zeros_like',
-    'arange',
-    'full',
-    'full_like',
-    'meshgrid',
-    'empty',
-    'empty_like',
-    'complex',
-    'eigh',
-    'standard_normal',
-    'normal',
-    'uniform',
-    'randn',
-    'rand',
-    'randint',
-    'randint_like',
-    'randperm',
-    'poisson',
-    'searchsorted',
-    'set_printoptions',
-    'array_length',
-    'array_read',
-    'array_write',
-    'create_array',
-    'einsum',
     'normal_',
+    'index_fill',
+    'index_fill_',
 ]
 
 # this list used in math_op_patch.py for magic_method bind

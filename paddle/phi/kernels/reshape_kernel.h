@@ -48,7 +48,9 @@ void Reshape(const Context& dev_ctx,
              DenseTensor* out) {
   MetaTensor meta_out(out);
   InferMetaFromVecValue(x, shape, &meta_out);
-  ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), out);
+  if (x.initialized()) {
+    ReshapeInferKernel<Context>(dev_ctx, x, IntArray(shape), out);
+  }
 }
 
 template <typename T, typename Context>

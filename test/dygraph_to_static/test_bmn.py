@@ -18,7 +18,7 @@ import tempfile
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest, test_with_new_ir
+from dygraph_to_static_utils_new import Dy2StTestBase, test_pir_only
 from predictor_utils import PredictorTools
 
 import paddle
@@ -637,8 +637,7 @@ def val_bmn(model, args):
     return loss_data
 
 
-@dy2static_unittest
-class TestTrain(unittest.TestCase):
+class TestTrain(Dy2StTestBase):
     def setUp(self):
         self.args = Args()
         self.place = (
@@ -751,8 +750,8 @@ class TestTrain(unittest.TestCase):
                         break
             return np.array(loss_data)
 
-    @test_with_new_ir
-    def test_train_new_ir(self):
+    @test_pir_only
+    def test_train_pir(self):
         static_res = self.train_bmn(self.args, self.place, to_static=True)
         dygraph_res = self.train_bmn(self.args, self.place, to_static=False)
         np.testing.assert_allclose(

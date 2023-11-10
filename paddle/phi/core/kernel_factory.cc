@@ -526,7 +526,7 @@ std::string KernelSelectionErrorMessage(const std::string& kernel_name,
   std::unordered_set<std::string> dtype_set;
 
   // Record all kernel information of kernel_name
-  for (auto iter : KernelFactory::Instance().kernels()[kernel_name]) {
+  for (auto const& iter : KernelFactory::Instance().kernels()[kernel_name]) {
     KernelKey kernel_key = iter.first;
     if (kernel_key.backend() == target_key.backend()) {
       support_backend = true;

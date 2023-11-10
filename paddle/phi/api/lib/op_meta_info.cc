@@ -21,6 +21,7 @@ limitations under the License. */
 
 #include "glog/logging.h"
 #include "paddle/phi/core/dense_tensor.h"
+#include "paddle/phi/core/distributed/auto_parallel/dist_tensor.h"
 #include "paddle/phi/core/enforce.h"
 
 namespace paddle {
@@ -63,10 +64,12 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
                "happens when handling inplace optional inputs & outputs.";
     return;
   }
-  PADDLE_ENFORCE_EQ(src.is_dense_tensor() && dst->is_dense_tensor(),
-                    true,
-                    phi::errors::Unavailable(
-                        "Now only supported DenseTensor in Custom Operator."));
+  PADDLE_ENFORCE_EQ(
+      ((src.is_dense_tensor() && dst->is_dense_tensor()) ||
+       (src.is_dist_tensor() && dst->is_dist_tensor())),
+      true,
+      phi::errors::Unavailable(
+          "Now only supported DenseTensor and DistTensor in Custom Operator."));
   PADDLE_ENFORCE_EQ(
       src.initialized(),
       true,
@@ -76,9 +79,19 @@ PADDLE_API void AssignTensorImpl(const Tensor& src, Tensor* dst) {
                     true,
                     phi::errors::Unavailable(
                         "The Custom OpKernel origin output is not defined."));
-  auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
-  auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
-  *dense_dst = dense_src;
+  if (src.is_dense_tensor()) {
+    auto& dense_src = static_cast<const phi::DenseTensor&>(*src.impl());
+    auto* dense_dst = static_cast<phi::DenseTensor*>(dst->impl().get());
+    *dense_dst = dense_src;
+  } else {
+    auto* dense_src =
+        static_cast<phi::distributed::DistTensor*>(src.impl().get())
+            ->unsafe_mutable_value();
+    auto* dense_dst =
+        static_cast<phi::distributed::DistTensor*>(dst->impl().get())
+            ->unsafe_mutable_value();
+    *dense_dst = *dense_src;
+  }
 }
 
 ////////////////////// Kernel Context //////////////////////
@@ -121,7 +134,7 @@ void CustomOpKernelContext::EmplaceBackAttr(paddle::any attr) {
 
 void CustomOpKernelContext::EmplaceBackAttrs(
     const std::vector<paddle::any>& attrs) {
-  attrs_ = std::move(attrs);
+  attrs_ = attrs;
 }
 
 const Tensor& CustomOpKernelContext::InputAt(size_t idx) const {
@@ -149,7 +162,8 @@ std::vector<Tensor>* CustomOpKernelContext::AllMutableInput() {
   return &inputs_;
 }
 
-paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
+paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(
+    size_t idx) const {
   if (!inputs_.at(idx).is_initialized()) {
     return paddle::none;
   }
@@ -157,7 +171,7 @@ paddle::optional<Tensor> CustomOpKernelContext::OptionalInputAt(size_t idx) {
 }
 
 paddle::optional<std::vector<Tensor>>
-CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) {
+CustomOpKernelContext::OptionalInputsBetween(size_t start, size_t end) const {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     if (!inputs_.at(i).is_initialized()) {
@@ -181,7 +195,7 @@ std::vector<Tensor*> CustomOpKernelContext::MutableOutputBetween(size_t start,
 }
 
 std::vector<Tensor> CustomOpKernelContext::OutputsBetween(size_t start,
-                                                          size_t end) {
+                                                          size_t end) const {
   std::vector<Tensor> rlt;
   for (size_t i = start; i < end; ++i) {
     rlt.emplace_back(outputs_.at(i));
@@ -203,12 +217,12 @@ const std::pair<size_t, size_t>& CustomOpKernelContext::OutputRangeAt(
 }
 
 const std::vector<std::pair<size_t, size_t>>&
-CustomOpKernelContext::InputRange() {
+CustomOpKernelContext::InputRange() const {
   return input_range_;
 }
 
 const std::vector<std::pair<size_t, size_t>>&
-CustomOpKernelContext::OutputRange() {
+CustomOpKernelContext::OutputRange() const {
   return output_range_;
 }
 
@@ -293,12 +307,13 @@ std::vector<Tensor*>* CustomOpKernelContext::AllMutablePlainOutput() {
   return &plain_outputs_;
 }
 
-std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap() {
+std::unordered_map<size_t, size_t> CustomOpKernelContext::GetInplaceIndexMap()
+    const {
   return inplace_idx_map_;
 }
 
 std::unordered_map<size_t, size_t>
-CustomOpKernelContext::GetInplaceReverseIndexMap() {
+CustomOpKernelContext::GetInplaceReverseIndexMap() const {
   return inplace_reverse_idx_map_;
 }
 ////////////////////// Op Meta Info //////////////////////

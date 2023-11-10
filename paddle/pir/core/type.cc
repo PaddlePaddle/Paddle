@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/pir/core/type.h"
+#include "paddle/pir/core/builtin_type.h"
 #include "paddle/pir/core/dialect.h"
 #include "paddle/pir/core/type_base.h"
 
@@ -24,4 +25,12 @@ TypeId Type::type_id() { return storage_->abstract_type().type_id(); }
 const AbstractType &Type::abstract_type() { return storage_->abstract_type(); }
 
 Dialect &Type::dialect() const { return storage_->abstract_type().dialect(); }
+
+bool Type::IsIntOrIndex() const {
+  return isa<IndexType>() || isa<Int8Type>() || isa<UInt8Type>() ||
+         isa<Int16Type>() || isa<Int32Type>() || isa<Int64Type>();
+}
+
+bool Type::IsIndex() const { return isa<IndexType>(); }
+
 }  // namespace pir

@@ -39,7 +39,7 @@ class IR_API Type {
   using TypeBase = detail::StorageHelperBase<ConcreteType,
                                              BaseType,
                                              StorageType,
-                                             pir::TypeManager,
+                                             TypeManager,
                                              TraitOrInterface...>;
 
   using Storage = TypeStorage;
@@ -47,8 +47,7 @@ class IR_API Type {
 
   Type() = default;
 
-  Type(const Storage *storage)  // NOLINT
-      : storage_(storage) {}
+  Type(const Storage *storage) : storage_(storage) {}  // NOLINT
 
   Type(const Type &other) = default;
 
@@ -74,8 +73,8 @@ class IR_API Type {
   /// \brief Support PointerLikeTypeTraits.
   ///
   operator const void *() const { return storage_; }
-  static Type RecoverFromOpaquePointer(const void *pointer) {
-    return Type(reinterpret_cast<Storage *>(const_cast<void *>(pointer)));
+  static Type RecoverFromVoidPointer(const void *pointer) {
+    return Type(reinterpret_cast<const Storage *>(pointer));
   }
 
   ///
@@ -115,6 +114,13 @@ class IR_API Type {
   U cast() const {
     return pir::cast<U>(*this);
   }
+
+  ///
+  /// \brief Return true if this is an integer (any signedness) or an index
+  /// type.
+  ///
+  bool IsIntOrIndex() const;
+  bool IsIndex() const;
 
  protected:
   const Storage *storage_{nullptr};

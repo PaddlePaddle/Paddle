@@ -643,6 +643,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self.group_name = group_name
         assert isinstance(auto_skip_clip, bool)
         self.auto_skip_clip = auto_skip_clip
+        # TODO(zhiqiu): Now, in dygraph mode async_add_n is always used.
+        # However, in static mode, it is only used in auto_parallel mode
+        # by setting self._async_add_n to True. The reason is that there
+        # are so many hard code depends on `add_n` in the legacy static
+        # manual hybrid-parallel.
+        self._async_add_n = None
 
     def __str__(self):
         return "Gradient Clip By GlobalNorm, global_norm=%f" % (self.clip_norm)
@@ -749,6 +755,13 @@ class ClipGradByGlobalNorm(ClipGradBase):
         sum_square_list_fp16 = []
         sum_square_list_bf16 = []
         sum_square_list_fp32 = []
+
+        def _add_n(var_list):
+            if self._async_add_n:
+                return paddle.stack(var_list).sum()
+            else:
+                return paddle.add_n(var_list)
+
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -794,7 +807,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
-                    global_norm_var_fp16 = paddle.add_n(sum_square_list_fp16)
+                    global_norm_var_fp16 = _add_n(sum_square_list_fp16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -806,7 +819,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_fp16)
                 if len(sum_square_list_bf16) > 0:
-                    global_norm_var_bf16 = paddle.add_n(sum_square_list_bf16)
+                    global_norm_var_bf16 = _add_n(sum_square_list_bf16)
                     if (
                         sum_square_list_fp32
                         or sum_square_list
@@ -818,7 +831,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     else:
                         global_norm_var.append(global_norm_var_bf16)
                 if len(sum_square_list_fp32) > 0:
-                    global_norm_var_fp32 = paddle.add_n(sum_square_list_fp32)
+                    global_norm_var_fp32 = _add_n(sum_square_list_fp32)
                     if sum_dtype == 'float32':
                         global_norm_var.append(global_norm_var_fp32)
                     else:
@@ -827,11 +840,11 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         )
                 if len(sum_square_list) > 0:
                     # fp64
-                    global_norm_var_other_dtype = paddle.add_n(sum_square_list)
+                    global_norm_var_other_dtype = _add_n(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
 
                 global_norm_var = (
-                    paddle.add_n(global_norm_var)
+                    _add_n(global_norm_var)
                     if len(global_norm_var) > 1
                     else global_norm_var[0]
                 )
@@ -919,9 +932,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
         self.context = context
 
     def _create_operators(self, param, grad):
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         group_scale_name = self.group_name + "_scale"
         if group_scale_name not in self.context:
-            group_norm_var = paddle.add_n(self.context[self.group_name])
+            group_norm_var = async_add_n(self.context[self.group_name])
             group_norm_var = paddle.sqrt(x=group_norm_var)
             clip_var = self.context[self.group_name + "_clip"]
             group_scale_var = paddle.divide(
@@ -965,7 +981,7 @@ def set_gradient_clip(clip, param_list=None, program=None):
                 It can be a list of parameter or a list of parameter's name.
                 Default None, meaning that all parameters in the program will be included.
         program (Program, optional): The program where parameters are located.
-                Default None, meaning that using :ref:`api_base_default_main_program` .
+                Default None, meaning that using :ref:`api_paddle_static_default_main_program` .
 
     Returns:
         None

@@ -27,7 +27,7 @@ bool TensorArray::initialized() const {
     return false;
   }
 
-  for (auto tensor : tensors_) {
+  for (auto const& tensor : tensors_) {
     if (!tensor.initialized()) {
       return false;
     }
