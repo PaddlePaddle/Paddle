@@ -2053,7 +2053,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> import paddle.fluid
+                    >>> import paddle.base
             """,
             'bad_fluid_from': """
             this is docstring...
@@ -2153,7 +2153,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # import paddle.fluid
+                    >>> # import paddle.base
                     >>> import os
             """,
             'oneline_skip': """
