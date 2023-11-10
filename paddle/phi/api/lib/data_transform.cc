@@ -676,9 +676,10 @@ ReshardApiInputToKernelInput(phi::DeviceContext* dev_ctx,
         auto* func = phi::distributed::ChooseProperReshardFunction(*dist_tensor,
                                                                    dist_attr);
         out.push_back(func->Eval(dev_ctx, *dist_tensor, dist_attr));
+      } else {
+        out.push_back(
+            std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
       }
-      out.push_back(
-          std::static_pointer_cast<phi::distributed::DistTensor>(tensor_in));
     } else {
       out.push_back(nullptr);
     }
