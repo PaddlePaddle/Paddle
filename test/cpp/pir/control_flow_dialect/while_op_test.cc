@@ -141,7 +141,7 @@ TEST(while_op_test, network_with_backward) {
   auto bwd_cond = builder.Build<pir::HasElementsOp>(stack).out();
   auto while_grad = builder.Build<WhileOp>(
       bwd_cond, std::vector<pir::Value>{x_out_grad, zero});
-  pir::Block* bwd_body_block = while_op.body_block();
+  pir::Block* bwd_body_block = while_grad.body_block();
   builder.SetInsertionPointToStart(bwd_body_block);
   auto local_x_out_grad_arg = bwd_body_block->AddArgument(x.type());
   auto local_y_grad_arg = bwd_body_block->AddArgument(y.type());

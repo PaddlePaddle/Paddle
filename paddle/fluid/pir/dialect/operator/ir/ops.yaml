@@ -62,6 +62,7 @@
   kernel :
     func : fetch
     param : [x]
+  traits : pir::SideEffectTrait
 
 - op : get_tensor_from_selected_rows
   args : (Tensor x)

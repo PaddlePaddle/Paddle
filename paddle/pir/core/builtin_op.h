@@ -16,6 +16,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 
 namespace pir {
 
@@ -66,7 +67,7 @@ class IR_API GetParameterOp : public pir::Op<GetParameterOp> {
 /// \brief SetParameterOp: SetParameterOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
-class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
+class IR_API SetParameterOp : public pir::Op<SetParameterOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.set_parameter"; }
@@ -83,7 +84,7 @@ class IR_API SetParameterOp : public pir::Op<SetParameterOp> {
 /// \brief ShdowOutputOp: ShdowOutputOp(OpOperand, {StrAttribute,
 /// StrAttribute})
 ///
-class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp> {
+class IR_API ShadowOutputOp : public pir::Op<ShadowOutputOp, SideEffectTrait> {
  public:
   using Op::Op;
   static const char *name() { return "builtin.shadow_output"; }
