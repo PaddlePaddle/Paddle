@@ -97,6 +97,10 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
+    VLOG(0) << "debug size comm_task_list_: " << comm_task_list_.size()
+        << ", init_comm_task_map_: " << init_comm_task_map_.size()
+        << ", start_comm_task_map_: " << start_comm_task_map_.size();
+
     if (IsTimeout()) {
       std::once_flag flag;
       std::call_once(flag, [this]() {
@@ -110,15 +114,34 @@ void CommTaskManager::CommTaskLoop() {
       auto task = *iter;
       if (task->IsTimeout()) {
         if (!task->IsStarted()) {
-          LOG(WARNING) << "Find timeout init but not start task:"
-                       << task->GetTraceMsg();
+          // all group's last task is not started
+          if (group_last_comm_task_.empty()) {
+              // report error directorily
+              LOG(ERROR) << "Find no task started in all group";
+          }
+
+          // all group's last task is completed
+          bool all_completed = true;
+          for (auto iter: group_last_comm_task_) {
+              if (iter.second->IsCompleted()) {
+                  all_completed = false;
+                  break;
+              }
+          }
+          if (all_completed) {
+              // report error directorily
+              LOG(ERROR) << "Find no task started with prev task completed in all group";
+          }
+
           std::string task_key = task->UniqueKey();
           init_comm_task_map_[task_key] = task;
         } else if (!task->IsCompleted()) {
           LOG(WARNING) << "Find timeout start but not finish task:"
                        << task->GetTraceMsg();
+
+          LOG(INFO) << "debug group_last_comm_task_ size:" << group_last_comm_task_.size();
           for (auto iter : group_last_comm_task_) {
-            LOG(INFO) << "All trace comm task:" << iter.second->GetTraceMsg();
+            LOG(INFO) << "Find timeout task, all comm task:" << iter.second->GetTraceMsg();
           }
           std::string task_key = task->UniqueKey();
           start_comm_task_map_[task_key] = task;
@@ -173,8 +196,14 @@ void CommTaskManager::CommTaskLoop() {
 }
 
 void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
+  if (!task->IsUpdated()) {
+      return;
+  }
   group_last_comm_task_[task->GroupKey()] = task;
+  VLOG(0) << "debug group_last_comm_task_ size: " << group_last_comm_task_.size() << ", update task_key:" << task->GroupKey()
+      << ", task_msg: " << task->GetTraceMsg();
   last_update_time_ = std::chrono::steady_clock::now();
+  task->SetUpdated(false);
 }
 
 void CommTaskManager::SetTimeout(int64_t timeout) {

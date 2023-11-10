@@ -133,6 +133,16 @@ class CommTask {
         phi::errors::Unimplemented("%s is not implemented.", __func__));
     return false;
   }
+  virtual void SetUpdated(bool updated) {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return ;
+  }
+  virtual bool IsUpdated() {
+    PADDLE_THROW(
+        phi::errors::Unimplemented("%s is not implemented.", __func__));
+    return false;
+  }
   virtual void AbortComm() {
     PADDLE_THROW(
         phi::errors::Unimplemented("%s is not implemented.", __func__));
@@ -154,7 +164,12 @@ class CommTask {
   CommType comm_type_;
   bool start_trace_updated_{false};
 
+
+  // task status
+  bool started_ = false;
   bool completed_ = false;
+  // task status changed
+  bool updated_ = true;
   bool aborted_{false};
   std::chrono::time_point<std::chrono::steady_clock> start_time_;
   std::shared_ptr<Store> store_;
