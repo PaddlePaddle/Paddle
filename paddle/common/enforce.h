@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2013 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -62,17 +62,6 @@ namespace enforce {
 #define UNLIKELY(condition) (condition)
 #endif
 
-// #ifdef __GNUC__
-// inline std::string demangle(std::string name) {
-//   int status = -4;  // some arbitrary value to eliminate the compiler warning
-//   std::unique_ptr<char, void (*)(void*)> res{
-//       abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
-//   return (status == 0) ? res.get() : name;
-// }
-// #else
-// inline std::string demangle(std::string name) { return name; }
-// #endif
-
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
 #define HANDLE_THE_ERROR try {
 #define END_HANDLE_THE_ERROR            \
@@ -119,151 +108,11 @@ using CommonType1 = typename std::add_lvalue_reference<
 template <typename T1, typename T2>
 using CommonType2 = typename std::add_lvalue_reference<
     typename std::add_const<typename TypeConverter<T1, T2>::Type2>::type>::type;
-
-// Here, we use SFINAE to check whether T can be converted to std::string
-template <typename T>
-struct CanToString {
- private:
-  using YesType = uint8_t;
-  using NoType = uint16_t;
-
-  template <typename U>
-  static YesType Check(decltype(std::cout << std::declval<U>())) {
-    return 0;
-  }
-
-  template <typename U>
-  static NoType Check(...) {
-    return 0;
-  }
-
- public:
-  static constexpr bool kValue =
-      std::is_same<YesType, decltype(Check<T>(std::cout))>::value;
-};
-
-template <bool kCanToString /* = true */>
-struct BinaryCompareMessageConverter {
-  template <typename T>
-  static std::string Convert(const char* expression, const T& value) {
-    return expression + std::string(":") + paddle::string::to_string(value);
-  }
-};
-
-template <>
-struct BinaryCompareMessageConverter<false> {
-  template <typename T>
-  static const char* Convert(const char* expression, const T& value UNUSED) {
-    return expression;
-  }
-};
 }  // namespace details
-
-TEST_API int GetCallStackLevel();
-TEST_API std::string GetCurrentTraceBackString(bool for_signal = false);
-TEST_API std::string SimplifyErrorTypeFormat(const std::string& str);
-
-template <typename StrType>
-static std::string GetErrorSumaryString(StrType&& what,
-                                        const char* file,
-                                        int line) {
-  std::ostringstream sout;
-  if (GetCallStackLevel() > 1) {
-    sout << "\n----------------------\nError Message "
-            "Summary:\n----------------------\n";
-  }
-  sout << paddle::string::Sprintf(
-              "%s (at %s:%d)", std::forward<StrType>(what), file, line)
-       << std::endl;
-  return sout.str();
-}
-
-// Note: This Macro can only be used within enforce.h
-#define __THROW_ERROR_INTERNAL__(__ERROR_SUMMARY) \
-  do {                                            \
-    HANDLE_THE_ERROR                              \
-    throw ::common::enforce::EnforceNotMet(       \
-        __ERROR_SUMMARY, __FILE__, __LINE__);     \
-    END_HANDLE_THE_ERROR                          \
-  } while (0)
-
-template <typename StrType>
-static std::string GetTraceBackString(StrType&& what,
-                                      const char* file,
-                                      int line) {
-  if (GetCallStackLevel() > 1) {
-    // FLAGS_call_stack_level>1 means showing c++ call stack
-    return GetCurrentTraceBackString() + GetErrorSumaryString(what, file, line);
-  } else {
-    return GetErrorSumaryString(what, file, line);
-  }
-}
-
-struct EnforceNotMet : public std::exception {
- public:
-  EnforceNotMet(std::exception_ptr e, const char* file, int line) {
-    try {
-      std::rethrow_exception(e);
-    } catch (EnforceNotMet& e) {
-      code_ = e.code();
-      err_str_ = GetTraceBackString(e.what(), file, line);
-      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-    } catch (std::exception& e) {
-      err_str_ = GetTraceBackString(e.what(), file, line);
-      simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-    }
-  }
-
-  EnforceNotMet(const std::string& str, const char* file, int line)
-      : err_str_(GetTraceBackString(str, file, line)) {
-    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-  }
-
-  EnforceNotMet(const common::ErrorSummary& error, const char* file, int line)
-      : code_(error.code()),
-        err_str_(GetTraceBackString(error.to_string(), file, line)) {
-    simple_err_str_ = SimplifyErrorTypeFormat(err_str_);
-  }
-
-  const char* what() const noexcept override {
-    if (GetCallStackLevel() > 1) {
-      return err_str_.c_str();
-    } else {
-      return simple_err_str_.c_str();
-    }
-  }
-
-  common::ErrorCode code() const { return code_; }
-
-  const std::string& error_str() const { return err_str_; }
-
-  const std::string& simple_error_str() const { return simple_err_str_; }
-
-  void set_error_str(std::string str) {
-    if (GetCallStackLevel() > 1) {
-      err_str_ = str;
-    } else {
-      simple_err_str_ = str;
-    }
-  }
-
-  ~EnforceNotMet() override = default;
-
- private:
-  // Used to determine the final type of exception thrown
-  common::ErrorCode code_ = common::ErrorCode::LEGACY;
-  // Complete error message
-  // e.g. InvalidArgumentError: ***
-  std::string err_str_;
-  // Simple error message used when no C++ stack and python compile stack
-  // e.g. (InvalidArgument) ***
-  std::string simple_err_str_;
-};
-
-#define PADDLE_THROW(...)                                         \
+#define COMMON_THROW(...)                                         \
   do {                                                            \
     HANDLE_THE_ERROR                                              \
-    throw ::common::enforce::EnforceNotMet(                       \
+    throw ::common::CommonNotMetException(                        \
         ::common::ErrorSummary(__VA_ARGS__), __FILE__, __LINE__); \
     END_HANDLE_THE_ERROR                                          \
   } while (0)

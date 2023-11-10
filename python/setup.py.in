@@ -573,6 +573,9 @@ package_data['paddle.libs']+=[
     ('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name,
     ('libwarprnnt' if os.name != 'nt' else 'warprnnt') + ext_name,
 ]
+package_data['paddle.libs']+=[
+    ('libcommon' if os.name != 'nt' else 'common') + ext_name,
+]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 shutil.copy('${WARPRNNT_LIBRARIES}', libs_path)
 
