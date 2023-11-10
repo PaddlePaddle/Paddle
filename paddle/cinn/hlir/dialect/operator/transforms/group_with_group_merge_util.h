@@ -424,6 +424,7 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
   // required that each consumer of type Broadcast meet the same shape after
   // broadcast as before reduce.
   for (auto& node_in_master : first->master_ops) {
+    std::cerr << "node_in mater" << node_in_master->name() << std::endl;
     if (GetOpKind(node_in_master->name()) != OpPatternKind::kReduction) {
       continue;
     }
@@ -470,6 +471,9 @@ inline bool reduce_fuse_broadcast(const std::shared_ptr<ir::Group>& first,
         auto candidate = candidates.front();
         candidates.pop();
         // TODO(phlrain) : why only deal with first output
+        if (candidate->num_results() == 0) {
+          continue;
+        }
         auto first_output = candidate->result(0);
         for (auto it = first_output.use_begin(); it != first_output.use_end();
              ++it) {

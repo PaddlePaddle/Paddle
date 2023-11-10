@@ -51,6 +51,7 @@ std::unordered_map<std::string, OpPatternKind> OpKindMap = {
     {"cinn_op.reduce_sum", OpPatternKind::kReduction},
     {"cinn_op.reduce_max", OpPatternKind::kReduction},
     {"cinn_op.broadcast", OpPatternKind::kBroadcast},
+    {"cf.yield", OpPatternKind::kNonFusible},
     {"cinn_op.uniform_random", OpPatternKind::kElementWise}};
 
 OpPatternKind GetOpKind(const std::string& op_name) {

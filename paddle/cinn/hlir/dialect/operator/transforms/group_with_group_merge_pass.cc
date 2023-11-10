@@ -701,10 +701,19 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
   int Benefit() const override { return 100; }
 
   void operator()(LightwareFusePassCtx* ctx) const override {
+    std::cerr << "111\n";
     const auto& producer = ctx->PickOpGroup();
     const OpGroupList consumers = [&]() {
       OpGroupList consumers;
       for (const auto& consumer : producer.consumers()) {
+        auto group1 = consumer.GetGroup();
+        std::cerr << "grou1 " << group1->group_id << "\t"
+                  << group1->CollectOps().size() << std::endl;
+        // if( group1->CollectOps().size() == 1 )
+        // {
+        // auto it = group1->CollectOps().begin();
+        // std::cerr << "ops " << (*it)->name() << std::endl;
+        // }
         consumers.push_back(consumer);
       }
       return consumers;
@@ -712,6 +721,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
     if (consumers.size() == 0) {
       return;
     }
+    std::cerr << "10\n";
 
     std::vector<OpGroupPtr> candidates;
     for (size_t i = 0; i < consumers.size(); ++i) {
@@ -725,12 +735,16 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
         producer.kind() == OpPatternKind::kElementWise) {
       return;
     }
-
+    std::cerr << "11\n";
     for (size_t i = 0; i < consumers.size(); ++i) {
+      std::cerr << "12\n";
       const auto& consumer = consumers.at(i);
       if (!DetectFusabilityByKind(ctx, producer, consumer)) {
+        std::cerr << "15\n";
         continue;
       }
+
+      std::cerr << "13\n";
       if (ctx->fuse_helper().DetectCycleIfFuse(producer, consumer)) {
         VLOG(4) << "Can't fuse because detect cycle";
         continue;
@@ -744,12 +758,16 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
                               const OpGroupPtr& src,
                               const OpGroupPtr& dst) const {
     const KindKeyT kind_pair(src.kind(), dst.kind());
+    std::cerr << "dst kind " << src.kind() << "\t" << dst.kind() << std::endl;
     const auto& map = GetConditionMap();
     const auto& iter = map.find(kind_pair);
     if (iter == map.end()) {
       return false;
     }
-    return iter->second(ctx, src, dst);
+    auto res = iter->second(ctx, src, dst);
+
+    std::cerr << "res here\n";
+    return res;
   }
 
   typedef bool (*ConditionT)(LightwareFusePassCtx* ctx,
@@ -840,6 +858,7 @@ class DefaultVerticalFusePass final : public VerticalFusePass {
   static bool ReduceFuseElementwise(LightwareFusePassCtx* ctx,
                                     const OpGroupPtr& src,
                                     const OpGroupPtr& dst) {
+    std::cerr << "reduce fuse elementwise \n";
     return ctx->fuse_helper().ReduceFuseElementwise(src, dst);
   }
 
