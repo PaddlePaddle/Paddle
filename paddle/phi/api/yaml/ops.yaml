@@ -2317,6 +2317,7 @@
   kernel:
     func : shadow_output
     param : [x]
+  traits : pir::SideEffectTrait
 
 - op : shape
   args : (Tensor input)
