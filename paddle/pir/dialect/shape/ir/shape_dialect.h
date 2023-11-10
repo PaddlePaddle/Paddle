@@ -16,27 +16,21 @@
 
 #include "paddle/pir/core/dialect.h"
 
-namespace pir {
-namespace dialect {
+namespace pir::shape {
 ///
 /// \brief Shape Dialect:
 ///
-class IR_API ShapeDialect : public pir::Dialect {
+class IR_API ShapeDialect : public Dialect {
  public:
-  explicit ShapeDialect(pir::IrContext *context);
-  ///
-  /// \brief Each Dialect needs to provide a name function to return the name of
-  /// the Dialect.
-  ///
-  /// \return The name of this Dialect.
-  ///
-  static const char *name() { return "shape"; }
+  explicit ShapeDialect(IrContext* context);
+  static const char* name() { return "shape"; }
+  void PrintOperation(Operation* op,
+                      IrPrinter& printer) const override;  // NOLINT
 
  private:
   void initialize();
 };
 
-}  // namespace dialect
-}  // namespace pir
+}  // namespace pir::shape
 
-IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::dialect::ShapeDialect)
+IR_EXPORT_DECLARE_EXPLICIT_TYPE_ID(pir::shape::ShapeDialect)

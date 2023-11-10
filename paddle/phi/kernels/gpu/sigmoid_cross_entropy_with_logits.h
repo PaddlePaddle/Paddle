@@ -51,15 +51,4 @@ struct NonzeroFunctor {
   }
 };
 
-template <typename T>
-struct DivFunctor {
-  const T norm_;
-  HOSTDEVICE inline DivFunctor(const T norm) : norm_(norm) {}
-
-  HOSTDEVICE inline T operator()(T loss) {
-    loss /= norm_;
-    return loss;
-  }
-};
-
 }  // namespace phi

@@ -28,22 +28,19 @@ class OpResultImpl;
 ///
 class IR_API OpResult : public Value {
  public:
-  using Value::Value;
-
-  static bool classof(Value value);
-
+  OpResult(std::nullptr_t ptr = nullptr) : Value(ptr){};  // NOLINT
   Operation *owner() const;
-
-  uint32_t GetResultIndex() const;
-
+  // Return the result index of this op result.
+  uint32_t index() const;
   bool operator==(const OpResult &other) const;
 
-  friend Operation;
-
-  detail::OpResultImpl *impl() const;
-
  private:
-  static uint32_t GetValidInlineIndex(uint32_t index);
+  friend Operation;
+  OpResult(detail::OpResultImpl *impl);  // NOLINT
+  // Access classof annd dyn_cast_from.
+  friend Value;
+  static bool classof(Value value);
+  static OpResult dyn_cast_from(Value value);
 };
 
 }  // namespace pir

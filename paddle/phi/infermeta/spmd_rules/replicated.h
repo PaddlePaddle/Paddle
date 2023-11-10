@@ -34,25 +34,24 @@ namespace distributed {
  * inferfw & inferbw) to support any kind of op.
  *
  */
-SpmdInfo ReplicatedSpmdInferForward(
-    const std::vector<const DistMetaTensor*>& ins,
-    const std::vector<const DistMetaTensor*>& outs);
+SpmdInfo ReplicatedInferSpmd(const std::vector<const DistMetaTensor*>& ins,
+                             const std::vector<const DistMetaTensor*>& outs);
 
-SpmdInfo ReplicatedSpmdInferBackward(
+SpmdInfo ReplicatedInferSpmdReverse(
     const std::vector<const DistMetaTensor*>& ins,
     const std::vector<const DistMetaTensor*>& outs);
 
 // For phi api
 template <typename... Args>
-SpmdInfo PhiReplicatedSpmdInferForward(const Args&... args) {
-  return detail::PhiSpmdVariadicArgumentParser<ReplicatedSpmdInferForward>()
+SpmdInfo VariadicReplicatedInferSpmd(const Args&... args) {
+  return detail::VariadicSpmdRuleArgumentParser<ReplicatedInferSpmd>()
       .apply(args...)
       .InferForward();
 }
 
 template <typename... Args>
-SpmdInfo PhiReplicatedSpmdInferBackward(const Args&... args) {
-  return detail::PhiSpmdVariadicArgumentParser<ReplicatedSpmdInferBackward>()
+SpmdInfo VariadicReplicatedInferSpmdReverse(const Args&... args) {
+  return detail::VariadicSpmdRuleArgumentParser<ReplicatedInferSpmdReverse>()
       .apply(args...)
       .InferBackward();
 }

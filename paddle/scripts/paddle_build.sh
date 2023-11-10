@@ -262,6 +262,7 @@ function cmake_base() {
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF}
         -DCUDA_ARCH_BIN="${CUDA_ARCH_BIN}"
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     ========================================
 EOF
@@ -313,6 +314,7 @@ EOF
         -DWITH_RECORD_BUILDTIME=${WITH_RECORD_BUILDTIME:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}  \
         -DWITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}  \
+        -DWITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON} \
         -DWITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF};build_error=$?
 
     if [ "$build_error" != 0 ];then
@@ -459,7 +461,7 @@ EOF
         fi
         echo "PR whl Size: $PR_whlSize"
         echo "ipipe_log_param_PR_whl_Size: $PR_whlSize" >> ${PADDLE_ROOT}/build/build_summary.txt
-        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/fluid/libpaddle.so |awk '{print $1}')
+        PR_soSize=$($com ${PADDLE_ROOT}/build/python/paddle/base/libpaddle.so |awk '{print $1}')
         echo "PR so Size: $PR_soSize"
         echo "ipipe_log_param_PR_so_Size: $PR_soSize" >> ${PADDLE_ROOT}/build/build_summary.txt
     fi
@@ -685,7 +687,6 @@ EOF
             echo "Unittests with nightly labels  are only run at night"
             echo "========================================="
         fi
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         check_approvals_of_unittest 2
         # serial_list: Some single tests need to reduce concurrency
         single_list="^test_cdist$|^test_resnet$|^test_resnet_v2$|^test_concat_op$|^test_transformer$|^test_bert_with_stride$|^test_paddle_save_load$"
@@ -795,7 +796,6 @@ function run_linux_cpu_test() {
 EOF
 set -x
         export TEST_NUM_PERCENT_CASES=0.15
-        bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ -a "$PADDLE_ROOT/duplicate_ut" ];then
             duplicate_uts=$(cat $PADDLE_ROOT/duplicate_ut|sed -e 's/\r//g')
             if [[ "$duplicate_uts" != "" ]];then
@@ -932,6 +932,96 @@ set -ex
     fi
 }
 
+function check_run_sot_ci() {
+    set +x
+    # use "git commit -m 'message, test=sot'" to force ci to run
+    COMMIT_RUN_CI=$(git log -1 --pretty=format:"%s" | grep -w "test=sot" || true)
+    # check pr title
+    TITLE_RUN_CI=$(curl -s https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} | grep "<title>" | grep -i "sot" || true)
+    if [[ ${COMMIT_RUN_CI} || ${TITLE_RUN_CI} ]]; then
+        set -x
+        return
+    fi
+
+    # git diff
+    SOT_FILE_LIST=(
+        paddle/fluid/operators/run_program_op.h
+        paddle/fluid/operators/run_program_op.cu
+        paddle/fluid/operators/run_program_op.cc
+        paddle/fluid/eager/to_static
+        paddle/fluid/pybind/
+        python/
+        test/sot
+    )
+
+    run_sot_ut="OFF"
+    for change_file in $(git diff --name-only upstream/develop);
+    do
+        for sot_file in ${SOT_FILE_LIST[@]};
+        do
+            if [[ ${change_file} =~ ^"${sot_file}".* ]]; then
+                echo "Detect change about SOT: "
+                echo "Changes related to the sot code were detected: " ${change_file}
+                run_sot_ut="ON"
+                break
+            fi
+        done
+        if [[ "ON" == ${run_sot_ut} ]]; then
+            break
+        fi
+    done
+
+    if [[ "OFF" == ${run_sot_ut} ]]; then
+        echo "No SOT-related changes were found"
+        echo "Skip SOT UT CI"
+        exit 0
+    fi
+    set -x
+}
+
+function run_sot_test() {
+    PY_VERSION=$1
+    PYTHON_WITH_SPECIFY_VERSION=python$PY_VERSION
+    PY_VERSION_NO_DOT=`echo $PY_VERSION | sed 's/\.//g'`
+
+    export STRICT_MODE=1
+    export COST_MODEL=False
+    export MIN_GRAPH_SIZE=0
+    export SOT_LOG_LEVEL=0
+    export FLAGS_cudnn_deterministic=True
+
+    # Install PaddlePaddle
+    $PYTHON_WITH_SPECIFY_VERSION -m pip install ${PADDLE_ROOT}/dist/paddlepaddle-0.0.0-cp${PY_VERSION_NO_DOT}-cp${PY_VERSION_NO_DOT}-linux_x86_64.whl
+    # Install PaddleSOT
+    cd $PADDLE_ROOT/test/sot/
+
+    # Run unittest
+    failed_tests=()
+
+    for file in ./test_*.py; do
+        # check file is python file
+        if [ -f "$file" ]; then
+            echo Running: PYTHONPATH=$PYTHONPATH " STRICT_MODE=1 python " $file
+            # run unittests
+            python_output=$($PYTHON_WITH_SPECIFY_VERSION $file 2>&1)
+
+            if [ $? -ne 0 ]; then
+                echo "run $file failed"
+                failed_tests+=("$file")
+                echo -e "$python_output"
+            fi
+        fi
+    done
+
+    if [ ${#failed_tests[@]} -ne 0 ]; then
+        echo "failed tests file:"
+        for failed_test in "${failed_tests[@]}"; do
+            echo "$failed_test"
+        done
+        exit 1
+    fi
+}
+
 function get_precision_ut_mac() {
     on_precision=0
     UT_list=$(ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d')
@@ -987,10 +1077,10 @@ function check_whl_size() {
     fi
 
     set +x
-    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/*.whl|awk '{print $1}'`
+    pr_whl_size=`du -m ${PADDLE_ROOT}/build/pr_whl/paddle*.whl|awk '{print $1}'`
     echo "pr_whl_size: ${pr_whl_size}"
 
-    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
+    dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/paddle*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
     whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
@@ -1317,6 +1407,8 @@ function get_quickly_disable_ut() {
         echo ${disable_ut_quickly}
         echo "========================================="
     else
+
+        exit 102
         disable_ut_quickly='disable_ut'
     fi
 }
@@ -2350,6 +2442,11 @@ set -x
         ut_endTime_s=`date +%s`
         echo "CINN testCase Time: $[ $ut_endTime_s - $ut_startTime_s ]s"
         if [[ "$EXIT_CODE" != "0" ]]; then
+            rm -f $tmp_dir/*
+            echo "Summary Failed Tests... "
+            echo "========================================"
+            echo "The following tests FAILED: "
+            echo "${failuretest}" | sort -u
             exit 8;
         fi
     fi
@@ -2370,7 +2467,7 @@ set -x
         export FLAGS_trt_ibuilder_cache=1
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
-        #check change of pr_unnitests and dev_unnitests
+        #check change of pr_unittests and dev_unittests
         check_approvals_of_unittest 2
         ctest -N | awk -F ': ' '{print $2}' | sed '/^$/d' | sed '$d' > ${PADDLE_ROOT}/build/all_ut_list
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -2739,7 +2836,10 @@ function enable_unused_var_check() {
     # Currently, use it in coverage CI job.
     export FLAGS_enable_unused_var_check=1
 }
-
+function check_coverage_added_ut() {
+    # NOTE(risemeup1):The step of checking added test can be placed on the cpu machine to save gpu resources
+    bash $PADDLE_ROOT/tools/check_added_ut.sh
+}
 function gen_doc_lib() {
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build
@@ -3282,21 +3382,23 @@ function build_pr_and_develop() {
         mkdir ${PADDLE_ROOT}/build/dev_whl && wget -q -P ${PADDLE_ROOT}/build/dev_whl ${dev_url}
         cp ${PADDLE_ROOT}/build/dev_whl/paddlepaddle_gpu-0.0.0-cp310-cp310-linux_x86_64.whl ${PADDLE_ROOT}/build/python/dist
     else
+        cp -r ${PADDLE_ROOT}/build /tmp/
         if [[ ${cmake_change} ]];then
             rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt ${PADDLE_ROOT}/build/build.ninja
             rm -rf ${PADDLE_ROOT}/build/third_party
         fi
-        
         git checkout -b develop_base_pr upstream/$BRANCH
         git submodule update --init
         run_setup ${PYTHON_ABI:-""} "rerun-cmake bdist_wheel" ${parallel_number}
+        rm -rf ${PADDLE_ROOT}/build
+        mv /tmp/build ${PADDLE_ROOT}
         if [ ! -d "${PADDLE_ROOT}/build/python/dist/" ]; then
             mkdir ${PADDLE_ROOT}/build/python/dist/
         fi
         mv ${PADDLE_ROOT}/dist/*.whl ${PADDLE_ROOT}/build/python/dist/
         mkdir ${PADDLE_ROOT}/build/dev_whl && cp ${PADDLE_ROOT}/build/python/dist/*.whl ${PADDLE_ROOT}/build/dev_whl
     fi
-    
+
     generate_api_spec "$1" "DEV"
 
 }
@@ -3551,7 +3653,8 @@ EOF
     export WITH_ONNXRUNTIME=${WITH_ONNXRUNTIME:-OFF}
     export WITH_CUDNN_FRONTEND=${WITH_CUDNN_FRONTEND:-OFF}
     export WITH_SHARED_PHI=${WITH_SHARED_PHI:-OFF}
-    
+    export WITH_NVCC_LAZY=${WITH_NVCC_LAZY:-ON}
+
     if [ "$SYSTEM" == "Linux" ];then
       if [ `nproc` -gt 16 ];then
           parallel_number=$(expr `nproc` - 8)
@@ -3564,7 +3667,7 @@ EOF
     if [ "$3" != "" ]; then
       parallel_number=$3
     fi
-    
+
     # reset ccache zero stats for collect PR's actual hit rate
     if [ "${MAX_JOBS}" == "" ]; then
         export MAX_JOBS=${parallel_number}
@@ -3841,7 +3944,7 @@ EOF
     fi
     # ci will collect ccache hit rate
     collect_ccache_hits
-    
+
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
@@ -3986,6 +4089,7 @@ function main() {
         check_diff_file_for_coverage
         run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
         enable_unused_var_check
+        check_coverage_added_ut
         check_coverage_build
         ;;
       gpu_cicheck_coverage)
@@ -4071,6 +4175,18 @@ function main() {
         ;;
       test_cicheck_py37)
         run_linux_cpu_test ${PYTHON_ABI:-""} ${PROC_RUN:-1}
+        ;;
+      cicheck_sot)
+        check_run_sot_ci
+        export WITH_SHARED_PHI=ON
+        PYTHON_VERSIONS=(3.8 3.9 3.10 3.11)
+        for PY_VERSION in ${PYTHON_VERSIONS[@]}; do
+            ln -sf $(which python${PY_VERSION}) /usr/local/bin/python
+            ln -sf $(which pip${PY_VERSION}) /usr/local/bin/pip
+            run_setup ${PYTHON_ABI:-""} bdist_wheel ${parallel_number}
+            run_sot_test $PY_VERSION
+            rm -rf ${PADDLE_ROOT}/build/CMakeCache.txt
+        done
         ;;
       build_gpubox)
         run_setup ${PYTHON_ABI:-""} install ${parallel_number}

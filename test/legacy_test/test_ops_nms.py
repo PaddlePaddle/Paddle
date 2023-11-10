@@ -227,9 +227,7 @@ class TestOpsNMS(unittest.TestCase):
                 np.testing.assert_array_equal(
                     origin,
                     res,
-                    err_msg='origin out: {}\n inference model out: {}\n'.format(
-                        origin, res
-                    ),
+                    err_msg=f'origin out: {origin}\n inference model out: {res}\n',
                 )
 
     def test_matrix_nms_dynamic(self):

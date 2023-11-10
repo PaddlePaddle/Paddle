@@ -18,10 +18,8 @@
 #include <string>
 #include <vector>
 
-#include "paddle/phi/core/enforce.h"
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/pass/analysis_manager.h"
-#include "paddle/pir/pass/pass_registry.h"
 
 namespace pir {
 

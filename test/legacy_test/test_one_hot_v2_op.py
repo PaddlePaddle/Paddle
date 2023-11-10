@@ -38,9 +38,9 @@ class TestOneHotOp(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -62,11 +62,11 @@ class TestOneHotOp_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -88,9 +88,9 @@ class TestOneHotOp_default_dtype(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0])])
 
-        out = np.zeros(shape=(np.product(x.shape), depth)).astype('float32')
+        out = np.zeros(shape=(np.prod(x.shape), depth)).astype('float32')
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod), 'depth_tensor': depth_np}
@@ -112,11 +112,11 @@ class TestOneHotOp_default_dtype_attr(OpTest):
         x = [np.random.randint(0, depth - 1) for i in range(sum(x_lod[0]))]
         x = np.array(x).astype('int32').reshape([sum(x_lod[0]), 1])
 
-        out = np.zeros(shape=(np.product(x.shape[:-1]), 1, depth)).astype(
+        out = np.zeros(shape=(np.prod(x.shape[:-1]), 1, depth)).astype(
             'float32'
         )
 
-        for i in range(np.product(x.shape)):
+        for i in range(np.prod(x.shape)):
             out[i, 0, x[i]] = 1.0
 
         self.inputs = {'X': (x, x_lod)}

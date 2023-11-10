@@ -46,4 +46,4 @@ cc_library(
 cc_library(
   plan
   SRCS plan.cc
-  DEPS framework_proto)
+  DEPS proto_desc framework_proto)

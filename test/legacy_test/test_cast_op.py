@@ -52,10 +52,16 @@ class TestCastOpFp32ToFp64(OpTest):
         self.input_shape = [10, 10]
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, check_new_ir=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpFp32ToFp64_ZeroDim(TestCastOpFp32ToFp64):
@@ -78,10 +84,16 @@ class TestCastOpFp16ToFp32(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpFp32ToFp16(OpTest):
@@ -99,10 +111,16 @@ class TestCastOpFp32ToFp16(OpTest):
         self.public_python_api = cast_wrapper
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -128,10 +146,16 @@ class TestCastOpBf16ToFp32(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 @unittest.skipIf(
@@ -157,20 +181,28 @@ class TestCastOpFp32ToBf16(OpTest):
         self.enable_cinn = False
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_grad(self):
-        self.check_grad(['X'], ['Out'], check_prim=True, only_check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['Out'],
+            check_prim=True,
+            only_check_prim=True,
+            check_pir=True,
+        )
 
 
 class TestCastOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The input type of cast_op must be Variable.
             x1 = base.create_lod_tensor(
                 np.array([[-1]]), [[1]], base.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.cast, x1, 'int32')
+        paddle.disable_static()
 
 
 class TestCastOpEager(unittest.TestCase):

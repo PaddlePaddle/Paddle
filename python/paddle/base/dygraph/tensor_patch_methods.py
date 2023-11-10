@@ -13,37 +13,32 @@
 # limitations under the License.
 
 import inspect
-import numpy as np
-import warnings
-import weakref
 import sys
+import warnings
+
+import numpy as np
 
 import paddle
-from .. import framework
-from ..framework import convert_np_dtype_to_dtype_
-from .. import core
-from .. import unique_name
+from paddle import _C_ops, profiler
+from paddle.base.data_feeder import (
+    _PADDLE_DTYPE_2_NUMPY_DTYPE,
+    convert_uint16_to_float,
+)
+from paddle.profiler.utils import in_profiler_mode
+from paddle.utils import deprecated
+
+from .. import core, framework, unique_name
 from ..framework import (
-    Variable,
-    Parameter,
-    _getitem_static,
-    _setitem_static,
-    _setitem_impl_,
     EagerParamBase,
-    in_dygraph_mode,
+    Parameter,
+    Variable,
+    _getitem_static,
+    _setitem_impl_,
+    _setitem_static,
+    convert_np_dtype_to_dtype_,
 )
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_tensor
-from paddle.base.data_feeder import (
-    convert_uint16_to_float,
-    _PADDLE_DTYPE_2_NUMPY_DTYPE,
-)
-import paddle.utils.deprecated as deprecated
-import paddle.profiler as profiler
-from paddle.profiler.utils import in_profiler_mode
-from paddle import _C_ops, _legacy_C_ops
-from paddle.device import get_all_custom_device_type
-from paddle.base.framework import _global_flags
 
 _grad_scalar = None
 
@@ -874,7 +869,7 @@ def monkey_patch_tensor():
         if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(res_place, True)
+            res = self._copy_to(res_place, blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -970,6 +965,38 @@ def monkey_patch_tensor():
     def __hash__(self):
         return hash(id(self))
 
+    @framework.dygraph_only
+    def coalesce(self, name=None):
+        r"""
+        the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+        Parameters:
+            x (Tensor): the input SparseCooTensor.
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            Tensor: return the SparseCooTensor after coalesced.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> indices = [[0, 0, 1], [1, 1, 2]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                >>> sp_x = sp_x.coalesce()
+                >>> print(sp_x.indices())
+                Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1],
+                [1, 2]])
+                >>> print(sp_x.values())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [3., 3.])
+        """
+        return _C_ops.sparse_coalesce(self)
+
     if not hasattr(core, "eager"):
         return
 
@@ -996,6 +1023,7 @@ def monkey_patch_tensor():
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("coalesce", coalesce),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -1015,7 +1043,7 @@ def monkey_patch_tensor():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__str__")
+        origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:
@@ -1028,7 +1056,7 @@ def monkey_patch_tensor():
                 # for example, paddle.base.core.VarDesc.VarType.LOD_TENSOR
                 return origin(dtype)
 
-        setattr(core.VarDesc.VarType, "__str__", dtype_str)
+        core.VarDesc.VarType.__str__ = dtype_str
         _already_patch_repr = True
 
     # patch math methods for tensor

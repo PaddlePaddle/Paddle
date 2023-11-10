@@ -57,10 +57,16 @@ class TestSplitOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 # test with attr(num)
@@ -111,10 +117,16 @@ class TestSplitWithNumOp(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 # attr(axis) is Tensor
@@ -148,10 +160,10 @@ class TestSplitOp_AxisTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 # attr(sections) is list containing Tensor
@@ -196,10 +208,10 @@ class TestSplitOp_SectionsTensor(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'])
+        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_pir=True)
 
 
 class TestSplitOp_unk_section(OpTest):
@@ -235,10 +247,16 @@ class TestSplitOp_unk_section(OpTest):
         self.op_type = "split"
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad(['X'], ['out0', 'out1', 'out2'], check_prim=True)
+        self.check_grad(
+            ['X'],
+            ['out0', 'out1', 'out2'],
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
+        )
 
 
 class TestSplitByrefOp(OpTest):
@@ -284,7 +302,14 @@ def create_test_bf16(parent):
 
         def test_check_grad(self):
             place = core.CUDAPlace(0)
-            self.check_grad_with_place(place, ['X'], 'out2', check_prim=True)
+            self.check_grad_with_place(
+                place,
+                ['X'],
+                'out2',
+                check_prim=True,
+                check_prim_pir=True,
+                check_pir=True,
+            )
 
     cls_name = "{}_{}".format(parent.__name__, "BF16Op")
     TestSplitBF16Op.__name__ = cls_name
@@ -333,6 +358,7 @@ class TestSplitAPI(unittest.TestCase):
 
 class TestSplitOpError(unittest.TestCase):
     def test_errors(self):
+        paddle.enable_static()
         with program_guard(Program(), Program()):
             # The type of axis in split_op should be int or Variable.
             def test_axis_type():
@@ -379,6 +405,7 @@ class TestSplitOpError(unittest.TestCase):
                 paddle.split(input=x8, num_or_sections=2, dim=3.2)
 
             self.assertRaises(TypeError, test_axis_type_tensor)
+        paddle.disable_static()
 
         with paddle.base.dygraph.guard():
 

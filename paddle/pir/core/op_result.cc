@@ -15,42 +15,38 @@
 #include "paddle/pir/core/enforce.h"
 #include "paddle/pir/core/op_result_impl.h"
 
-#define CHECK_NULL_IMPL(class_name, func_name)                  \
-  IR_ENFORCE(impl_,                                             \
-             "impl_ pointer is null when call func:" #func_name \
-             " , in class: " #class_name ".")
-
-#define CHECK_OPRESULT_NULL_IMPL(func_name) CHECK_NULL_IMPL(OpResult, func_name)
+#define CHECK_OPRESULT_NULL_IMPL(func_name) \
+  IR_ENFORCE(impl_, "impl_ pointer is null when call OpResult::" #func_name)
+#define IMPL_ static_cast<detail::OpResultImpl *>(impl_)
 
 namespace pir {
-
 // OpResult
 bool OpResult::classof(Value value) {
-  return value && pir::isa<detail::OpResultImpl>(value.impl());
+  return value && detail::OpResultImpl::classof(*value.impl());
 }
 
 Operation *OpResult::owner() const {
   CHECK_OPRESULT_NULL_IMPL(owner);
-  return impl()->owner();
+  return IMPL_->owner();
 }
 
-uint32_t OpResult::GetResultIndex() const {
-  CHECK_OPRESULT_NULL_IMPL(GetResultIndex);
-  return impl()->GetResultIndex();
+uint32_t OpResult::index() const {
+  CHECK_OPRESULT_NULL_IMPL(index);
+  return IMPL_->index();
 }
 
-detail::OpResultImpl *OpResult::impl() const {
-  return reinterpret_cast<detail::OpResultImpl *>(impl_);
+OpResult OpResult::dyn_cast_from(Value value) {
+  if (classof(value)) {
+    return static_cast<detail::OpResultImpl *>(value.impl());
+  } else {
+    return nullptr;
+  }
 }
 
 bool OpResult::operator==(const OpResult &other) const {
   return impl_ == other.impl_;
 }
 
-uint32_t OpResult::GetValidInlineIndex(uint32_t index) {
-  uint32_t max_inline_index =
-      pir::detail::OpResultImpl::GetMaxInlineResultIndex();
-  return index <= max_inline_index ? index : max_inline_index;
-}
+OpResult::OpResult(detail::OpResultImpl *impl) : Value(impl) {}
 
 }  // namespace pir

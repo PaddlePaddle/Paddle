@@ -30,6 +30,7 @@ H_FILE_TEMPLATE = """
 
 #include <vector>
 
+#include "paddle/utils/optional.h"
 #include "paddle/pir/core/value.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/place.h"
@@ -47,6 +48,7 @@ CPP_FILE_TEMPLATE = """
 #include "paddle/fluid/pir/dialect/operator/ir/pd_op.h"
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/builtin_op.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 
 {body}
 
@@ -67,13 +69,45 @@ API_DECLARE_TEMPLATE = """
 
 API_IMPL_TEMPLATE = """
 {ret_type} {api_name}({args}){{
+    {handle_optional_inputs}
     {in_combine}
     {compute_op}
+    {handle_optional_outputs}
     {out_split}
     {return_result}
 }}
 
 """
+
+OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE = """
+    paddle::optional<pir::Value> optional_{name};
+    if (!{name}) {{
+        optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
+    }} else {{
+        auto optional_{name}_combine_op = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({name}.get());
+        optional_{name} = paddle::make_optional<pir::Value>(optional_{name}_combine_op.out());
+    }}"""
+
+OPTIONAL_VALUE_INPUT_TEMPLATE = """
+    paddle::optional<pir::Value> optional_{name};
+    if (!{name}) {{
+        optional_{name} = paddle::make_optional<pir::Value>(pir::Value());
+    }} else {{
+        optional_{name} = {name};
+    }}"""
+
+OPTIONAL_OPRESULT_OUTPUT_TEMPLATE = """
+    paddle::optional<pir::OpResult> optional_{name};
+    if (!IsEmptyValue({op_name}_op.result({index}))) {{
+        optional_{name} = paddle::make_optional<pir::OpResult>({op_name}_op.result({index}));
+    }}"""
+
+OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE = """
+    paddle::optional<std::vector<pir::OpResult>> optional_{name};
+    if (!IsEmptyValue({op_name}_op.result({index}))) {{
+        auto optional_{name}_slice_op = APIBuilder::Instance().GetBuilder()->Build<pir::SplitOp>({op_name}_op.result({index}));
+        optional_{name} = paddle::make_optional<std::vector<pir::OpResult>>(optional_{name}_slice_op.outputs());
+    }}"""
 
 COMBINE_OP_TEMPLATE = """
     auto {op_name} = APIBuilder::Instance().GetBuilder()->Build<pir::CombineOp>({in_name});"""
@@ -84,8 +118,30 @@ SPLIT_OP_TEMPLATE = """
 COMPUTE_OP_TEMPLATE = """
     paddle::dialect::{op_class_name} {op_inst_name} = APIBuilder::Instance().GetBuilder()->Build<paddle::dialect::{op_class_name}>({args});"""
 
-OP_RESULT = 'pir::OpResult'
+OP_INPUT = 'pir::Value'
 VECTOR_TYPE = 'pir::VectorType'
+INTARRAY_ATTRIBUTE = "paddle::dialect::IntArrayAttribute"
+
+INPUT_TYPE_MAP = {
+    'paddle::dialect::DenseTensorType': 'pir::Value',
+    'paddle::dialect::SelectedRowsType': 'pir::Value',
+    'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::Value>',
+}
+OPTIONAL_INPUT_TYPE_MAP = {
+    'paddle::dialect::DenseTensorType': 'paddle::optional<pir::Value>',
+    'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::Value>',
+    'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::Value>>',
+}
+OUTPUT_TYPE_MAP = {
+    'paddle::dialect::DenseTensorType': 'pir::OpResult',
+    'paddle::dialect::SelectedRowsType': 'pir::OpResult',
+    'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
+}
+OPTIONAL_OUTPUT_TYPE_MAP = {
+    'paddle::dialect::DenseTensorType': 'paddle::optional<pir::OpResult>',
+    'paddle::dialect::SelectedRowsType': 'paddle::optional<pir::OpResult>',
+    'pir::VectorType<paddle::dialect::DenseTensorType>': 'paddle::optional<std::vector<pir::OpResult>>',
+}
 
 
 def get_op_class_name(op_name):
@@ -94,25 +150,69 @@ def get_op_class_name(op_name):
 
 class CodeGen:
     def __init__(self) -> None:
-        self._type_map = {
-            'paddle::dialect::DenseTensorType': 'pir::OpResult',
-            'paddle::dialect::SelectedRowsType': 'pir::OpResult',
-            'pir::VectorType<paddle::dialect::DenseTensorType>': 'std::vector<pir::OpResult>',
-        }
+        pass
+
+    def _check_need_update_ops(self, op_yaml_files):
+        need_update_ops = False
+        for yaml_file in op_yaml_files:
+            if yaml_file.find("update_ops.parsed.yaml") != -1:
+                need_update_ops = True
+                update_yaml_file = yaml_file
+                break
+        return need_update_ops, update_yaml_file
+
+    def _update_ops(self, op_yaml_items, update_yaml_file):
+        with open(update_yaml_file, "r") as f:
+            update_ops = yaml.safe_load(f)
+        for i in range(len(op_yaml_items)):
+            for update_op in update_ops:
+                if op_yaml_items[i]['name'] == update_op['name']:
+                    op_yaml_items[i] = update_op
+                    break
 
     def _parse_yaml(self, op_yaml_files, op_compat_yaml_file):
         op_compat_parser = OpCompatParser(op_compat_yaml_file)
+        need_update_ops, update_yaml_file = self._check_need_update_ops(
+            op_yaml_files
+        )
 
         op_yaml_items = []
         for yaml_file in op_yaml_files:
+            if update_yaml_file == yaml_file:
+                continue
             with open(yaml_file, "r") as f:
                 ops = yaml.safe_load(f)
                 op_yaml_items = op_yaml_items + ops
+        # replace old ir ops with pir ops
+        if need_update_ops:
+            self._update_ops(op_yaml_items, update_yaml_file)
         op_info_items = []
         for op in op_yaml_items:
-            op_info_items.append(
-                OpInfoParser(op, op_compat_parser.get_compat(op['name']))
-            )
+            op_compat_item = op_compat_parser.get_compat(op['name'])
+            if (
+                op_compat_item is None
+                and op['name'].endswith(('_grad', '_grad_'))
+                and 'forward' in op
+            ):
+                op_compat_item = op_compat_parser.get_compat(
+                    op['forward']['name']
+                )
+
+            if (
+                op_compat_item is not None
+                and op_compat_item['op'] == "pow"
+                and 'scalar' in op_compat_item
+            ):
+                op_compat_item = op_compat_item.pop('scalar')
+            if op['support_tensor'] != []:
+                (
+                    scalar_item,
+                    int_array_item,
+                ) = op_compat_parser.parse_support_tensor(op)
+                op_compat_item['scalar'] = scalar_item
+                op_compat_item['int_array'] = int_array_item
+
+            op_info_items.append(OpInfoParser(op, op_compat_item))
         return op_info_items
 
     def _need_skip(self, op_info, op_name):
@@ -120,20 +220,49 @@ class CodeGen:
             op_info.infer_meta_func is None and op_name not in PD_MANUAL_OP_LIST
         )
 
+    def _is_optional_input(self, op_info, input_name):
+        name_list = op_info.input_name_list
+        optional_list = op_info.input_optional_list
+        if (
+            input_name in name_list
+            and optional_list[name_list.index(input_name)] == 'true'
+        ):
+            return True
+        return False
+
+    def _is_optional_output(self, op_info, op_name, output_name):
+        if op_name.endswith(('_grad', '_grad_')):
+            return False
+        inplace_map = op_info.inplace_map
+        input_optional_list = op_info.input_optional_list
+        input_name_list = op_info.input_name_list
+        if inplace_map is None:
+            return False
+
+        if output_name in inplace_map.keys():
+            input_index = input_name_list.index(inplace_map[output_name])
+            if input_optional_list[input_index] == 'true':
+                return True
+        return False
+
     # =====================================
     # Gen declare functions
     # =====================================
     def _gen_api_inputs(self, op_info):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        assert len(name_list) == len(type_list)
+        optional_list = op_info.input_optional_list
+        assert len(name_list) == len(type_list) == len(optional_list)
         ret = []
-        for name, type in zip(name_list, type_list):
-            ret.append(f'{self._type_map[type]} {name}')
+        for name, type, optional in zip(name_list, type_list, optional_list):
+            if optional == 'true':
+                ret.append(f'const {OPTIONAL_INPUT_TYPE_MAP[type]}& {name}')
+            else:
+                ret.append(f'const {INPUT_TYPE_MAP[type]}& {name}')
         return ', '.join(ret)
 
     def _gen_api_attrs(
-        self, op_info, with_default, is_mutable_attr, is_vector_mutable_sttr
+        self, op_info, with_default, is_mutable_attr, is_vector_mutable_attr
     ):
         name_list = op_info.attribute_name_list
         type_list = op_info.attribute_build_arg_type_list
@@ -149,21 +278,17 @@ class CodeGen:
             if is_mutable_attr and name in mutable_name_list:
                 if (
                     mutable_type_list[mutable_name_list.index(name)][0]
-                    == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_sttr
+                    == INTARRAY_ATTRIBUTE
+                    and is_vector_mutable_attr
                 ):
-                    mutable_attr.append(f'std::vector<{OP_RESULT}> {name}')
+                    mutable_attr.append(f'std::vector<{OP_INPUT}> {name}')
                 else:
-                    mutable_attr.append(f'{OP_RESULT} {name}')
+                    mutable_attr.append(f'{OP_INPUT} {name}')
                 continue
             if with_default and default_value is not None:
                 if type in ['float', 'double']:
                     default_value = default_value.strip('"')
-                no_mutable_attr.append(
-                    '{type} {name} = {default_value}'.format(
-                        type=type, name=name, default_value=default_value
-                    )
-                )
+                no_mutable_attr.append(f'{type} {name} = {default_value}')
             else:
                 no_mutable_attr.append(f'{type} {name}')
         return ', '.join(mutable_attr + no_mutable_attr)
@@ -181,27 +306,32 @@ class CodeGen:
         )
         return (inputs + ', ' + attrs).strip(', ')
 
-    def _gen_ret_type(self, op_info):
+    def _gen_ret_type(self, op_info, op_name):
+        name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
-        assert len(type_list) == len(intermediate_list)
+        assert len(name_list) == len(type_list) == len(intermediate_list)
 
         output_num = len(type_list) - intermediate_list.count('true')
         if output_num > 1:
-            return 'std::tuple<{}>'.format(
-                ', '.join(
-                    [
-                        self._type_map[type]
-                        for type, intermediate in zip(
-                            type_list, intermediate_list
-                        )
-                        if intermediate == 'false'
-                    ]
-                )
-            )
+            ret = []
+            for name, type, intermediate in zip(
+                name_list, type_list, intermediate_list
+            ):
+                if intermediate == 'true':
+                    continue
+                if self._is_optional_output(op_info, op_name, name):
+                    ret.append(OPTIONAL_OUTPUT_TYPE_MAP[type])
+                else:
+                    ret.append(OUTPUT_TYPE_MAP[type])
+            return 'std::tuple<{}>'.format(', '.join(ret))
         elif output_num == 1:
             index = intermediate_list.index('false')
-            return self._type_map[type_list[index]]
+            name = name_list[index]
+            if self._is_optional_output(op_info, op_name, name):
+                return OPTIONAL_OUTPUT_TYPE_MAP[type_list[index]]
+            else:
+                return OUTPUT_TYPE_MAP[type_list[index]]
         elif output_num == 0:
             return 'void'
 
@@ -209,7 +339,7 @@ class CodeGen:
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
         return API_DECLARE_TEMPLATE.format(
-            ret_type=self._gen_ret_type(op_info),
+            ret_type=self._gen_ret_type(op_info, op_name),
             api_name=op_name,
             args=self._gen_api_args(
                 op_info, True, is_mutable_attr, is_vector_mutable_attr
@@ -231,7 +361,7 @@ class CodeGen:
                     declare_str += self._gen_one_declare(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         declare_str += self._gen_one_declare(
@@ -246,14 +376,56 @@ class CodeGen:
     # =====================================
     # Gen impl functions
     # =====================================
+    def _gen_handle_optional_inputs(self, op_info):
+        name_list = op_info.input_name_list
+        optional_list = op_info.input_optional_list
+        type_list = op_info.input_type_list
+        assert len(name_list) == len(optional_list) == len(type_list)
+        ret = ''
+        for name, optional, type in zip(name_list, optional_list, type_list):
+            if optional == 'true':
+                if VECTOR_TYPE in type:
+                    ret += OPTIONAL_VECTOR_VALUE_INPUT_TEMPLATE.format(
+                        name=name
+                    )
+                else:
+                    ret += OPTIONAL_VALUE_INPUT_TEMPLATE.format(name=name)
+        return ret
+
+    def _gen_handle_optional_outputs(self, op_info, op_name):
+        name_list = op_info.output_name_list
+        type_list = op_info.output_type_list
+        intermediate_list = op_info.output_intermediate_list
+        ret = ''
+        for i, (name, type, intermediate) in enumerate(
+            zip(name_list, type_list, intermediate_list)
+        ):
+            if intermediate == 'true':
+                continue
+            if self._is_optional_output(op_info, op_name, name):
+                if VECTOR_TYPE in type:
+                    ret += OPTIONAL_VECTOR_OPRESULT_OUTPUT_TEMPLATE.format(
+                        name=name,
+                        op_name=op_name,
+                        index=i,
+                    )
+                else:
+                    ret += OPTIONAL_OPRESULT_OUTPUT_TEMPLATE.format(
+                        name=name,
+                        op_name=op_name,
+                        index=i,
+                    )
+        return ret
+
     def _gen_in_combine(self, op_info, is_mutable_attr, is_vector_mutable_attr):
         name_list = op_info.input_name_list
         type_list = op_info.input_type_list
-        assert len(name_list) == len(type_list)
+        optional_list = op_info.input_optional_list
+        assert len(name_list) == len(type_list) == len(optional_list)
         combine_op = ''
         combine_op_list = []
-        for name, type in zip(name_list, type_list):
-            if VECTOR_TYPE in type:
+        for name, type, optional in zip(name_list, type_list, optional_list):
+            if optional == 'false' and VECTOR_TYPE in type:
                 op_name = f'{name}_combine_op'
                 combine_op += COMBINE_OP_TEMPLATE.format(
                     op_name=op_name, in_name=name
@@ -267,10 +439,7 @@ class CodeGen:
             type_list = op_info.mutable_attribute_type_list
             assert len(name_list) == len(type_list)
             for name, type in zip(name_list, type_list):
-                if (
-                    type[0] == "paddle::dialect::IntArrayAttribute"
-                    and is_vector_mutable_attr
-                ):
+                if type[0] == INTARRAY_ATTRIBUTE and is_vector_mutable_attr:
                     op_name = f'{name}_combine_op'
                     combine_op += COMBINE_OP_TEMPLATE.format(
                         op_name=op_name, in_name=name
@@ -299,7 +468,10 @@ class CodeGen:
 
         for input_name, combine_op in zip(name_list, in_combine_op_list):
             if combine_op is None:
-                ret.append(input_name)
+                if self._is_optional_input(op_info, input_name):
+                    ret.append(f'optional_{input_name}.get()')
+                else:
+                    ret.append(input_name)
             else:
                 ret.append(f'{combine_op}.out()')
         if is_mutable_attr:
@@ -324,11 +496,17 @@ class CodeGen:
             op_inst_name,
         )
 
-    def _gen_out_split_and_ret_list(self, op_info, op_inst_name):
+    def _gen_out_split_and_ret_list(self, op_info, op_name, op_inst_name):
         name_list = op_info.output_name_list
         type_list = op_info.output_type_list
         intermediate_list = op_info.output_intermediate_list
-        assert len(name_list) == len(type_list) == len(intermediate_list)
+        optional_list = op_info.output_optional_list
+        assert (
+            len(name_list)
+            == len(type_list)
+            == len(intermediate_list)
+            == len(optional_list)
+        )
 
         split_op_str = ''
         ret_list = []
@@ -337,7 +515,9 @@ class CodeGen:
         ):
             if intermediate == 'true':
                 continue
-            if VECTOR_TYPE in type:
+            if self._is_optional_output(op_info, op_name, name):
+                ret_list.append(f'optional_{name}')
+            elif VECTOR_TYPE in type:
                 split_op_name = f'{name}_split_op'
                 split_op_str += SPLIT_OP_TEMPLATE.format(
                     op_name=split_op_name, in_name=f'{op_inst_name}.result({i})'
@@ -358,7 +538,7 @@ class CodeGen:
     def _gen_one_impl(
         self, op_info, op_name, is_mutable_attr, is_vector_mutable_attr
     ):
-        ret_type = self._gen_ret_type(op_info)
+        ret_type = self._gen_ret_type(op_info, op_name)
         in_combine, in_combine_op_list = self._gen_in_combine(
             op_info, is_mutable_attr, is_vector_mutable_attr
         )
@@ -369,7 +549,7 @@ class CodeGen:
             compute_op += f' (void){op_inst_name};'
 
         out_split, ret_list = self._gen_out_split_and_ret_list(
-            op_info, op_inst_name
+            op_info, op_name, op_inst_name
         )
 
         ret = API_IMPL_TEMPLATE.format(
@@ -378,8 +558,12 @@ class CodeGen:
             args=self._gen_api_args(
                 op_info, False, is_mutable_attr, is_vector_mutable_attr
             ),
+            handle_optional_inputs=self._gen_handle_optional_inputs(op_info),
             in_combine=in_combine,
             compute_op=compute_op,
+            handle_optional_outputs=self._gen_handle_optional_outputs(
+                op_info, op_name
+            ),
             out_split=out_split,
             return_result=self._gen_return_result(ret_list),
         )
@@ -400,7 +584,7 @@ class CodeGen:
                     impl_str += self._gen_one_impl(
                         op_info, op_name, True, False
                     )
-                    if "paddle::dialect::IntArrayAttribute" in {
+                    if INTARRAY_ATTRIBUTE in {
                         type[0] for type in op_info.mutable_attribute_type_list
                     }:
                         impl_str += self._gen_one_impl(

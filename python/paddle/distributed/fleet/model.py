@@ -20,6 +20,7 @@ from .meta_parallel import (
     PipelineLayer,
     PipelineParallel,
     PipelineParallelWithInterleave,
+    SegmentParallel,
     ShardingParallel,
     TensorParallel,
 )
@@ -84,19 +85,27 @@ def distributed_model(model):
     if paddle.distributed.get_world_size() <= 1:
         return model
 
-    amp_enable = False
     strategy = fleet_env._user_defined_strategy
     if strategy.amp:
-        amp_enable = True
-        amp_level = "O2" if strategy.amp_configs['use_pure_fp16'] else "O1"
-        if amp_level.upper() == "O2":
+        level = (
+            "O2"
+            if strategy.amp_configs['use_pure_fp16']
+            or strategy.amp_configs['use_pure_bf16']
+            else "O1"
+        )
+
+        if level == "O2":
             model = paddle.amp.decorate(
                 models=model,
                 optimizers=None,
                 level="O2",
                 master_weight=None,
                 save_dtype=None,
+                dtype="float16"
+                if strategy.amp_configs['use_pure_fp16']
+                else "bfloat16",
             )
+
         init_loss_scaling = strategy.amp_configs['init_loss_scaling']
         incr_ratio = strategy.amp_configs['incr_ratio']
         decr_ratio = strategy.amp_configs['decr_ratio']
@@ -130,18 +139,6 @@ def distributed_model(model):
     if fleet_env._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
         model = ShardingParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
-        # NOTE (JZ-LIANG) init parameters broadcast within sharding group
-        # normally it should be done inside DataParallel
-        if fleet_env.sharding_degree > 1:
-            from paddle.distributed.fleet.utils.hybrid_parallel_util import (
-                broadcast_sharding_parameters,
-            )
-
-            assert (
-                fleet_env.sharding_degree
-                == fleet_env._hcg.get_sharding_parallel_world_size()
-            )
-            broadcast_sharding_parameters(model, fleet_env._hcg)
         model = paddle.DataParallel(
             model,
             comm_buffer_size=strategy.fuse_grad_size_in_MB,
@@ -149,6 +146,8 @@ def distributed_model(model):
             find_unused_parameters=strategy.find_unused_parameters,
             group=fleet_env._hcg.get_data_parallel_group(),
         )
+    elif fleet_env._hcg.get_parallel_mode() == ParallelMode.SEGMENT_PARALLEL:
+        model = SegmentParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL:
         model = TensorParallel(model, fleet_env._hcg, strategy=strategy)
     elif fleet_env._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:

@@ -126,9 +126,7 @@ def minimize_lbfgs(
     """
     if dtype not in ['float32', 'float64']:
         raise ValueError(
-            "The dtype must be 'float32' or 'float64', but the specified is {}.".format(
-                dtype
-            )
+            f"The dtype must be 'float32' or 'float64', but the specified is {dtype}."
         )
 
     op_name = 'minimize_lbfgs'

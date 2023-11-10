@@ -191,6 +191,7 @@ void BindBlockDesc(pybind11::module *m) {
              std::string name = byte_name;
              return self.HasVarRecursive(name);
            })
+      .def("set_parent_idx", &pd::BlockDesc::SetParent)
       .def(
           "find_var",
           [](pd::BlockDesc &self, pybind11::bytes byte_name) {

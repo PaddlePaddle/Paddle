@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "paddle/pir/core/cast_utils.h"
 #include "paddle/pir/core/op_operand.h"
 #include "paddle/pir/core/type.h"
 #include "paddle/pir/core/use_iterator.h"
@@ -34,7 +33,7 @@ class IR_API Value {
  public:
   Value() = default;
 
-  Value(const detail::ValueImpl *impl);  // NOLINT
+  Value(detail::ValueImpl *impl) : impl_(impl) {}  // NOLINT
 
   Value(const Value &other) = default;
 
@@ -44,23 +43,23 @@ class IR_API Value {
 
   bool operator!() const;
 
+  bool operator<(const Value &other) const;
+
   explicit operator bool() const;
 
-  template <typename T>
+  template <typename U>
   bool isa() const {
-    return pir::isa<T>(*this);
+    return U::classof(*this);
   }
 
   template <typename U>
   U dyn_cast() const {
-    return pir::dyn_cast<U>(*this);
+    return U::dyn_cast_from(*this);
   }
 
   Type type() const;
 
   void set_type(Type type);
-
-  Operation *GetDefiningOp() const;
 
   std::string PrintUdChain();
 
@@ -75,6 +74,8 @@ class IR_API Value {
 
   OpOperand first_use() const;
 
+  void Print(std::ostream &os) const;
+
   bool use_empty() const;
 
   bool HasOneUse() const;
@@ -87,14 +88,11 @@ class IR_API Value {
       Value new_value,
       const std::function<bool(OpOperand)> &should_replace) const;
   void ReplaceAllUsesWith(Value new_value) const;
-
-  detail::ValueImpl *impl() { return impl_; }
-  const detail::ValueImpl *impl() const { return impl_; }
+  detail::ValueImpl *impl() const { return impl_; }
 
  protected:
   detail::ValueImpl *impl_{nullptr};
 };
-
 }  // namespace pir
 
 namespace std {

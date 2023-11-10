@@ -84,9 +84,7 @@ class Edge:
 
     def __str__(self):
         str = ""
-        str += "(src_id: {}, tgt_id: {}, attrs: {})".format(
-            self.src_id, self.tgt_id, self._attrs
-        )
+        str += f"(src_id: {self.src_id}, tgt_id: {self.tgt_id}, attrs: {self._attrs})"
         return str
 
 

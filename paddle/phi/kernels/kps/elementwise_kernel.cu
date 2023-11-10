@@ -18,9 +18,12 @@
 #include "paddle/phi/common/float16.h"
 #endif
 #include "paddle/phi/core/kernel_registry.h"
-#include "paddle/phi/kernels/elementwise_add_kernel.h"
 #include "paddle/phi/kernels/impl/elementwise_kernel_impl.h"
+#include "paddle/phi/kernels/legacy/elementwise_add_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_divide_kernel.h"
 #include "paddle/phi/kernels/legacy/elementwise_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_multipy_kernel.h"
+#include "paddle/phi/kernels/legacy/elementwise_subtract_kernel.h"
 
 namespace phi {
 
@@ -29,16 +32,7 @@ void SubtractKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::SubtractFunctor<T>(), -1);
+  phi::SubtractRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -46,16 +40,7 @@ void MultiplyKernel(const Context& dev_ctx,
                     const DenseTensor& x,
                     const DenseTensor& y,
                     DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::MultiplyFunctor<T>(), -1);
+  phi::MultiplyRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -63,54 +48,28 @@ void DivideKernel(const Context& dev_ctx,
                   const DenseTensor& x,
                   const DenseTensor& y,
                   DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::DivideFunctor<T>(), -1);
+  phi::DivideRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
-void AddCudaFunctor(const Context& dev_ctx,
-                    const DenseTensor& x,
-                    const DenseTensor& y,
-                    int axis,
-                    DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
-  dev_ctx.template Alloc<T>(out);
-  funcs::BroadcastKernel<T>(
-      dev_ctx, inputs, &outputs, funcs::AddFunctor<T>(), axis);
-}
-
-template <typename T, typename Context>
-void Float32Bfloat16OrFloat16AddCudaFunctor(const Context& dev_ctx,
-                                            const DenseTensor& x,
-                                            const DenseTensor& y,
-                                            DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
+void MultiPrecisionAddKernelImpl(const Context& dev_ctx,
+                                 const DenseTensor& x,
+                                 const DenseTensor& y,
+                                 DenseTensor* out) {
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   if (y.dtype() == phi::DataType::BFLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::Float32Bfloat16AddFunctor<T>());
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::bfloat16>());
   } else if (y.dtype() == phi::DataType::FLOAT16) {
     funcs::ElementwiseKernel<T>(
-        dev_ctx, inputs, &outputs, funcs::Float32Float16AddFunctor<T>());
+        dev_ctx,
+        inputs,
+        &outputs,
+        funcs::MultiPrecisionAddFunctor<T, phi::float16>());
   } else {
     PADDLE_THROW(phi::errors::InvalidArgument(
         "Unsupport x dtype:%s, y dtype:%s for add(x, y) operation",
@@ -128,11 +87,10 @@ void AddKernel(const Context& dev_ctx,
   if (x.dtype() == phi::DataType::FLOAT32 &&
       (y.dtype() == phi::DataType::BFLOAT16 ||
        y.dtype() == phi::DataType::FLOAT16)) {
-    using Type = DataTypeToCppType<phi::DataType::FLOAT32>::type;
-    Float32Bfloat16OrFloat16AddCudaFunctor<Type, Context>(dev_ctx, x, y, out);
+    MultiPrecisionAddKernelImpl<float, Context>(dev_ctx, x, y, out);
   } else {
 #endif
-    AddCudaFunctor<T, Context>(dev_ctx, x, y, -1, out);
+    phi::AddRawKernel<T, Context>(dev_ctx, x, y, -1, out);
 #ifdef PADDLE_WITH_CUDA
   }
 #endif
@@ -143,7 +101,7 @@ void GradAddKernel(const Context& dev_ctx,
                    const DenseTensor& x,
                    const DenseTensor& y,
                    DenseTensor* out) {
-  AddCudaFunctor<T>(dev_ctx, x, y, -1, out);
+  phi::AddRawKernel<T>(dev_ctx, x, y, -1, out);
 }
 
 template <typename T, typename Context>
@@ -181,19 +139,15 @@ void FloorDivideKernel(const Context& dev_ctx,
   int axis = -1;
   FloorDivideRawKernel<T>(dev_ctx, x, y, axis, out);
 }
+
 // Create the definition of Heaviside
 template <typename T, typename Context>
 void HeavisideKernel(const Context& dev_ctx,
                      const DenseTensor& x,
                      const DenseTensor& y,
                      DenseTensor* out) {
-  std::vector<const DenseTensor*> inputs;
-  inputs.reserve(2);
-  std::vector<DenseTensor*> outputs;
-  outputs.reserve(1);
-  inputs.emplace_back(&x);
-  inputs.emplace_back(&y);
-  outputs.emplace_back(out);
+  std::vector<const DenseTensor*> inputs = {&x, &y};
+  std::vector<DenseTensor*> outputs = {out};
   dev_ctx.template Alloc<T>(out);
   funcs::BroadcastKernel<T>(
       dev_ctx, inputs, &outputs, funcs::ElementwiseHeavisideFunctor<T>());
@@ -353,8 +307,12 @@ PD_REGISTER_KERNEL(divide,
                    phi::DivideKernel,
                    float,
                    double,
+                   int8_t,
+                   uint8_t,
+                   int16_t,
                    int,
                    int64_t,
+                   bool,
                    float16,
                    bfloat16,
                    complex64,

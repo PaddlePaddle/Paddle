@@ -17,6 +17,7 @@
 
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/macros.h"
+#include "paddle/pir/core/parameter.h"
 #include "paddle/pir/core/program.h"
 
 namespace paddle {
@@ -39,6 +40,11 @@ class APIBuilder {
   void ResetInsertionPointToStart();
 
   void ResetInsertionPointToEnd();
+
+  pir::Parameter* GetParameter(const std::string& name) const;
+
+  void SetParameter(const std::string& name,
+                    std::unique_ptr<pir::Parameter>&& parameter);
 
   std::shared_ptr<pir::Builder> GetBuilder() { return builder_; }
 

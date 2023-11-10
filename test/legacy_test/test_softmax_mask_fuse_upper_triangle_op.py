@@ -20,6 +20,7 @@ from op_test import OpTest
 import paddle
 from paddle import base, incubate
 from paddle.base import core
+from paddle.pir_utils import test_with_pir_api
 
 paddle.enable_static()
 
@@ -50,10 +51,12 @@ class TestSoftmaxMaskFuseOp(OpTest):
         self.outputs = {'Out': rst}
 
     def test_check_output(self):
-        self.check_output_with_place(core.CUDAPlace(0))
+        self.check_output_with_place(core.CUDAPlace(0), check_pir=True)
 
     def test_check_grad(self):
-        self.check_grad_with_place(core.CUDAPlace(0), ["X"], "Out")
+        self.check_grad_with_place(
+            core.CUDAPlace(0), ["X"], "Out", check_pir=True
+        )
 
 
 @unittest.skipIf(
@@ -70,13 +73,15 @@ class TestSoftmaxMaskFuseOp1(OpTest):
 
     def test_check_output(self):
         try:
-            self.check_output_with_place(core.CPUPlace())
+            self.check_output_with_place(core.CPUPlace(), check_pir=True)
         except (NotImplementedError, RuntimeError):
             pass
 
     def test_check_grad(self):
         try:
-            self.check_grad_with_place(core.CPUPlace(), ["X"], "Out")
+            self.check_grad_with_place(
+                core.CPUPlace(), ["X"], "Out", check_pir=True
+            )
         except (NotImplementedError, RuntimeError):
             pass
 
@@ -88,11 +93,14 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
     # test the python side API for softmax_mask_fuse op
     def setUp(self):
         np.random.seed(123)
-        self.dtypes = ['float16', 'float32']
+        self.dtypes = ['float32', 'float16']
 
+    @test_with_pir_api
     def test_static(self):
         for dtype in self.dtypes:
-            with base.program_guard(base.Program(), base.Program()):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = paddle.static.data(
                     name="x", shape=[1, 4, 32, 32], dtype=dtype
                 )
@@ -103,7 +111,7 @@ class TestDropoutBiasFuseOp2(unittest.TestCase):
 
                 exe = base.Executor(base.CUDAPlace(0))
                 fetches = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"x": x_in_np},
                     fetch_list=[rst],
                 )

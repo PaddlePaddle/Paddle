@@ -19,7 +19,9 @@
 namespace pir {
 IrContext *Attribute::ir_context() const { return dialect().ir_context(); }
 
-TypeId Attribute::type_id() { return storage_->abstract_attribute().type_id(); }
+TypeId Attribute::type_id() {
+  return storage_ ? storage_->abstract_attribute().type_id() : TypeId();
+}
 
 const AbstractAttribute &Attribute::abstract_attribute() {
   return storage_->abstract_attribute();

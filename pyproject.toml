@@ -16,7 +16,6 @@ skip = ["build", "third_party", "__init__.py"]
 extend_skip_glob = [
     # These files do not need to be formatted,
     # see .flake8 for more details
-    "python/paddle/base/**",
     "python/paddle/utils/gast/**",
 ]
 
@@ -24,7 +23,6 @@ extend_skip_glob = [
 exclude = [
     "./build",
     "third_party",
-    "./python/paddle/base/**",
     "./python/paddle/utils/gast/**",
 ]
 target-version = "py37"
@@ -40,6 +38,7 @@ select = [
 
     # NumPy-specific rules
     "NPY001",
+    "NPY003",
 
     # Bugbear
     "B002",
@@ -69,6 +68,13 @@ select = [
     "PLC3002",
     "PLR0206",
     "PLR0402",
+    "PLR1701",
+    "PLR1711",
+    "PLR1722",
+    "PLW3301",
+
+    # Pygrep-hooks
+    "PGH004",
 ]
 unfixable = [
     "NPY001"

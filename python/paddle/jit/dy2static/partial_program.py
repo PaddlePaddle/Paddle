@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 from copy import deepcopy
 
 import numpy as np
@@ -24,7 +23,7 @@ from paddle.base import backward, core, framework, program_guard
 from paddle.base.compiler import BuildStrategy
 from paddle.base.data_feeder import check_type, convert_dtype
 from paddle.base.dygraph.base import switch_to_static_graph
-from paddle.base.framework import _apply_pass
+from paddle.base.framework import _apply_pass, get_flags
 from paddle.base.unique_name import guard as UniqueNameGuard
 from paddle.optimizer.lr import LRScheduler
 
@@ -215,7 +214,9 @@ class PartialProgramLayer:
             )
 
         # program_id -> list(scope)
-        self._scope_cache = {}
+        self._pir_scope_cache = {}
+        self._legacy_scope_cache = {}
+        self._scope_cache = self._legacy_scope_cache
         self._hooker = None
         self._backend = kwargs.get('backend', None)
         self._grad_var_names = {}
@@ -268,6 +269,12 @@ class PartialProgramLayer:
         self._hooker = hooker
 
     def _get_scope(self, program_id=None, use_scope_cache=False):
+        if get_flags('FLAGS_enable_new_ir_in_executor')[
+            'FLAGS_enable_new_ir_in_executor'
+        ]:
+            self._scope_cache = self._pir_scope_cache
+        else:
+            self._scope_cache = self._legacy_scope_cache
         if use_scope_cache:
             if program_id not in self._scope_cache:
                 scope = core.Scope()
@@ -839,7 +846,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": forward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     forward_program,
                     empty_startup_program,
@@ -853,7 +862,9 @@ class PartialProgramLayer:
                 "mem_opt_skip_vars": backward_mem_opt_skip_vars,
                 "for_partial_block": True,
             }
-            if not os.getenv("FLAGS_enable_new_ir_in_executor"):
+            if not get_flags('FLAGS_enable_new_ir_in_executor')[
+                'FLAGS_enable_new_ir_in_executor'
+            ]:
                 _apply_pass(
                     backward_program,
                     empty_startup_program,
@@ -984,7 +995,6 @@ class PartialProgramLayer:
             var = self._outputs[var_id]
             assert isinstance(var, framework.Variable)
             eager_tensor.stop_gradient = var.stop_gradient
-            return None
 
         for idx, var in zip(self._outputs.var_ids, out_vars):
             set_stop_gradient(idx, var)
@@ -1155,4 +1165,9 @@ def add_build_strategy_for(
         builded_program = paddle.static.Program()
         for var in program.block(0).vars.values():
             builded_program.block(0)._clone_variable(var, False)
+
+    # set back the parent_idx of blocks
+    for origin, current in zip(program.blocks, builded_program.blocks):
+        current.desc.set_parent_idx(origin.desc.parent)
+
     return builded_program

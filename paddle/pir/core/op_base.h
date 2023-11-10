@@ -22,6 +22,8 @@
 #include "paddle/pir/core/utils.h"
 
 namespace pir {
+class Builder;
+class IrPrinter;
 
 class IR_API OpBase {
  public:
@@ -61,6 +63,10 @@ class IR_API OpBase {
     return operation()->attribute<T>(name);
   }
 
+  void VerifySig() {}
+
+  void VerifyRegion() {}
+
  private:
   Operation *operation_;  // Not owned
 };
@@ -91,8 +97,17 @@ class OpInterfaceBase : public OpBase {
  public:
   explicit OpInterfaceBase(Operation *op) : OpBase(op) {}
 
-  // Accessor for the ID of this interface.
+  ///
+  /// \brief Accessor for the ID of this interface.
+  ///
   static TypeId GetInterfaceId() { return TypeId::get<ConcreteInterface>(); }
+
+  ///
+  /// \brief Checking if the given object defines the concrete interface.
+  ///
+  static bool classof(Operation *op) {
+    return op->HasInterface<ConcreteInterface>();
+  }
 
   static ConcreteInterface dyn_cast(Operation *op) {
     if (op && op->HasInterface<ConcreteInterface>()) {
@@ -101,6 +116,18 @@ class OpInterfaceBase : public OpBase {
     }
     return ConcreteInterface(nullptr, nullptr);
   }
+};
+
+template <typename, typename = void>
+struct VerifyTraitOrInterface {
+  static void call(Operation *) {}
+};
+
+template <typename T>
+struct VerifyTraitOrInterface<T,
+                              decltype(T::Verify(
+                                  std::declval<Operation *>()))> {
+  static void call(Operation *op) { T::Verify(op); }
 };
 
 template <typename ConcreteOp, class... TraitOrInterface>
@@ -114,6 +141,7 @@ class Op : public OpBase {
   using InterfaceList =
       typename Filter<OpInterfaceBase, std::tuple<TraitOrInterface...>>::Type;
 
+  // TODO(zhangbopd): Use classof
   static ConcreteOp dyn_cast(Operation *op) {
     if (op && op->info().id() == TypeId::get<ConcreteOp>()) {
       return ConcreteOp(op);
@@ -125,12 +153,12 @@ class Op : public OpBase {
     return op && op->info().id() == TypeId::get<ConcreteOp>();
   }
 
-  static std::vector<details::InterfaceValue> GetInterfaceMap() {
-    return pir::details::GetInterfaceMap<ConcreteOp, InterfaceList>();
+  static std::vector<InterfaceValue> GetInterfaceMap() {
+    return pir::detail::GetInterfaceMap<ConcreteOp, InterfaceList>();
   }
 
   static std::vector<TypeId> GetTraitSet() {
-    return pir::details::GetTraitSet<ConcreteOp, TraitList>();
+    return pir::detail::GetTraitSet<ConcreteOp, TraitList>();
   }
 
   // Checking that the derived class does not define any member by comparing
@@ -140,11 +168,19 @@ class Op : public OpBase {
     return sizeof(ConcreteOp) == sizeof(EmptyOp);
   }
 
-  // Implementation of `VerifyInvariantsFn` OperationName hook.
-  static void VerifyInvariants(Operation *op) {
+  // Implementation of `VerifySigInvariantsFn` OperationName hook.
+  static void VerifySigInvariants(Operation *op) {
     static_assert(HasNoDataMembers(),
                   "Op class shouldn't define new data members");
-    op->dyn_cast<ConcreteOp>().Verify();
+    op->dyn_cast<ConcreteOp>().VerifySig();
+    (void)std::initializer_list<int>{
+        0, (VerifyTraitOrInterface<TraitOrInterface>::call(op), 0)...};
+  }
+
+  static void VerifyRegionInvariants(Operation *op) {
+    static_assert(HasNoDataMembers(),
+                  "Op class shouldn't define new data members");
+    op->dyn_cast<ConcreteOp>().VerifyRegion();
   }
 };
 

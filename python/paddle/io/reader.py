@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import copy
+import logging
 import multiprocessing
 import sys
 import time
 import warnings
 
 import paddle
-from paddle.base.framework import logging
 
 from ..base.framework import (
     _current_expected_place,
@@ -446,9 +446,7 @@ class DataLoader:
             self.dataset_kind = _DatasetKind.ITER
             if shuffle:
                 raise ValueError(
-                    "IterableDataset not support shuffle, but got shuffle={}".format(
-                        shuffle
-                    )
+                    f"IterableDataset not support shuffle, but got shuffle={shuffle}"
                 )
             if batch_sampler is not None:
                 raise ValueError(

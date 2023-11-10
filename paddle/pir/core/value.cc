@@ -30,10 +30,6 @@
 #define CHECK_VALUE_NULL_IMPL(func_name) CHECK_NULL_IMPL(Value, func_name)
 
 namespace pir {
-
-Value::Value(const detail::ValueImpl *impl)
-    : impl_(const_cast<detail::ValueImpl *>(impl)) {}
-
 bool Value::operator==(const Value &other) const {
   return impl_ == other.impl_;
 }
@@ -44,21 +40,15 @@ bool Value::operator!=(const Value &other) const {
 
 bool Value::operator!() const { return impl_ == nullptr; }
 
+bool Value::operator<(const Value &other) const { return impl_ < other.impl_; }
+
 Value::operator bool() const { return impl_; }
 
-pir::Type Value::type() const {
-  CHECK_VALUE_NULL_IMPL(type);
-  return impl_->type();
-}
+pir::Type Value::type() const { return impl_ ? impl_->type() : nullptr; }
 
 void Value::set_type(pir::Type type) {
   CHECK_VALUE_NULL_IMPL(set_type);
   impl_->set_type(type);
-}
-
-Operation *Value::GetDefiningOp() const {
-  if (auto result = dyn_cast<OpResult>()) return result.owner();
-  return nullptr;
 }
 
 std::string Value::PrintUdChain() {
@@ -71,8 +61,7 @@ Value::UseIterator Value::use_begin() const { return OpOperand(first_use()); }
 Value::UseIterator Value::use_end() const { return Value::UseIterator(); }
 
 OpOperand Value::first_use() const {
-  CHECK_VALUE_NULL_IMPL(first_use);
-  return impl_->first_use();
+  return impl_ ? impl_->first_use() : nullptr;
 }
 
 bool Value::use_empty() const { return !first_use(); }

@@ -129,8 +129,6 @@ def _scatter_in_static_mode(
         },
     )
 
-    return None
-
 
 def scatter(
     tensor,

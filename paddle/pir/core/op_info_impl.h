@@ -38,18 +38,21 @@ class OpInfoImpl {
   static OpInfo Create(Dialect *dialect,
                        TypeId op_id,
                        const char *op_name,
-                       std::vector<details::InterfaceValue> &&interface_map,
+                       std::vector<InterfaceValue> &&interface_map,
                        const std::vector<TypeId> &trait_set,
                        size_t attributes_num,
                        const char *attributes_name[],
-                       VerifyPtr verify);
+                       VerifyPtr verify_sig,
+                       VerifyPtr verify_region);
   static void Destroy(OpInfo info);
 
   TypeId id() const { return op_id_; }
 
   Dialect *dialect() const { return dialect_; }
 
-  VerifyPtr verify() const { return verify_; }
+  VerifyPtr VerifySig() const { return verify_sig_; }
+
+  VerifyPtr VerifyRegion() const { return verify_region_; }
 
   IrContext *ir_context() const;
 
@@ -76,7 +79,8 @@ class OpInfoImpl {
              uint32_t num_traits,
              uint32_t num_attributes,
              const char **p_attributes,
-             VerifyPtr verify)
+             VerifyPtr verify_sig,
+             VerifyPtr verify_region)
       : dialect_(dialect),
         op_id_(op_id),
         op_name_(op_name),
@@ -84,7 +88,8 @@ class OpInfoImpl {
         num_traits_(num_traits),
         num_attributes_(num_attributes),
         p_attributes_(p_attributes),
-        verify_(verify) {}
+        verify_sig_(verify_sig),
+        verify_region_(verify_region) {}
   void Destroy();
 
   /// The dialect of this Op belong to.
@@ -108,7 +113,9 @@ class OpInfoImpl {
   /// Attributes array address.
   const char **p_attributes_{nullptr};
 
-  VerifyPtr verify_{nullptr};
+  VerifyPtr verify_sig_{nullptr};
+
+  VerifyPtr verify_region_{nullptr};
 };
 
 }  // namespace pir

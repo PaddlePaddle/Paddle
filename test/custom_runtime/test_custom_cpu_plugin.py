@@ -43,9 +43,7 @@ class TestCustomCPUPlugin(unittest.TestCase):
         # only valid in current process
         os.environ['CUSTOM_DEVICE_ROOT'] = os.path.join(
             cur_dir,
-            '{}/PaddleCustomDevice/backends/custom_cpu/build'.format(
-                self.temp_dir.name
-            ),
+            f'{self.temp_dir.name}/PaddleCustomDevice/backends/custom_cpu/build',
         )
 
     def tearDown(self):

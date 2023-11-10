@@ -97,8 +97,8 @@ class TestPrintOpError(unittest.TestCase):
                 np.array([[-1]]), [[1]], paddle.CPUPlace()
             )
             self.assertRaises(TypeError, paddle.static.Print, x1)
-            # The input dtype of Print_op must be float32, float64, int32_t, int64_t or bool.
-            x2 = paddle.static.data(name='x2', shape=[4], dtype="float16")
+            # The input dtype of Print_op must be uint16, float16, float32, float64, int32_t, int64_t or bool.
+            x2 = paddle.static.data(name='x2', shape=[4], dtype="int8")
             self.assertRaises(TypeError, paddle.static.Print, x2)
 
 

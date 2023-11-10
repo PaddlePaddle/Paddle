@@ -86,7 +86,8 @@ struct SimpleOpTypeSetTeller : public Teller {
 
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
 
     std::unordered_set<std::string> control_set = {"conditional_block",
@@ -328,7 +329,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #else
           LOG(INFO)
               << "Trt below 8.6 not support conv2d's filter is a intermedoate "
-                 "tensor in conv2d op, please upgarde your TenroRT.";
+                 "tensor in conv2d op, please upgarde your TensorRT.";
           return false;
 #endif
         }
@@ -2912,7 +2913,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 
   std::unordered_set<std::string> teller_set{
       "matrix_multiply",
@@ -3080,7 +3082,8 @@ struct SimpleOpTypeSetTeller : public Teller {
       "assign",
       "flip",
       "quantize_linear",
-      "dequantize_linear"};
+      "dequantize_linear",
+      "share_data"};
 };
 
 struct GenericPluginTeller : public Teller {
@@ -3088,7 +3091,8 @@ struct GenericPluginTeller : public Teller {
   GenericPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     // only consider dynamic_shape mode
     if (!with_dynamic_shape) {
@@ -3130,7 +3134,8 @@ struct CustomPluginTeller : public Teller {
   CustomPluginTeller() = default;
   bool operator()(const framework::OpDesc& desc,
                   bool use_no_calib_int8 = false,
-                  bool with_dynamic_shape = false) override {
+                  bool with_dynamic_shape = false,
+                  bool use_explicit_quantization = false) override {
     const std::string op_type = desc.Type();
     std::string expect_plugin_name;
 
@@ -3153,7 +3158,8 @@ struct CustomPluginTeller : public Teller {
 
 bool OpTeller::Tell(const framework::ir::Node* node,
                     bool use_no_calib_int8,
-                    bool with_dynamic_shape) {
+                    bool with_dynamic_shape,
+                    bool use_explicit_quantization) {
   const std::string op_type = node->Op()->Type();
   const framework::OpDesc desc = *node->Op();
   // do not support the op which is labeled the `skip_quant`
@@ -3163,17 +3169,26 @@ bool OpTeller::Tell(const framework::ir::Node* node,
       desc.HasAttr("skip_quant"))
     return false;
   auto& default_teller = GetDefaultTeller();
-  if ((*default_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*default_teller)(desc,
+                        use_no_calib_int8,
+                        with_dynamic_shape,
+                        use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::Default);
     return true;
   }
   auto& generic_plugin_teller = GetGenericPluginTeller();
-  if ((*generic_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*generic_plugin_teller)(desc,
+                               use_no_calib_int8,
+                               with_dynamic_shape,
+                               use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::GenericPluginCreater);
     return true;
   }
   auto& custom_plugin_teller = GetCustomPluginTeller();
-  if ((*custom_plugin_teller)(desc, use_no_calib_int8, with_dynamic_shape)) {
+  if ((*custom_plugin_teller)(desc,
+                              use_no_calib_int8,
+                              with_dynamic_shape,
+                              use_explicit_quantization)) {
     SetOpConverterType(node->Op(), OpConverterType::CustomPluginCreater);
     return true;
   }

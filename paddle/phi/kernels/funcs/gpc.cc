@@ -87,7 +87,7 @@ const std::array<std::array<h_state, 6>, 3> next_h_state = {
 */
 
 static void reset_it(it_node **it) {
-  it_node *itn;
+  it_node *itn = nullptr;
 
   while (*it) {
     itn = (*it)->next;
@@ -97,7 +97,7 @@ static void reset_it(it_node **it) {
 }
 
 static void reset_lmt(lmt_node **lmt) {
-  lmt_node *lmtn;
+  lmt_node *lmtn = nullptr;
 
   while (*lmt) {
     lmtn = (*lmt)->next;
@@ -140,7 +140,7 @@ static void insert_bound(edge_node **b, edge_node *e) {
 }
 
 static edge_node **bound_list(lmt_node **lmt, double y) {
-  lmt_node *existing_node;
+  lmt_node *existing_node = nullptr;
 
   if (!*lmt) {
     /* Add node onto the tail end of the LMT */
@@ -407,7 +407,7 @@ static void add_edge_to_aet(edge_node **aet, edge_node *edge, edge_node *prev) {
 
 static void add_intersection(
     it_node **it, edge_node *edge0, edge_node *edge1, double x, double y) {
-  it_node *existing_node;
+  it_node *existing_node = nullptr;
 
   if (!*it) {
     /* Append a new node to the tail of the list */
@@ -440,7 +440,7 @@ static void add_st_edge(st_node **st,
                         it_node **it,
                         edge_node *edge,
                         double dy) {
-  st_node *existing_node;
+  st_node *existing_node = nullptr;
   double den = 0.0;
   double r = 0.0;
   double x = 0.0;
@@ -486,8 +486,8 @@ static void add_st_edge(st_node **st,
 }
 
 static void build_intersection_table(it_node **it, edge_node *aet, double dy) {
-  st_node *st;
-  st_node *stp;
+  st_node *st = nullptr;
+  st_node *stp = nullptr;
   edge_node *edge = nullptr;
 
   /* Build intersection table for the current scanbeam */
@@ -706,7 +706,7 @@ static void new_tristrip(polygon_node **tn,
 }
 
 static bbox *create_contour_bboxes(gpc_polygon *p) {
-  bbox *box;
+  bbox *box = nullptr;
   int c = 0;
   int v = 0;
 
@@ -744,8 +744,8 @@ static bbox *create_contour_bboxes(gpc_polygon *p) {
 }
 
 static void minimax_test(gpc_polygon *subj, gpc_polygon *clip, gpc_op op) {
-  bbox *s_bbox;
-  bbox *c_bbox;
+  bbox *s_bbox = nullptr;
+  bbox *c_bbox = nullptr;
   int s = 0;
   int c = 0;
   int *o_table = nullptr;
@@ -1048,7 +1048,7 @@ void gpc_polygon_clip(gpc_op op,
     px = -DBL_MAX;
     /* Create bundles within AET */
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(
         aet, phi::errors::InvalidArgument("Edge node AET is nullptr."));
@@ -1689,7 +1689,7 @@ void gpc_tristrip_clip(gpc_op op,
     /* Create bundles within AET */
     px = -DBL_MAX;
     e0 = aet;
-    e1 = aet;
+    e1 = aet;  // NOLINT
 
     /* Set up bundle fields of first edge */
     PADDLE_ENFORCE_NOT_NULL(

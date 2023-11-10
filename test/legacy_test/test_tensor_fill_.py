@@ -64,7 +64,7 @@ class TensorFill_Test(unittest.TestCase):
                 np.array(range(np.prod(self.shape))), self.shape
             )
             for dtype in typelist:
-                var = int(1)
+                var = 1
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
                 tensor.stop_gradient = False
                 y = tensor * 2

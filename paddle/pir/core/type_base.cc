@@ -30,8 +30,8 @@ void *AbstractType::GetInterfaceImpl(TypeId interface_id) const {
     VLOG(6) << "Find no interface!";
     return nullptr;
   }
-  // TODO(zhangbo63): Add LookUp method like:
-  // return ir::details::LookUp<AbstractType>(
+  // TODO(zhangbopd): Add LookUp method like:
+  // return ir::detail::LookUp<AbstractType>(
   //     interface_id, num_interfaces_, num_traits_, this);
 }
 

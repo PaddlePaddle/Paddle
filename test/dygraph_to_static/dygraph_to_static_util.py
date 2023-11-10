@@ -49,7 +49,8 @@ def to_sot(func):
     """
     convert run fall_back to ast
     """
-    enable_sot = os.environ.get("ENABLE_SOT", "False") == "True"
+    # TODO(SigureMo): ENABLE_SOT should always be True, remove this
+    enable_sot = os.environ.get("ENABLE_SOT", "True") == "True"
 
     def impl(*args, **kwargs):
         if enable_sot:
@@ -153,7 +154,7 @@ def test_and_compare_with_new_ir(need_check_output: bool = True):
             ir_outs = test_with_new_ir(func)(*args, **kwargs)
             if not need_check_output:
                 return outs
-            np.testing.assert_array_equal(
+            np.testing.assert_equal(
                 outs,
                 ir_outs,
                 err_msg='Dy2St Unittest Check ('

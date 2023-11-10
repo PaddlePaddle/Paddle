@@ -926,9 +926,7 @@ class TestVariableInit(unittest.TestCase):
         for v in parameter_list:
             assert (
                 v.name in load_dict
-            ), "Can not find [{}] in model file [{}]".format(
-                v.name, parameter_file_name
-            )
+            ), f"Can not find [{v.name}] in model file [{parameter_file_name}]"
             new_v = new_scope.find_var(v.name)
             set_var(new_v, load_dict[v.name])
 
@@ -949,9 +947,7 @@ class TestVariableInit(unittest.TestCase):
         for v in opt_list:
             assert (
                 v.name in load_dict
-            ), "Can not find [{}] in model file [{}]".format(
-                v.name, opt_file_name
-            )
+            ), f"Can not find [{v.name}] in model file [{opt_file_name}]"
 
             new_v = new_scope.find_var(v.name)
             set_var(new_v, load_dict[v.name])
@@ -1903,7 +1899,7 @@ class TestSaveLoadInferenceModel(unittest.TestCase):
             self.assertEqual(feed_target_names, ['x'])
             self.assertEqual(fetch_targets[0].shape, (10, 10))
             ops = [op.type for op in inference_program.block(0).ops]
-            self.assertEqual(ops, ['feed', 'elementwise_add', 'scale', 'fetch'])
+            self.assertEqual(ops, ['feed', 'elementwise_add', 'fetch'])
 
 
 if __name__ == '__main__':

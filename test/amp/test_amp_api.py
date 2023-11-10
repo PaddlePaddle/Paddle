@@ -281,7 +281,7 @@ class SimpleModelIncludeSetValue(nn.Layer):
 class TestDy2STWithSetValue(AmpTestBase):
     def test_op_called_as_expected(self):
         expected_fp16_calls = {
-            "cast": 0,
+            "cast": 1,
             "layer_norm": 1,
             "scale": 3,
             "set_value": 1,
@@ -289,7 +289,7 @@ class TestDy2STWithSetValue(AmpTestBase):
 
         func = SimpleModelIncludeSetValue()
         func = paddle.amp.decorate(func, level='O2')
-        func = paddle.jit.to_static(func)
+        func = paddle.jit.to_static(func, full_graph=True)
         input = paddle.randn((2, 3))
 
         with paddle.amp.auto_cast(level='O2'):

@@ -14,8 +14,6 @@
 
 import os
 
-import numpy as np
-
 import paddle
 from paddle import framework
 from paddle.autograd import no_grad
@@ -139,65 +137,56 @@ class HybridParallelClipGrad:
                     elif g.dtype == paddle.float32:
                         sum_square_not_dist_fp32.append(sum_square)
 
+        def async_add_n(var_list):
+            return paddle.stack(var_list).sum()
+
         # global norm of distributed FP16 params_and_grads
         if len(sum_square_dist_fp16) == 0:
-            global_norm_dist_fp16 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_dist_fp16 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_dist_fp16 = paddle.add_n(sum_square_dist_fp16)
+            global_norm_dist_fp16 = async_add_n(sum_square_dist_fp16)
             global_norm_dist_fp16 = paddle.cast(
                 global_norm_dist_fp16, dtype=paddle.float32
             )
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_not_dist_fp16) == 0:
-            global_norm_not_dist_fp16 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_not_dist_fp16 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_not_dist_fp16 = paddle.add_n(sum_square_not_dist_fp16)
+            global_norm_not_dist_fp16 = async_add_n(sum_square_not_dist_fp16)
             global_norm_not_dist_fp16 = paddle.cast(
                 global_norm_not_dist_fp16, dtype=paddle.float32
             )
 
         # global norm of distributed BF16 params_and_grads
         if len(sum_square_dist_bf16) == 0:
-            global_norm_dist_bf16 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_dist_bf16 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_dist_bf16 = paddle.add_n(sum_square_dist_bf16)
+            global_norm_dist_bf16 = async_add_n(sum_square_dist_bf16)
             global_norm_dist_bf16 = paddle.cast(
                 global_norm_dist_bf16, dtype=paddle.float32
             )
 
         # global norm of non-distributed FP16 params_and_grads
         if len(sum_square_not_dist_bf16) == 0:
-            global_norm_not_dist_bf16 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_not_dist_bf16 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_not_dist_bf16 = paddle.add_n(sum_square_not_dist_bf16)
+            global_norm_not_dist_bf16 = async_add_n(sum_square_not_dist_bf16)
             global_norm_not_dist_bf16 = paddle.cast(
                 global_norm_not_dist_bf16, dtype=paddle.float32
             )
 
         # global norm of distributed FP32 params_and_grads
         if len(sum_square_dist_fp32) == 0:
-            global_norm_dist_fp32 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_dist_fp32 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_dist_fp32 = paddle.add_n(sum_square_dist_fp32)
+            global_norm_dist_fp32 = async_add_n(sum_square_dist_fp32)
 
         # global norm of non-distributed FP32 params_and_grads
         if len(sum_square_not_dist_fp32) == 0:
-            global_norm_not_dist_fp32 = paddle.to_tensor(
-                np.array(0.0), dtype=paddle.float32
-            )
+            global_norm_not_dist_fp32 = paddle.zeros((1,), dtype=paddle.float32)
         else:
-            global_norm_not_dist_fp32 = paddle.add_n(sum_square_not_dist_fp32)
+            global_norm_not_dist_fp32 = async_add_n(sum_square_not_dist_fp32)
 
         global_norm_var_dist = (
             global_norm_dist_fp16
@@ -224,7 +213,7 @@ class HybridParallelClipGrad:
         clip_var = paddle.divide(
             x=max_global_norm,
             y=paddle.maximum(x=global_norm_var_fp32, y=max_global_norm)
-            + paddle.to_tensor(np.array(1.0e-6), dtype=paddle.float32),
+            + paddle.full(shape=[], dtype=paddle.float32, fill_value=1.0e-6),
         )
         clip_var_fp16 = paddle.cast(clip_var, paddle.float16)
 
@@ -285,6 +274,8 @@ class HybridParallelOptimizer:
 
         self._sharding_enable = self._hcg.get_sharding_parallel_world_size() > 1
 
+        self._sep_enable = self._hcg.get_sep_parallel_world_size() > 1
+
         if (
             isinstance(self._inner_opt._grad_clip, ClipGradByGlobalNorm)
             and not self._use_dp_mode
@@ -336,7 +327,13 @@ class HybridParallelOptimizer:
             paddle.distributed.all_reduce(
                 sync_var, group=mp_group, sync_op=True
             )
-            sync_var.scale_(1.0 / mp_group.nranks)
+            sync_var.multiply_(
+                paddle.full(
+                    shape=[],
+                    dtype=sync_var.dtype,
+                    fill_value=(1.0 / mp_group.nranks),
+                )
+            )
 
     def _filter_fn(self, param, strategy):
         p_name = param.name
@@ -439,10 +436,7 @@ class HybridParallelOptimizer:
                             moment2, src_rank, mp_group, mp_configs.sync_mode
                         )
 
-    @no_grad()
-    @framework.dygraph_only
-    def step(self):
-        parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
+    def _hybrid_sync_grad(self, parameter_list):
         dp_parameter_list = parameter_list
         if self._sharding_enable:
             assert isinstance(self._inner_opt, DygraphShardingOptimizer)
@@ -452,10 +446,14 @@ class HybridParallelOptimizer:
                 dp_parameter_list = self._inner_opt.filter_parameters(
                     parameter_list, self._hcg
                 )
-
-        if self._dp_enable:
+        if self._dp_enable or self._sep_enable:
             fused_allreduce_gradients(dp_parameter_list, self._hcg)
 
+    @no_grad()
+    @framework.dygraph_only
+    def step(self):
+        parameter_list = list(obtain_optimizer_parameters_list(self._inner_opt))
+        self._hybrid_sync_grad(parameter_list)
         self._step(parameter_list)
 
     @no_grad()
@@ -470,21 +468,7 @@ class HybridParallelOptimizer:
             else obtain_optimizer_parameters_list(self._inner_opt)
         )
         parameter_list = list(parameter_list)
-        dp_parameter_list = parameter_list
-        # Here sharding should use global parameter list
-        if self._sharding_enable:
-            assert isinstance(self._inner_opt, DygraphShardingOptimizer)
-            self._inner_opt.reduce_gradients(parameter_list, self._hcg)
-
-            # dp later do not need to use global parameter list
-            if not g_shard_norm_align_dp:
-                dp_parameter_list = self._inner_opt.filter_parameters(
-                    parameter_list, self._hcg
-                )
-
-        if self._dp_enable:
-            fused_allreduce_gradients(dp_parameter_list, self._hcg)
-
+        self._hybrid_sync_grad(parameter_list)
         return self._inner_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set
         )

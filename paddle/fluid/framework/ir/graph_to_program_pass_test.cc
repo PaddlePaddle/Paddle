@@ -354,8 +354,8 @@ void CheckBlockOpsEqual(const BlockDesc& before_block,
 
   // op's order must be the same
   for (size_t op_idx = 0; op_idx < before_block.OpSize(); ++op_idx) {
-    const auto& before_op = before_block.Op(op_idx);
-    const auto& after_op = after_block.Op(op_idx);
+    const auto& before_op = before_block.Op(static_cast<int>(op_idx));
+    const auto& after_op = after_block.Op(static_cast<int>(op_idx));
 
     EXPECT_EQ(before_op->Type(), after_op->Type());
 
