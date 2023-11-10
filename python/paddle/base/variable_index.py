@@ -930,9 +930,9 @@ def _setitem_static(x, indices, values):
         elif paddle.framework.in_pir_mode():
             return paddle._C_ops.set_value_(
                 x,
-                StartsTensorList,
-                EndsTensorList,
-                StepsTensorList,
+                attrs["starts"],
+                attrs["ends"],
+                attrs["steps"],
                 attrs["axes"],
                 attrs["decrease_axes"],
                 attrs["none_axes"],
