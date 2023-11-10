@@ -533,14 +533,14 @@ class TestHistogramddAPICase10ForTensorBin(TestHistogramddAPI):
 
 
 # histogramdd(sample, bins=10, range=None, density=False, weights=None, name=None):
-class TestHistogramddAPI_type_error1(TestHistogramddAPI):
+class TestHistogramddAPI_check_sample_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor([[False, True], [True, False]])
         with self.assertRaises(TypeError):
             paddle.histogramdd(sample)
 
 
-class TestHistogramddAPI_type_error2(TestHistogramddAPI):
+class TestHistogramddAPI_check_bins_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -555,7 +555,7 @@ class TestHistogramddAPI_type_error2(TestHistogramddAPI):
             paddle.histogramdd(sample, bins=bins)
 
 
-class TestHistogramddAPI_type_error3(TestHistogramddAPI):
+class TestHistogramddAPI_check_range_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -570,7 +570,7 @@ class TestHistogramddAPI_type_error3(TestHistogramddAPI):
             paddle.histogramdd(sample, range=range)
 
 
-class TestHistogramddAPI_type_error4(TestHistogramddAPI):
+class TestHistogramddAPI_check_density_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -585,7 +585,7 @@ class TestHistogramddAPI_type_error4(TestHistogramddAPI):
             paddle.histogramdd(sample, density=density)
 
 
-class TestHistogramddAPI_type_error5(TestHistogramddAPI):
+class TestHistogramddAPI_check_weights_type_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [
@@ -600,7 +600,7 @@ class TestHistogramddAPI_type_error5(TestHistogramddAPI):
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_shape(TestHistogramddAPI):
+class TestHistogramddAPI_sample_weights_shape_dismatch_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [  # shape: [4,2]
@@ -615,7 +615,7 @@ class TestHistogramddAPI_sample_weights_shape(TestHistogramddAPI):
             paddle.histogramdd(sample, weights=weights)
 
 
-class TestHistogramddAPI_sample_weights_type(TestHistogramddAPI):
+class TestHistogramddAPI_sample_weights_type_dismatch_error(TestHistogramddAPI):
     def test_error(self):
         sample = paddle.to_tensor(
             [  # float32
