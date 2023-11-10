@@ -3961,11 +3961,8 @@ def atleast_1d(*inputs, name=None):
     one or high-dimensional inputs are preserved.
 
     Args:
-        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``bool``, ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Note:
-        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
 
     Returns:
         One Tensor, if there is only one input.
@@ -4021,11 +4018,8 @@ def atleast_2d(*inputs, name=None):
     Convert inputs to tensors and return the view with at least 2-dimension. Two or high-dimensional inputs are preserved.
 
     Args:
-        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``bool``, ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Note:
-        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
 
     Returns:
         One Tensor, if there is only one input.
@@ -4083,11 +4077,8 @@ def atleast_3d(*inputs, name=None):
     Convert inputs to tensors and return the view with at least 3-dimension. Three or high-dimensional inputs are preserved.
 
     Args:
-        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``bool``, ``float16``, ``uint16``, ``float32``, ``float64``, ``int8``, ``int16``, ``int32``, ``int64``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16``.
+        inputs (Tensor|list(Tensor)): One or more tensors. The data type is ``float16``, ``float32``, ``float64``, ``int16``, ``int32``, ``int64``, ``int8``, ``uint8``, ``complex64``, ``complex128``, ``bfloat16`` or ``bool``.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-
-    Note:
-        ``int8``, ``uint8``, ``complex64``, ``complex128`` are not supported in static graph mode.
 
     Returns:
         One Tensor, if there is only one input.

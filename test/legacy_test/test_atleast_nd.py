@@ -22,7 +22,7 @@ from paddle.base import core
 
 RTOL = 1e-5
 ATOL = 1e-8
-STATIC_NOT_SUPPORT = {'int8', 'uint8', 'complex64', 'complex128'}
+
 PLACES = [paddle.CPUPlace()] + (
     [paddle.CUDAPlace(0)] if core.is_compiled_with_cuda() else []
 )
@@ -321,7 +321,6 @@ class TestAtleastMixDim(BaseTest):
             (
                 paddle.to_tensor(True, dtype='bool'),
                 paddle.to_tensor(0.1, dtype='float16'),
-                paddle.to_tensor(1, dtype='uint16'),
                 paddle.to_tensor(0.1, dtype='float32'),
                 paddle.to_tensor(0.1, dtype='float64'),
                 paddle.to_tensor(1, dtype='int8'),
@@ -336,7 +335,6 @@ class TestAtleastMixDim(BaseTest):
             (
                 'bool',
                 'float16',
-                'uint16',
                 'float32',
                 'float64',
                 'int8',
@@ -349,7 +347,6 @@ class TestAtleastMixDim(BaseTest):
                 'bfloat16',
             ),
             (
-                (),
                 (),
                 (),
                 (),
@@ -376,7 +373,6 @@ class TestAtleastMixDim(BaseTest):
                 '9_mixdtype',
                 '10_mixdtype',
                 '11_mixdtype',
-                '12_mixdtype',
             ),
         ),
     ),
@@ -388,20 +384,7 @@ class TestAtleastMixDtypes(BaseTest):
         self._test_dygraph_api(
             self.inputs, self.dtypes, self.shapes, self.names
         )
-
-        inputs = []
-        dtypes = []
-        shapes = []
-        names = []
-        for i in range(len(self.inputs)):
-            dtype = self.dtypes[i]
-            if dtype not in STATIC_NOT_SUPPORT:
-                inputs.append(self.inputs[i])
-                dtypes.append(dtype)
-                shapes.append(self.shapes[i])
-                names.append(self.names[i])
-
-        self._test_static_api(inputs, dtypes, shapes, names)
+        self._test_static_api(self.inputs, self.dtypes, self.shapes, self.names)
 
 
 @param.parameterized_class(
