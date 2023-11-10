@@ -937,10 +937,11 @@ void AnalysisConfig::Update() {
           *static_cast<CpuPassStrategy *>(pass_builder_.get()));
     }
   }
-
+#ifdef PADDLE_WITH_DNNL
   if (!use_gpu() && !use_xpu() && !use_ipu() && !use_mkldnn_) {
     pass_builder()->DisableMKLDNN();
   }
+#endif
 
   if (use_tensorrt_) {
     pass_builder()->ClearPasses();
