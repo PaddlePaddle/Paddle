@@ -134,6 +134,21 @@ bool IsSupportCinn(pir::Operation* op) {
   auto deny_ops = StringSplit(FLAGS_deny_cinn_ops, kDelim);
   VLOG(4) << "The allowed Cinn Ops: " << GetDebugInfo(allow_ops);
   VLOG(4) << "The denied Cinn Ops: " << GetDebugInfo(deny_ops);
+
+  // cinn not support uniform, the FullOp of max and min support NOT generate by
+  // CINN
+  if (op->isa<paddle::dialect::FullOp>()) {
+    auto out = op->result(0);
+    // return IsSuportCinn( out.first_use().owern() )
+    if (out.first_use().owner()->isa<paddle::dialect::UniformOp>()) {
+      return false;
+    }
+  }
+
+  if (op->isa<paddle::dialect::DropoutOp>()) {
+    return false;
+  }
+
   // Strip the dialect, like pd_op.abs -> abs
   const auto op_name = CompatibleInfo::OpName(*op);
   if (CompatibleInfo::IsSupportCinn(*op)) {
@@ -173,6 +188,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       pending_count[op] = 0;
     }
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       if (pending_count.find(defined_op) != pending_count.end()) {
         ++pending_count[defined_op];
@@ -196,6 +214,9 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
     for (auto& operand : op->operands()) {
+      if (!operand || !(operand.source())) {
+        continue;
+      }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
       --pending_count[defined_op];
       if (pending_count[defined_op] == 0) {
@@ -223,6 +244,9 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 
   std::vector<pir::Operation*> vec_res;
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     if (!producers.count(source_op)) {
       producers.insert(source_op);
@@ -246,6 +270,9 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
   for (auto& operand : op->operands()) {
+    if (!operand || !(operand.source())) {
+      continue;
+    }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
     producers.insert(source_op);
   }
@@ -609,7 +636,7 @@ void ReplaceWithGroupOp(pir::Block* block,
   ctx->GetOrRegisterDialect<::pir::ControlFlowDialect>();
   ::pir::Builder builder = ::pir::Builder(ctx, block);
   // step 1: Ensure the insert point and create GroupOp here.
-  auto* laste_input_op = group_ops.back();
+  auto* laste_input_op = group_ops.front();
   builder.SetInsertionPointAfter(laste_input_op);
   std::vector<pir::Type> output_types;
   std::vector<pir::Value> outputs = AnalysisOutputs(group_ops);
