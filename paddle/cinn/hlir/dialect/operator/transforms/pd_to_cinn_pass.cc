@@ -94,7 +94,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
       auto scale_value =
           full_op.attribute("value").dyn_cast<pir::FloatAttribute>().data();
 
-      auto cinn_scale = rewriter.Build<cinn::dialect::ScaleFOp>(
+      auto cinn_scale = rewriter.Build<cinn::dialect::ScaleOp>(
           op->operand_source(0).dyn_cast<pir::OpResult>(),
           scale_value,
           op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data(),
@@ -107,9 +107,10 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
       rewriter.EraseOp(full_op);
     } else {
       // using mul op
+      std::cerr << "not full op\n";
       auto bias =
           op->attributes().at("bias").dyn_cast<pir::FloatAttribute>().data();
-
+      std::cerr << "bias " << bias << std::endl;
       auto mul_in = op.operand_source(0);
       if (bias != 0.0f) {
         auto full_op = rewriter.Build<paddle::dialect::FullOp>(
@@ -122,7 +123,7 @@ class ScaleOpPattern : public pir::OpRewritePattern<paddle::dialect::ScaleOp> {
       auto mul_op = rewriter.Build<paddle::dialect::MultiplyOp>(
           mul_in, op->operand_source(1));
 
-      rewriter.ReplaceOp(op, std::vector<pir::Value>{mul_op.result(0)});
+      rewriter.ReplaceAllUsesWith(op.result(0), mul_op.result(0));
       rewriter.EraseOp(op);
     }
 

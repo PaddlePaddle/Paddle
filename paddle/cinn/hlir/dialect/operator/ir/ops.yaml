@@ -24,7 +24,7 @@
   kernel :
     func : frobenius_norm
 
-- op : scale_f
+- op : scale
   args : (Tensor x, float scale=1.0, float bias=0.0, bool bias_after_scale=true)
   output : Tensor(out)
   infer_meta :
