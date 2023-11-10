@@ -379,13 +379,6 @@ if(WIN32)
         OFF
         CACHE STRING "Disable NCCL when compiling for Windows" FORCE)
   endif()
-else()
-  message(
-    WARNING
-      "Enable WITH_SHARED_PHI when compiling PADDLE. Force WITH_SHARED_PHI=ON.")
-  set(WITH_SHARED_PHI
-      ON
-      CACHE BOOL "Enable WITH_SHARED_PHI when compiling PADDLE" FORCE)
 endif()
 
 if(NOT WITH_TESTING AND WITH_MULTINODE_TESTING)
@@ -593,6 +586,13 @@ include(flags) # set paddle compile flags
 
 if(WITH_CINN)
   message(STATUS "Compile Paddle with CINN.")
+  message(
+    WARNING
+      "Enable WITH_SHARED_PHI when compiling with CINN. Force WITH_SHARED_PHI=ON."
+  )
+  set(WITH_SHARED_PHI
+      ON
+      CACHE BOOL "Enable WITH_SHARED_PHI when compiling with CINN" FORCE)
   # TODO(6clc): Use CINN_WITH_CUDNN to completely replace WITH_CUDNN in CINN.
   #             Use WITH_GPU to completely replace WITH_CUDA in CINN.
   set(WITH_MKL_CBLAS ${WITH_MKL})
