@@ -31,13 +31,23 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
         self._backend = os.getenv("backend")
         self._seed = eval(os.getenv("seed"))
         self._mesh = dist.ProcessMesh([[0, 1], [2, 3]], dim_names=["x", "y"])
+        self._pp_mesh0 = dist.ProcessMesh(
+            [[0, 1], [2, 3]], dim_names=["x", "y"]
+        )
+        self._pp_mesh1 = dist.ProcessMesh(
+            [[4, 5], [6, 7]], dim_names=["x", "y"]
+        )
+        self.pp_reshard_dist_attr = dist.DistAttr(
+            mesh=self._pp_mesh1, sharding_specs=["x", "y"]
+        )
 
         paddle.set_device(self._backend)
 
-        self.init_input_data()
+        self.set_random_seed(self._seed)
         self.init_single_card_net_result()
 
     def test_dp_mp_demo_net(self):
+        self.set_random_seed(self._seed)
         model = dist.shard_layer(
             DemoNet("dp_mp_hybrid_strategy"), self._mesh, self.shard_fn
         )
@@ -54,8 +64,80 @@ class TestSimpleNetHybridStrategyForSemiAutoParallel(
             self.check_tensor_eq(param, param_base)
             self.check_tensor_eq(param.grad, param_base.grad)
 
+    def dp_mp_pp_shard_fn(self, layer_name, layer, process_mesh):
+        if layer_name == 'linear_0':
+            # shard_layer doens't support cross-mesh now.
+            # input process_mesh of pp_shard_fn is useless,
+            # it's defined just for unified format.
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None, 'y']
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh0, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+        elif layer_name == 'linear_1':
+            weight_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=['y', None]
+            )
+            bias_dist_attr = dist.DistAttr(
+                mesh=self._pp_mesh1, sharding_specs=[None]
+            )
+            layer.weight = dist.shard_tensor(
+                layer.weight, dist_attr=weight_dist_attr
+            )
+            layer.bias = dist.shard_tensor(layer.bias, dist_attr=bias_dist_attr)
+
+    def dp_mp_pp_demo_net(self):
+        self.set_random_seed(self._seed)
+        model = dist.shard_layer(
+            DemoNet(
+                "dp_mp_pp_hybrid_strategy",
+                is_pp=True,
+                pp_reshard_dist_attr=self.pp_reshard_dist_attr,
+            ),
+            self._pp_mesh0,
+            self.dp_mp_pp_shard_fn,
+        )
+
+        (
+            self.dp_mp_pp_loss,
+            self.dp_mp_pp_parameters,
+        ) = self.run_dynamic(model, shard_input=True, is_pp=True)
+
+        rank = dist.get_rank()
+        # TODO(GhostScreaming): DistTensor.numpy() doesn't support
+        # cross-mesh now, ReshardXToReplicated function in eager_method
+        # needs to be fixed later.
+        if rank in [0, 1, 2, 3]:
+            # linear_0 weight and bias
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[0], self.base_parameters[0]
+            )
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[1], self.base_parameters[1]
+            )
+        else:
+            self.check_tensor_eq(self.dp_mp_pp_loss, self.base_loss)
+            # linear_1 weight and bias
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[2], self.base_parameters[2]
+            )
+            self.check_tensor_eq(
+                self.dp_mp_pp_parameters[3], self.base_parameters[3]
+            )
+
     def run_test_case(self):
         self.test_dp_mp_demo_net()
+        # TODO(GhostScreaming): Paddle-CI-Coverage doesn't support 8-cards
+        # testcase now. Enable it later. It can be tested with
+        # modify test_semi_auto_parallel_hybrid_strategy.py `setUp` function,
+        # just set num_of_devices=8, nnode =1 and _changeable_envs = {"backend": ["gpu"]}
+        # to test it.
+        # self.dp_mp_pp_demo_net()
 
 
 if __name__ == '__main__':
