@@ -803,15 +803,14 @@ int FcXPUFusePass::ApplyImpl(ir::Graph* graph,
                                                   {"out_max_in", nullptr},
                                                   {"out", nullptr},
                                                   {"out_max", nullptr}};
+    auto mul_w_name = mul->Op()->Input("Y")[0];
+    Node* mul_w = FindNodeWithName(graph, mul_w_name);
+    if (!mul_w->Var()->Persistable() || mul_w->Var()->GetShape().size() != 2) {
+      return;
+    }
     auto filter_data_type = scope->FindVar(mul->Op()->Input("Y")[0])
                                 ->GetMutable<phi::DenseTensor>()
                                 ->dtype();
-    auto mul_w_name = mul->Op()->Input("Y")[0];
-    Node* mul_w = FindNodeWithName(graph, mul_w_name);
-    if (mul_w->Var()->GetShape().size() != 2) {
-      VLOG(4) << "FC fusion fuse pass only support weight shape size is 2!";
-      return;
-    }
     std::string op_weights_precision = "float32";
     if (filter_data_type == phi::DataType::INT8) {
       op_weights_precision = "int8";
