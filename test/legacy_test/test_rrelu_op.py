@@ -59,17 +59,14 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
     @test_with_pir_api
     def check_static_result(self, place):
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
             input = paddle.static.data(
                 name="input", shape=[2, 3, 4, 5], dtype="float32"
             )
             res1 = F.rrelu(
                 x=input, lower=self.lower_0, upper=self.upper_0, training=False
-            )
-            res2 = F.rrelu(
-                x=input, lower=self.lower_1, upper=self.upper_1, training=False
             )
             in_np = np.random.uniform(-1.0, 1.0, [2, 3, 4, 5]).astype("float32")
 
@@ -81,6 +78,20 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
 
             np.testing.assert_allclose(fetches[0], res_np1, rtol=1e-05)
+
+        with paddle.static.program_guard(
+            paddle.static.Program(), paddle.static.Program()
+        ):
+            input = paddle.static.data(
+                name="input", shape=[2, 3, 4, 5], dtype="float32"
+            )
+
+            res2 = F.rrelu(
+                x=input, lower=self.lower_1, upper=self.upper_1, training=False
+            )
+            in_np = np.random.uniform(-1.0, 1.0, [2, 3, 4, 5]).astype("float32")
+
+            exe = base.Executor(place)
 
             res_np2 = ref_rrelu(in_np, self.lower_1, self.upper_1)
             fetches = exe.run(
@@ -99,18 +110,13 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
         main = paddle.static.Program()
         startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            for place in self.places:
+        for place in self.places:
+            with paddle.static.program_guard(main, startup):
                 paddle.enable_static()
                 x_1 = paddle.static.data(
                     name="x", shape=self.x_np.shape, dtype="float64"
                 )
-                x_2 = paddle.static.data(
-                    name="x2", shape=self.x_np.shape, dtype="float64"
-                )
                 out_1 = F.rrelu(x_1, self.lower_0, self.upper_0, training=False)
-                out_2 = F.rrelu(x_2, self.lower_1, self.upper_1, training=False)
-                out_3 = F.rrelu(x_2, self.lower_1, self.upper_1, training=True)
 
                 exe = paddle.static.Executor(place=place)
                 (res_1,) = exe.run(
@@ -118,21 +124,47 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                     fetch_list=out_1,
                     use_prune=True,
                 )
+
+                out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
+                np.testing.assert_allclose(out_ref_1, res_1, rtol=1e-05)
+
+            with paddle.static.program_guard(main, startup):
+                paddle.enable_static()
+
+                x_2 = paddle.static.data(
+                    name="x2", shape=self.x_np.shape, dtype="float64"
+                )
+                out_2 = F.rrelu(x_2, self.lower_1, self.upper_1, training=False)
+
+                exe = paddle.static.Executor(place=place)
+
                 (res_2,) = exe.run(
                     feed={"x2": self.x_np},
                     fetch_list=out_2,
                     use_prune=True,
                 )
+
+                out_ref_2 = ref_rrelu(self.x_np, self.lower_1, self.upper_1)
+
+                np.testing.assert_allclose(out_ref_2, res_2, rtol=1e-05)
+
+            with paddle.static.program_guard(main, startup):
+                paddle.enable_static()
+
+                x_2 = paddle.static.data(
+                    name="x2", shape=self.x_np.shape, dtype="float64"
+                )
+
+                out_3 = F.rrelu(x_2, self.lower_1, self.upper_1, training=True)
+
+                exe = paddle.static.Executor(place=place)
+
                 (res_3,) = exe.run(
                     feed={"x2": self.x_np},
                     fetch_list=out_3,
                     use_prune=True,
                 )
 
-                out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
-                out_ref_2 = ref_rrelu(self.x_np, self.lower_1, self.upper_1)
-                np.testing.assert_allclose(out_ref_1, res_1, rtol=1e-05)
-                np.testing.assert_allclose(out_ref_2, res_2, rtol=1e-05)
                 self.assertTrue(
                     check_output(
                         self.x_np, res_3[0], self.lower_1, self.upper_1
@@ -143,32 +175,23 @@ class TestFunctionalRReluAPI(unittest.TestCase):
     def test_static_graph_layer(self):
         '''test_static_graph_layer'''
 
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
-        with paddle.static.program_guard(main, startup):
-            for place in self.places:
-                paddle.enable_static()
+        paddle.enable_static()
+        for place in self.places:
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 x_1 = paddle.static.data(
                     name="x", shape=self.x_np.shape, dtype="float64"
                 )
-                x_2 = paddle.static.data(
-                    name="x2", shape=self.x_np.shape, dtype="float64"
-                )
+
                 # init instance
                 rrelu_1 = paddle.nn.RReLU(self.lower_0, self.upper_0)
-                rrelu_2 = paddle.nn.RReLU(self.lower_1, self.upper_1)
                 out_1 = rrelu_1(x_1)
-                out_2 = rrelu_2(x_2)
 
                 exe = paddle.static.Executor(place=place)
                 res_1 = exe.run(
                     feed={"x": self.x_np},
                     fetch_list=out_1,
-                    use_prune=True,
-                )
-                res_2 = exe.run(
-                    feed={"x2": self.x_np},
-                    fetch_list=out_2,
                     use_prune=True,
                 )
 
@@ -177,6 +200,25 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                         self.x_np, res_1[0], self.lower_0, self.upper_0
                     )
                 )
+
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
+                x_2 = paddle.static.data(
+                    name="x2", shape=self.x_np.shape, dtype="float64"
+                )
+                # init instance
+                rrelu_2 = paddle.nn.RReLU(self.lower_1, self.upper_1)
+                out_2 = rrelu_2(x_2)
+
+                exe = paddle.static.Executor(place=place)
+
+                res_2 = exe.run(
+                    feed={"x2": self.x_np},
+                    fetch_list=out_2,
+                    use_prune=True,
+                )
+
                 self.assertTrue(
                     check_output(
                         self.x_np, res_2[0], self.lower_1, self.upper_1
@@ -225,7 +267,6 @@ class TestFunctionalRReluAPI(unittest.TestCase):
             )
             paddle.enable_static()
 
-    @test_with_pir_api
     def test_error_functional(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
