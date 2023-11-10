@@ -280,20 +280,22 @@ SpmdInfo SliceGradInferSpmdDynamic(const DistMetaTensor& input,
 }
 
 SpmdInfo StridedSliceInferSpmdDynamic(const DistMetaTensor& input,
-                                      const std::vector<int64_t>& axes,
+                                      const std::vector<int>& axes,
                                       const IntArray& starts,
                                       const IntArray& ends,
                                       const IntArray& strides) {
-  return SliceInferSpmdBase(input, axes);
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceInferSpmdBase(input, axes_bridge);
 }
 
 SpmdInfo StridedGradInferSpmdDynamic(const DistMetaTensor& input,
                                      const DistMetaTensor& out_grad,
-                                     const std::vector<int64_t>& axes,
+                                     const std::vector<int>& axes,
                                      const IntArray& starts,
                                      const IntArray& ends,
                                      const IntArray& strides) {
-  return SliceGradInferBase(input, out_grad, axes);
+  std::vector<int64_t> axes_bridge(axes.begin(), axes.end());
+  return SliceGradInferBase(input, out_grad, axes_bridge);
 }
 
 }  // namespace distributed

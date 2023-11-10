@@ -54,9 +54,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
+            op_func=paddle.slice,
             with_backward=True,
-            axis=[0, 1],
+            axes=[0, 1],
             starts=[1, 1],
             ends=[3, 3],
         )
@@ -67,9 +67,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
+            op_func=paddle.slice,
             with_backward=True,
-            axis=[0, 1],
+            axes=[0, 1],
             starts=[1, 1],
             ends=[3, 3],
         )
@@ -80,9 +80,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
+            op_func=paddle.strided_slice,
             with_backward=True,
-            axis=[0, 1],
+            axes=[0, 1],
             starts=[1, 3],
             ends=[3, 1],
             strides=[1, -1],
@@ -94,9 +94,9 @@ class TestSplitAndConcatSemiAutoParallel(SemiAutoParallelTestBase):
         inputs, outputs = self.runfunc_and_check(
             inputs_shape=shapes,
             inputs_specs=specs,
-            op_func=paddle.concat,
+            op_func=paddle.strided_slice,
             with_backward=True,
-            axis=[0, 1],
+            axes=[0, 1],
             starts=[1, 3],
             ends=[3, 1],
             strides=[1, -1],
