@@ -36,7 +36,7 @@ function make_ubuntu_trt7_dockerfile(){
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     COPY tools/dockerfile/build_scripts /build_scripts \\
     RUN bash /build_scripts/install_gcc.sh gcc82 \&\& rm -rf /build_scripts \\
@@ -116,7 +116,7 @@ function make_unbuntu20_cu12_dockerfile(){
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.7 install PyGithub \&\& pip3.8 install distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel distro \&\& pip3.8 install distro" ${dockerfile_name}
   sed -i 's# && rm /etc/apt/sources.list.d/nvidia-ml.list##g' ${dockerfile_name}
   sed -i 's#Run bash /build_scripts/install_cudnn.sh cudnn841#RUN bash /build_scripts/install_cudnn.sh cudnn896#g' ${dockerfile_name}
 }
@@ -135,7 +135,7 @@ function make_ubuntu20_cu112_dockerfile(){
     cd git-2.17.1 \&\& \
     ./configure --with-openssl --with-curl --prefix=/usr/local \&\& \
     make -j8 \&\& make install " ${dockerfile_name}
-  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.7 install PyGithub distro \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
+  sed -i "${dockerfile_line}i RUN pip install wheel \&\& pip3 install PyGithub wheel \&\& pip3.8 install PyGithub distro" ${dockerfile_name}
   sed -i 's#<install_cpu_package>##g' ${dockerfile_name}
   sed -i "s#<install_gcc>#WORKDIR /usr/bin \\
     ENV PATH=/usr/local/gcc-8.2/bin:\$PATH #g" ${dockerfile_name}

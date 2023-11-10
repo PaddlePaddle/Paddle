@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 
 #include "glog/logging.h"
+#include "paddle/phi/api/lib/data_type_set.h"
 #include "paddle/phi/common/data_type.h"
 #include "paddle/phi/common/layout.h"
 #include "paddle/phi/common/type_traits.h"
@@ -1244,8 +1245,14 @@ void ElementwiseRawInferMeta(const MetaTensor& x,
   } else {
     out->set_dims(x.dims());
   }
-
-  out->set_dtype(x.dtype());
+  // dtype need promote when meet input dtype with more precision
+  paddle::experimental::DataTypeSet dtype_set{x.dtype()};
+  dtype_set = dtype_set | paddle::experimental::DataTypeSet(y.dtype());
+  DataType promote_result = PromoteTypes(dtype_set);
+  if (promote_result == DataType::UNDEFINED) {
+    promote_result = x.dtype();
+  }
+  out->set_dtype(promote_result);
   out->set_layout(x.layout());
   out->share_lod(x);
 }
