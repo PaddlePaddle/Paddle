@@ -52,9 +52,11 @@ class TestMasterGrad(unittest.TestCase):
             int(op_list['adam_'].split(',')[0]),
             2 * (total_steps / accumulate_batchs_num),
         )
+        # Since two additional casts are called when constructing master grad,
+        # the number of operators of this type +2
         self.assertEqual(
             int(op_list['transfer_dtype'].split(',')[0]),
-            total_steps + total_steps * 2,
+            total_steps + total_steps * 2 + 2,
         )
 
     def run_dygraph(self, total_steps, accumulate_batchs_num, model, optimizer):

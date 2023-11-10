@@ -607,7 +607,7 @@ def mode(x, axis=-1, keepdim=False, name=None):
              [2, 1]]))
 
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         return _C_ops.mode(x, axis, keepdim)
     else:
         helper = LayerHelper("mode", **locals())
@@ -1210,7 +1210,7 @@ def kthvalue(x, k, axis=None, keepdim=False, name=None):
              [1, 1]]))
             >>> # doctest: -SKIP
     """
-    if in_dynamic_mode():
+    if in_dynamic_or_pir_mode():
         if axis is not None:
             return _C_ops.kthvalue(x, k, axis, keepdim)
         else:
