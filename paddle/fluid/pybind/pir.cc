@@ -1022,11 +1022,8 @@ void AppendSetParameters(Program *forward_program,
   int counter = 0;
   std::unordered_set<pir::OpResult> added_op_result;
 
-  std::cerr << " outputs_op_result " << outputs_op_result.size() << std::endl;
   for (const auto &result : outputs_op_result) {
     if (!added_op_result.count(result)) {
-      std::cerr << "insert here " << start_point << "\t" << counter
-                << std::endl;
       std::string parameter_name = name_prefix + std::to_string(counter);
       AppendSetParameter(
           forward_program, result, parameter_name, start_point + counter);
@@ -1146,7 +1143,6 @@ SplitedResult SplitForwardBackward(
     // calling SplitForwardBackward multi-times.
     std::string parameter_name =
         std::string("output_") + std::to_string(counter);
-    std::cerr << "parameter name 1 " << parameter_name << std::endl;
     std::unordered_set<pir::Value> inserted_value;
     for (auto it = forward_program->block()->rbegin();
          it != forward_program->block()->rend();

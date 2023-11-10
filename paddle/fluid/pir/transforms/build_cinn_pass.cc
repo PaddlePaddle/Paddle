@@ -188,7 +188,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
       pending_count[op] = 0;
     }
     for (auto& operand : op->operands()) {
-      if (!operand && !(operand.source())) {
+      if (!operand || !(operand.source())) {
         continue;
       }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
@@ -214,7 +214,7 @@ std::vector<pir::Operation*> InverselyTopologicalSort(pir::Block* block) {
     VLOG(4) << "Pop Op: " << op->name();
     sort_ops.push_back(op);
     for (auto& operand : op->operands()) {
-      if (!(operand.source())) {
+      if (!operand || !(operand.source())) {
         continue;
       }
       auto* defined_op = operand.source().dyn_cast<pir::OpResult>().owner();
@@ -244,7 +244,7 @@ std::vector<pir::Operation*> GetProducerOpsReverseSort(
 
   std::vector<pir::Operation*> vec_res;
   for (auto& operand : op->operands()) {
-    if (!(operand.source())) {
+    if (!operand || !(operand.source())) {
       continue;
     }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();
@@ -270,7 +270,7 @@ std::unordered_set<pir::Operation*> GetProducerOps(pir::Operation* op) {
   std::unordered_set<pir::Operation*> producers;
 
   for (auto& operand : op->operands()) {
-    if (!(operand.source())) {
+    if (!operand || !(operand.source())) {
       continue;
     }
     auto* source_op = operand.source().dyn_cast<pir::OpResult>().owner();

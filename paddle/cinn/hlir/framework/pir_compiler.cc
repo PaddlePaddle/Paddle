@@ -166,7 +166,7 @@ std::shared_ptr<Scope> BuildScope(const Target& target,
   auto scope = std::make_shared<Scope>();
 
   auto create_var = [&](::pir::Value value) {
-    if ((!value) && !(value.type())) {
+    if (!(value.type())) {
       return;
     }
     if (visited.count(value) > 0) return;
