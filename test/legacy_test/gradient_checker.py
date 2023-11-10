@@ -493,35 +493,28 @@ def double_grad_check(
     x_init = _as_list(x_init)
 
     if in_pir_mode():
-        if program is None:
-            ir_program = paddle.static.default_main_program()
-        with paddle.static.program_guard(ir_program):
-            (
-                grad_res,
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                ir_program,
-            ) = get_pir_static_double_grad(
-                x, y, x_init, y_grads, place, ir_program
-            )
-            grad_check(
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                place,
-                ir_program,
-                eps,
-                atol,
-                rtol,
-            )
+        (
+            grad_res,
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            ir_program,
+        ) = get_pir_static_double_grad(x, y, x_init, y_grads, place)
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
     else:
-        if program is None:
-            program = paddle.static.default_main_program()
         grad_res, x, target_grads, program = get_static_double_grad(
-            x, y, x_init, y_grads, place, program
+            x, y, x_init, y_grads, place
         )
         grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
@@ -579,35 +572,28 @@ def triple_grad_check(
 
     # x <=> [x, dout, ddx]
     if in_pir_mode():
-        if program is None:
-            ir_program = paddle.static.default_main_program()
-        with paddle.static.program_guard(ir_program):
-            (
-                grad_res,
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                ir_program,
-            ) = get_pir_static_triple_grad(
-                x, y, x_init, y_grads, place, ir_program
-            )
-            grad_check(
-                x,
-                target_grads,
-                fetch_list,
-                feeds,
-                place,
-                ir_program,
-                eps,
-                atol,
-                rtol,
-            )
+        (
+            grad_res,
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            ir_program,
+        ) = get_pir_static_triple_grad(x, y, x_init, y_grads, place)
+        grad_check(
+            x,
+            target_grads,
+            fetch_list,
+            feeds,
+            place,
+            ir_program,
+            eps,
+            atol,
+            rtol,
+        )
     else:
-        if program is None:
-            program = paddle.static.default_main_program()
         grad_res, x, target_grads, program = get_static_triple_grad(
-            x, y, x_init, y_grads, place, program
+            x, y, x_init, y_grads, place
         )
         grad_check(x, target_grads, None, None, place, program, eps, atol, rtol)
 
@@ -746,6 +732,8 @@ def get_pir_static_double_grad(
     Returns:
         A list of numpy array that stores second derivative result calculated by static graph.
     """
+    if program is None:
+        program = paddle.static.default_main_program()
     if dy_init is None:
         y_grads = []
         y_grads_init = []
@@ -978,12 +966,9 @@ def double_grad_check_for_dygraph(
     paddle.enable_static()
 
     if in_pir_mode():
-        if program is None:
-            program = paddle.static.default_main_program()
-        with paddle.static.program_guard(program):
-            static_double_grad, _, _, _, _, _ = get_pir_static_double_grad(
-                x, y, x_init, y_grads_init, place, program
-            )
+        static_double_grad, _, _, _, _, _ = get_pir_static_double_grad(
+            x, y, x_init, y_grads_init, place
+        )
     else:
         with static_guard():
             (
@@ -1098,6 +1083,8 @@ def get_pir_static_triple_grad(
     Returns:
         A list of numpy array that stores third derivative result calculated by static graph.
     """
+    if program is None:
+        program = paddle.static.default_main_program()
     if dy_init is None:
         y_grads = []
         y_grads_init = []
@@ -1240,12 +1227,9 @@ def triple_grad_check_for_dygraph(
     paddle.enable_static()
 
     if in_pir_mode():
-        if program is None:
-            program = paddle.static.default_main_program()
-        with paddle.static.program_guard(program):
-            static_triple_grad, _, _, _, _, _ = get_pir_static_triple_grad(
-                x, y, x_init, y_grads_init, place
-            )
+        static_triple_grad, _, _, _, _, _ = get_pir_static_triple_grad(
+            x, y, x_init, y_grads_init, place
+        )
     else:
         with static_guard():
             (
