@@ -62,6 +62,7 @@ void OperatorDialect::initialize() {
               paddle::dialect::FusedGemmEpilogueOp,
               paddle::dialect::FusedGemmEpilogueGradOp,
               paddle::dialect::SplitGradOp,
+              paddle::dialect::ExpandOp,
               paddle::dialect::CreateArrayOp,
               paddle::dialect::ArrayLengthOp,
               paddle::dialect::ArrayWrite_Op>();

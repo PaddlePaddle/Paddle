@@ -55,6 +55,7 @@ H_FILE_TEMPLATE = """#ifdef GET_OP_LIST
 #include "paddle/pir/core/builder.h"
 #include "paddle/pir/core/operation_utils.h"
 #include "paddle/pir/core/op_base.h"
+#include "paddle/pir/core/op_trait.h"
 #include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
 #include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
@@ -213,6 +214,7 @@ PD_MANUAL_OP_LIST = {
     'add_n_',
     'add_n_with_kernel',
     'split_grad',
+    'expand',
 }
 
 
@@ -415,6 +417,15 @@ class OpInfoParser:
 
         # parse forward input name list and attribute name list
         self.forward_input_name_list = self.parse_forward_input_name()
+
+        # parse traits list
+        self.traits_list = self.parse_op_traits()
+
+    def parse_op_traits(self):
+        if 'traits' in self.op_yaml_item:
+            return self.op_yaml_item['traits']
+        else:
+            return []
 
     def parse_forward_input_name(self):
         if 'forward' in self.op_yaml_item:
@@ -1103,7 +1114,7 @@ def OpGenerator(
         op_view_map = op_info.view_map
         op_data_transform_map = op_info.data_transform_map
         op_interfaces = ["paddle::dialect::OpYamlInfoInterface"]
-        op_traits = []
+        op_traits = op_info.traits_list
 
         if op_info.infer_meta_func:
             op_interfaces += ["paddle::dialect::InferMetaInterface"]
@@ -1146,6 +1157,20 @@ def OpGenerator(
                 op_interfaces = op_interfaces_tmp
                 exclusive_interface_str = exclusive_interface_str_tmp
 
+            # =================================== #
+            #    gen interface/trait list str     #
+            # =================================== #
+            op_interfaces_str = ""
+            if len(op_interfaces) > 0:
+                op_interfaces_str = "," + ",".join(op_interfaces)
+
+            if op_name[-1] == "_":
+                op_traits += ["paddle::dialect::InplaceTrait"]
+
+            op_traits_str = ""
+            if len(op_traits) > 0:
+                op_traits_str = "," + ",".join(op_traits)
+
             if op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:
@@ -1178,20 +1203,6 @@ def OpGenerator(
                     op_output_type_list = op_info.output_type_dict[
                         kernel_func_name
                     ]
-
-                # =================================== #
-                #    gen interface/trait list str     #
-                # =================================== #
-                op_interfaces_str = ""
-                if len(op_interfaces) > 0:
-                    op_interfaces_str = "," + ",".join(op_interfaces)
-
-                if op_name[-1] == "_":
-                    op_traits += ["paddle::dialect::InplaceTrait"]
-
-                op_traits_str = ""
-                if len(op_traits) > 0:
-                    op_traits_str = "," + ",".join(op_traits)
 
                 # =================================== #
                 #  gen get input/output methods str   #
