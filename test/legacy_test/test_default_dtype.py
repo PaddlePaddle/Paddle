@@ -48,6 +48,18 @@ class TestDefaultType(unittest.TestCase):
         set_default_dtype(np.float16)
         self.assertEqual("float16", get_default_dtype())
 
+        set_default_dtype(paddle.float64)
+        self.assertEqual("float64", get_default_dtype())
+
+        set_default_dtype(paddle.float32)
+        self.assertEqual("float32", get_default_dtype())
+
+        set_default_dtype(paddle.float16)
+        self.assertEqual("float16", get_default_dtype())
+
+        set_default_dtype(paddle.bfloat16)
+        self.assertEqual("bfloat16", get_default_dtype())
+
 
 class TestDefaultTypeInLayer(unittest.TestCase):
     def test_bfloat16(self):
@@ -60,8 +72,10 @@ class TestRaiseError(unittest.TestCase):
     def test_error(self):
         self.assertRaises(TypeError, set_default_dtype, "int32")
         self.assertRaises(TypeError, set_default_dtype, np.int32)
+        self.assertRaises(TypeError, set_default_dtype, paddle.int32)
         self.assertRaises(TypeError, set_default_dtype, "int64")
         self.assertRaises(TypeError, set_default_dtype, np.int64)
+        self.assertRaises(TypeError, set_default_dtype, paddle.int64)
 
 
 if __name__ == '__main__':
