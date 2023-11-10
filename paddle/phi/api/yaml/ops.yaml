@@ -2602,6 +2602,16 @@
   inplace: (x -> out)
   backward : thresholded_relu_grad
 
+- op : top_p_sampling
+  args : (Tensor x, Tensor ps, Tensor threshold, int seed=-1)
+  output : Tensor (out), Tensor(ids)
+  infer_meta :
+    func : TopPSamplingInferMeta
+  kernel :
+    func : top_p_sampling
+    data_type : x
+  optional : threshold
+
 - op : topk
   args : (Tensor x, Scalar(int) k = 1, int axis = -1, bool largest = true, bool sorted = true)
   output : Tensor(out), Tensor(indices)
