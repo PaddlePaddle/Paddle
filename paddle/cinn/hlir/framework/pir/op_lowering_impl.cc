@@ -582,11 +582,7 @@ ir::Expr OpLowererImpl::DoGroupSchedule(
       // if node is horizontal with reduce or node is reduce, loop assign
       // master.
       auto loops = ir_sch.GetLoops(op_out_name);
-      if (op_kind == framework::kElementWise) {
-        ir_sch.FlattenLoops(loops, true);
-      } else if (op_kind != framework::kReduction) {
-        ir_sch.FlattenLoops(loops, false);
-      }
+      ir_sch.Fuse(loops);
 
       if (master && op_kind != framework::kReduction) {
         auto master_loops =
