@@ -1094,9 +1094,7 @@ void CreateArrayOp::Build(pir::Builder &builder,
   pir::Type out_dense_tensor_type = paddle::dialect::DenseTensorArrayType::get(
       pir::IrContext::Instance(),
       paddle::dialect::TransToIrDataType(dense_out.dtype()),
-      dense_out.dims(),
-      dense_out.layout(),
-      dense_out.lod());
+      dense_out.layout());
   argument_outputs.push_back(out_dense_tensor_type);
   argument.AddOutputs(argument_outputs.begin(), argument_outputs.end());
 }
@@ -1282,9 +1280,9 @@ void ArrayWrite_Op::Build(pir::Builder &builder,
       array.type().dyn_cast<paddle::dialect::DenseTensorArrayType>();
   paddle::dialect::IrMetaTensor dense_array(
       paddle::dialect::TransToPhiDataType(array_type.dtype()),
-      array_type.dims(),
+      {},
       array_type.data_layout(),
-      array_type.lod());
+      {});
   phi::MetaTensor meta_array(&dense_array);
 
   paddle::dialect::DenseTensorType x_type =

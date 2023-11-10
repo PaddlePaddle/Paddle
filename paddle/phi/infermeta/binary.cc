@@ -145,10 +145,6 @@ void ArrayWriteInferMeta(const MetaTensor& array,
                          MetaConfig config) {
   out->set_dtype(array.dtype());
   out->set_layout(array.layout());
-  out->set_dims(x.dims());
-  if (!config.is_runtime) {
-    out->share_lod(x);
-  }
 }
 
 void Atan2InferMeta(const MetaTensor& x, const MetaTensor& y, MetaTensor* out) {

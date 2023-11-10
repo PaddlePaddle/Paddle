@@ -1145,6 +1145,7 @@ def OpGenerator(
             else:
                 op_interfaces = op_interfaces_tmp
                 exclusive_interface_str = exclusive_interface_str_tmp
+
             if op_name in PD_MANUAL_OP_LIST:
                 continue
             if op_kernel_map is None:

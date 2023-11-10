@@ -73,17 +73,17 @@ const pir::Type& AllocatedDenseTensorArrayType::dtype() const {
   return storage()->dense_tensor_array_type_.dtype();
 }
 
-const phi::DDim& AllocatedDenseTensorArrayType::dims() const {
-  return storage()->dense_tensor_array_type_.dims();
-}
+// const phi::DDim& AllocatedDenseTensorArrayType::dims() const {
+//   return storage()->dense_tensor_array_type_.dims();
+// }
 
 const phi::DataLayout& AllocatedDenseTensorArrayType::data_layout() const {
   return storage()->dense_tensor_array_type_.data_layout();
 }
 
-const phi::LoD& AllocatedDenseTensorArrayType::lod() const {
-  return storage()->dense_tensor_array_type_.lod();
-}
+// const phi::LoD& AllocatedDenseTensorArrayType::lod() const {
+//   return storage()->dense_tensor_array_type_.lod();
+// }
 
 }  // namespace dialect
 }  // namespace paddle
