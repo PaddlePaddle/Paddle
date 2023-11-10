@@ -1442,6 +1442,10 @@ static PyObject* tensor__getitem_index_not_tensor(TensorObject* self,
           egr::Controller::Instance().GetExpectedPlace());
       paddle::framework::TensorFromVector(
           list_select_idxs, *dev_ctx, idx_tensor.get());
+      const phi::distributed::ProcessMesh* mesh = nullptr;
+      if (InputsContainDistTensor(&mesh, self->tensor, select_index)) {
+        ConvertAllInputsToDistTensor(mesh, self->tensor, select_index);
+      }
       out = index_select_ad_func(self->tensor, select_index, 0);
     }
   }
