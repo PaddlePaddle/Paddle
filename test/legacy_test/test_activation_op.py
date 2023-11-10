@@ -3648,13 +3648,17 @@ class TestLog1p(TestActivation):
         self.outputs = {'Out': out}
         self.convert_input_output()
 
+    def test_check_output(self):
+        self.check_output(check_pir=True)
+
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', check_pir=True)
 
 
 class Test_Log1p_Op_Fp16(unittest.TestCase):
+    @test_with_pir_api
     def test_api_fp16(self):
         with static_guard():
             with static.program_guard(
@@ -3680,6 +3684,7 @@ class TestLog1p_Op_Int(unittest.TestCase):
             np.testing.assert_allclose(y.numpy(), x_expect, rtol=1e-3)
         paddle.enable_static()
 
+    @test_with_pir_api
     def test_api_bf16(self):
         with static_guard():
             with static.program_guard(
@@ -3700,9 +3705,12 @@ class TestLog1p_ZeroDim(TestLog1p):
 
 
 class TestLog1pAPI(unittest.TestCase):
+    @test_with_pir_api
     def test_api(self):
         with static_guard():
-            with base.program_guard(base.Program(), base.Program()):
+            with base.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 input_x = np.random.uniform(0.1, 1, [11, 17]).astype("float64")
                 data_x = paddle.static.data(
                     name="data_x",
@@ -3712,9 +3720,9 @@ class TestLog1pAPI(unittest.TestCase):
 
                 out1 = paddle.log1p(data_x)
                 exe = base.Executor(place=base.CPUPlace())
-                exe.run(base.default_startup_program())
+                exe.run(paddle.static.default_startup_program())
                 (res1,) = exe.run(
-                    base.default_main_program(),
+                    paddle.static.default_main_program(),
                     feed={"data_x": input_x},
                     fetch_list=[out1],
                 )
@@ -4860,7 +4868,7 @@ if core.is_compiled_with_rocm():
 else:
     create_test_act_fp16_class(TestLog2, check_pir=True)
 create_test_act_fp16_class(TestLog10, check_pir=True)
-create_test_act_fp16_class(TestLog1p)
+create_test_act_fp16_class(TestLog1p, check_pir=True)
 create_test_act_fp16_class(TestSquare, check_pir=True)
 create_test_act_fp16_class(TestPow, check_prim=True, check_prim_pir=True)
 create_test_act_fp16_class(TestPow_API)
@@ -5015,7 +5023,7 @@ if core.is_compiled_with_rocm():
 else:
     create_test_act_bf16_class(TestLog2, check_pir=True)
 create_test_act_bf16_class(TestLog10, check_pir=True)
-create_test_act_bf16_class(TestLog1p)
+create_test_act_bf16_class(TestLog1p, check_pir=True)
 create_test_act_bf16_class(TestSquare, check_pir=True)
 create_test_act_bf16_class(TestPow, check_prim=True)
 create_test_act_bf16_class(TestPow_API)
