@@ -34,12 +34,13 @@ class ValueSet:
             for val in iter:
                 self.add(val)
 
-    def _is_same_value(self, x, y):
-        return x.is_same(y)
-
     def add(self, other_val):
         if not self.__contains__(other_val):
             self._values.append(other_val)
+
+    def update(self, other_set):
+        for val in other_set:
+            self.add(val)
 
     def __and__(self, other_set):
         ret = ValueSet()
@@ -62,9 +63,9 @@ class ValueSet:
 
     def __contains__(self, other_val):
         for value in self._values:
-            if value.is_same(other_val):
+            if hash(value) == hash(other_val) and value.is_same(other_val):
                 return True
-            return False
+        return False
 
 
 def check_type(input, input_name, expected_type, op_name, extra_message=''):
@@ -325,7 +326,7 @@ def inverse_sort_op(ops):
     # pending edges for its grad_op
 
     pending_count = collections.defaultdict(int)
-    ops_set = ValueSet(ops)
+    ops_set = set(ops)
     sorted_list = []
     for op in ops:
         for x in op.operands():
