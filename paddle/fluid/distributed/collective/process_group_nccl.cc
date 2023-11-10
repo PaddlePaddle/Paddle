@@ -820,7 +820,7 @@ void ProcessGroupNCCL::BroadcastUniqueNCCLID(ncclUniqueId* nccl_id,
     const auto& nccl_id_wrapper = store_->get(store_key);
     std::memcpy(nccl_id, nccl_id_wrapper.data(), nccl_id_wrapper.size());
   }
-  group_key_ = store_key;
+  place_to_group_key_[p2p_key] = store_key;
 }
 
 void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
@@ -897,8 +897,10 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
     phi::distributed::CommContextManager::GetInstance().SetStore(store_);
     phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
   });
+
+  std::string group_key = place_to_group_key_.at(key);
   phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
-      group_key_, global_ranks);
+      group_key, global_ranks);
 
   auto* calc_ctx = static_cast<phi::GPUContext*>(
       platform::DeviceContextPool::Instance().Get(place));
@@ -953,9 +955,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Collective(
   if (!FLAGS_enable_async_trace) {
     fn(nccl_comm, nccl_stream);
   } else {
+    std::string group_key = place_to_group_key_.at(key);
     auto comm_task =
         std::make_shared<phi::distributed::NCCLCommTask>(place,
-                                                         group_key_,
+                                                         group_key,
                                                          rank_,
                                                          size_,
                                                          gid_,
@@ -1007,7 +1010,6 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
     CommType comm_type,
     bool sync_op,
     bool use_calc_stream) {
-  comm_seq_++;
   const auto& place = tensor.place();
 
   int p2p_rank = 0;
@@ -1034,6 +1036,10 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   if (place_to_comm_ctx_.find(key) == place_to_comm_ctx_.end()) {
     CreateNCCLEnvCache(place, key, comm_type, p2p_rank);
   }
+  if (p2p_comm_seq_.find(key) == p2p_comm_seq_.end()) {
+      p2p_comm_seq_[key] = 0;
+  }
+  p2p_comm_seq_[key]++;
 
   if (!use_calc_stream) {
     SyncCalcStream(place, key);
@@ -1047,13 +1053,14 @@ std::shared_ptr<ProcessGroup::Task> ProcessGroupNCCL::Point2Point(
   auto nccl_comm = comm_ctx->nccl_comm();
   auto nccl_stream = use_calc_stream ? calc_ctx->stream() : comm_ctx->stream();
 
+  std::string group_key = place_to_group_key_.at(key);
   auto comm_task =
       std::make_shared<phi::distributed::NCCLCommTask>(place,
-                                                       group_key_,
+                                                       group_key,
                                                        p2p_rank,
                                                        p2p_nrank,
                                                        gid_,
-                                                       comm_seq_,
+                                                       p2p_comm_seq_[key],
                                                        tensor.numel(),
                                                        sync_op,
                                                        use_calc_stream,
