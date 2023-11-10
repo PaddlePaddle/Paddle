@@ -343,16 +343,16 @@ void SetValueWithTensorGradKernel(const Context& dev_ctx,
 }
 
 template <typename T, typename Context>
-void SetValueGradKernel(const Context& dev_ctx,
-                        const DenseTensor& out_grad,
-                        const IntArray& starts,
-                        const IntArray& ends,
-                        const IntArray& steps,
-                        const std::vector<int64_t>& axes,
-                        const std::vector<int64_t>& decrease_axes,
-                        const std::vector<int64_t>& none_axes,
-                        DenseTensor* x_grad,
-                        DenseTensor* value_grad) {
+void SetValueNoValueGradGradKernel(const Context& dev_ctx,
+                                   const DenseTensor& out_grad,
+                                   const IntArray& starts,
+                                   const IntArray& ends,
+                                   const IntArray& steps,
+                                   const std::vector<int64_t>& axes,
+                                   const std::vector<int64_t>& decrease_axes,
+                                   const std::vector<int64_t>& none_axes,
+                                   DenseTensor* x_grad,
+                                   DenseTensor* value_grad) {
   SetValueWithTensorGradKernel<T, Context>(dev_ctx,
                                            out_grad,
                                            starts,

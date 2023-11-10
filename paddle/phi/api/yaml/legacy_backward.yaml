@@ -618,7 +618,7 @@
     func: SetValueGradInferMeta
     param: [out_grad]
   kernel:
-    func: set_value_grad
+    func: set_value_no_value_grad_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
 
 - backward_op : set_value_with_tensor_grad
@@ -629,7 +629,7 @@
     func: SetValueWithTensorGradInferMeta
     param: [out_grad, values]
   kernel:
-    func: set_value_with_tensor_grad
+    func: set_value_grad
     param: [out_grad, starts, ends, steps, axes, decrease_axes, none_axes]
 
 - backward_op : slice_double_grad
