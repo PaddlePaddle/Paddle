@@ -25,7 +25,6 @@ from dygraph_to_static_utils_new import (
 
 import paddle
 import paddle.nn.functional as F
-from paddle import base
 from paddle.base.dygraph import to_variable
 from paddle.nn import Layer
 
@@ -67,149 +66,148 @@ def train(args, place, to_static):
     env = gym.make('CartPole-v0')
     env.reset(seed=SEED)
 
-    with base.dygraph.guard(place):
-        paddle.seed(SEED)
-        paddle.framework.random._manual_program_seed(SEED)
-        local_random = np.random.RandomState(SEED)
+    paddle.seed(SEED)
+    paddle.framework.random._manual_program_seed(SEED)
+    local_random = np.random.RandomState(SEED)
 
-        policy = paddle.jit.to_static(Policy())
+    policy = paddle.jit.to_static(Policy())
 
-        eps = np.finfo(np.float32).eps.item()
-        optimizer = paddle.optimizer.Adamax(
-            learning_rate=1e-2, parameters=policy.parameters()
-        )
+    eps = np.finfo(np.float32).eps.item()
+    optimizer = paddle.optimizer.Adamax(
+        learning_rate=1e-2, parameters=policy.parameters()
+    )
 
-        def get_mean_and_std(values=[]):
-            n = 0.0
-            s = 0.0
-            for val in values:
-                s += val
-                n += 1
-            mean = s / n
+    def get_mean_and_std(values=[]):
+        n = 0.0
+        s = 0.0
+        for val in values:
+            s += val
+            n += 1
+        mean = s / n
 
-            std = 0.0
-            for val in values:
-                std += (val - mean) * (val - mean)
-            std /= n
-            std = math.sqrt(std)
+        std = 0.0
+        for val in values:
+            std += (val - mean) * (val - mean)
+        std /= n
+        std = math.sqrt(std)
 
-            return mean, std
+        return mean, std
 
-        def sample_action(probs):
-            sample = local_random.random_sample()
-            idx = 0
+    def sample_action(probs):
+        sample = local_random.random_sample()
+        idx = 0
 
-            while idx < len(probs) and sample > probs[idx]:
-                sample -= probs[idx]
-                idx += 1
-            mask = [0.0] * len(probs)
-            mask[idx] = 1.0
+        while idx < len(probs) and sample > probs[idx]:
+            sample -= probs[idx]
+            idx += 1
+        mask = [0.0] * len(probs)
+        mask[idx] = 1.0
 
-            return idx, np.array([mask]).astype("float32")
+        return idx, np.array([mask]).astype("float32")
 
-        def choose_best_action(probs):
-            idx = 0 if probs[0] > probs[1] else 1
-            mask = [1.0, 0.0] if idx == 0 else [0.0, 1.0]
+    def choose_best_action(probs):
+        idx = 0 if probs[0] > probs[1] else 1
+        mask = [1.0, 0.0] if idx == 0 else [0.0, 1.0]
 
-            return idx, np.array([mask]).astype("float32")
+        return idx, np.array([mask]).astype("float32")
 
-        def select_action(state):
-            state = to_variable(state)
-            state.stop_gradient = True
-            loss_probs = policy(state)
+    def select_action(state):
+        state = to_variable(state)
+        state.stop_gradient = True
+        loss_probs = policy(state)
 
-            probs = loss_probs.numpy()
+        probs = loss_probs.numpy()
 
-            action, _mask = sample_action(probs[0])
-            mask = to_variable(_mask)
-            mask.stop_gradient = True
+        action, _mask = sample_action(probs[0])
+        mask = to_variable(_mask)
+        mask.stop_gradient = True
 
-            loss_probs = paddle.log(loss_probs)
-            loss_probs = paddle.multiply(loss_probs, mask)
-            loss_probs = paddle.sum(loss_probs, axis=-1)
+        loss_probs = paddle.log(loss_probs)
+        loss_probs = paddle.multiply(loss_probs, mask)
+        loss_probs = paddle.sum(loss_probs, axis=-1)
 
-            policy.saved_log_probs.append(loss_probs)
-            return action, loss_probs
+        policy.saved_log_probs.append(loss_probs)
+        return action, loss_probs
 
-        def finish_episode():
-            R = 0
-            policy_loss = []
-            returns = []
-            for r in policy.rewards[::-1]:
-                R = r + args.gamma * R
-                returns.insert(0, R)
+    def finish_episode():
+        R = 0
+        policy_loss = []
+        returns = []
+        for r in policy.rewards[::-1]:
+            R = r + args.gamma * R
+            returns.insert(0, R)
 
-            mean, std = get_mean_and_std(returns)
+        mean, std = get_mean_and_std(returns)
 
-            returns = np.array(returns).astype("float32")
-            returns = (returns - mean) / (std + eps)
+        returns = np.array(returns).astype("float32")
+        returns = (returns - mean) / (std + eps)
 
-            # calculate policy loss of each step.
-            for log_prob, R in zip(policy.saved_log_probs, returns):
-                log_prob_numpy = log_prob.numpy()
+        # calculate policy loss of each step.
+        for log_prob, R in zip(policy.saved_log_probs, returns):
+            log_prob_numpy = log_prob.numpy()
 
-                R_numpy = np.ones_like(log_prob_numpy).astype("float32")
-                _R = -1 * R * R_numpy
-                _R = to_variable(_R)
-                _R.stop_gradient = True
-                cur_loss = paddle.multiply(_R, log_prob)
-                policy_loss.append(cur_loss)
+            R_numpy = np.ones_like(log_prob_numpy).astype("float32")
+            _R = -1 * R * R_numpy
+            _R = to_variable(_R)
+            _R.stop_gradient = True
+            cur_loss = paddle.multiply(_R, log_prob)
+            policy_loss.append(cur_loss)
 
-            policy_loss = paddle.concat(policy_loss)
-            policy_loss = paddle.sum(policy_loss)
+        policy_loss = paddle.concat(policy_loss)
+        policy_loss = paddle.sum(policy_loss)
 
-            policy_loss.backward()
-            optimizer.minimize(policy_loss)
-            policy.clear_gradients()
+        policy_loss.backward()
+        optimizer.minimize(policy_loss)
+        policy.clear_gradients()
 
-            del policy.rewards[:]
-            del policy.saved_log_probs[:]
+        del policy.rewards[:]
+        del policy.saved_log_probs[:]
 
-            return returns
+        return returns
 
-        loss_data = []
-        running_reward = 10
-        for i_episode in itertools.count(1):
-            state, _ = env.reset()
-            ep_reward = 0
-            # The default loop number is 10000 is models, we changed it to 1000 for smaller test
-            for t in range(1, 1000):
-                state = np.array(state).astype("float32")
-                action, loss = select_action(state)
-                state, reward, done, _, _ = env.step(action)
+    loss_data = []
+    running_reward = 10
+    for i_episode in itertools.count(1):
+        state, _ = env.reset()
+        ep_reward = 0
+        # The default loop number is 10000 is models, we changed it to 1000 for smaller test
+        for t in range(1, 1000):
+            state = np.array(state).astype("float32")
+            action, loss = select_action(state)
+            state, reward, done, _, _ = env.step(action)
 
-                # log loss_probs
-                loss_data.append(float(loss))
+            # log loss_probs
+            loss_data.append(float(loss))
 
-                policy.rewards.append(reward)
-                ep_reward += reward
+            policy.rewards.append(reward)
+            ep_reward += reward
 
-                if done:
-                    break
-
-            # sum loss and apply optimization
-            returns = finish_episode()
-
-            running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
-            if i_episode % args.log_interval == 0:
-                print(
-                    'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
-                        i_episode, ep_reward, running_reward, float(loss)
-                    )
-                )
-
-            if i_episode > args.train_step:
+            if done:
                 break
 
-        return np.array(loss_data)
+        # sum loss and apply optimization
+        returns = finish_episode()
+
+        running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
+        if i_episode % args.log_interval == 0:
+            print(
+                'Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\t loss_probs: {}'.format(
+                    i_episode, ep_reward, running_reward, float(loss)
+                )
+            )
+
+        if i_episode > args.train_step:
+            break
+
+    return np.array(loss_data)
 
 
 class TestDeclarative(Dy2StTestBase):
     def setUp(self):
         self.place = (
-            base.CUDAPlace(0)
-            if base.is_compiled_with_cuda()
-            else base.CPUPlace()
+            paddle.CUDAPlace(0)
+            if paddle.is_compiled_with_cuda()
+            else paddle.CPUPlace()
         )
         self.args = Args()
 
