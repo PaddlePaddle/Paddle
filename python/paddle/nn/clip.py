@@ -1039,6 +1039,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
         if grad.type == core.VarDesc.VarType.SELECTED_ROWS:
             merge_grad = merge_selected_rows(grad)
             merge_grad = get_tensor_from_selected_rows(merge_grad)
+        elif in_pir_mode() and grad.is_selected_row_type():
+            merge_grad = merge_selected_rows(grad)
+            merge_grad = get_tensor_from_selected_rows(merge_grad)
 
         local_norm_var = _squared_l2_norm(merge_grad)
         context[self.group_name].append(local_norm_var)
@@ -1060,6 +1063,10 @@ class ClipGradByGlobalNorm(ClipGradBase):
             )
             assert group_scale_var.shape == (1,)
             self.context[group_scale_name] = group_scale_var
+
+        if in_pir_mode():
+            grad = paddle.multiply(grad, self.context[group_scale_name])
+            return param, grad
 
         # inplace
         param.block.append_op(
