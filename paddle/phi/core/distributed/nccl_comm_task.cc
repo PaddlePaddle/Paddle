@@ -164,19 +164,33 @@ std::string NCCLCommTask::GetCommErrors() {
 }
 
 bool NCCLCommTask::IsStarted() {
-  if (!start_event_created_) {
-    LOG(ERROR) << "query start event failed, task:" << GetTraceMsg();
-    return false;
+  if (started_) {
+      return true;
   }
-  return CudaEventQuery(nccl_start_event_);
+  if (start_event_created_ && CudaEventQuery(nccl_start_event_)) {
+      started_ = true;
+      updated_ = true;
+  }
+  return started_;
 }
 
 bool NCCLCommTask::IsCompleted() {
-  if (!end_event_created_) {
-    LOG(ERROR) << "query end event failed, task:" << GetTraceMsg();
-    return false;
+  if (completed_) {
+      return true;
   }
-  return CudaEventQuery(nccl_end_event_);
+  if (end_event_created_ && CudaEventQuery(nccl_end_event_)) {
+      completed_ = true;
+      updated_ = true;
+  }
+  return completed_;
+}
+
+void NCCLCommTask::SetUpdated(bool updated) {
+  updated_ = updated;
+}
+
+bool NCCLCommTask::IsUpdated() {
+  return updated_;
 }
 
 bool NCCLCommTask::IsTimeout() {
@@ -210,8 +224,8 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",local_rank:" + std::to_string(rank_) +
          ",comm_count:" + std::to_string(seq_) +
          ",op:" + CommTypeToString(comm_type_) +
-         ",started:" + std::to_string(IsStarted()) +
-         ",completed:" + std::to_string(IsCompleted()) +
+         ",started:" + std::to_string(started_) +
+         ",completed:" + std::to_string(completed_) +
          ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
          ",sync_op:" + std::to_string(sync_op_) +
          ",use_calc_stream:" + std::to_string(use_calc_stream_) +

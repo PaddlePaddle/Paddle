@@ -52,6 +52,8 @@ class NCCLCommTask : public CommTask {
   bool IsStarted() override;
   bool IsTimeout() override;
   bool IsCompleted() override;
+  void SetUpdated(bool updated) override;
+  bool IsUpdated() override;
 
   std::string GetTraceMsg() override;
   std::string GetCommErrors() override;
