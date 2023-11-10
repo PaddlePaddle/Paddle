@@ -148,6 +148,8 @@ MULTI_SINGLE_OUT_CREATION_TEMPLATE = """
             phi::DenseTensorMeta());
     }}
 """
+
+
 VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out = SetKernelDistOutput({}, &api_output);
     std::vector<phi::DenseTensor*> dense_out(dist_out.size());
@@ -160,6 +162,7 @@ VECTOR_OUT_CREATION_TEMPLATE = """
       }}
     }}
 """
+
 MULTI_VECTOR_OUT_CREATION_TEMPLATE = """
     auto dist_out_{out_name} = SetKernelDistOutput({size}, {in_name});
     std::vector<phi::DenseTensor*> dense_out_{out_name}(dist_out_{out_name}.size());
@@ -840,9 +843,16 @@ class DistForwardAPI(ForwardAPI):
                 else:
                     output_creation_code += SINGLE_OUT_CREATION_TEMPLATE_NO_SPMD
             elif self.outputs['types'][0] == 'std::vector<Tensor>':
-                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
-                    self.outputs['out_size_expr'][0]
+                # SetKernelDistOutput arg
+                dist_output_arg = (
+                    "spmd_info.second[0]"
+                    if self.generate_infer_spmd
+                    else self.outputs['out_size_expr'][0]
                 )
+                output_creation_code += VECTOR_OUT_CREATION_TEMPLATE.format(
+                    dist_output_arg
+                )
+
             else:
                 self.vector_output_size_assertion_check()
         elif output_num > 1:
@@ -887,10 +897,15 @@ class DistForwardAPI(ForwardAPI):
                             in_name=get_out_code,
                         )
                     else:
+                        dist_output_arg = (
+                            f"spmd_info.second[{i}]"
+                            if self.generate_infer_spmd
+                            else self.outputs['out_size_expr'][i]
+                        )
                         output_creation_code += (
                             MULTI_VECTOR_OUT_CREATION_TEMPLATE.format(
                                 out_name=i,
-                                size=self.outputs['out_size_expr'][i],
+                                size=dist_output_arg,
                                 in_name=get_out_code,
                             )
                         )

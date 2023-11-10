@@ -218,7 +218,17 @@ SpmdInfo SplitInferSpmdReverse(const DistMetaTensor& x,
 SpmdInfo SplitWithNumInferSpmdDynamic(const DistMetaTensor& x,
                                       int num,
                                       const Scalar& axis) {
-  return SplitWithNumInferSpmd(x, num, axis.to<int32_t>());
+  auto tmp = SplitWithNumInferSpmd(x, num, axis.to<int32_t>());
+  // bridge the diff concerning vector output between static and dynamic auto
+  // parallel ToDo(liuzhenhai): unify the difference between static and dynamic
+  SpmdInfo ret;
+  ret.first = tmp.first;
+  std::vector<TensorDistAttr> out_dist_attrs;
+  for (const auto& out : tmp.second) {
+    out_dist_attrs.push_back(paddle::get<0>(out));
+  }
+  ret.second = {out_dist_attrs};
+  return ret;
 }
 
 }  // namespace distributed
