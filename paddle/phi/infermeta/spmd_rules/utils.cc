@@ -274,33 +274,27 @@ void AlignDimsSharding(std::vector<TensorDistAttr>* input_attrs_ptr,
 
   const auto& process_mess = input_attrs[non_empty_index].process_mesh();
   auto has_mismatch = [&](int32_t mesh_dim) {
-    bool mismatch = false;
     for (size_t i = 0; i < n_inputs; i++) {
       if (IsEmpty(tensor_shapes[i])) {
         continue;
       }
       auto& p_a = inputs_placements[non_empty_index][mesh_dim];
       auto& p_b = inputs_placements[i][mesh_dim];
-      if (!p_a->is_shard()) {
-        if (!PlacementEqual(p_a, p_b)) {
-          mismatch = true;
-          break;
+      if (p_a->is_shard() && p_b->is_shard()) {
+        auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
+        auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
+        auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
+        auto b_axis = axis_names[i][b_shard->get_axis()];
+        if (a_axis != b_axis) {
+          return true;
         }
       }
-      if (!p_b->is_shard()) {
-        mismatch = true;
-        break;
-      }
-      auto a_shard = std::dynamic_pointer_cast<ShardStatus>(p_a);
-      auto b_shard = std::dynamic_pointer_cast<ShardStatus>(p_b);
-      auto a_axis = axis_names[non_empty_index][a_shard->get_axis()];
-      auto b_axis = axis_names[i][b_shard->get_axis()];
-      if (a_axis != b_axis) {
-        mismatch = true;
-        break;
+
+      if (!PlacementEqual(p_a, p_b)) {
+        return true;
       }
     }
-    return mismatch;
+    return false;
   };
 
   // a dim can not be sharded twice along diffrent mesh_dim

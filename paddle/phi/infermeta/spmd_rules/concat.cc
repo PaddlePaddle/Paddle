@@ -17,6 +17,8 @@ limitations under the License. */
 #include <limits>
 #include <set>
 
+#include "glog/logging.h"
+
 #include "paddle/phi/infermeta/spmd_rules/elementwise.h"
 #include "paddle/phi/infermeta/spmd_rules/utils.h"
 
@@ -86,7 +88,11 @@ SpmdInfo ConcatInferSpmd(const std::vector<DistMetaTensor>& x, int axis) {
   AlignDimsSharding(
       &input_attrs, tensor_shapes, axis_names, {}, align_axis, true);
 
-  return {{input_attrs}, {input_attrs[non_empty_index]}};
+  auto out_dist_attr =
+      CopyTensorDistAttrForOutput(input_attrs[non_empty_index]);
+  out_dist_attr.set_dims_mapping(input_attrs[non_empty_index].dims_mapping());
+  VLOG(4) << "concat out " << out_dist_attr.to_string();
+  return {{input_attrs}, {out_dist_attr}};
 }
 
 SpmdInfo ConcatInferSpmdReverse(const std::vector<DistMetaTensor>& x,
