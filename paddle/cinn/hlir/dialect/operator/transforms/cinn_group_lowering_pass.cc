@@ -148,8 +148,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
-
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
+        auto group1 =
+            std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
@@ -173,9 +174,9 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
-        for (size_t i = 0; i < group->output_values.size(); ++i) {
-          vec_types.push_back(group->output_values[i].type());
-          codegen2orig[value2id.at(group->output_values[i])] = i;
+        for (size_t i = 0; i < group1->output_values.size(); ++i) {
+          vec_types.push_back(group1->output_values[i].type());
+          codegen2orig[value2id.at(group1->output_values[i])] = i;
         }
 
         ::pir::Operation* cinn_op =
