@@ -422,14 +422,18 @@ def has_fetch_operations(
     """
 
     fetch_count = 0
+    mismatch_count = 0
     for op in block.ops:
         if op.name() == fetch_op:
-            fetch_count += 1
             if op.operand_source(0) not in fetch_targets:
-                raise Exception(
-                    "There is a fetch op in Program which will fetch variable that is not belong to fetch_targets."
-                )
-
+                mismatch_count += 1
+                continue
+            fetch_count += 1
+    warnings.warn(
+        "There are {} fetch ops in Program which are not responsible for the fetch targets that you have passed in fetch_list".format(
+            mismatch_count
+        )
+    )
     if fetch_count > 0 and fetch_count != len(fetch_targets):
         raise Exception(
             "Fetch operations in program do not match 'fetch_targets'"
