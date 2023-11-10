@@ -105,6 +105,7 @@ def generate_data(shape, dtype='int64'):
 class BaseTest(unittest.TestCase):
     """Test in each `PLACES` and in `static/dygraph`"""
 
+    @test_with_pir_api
     def _test_static_api(
         self,
         func_paddle,
@@ -129,8 +130,6 @@ class BaseTest(unittest.TestCase):
             split_numpy: `hsplit`, `vsplit`, `dsplit` should convert num_or_sections in paddle to indices_or_sections in numpy.
                 For test error, `split_numpy` is None and skip compare result, ensure the error only raised from paddle.
         """
-    @test_with_pir_api
-    def test_static_api(self):
         paddle.enable_static()
 
         for place in PLACES:
