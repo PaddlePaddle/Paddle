@@ -962,7 +962,7 @@
   backward : rrelu_grad
 
 - op : set_value_
-  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes, int64_t[] shape, Scalar[] values)
+  args : (Tensor x, IntArray starts, IntArray ends, IntArray steps, int[] axes, int[] decrease_axes, int[] none_axes, int[] shape, Scalar[] values)
   output : Tensor(out)
   inplace: (x -> out)
   infer_meta :
@@ -973,7 +973,7 @@
   backward: set_value__grad
 
 - op : set_value_with_tensor_
-  args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  args : (Tensor x, Tensor values, IntArray starts, IntArray ends, IntArray steps, int[] axes, int[] decrease_axes, int[] none_axes)
   output : Tensor(out)
   inplace: (x -> out)
   infer_meta:

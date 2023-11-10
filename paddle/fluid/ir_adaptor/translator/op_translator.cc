@@ -2171,7 +2171,7 @@ struct SetValueOpTranscriber : public OpTranscriber {
 struct SetValueWithTensorOpTranscriber : public SetValueOpTranscriber {
   pir::OpInfo LoopkUpOpInfo(pir::IrContext* ctx,
                             const OpDesc& op_desc) override {
-    std::string target_op_name = dialect::SetValueWithTensorOp::name();
+    std::string target_op_name = dialect::SetValueWithTensor_Op::name();
     const auto& op_info = ctx->GetRegisteredOpInfo(target_op_name);
     if (!op_info) {
       IR_THROW(
