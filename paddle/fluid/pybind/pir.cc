@@ -762,16 +762,16 @@ void BindOpResult(py::module *m) {
                                 /*default_value=*/true);
           })
       .def_property(
-          "is_persistable",
+          "persistable",
           [](OpResult &self) {
             return GetOpResultBoolAttr(self, kAttrIsPersisable);
           },
-          [](OpResult &self, bool is_persistable) {
+          [](OpResult &self, bool persistable) {
             // NOTE(Aurelius84): For other OpResult, set theirs
-            // is_persistable default value as false.
+            // persistable default value as false.
             SetOpResultBoolAttr(self,
                                 kAttrIsPersisable,
-                                is_persistable,
+                                persistable,
                                 /*default_value=*/false);
           })
       .def_property(

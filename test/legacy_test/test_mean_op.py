@@ -23,7 +23,6 @@ from test_sum_op import TestReduceOPTensorAxisBase
 import paddle
 from paddle import base
 from paddle.base import Program, core, program_guard
-from paddle.base.framework import in_pir_mode
 from paddle.pir_utils import test_with_pir_api
 
 np.random.seed(10)
@@ -577,10 +576,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data = paddle.static.data('data', [3, 4, 5], dtype)
-        if in_pir_mode():
-            data.is_persistable = True
-        else:
-            data.persistable = True
+        data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
@@ -596,10 +592,7 @@ class TestMeanDoubleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data = paddle.static.data('data', [3, 4, 5], dtype)
-        if in_pir_mode():
-            data.is_persistable = True
-        else:
-            data.persistable = True
+        data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
@@ -629,10 +622,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data = paddle.static.data('data', [3, 4, 5], dtype)
-        if in_pir_mode():
-            data.is_persistable = True
-        else:
-            data.persistable = True
+        data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 
@@ -648,10 +638,7 @@ class TestMeanTripleGradCheck(unittest.TestCase):
         dtype = np.float32
 
         data = paddle.static.data('data', [3, 4, 5], dtype)
-        if in_pir_mode():
-            data.is_persistable = True
-        else:
-            data.persistable = True
+        data.persistable = True
         out = paddle.mean(data)
         data_arr = np.random.uniform(-1, 1, data.shape).astype(dtype)
 

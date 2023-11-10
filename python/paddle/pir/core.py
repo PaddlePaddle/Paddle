@@ -282,7 +282,7 @@ def create_parameter(
         init_result = initializer(
             parameter_meta, startup_program.global_block()
         )
-        init_result.is_persistable = True
+        init_result.persistable = True
         set_parameter(init_result, op_result_name)
 
     main_program.move_parameters_from(startup_program)
@@ -290,7 +290,7 @@ def create_parameter(
         param = get_parameter(op_result_name, dtype, shape)
         trainable = kwargs.get('trainable', True)
         param.stop_gradient = not trainable
-        param.is_persistable = True
+        param.persistable = True
 
     return param
 
