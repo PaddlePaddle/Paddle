@@ -112,22 +112,20 @@ std::vector<pir::Operation*> GetOpListNotIncludeYield(
 
 std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
   ::pir::IrContext* ctx = ::pir::IrContext::Instance();
-  std::cerr << "in cinn goup lowering\n";
+
   ctx->GetOrRegisterDialect<cinn::dialect::RuntimeDialect>();
   ctx->GetOrRegisterDialect<cinn::dialect::OperatorDialect>();
   ctx->GetOrRegisterDialect<paddle::dialect::KernelDialect>();
-  std::cerr << "in cinn goup lowering1\n";
+
   std::string jit_op_name = cinn::dialect::JitKernelOp::name();
   ::pir::OpInfo op_info = ctx->GetRegisteredOpInfo(jit_op_name);
 
-  std::cerr << "in cinn goup lowering2\n";
   auto ir_program = std::make_unique<::pir::Program>(ctx);
   std::unordered_map<pir::Value, pir::Value> value_map;
 
-  std::cerr << "in cinn goup lowering3\n";
   auto target = cinn::common::DefaultNVGPUTarget();
   auto scope = cinn::hlir::framework::BuildScope(target, *program);
-  std::cerr << "in group lowering\n";
+
   for (auto it = program->block()->begin(); it != program->block()->end();
        ++it) {
     if ((*it)->isa<cinn::dialect::GroupOp>()) {
@@ -150,15 +148,8 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         auto ir_compiler = std::make_shared<cinn::hlir::framework::PirCompiler>(
             *program, target, scope);
         hlir::framework::PirCompilerManager::Instance().insert(ir_compiler);
-        auto group1 =
-            std::make_shared<cinn::hlir::framework::pir::Group>(group->ops);
-        group1->output_ops = group->output_ops;
-        std::cerr << "before compile\n";
-        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group1});
 
-        std::cerr << "group !!!!!!\t" << group1->output_values.size()
-                  << std::endl;
-
+        auto fn_ptr_res = ir_compiler->BuildCUDAJITInfo({group});
         std::unordered_map<std::string, ::pir::Attribute> op_attrs{
             {cinn::dialect::JitKernelOp::kAttrName,
              cinn::dialect::CUDAJITInfoAttribute::get(ctx, fn_ptr_res[0])},
@@ -182,17 +173,13 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         std::unordered_map<size_t, size_t> codegen2orig;
 
         std::vector<pir::Type> vec_types;
-        for (size_t i = 0; i < group1->output_values.size(); ++i) {
-          vec_types.push_back(group1->output_values[i].type());
-          codegen2orig[value2id.at(group1->output_values[i])] = i;
+        for (size_t i = 0; i < group->output_values.size(); ++i) {
+          vec_types.push_back(group->output_values[i].type());
+          codegen2orig[value2id.at(group->output_values[i])] = i;
         }
-
-        std::cerr << "out size " << vec_types.size() << std::endl;
 
         ::pir::Operation* cinn_op =
             ::pir::Operation::Create(vec_new_ins, op_attrs, vec_types, op_info);
-
-        std::cerr << "cinn op out " << cinn_op->num_results() << std::endl;
 
         for (size_t i = 0; i < group_op.num_results(); ++i) {
           value_map[group_op.result(i)] = cinn_op->result(codegen2orig.at(i));
@@ -204,7 +191,6 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
     } else {
       std::vector<pir::Value> vec_ins;
 
-      std::cerr << "name " << (*it)->name() << std::endl;
       for (size_t i = 0; i < (*it)->num_operands(); ++i) {
         if ((*it)->operand_source(i)) {
           vec_ins.push_back(value_map.at((*it)->operand_source(i)));
@@ -213,25 +199,19 @@ std::unique_ptr<pir::Program> CINNGroupLoweringPass(::pir::Program* program) {
         }
       }
 
-      std::cerr << "11 " << std::endl;
       std::vector<pir::Type> vec_types;
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         vec_types.push_back((*it)->result(i).type());
       }
 
-      std::cerr << "12 " << std::endl;
       ::pir::OpInfo info1 = ctx->GetRegisteredOpInfo((*it)->name());
       ::pir::Operation* op = ::pir::Operation::Create(
           vec_ins, (*it)->attributes(), vec_types, info1);
 
-      std::cerr << "13 " << std::endl;
       ir_program->block()->push_back(op);
-      std::cerr << "131 " << std::endl;
       for (size_t i = 0; i < (*it)->num_results(); ++i) {
         value_map[(*it)->result(i)] = op->result(i);
       }
-
-      std::cerr << "15 " << std::endl;
     }
   }
   return ir_program;
