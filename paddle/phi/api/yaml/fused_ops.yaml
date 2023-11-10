@@ -194,6 +194,16 @@
     data_type : x
   optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
 
+- op : fused_multi_transformer_int8_xpu
+  args : (Tensor x, Tensor[] ln_scale, Tensor[] ln_bias, Tensor[] qkv_in_max,  Tensor[] qkvw, Tensor[] qkv_bias, Tensor[] qkv_scales, Tensor[] out_linear_in_max, Tensor[] out_linear_w, Tensor[] out_linear_bias, Tensor[] out_linear_scales, Tensor[] ffn_ln_scale, Tensor[] ffn_ln_bias, Tensor[] ffn1_in_max, Tensor[] ffn1_weight, Tensor[] ffn1_bias, Tensor[] ffn1_scales, Tensor[] ffn2_in_max, Tensor[] ffn2_weight, Tensor[] ffn2_bias, Tensor[] ffn2_scales, Tensor[] cache_kv, Tensor[] pre_caches, Tensor rotary_pos_emb, Tensor time_step, Tensor seq_lengths, Tensor src_mask, Tensor gather_index, Tensor max_buffer, bool pre_layer_norm, int rotary_emb_dims, float epsilon, float dropout_rate, bool is_test, str dropout_implementation, str act_method, bool trans_qkvw, int ring_id, int gather_axis)
+  output : Tensor(out), Tensor[](cache_kv_out){out_linear_w.size()}
+  infer_meta :
+    func : FusedMultiTransformerInt8XpuInferMeta
+  kernel :
+    func : fused_multi_transformer_int8_xpu
+    data_type : x
+  optional : cache_kv, pre_caches, rotary_pos_emb, time_step, seq_lengths, src_mask, gather_index
+
 - op : fused_rotary_position_embedding
   args : (Tensor q, Tensor k, Tensor v, Tensor sin, Tensor cos, Tensor position_ids, bool use_neox_rotary_style = true)
   output : Tensor(out_q), Tensor(out_k), Tensor(out_v)
