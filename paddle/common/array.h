@@ -88,55 +88,55 @@ class Array {
   T data_[N] = {};
 };
 
-template <typename T>
-class Array<T, 0> {
- public:
-  static constexpr size_t kSize = 0;
+// template <typename T>
+// class Array<T, 0> {
+//  public:
+//   static constexpr size_t kSize = 0;
 
-  HOSTDEVICE inline Array() {}
+//   HOSTDEVICE inline Array() {}
 
-  HOSTDEVICE inline void Fill(const T &val) {}
+//   HOSTDEVICE inline void Fill(const T &val) {}
 
-  HOSTDEVICE inline constexpr T *Get() const { return nullptr; }
+//   HOSTDEVICE inline constexpr T *Get() const { return nullptr; }
 
-  // Add constexpr to GetMutable() cause warning in MAC
-  HOSTDEVICE inline T *GetMutable() { return nullptr; }
+//   // Add constexpr to GetMutable() cause warning in MAC
+//   HOSTDEVICE inline T *GetMutable() { return nullptr; }
 
-  HOSTDEVICE inline T &operator[](size_t) {
-#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
-    // HIP and CUDA will have compile error, if use "obj()"
-    // function declared in block scope cannot have 'static' storage class
-    static T obj{};
-    return obj;
-#else
-    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
-#endif
-  }
+//   HOSTDEVICE inline T &operator[](size_t) {
+// #if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+//     // HIP and CUDA will have compile error, if use "obj()"
+//     // function declared in block scope cannot have 'static' storage class
+//     static T obj{};
+//     return obj;
+// #else
+//     PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+// #endif
+//   }
 
-  HOSTDEVICE inline const T &operator[](size_t) const {
-#if defined(__HIPCC__) || defined(__CUDA_ARCH__)
-    // HIP and CUDA will have compile error, if use "obj()"
-    // function declared in block scope cannot have 'static' storage class
-    static const T obj{};
-    return obj;
-#else
-    PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
-#endif
-  }
+//   HOSTDEVICE inline const T &operator[](size_t) const {
+// #if defined(__HIPCC__) || defined(__CUDA_ARCH__)
+//     // HIP and CUDA will have compile error, if use "obj()"
+//     // function declared in block scope cannot have 'static' storage class
+//     static const T obj{};
+//     return obj;
+// #else
+//     PADDLE_THROW(common::errors::Unavailable("Array<T, 0> has no element."));
+// #endif
+//   }
 
-  HOSTDEVICE inline T &at(size_t i) { return (*this)[i]; }
+//   HOSTDEVICE inline T &at(size_t i) { return (*this)[i]; }
 
-  HOSTDEVICE inline const T &at(size_t i) const { return (*this)[i]; }
+//   HOSTDEVICE inline const T &at(size_t i) const { return (*this)[i]; }
 
-  HOSTDEVICE constexpr size_t size() const { return 0; }
+//   HOSTDEVICE constexpr size_t size() const { return 0; }
 
-  HOSTDEVICE constexpr bool operator==(const Array<T, 0> &other) const {
-    return true;
-  }
+//   HOSTDEVICE constexpr bool operator==(const Array<T, 0> &other) const {
+//     return true;
+//   }
 
-  HOSTDEVICE constexpr bool operator!=(const Array<T, 0> &other) const {
-    return false;
-  }
-};
+//   HOSTDEVICE constexpr bool operator!=(const Array<T, 0> &other) const {
+//     return false;
+//   }
+// };
 
 }  // namespace common

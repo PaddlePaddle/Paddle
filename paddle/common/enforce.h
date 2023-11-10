@@ -62,16 +62,16 @@ namespace enforce {
 #define UNLIKELY(condition) (condition)
 #endif
 
-#ifdef __GNUC__
-inline std::string demangle(std::string name) {
-  int status = -4;  // some arbitrary value to eliminate the compiler warning
-  std::unique_ptr<char, void (*)(void*)> res{
-      abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
-  return (status == 0) ? res.get() : name;
-}
-#else
-inline std::string demangle(std::string name) { return name; }
-#endif
+// #ifdef __GNUC__
+// inline std::string demangle(std::string name) {
+//   int status = -4;  // some arbitrary value to eliminate the compiler warning
+//   std::unique_ptr<char, void (*)(void*)> res{
+//       abi::__cxa_demangle(name.c_str(), NULL, NULL, &status), std::free};
+//   return (status == 0) ? res.get() : name;
+// }
+// #else
+// inline std::string demangle(std::string name) { return name; }
+// #endif
 
 #if defined _WIN32 && defined PADDLE_ON_INFERENCE && defined PADDLE_NO_PYTHON
 #define HANDLE_THE_ERROR try {
