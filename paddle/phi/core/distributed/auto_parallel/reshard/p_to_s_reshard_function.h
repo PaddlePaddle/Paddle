@@ -13,22 +13,21 @@
 // limitations under the License.
 
 #pragma once
+#include "paddle/phi/core/distributed/auto_parallel/reshard/reshard_function.h"
 
-#include <memory>
-#include "paddle/phi/common/place.h"
-#include "paddle/pir/core/dll_decl.h"
+namespace phi {
+namespace distributed {
 
-namespace paddle {
-namespace framework {
-class Scope;
-}
-}  // namespace paddle
+class PToSReshardFunction final : public ReshardFunction {
+ public:
+  bool IsSuitable(const DistTensor& in,
+                  const TensorDistAttr& out_dist_attr) override;
 
-namespace pir {
+  void Eval(DeviceContext* dev_ctx,
+            const DistTensor& in,
+            const TensorDistAttr& out_dist_attr,
+            DistTensor* out) override;
+};
 
-class Pass;
-
-IR_API std::unique_ptr<Pass> CreateConstantFoldingPass(
-    const phi::Place& place, paddle::framework::Scope* scope);
-
-}  // namespace pir
+}  // namespace distributed
+}  // namespace phi
