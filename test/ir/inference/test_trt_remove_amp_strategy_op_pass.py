@@ -18,9 +18,9 @@ import numpy as np
 
 import paddle
 import paddle.nn.functional as F
-from paddle.fluid import core
-from paddle.fluid.executor import global_scope
-from paddle.fluid.framework import IrGraph
+from paddle.base import core
+from paddle.base.executor import global_scope
+from paddle.base.framework import IrGraph
 from paddle.inference import Config, PrecisionType, create_predictor
 from paddle.static.quantization import QuantizationTransformPassV2
 
