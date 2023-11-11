@@ -8,7 +8,6 @@ register_operators(
   fused_bn_activation_op
   conv_fusion_op
   fusion_conv_inception_op
-  self_dp_attention_op
   yolo_box_head_op
   yolo_box_post_op
   fusion_group_op
@@ -25,15 +24,6 @@ register_operators(
   resnet_basic_block_op)
 
 op_library(fusion_lstm_op)
-if(WITH_AVX
-   AND AVX512F_FOUND
-   AND AVX512F_FLAG
-   AND WITH_MKL)
-  op_library(self_dp_attention_op)
-  set_target_properties(
-    self_dp_attention_op
-    PROPERTIES COMPILE_FLAGS "-Wno-maybe-uninitialized -mfma ${AVX512F_FLAG}")
-endif()
 
 if(WITH_XPU)
   op_library(resnet_basic_block_op)

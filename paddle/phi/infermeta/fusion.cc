@@ -2175,6 +2175,136 @@ void FusedFCElementwiseLayerNormInferMeta(const MetaTensor& x,
   out->share_lod(x);
 }
 
+void FusionRepeatedFCReluInferMeta(const MetaTensor& x,
+                                   const std::vector<const MetaTensor*>& w,
+                                   const std::vector<const MetaTensor*>& bias,
+                                   std::vector<MetaTensor*> relu_out,
+                                   MetaTensor* out) {
+  auto sz = w.size();
+  PADDLE_ENFORCE_GT(sz,
+                    1UL,
+                    phi::errors::InvalidArgument(
+                        "Inputs(W) of FusionRepeatedFCReluOp should "
+                        "be greater than 1, but received value is %d.",
+                        sz));
+  PADDLE_ENFORCE_EQ(
+      bias.size(),
+      sz,
+      phi::errors::InvalidArgument(
+          "Size of inputs(Bias) of FusionRepeatedFCReluOp should be "
+          "equal to inputs size %d, but received value is %d.",
+          sz,
+          bias.size()));
+  PADDLE_ENFORCE_EQ(
+      relu_out.size(),
+      sz - 1,
+      phi::errors::InvalidArgument(
+          "Size of output(ReluOut) of FusionRepeatedFCReluOp should "
+          "be equal to inputs size minus one %d, but received value is %d",
+          sz - 1,
+          relu_out.size()));
+
+  auto i_dims = x.dims();
+  PADDLE_ENFORCE_EQ(
+      i_dims.size(),
+      2,
+      phi::errors::InvalidArgument(
+          "Input shape size should be 2, but received value is %d.",
+          i_dims.size()));
+
+  std::vector<DDim> w_dims, b_dims;
+  w_dims.reserve(w.size());
+  std::transform(w.begin(),
+                 w.end(),
+                 std::back_inserter(w_dims),
+                 [](const MetaTensor* var) { return var->dims(); });
+
+  b_dims.reserve(bias.size());
+  std::transform(bias.begin(),
+                 bias.end(),
+                 std::back_inserter(b_dims),
+                 [](const MetaTensor* var) { return var->dims(); });
+
+  PADDLE_ENFORCE_EQ(w_dims.size(),
+                    b_dims.size(),
+                    phi::errors::InvalidArgument(
+                        "Shape size of weight and bias should be equal, but "
+                        "weight size is %d, bias size is %d.",
+                        w_dims.size(),
+                        b_dims.size()));
+  PADDLE_ENFORCE_EQ(i_dims[1],
+                    w_dims[0][0],
+                    phi::errors::InvalidArgument(
+                        "input width should be equal to weight height, but "
+                        "input width is %d, weight height is %d.",
+                        i_dims[1],
+                        w_dims[0][0]));
+
+  for (size_t i = 1; i < sz; ++i) {
+    PADDLE_ENFORCE_EQ(w_dims[i].size(),
+                      2,
+                      phi::errors::InvalidArgument(
+                          "Every weight shape size should be 2, but received "
+                          "w_dims[%d].size() = %d.",
+                          i,
+                          w_dims[i].size()));
+    PADDLE_ENFORCE_EQ(
+        phi::product(b_dims[i]),
+        w_dims[i][1],
+        phi::errors::InvalidArgument(
+            "The length of Bias must be equal with w_dims[1], but received "
+            "product(b_dims[%d]) = %d, w_dims[%d][1] = %d.",
+            i,
+            phi::product(b_dims[i]),
+            i,
+            w_dims[i][1]));
+  }
+  out->set_dims({i_dims[0], w_dims[sz - 1][1]});
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
+}
+
+void FusionSquaredMatSubInferMeta(const MetaTensor& x,
+                                  const MetaTensor& y,
+                                  const float scalar,
+                                  MetaTensor* squared_x,
+                                  MetaTensor* squared_y,
+                                  MetaTensor* squared_xy,
+                                  MetaTensor* out) {
+  auto x_dims = x.dims();
+  auto y_dims = y.dims();
+  PADDLE_ENFORCE_EQ(
+      x_dims.size(),
+      y_dims.size(),
+      phi::errors::InvalidArgument("The input tensor X's dims size should "
+                                   "be equal to Y's. But received X's "
+                                   "dims size = %d, Y's dims size = %d.",
+                                   x_dims.size(),
+                                   y_dims.size()));
+  PADDLE_ENFORCE_EQ(x_dims.size(),
+                    2,
+                    phi::errors::InvalidArgument(
+                        "The input tensor X's dims size should be 2. But "
+                        "received X's dims size = %d.",
+                        x_dims.size()));
+  PADDLE_ENFORCE_EQ(
+      x_dims[1],
+      y_dims[0],
+      phi::errors::InvalidArgument("The input tensor X's dims[1] should "
+                                   "be equal to Y's dims[0]. But received "
+                                   "X's dims[1] = %d, Y's dims[0] = %d.",
+                                   x_dims[1],
+                                   y_dims[0]));
+  squared_x->set_dims(x_dims);
+  squared_x->set_dtype(x.dtype());
+  squared_y->set_dims(y_dims);
+  squared_y->set_dtype(x.dtype());
+  squared_xy->set_dims({x_dims[0], y_dims[1]});
+  squared_xy->set_dtype(x.dtype());
+  out->set_dims({x_dims[0], y_dims[1]});
+  out->set_dtype(x.dtype());
+}
+
 void FusionGRUInferMeta(const MetaTensor& x,
                         const MetaTensor& h0,
                         const MetaTensor& weight_x,
@@ -2462,6 +2592,24 @@ void FusionSeqExpandConcatFCInferMeta(const std::vector<const MetaTensor*>& x,
   // fcout should be reshape when run since can not get lod in infershape
   // explicit share the ref lod
   out->share_lod(*x[0]);
+}
+
+void SelfDPAttenInferMeta(const MetaTensor& x,
+                          const float alpha,
+                          const int head_number,
+                          MetaTensor* out) {
+  auto dim_input = x.dims();
+  PADDLE_ENFORCE_EQ(
+      dim_input.size(),
+      5,
+      phi::errors::InvalidArgument("The size of input X dims should be 5, "
+                                   "[batchsize, tokensize, 3, nhead, headsize] "
+                                   ", but now Input X dim is:[%s] ",
+                                   dim_input));
+  DDim out_dims({dim_input[0], dim_input[1], dim_input[3], dim_input[4]});
+  out->set_dims(out_dims);
+  out->share_lod(x);
+  out->set_dtype(x.dtype());
 }
 
 void SkipLayerNormInferMeta(const MetaTensor& x,
