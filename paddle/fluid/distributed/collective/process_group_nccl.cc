@@ -898,7 +898,7 @@ void ProcessGroupNCCL::CreateNCCLEnvCache(const Place& place,
     phi::distributed::CommTaskManager::GetInstance().SetTimeout(pg_timeout_);
   });
 
-  std::string group_key = place_to_group_key_.at(key);
+  std::string group_key = place_to_group_key_.at(place_key);
   phi::distributed::CommContextManager::GetInstance().AddGroupRanks(
       group_key, global_ranks);
 
