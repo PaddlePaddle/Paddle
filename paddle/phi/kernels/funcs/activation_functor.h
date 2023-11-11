@@ -2743,9 +2743,10 @@ struct SwishGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct PowFunctor : public BaseActivationFunctor<T> {
   T factor;
-  using AttrPair = std::vector<std::pair<const char*, ELEMENT_TYPE*>>;
+  std::vector<std::pair<const char*, T*>> GetAttrs() {
+    return {{"factor", &factor}};
+  }
 
-  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
     out.device(d) = x.template cast<T>().pow(factor);  // NOLINT
@@ -2755,9 +2756,10 @@ struct PowFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct PowGradFunctor : public BaseActivationFunctor<T> {
   T factor;
-  using AttrPair = std::vector<std::pair<const char*, ELEMENT_TYPE*>>;
+  std::vector<std::pair<const char*, T*>> GetAttrs() {
+    return {{"factor", &factor}};
+  }
 
-  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
   template <typename Device,
             typename X,
             typename Out,
@@ -2774,9 +2776,9 @@ template <typename T>
 struct PowGradFunctor<ComplexType<T>>
     : public BaseActivationFunctor<ComplexType<T>> {
   ComplexType<T> factor;
-  using AttrPair = std::vector<std::pair<const char*, ComplexType<T>*>>;
-
-  typename AttrPair GetAttrs() { return {{"factor", &factor}}; }
+  std::vector<std::pair<const char*, ComplexType<T>*>> GetAttrs() {
+    return {{"factor", &factor}};
+  }
   template <typename Device,
             typename X,
             typename Out,
