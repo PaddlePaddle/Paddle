@@ -24,6 +24,7 @@ from paddle.framework import core
 from paddle.incubate.nn.functional import (
     variable_length_memory_efficient_attention,
 )
+from paddle.pir_utils import test_with_pir_api
 from paddle.static import Program, program_guard
 
 paddle.seed(2023)
@@ -60,6 +61,20 @@ def create_attn_mask(
 
 
 def naive_attention_impl(query, key, value, mask, scale):
+    batch = query.shape[0]
+    heads = query.shape[1]
+    seq_len = query.shape[2]
+    head_dim = query.shape[3]
+    kv_head = key.shape[1]
+
+    key = key.reshape([batch, kv_head, 1, seq_len, head_dim])
+    key = paddle.tile(key, [1, 1, heads // kv_head, 1, 1])
+    key = key.reshape([batch, heads, seq_len, head_dim])
+
+    value = value.reshape([batch, kv_head, 1, seq_len, head_dim])
+    value = paddle.tile(value, [1, 1, heads // kv_head, 1, 1])
+    value = value.reshape([batch, heads, seq_len, head_dim])
+
     qk_res = paddle.matmul(query, key, transpose_y=True)
     attention = qk_res * scale
     attention = attention + mask
@@ -78,6 +93,7 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 1
         self.num_head = 8
+        self.kv_num_head = 2
         self.seq_len = 64
         self.dim_head = 16
         self.seq_lens = paddle.to_tensor(
@@ -90,6 +106,12 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
         self.shape = (
             self.batch_size,
             self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.shape_kv = (
+            self.batch_size,
+            self.kv_num_head,
             self.seq_len,
             self.dim_head,
         )
@@ -111,11 +133,11 @@ class TestMemEffAttentionVariableAPI(unittest.TestCase):
         q = paddle.to_tensor(
             query, place=self.place, dtype=self.dtype, stop_gradient=False
         )
-        key = np.random.random(self.shape)
+        key = np.random.random(self.shape_kv)
         k = paddle.to_tensor(
             key, place=self.place, dtype=self.dtype, stop_gradient=False
         )
-        value = np.random.random(self.shape)
+        value = np.random.random(self.shape_kv)
         v = paddle.to_tensor(
             value, place=self.place, dtype=self.dtype, stop_gradient=False
         )
@@ -147,6 +169,7 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 3
         self.num_head = 16
+        self.kv_num_head = 2
         self.seq_len = 64
         self.dim_head = 32
         self.seq_lens = paddle.to_tensor(
@@ -159,6 +182,12 @@ class TestMemEffAPIVariableDtypeFP16(TestMemEffAttentionVariableAPI):
         self.shape = (
             self.batch_size,
             self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.shape_kv = (
+            self.batch_size,
+            self.kv_num_head,
             self.seq_len,
             self.dim_head,
         )
@@ -180,6 +209,7 @@ class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 2
         self.num_head = 8
+        self.kv_num_head = 2
         self.seq_len = 32
         self.dim_head = 128
         self.seq_lens = paddle.to_tensor(
@@ -192,6 +222,12 @@ class TestMemEffAPIVariableDtypeBF16(TestMemEffAttentionVariableAPI):
         self.shape = (
             self.batch_size,
             self.num_head,
+            self.seq_len,
+            self.dim_head,
+        )
+        self.shape_kv = (
+            self.batch_size,
+            self.kv_num_head,
             self.seq_len,
             self.dim_head,
         )
@@ -217,6 +253,7 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
         self.place = paddle.CUDAPlace(0)
         self.batch_size = 3
         self.num_head = 16
+        self.kv_num_head = 2
         self.seq_len = 64
         self.dim_head = 32
         self.seq_lens = paddle.to_tensor(
@@ -232,6 +269,12 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             self.seq_len,
             self.dim_head,
         )
+        self.shape_kv = (
+            self.batch_size,
+            self.kv_num_head,
+            self.seq_len,
+            self.dim_head,
+        )
         self.dtype = 'float16'
         self.attention_mask = create_attn_mask(
             self.dtype,
@@ -242,8 +285,8 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             * self.batch_size,
         ).numpy()
         self.q = np.random.random(self.shape).astype(self.dtype)
-        self.k = np.random.random(self.shape).astype(self.dtype)
-        self.v = np.random.random(self.shape).astype(self.dtype)
+        self.k = np.random.random(self.shape_kv).astype(self.dtype)
+        self.v = np.random.random(self.shape_kv).astype(self.dtype)
         self.scale = 1.0 / np.sqrt(self.shape[-1])
 
         self.ref_out = naive_attention_impl(
@@ -254,6 +297,7 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
             self.scale,
         )
 
+    @test_with_pir_api
     def test_all(self):
         paddle.enable_static()
         with program_guard(Program(), Program()):
@@ -261,10 +305,10 @@ class TestMemEffAPIVariableDtypeFP16Static(unittest.TestCase):
                 name="query", shape=self.shape, dtype=self.dtype
             )
             k = paddle.static.data(
-                name="key", shape=self.shape, dtype=self.dtype
+                name="key", shape=self.shape_kv, dtype=self.dtype
             )
             v = paddle.static.data(
-                name="value", shape=self.shape, dtype=self.dtype
+                name="value", shape=self.shape_kv, dtype=self.dtype
             )
             mask = paddle.static.data(
                 name="mask",

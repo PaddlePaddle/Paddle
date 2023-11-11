@@ -23,6 +23,7 @@ import paddle
 from paddle import base
 from paddle.base import core
 from paddle.base.layer_helper import LayerHelper
+from paddle.pir_utils import test_with_pir_api
 
 
 class TestElementwiseOp(OpTest):
@@ -44,11 +45,15 @@ class TestElementwiseOp(OpTest):
         self.dtype = np.float64
 
     def test_check_output(self):
-        self.check_output(check_new_ir=True)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=True
+            ['X', 'Y'],
+            'Out',
+            check_prim=self.check_prim,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_x(self):
@@ -58,7 +63,8 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -68,11 +74,13 @@ class TestElementwiseOp(OpTest):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
-            check_new_ir=True,
+            check_prim_pir=self.check_prim_pir,
+            check_pir=True,
         )
 
     def if_check_prim(self):
         self.check_prim = True
+        self.check_prim_pir = True
 
     def if_enable_cinn(self):
         pass
@@ -125,7 +133,9 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             'Out',
             no_grad_set=set("X"),
             max_relative_error=0.1,
-            check_new_ir=True,
+            check_prim=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -137,7 +147,8 @@ class TestElementwiseBF16OP(TestElementwiseOp):
             no_grad_set=set('Y'),
             max_relative_error=0.1,
             check_prim=True,
-            check_new_ir=True,
+            check_prim_pir=True,
+            check_pir=True,
         )
 
 
@@ -382,12 +393,10 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
         }
 
     def test_check_output(self):
-        self.check_output(check_dygraph=False, check_new_ir=False)
+        self.check_output(check_dygraph=False, check_pir=False)
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
-        )
+        self.check_grad(['X', 'Y'], 'Out', check_dygraph=False, check_pir=False)
 
     def test_check_grad_ingore_x(self):
         self.check_grad(
@@ -396,7 +405,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set("X"),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -406,7 +415,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseOp):
             max_relative_error=0.005,
             no_grad_set=set('Y'),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
 
@@ -442,13 +451,13 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
     def test_check_output(self):
         place = core.CUDAPlace(0)
         self.check_output_with_place(
-            place, check_dygraph=False, check_new_ir=False
+            place, check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(
-            place, ['X', 'Y'], 'Out', check_dygraph=False, check_new_ir=False
+            place, ['X', 'Y'], 'Out', check_dygraph=False, check_pir=False
         )
 
     def test_check_grad_ingore_x(self):
@@ -459,7 +468,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             'Out',
             no_grad_set=set("X"),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
     def test_check_grad_ingore_y(self):
@@ -470,7 +479,7 @@ class TestElementwiseBF16OP_broadcast_0(TestElementwiseBF16OP):
             'Out',
             no_grad_set=set('Y'),
             check_dygraph=False,
-            check_new_ir=False,
+            check_pir=False,
         )
 
 
@@ -836,11 +845,11 @@ class TestComplexElementwiseSubOp(OpTest):
         self.out = self.x - self.y
 
     def test_check_output(self):
-        self.check_output(check_new_ir=False)
+        self.check_output(check_pir=True)
 
     def test_check_grad_normal(self):
         self.check_grad(
-            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_new_ir=False
+            ['X', 'Y'], 'Out', check_prim=self.check_prim, check_pir=True
         )
 
     def test_check_grad_ingore_x(self):
@@ -849,7 +858,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set("X"),
             check_prim=self.check_prim,
-            check_new_ir=False,
+            check_pir=True,
         )
 
     def test_check_grad_ingore_y(self):
@@ -858,7 +867,7 @@ class TestComplexElementwiseSubOp(OpTest):
             'Out',
             no_grad_set=set('Y'),
             check_prim=self.check_prim,
-            check_new_ir=False,
+            check_pir=True,
         )
 
     def if_enable_cinn(self):
@@ -895,8 +904,9 @@ class TestSubtractApi(unittest.TestCase):
             y_1 = self._executed_api(x, y, name='subtract_res')
             self.assertEqual(('subtract_res' in y_1.name), True)
 
+    @test_with_pir_api
     def test_declarative(self):
-        with base.program_guard(base.Program()):
+        with paddle.static.program_guard(paddle.static.Program()):
 
             def gen_data():
                 return {
@@ -909,7 +919,10 @@ class TestSubtractApi(unittest.TestCase):
             z = self._executed_api(x, y)
             place = base.CPUPlace()
             exe = base.Executor(place)
-            z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
+            if paddle.framework.in_pir_mode():
+                z_value = exe.run(feed=gen_data(), fetch_list=[z])
+            else:
+                z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
             z_expected = np.array([1.0, -2.0, 2.0])
             self.assertEqual((z_value == z_expected).all(), True)
 

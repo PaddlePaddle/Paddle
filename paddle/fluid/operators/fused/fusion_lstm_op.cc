@@ -141,7 +141,7 @@ void FusionLSTMOp::InferShape(framework::InferShapeContext* ctx) const {
   ctx->SetOutputDim("Cell", out_dims);
   ctx->ShareLoD("X", "Hidden");
   ctx->ShareLoD("X", "Cell");
-  int xx_width;
+  int xx_width = 0;
   if (ctx->Attrs().Get<bool>("use_seq")) {
     xx_width = static_cast<int>(wx_dims[1]);
   } else {

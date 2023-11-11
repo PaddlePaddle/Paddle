@@ -309,5 +309,96 @@ SpmdInfo ElementwiseBinaryInferSpmdReverse(const DistMetaTensor& x,
   return {{x_dist_attr_dst, y_dist_attr_dst}, {out_dist_attr}};
 }
 
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out_grad) {
+  return {{out_grad.dist_attr(), out_grad.dist_attr()}, {out_grad.dist_attr()}};
+}
+
+SpmdInfo ElementwiseUnaryGradInferSpmd(const DistMetaTensor& x,
+                                       const DistMetaTensor& out,
+                                       const DistMetaTensor& out_grad) {
+  return {{out_grad.dist_attr(), out_grad.dist_attr(), out_grad.dist_attr()},
+          {out_grad.dist_attr()}};
+}
+
+SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out_grad,
+                                        int64_t axis) {
+  TensorDistAttr x_dist_attr = out_grad.dist_attr();
+  TensorDistAttr y_dist_attr = out_grad.dist_attr();
+  TensorDistAttr x_grad_dist_attr = out_grad.dist_attr();
+  TensorDistAttr y_grad_dist_attr = out_grad.dist_attr();
+
+  PADDLE_ENFORCE_GE(
+      out_grad.dims().size(),
+      x.dims().size(),
+      phi::errors::InvalidArgument("If being broadcast, the dims of out_grad "
+                                   "must larger or equal to the inputs."
+                                   "But we get the rank of output as [%d] and "
+                                   "the rank of input as [%d].",
+                                   out_grad.dims().size(),
+                                   x.dims().size()));
+
+  PADDLE_ENFORCE_GE(
+      out_grad.dims().size(),
+      y.dims().size(),
+      phi::errors::InvalidArgument("If being broadcast, the dims of out_grad "
+                                   "must larger or equal to the inputs."
+                                   "But we get the rank of output as [%d] and "
+                                   "the rank of input as [%d].",
+                                   out_grad.dims().size(),
+                                   y.dims().size()));
+
+  // The backward rule of elementwise follows the princple: the dist_attr
+  // of input should equal to out_grad.
+  // Caution the special case when the inputs calculate together with different
+  // shape it means one of the input is broadcast to same shape with the other
+  // first. When doing backward the input_grad with broadcast input is in
+  // partial status, which need to do communicate and get the right result.
+  if (x.dims() != out_grad.dims()) {
+    int64_t diff = out_grad.dims().size() - x.dims().size();
+    auto dims_mapping = x_dist_attr.dims_mapping();
+    dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
+    x_dist_attr.set_dims_mapping(dims_mapping);
+    x_grad_dist_attr.set_dims_mapping(dims_mapping);
+    for (int64_t i = 0; i < diff; ++i) {
+      if (out_grad.dist_attr().dims_mapping()[i] != -1) {
+        x_grad_dist_attr.set_partial_status(
+            std::vector<int64_t>{out_grad.dist_attr().dims_mapping()[i]});
+      }
+    }
+  }
+
+  if (y.dims() != out_grad.dims()) {
+    int64_t diff = out_grad.dims().size() - y.dims().size();
+    auto dims_mapping = y_dist_attr.dims_mapping();
+    dims_mapping.erase(dims_mapping.begin(), dims_mapping.begin() + diff);
+    y_dist_attr.set_dims_mapping(dims_mapping);
+    y_grad_dist_attr.set_dims_mapping(dims_mapping);
+    for (int64_t i = 0; i < diff; ++i) {
+      if (out_grad.dist_attr().dims_mapping()[i] != -1) {
+        y_grad_dist_attr.set_partial_status(
+            std::vector<int64_t>{out_grad.dist_attr().dims_mapping()[i]});
+      }
+    }
+  }
+
+  return {{x_dist_attr, y_dist_attr, out_grad.dist_attr()},
+          {x_grad_dist_attr, y_grad_dist_attr}};
+}
+
+SpmdInfo ElementwiseBinaryGradInferSpmd(const DistMetaTensor& x,
+                                        const DistMetaTensor& y,
+                                        const DistMetaTensor& out,
+                                        const DistMetaTensor& out_grad,
+                                        int64_t axis) {
+  // The out's dist_attr is the same with out_grad's dist_attr, reuse
+  // ElementwiseBinaryGradInferSpmd(x, y, out_grad, axis) to infer dist_attrs of
+  // {{x, y, out_grad}, {x_grad, y_grad}}, then insert out's dist_attr into it.
+  SpmdInfo info = ElementwiseBinaryGradInferSpmd(x, y, out_grad, axis);
+  info.first.emplace(info.first.begin() + 2, out_grad.dist_attr());
+  return info;
+}
 }  // namespace distributed
 }  // namespace phi

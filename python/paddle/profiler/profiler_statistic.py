@@ -48,7 +48,7 @@ _CommunicationOpName = ['allreduce', 'broadcast', 'rpc']
 
 class SortedKeys(Enum):
     r"""
-    SortedKeys is used to specify how to sort items when printing :ref:`summary <api_paddle_profiler_profiler_summary>` table.
+    SortedKeys is used to specify how to sort items when printing ``paddle.profiler.Profiler.summary`` table.
 
     The meaning of each SortedKeys is as following
 

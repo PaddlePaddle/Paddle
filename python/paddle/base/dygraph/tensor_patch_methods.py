@@ -512,6 +512,129 @@ def monkey_patch_tensor():
             warnings.filterwarnings("ignore", category=UserWarning)
             return transform(self, device, dtype, blocking)
 
+    @framework.dygraph_only
+    def to(self, *args, **kwargs):
+        """
+        Performs Tensor dtype and/or device conversion. A paddle.dtype and place
+        are inferred from the arguments of ``self.to(*args, **kwargs)``.There are
+        three ways to call `to`:
+
+            1. to(dtype, blocking=True)
+            2. to(device, dtype=None, blocking=True)
+            3. to(other, blocking=True)
+
+        Returns:
+            Tensor: self
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+                >>> tensorx = paddle.to_tensor([1,2,3])
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+
+                >>> tensorx = tensorx.to("cpu")
+                >>> print(tensorx.place)
+                Place(cpu)
+
+                >>> tensorx = tensorx.to("float32")
+                >>> print(tensorx.dtype)
+                paddle.float32
+
+                >>> tensorx = tensorx.to("gpu", "int16")
+                >>> print(tensorx)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [1, 2, 3])
+                >>> tensor2 = paddle.to_tensor([4,5,6])
+                >>> tensor2
+                Tensor(shape=[3], dtype=int64, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+                >>> tensor2 = tensor2.to(tensorx)
+                >>> print(tensor2)
+                Tensor(shape=[3], dtype=int16, place=Place(gpu:0), stop_gradient=True,
+                    [4, 5, 6])
+        """
+        device = None
+        dtype = None
+        blocking = None
+        size_args = len(args)
+        size_kwargs = len(kwargs)
+
+        def get_device_dtype_from_tensor(other):
+            if other is not None:
+                device = str(other.place)[6:-1]
+                dtype = other.dtype
+                return device, dtype
+            else:
+                return None, None
+
+        if size_args + size_kwargs > 3 or size_args + size_kwargs == 0:
+            raise TypeError(
+                "to() received too mant arguments - expected one of:\n  \
+                * (Union[str, paddle.CPUPlace(), paddle.CUDAPlace(), paddle.CUDAPinnedPlace(), paddle.XPUPlace(), paddle.CustomPlace()] \
+                device, Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (Union[str, paddle.dtype, numpy.dtype] dtype, bool blocking)\n \
+                * (paddle.Tensor other, bool blocking) "
+            )
+        valid_keys = {"device", "dtype", "blocking", "other"}
+        valid_dtypes = [
+            "bfloat16",
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+            "complex64",
+            "complex128",
+            "bool",
+        ]
+        invalid_keys = set(kwargs.keys()) - valid_keys
+        if len(invalid_keys) != 0:
+            raise TypeError(
+                "to() got an unexpected keyword argument "
+                + list(invalid_keys)[0]
+            )
+        if size_args > 0:
+            if isinstance(args[0], paddle.Tensor):
+                device, dtype = get_device_dtype_from_tensor(args[0])
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            elif (
+                isinstance(args[0], (paddle.dtype, np.dtype))
+                or isinstance(args[0], str)
+                and args[0].lower() in valid_dtypes
+            ):
+                dtype = args[0]
+                if size_args == 2:
+                    blocking = args[1]
+                else:
+                    blocking = kwargs.get("blocking", None)
+            else:
+                device = args[0]
+                if size_args == 2:
+                    dtype = args[1]
+                elif size_args == 3:
+                    dtype, blocking = args[1], args[2]
+                else:
+                    dtype = kwargs.get("dtype", None)
+                    blocking = kwargs.get("blocking", None)
+        else:
+            device = kwargs.get("device", None)
+            dtype = kwargs.get("dtype", None)
+            blocking = kwargs.get("blocking", None)
+            if device is None and dtype is None:
+                device, dtype = get_device_dtype_from_tensor(
+                    kwargs.get("other", None)
+                )
+        return self._to(device, dtype, blocking)
+
     @property
     def grad(self):
         """
@@ -869,7 +992,7 @@ def monkey_patch_tensor():
         if self.place._equals(res_place):
             return self
         else:
-            res = self._copy_to(res_place, True)
+            res = self._copy_to(res_place, blocking)
             res.stop_gradient = self.stop_gradient
             res.persistable = self.persistable
             return res
@@ -965,6 +1088,38 @@ def monkey_patch_tensor():
     def __hash__(self):
         return hash(id(self))
 
+    @framework.dygraph_only
+    def coalesce(self, name=None):
+        r"""
+        the coalesced operator include sorted and merge, after coalesced, the indices of x is sorted and unique.
+
+        Parameters:
+            x (Tensor): the input SparseCooTensor.
+            name (str, optional): Name for the operation (optional, default is None).
+                For more information, please refer to :ref:`api_guide_Name`.
+
+        Returns:
+            Tensor: return the SparseCooTensor after coalesced.
+
+        Examples:
+            .. code-block:: python
+
+                >>> import paddle
+
+                >>> indices = [[0, 0, 1], [1, 1, 2]]
+                >>> values = [1.0, 2.0, 3.0]
+                >>> sp_x = paddle.sparse.sparse_coo_tensor(indices, values)
+                >>> sp_x = sp_x.coalesce()
+                >>> print(sp_x.indices())
+                Tensor(shape=[2, 2], dtype=int64, place=Place(cpu), stop_gradient=True,
+                [[0, 1],
+                [1, 2]])
+                >>> print(sp_x.values())
+                Tensor(shape=[2], dtype=float32, place=Place(cpu), stop_gradient=True,
+                [3., 3.])
+        """
+        return _C_ops.sparse_coalesce(self)
+
     if not hasattr(core, "eager"):
         return
 
@@ -988,9 +1143,11 @@ def monkey_patch_tensor():
         ("item", item),
         ("__setitem__", __setitem__),
         ("_to", _to),
+        ("to", to),
         ("values", values),
         ("to_dense", to_dense),
         ("to_sparse_coo", to_sparse_coo),
+        ("coalesce", coalesce),
         ("_set_grad_ivar", _set_grad_ivar),
         ("value", value),
         ("cpu", cpu),
@@ -1010,7 +1167,7 @@ def monkey_patch_tensor():
         # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.
         # So, we need to overwrite it to a more readable one.
         # See details in https://github.com/pybind/pybind11/issues/2537.
-        origin = getattr(core.VarDesc.VarType, "__str__")
+        origin = core.VarDesc.VarType.__str__
 
         def dtype_str(dtype):
             if dtype in _PADDLE_DTYPE_2_NUMPY_DTYPE:

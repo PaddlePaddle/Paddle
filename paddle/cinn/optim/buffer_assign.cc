@@ -15,8 +15,8 @@
 #include "paddle/cinn/optim/buffer_assign.h"
 
 #include "paddle/cinn/common/union_find.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_replace.h"
 #include "paddle/cinn/lang/lower_impl.h"
 

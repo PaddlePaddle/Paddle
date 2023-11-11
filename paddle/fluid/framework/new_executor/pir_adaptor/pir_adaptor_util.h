@@ -14,31 +14,29 @@
 
 #pragma once
 
-#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
-#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
-#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
-#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
-#include "paddle/phi/core/meta_tensor.h"
-#include "paddle/pir/core/builtin_attribute.h"
-#include "paddle/pir/core/ir_context.h"
-#include "paddle/pir/core/program.h"
-#include "paddle/pir/core/utils.h"
-
 #include "paddle/fluid/framework/new_executor/interpreter/execution_config.h"
+#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/framework/variable_helper.h"
-#include "paddle/phi/core/kernel_context.h"
-
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_attribute.h"
 #include "paddle/fluid/pir/dialect/kernel/ir/kernel_type.h"
+#include "paddle/fluid/pir/dialect/operator/interface/op_yaml_info.h"
 #include "paddle/fluid/pir/dialect/operator/ir/op_attribute.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_dialect.h"
+#include "paddle/fluid/pir/dialect/operator/ir/op_type.h"
 #include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_parser.h"
+#include "paddle/fluid/pir/dialect/operator/utils/op_yaml_info_util.h"
+#include "paddle/fluid/pir/dialect/operator/utils/utils.h"
 #include "paddle/phi/core/infermeta_utils.h"
+#include "paddle/phi/core/kernel_context.h"
+#include "paddle/phi/core/meta_tensor.h"
+#include "paddle/pir/core/builtin_attribute.h"
+#include "paddle/pir/core/ir_context.h"
+#include "paddle/pir/core/program.h"
 #include "paddle/pir/core/type_name.h"
+#include "paddle/pir/core/utils.h"
 
 #include "glog/logging.h"
 
@@ -46,49 +44,54 @@ namespace paddle {
 namespace framework {
 
 class CondInstruction;
+class WhileInstruction;
 class ValueExecutionInfo {
  public:
+  friend class CondInstruction;
+  friend class WhileInstruction;
+
   explicit ValueExecutionInfo(Scope* scope) : scope_(scope) {}
 
   const ValueExecutionInfo* Parent() const { return parent_; }
 
-  Scope* GetScope() { return scope_; }
+  Scope* GetScope() const { return scope_; }
 
-  void Add(::pir::Value value, std::string var_name);
+  void Add(::pir::Value value, const std::string& var_name);
 
-  void Rename(pir::Value value, std::string new_name, std::string orig_name);
+  void Rename(pir::Value value,
+              const std::string& new_name,
+              const std::string& orig_name);
 
   int GetIdByName(const std::string& name) const;
 
   std::string GetNameById(int id) const;
 
-  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName()
-      const {
-    return value_2_var_name_;
-  }
+  const std::unordered_map<::pir::Value, std::string>& GetValue2VarName() const;
 
-  void AddValue2VarName(::pir::Value value, const std::string& var_name) {
-    value_2_var_name_.emplace(value, var_name);
-  }
+  void AddValue2VarName(::pir::Value value, const std::string& var_name);
 
   const std::unordered_map<const paddle::framework::Variable*, std::string>&
-  GetVar2VarName() const {
-    return var_2_var_name_;
-  }
+  GetVar2VarName() const;
 
-  const std::map<std::string, int>& GetVarName2Id() const {
-    return var_name_2_id_;
-  }
+  const std::map<std::string, int>& GetVarName2Id() const;
 
-  const std::unordered_map<int, std::string>& GetId2VarName() const {
-    return id_2_var_name_;
-  }
+  const std::unordered_map<int, std::string>& GetId2VarName() const;
 
-  const std::vector<Variable*>& GetVarList() const { return var_list_; }
+  const std::vector<Variable*>& GetVarList() const;
 
-  void ResetVarList(int id, Variable* var) { var_list_[id] = var; }
+  void ResetVarList(int id, Variable* var);
 
-  friend class CondInstruction;
+  bool HasVar(const std::string& var_name) const;
+
+  bool HasValue(::pir::Value value) const;
+
+  std::string GetVarName(::pir::Value value) const;
+
+  std::string GetVarName(const Variable* var) const;
+
+  int GetVarId(::pir::Value value) const;
+
+  int GetVarId(const Variable* var) const;
 
  private:
   std::shared_ptr<ValueExecutionInfo> NewChild(Scope* scope);
@@ -99,8 +102,7 @@ class ValueExecutionInfo {
 
   std::unordered_map<::pir::Value, std::string> value_2_var_name_;
 
-  std::unordered_map<const paddle::framework::Variable*, std::string>
-      var_2_var_name_;
+  std::unordered_map<const Variable*, std::string> var_2_var_name_;
 
   std::map<std::string, int> var_name_2_id_;
 
@@ -109,31 +111,30 @@ class ValueExecutionInfo {
   std::vector<Variable*> var_list_;
 };
 
-}  // namespace framework
-}  // namespace paddle
+// NOTE(zhangbo): Some operators of Paddle support optional inputs or outputs,
+// representing whether the input or output exists. In the Pir, whether the
+// value itself is empty or the type it holds is empty is used to indicate
+// whether the input or output exists.
+inline bool IsInvalid(pir::Value value) {
+  if ((!value) || (!value.type())) {
+    return false;
+  }
+  return true;
+}
 
-namespace pir {
-void BuildScope(
-    const pir::Block& block,
-    const std::string& var_name_prefix,
-    std::map<pir::Block*, paddle::framework::Scope*>* sub_blocks,
-    paddle::framework::ValueExecutionInfo* value_exe_info = nullptr);
+void BuildScope(const pir::Block& block,
+                const std::string& var_name_prefix,
+                ValueExecutionInfo* value_exe_info = nullptr);
 
-void BuildRuntimeContext(
+void BuildRuntimeContext(pir::Operation* op,
+                         const ValueExecutionInfo& value_exec_info,
+                         const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                         RuntimeContext* runtime_ctx);
+
+std::shared_ptr<OperatorBase> BuildOperatorBase(
     pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    paddle::framework::RuntimeContext* runtime_ctx);
-
-std::shared_ptr<paddle::framework::OperatorBase> BuildOperatorBase(
-    pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    const std::unordered_map<const paddle::framework::Variable*, std::string>&
-        variable_2_var_name,
-    const paddle::framework::Scope* scope);
+    const ValueExecutionInfo& value_exec_info,
+    const paddle::dialect::OpYamlInfoParser& op_yaml_info);
 
 template <typename Context,
           typename InType,
@@ -141,38 +142,42 @@ template <typename Context,
           typename InListType,
           typename OutListType,
           bool is_kernel>
-void BuildPhiContext(
-    pir::Operation* op,
-    const std::unordered_map<pir::Value, std::string>& name_map,
-    paddle::framework::Scope* scope,
-    paddle::framework::Scope* local_scope,
-    const paddle::dialect::OpYamlInfoParser& op_yaml_info,
-    Context* ctx) {
-  paddle::framework::Scope* inner_scope =
-      local_scope != nullptr ? local_scope : scope;
-  VLOG(6) << "Build " << get_type_name<Context>() << " in scope[" << scope
-          << "] inner_scope[" << inner_scope << "]";
+void BuildPhiContext(pir::Operation* op,
+                     const ValueExecutionInfo& value_exec_info,
+                     const paddle::dialect::OpYamlInfoParser& op_yaml_info,
+                     Context* ctx) {
+  Scope* inner_scope = value_exec_info.GetScope();
+  VLOG(6) << "Build " << pir::get_type_name<Context>() << "] inner_scope["
+          << inner_scope << "]";
 
   auto attr_map = op->attributes();
 
+  // EmplaceBackInputs
   auto& vec_kernel_fn_tensor_params = op_yaml_info.TensorParams(is_kernel);
-
   auto& name2id = op_yaml_info.InputName2Id();
   for (auto& t : vec_kernel_fn_tensor_params) {
     PADDLE_ENFORCE_EQ(
         name2id.count(t),
         true,
         phi::errors::NotFound("param [%s] MUST in name2id map", t));
-    auto index = op_yaml_info.InputName2Id().at(t);
-    pir::Value ptr = op->operand_source(index);
-    if (!ptr) {
-      phi::DenseTensor* ptr = nullptr;
-      OutType in_ptr(ptr);
-      ctx->EmplaceBackInput(in_ptr);
+
+    pir::Value ptr = op->operand_source(op_yaml_info.InputName2Id().at(t));
+
+    if (!IsInvalid(ptr)) {
+      if (op_yaml_info.GetInputType(op_yaml_info.InputName2Id().at(t)) ==
+          "pir::VectorType<paddle::dialect::DenseTensorType>") {
+        InListType optional_inputs;
+        ctx->EmplaceBackInputs(optional_inputs);
+      } else {
+        phi::DenseTensor* temp = nullptr;
+        InType optional_input(temp);
+        ctx->EmplaceBackInput(optional_input);
+      }
+      VLOG(8) << "ctx->EmplaceBackInput : an optioanl input " << t;
       continue;
     }
 
-    auto in_var_name = name_map.at(ptr);
+    auto in_var_name = value_exec_info.GetVarName(ptr);
     VLOG(6) << "ctx->EmplaceBackInput: " << t << "\t" << in_var_name;
 
     PADDLE_ENFORCE_NOT_NULL(inner_scope->FindVar(in_var_name),
@@ -182,9 +187,9 @@ void BuildPhiContext(
     if (var->IsType<phi::DenseTensor>()) {
       const phi::TensorBase* tensor_in = &(var->Get<phi::DenseTensor>());
       ctx->EmplaceBackInput(InType(tensor_in));
-    } else if (var->IsType<paddle::framework::VariableRefArray>()) {
+    } else if (var->IsType<VariableRefArray>()) {
       InListType inputs;
-      auto& variable_array = var->Get<paddle::framework::VariableRefArray>();
+      auto& variable_array = var->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<phi::DenseTensor>()) {
           inputs.emplace_back(InType(const_cast<phi::DenseTensor*>(
@@ -206,13 +211,14 @@ void BuildPhiContext(
     }
   }
 
+  // EmplaceBackAttributes
   auto& vec_kernel_fn_attr_params = op_yaml_info.AttrParams(is_kernel);
   for (auto& t : vec_kernel_fn_attr_params) {
     if (name2id.count(t)) {
       // tensor attribute, get information from input
       pir::Value ptr = op->operand_source(name2id.at(t));
 
-      auto in_var_name = name_map.at(ptr);
+      auto in_var_name = value_exec_info.GetVarName(ptr);
 
       auto& tensor_attr_type = op_yaml_info.TensorAttrTypeName(t);
       VLOG(6) << "ctx->EmplaceBack mutable attr: " << t << "\t" << in_var_name;
@@ -222,8 +228,8 @@ void BuildPhiContext(
               &(inner_scope->FindVar(in_var_name)->Get<phi::DenseTensor>()));
           ctx->EmplaceBackAttr(attr);
         } else if (ptr.type().isa<pir::VectorType>()) {
-          auto& tensor_array = inner_scope->FindVar(in_var_name)
-                                   ->Get<paddle::framework::VariableRefArray>();
+          auto& tensor_array =
+              inner_scope->FindVar(in_var_name)->Get<VariableRefArray>();
           if (tensor_array.size() == 1) {
             phi::Attribute attr =
                 phi::TensorRef(&(tensor_array[0]->Get<phi::DenseTensor>()));
@@ -253,7 +259,12 @@ void BuildPhiContext(
 
       continue;
     }
-
+    PADDLE_ENFORCE_NE(
+        attr_map.find(t),
+        attr_map.end(),
+        phi::errors::NotFound("Not found %s in attr_map, it maybe need mapping "
+                              "it in OpTranslator.",
+                              t));
     auto& attr_type_name = op_yaml_info.AttrTypeName(t);
     if (attr_type_name == "paddle::dialect::IntArrayAttribute") {
       ctx->EmplaceBackAttr(
@@ -267,6 +278,8 @@ void BuildPhiContext(
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::Int64Attribute>().data());
     } else if (attr_type_name == "pir::FloatAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::FloatAttribute>().data());
+    } else if (attr_type_name == "pir::DoubleAttribute") {
+      ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::DoubleAttribute>().data());
     } else if (attr_type_name == "pir::BoolAttribute") {
       ctx->EmplaceBackAttr(attr_map[t].dyn_cast<pir::BoolAttribute>().data());
     } else if (attr_type_name == "pir::StrAttribute") {
@@ -367,32 +380,42 @@ void BuildPhiContext(
     VLOG(6) << "ctx->EmplaceBackAttr: " << t;
   }
 
-  // TODO(phlrain): use var type instead of op name
+  // EmplaceBackOutputs
+  VLOG(8) << "ctx->EmplaceBackOutput: ";
   for (size_t i = 0; i < op->num_results(); ++i) {
     pir::Value out_ptr = op->result(i);
-    auto out_type = out_ptr.type();
-    if (out_type) {
-      auto& name = name_map.at(out_ptr);
-      VLOG(6) << "ctx->EmplaceBackOutput: " << name;
-    } else {
-      VLOG(6) << "ctx->EmplaceBackOutput : an optioanl output";
+    if (!IsInvalid(out_ptr)) {
+      if (op_yaml_info.GetOutputType(i) ==
+          "pir::VectorType<paddle::dialect::DenseTensorType>") {
+        OutListType optional_outputs;
+        ctx->EmplaceBackOutputs(optional_outputs);
+      } else {
+        phi::DenseTensor* temp = nullptr;
+        OutType optional_input(temp);
+        ctx->EmplaceBackOutput(optional_input);
+      }
+      VLOG(8) << "ctx->EmplaceBackOutput : an optioanl output";
+      continue;
     }
-    if (!out_type) {
-      phi::DenseTensor* ptr = nullptr;
-      OutType out_ptr(ptr);
-      ctx->EmplaceBackOutput(out_ptr);
-    } else if (out_type.isa<paddle::dialect::AllocatedDenseTensorType>()) {
+
+    if (out_ptr.type().isa<paddle::dialect::AllocatedDenseTensorType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::DenseTensor*>(
-          &(inner_scope->FindVar(name_map.at(out_ptr))
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::DenseTensor>()))));
-    } else if (out_type.isa<paddle::dialect::AllocatedSelectedRowsType>()) {
+      VLOG(8) << "ctx->EmplaceBackOutput DenseTensor: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type()
+                   .isa<paddle::dialect::AllocatedSelectedRowsType>()) {
       ctx->EmplaceBackOutput(OutType(const_cast<phi::SelectedRows*>(
-          &(inner_scope->FindVar(name_map.at(out_ptr))
+          &(inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
                 ->Get<phi::SelectedRows>()))));
-    } else if (out_type.isa<pir::VectorType>()) {
+      VLOG(8) << "ctx->EmplaceBackOutput SelectedRows: "
+              << value_exec_info.GetVarName(out_ptr);
+    } else if (out_ptr.type().isa<pir::VectorType>()) {
       OutListType outputs;
-      auto& variable_array = inner_scope->FindVar(name_map.at(out_ptr))
-                                 ->Get<paddle::framework::VariableRefArray>();
+      auto& variable_array =
+          inner_scope->FindVar(value_exec_info.GetVarName(out_ptr))
+              ->Get<VariableRefArray>();
       for (size_t i = 0; i < variable_array.size(); ++i) {
         if (variable_array[i]->IsType<phi::DenseTensor>()) {
           outputs.emplace_back(OutType(const_cast<phi::DenseTensor*>(
@@ -407,6 +430,8 @@ void BuildPhiContext(
               variable_array[i]->Type()));
         }
       }
+      VLOG(8) << "ctx->EmplaceBackOutput VariableRefArray: "
+              << value_exec_info.GetVarName(out_ptr);
       ctx->EmplaceBackOutputs(outputs);
     } else {
       PADDLE_THROW(
@@ -417,4 +442,5 @@ void BuildPhiContext(
   VLOG(6) << "Done build phi context";
 }
 
-}  // namespace pir
+}  // namespace framework
+}  // namespace paddle

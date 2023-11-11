@@ -52,8 +52,8 @@ TEST(flags_native_test, ParseCommandLineFlags) {
   std::string commandline =
       "test --paddle_test_int32=3 --paddle_test_uint32=\"4\" "
       "--paddle_test_string \"modified string\"";
-  int argc;
-  char** argv;
+  int argc = 0;
+  char** argv = nullptr;
   SplitCommandlineArg(commandline, &argc, &argv);
 
   // Parse commandline flags and check

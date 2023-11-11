@@ -16,7 +16,7 @@ import warnings
 
 import paddle
 from paddle import _C_ops
-from paddle.framework import in_dynamic_mode
+from paddle.framework import in_dynamic_or_pir_mode
 from paddle.regularizer import L2Decay
 
 from ..base import core, framework
@@ -59,7 +59,7 @@ class Momentum(Optimizer):
             The default value is None in static graph mode, at this time all parameters will be updated.
         weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
             It can be a float value as coeff of L2 regularization or \
-            :ref:`api_base_regularizer_L1Decay`, :ref:`api_base_regularizer_L2Decay`.
+            :ref:`api_paddle_regularizer_L1Decay`, :ref:`api_paddle_regularizer_L2Decay`.
             If a parameter has set regularizer using :ref:`api_paddle_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
@@ -204,7 +204,7 @@ class Momentum(Optimizer):
         if framework.in_dynamic_mode():
             return
         '''
-        assert isinstance(block, framework.Block)
+        assert isinstance(block, (framework.Block, paddle.pir.Block))
 
         if isinstance(parameters, dict):
             parameters = self._update_param_group(parameters)
@@ -276,7 +276,7 @@ class Momentum(Optimizer):
             else None
         )
 
-        if in_dynamic_mode():
+        if in_dynamic_or_pir_mode():
             if isinstance(param_and_grad, dict):
                 self._update_regularization(param_and_grad['weight_decay'])
             return _C_ops.momentum_(
@@ -472,13 +472,17 @@ class Momentum(Optimizer):
                     else None
                 )
 
-                if in_dynamic_mode():
+                if in_dynamic_or_pir_mode():
                     found_inf = self._get_auxiliary_var('found_inf')
                     if found_inf:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', True)
                     else:
-                        if isinstance(found_inf, core.eager.Tensor):
+                        if isinstance(
+                            found_inf, (core.eager.Tensor, paddle.pir.OpResult)
+                        ):
                             self._set_auxiliary_var('found_inf', False)
                         _, _, _ = _C_ops.merged_momentum_(
                             self._param_dict[key][param_group_idx],

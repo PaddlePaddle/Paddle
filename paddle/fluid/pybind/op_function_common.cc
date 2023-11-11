@@ -289,8 +289,8 @@ std::string CastPyArg2String(PyObject* obj,
                              const std::string& op_type,
                              ssize_t arg_pos) {
   if (PyObject_CheckString(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, (size_t)size);  // NOLINT
   } else {
@@ -696,8 +696,8 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyList_GetItem(obj, i);
       if (PyObject_CheckString(item)) {
-        Py_ssize_t size;
-        const char* data;
+        Py_ssize_t size = 0;
+        const char* data = nullptr;
         data = PyUnicode_AsUTF8AndSize(item, &size);
         value.emplace_back(std::string(data, (size_t)size));  // NOLINT
       } else {
@@ -716,8 +716,8 @@ std::vector<std::string> CastPyArg2Strings(PyObject* obj,
     for (Py_ssize_t i = 0; i < len; i++) {
       item = PyTuple_GetItem(obj, i);
       if (PyObject_CheckString(item)) {
-        Py_ssize_t size;
-        const char* data;
+        Py_ssize_t size = 0;
+        const char* data = nullptr;
         data = PyUnicode_AsUTF8AndSize(item, &size);
         value.emplace_back(std::string(data, (size_t)size));  // NOLINT
       } else {
@@ -896,8 +896,8 @@ void ConstructAttrMapFromPyArgs(
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
     VLOG(1) << "Start Process " << arg_pos;
-    Py_ssize_t key_len;
-    const char* key_ptr;
+    Py_ssize_t key_len = 0;
+    const char* key_ptr = nullptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
     if (PyObject_CheckString(obj)) {
       key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
@@ -988,8 +988,8 @@ void ConstructAttrMapForRunProgram(
   PyObject* obj = nullptr;
   for (ssize_t arg_pos = attr_start; arg_pos < attr_end; arg_pos += 2) {
     VLOG(1) << "Start Process " << arg_pos;
-    Py_ssize_t key_len;
-    const char* key_ptr;
+    Py_ssize_t key_len = 0;
+    const char* key_ptr = nullptr;
     obj = PyTuple_GET_ITEM(args, arg_pos);
     if (PyObject_CheckString(obj)) {
       key_ptr = PyUnicode_AsUTF8AndSize(obj, &key_len);
@@ -1027,6 +1027,7 @@ void ConstructAttrMapForRunProgram(
                                       "fm",
                                       "fo",
                                       "bx",
+                                      "no_need_buffers",
                                       "bp",
                                       "bm",
                                       "bo_g",

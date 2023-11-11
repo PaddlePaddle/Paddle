@@ -50,6 +50,7 @@ extern PyTypeObject* p_string_tensor_type;
 
 extern PyTypeObject* g_framework_scope_pytype;
 extern PyTypeObject* g_ir_opresult_pytype;
+extern PyTypeObject* g_ir_value_pytype;
 extern PyTypeObject* g_vartype_pytype;
 extern PyTypeObject* g_data_type_pytype;
 extern PyTypeObject* g_place_pytype;
@@ -237,8 +238,8 @@ float CastPyArg2AttrFloat(PyObject* obj, ssize_t arg_pos) {
 
 std::string CastPyArg2AttrString(PyObject* obj, ssize_t arg_pos) {
   if (PyObject_CheckStr(obj)) {
-    Py_ssize_t size;
-    const char* data;
+    Py_ssize_t size = 0;
+    const char* data = nullptr;
     data = PyUnicode_AsUTF8AndSize(obj, &size);
     return std::string(data, static_cast<size_t>(size));
   } else {
@@ -1521,6 +1522,8 @@ pir::Value CastPyArg2Value(PyObject* obj,
                            size_t arg_pos) {
   if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
     return ::pybind11::handle(obj).cast<pir::OpResult>();
+  } else if (PyObject_TypeCheck(obj, g_ir_value_pytype)) {
+    return ::pybind11::handle(obj).cast<pir::Value>();
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1583,8 +1586,6 @@ std::vector<pir::Value> CastPyArg2VectorOfValue(PyObject* obj,
                 ->tp_name));  // NOLINT
       }
     }
-  } else if (PyObject_TypeCheck(obj, g_ir_opresult_pytype)) {
-    return {::pybind11::handle(obj).cast<pir::OpResult>()};
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "%s(): argument (position %d) must be "
@@ -1842,7 +1843,7 @@ paddle::Tensor PyTensorHook::operator()(const paddle::Tensor& var) {
     res = PyObject_CallFunctionObjArgs(py_func_, p_tmp_var, nullptr);
     Py_DECREF(p_tmp_var);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1869,7 +1870,7 @@ void PyVoidHook::operator()() {
   try {
     PyObject_CallFunctionObjArgs(py_func_, nullptr);
   } catch (platform::EnforceNotMet& e) {
-    throw std::move(e);
+    throw e;
   } catch (std::exception& e) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Hook function of Tensor raises an exception: %s.", e.what()));
@@ -1998,6 +1999,121 @@ void* UnPackHook::operator()(void* packed_value, void* other) {
                         "of hooks is allowed at a time."));
 
   return reinterpret_cast<void*>(ret);
+}
+
+/* ------------------ for auto parallel ----------------------- */
+
+void DistTensorTypeParser::operator()(const Tensor& x) {
+  if (x.is_dist_tensor()) {
+    *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(x.impl())
+                  ->dist_attr()
+                  .process_mesh());
+    result = true;
+  }
+}
+
+void DistTensorTypeParser::operator()(const paddle::optional<Tensor>& x) {
+  if (x) {
+    if (x.get_ptr()->is_dist_tensor()) {
+      *mesh = &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(
+                    x.get_ptr()->impl())
+                    ->dist_attr()
+                    .process_mesh());
+      result = true;
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(const std::vector<Tensor>& x) {
+  if (!x.empty()) {
+    for (auto& t : x) {
+      if (t.is_dist_tensor()) {
+        *mesh =
+            &(std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+        result = true;
+        break;
+      }
+    }
+  }
+}
+
+void DistTensorTypeParser::operator()(
+    const paddle::optional<std::vector<Tensor>>& x) {
+  if (x) {
+    if (!(x.get_ptr()->empty())) {
+      for (auto& t : *(x.get_ptr())) {
+        if (t.is_dist_tensor()) {
+          *mesh = &(
+              std::dynamic_pointer_cast<phi::distributed::DistTensor>(t.impl())
+                  ->dist_attr()
+                  .process_mesh());
+          result = true;
+          break;
+        }
+      }
+    }
+  }
+}
+
+void DistTensorConverter::convert(Tensor* x) {
+  if (x->is_dist_tensor()) {
+    PADDLE_ENFORCE_EQ(
+        std::dynamic_pointer_cast<phi::distributed::DistTensor>(x->impl())
+            ->dist_attr()
+            .process_mesh(),
+        *mesh,
+        platform::errors::InvalidArgument(
+            "Input %s has different mesh. However all inputs should "
+            "have the same mesh.",
+            x->name()));
+    return;
+  } else {
+    PADDLE_ENFORCE_EQ(
+        phi::DenseTensor::classof(x->impl().get()),
+        true,
+        platform::errors::InvalidArgument(
+            "Failed to convert input %s impl to phi::distributed::DistTensor "
+            "as it's not phi::DenseTensor.",
+            x->name()));
+    phi::distributed::TensorDistAttr dist_attr(
+        phi::vectorize(x->impl()->dims()));
+    dist_attr.set_process_mesh(*mesh);
+    auto dense_t = std::static_pointer_cast<phi::DenseTensor>(x->impl());
+    x->set_impl(
+        std::make_shared<phi::distributed::DistTensor>(dense_t, dist_attr));
+  }
+}
+
+void DistTensorConverter::operator()(Tensor* x) {
+  DistTensorConverter::convert(x);
+}
+
+void DistTensorConverter::operator()(paddle::optional<Tensor>* x) {
+  if (*x) {
+    DistTensorConverter::convert(x->get_ptr());
+  }
+}
+
+void DistTensorConverter::operator()(std::vector<Tensor>* x) {
+  if (!x->empty()) {
+    for (auto& t : *x) {
+      DistTensorConverter::convert(&t);
+    }
+  }
+}
+
+void DistTensorConverter::operator()(paddle::optional<std::vector<Tensor>>* x) {
+  if (*x) {
+    if (!(x->get_ptr()->empty())) {
+      for (auto& t : *(x->get_ptr())) {
+        if (!t.is_dist_tensor()) {
+          DistTensorConverter::convert(&t);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace pybind

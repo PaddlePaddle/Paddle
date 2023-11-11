@@ -12,26 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paddle.base.libpaddle.pir import (
-    Program,
+from paddle.base.libpaddle.pir import (  # noqa: F401
     Block,
     Operation,
-    Value,
     OpOperand,
     OpResult,
+    PassManager,
+    Program,
     Type,
-)  # noqa: F401
-from paddle.base.libpaddle.pir import (
-    translate_to_new_ir,
+    Value,
+    check_unregistered_ops,
+    fake_op_result,
+    is_fake_op_result,
+    register_paddle_dialect,
+    reset_insertion_point_to_end,
+    reset_insertion_point_to_start,
     set_global_program,
     set_insertion_point,
-    reset_insertion_point_to_start,
-    reset_insertion_point_to_end,
-    check_unregistered_ops,
-    register_paddle_dialect,
-    PassManager,
-)  # noqa: F401
+    translate_to_pir,
+    translate_to_pir_with_param_map,
+)
 
-from . import core
+from . import core  # noqa: F401
+
+from .math_op_patch import monkey_patch_opresult  # noqa: F401
+from .program_patch import monkey_patch_program  # noqa: F401
 
 __all__ = []

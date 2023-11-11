@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/naive_executor.h"
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -49,6 +50,38 @@ void NaiveExecutor::Prepare(Scope *scope,
 
   VLOG(3) << "NaiveExecutor init with scope " << scope;
   CreateOps(program_desc, block_id, with_feed_fetch_ops);
+}
+
+void NaiveExecutor::PrepareInterpreterCore(
+    Scope *scope,
+    const ProgramDesc &program_desc,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ = std::make_unique<framework::InterpreterCore>(
+      place_, program_desc.Block(0), scope, execution_config);
+}
+
+void NaiveExecutor::PrepareInterpreterCore(
+    Scope *scope,
+    const ::pir::Program &pir_program,
+    const framework::interpreter::ExecutionConfig &execution_config) {
+  interpreter_core_ =
+      std::make_unique<framework::InterpreterCore>(place_,
+                                                   std::vector<std::string>{},
+                                                   pir_program.block(),
+                                                   scope,
+                                                   execution_config);
+}
+
+void NaiveExecutor::RunInterpreterCore(
+    const std::vector<std::string> &feed_names, bool need_fetch) {
+  platform::ScopedFlushDenormal flush;
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePush("model", platform::NvtxRangeColor::Yellow);
+#endif
+  interpreter_core_->Run(feed_names, need_fetch);
+#ifdef PADDLE_WITH_NVTX
+  platform::CudaNvtxRangePop();
+#endif
 }
 
 void NaiveExecutor::Run() {
@@ -190,6 +223,9 @@ phi::DenseTensor *NaiveExecutor::FindTensor(const std::string &name) {
 
 void NaiveExecutor::RegisterOutputHook(const HookFunc &hookfunc) {
   output_hookfuncs_.push_back(hookfunc);
+  if (interpreter_core_) {
+    interpreter_core_->SetOutputHooks(output_hookfuncs_);
+  }
 }
 
 void NaiveExecutor::RegisterInputHook(const HookFunc &hookfunc) {

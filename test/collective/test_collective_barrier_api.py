@@ -33,7 +33,7 @@ class TestCollectiveBarrierAPI(TestDistBase):
             "collective_barrier_api.py",
             "barrier",
             "nccl",
-            need_envs={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_envs={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_barrier_gloo(self):

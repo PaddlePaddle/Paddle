@@ -224,7 +224,7 @@ void QuantDequantMkldnnPass::CollectOutputScalesFromAttr(
 
       auto var_name_map = op_desc->Outputs();
       for (auto& item : var_name_map) {
-        for (auto var_name : item.second) {
+        for (auto const& var_name : item.second) {
           var_quant_scales->insert(std::make_pair(var_name, scale_v));
         }
       }

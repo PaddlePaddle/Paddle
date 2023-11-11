@@ -13,7 +13,9 @@
 # limitations under the License.
 
 include(ExternalProject)
-set(OPENSSL_USE_STATIC_LIBS ON)
+if(NOT WITH_ARM)
+  set(OPENSSL_USE_STATIC_LIBS ON)
+endif()
 find_package(OpenSSL REQUIRED)
 
 message(STATUS "ssl:" ${OPENSSL_SSL_LIBRARY})
@@ -38,7 +40,7 @@ include_directories(${BRPC_INCLUDE_DIR})
 
 # clone brpc to Paddle/third_party
 set(BRPC_SOURCE_DIR ${PADDLE_SOURCE_DIR}/third_party/brpc)
-set(BRPC_URL https://github.com/apache/brpc.git)
+set(BRPC_URL ${GIT_URL}/apache/brpc.git)
 set(BRPC_TAG 1.4.0)
 
 # Reference https://stackoverflow.com/questions/45414507/pass-a-list-of-prefix-paths-to-externalproject-add-in-cmake-args

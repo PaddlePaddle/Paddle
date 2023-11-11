@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/gen_comm_id_helper.h"
 #include "paddle/fluid/platform/place.h"
 
+PHI_DECLARE_bool(dynamic_static_unified_comm);
 namespace paddle {
 namespace operators {
 
@@ -70,10 +71,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
     std::vector<ncclUniqueId> nccl_ids;
     nccl_ids.resize(1);
 
-    const char* dynamic_static_unified_comm =
-        getenv("FLAGS_dynamic_static_unified_comm");
-    if (!dynamic_static_unified_comm ||
-        std::string(dynamic_static_unified_comm) != "1") {
+    if (!FLAGS_dynamic_static_unified_comm) {
       int server_fd = platform::SocketServer::GetInstance(endpoint).socket();
       if (rank == 0) {
         GenNCCLID(&nccl_ids);

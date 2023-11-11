@@ -32,6 +32,8 @@
 #include "paddle/cinn/utils/enum_string.h"
 #include "paddle/cinn/utils/profiler.h"
 
+#include "paddle/cinn/ast_gen_ius/tensor_group.h"
+
 namespace cinn {
 namespace hlir {
 namespace framework {
@@ -372,14 +374,17 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
 
   poly::StageMap stages = C.back();
   std::string func_name_prefix = "fn_";
-  auto funcs = lang::LowerVec(func_name_prefix + node_id,
-                              stages,
-                              all_arg_tensors,
-                              {},
-                              {},
-                              nullptr,
-                              target,
-                              true);
+
+  ast_gen_ius::TensorGroup tensor_group =
+      ast_gen_ius::ConvertStageMapToTensorGroup(stages);
+  auto funcs = lang::LowerToAstVec(
+      func_name_prefix + node_id, all_arg_tensors, &tensor_group, target);
+
+  VLOG(4) << "Lower op: " << node_id << ", get " << funcs.size()
+          << " LoweredFunc:\n";
+  for (auto fun : funcs) {
+    VLOG(4) << fun;
+  }
 
   std::vector<common::CINNValue> schedule_inputs;
   for (int i = 0; i < C.size() - 1; ++i) {
@@ -426,7 +431,8 @@ std::vector<ir::LoweredFunc> GetFuncFromImpl(
     optim::OptimizeExprGPU(&(funcs_after_schedule[i]->body));
 #endif
     auto temp_buffers = lang::GetTempBuffers(
-        all_arg_tensors, stages, funcs_after_schedule[i]->body);
+        all_arg_tensors, tensor_group, funcs_after_schedule[i]->body);
+
     funcs_after_schedule[i]->temp_bufs = temp_buffers;
     funcs_after_schedule[i] =
         ir::_LoweredFunc_::Make(funcs_after_schedule[i]->name,

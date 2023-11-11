@@ -98,7 +98,7 @@ class Tree2ColFunctor<phi::CPUContext, T> {
     phi::funcs::SetConstant<phi::CPUContext, T> constant;
     int64_t feature_size = feature_dims[1];
     size_t patch_elem_size = 3 * static_cast<size_t>(feature_size);
-    size_t node_count = 0, patch_count = 0, patch_size;
+    size_t node_count = 0, patch_count = 0, patch_size = 0;
     Tree2ColUtil::construct_tree(EdgeSet, &tr, &node_count);
     std::vector<std::vector<TreeNode>> processing_list;
     for (size_t u = 1; u <= node_count; u++) {

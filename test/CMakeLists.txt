@@ -1,3 +1,4 @@
+remove_definitions(-DPADDLE_DLL_EXPORT)
 set(CC_TESTS_DIR
     ${PADDLE_BINARY_DIR}/test/cpp
     CACHE INTERNAL "c++ tests directory")
@@ -98,6 +99,10 @@ if(WITH_TESTING)
   if(CINN_ONLY)
     return()
   endif()
+  # The following unittests only run in PR-CI-CINN
+  if(WITH_CINN AND NOT CINN_ONMLY)
+    add_subdirectory(ir/pir/cinn)
+  endif()
 
   add_subdirectory(amp)
   add_subdirectory(asp)
@@ -137,6 +142,7 @@ if(WITH_TESTING)
   add_subdirectory(rnn)
   add_subdirectory(rpc)
   add_subdirectory(sequence)
+  add_subdirectory(sot)
   add_subdirectory(standalone_executor)
   add_subdirectory(tokenizer)
   # add_subdirectory(white_list)

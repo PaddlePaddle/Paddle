@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/phi/core/flags.h"
 #include "paddle/phi/core/kernel_registry.h"
 #include "paddle/phi/core/macros.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -104,7 +105,7 @@ struct OperatorRegistrar : public Registrar {
   }
 };
 
-class OpRegistry {
+class TEST_API OpRegistry {
  public:
   /**
    * @brief Return an OperatorBase constructed by type, inputs, outputs, attrs.

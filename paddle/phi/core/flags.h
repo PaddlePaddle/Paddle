@@ -22,6 +22,7 @@
 
 #include "paddle/phi/core/macros.h"
 #include "paddle/utils/flags.h"
+#include "paddle/utils/test_macros.h"
 #include "paddle/utils/variant.h"
 
 #if defined(_WIN32)
@@ -138,8 +139,8 @@ struct FlagInfo {
 };
 
 using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
-const ExportedFlagInfoMap& GetExportedFlagInfoMap();
-ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
+TEST_API const ExportedFlagInfoMap& GetExportedFlagInfoMap();
+TEST_API ExportedFlagInfoMap* GetMutableExportedFlagInfoMap();
 
 #define __PHI_DEFINE_EXPORTED_FLAG(                                           \
     __name, __is_writable, __cpp_type, __gflag_type, __default_value, __doc)  \

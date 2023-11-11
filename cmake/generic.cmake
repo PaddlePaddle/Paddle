@@ -85,6 +85,11 @@
 #
 #   go_library(example SHARED)
 #
+# To build a unit test binary, which is an executable binary with libpaddle.so
+# automatically linked:
+#
+#   paddle_test(example SRCS example_test.cc)
+#
 
 # including binary directory for generated headers.
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -466,6 +471,7 @@ function(cc_test_build TARGET_NAME)
         list(REMOVE_ITEM cc_test_DEPS python)
         target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
       endif()
+      target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     endif()
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${cc_test_DEPS}
@@ -493,12 +499,15 @@ function(cc_test_run TARGET_NAME)
       NAME ${TARGET_NAME}
       COMMAND ${cc_test_COMMAND} ${cc_test_ARGS}
       WORKING_DIRECTORY ${cc_test_DIR})
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cpu_deterministic=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_init_allocated_mem=true)
-    set_property(TEST ${TARGET_NAME} PROPERTY ENVIRONMENT
-                                              FLAGS_cudnn_deterministic=true)
+    set_property(
+      TEST ${TARGET_NAME}
+      PROPERTY
+        ENVIRONMENT
+        FLAGS_cpu_deterministic=true
+        FLAGS_init_allocated_mem=true
+        FLAGS_cudnn_deterministic=true
+        LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${PADDLE_BINARY_DIR}/python/paddle/libs:${PADDLE_BINARY_DIR}/python/paddle/base
+    )
     # No unit test should exceed 2 minutes.
     if(WIN32)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 150)
@@ -575,6 +584,62 @@ function(cc_test_old TARGET_NAME)
   elseif(WITH_TESTING AND NOT TEST ${TARGET_NAME})
     add_test(NAME ${TARGET_NAME} COMMAND ${CMAKE_COMMAND} -E echo CI skip
                                          ${TARGET_NAME}.)
+  endif()
+endfunction()
+
+function(paddle_test_build TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    add_executable(${TARGET_NAME} ${paddle_test_SRCS})
+    get_property(paddle_lib GLOBAL PROPERTY PADDLE_LIB_NAME)
+    target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:${paddle_lib}>
+                          ${paddle_test_DEPS} paddle_gtest_main_new)
+    add_dependencies(${TARGET_NAME} ${paddle_lib} ${paddle_test_DEPS}
+                     paddle_gtest_main_new)
+    if(WITH_SHARED_PHI)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:phi>)
+      add_dependencies(${TARGET_NAME} phi)
+    endif()
+    if(WITH_SHARED_IR)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:pir>)
+      add_dependencies(${TARGET_NAME} pir)
+    endif()
+    if(NOT ((NOT WITH_PYTHON) AND ON_INFER))
+      target_link_libraries(${TARGET_NAME} ${PYTHON_LIBRARIES})
+    endif()
+    if(WITH_CINN AND NOT CINN_ONLY)
+      target_link_libraries(${TARGET_NAME} $<TARGET_LINKER_FILE:cinnapi>)
+      add_dependencies(${TARGET_NAME} cinnapi)
+    endif()
+    if(WITH_XPU)
+      target_link_libraries(${TARGET_NAME} xpulib)
+    endif()
+    if(WITH_ROCM)
+      target_link_libraries(${TARGET_NAME} ${ROCM_HIPRTC_LIB})
+    endif()
+    if(APPLE)
+      target_link_libraries(
+        ${TARGET_NAME}
+        "-Wl,-rpath,$<TARGET_FILE_DIR:${paddle_lib}> -Wl,-rpath,$<TARGET_FILE_DIR:phi> -Wl,-rpath,$<TARGET_FILE_DIR:pir>"
+      )
+    endif()
+    common_link(${TARGET_NAME})
+    check_coverage_opt(${TARGET_NAME} ${paddle_test_SRCS})
+  endif()
+endfunction()
+
+function(paddle_test TARGET_NAME)
+  if(WITH_TESTING)
+    set(oneValueArgs "")
+    set(multiValueArgs SRCS DEPS ARGS)
+    cmake_parse_arguments(paddle_test "${options}" "${oneValueArgs}"
+                          "${multiValueArgs}" ${ARGN})
+    paddle_test_build(${TARGET_NAME} SRCS ${paddle_test_SRCS} DEPS
+                      ${paddle_test_DEPS})
+    cc_test_run(${TARGET_NAME} COMMAND ${TARGET_NAME} ARGS ${paddle_test_ARGS})
   endif()
 endfunction()
 
@@ -664,6 +729,7 @@ function(nv_test TARGET_NAME)
     # 2. cuda_add_executable does not support ccache.
     # Reference: https://cmake.org/cmake/help/v3.10/module/FindCUDA.html
     add_executable(${TARGET_NAME} ${nv_test_SRCS})
+    target_compile_definitions(${TARGET_NAME} PUBLIC STATIC_PADDLE)
     get_property(os_dependency_modules GLOBAL PROPERTY OS_DEPENDENCY_MODULES)
     target_link_libraries(${TARGET_NAME} ${nv_test_DEPS}
                           ${os_dependency_modules} paddle_gtest_main phi)
@@ -1283,6 +1349,9 @@ function(math_library TARGET)
   if(WITH_GPU)
     if(${CMAKE_CUDA_COMPILER_VERSION} LESS 11.0)
       list(APPEND math_common_deps cub)
+    elseif(${CMAKE_CUDA_COMPILER_VERSION} EQUAL 12.0
+           OR ${CMAKE_CUDA_COMPILER_VERSION} GREATER 12.0)
+      list(APPEND math_common_deps cccl)
     else()
       list(APPEND math_common_deps)
     endif()

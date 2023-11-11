@@ -45,7 +45,7 @@ void SerializeToStream(std::ostream& os,
 void SerializeToStream(std::ostream& os,
                        const phi::SelectedRows& selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx;
+  const platform::DeviceContext* dev_ctx = nullptr;
   auto place = selected_rows.place();
   dev_ctx = pool.Get(place);
   SerializeToStream(os, selected_rows, *dev_ctx);
@@ -53,7 +53,7 @@ void SerializeToStream(std::ostream& os,
 
 void DeserializeFromStream(std::istream& is, phi::SelectedRows* selected_rows) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  const platform::DeviceContext* dev_ctx;
+  const platform::DeviceContext* dev_ctx = nullptr;
   dev_ctx = pool.Get(platform::CPUPlace());
   DeserializeFromStream(is, selected_rows, *dev_ctx);
 }
@@ -63,7 +63,7 @@ void DeserializeFromStream(std::istream& is,
                            const platform::DeviceContext& dev_ctx) {
   {
     // the 1st field, unit32_t version for SelectedRows
-    uint32_t version;
+    uint32_t version = 0;
     is.read(reinterpret_cast<char*>(&version), sizeof(version));
     PADDLE_ENFORCE_EQ(version,
                       0U,
@@ -86,7 +86,7 @@ void DeserializeFromStream(std::istream& is,
   }
   {
     // the 3st field, the height of the SelectedRows
-    int64_t height;
+    int64_t height = 0;
     is.read(reinterpret_cast<char*>(&height), sizeof(int64_t));
     selected_rows->set_height(height);
   }

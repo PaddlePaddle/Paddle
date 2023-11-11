@@ -28,6 +28,9 @@ void ShadowFeedKernel(const Context& ctx,
                       const DenseTensor& x,
                       DenseTensor* out) {
   ctx.template Alloc<T>(out);
+  if (!x.initialized()) {
+    return;
+  }
   if (x.place() == out->place()) {
     out->ShareDataWith(x);
     out->set_lod(x.lod());
