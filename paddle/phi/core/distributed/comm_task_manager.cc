@@ -121,7 +121,8 @@ void CommTaskManager::CommTaskLoop() {
           // case 3: all group is not empty, some group task started but not
           // finished analyze by automated script
           for (auto iter : group_last_comm_task_) {
-			  LogLongStr("Find last group comm task:", iter.second->GetTraceMsg());
+            LogLongStr("Find last group comm task:",
+                       iter.second->GetTraceMsg());
           }
         }
       }
