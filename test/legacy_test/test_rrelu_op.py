@@ -108,10 +108,10 @@ class TestFunctionalRReluAPI(unittest.TestCase):
     def test_static_graph_functional(self):
         '''test_static_graph_functional'''
 
-        main = paddle.static.Program()
-        startup = paddle.static.Program()
         for place in self.places:
-            with paddle.static.program_guard(main, startup):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 paddle.enable_static()
                 x_1 = paddle.static.data(
                     name="x", shape=self.x_np.shape, dtype="float64"
@@ -128,7 +128,9 @@ class TestFunctionalRReluAPI(unittest.TestCase):
                 out_ref_1 = ref_rrelu(self.x_np, self.lower_0, self.upper_0)
                 np.testing.assert_allclose(out_ref_1, res_1, rtol=1e-05)
 
-            with paddle.static.program_guard(main, startup):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 paddle.enable_static()
 
                 x_2 = paddle.static.data(
@@ -148,7 +150,9 @@ class TestFunctionalRReluAPI(unittest.TestCase):
 
                 np.testing.assert_allclose(out_ref_2, res_2, rtol=1e-05)
 
-            with paddle.static.program_guard(main, startup):
+            with paddle.static.program_guard(
+                paddle.static.Program(), paddle.static.Program()
+            ):
                 paddle.enable_static()
 
                 x_2 = paddle.static.data(
