@@ -31,8 +31,8 @@
 #include "paddle/cinn/common/target.h"
 #include "paddle/cinn/ir/ir.h"
 #include "paddle/cinn/ir/ir_base.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/schedule/ir_schedule.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 
 namespace cinn {
 namespace auto_schedule {

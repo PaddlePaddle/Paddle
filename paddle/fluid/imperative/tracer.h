@@ -31,6 +31,7 @@
 #include "paddle/fluid/imperative/layout_autotune.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/phi/core/compat/arg_map_context.h"
+#include "paddle/utils/test_macros.h"
 
 PHI_DECLARE_bool(use_stride_kernel);
 namespace paddle {
@@ -125,13 +126,9 @@ class Tracer {
                            const NameTensorMap& outs,
                            bool trace_backward);
 
-  void SetEnableProgramDescTracing(bool enabled) {
-    enable_program_desc_tracing_ = enabled;
-  }
+  void SetEnableProgramDescTracing(bool enabled);
 
-  bool IsProgramDescTracingEnabled() const {
-    return enable_program_desc_tracing_;
-  }
+  bool IsProgramDescTracingEnabled() const;
 
   jit::ProgramDescTracer* GetProgramDescTracer() {
     return program_desc_tracer_.get();
@@ -152,73 +149,33 @@ class Tracer {
 
   platform::Place ExpectedPlace() const { return expected_place_; }
 
-  void SetExpectedPlace(platform::Place place);
+  TEST_API void SetExpectedPlace(platform::Place place);
 
-  bool HasGrad() const { return has_grad_; }
+  TEST_API bool HasGrad() const;
 
-  void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
+  TEST_API void SetHasGrad(bool has_grad);
 
-  void SetUsePromote(bool use_promote) {
-    VLOG(4) << "set use_promote to " << use_promote;
-    use_promote_ = use_promote;
-  }
+  TEST_API void SetUsePromote(bool use_promote);
 
-  bool GetUsePromote() const { return use_promote_; }
+  TEST_API bool GetUsePromote() const;
 
-  void SetAmpLevel(AmpLevel level) {
-    VLOG(4) << "set amp_level to " << static_cast<unsigned int>(level);
-    amp_level_ = level;
-  }
+  TEST_API void SetAmpLevel(AmpLevel level);
 
-  AmpLevel GetAmpLevel() const { return amp_level_; }
+  TEST_API AmpLevel GetAmpLevel() const;
 
-  void SetAmpDtype(std::string amp_dtype) {
-    VLOG(4) << "set amp_dtype to " << amp_dtype;
-    if (amp_dtype == "float16") {
-      amp_dtype_ = phi::DataType::FLOAT16;
-    } else if (amp_dtype == "bfloat16") {
-      amp_dtype_ = phi::DataType::BFLOAT16;
-    } else {
-      amp_dtype_ = phi::DataType::FLOAT32;
-    }
-  }
+  void SetAmpDtype(std::string amp_dtype);
 
-  std::string GetAmpDtype() const {
-    if (amp_dtype_ == phi::DataType::FLOAT16) {
-      return std::string("float16");
-    } else if (amp_dtype_ == phi::DataType::BFLOAT16) {
-      return std::string("bfloat16");
-    } else {
-      return std::string("float32");
-    }
-  }
+  std::string GetAmpDtype() const;
 
-  phi::DataType GetAmpPhiDtype() const { return amp_dtype_; }
+  phi::DataType GetAmpPhiDtype() const;
 
-  void DisableLayoutAutoTune() { use_layout_autotune_ = false; }
+  TEST_API void DisableLayoutAutoTune();
 
-  void EnableLayoutAutoTune() {
-    use_layout_autotune_ = true;
-    if (FLAGS_use_stride_kernel) {
-      LOG(WARNING) << "When the layout_autotune policy is on, Paddle will turn "
-                      "off the Stride policy. This will cause the input and "
-                      "output of the Strided API no longer share memory, which "
-                      "may cause problems with model accuracy.";
-      FLAGS_use_stride_kernel = false;
-    }
-  }
+  TEST_API void EnableLayoutAutoTune();
 
-  bool UseLayoutAutoTune() {
-#if defined(PADDLE_WITH_CUDA)
-    if (phi::backends::gpu::TensorCoreAvailable()) {
-      return use_layout_autotune_;
-    }
-#endif
-    use_layout_autotune_ = false;
-    return false;
-  }
-  void SetPythonStack(std::string stack_str) { python_stack_ = stack_str; }
-  std::string GetPythonStack() { return python_stack_; }
+  TEST_API bool UseLayoutAutoTune();
+  TEST_API void SetPythonStack(std::string stack_str);
+  TEST_API std::string GetPythonStack();
   phi::KernelSignature GetExpectedKernelSignature(
       const std::string& type,
       const NameTensorMap& ins,
@@ -245,7 +202,7 @@ class Tracer {
 
 // To access static variable current_tracer
 const std::shared_ptr<Tracer>& GetCurrentTracer();
-void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
+TEST_API void SetCurrentTracer(const std::shared_ptr<Tracer>& tracer_);
 void IncreaseVarbaseReferenceCountUntilCopyComplete(
     const std::shared_ptr<imperative::VarBase>& var,
     const platform::Place& place);

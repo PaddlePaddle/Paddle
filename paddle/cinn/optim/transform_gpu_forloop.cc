@@ -24,9 +24,9 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_mutator.h"
+#include "paddle/cinn/ir/ir_printer.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
-#include "paddle/cinn/ir/utils/ir_mutator.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
 #include "paddle/cinn/poly/isl_utils.h"
@@ -396,7 +396,7 @@ class ReplaceLoopVarToGpu : public ir::IRMutator<> {
     auto bind_info = for_ir->bind_info();
 
     std::string var_name = "";
-    if (bind_info.offset == 0)
+    if (bind_info.offset <= 0)
       var_name = "x";
     else if (bind_info.offset == 1)
       var_name = "y";

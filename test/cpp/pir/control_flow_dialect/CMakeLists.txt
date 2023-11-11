@@ -1,8 +1,17 @@
 cc_test_old(
-  test_if_op
+  if_op_test
   SRCS
   if_op_test.cc
   DEPS
   pir
-  pd_op_dialect
+  op_dialect_vjp
+  gtest)
+
+cc_test_old(
+  while_op_test
+  SRCS
+  while_op_test.cc
+  DEPS
+  pir
+  op_dialect_vjp
   gtest)

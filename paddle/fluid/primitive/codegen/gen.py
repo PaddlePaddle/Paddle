@@ -14,6 +14,7 @@
 
 import argparse
 import hashlib
+import os
 import pathlib
 import sys
 
@@ -37,102 +38,19 @@ sys.path.append(
 # fmt: on
 
 
-VJPS = [
-    'where_grad',
-    'tril_grad',
-    'triu_grad',
-    'tanh_grad',
-    'mean_grad',
-    'add_grad',
-    'divide_grad',
-    'sum_grad',
-    'concat_grad',
-    'split_grad',
-    'split_with_num_grad',
-    'gelu_grad',
-    'softmax_grad',
-    'silu_grad',
-    'multiply_grad',
-    'subtract_grad',
-    'erf_grad',
-    'expand_grad',
-    'exp_grad',
-    'expm1_grad',
-    'elementwise_pow_grad',
-    'fused_softmax_mask_upper_triangle_grad',
-    'matmul_grad',
-    'pow_grad',
+VJPS_BLACK_LIST = [
     'reshape_grad',
-    'rsqrt_grad',
-    'slice_grad',
-    'transpose_grad',
-    'square_grad',
-    'dropout_grad',
-    'cast_grad',
-    'slice_double_grad',
-    'layer_norm_grad',
-    'embedding_grad',
-    'scale_grad',
-    'gather_nd_grad',
-    'stack_grad',
-    'squeeze_grad',
-    'unsqueeze_grad',
-    'poisson_grad',
-    'gumbel_softmax_grad',
-    'conv2d_grad',
-    'depthwise_conv2d_grad',
-    'sqrt_grad',
-    'flatten_grad',
-    'relu_grad',
-    'abs_grad',
-    'log_grad',
-    'clip_grad',
-    'ceil_grad',
-    'frobenius_norm_grad',
-    'p_norm_grad',
-    'maximum_grad',
-    'argsort_grad',
-    'min_grad',
-    'batch_norm_grad',
-    'max_pool2d_with_index_grad',
-    'pool2d_grad',
-    'minimum_grad',
-    'prod_grad',
-    'round_grad',
-    'sin_grad',
-    'cos_grad',
-    'dot_grad',
-    'floor_grad',
-    'topk_grad',
-    'square_grad',
-    'gather_grad',
-    'label_smooth_grad',
-    'cross_entropy_with_softmax_grad',
-    'mean_all_grad',
-    'cumsum_grad',
-    'linear_interp_grad',
-    'bilinear_interp_grad',
-    'trilinear_interp_grad',
-    'nearest_interp_grad',
-    'bicubic_interp_grad',
-    'assign_grad',
-    'assign_out__grad',
-    'real_grad',
-    'flip_grad',
-    'softmax_grad',
-    'expand_grad',
-    'conv2d_transpose_grad',
-    'depthwise_conv2d_transpose_grad',
-    'sigmoid_grad',
-    'pad_grad',
-    'pad3d_grad',
-    'einsum_grad',
-    'leaky_relu_grad',
-    'log10_grad',
-    'conv3d_grad',
-    'solve_grad',
-    'diag_grad',
-    'trace_grad',
+    'add_n_grad',
+]
+
+BACKENDS_BLACK_LIST = [
+    'copy_to',
+    'add_n_grad',
+    "allclose",
+    "isclose",
+    "send_v2",
+    "assert",
+    "embedding_grad_sparse",
 ]
 
 
@@ -141,155 +59,35 @@ PRIM_VJP = [
     'sum_grad',
     'cast_grad',
     'add_grad',
-    'multiply_grad',
-    'elementwise_pow_grad',
-    'reshape_grad',
-    'split_grad',
-    'tanh_grad',
-    'transpose_grad',
-    'concat_grad',
-]  # vjp list of primitive op
-CUSTOM_VJP = ['gelu_grad', 'layer_norm_grad']  # custom vjp list of composite op
-VJP_COMPS = PRIM_VJP + CUSTOM_VJP
-
-BACKENDS = [
-    'where_grad',
-    'tril_grad',
-    'triu_grad',
-    'add_n',
-    'mean',
-    'sum',
-    'divide',
-    'full',
-    'tanh',
-    'tanh_grad',
-    'mean_grad',
-    'concat',
-    'add',
-    'multiply',
-    'elementwise_pow',
-    'scale',
-    'reshape',
-    'expand',
-    'tile',
-    'add_grad',
-    'divide_grad',
-    'sum_grad',
-    'concat_grad',
-    'split_grad',
-    'split_with_num_grad',
-    'gelu_grad',
-    'softmax_grad',
-    'silu_grad',
-    'multiply_grad',
     'subtract_grad',
-    'erf_grad',
-    'expand_grad',
-    'exp_grad',
-    'expm1_grad',
-    'multiply',
-    'exp',
-    'erf',
-    'cast',
+    'multiply_grad',
     'elementwise_pow_grad',
-    'fused_softmax_mask_upper_triangle_grad',
-    'matmul_grad',
-    'pow_grad',
     'reshape_grad',
-    'rsqrt_grad',
-    'slice_grad',
+    'split_grad',
+    'tanh_grad',
     'transpose_grad',
-    'subtract',
-    'assign',
-    'equal',
-    'greater_equal',
-    'greater_than',
-    'less_equal',
-    'less_than',
-    'matmul',
-    'max',
-    'maximum',
-    'minimum',
-    'not_equal',
-    'abs',
-    'bitwise_and',
-    'bitwise_not',
-    'bitwise_or',
-    'bitwise_xor',
-    'floor',
-    'gather_nd',
-    'log',
-    'roll',
-    'scatter',
-    'scatter_nd_add',
-    'square_grad',
-    'dropout_grad',
-    'slice',
-    'layer_norm_grad',
-    'embedding_grad',
-    'sqrt',
-    'uniform',
-    'poisson_grad',
-    'gumbel_softmax_grad',
-    'split',
-    'transpose',
-    'gather_nd_grad',
-    'stack_grad',
-    'squeeze_grad',
-    'unsqueeze_grad',
-    'conv2d_grad',
-    'depthwise_conv2d_grad',
-    'sqrt_grad',
-    'flatten_grad',
-    'relu_grad',
-    'abs_grad',
+    'concat_grad',
+    'erf_grad',
+    'exp_grad',
+    'expand_grad',
     'log_grad',
-    'clip_grad',
-    'ceil_grad',
-    'frobenius_norm_grad',
-    'p_norm_grad',
-    'maximum_grad',
-    'argsort_grad',
-    'min_grad',
-    'batch_norm_grad',
-    'max_pool2d_with_index_grad',
-    'pool2d_grad',
-    'minimum_grad',
-    'prod_grad',
-    'round_grad',
-    'sin_grad',
-    'cos_grad',
-    'dot_grad',
-    'floor_grad',
-    'topk_grad',
-    'square_grad',
-    'gather_grad',
-    'label_smooth_grad',
-    'cross_entropy_with_softmax_grad',
-    'mean_all_grad',
-    'cumsum_grad',
-    'linear_interp_grad',
-    'bilinear_interp_grad',
-    'trilinear_interp_grad',
-    'nearest_interp_grad',
-    'bicubic_interp_grad',
-    'assign_out__grad',
-    'real_grad',
-    'softmax_grad',
-    'conv2d_transpose_grad',
-    'depthwise_conv2d_transpose_grad',
-    'sigmoid_grad',
+    'gather_nd_grad',
     'pad_grad',
-    'pad3d_grad',
-    'einsum_grad',
-    'leaky_relu_grad',
-    'log10_grad',
-    'conv3d_grad',
-    'solve_grad',
-    'diag_grad',
-    'trace_grad',
-    'flip',
-]
+    'max_grad',
+    'maximum_grad',
+    'slice_grad',
+    'tile_grad',
+]  # vjp list of primitive op
+CUSTOM_VJP = [
+    'gelu_grad',
+    'layer_norm_grad',
+    'dropout_grad',
+    'silu_grad',
+    'softmax_grad',
+    'sqrt_grad',
+    'relu_grad',
+]  # custom vjp list of composite op
+VJP_COMPS = PRIM_VJP + CUSTOM_VJP
 
 
 def load(path: pathlib.Path):
@@ -341,6 +139,7 @@ def render(src_dir: pathlib.Path, dst_dir: pathlib.Path, *args, **kwargs):
             'datatype': op_gen_tests.is_datatype,
             'exist_mutable_attribute': op_gen_tests.exist_mutable_attribute,
             'mutable_attribute': op_gen_tests.is_mutable_attribute,
+            'only_composite_op': op_gen_tests.is_only_composite_op,
         }
     )
     for tpl in env.list_templates(
@@ -491,6 +290,33 @@ def process_backward_invoke_info(apis):
             api['invoke']['args'] = ', '.join(args)
 
 
+def process_optional_output_info(apis):
+    for api in apis:
+        inputs_dict = to_named_dict(api['inputs'])
+        for output in api['outputs']:
+            if not api['is_fwd']:
+                output['optional'] = False
+            else:
+                if (
+                    api.get("inplace", None)
+                    and output['name'] in api['inplace']
+                    and inputs_dict[api['inplace'][output['name']]]['optional']
+                ):
+                    output['optional'] = True
+                else:
+                    output['optional'] = False
+
+
+def update_apis(op_yaml_items, update_yaml_file):
+    with open(update_yaml_file, "r") as f:
+        update_apis = yaml.safe_load(f)
+    for i in range(len(op_yaml_items)):
+        for update_api in update_apis:
+            if op_yaml_items[i]['name'] == update_api['name']:
+                op_yaml_items[i] = update_api
+                break
+
+
 def gen(
     prim_path: pathlib.Path,
     fwd_path: pathlib.Path,
@@ -498,6 +324,9 @@ def gen(
     rev_path: pathlib.Path,
     rev_legacy_path: pathlib.Path,
     compat_path: pathlib.Path,
+    fwd_pd_op_path: pathlib.Path,
+    update_fwd_pd_op_path: pathlib.Path,
+    rev_pd_op_path: pathlib.Path,
     templates_dir: pathlib.Path,
     destination_dir: pathlib.Path,
 ):
@@ -513,23 +342,45 @@ def gen(
         rev_legacy_path (pathlib.Path): The YAML file path of the legacy
             backward API.
         compat_path: (pathlib.Path): The YAML file path of the ops compat.
+        fwd_pd_op_path (pathlib.Path): The YAML file path of the ir forward API.
+        update_fwd_pd_op_path (pathlib.Path): The YAML file path of the ir update_ops.
+        rev_pd_op_path (pathlib.Path): The YAML file path of the ir backward API.
         templates_dir (pathlib.Path): The directory of the templates.
         destination_dir (pathlib.Path): The Directory of the generated file.
 
     Returns:
         None
     """
-    prims, fwds, legacy_fwds, revs, legacy_revs, compats = (
+    (
+        prims,
+        fwds,
+        legacy_fwds,
+        revs,
+        legacy_revs,
+        compats,
+        ir_fwds,
+        ir_revs,
+    ) = (
         load(prim_path),
         load(fwd_path),
         load(fwd_legacy_path),
         load(rev_path),
         load(rev_legacy_path),
         load(compat_path),
+        load(fwd_pd_op_path),
+        load(rev_pd_op_path),
     )
     filter_compat_info(compats)
-    apis = [{**api, **{'is_fwd': True}} for api in fwds + legacy_fwds]
-    apis = apis + [{**api, **{'is_fwd': False}} for api in revs + legacy_revs]
+
+    fwd_apis = fwds + legacy_fwds + ir_fwds
+    # replace old ir ops with pir ops
+    if os.path.exists(update_fwd_pd_op_path):
+        update_apis(fwd_apis, update_fwd_pd_op_path)
+
+    apis = [{**api, **{'is_fwd': True}} for api in fwd_apis]
+    apis = apis + [
+        {**api, **{'is_fwd': False}} for api in revs + legacy_revs + ir_revs
+    ]
     apis = [
         {**api, **{'is_prim': True}}
         if api['name'] in prims
@@ -539,12 +390,13 @@ def gen(
     apis = extend_compat_info(apis, compats)
     apis = apis + get_inplace_api(apis)
     process_backward_invoke_info(apis)
+    process_optional_output_info(apis)
     render(
         templates_dir,
         destination_dir,
         apis=apis,
-        backend_white_list=BACKENDS,
-        vjp_white_list=VJPS,
+        backend_black_list=BACKENDS_BLACK_LIST,
+        vjp_black_list=VJPS_BLACK_LIST,
         vjp_comp_white_list=VJP_COMPS,
     )
 
@@ -580,6 +432,21 @@ if __name__ == "__main__":
         help='The parsed ops compat yaml file.',
     )
     parser.add_argument(
+        '--fwd_pd_op_path',
+        type=str,
+        help='The ir forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
+        '--update_fwd_pd_op_path',
+        type=str,
+        help='The ir update forward ops parsed  yaml file.',
+    )
+    parser.add_argument(
+        '--rev_pd_op_path',
+        type=str,
+        help='The ir backward ops parsed  yaml file.',
+    )
+    parser.add_argument(
         '--templates_dir',
         type=str,
         help='JinJa2 templates base directory.',
@@ -598,6 +465,9 @@ if __name__ == "__main__":
         pathlib.Path(args.rev_path),
         pathlib.Path(args.rev_legacy_path),
         pathlib.Path(args.compat_path),
+        pathlib.Path(args.fwd_pd_op_path),
+        pathlib.Path(args.update_fwd_pd_op_path),
+        pathlib.Path(args.rev_pd_op_path),
         pathlib.Path(args.templates_dir),
         pathlib.Path(args.destination_dir),
     )

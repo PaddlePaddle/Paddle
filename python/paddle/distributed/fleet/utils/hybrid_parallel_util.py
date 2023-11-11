@@ -252,7 +252,7 @@ def fused_allreduce_gradients(parameter_list, hcg):
         scale = 1.0
         if dp_enabled:
             group = hcg.get_data_parallel_group()
-            scale = group.nranks
+            scale = scale / group.nranks
         if sep_enabled:
             sep_group = hcg.get_sep_parallel_group()
             dp_sep_group = hcg.get_dp_sep_parallel_group()

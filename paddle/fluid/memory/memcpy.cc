@@ -18,6 +18,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/profiler/event_tracing.h"
 #include "paddle/phi/common/place.h"
+#include "paddle/utils/test_macros.h"
 
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/device/xpu/xpu_header.h"
@@ -110,11 +111,11 @@ void Copy<platform::CustomPlace, platform::CustomPlace>(
 #endif  // PADDLE_WITH_CUSTOM_DEVICE
 
 template <>
-void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace,
-                                                  void* dst,
-                                                  platform::CPUPlace,
-                                                  const void* src,
-                                                  size_t num) {
+TEST_API void Copy<platform::CPUPlace, platform::CPUPlace>(platform::CPUPlace,
+                                                           void* dst,
+                                                           platform::CPUPlace,
+                                                           const void* src,
+                                                           size_t num) {
   if (UNLIKELY(num == 0)) return;
   VLOG(4) << "src: " << src << ", dst: " << dst << ", num: " << num;
   std::memcpy(dst, src, num);
@@ -292,7 +293,7 @@ inline void SyncCUDAStream() {
 // https://devblogs.nvidia.com/gpu-pro-tip-cuda-7-streams-simplify-concurrency/
 
 template <>
-void Copy<platform::CPUPlace, platform::CUDAPlace>(
+TEST_API void Copy<platform::CPUPlace, platform::CUDAPlace>(
     platform::CPUPlace dst_place,
     void* dst,
     platform::CUDAPlace src_place,
@@ -336,7 +337,7 @@ void Copy<platform::CPUPlace, platform::CUDAPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPlace, platform::CPUPlace>(
+TEST_API void Copy<platform::CUDAPlace, platform::CPUPlace>(
     platform::CUDAPlace dst_place,
     void* dst,
     platform::CPUPlace src_place,
@@ -455,7 +456,7 @@ void Copy<platform::CPUPlace, platform::CUDAPinnedPlace>(
 }
 
 template <>
-void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
+TEST_API void Copy<platform::CUDAPinnedPlace, platform::CPUPlace>(
     platform::CUDAPinnedPlace dst_place,
     void* dst,
     platform::CPUPlace src_place,

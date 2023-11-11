@@ -881,12 +881,112 @@ class TestGetTestResults(unittest.TestCase):
                         [1.94591032, 2.07944156, 2.1972246]])
 
             """,
+            'float_begin': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0)
+                    7.
+
+            """,
+            'float_begin_long': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0000023)
+                    7.0000024
+
+            """,
+            'float_begin_more': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0, 5., 6.123456)
+                    7.0 5.0 6.123457
+
+            """,
+            'float_begin_more_diff': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0, 5., 6.123456)
+                    7.0 5.0 6.123457
+
+            """,
+            'float_begin_more_brief': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0, 5., 6.123456)
+                    7. 5. 6.123457
+
+            """,
+            'float_begin_fail': """
+            placeholder
+
+            Examples:
+
+                .. code-block:: python
+                    :name: code-example-1
+
+                    this is some blabla...
+
+                    >>> print(7.0100023)
+                    7.0000024
+
+            """,
         }
 
         test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 9)
+        self.assertEqual(len(test_results), 15)
 
-        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+            tr_7,
+            tr_8,
+            tr_9,
+            tr_10,
+            tr_11,
+            tr_12,
+            tr_13,
+            tr_14,
+        ) = test_results
 
         self.assertIn('gpu_to_gpu', tr_0.name)
         self.assertTrue(tr_0.passed)
@@ -915,6 +1015,24 @@ class TestGetTestResults(unittest.TestCase):
         self.assertIn('float_array_diff', tr_8.name)
         self.assertTrue(tr_8.passed)
 
+        self.assertIn('float_begin', tr_9.name)
+        self.assertTrue(tr_9.passed)
+
+        self.assertIn('float_begin_long', tr_10.name)
+        self.assertTrue(tr_10.passed)
+
+        self.assertIn('float_begin_more', tr_11.name)
+        self.assertTrue(tr_11.passed)
+
+        self.assertIn('float_begin_more_diff', tr_12.name)
+        self.assertTrue(tr_12.passed)
+
+        self.assertIn('float_begin_more_brief', tr_13.name)
+        self.assertTrue(tr_13.passed)
+
+        self.assertIn('float_begin_fail', tr_14.name)
+        self.assertFalse(tr_14.passed)
+
         # reload xdoctest.checker
         importlib.reload(xdoctest.checker)
 
@@ -926,207 +1044,26 @@ class TestGetTestResults(unittest.TestCase):
         )
         doctester.prepare(test_capacity)
 
-        docstrings_to_test = {
-            'gpu_to_gpu': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('gpu')
-                    >>> a = paddle.to_tensor(.123456789)
-                    >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.123456780])
-
-            """,
-            'cpu_to_cpu': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('cpu')
-                    >>> a = paddle.to_tensor(.123456789)
-                    >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.123456780])
-
-            """,
-            'gpu_to_cpu': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('gpu')
-                    >>> a = paddle.to_tensor(.123456789)
-                    >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [0.123456780])
-
-            """,
-            'cpu_to_gpu': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('cpu')
-                    >>> a = paddle.to_tensor(.123456789)
-                    >>> print(a)
-                    Tensor(shape=[1], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [0.123456780])
-            """,
-            'gpu_to_cpu_array': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('gpu')
-                    >>> a = paddle.to_tensor([[1.123456789 ,2,3], [2,3,4], [3,4,5]])
-                    >>> print(a)
-                    Tensor(shape=[3, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[1.123456780, 2., 3.],
-                    [2., 3., 4.],
-                    [3., 4., 5.]])
-            """,
-            'cpu_to_gpu_array': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('cpu')
-                    >>> a = paddle.to_tensor([[1.123456789,2,3], [2,3,4], [3,4,5]])
-                    >>> print(a)
-                    Tensor(shape=[3, 3], dtype=float32, place=Place(gpu:0), stop_gradient=True,
-                    [[1.123456780, 2., 3.],
-                    [2., 3., 4.],
-                    [3., 4., 5.]])
-            """,
-            'mass_array': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('gpu')
-                    >>> a = paddle.to_tensor(
-                    ... [[1.123456780, 2., -3, .3],
-                    ... [2, 3, +4., 1.2+10.34e-5j],
-                    ... [3, 5.e-3, 1e2, 3e-8]]
-                    ... )
-                    >>> # Tensor(shape=[3, 4], dtype=complex64, place=Place(gpu:0), stop_gradient=True,
-                    >>> #       [[ (1.1234568357467651+0j)                    ,
-                    >>> #          (2+0j)                                     ,
-                    >>> #         (-3+0j)                                     ,
-                    >>> #          (0.30000001192092896+0j)                   ],
-                    >>> #        [ (2+0j)                                     ,
-                    >>> #          (3+0j)                                     ,
-                    >>> #          (4+0j)                                     ,
-                    >>> #         (1.2000000476837158+0.00010340000153519213j)],
-                    >>> #        [ (3+0j)                                     ,
-                    >>> #          (0.004999999888241291+0j)                  ,
-                    >>> #          (100+0j)                                   ,
-                    >>> #          (2.999999892949745e-08+0j)                 ]])
-                    >>> print(a)
-                    Tensor(shape=[3, 4], dtype=complex64, place=Place(AAA), stop_gradient=True,
-                        [[ (1.123456+0j),
-                            (2+0j),
-                            (-3+0j),
-                            (0.3+0j)],
-                            [ (2+0j),
-                            (3+0j),
-                            (4+0j),
-                            (1.2+0.00010340j)],
-                            [ (3+0j),
-                            (0.00499999+0j),
-                            (100+0j),
-                            (2.999999e-08+0j)]])
-            """,
-            'float_array': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('cpu')
-                    >>> x = [[2, 3, 4], [7, 8, 9]]
-                    >>> x = paddle.to_tensor(x, dtype='float32')
-                    >>> print(paddle.log(x))
-                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                    [[0.69314718, 1.09861231, 1.38629436],
-                        [1.94591010, 2.07944155, 2.19722462]])
-
-            """,
-            'float_array_diff': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> import paddle
-                    >>> paddle.device.set_device('cpu')
-                    >>> x = [[2, 3, 4], [7, 8, 9]]
-                    >>> x = paddle.to_tensor(x, dtype='float32')
-                    >>> print(paddle.log(x))
-                    Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                        [[0.69314712, 1.09861221, 1.386294],
-                        [1.94591032, 2.07944156, 2.1972246]])
-
-            """,
-        }
-
         test_results = get_test_results(doctester, docstrings_to_test)
-        self.assertEqual(len(test_results), 9)
+        self.assertEqual(len(test_results), 15)
 
-        tr_0, tr_1, tr_2, tr_3, tr_4, tr_5, tr_6, tr_7, tr_8 = test_results
+        (
+            tr_0,
+            tr_1,
+            tr_2,
+            tr_3,
+            tr_4,
+            tr_5,
+            tr_6,
+            tr_7,
+            tr_8,
+            tr_9,
+            tr_10,
+            tr_11,
+            tr_12,
+            tr_13,
+            tr_14,
+        ) = test_results
 
         self.assertIn('gpu_to_gpu', tr_0.name)
         self.assertFalse(tr_0.passed)
@@ -1154,6 +1091,24 @@ class TestGetTestResults(unittest.TestCase):
 
         self.assertIn('float_array_diff', tr_8.name)
         self.assertFalse(tr_8.passed)
+
+        self.assertIn('float_begin', tr_9.name)
+        self.assertFalse(tr_9.passed)
+
+        self.assertIn('float_begin_long', tr_10.name)
+        self.assertFalse(tr_10.passed)
+
+        self.assertIn('float_begin_more', tr_11.name)
+        self.assertFalse(tr_11.passed)
+
+        self.assertIn('float_begin_more_diff', tr_12.name)
+        self.assertFalse(tr_12.passed)
+
+        self.assertIn('float_begin_more_brief', tr_13.name)
+        self.assertFalse(tr_13.passed)
+
+        self.assertIn('float_begin_fail', tr_14.name)
+        self.assertFalse(tr_14.passed)
 
     def test_run_cpu(self):
         _clear_environ()
@@ -1521,62 +1476,6 @@ class TestGetTestResults(unittest.TestCase):
         doctester = Xdoctester(style='google', target='codeblock')
         doctester.prepare(test_capacity)
 
-        docstrings_to_test = {
-            'one_plus_one': """
-            placeholder
-
-            .. code-block:: python
-                :name: code-example-0
-
-                this is some blabla...
-
-                >>> # doctest: +SKIP('skip')
-                >>> print(1+1)
-                2
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> # doctest: +REQUIRES(env:CPU)
-                    >>> print(1-1)
-                    0
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-2
-
-                    >>> print(1+2)
-                    3
-            """,
-            'one_minus_one': """
-            placeholder
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-1
-
-                    this is some blabla...
-
-                    >>> # doctest: +REQUIRES(env:GPU)
-                    >>> print(1-1)
-                    0
-
-            Examples:
-
-                .. code-block:: python
-                    :name: code-example-2
-
-                    >>> print(1+1)
-                    3
-            """,
-        }
-
         test_results = get_test_results(doctester, docstrings_to_test)
         self.assertEqual(len(test_results), 4)
 
@@ -1849,27 +1748,6 @@ class TestGetTestResults(unittest.TestCase):
         doctester = Xdoctester(style='google', target='codeblock')
         doctester.prepare(test_capacity)
 
-        docstrings_to_test = {
-            'one_plus_one': """
-            placeholder
-
-            .. code-block:: python
-                :name: code-example-0
-
-                this is some blabla...
-
-                >>> # doctest: +SKIP('skip')
-                >>> print(1+1)
-                2
-            """,
-            'one_minus_one': """
-            placeholder
-
-            Examples:
-
-            """,
-        }
-
         test_results = get_test_results(doctester, docstrings_to_test)
         self.assertEqual(len(test_results), 0)
 
@@ -1878,27 +1756,6 @@ class TestGetTestResults(unittest.TestCase):
         test_capacity = {'cpu'}
         doctester = Xdoctester(style='freeform', target='docstring')
         doctester.prepare(test_capacity)
-
-        docstrings_to_test = {
-            'one_plus_one': """
-            placeholder
-
-            .. code-block:: python
-                :name: code-example-0
-
-                this is some blabla...
-
-                >>> # doctest: +SKIP('skip')
-                >>> print(1+1)
-                2
-            """,
-            'one_minus_one': """
-            placeholder
-
-            Examples:
-
-            """,
-        }
 
         test_results = get_test_results(doctester, docstrings_to_test)
         self.assertEqual(len(test_results), 2)
@@ -1924,27 +1781,6 @@ class TestGetTestResults(unittest.TestCase):
         test_capacity = {'cpu'}
         doctester = Xdoctester(style='freeform', target='codeblock')
         doctester.prepare(test_capacity)
-
-        docstrings_to_test = {
-            'one_plus_one': """
-            placeholder
-
-            .. code-block:: python
-                :name: code-example-0
-
-                this is some blabla...
-
-                >>> # doctest: +SKIP('skip')
-                >>> print(1+1)
-                2
-            """,
-            'one_minus_one': """
-            placeholder
-
-            Examples:
-
-            """,
-        }
 
         test_results = get_test_results(doctester, docstrings_to_test)
         self.assertEqual(len(test_results), 1)
@@ -2217,7 +2053,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> import paddle.fluid
+                    >>> import paddle.base
             """,
             'bad_fluid_from': """
             this is docstring...
@@ -2317,7 +2153,7 @@ class TestGetTestResults(unittest.TestCase):
 
                 .. code-block:: python
 
-                    >>> # import paddle.fluid
+                    >>> # import paddle.base
                     >>> import os
             """,
             'oneline_skip': """

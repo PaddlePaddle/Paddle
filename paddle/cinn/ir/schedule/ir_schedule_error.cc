@@ -14,7 +14,7 @@
 
 #include "paddle/cinn/ir/schedule/ir_schedule_error.h"
 #include "paddle/cinn/ir/ir.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
+#include "paddle/cinn/ir/ir_printer.h"
 
 namespace cinn {
 namespace ir {

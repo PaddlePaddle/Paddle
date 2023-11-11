@@ -18,6 +18,7 @@ limitations under the License. */
 
 #include "paddle/phi/api/profiler/event.h"
 #include "paddle/phi/api/profiler/trace_event.h"
+#include "paddle/utils/test_macros.h"
 
 namespace phi {
 
@@ -28,7 +29,7 @@ static constexpr uint32_t kDefaultTraceLevel = 4;
 // Host event tracing. A trace starts when an object of this clas is created and
 // stops when the object is destroyed.
 // Chrome Trace Viewer Format: Duration Event/Complte Event
-class RecordEvent {
+class TEST_API RecordEvent {
  public:
   static bool IsEnabled();
   /**

@@ -51,15 +51,15 @@ class AllocatedDenseTensorType
 
   const phi::Place &place() const;
 
-  const pir::Type &dtype() const;
+  pir::Type dtype() const;
 
   const phi::DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  phi::DataLayout data_layout() const;
 
   const phi::LoD &lod() const;
 
-  const size_t &offset() const;
+  size_t offset() const;
 };
 
 class AllocatedSelectedRowsType
@@ -92,15 +92,15 @@ class AllocatedSelectedRowsType
 
   const phi::Place &place() const;
 
-  const pir::Type &dtype() const;
+  pir::Type dtype() const;
 
   const phi::DDim &dims() const;
 
-  const phi::DataLayout &data_layout() const;
+  phi::DataLayout data_layout() const;
 
   const phi::LoD &lod() const;
 
-  const size_t &offset() const;
+  size_t offset() const;
 };
 
 }  // namespace dialect

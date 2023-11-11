@@ -12,15 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import logger  # noqa: F401
-from . import callbacks  # noqa: F401
-from . import hub  # noqa: F401
-from . import progressbar  # noqa: F401
-from . import static_flops  # noqa: F401
-
+from . import callbacks, hub, logger, progressbar, static_flops  # noqa: F401
+from .dynamic_flops import flops  # noqa: F401
 from .model import Model  # noqa: F401
 from .model_summary import summary  # noqa: F401
-from .dynamic_flops import flops  # noqa: F401
 
 logger.setup_logger()
 

@@ -435,6 +435,9 @@ OpDesc::OpDesc(const std::string &type,
   InitRuntimeAttributeMapByOpExtraInfo(type, &runtime_attrs_);
 }
 
+OpDesc::OpDesc() {}
+
+OpDesc::~OpDesc() = default;
 OpDesc::OpDesc(const OpDesc &other) {
   CopyFrom(other);
   block_ = other.block_;
@@ -527,6 +530,8 @@ proto::OpDesc *OpDesc::Proto() {
   Flush();
   return &desc_;
 }
+
+void OpDesc::SetType(const std::string &type) { desc_.set_type(type); }
 
 const std::vector<std::string> &OpDesc::Input(const std::string &name) const {
   auto it = inputs_.find(name);
@@ -1128,7 +1133,7 @@ void OpDesc::InferShape(const BlockDesc &block) {
     infer_shape(&ctx);
   } catch (platform::EnforceNotMet &exception) {
     framework::AppendErrorOpHint(Type(), &exception);
-    throw std::move(exception);
+    throw exception;
   } catch (...) {
     std::rethrow_exception(std::current_exception());
   }

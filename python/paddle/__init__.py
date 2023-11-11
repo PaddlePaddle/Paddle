@@ -23,6 +23,9 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
     )
 
+# NOTE(SigureMo): We should place the import of base.core before other modules,
+# because there are some initialization codes in base/core/__init__.py.
+from .base import core  # noqa: F401
 from .batch import batch
 
 # Do the *DUPLICATED* monkey-patch for the tensor object.
@@ -30,9 +33,12 @@ from .batch import batch
 # the illogical implement in the monkey-patch methods later.
 from .framework import monkey_patch_variable
 from .framework import monkey_patch_math_tensor
+from .pir import monkey_patch_opresult, monkey_patch_program
 
 monkey_patch_variable()
 monkey_patch_math_tensor()
+monkey_patch_opresult()
+monkey_patch_program()
 
 from .framework import (
     disable_signal_handler,
@@ -66,7 +72,6 @@ Tensor = framework.core.eager.Tensor
 Tensor.__qualname__ = 'Tensor'
 
 import paddle.distributed.fleet  # noqa: F401
-
 from paddle import (  # noqa: F401
     distributed,
     sysconfig,
@@ -108,6 +113,7 @@ from .tensor.creation import (
     create_parameter,
     to_tensor,
     diag,
+    diag_embed,
     diagflat,
     eye,
     linspace,
@@ -247,6 +253,10 @@ from .tensor.manipulation import (  # noqa: F401
     view,
     view_as,
     unfold,
+    masked_fill,
+    masked_fill_,
+    index_fill,
+    index_fill_,
 )
 
 from .tensor.math import (  # noqa: F401
@@ -404,6 +414,8 @@ from .tensor.math import (  # noqa: F401
     polygamma_,
     copysign,
     copysign_,
+    hypot,
+    hypot_,
 )
 
 from .tensor.random import (
@@ -534,8 +546,8 @@ disable_static()
 
 from .pir_utils import IrGuard
 
-ir_change = IrGuard()
-ir_change._switch_to_pir()
+ir_guard = IrGuard()
+ir_guard._switch_to_pir()
 
 __all__ = [
     'iinfo',
@@ -563,6 +575,7 @@ __all__ = [
     'subtract',
     'diag',
     'diagflat',
+    'diag_embed',
     'isnan',
     'scatter_nd_add',
     'unstack',
@@ -903,4 +916,10 @@ __all__ = [
     'polygamma_',
     'copysign',
     'copysign_',
+    'masked_fill',
+    'masked_fill_',
+    'hypot',
+    'hypot_',
+    'index_fill',
+    "index_fill_",
 ]

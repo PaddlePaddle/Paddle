@@ -605,7 +605,7 @@ void BasicEngine::Execute() {
           }
         } catch (platform::EnforceNotMet& exception) {
           Clear();
-          throw std::move(exception);
+          throw exception;
         } catch (std::exception& ex) {
           Clear();
           PADDLE_THROW(platform::errors::External("%s", ex.what()));
@@ -620,7 +620,7 @@ void BasicEngine::Execute() {
       }
 
       for (auto& pair : inplace_output_grad_var_list_) {
-        *pair.first = std::move(*pair.second);
+        *pair.first = *pair.second;
       }
 
       // Step 2: Sum Gradient of This graph

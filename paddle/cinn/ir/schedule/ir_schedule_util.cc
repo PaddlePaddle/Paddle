@@ -26,11 +26,11 @@
 #include "paddle/cinn/common/cas.h"
 #include "paddle/cinn/common/ir_util.h"
 #include "paddle/cinn/ir/ir.h"
+#include "paddle/cinn/ir/ir_printer.h"
+#include "paddle/cinn/ir/ir_visitor.h"
 #include "paddle/cinn/ir/op/ir_operators.h"
 #include "paddle/cinn/ir/utils/ir_copy.h"
 #include "paddle/cinn/ir/utils/ir_nodes_collector.h"
-#include "paddle/cinn/ir/utils/ir_printer.h"
-#include "paddle/cinn/ir/utils/ir_visitor.h"
 #include "paddle/cinn/lang/compute.h"
 #include "paddle/cinn/optim/ir_simplify.h"
 #include "paddle/cinn/optim/replace_var_with_expr.h"
@@ -221,6 +221,14 @@ void ReplaceExpr(Expr* source,
   return;
 }
 
+void ReplaceExpr(Expr* source,
+                 const std::map<Var, Expr, CompVar>& replacing_map) {
+  if (replacing_map.empty()) return;
+  MappingVarToExprMutator mapper(replacing_map);
+  mapper(source);
+  return;
+}
+
 std::vector<int> ValidateFactors(const std::vector<int>& factors,
                                  int total_extent,
                                  const ModuleExpr& module_expr) {
@@ -359,8 +367,16 @@ IterRange GetAccessedRange(const Expr& index,
 
   Expr indice_extent;
   Expr mod_extent(0);
-  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant())
+  if (indice_min.As<Mod>() && indice_min.As<Mod>()->b().is_constant()) {
+    Expr mod_right_min = indice_min.As<Mod>()->a();
+    Expr mod_right_max = indice_max.As<Mod>()->a();
+    Expr mod_right_extent =
+        common::AutoSimplify(mod_right_max - mod_right_min + 1);
     mod_extent = indice_min.As<Mod>()->b();
+    if (mod_right_extent.get_constant() < mod_extent.get_constant()) {
+      mod_extent = mod_right_extent;
+    }
+  }
 
   if (indice_min == indice_max) {
     if (common::is_zero(mod_extent)) {
@@ -867,7 +883,7 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                                ->name;
   ir::ir_utils::CollectIRNodesWithoutTensor(
       compute_body, [&producer_tensor_names, &block_name](const Expr* x) {
-        auto* load = x->As<ir::Load>();
+        const ir::Load* load = x->As<ir::Load>();
         if (load) {
           producer_tensor_names.insert(load->tensor.as_tensor()->name);
           if (load->tensor.as_tensor()->name == block_name) {
@@ -875,6 +891,22 @@ std::vector<Expr> GetProducers(const Expr& block, const Expr& root) {
                 GenReduceInitTensorNameOf(load->tensor.as_tensor()->name));
           }
           return true;
+        }
+        const ir::Store* store = x->As<ir::Store>();
+        if (store) {
+          std::set<ir::Expr> call_nodes =
+              ir::ir_utils::CollectIRNodesWithoutTensor(
+                  store->value,
+                  [](const ir::Expr* x) { return x->As<ir::Call>(); });
+          for (ir::Expr call : call_nodes) {
+            const std::vector<ir::Expr>& read_args =
+                call.As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor()) {
+                producer_tensor_names.insert(arg.as_tensor_ref()->name);
+              }
+            }
+          }
         }
         return false;
       });
@@ -928,13 +960,23 @@ std::vector<Expr> GetConsumers(const Expr& block, const Expr& root) {
     auto block_body = i.As<ir::ScheduleBlockRealize>()
                           ->schedule_block.As<ir::ScheduleBlock>()
                           ->body;
-    auto find_load = ir::ir_utils::CollectIRNodesWithoutTensor(
+    auto find_load_or_call = ir::ir_utils::CollectIRNodesWithoutTensor(
         block_body, [&](const Expr* x) {
+          if (x->As<ir::Call>()) {
+            const std::vector<ir::Expr>& read_args =
+                x->As<ir::Call>()->read_args;
+            for (const ir::Expr& arg : read_args) {
+              if (arg.as_tensor() &&
+                  arg.as_tensor_ref()->name == block_tensor) {
+                return true;
+              }
+            }
+          }
           return x->As<ir::Load>() &&
                  x->As<ir::Load>()->tensor.as_tensor_ref()->name ==
                      block_tensor;
         });
-    if (!find_load.empty()) consumers.emplace_back(i);
+    if (!find_load_or_call.empty()) consumers.emplace_back(i);
   }
   return consumers;
 }

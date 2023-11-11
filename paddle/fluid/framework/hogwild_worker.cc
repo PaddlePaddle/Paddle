@@ -126,7 +126,7 @@ void HogwildWorker::SetZero(phi::DenseTensor *tensor,
 void HogwildWorker::BindingDataFeedMemory() {
   const std::vector<std::string> &input_feed =
       device_reader_->GetUseSlotAlias();
-  for (auto name : input_feed) {
+  for (auto const &name : input_feed) {
     device_reader_->AddFeedVar(thread_scope_->FindVar(name), name);
   }
 }
@@ -158,7 +158,6 @@ bool HogwildWorker::CheckBatchNum(int flag) {
   }
   g_barrier.wait();
   float *stat_ptr = sync_stat_.data<float>();
-  int nranks = 0;
   int ring_id = 0;
   platform::NCCLComm *comm = nullptr;
   const auto &comm_context_manager =
@@ -181,11 +180,9 @@ bool HogwildWorker::CheckBatchNum(int flag) {
                       platform::errors::Unavailable(
                           "NCCLCommContext is nullptr, collective op should "
                           "has ring_id attr."));
-    nranks = comm_ctx->GetSize();
   } else {
     comm = platform::NCCLCommContext::Instance().Get(ring_id,
                                                      place_.GetDeviceId());
-    nranks = comm->nranks();
   }
 
   auto stream = static_cast<phi::GPUContext *>(dev_ctx_)->stream();
@@ -242,7 +239,7 @@ void HogwildWorker::TrainFilesWithProfiler() {
   platform::Timer timeline;
   double total_time = 0.0;
   double read_time = 0.0;
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
     quit_flag_.store(false);
@@ -375,7 +372,7 @@ void HogwildWorker::TrainFiles() {
   int total_batch_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();
-  int cur_batch;
+  int cur_batch = 0;
   int batch_cnt = 0;
   if (thread_id_ == 0) {
     quit_flag_.store(false);
@@ -474,7 +471,7 @@ void HogwildWorker::PrintFetchVars() {
   }
 
   if (thread_id_ == 0 && batch_num_ % batch_per_print == 0) {
-    time_t curtime;
+    time_t curtime = 0;
     time(&curtime);
     std::array<char, 80> mbstr;
     std::strftime(mbstr.data(),

@@ -16,7 +16,7 @@ import unittest
 from collections import Counter
 
 import numpy as np
-from dygraph_to_static_util import dy2static_unittest
+from dygraph_to_static_utils_new import Dy2StTestBase
 from test_fetch_feed import Linear, Pool2D
 
 import paddle
@@ -25,8 +25,7 @@ from paddle.jit.api import to_static
 from paddle.jit.dy2static import convert_to_static
 
 
-@dy2static_unittest
-class TestCacheProgram(unittest.TestCase):
+class TestCacheProgram(Dy2StTestBase):
     def setUp(self):
         self.batch_num = 5
         self.dygraph_class = Pool2D
@@ -76,7 +75,7 @@ class TestCacheProgram2(TestCacheProgram):
         self.data = np.random.random((4, 10)).astype('float32')
 
 
-class TestCacheProgramWithOptimizer(unittest.TestCase):
+class TestCacheProgramWithOptimizer(Dy2StTestBase):
     def setUp(self):
         self.dygraph_class = Linear
         self.data = np.random.random((4, 10)).astype('float32')
@@ -125,7 +124,7 @@ def simple_func(x):
     return mean
 
 
-class TestConvertWithCache(unittest.TestCase):
+class TestConvertWithCache(Dy2StTestBase):
     def test_cache(self):
         static_func = convert_to_static(simple_func)
         # Get transformed function from cache.
@@ -155,7 +154,7 @@ def sum_under_while(limit):
     return ret_sum
 
 
-class TestToOutputWithCache(unittest.TestCase):
+class TestToOutputWithCache(Dy2StTestBase):
     def test_output(self):
         with base.dygraph.guard():
             ret = sum_even_until_limit(80, 10)

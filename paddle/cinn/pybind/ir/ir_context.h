@@ -45,7 +45,7 @@ class IRContextNode : public common::Object {
 };
 
 /**
- * The lifecycle of RAII resource management for IRContextNode
+ * The life cycle of RAII resource management for IRContextNode
  * is determined at the Python.
  */
 class IRContext {
@@ -215,7 +215,7 @@ class IRBuilderNode : public common::Object {
 };
 
 /**
- * The lifecycle of RAII resource management for IRBuilderNode
+ * The life cycle of RAII resource management for IRBuilderNode
  * is determined at the Python.
  */
 class IRBuilder {

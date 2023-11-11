@@ -100,5 +100,24 @@ pir::OpResult split_with_num_grad(const std::vector<pir::Value>& out_grad,
           out_grad_combine_op.out(), axis);
   return split_grad_op.result(0);
 }
+
+pir::OpResult ones(const std::vector<int64_t>& shape,
+                   phi::DataType dtype,
+                   const Place& place) {
+  return paddle::dialect::full(shape, 1, dtype, place);
+}
+
+pir::OpResult ones_like(pir::Value x_,
+                        phi::DataType dtype,
+                        const Place& place) {
+  return paddle::dialect::full_like(x_, 1, dtype, place);
+}
+
+pir::OpResult zeros(const std::vector<int64_t>& shape,
+                    phi::DataType dtype,
+                    const Place& place) {
+  return paddle::dialect::full(shape, 0, dtype, place);
+}
+
 }  // namespace dialect
 }  // namespace paddle
