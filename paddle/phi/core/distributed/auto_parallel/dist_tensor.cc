@@ -71,20 +71,20 @@ DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
 DistTensor::DistTensor(const std::shared_ptr<phi::DenseTensor>& global_value,
                        const ProcessMesh& process_mesh,
                        const std::vector<Placement>& placements) {
-  spec_ = DistTensorSpec(
+  spec_ = std::make_shared<DistTensorMeta>(DistTensorMeta(
       process_mesh,
       placements,
-      DenseTensorMeta(global_value->dtype(), global_value->dims()));
+      DenseTensorMeta(global_value->dtype(), global_value->dims())));
 
-  TensorDistAttr dist_attr(vectorize(spec_.dims()));
-  dist_attr.set_process_mesh(spec_.process_mesh());
-  dist_attr.set_dims_mapping(spec_.dim_mapping());
+  TensorDistAttr dist_attr(vectorize(spec_->dims()));
+  dist_attr.set_process_mesh(spec_->process_mesh());
+  dist_attr.set_dims_mapping(spec_->dim_mapping());
   dist_attr_ = dist_attr;
 
   // If the current rank doesn't in process_mesh, we should create an
   // uninitialized tensor only with spec_.
   if (IsCurRankInMesh(process_mesh)) {
-    if (!spec_.is_replicated()) {
+    if (!spec_->is_replicated()) {
       // 1. create replicated global tensor
       TensorDistAttr replicated_dist_attr(vectorize(global_value->dims()));
       replicated_dist_attr.set_process_mesh(process_mesh);

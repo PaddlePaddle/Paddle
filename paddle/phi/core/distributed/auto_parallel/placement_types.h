@@ -44,6 +44,18 @@ class Placement {
   virtual bool is_replicated() const { return false; }
 
   virtual bool is_partial() const { return false; }
+
+  virtual size_t hash() const { return 0; }
+
+  virtual std::string to_string() const { return ""; }
+
+  virtual bool operator==(const Placement& other) const {
+    PADDLE_THROW(phi::errors::Unimplemented("Not implemented yet."));
+  }
+
+  virtual bool operator!=(const Placement& other) const {
+    PADDLE_THROW(phi::errors::Unimplemented("Not implemented yet."));
+  }
 };
 
 class Shard : public Placement {
@@ -58,17 +70,26 @@ class Shard : public Placement {
     }
   }
 
-  bool operator==(const Shard& other) const { return this->dim_ == other.dim_; }
+  bool operator==(const Placement& other) const override {
+    const Shard* other_shard = dynamic_cast<const Shard*>(&other);
+    return other_shard && this->dim_ == other_shard->dim_;
+  }
 
-  bool operator!=(const Shard& other) const { return !(*this == other); }
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
+  }
 
-  std::size_t hash() const { return std::hash<int>{}(dim_); }
+  std::size_t hash() const override { return std::hash<int>{}(dim_); }
 
   int get_dim() const { return dim_; }
 
   friend std::ostream& operator<<(std::ostream& os, const Shard& p) {
-    os << "Shard(dim=" << p.dim_ << ")";
+    os << p.to_string();
     return os;
+  }
+
+  std::string to_string() const override {
+    return "Shard(dim=" + std::to_string(dim_) + ")";
   }
 
  private:
@@ -79,16 +100,21 @@ class Replicated : public Placement {
  public:
   bool is_replicated() const override { return true; }
 
-  bool operator==(const Replicated& other) const { return true; }
+  bool operator==(const Placement& other) const override {
+    return dynamic_cast<const Replicated*>(&other) != nullptr;
+  }
 
-  bool operator!=(const Replicated& other) const { return !(*this == other); }
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
+  }
 
-  std::size_t hash() const { return -1; }
+  std::size_t hash() const override { return -1; }
 
   friend std::ostream& operator<<(std::ostream& os, const Replicated& p) {
-    os << "Replicated()";
+    os << p.to_string();
     return os;
   }
+  std::string to_string() const override { return "Replicated()"; }
 };
 
 class Partial : public Placement {
@@ -97,38 +123,47 @@ class Partial : public Placement {
       : reduce_type_(reduce_type) {}
   bool is_partial() const override { return true; }
 
-  bool operator==(const Partial& other) const {
-    return this->reduce_type_ == other.reduce_type_;
+  bool operator==(const Placement& other) const override {
+    const Partial* other_partial = dynamic_cast<const Partial*>(&other);
+    return other_partial && this->reduce_type_ == other_partial->reduce_type_;
   }
 
-  bool operator!=(const Partial& other) const { return !(*this == other); }
+  bool operator!=(const Placement& other) const override {
+    return !(*this == other);
+  }
 
-  std::size_t hash() const { return std::hash<ReduceType>{}(reduce_type_); }
+  std::size_t hash() const override {
+    return std::hash<ReduceType>{}(reduce_type_);
+  }
 
   friend std::ostream& operator<<(std::ostream& os, const Partial& p) {
-    os << "Partial(reduce_type="
-       << ReduceTypeStrings[static_cast<int>(p.reduce_type_)] << ")";
+    os << p.to_string();
     return os;
+  }
+
+  std::string to_string() const override {
+    return "Partial(reduce_type=" +
+           std::string(ReduceTypeStrings[static_cast<int>(reduce_type_)]) + ")";
   }
 
  private:
   ReduceType reduce_type_;
 };
 
-class DistTensorSpec : public std::enable_shared_from_this<DistTensorSpec> {
+class DistTensorMeta : public std::enable_shared_from_this<DistTensorMeta> {
  public:
-  DistTensorSpec(const ProcessMesh& process_mesh,
+  DistTensorMeta(const ProcessMesh& process_mesh,
                  const std::vector<Placement>& placements,
                  const DenseTensorMeta& tensor_meta)
-      : process_mesh_(process_mesh),
-        placements_(placements),
-        tensor_meta_(tensor_meta) {}
+      : process_mesh_(std::make_shared<const ProcessMesh>(process_mesh)),
+        placements_(std::make_shared<const std::vector<Placement>>(placements)),
+        tensor_meta_(std::make_shared<const DenseTensorMeta>(tensor_meta)) {}
 
-  DistTensorSpec() = default;
+  DistTensorMeta() = default;
 
-  const DDim& dims() const { return tensor_meta_.dims; }
+  const DDim& dims() const { return tensor_meta_->dims; }
 
-  const ProcessMesh& process_mesh() const { return process_mesh_; }
+  const ProcessMesh& process_mesh() const { return *process_mesh_; }
 
   int64_t num_shard() const;
 
@@ -137,9 +172,12 @@ class DistTensorSpec : public std::enable_shared_from_this<DistTensorSpec> {
   bool is_replicated() const;
 
  private:
-  ProcessMesh process_mesh_;
-  std::vector<Placement> placements_;
-  DenseTensorMeta tensor_meta_;
+  std::shared_ptr<const ProcessMesh> process_mesh_;
+  std::shared_ptr<const std::vector<Placement>> placements_;
+  std::shared_ptr<const DenseTensorMeta> tensor_meta_;
+  // ProcessMesh process_mesh_;
+  // std::vector<Placement> placements_;
+  // DenseTensorMeta tensor_meta_;
 };
 
 }  // namespace distributed

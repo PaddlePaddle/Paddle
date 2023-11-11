@@ -137,7 +137,8 @@ class DistTensor final
   // The local DenseTensor value
   std::shared_ptr<DenseTensor> value_;
 
-  DistTensorSpec spec_;
+  // DistTensorMeta spec_;
+  std::shared_ptr<DistTensorMeta> spec_;
 };
 
 }  // namespace distributed

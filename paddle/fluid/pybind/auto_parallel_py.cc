@@ -29,6 +29,7 @@
 #include "paddle/phi/core/distributed/auto_parallel/dist_attr.h"
 #include "paddle/phi/core/distributed/auto_parallel/dist_mapper.h"
 #include "paddle/phi/core/distributed/auto_parallel/inferspmd_utils.h"
+#include "paddle/phi/core/distributed/auto_parallel/placement_types.h"
 #include "paddle/phi/core/distributed/auto_parallel/process_mesh.h"
 #include "paddle/utils/optional.h"
 #include "paddle/utils/pybind.h"
@@ -88,6 +89,7 @@ using phi::distributed::auto_parallel::Machine;
 
 PyTypeObject *g_tensor_dist_attr_pytype = nullptr;
 PyTypeObject *g_dist_tensor_spec_pytype = nullptr;
+PyTypeObject *g_placement_pytype = nullptr;
 constexpr const char *infer_spmd_string = "infer_spmd";
 
 static inline const ProcessMesh *get_tensor_process_mesh(
@@ -345,6 +347,36 @@ void BindAutoParallel(py::module *m) {
           },
           py::arg("memo"))
       .def("__str__", &DeviceMesh::to_string);
+
+  auto Placement =
+      py::class_<phi::distributed::Placement,
+                 std::shared_ptr<phi::distributed::Placement>>(*m, "Placement")
+          .def(py::init<>())
+          .def("is_shard", &phi::distributed::Placement::is_shard)
+          .def("is_replicated", &phi::distributed::Placement::is_replicated)
+          .def("is_partial", &phi::distributed::Placement::is_partial)
+          .def("__hash__", &phi::distributed::Placement::hash)
+          .def("__str__", &phi::distributed::Placement::to_string)
+          .def("__eq__", &phi::distributed::Placement::operator==)
+              g_placement_pytype =
+          reinterpret_cast<PyTypeObject *>(Placement.ptr());
+
+  py::class_<phi::distributed::Shard, std::shared_ptr<phi::distributed::Shard>>(
+      *m, "Shard", Placement)
+      .def(py::init([](int64_t dim) {
+        return std::make_shared<phi::distributed::Shard>(dim);
+      }))
+      .def("get_dim", &phi::distributed::Shard::get_dim);
+
+  py::class_<phi::distributed::Replicated,
+             std::shared_ptr<phi::distributed::Replicated>>(
+      *m, "Replicated", Placement)
+      .def(py::init<>());
+
+  py::class_<phi::distributed::Partial,
+             std::shared_ptr<phi::distributed::Partial>>(
+      *m, "Partial", Placement)
+      .def(py::init<>());
 
   py::class_<TensorDistAttr> py_dist_attr(*m, "TensorDistAttr");
   g_tensor_dist_attr_pytype =
