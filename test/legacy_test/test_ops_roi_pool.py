@@ -88,7 +88,6 @@ class TestRoIPool(unittest.TestCase):
         self.roi_pool_functional(3)
         paddle.disable_static()
 
-    @test_with_pir_api
     def test_RoIPool(self):
         roi_pool_c = RoIPool(output_size=(4, 3))
         data = paddle.to_tensor(self.data)
