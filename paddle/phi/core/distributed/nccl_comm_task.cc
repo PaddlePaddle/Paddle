@@ -165,33 +165,29 @@ std::string NCCLCommTask::GetCommErrors() {
 
 bool NCCLCommTask::IsStarted() {
   if (started_) {
-      return true;
+    return true;
   }
   if (start_event_created_ && CudaEventQuery(nccl_start_event_)) {
-      started_ = true;
-      updated_ = true;
+    started_ = true;
+    updated_ = true;
   }
   return started_;
 }
 
 bool NCCLCommTask::IsCompleted() {
   if (completed_) {
-      return true;
+    return true;
   }
   if (end_event_created_ && CudaEventQuery(nccl_end_event_)) {
-      completed_ = true;
-      updated_ = true;
+    completed_ = true;
+    updated_ = true;
   }
   return completed_;
 }
 
-void NCCLCommTask::SetUpdated(bool updated) {
-  updated_ = updated;
-}
+void NCCLCommTask::SetUpdated(bool updated) { updated_ = updated; }
 
-bool NCCLCommTask::IsUpdated() {
-  return updated_;
-}
+bool NCCLCommTask::IsUpdated() { return updated_; }
 
 bool NCCLCommTask::IsTimeout() {
   auto current_timepoint = std::chrono::steady_clock::now();

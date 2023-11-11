@@ -99,32 +99,34 @@ void CommTaskManager::CommTaskLoop() {
         [&]() -> bool { return terminated_.load(); });
 
     if (IsTimeout() && !logged_) {
-        // case 1: all group is empty, has no task
-        // report error immediately
-        if (group_last_comm_task_.empty()) {
-            LOG(ERROR) << "Find no task started in all group";
-        } else {
-            // case 2: all group is not empty, but all last task is completed
-            // when some group is empty ?
-            bool all_completed = true;
-            for (auto iter: group_last_comm_task_) {
-                if (!iter.second->IsCompleted()) {
-                    all_completed = false;
-                    break;
-                }
-            }
-            if (all_completed) {
-                // report error immediately
-                LOG(ERROR) << "Find no task started with prev task completed in all group";
-            } else {
-                // case 3: all group is not empty, some group task started but not finished
-                // analyze by automated script
-                for (auto iter : group_last_comm_task_) {
-                    LOG(INFO) << "Find last group comm task:" << iter.second->GetTraceMsg();
-                }
-            }
+      // case 1: all group is empty, has no task
+      // report error immediately
+      if (group_last_comm_task_.empty()) {
+        LOG(ERROR) << "Find no task started in all group";
+      } else {
+        // case 2: all group is not empty, but all last task is completed
+        // when some group is empty ?
+        bool all_completed = true;
+        for (auto iter : group_last_comm_task_) {
+          if (!iter.second->IsCompleted()) {
+            all_completed = false;
+            break;
+          }
         }
-        logged_ = true;
+        if (all_completed) {
+          // report error immediately
+          LOG(ERROR)
+              << "Find no task started with prev task completed in all group";
+        } else {
+          // case 3: all group is not empty, some group task started but not
+          // finished analyze by automated script
+          for (auto iter : group_last_comm_task_) {
+            LOG(INFO) << "Find last group comm task:"
+                      << iter.second->GetTraceMsg();
+          }
+        }
+      }
+      logged_ = true;
     }
     for (auto iter = comm_task_list_.begin(); iter != comm_task_list_.end();) {
       auto task = *iter;
@@ -191,7 +193,7 @@ void CommTaskManager::CommTaskLoop() {
 
 void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
   if (!task->IsUpdated()) {
-      return;
+    return;
   }
   group_last_comm_task_[task->GroupKey()] = task;
   last_update_time_ = std::chrono::steady_clock::now();
