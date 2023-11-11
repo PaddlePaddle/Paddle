@@ -505,8 +505,7 @@ CompatInferMetaContext::OptionalInputsBetween(size_t start, size_t end) const {
       result.emplace_back(in.initialized() ? &in : nullptr);
     }
 
-    return paddle::optional<std::vector<const phi::MetaTensor*>>(
-        std::move(result));
+    return paddle::optional<std::vector<const phi::MetaTensor*>>(result);
   }
   return paddle::none;
 }
@@ -637,11 +636,11 @@ CompatInferMetaContext BuildInferMetaContext(InferShapeContext* ctx,
             if (ctx->IsRuntime()) {
               Variable* var = PADDLE_GET_CONST(Variable*, infershape_input[0]);
               infer_meta_context.EmplaceBackAttr(
-                  std::move(framework::MakePhiScalarFromVar(*var)));
+                  framework::MakePhiScalarFromVar(*var));
             } else {
               phi::Scalar tensor_scalar(-1);
               tensor_scalar.SetFromTensor(true);
-              infer_meta_context.EmplaceBackAttr(std::move(tensor_scalar));
+              infer_meta_context.EmplaceBackAttr(tensor_scalar);
             }
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(

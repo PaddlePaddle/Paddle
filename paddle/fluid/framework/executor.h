@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/platform/device_context.h"
+#include "paddle/utils/test_macros.h"
 
 namespace paddle {
 namespace framework {
@@ -36,7 +37,7 @@ class ProgramDesc;
 class Scope;
 class TrainerBase;
 
-struct ExecutorPrepareContext {
+struct TEST_API ExecutorPrepareContext {
   ExecutorPrepareContext(const framework::ProgramDesc& prog, size_t block_id);
 
   ~ExecutorPrepareContext();
@@ -52,9 +53,11 @@ struct ExecutorPrepareContext {
   std::unordered_map<const OperatorBase*, std::vector<std::string>>
       unused_vars_;
   bool force_disable_gc_{false};
+
+  DISABLE_COPY_AND_ASSIGN(ExecutorPrepareContext);
 };
 
-class Executor {
+class TEST_API Executor {
  public:
   // TODO(dzhwinter) : Do not rely on this function, it will be removed
   explicit Executor(const platform::DeviceContext& device)

@@ -17,12 +17,12 @@
 
 namespace pir {
 
-Type ShapedTypeInterface::getElementType() const {
-  return impl_->get_element_type_(*this);
+Type ShapedTypeInterface::GetElementType() const {
+  return impl_->get_element_type(*this);
 }
 
-phi::DDim ShapedTypeInterface::getShape() const {
-  return impl_->get_shape_(*this);
+phi::DDim ShapedTypeInterface::GetShape() const {
+  return impl_->get_shape(*this);
 }
 
 }  // namespace pir

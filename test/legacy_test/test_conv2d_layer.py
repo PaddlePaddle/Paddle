@@ -218,8 +218,53 @@ class Conv2DTestCase(unittest.TestCase):
         t1 = x_var.gradient()
         return y_np, t1
 
+    def run_Conv2D_static(self, place):
+        paddle.seed(2023)
+        main = base.Program()
+        start = base.Program()
+        with base.unique_name.guard():
+            with base.program_guard(main, start):
+                x_var = paddle.static.data(
+                    "input", self.input.shape, dtype=self.dtype
+                )
+                conv = nn.Conv2D(
+                    self.num_channels,
+                    self.num_filters,
+                    self.filter_size,
+                    padding=self.padding,
+                    padding_mode=self.padding_mode,
+                    stride=self.stride,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    data_format=self.data_format,
+                )
+                y_var = conv(x_var)
+        feed_dict = {"input": self.input}
+        exe = base.Executor(place)
+        exe.run(start)
+        (y_np,) = exe.run(main, feed=feed_dict, fetch_list=[y_var])
+        return y_np
+
+    def run_Conv2D_dygraph(self):
+        paddle.seed(2023)
+        x_var = paddle.to_tensor(self.input)
+        x_var.stop_gradient = False
+        conv = nn.Conv2D(
+            self.num_channels,
+            self.num_filters,
+            self.filter_size,
+            padding=self.padding,
+            padding_mode=self.padding_mode,
+            stride=self.stride,
+            dilation=self.dilation,
+            groups=self.groups,
+            data_format=self.data_format,
+        )
+        y_var = conv(x_var)
+        y_np = y_var.numpy()
+        return y_np
+
     def _test_equivalence(self, place):
-        place = base.CPUPlace()
         result1 = self.base_layer(place)
         result2 = self.functional(place)
         with dg.guard(place):
@@ -227,13 +272,22 @@ class Conv2DTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(result1, result2)
         np.testing.assert_array_almost_equal(result2, result3)
 
+    def _test_equivalence_in_pir(self, place):
+        with paddle.pir_utils.IrGuard():
+            result1 = self.run_Conv2D_static(place)
+            with dg.guard(place):
+                result2 = self.run_Conv2D_dygraph()
+            np.testing.assert_array_almost_equal(result1, result2)
+
     def runTest(self):
         place = base.CPUPlace()
         self._test_equivalence(place)
+        self._test_equivalence_in_pir(place)
 
         if base.core.is_compiled_with_cuda():
             place = base.CUDAPlace(0)
             self._test_equivalence(place)
+            self._test_equivalence_in_pir(place)
 
 
 class Conv2DErrorTestCase(Conv2DTestCase):

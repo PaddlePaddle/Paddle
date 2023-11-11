@@ -1,5 +1,25 @@
+- backward_op : fused_attention_grad
+  args : (Tensor out_grad, Tensor x, Tensor qkv_weight, Tensor qkv_bias, Tensor qkv_bias_out, Tensor src_mask, Tensor src_mask_out, Tensor out_linear_weight, Tensor out_linear_bias, Tensor ln_scale, Tensor ln_bias, Tensor ln_scale_2, Tensor ln_bias_2, Tensor ln_out, Tensor ln_mean, Tensor ln_var, Tensor ln_mean_2, Tensor ln_var_2, Tensor bias_dropout_residual_out, Tensor qkv_out, Tensor transpose_out_2, Tensor qk_out, Tensor qktv_out, Tensor softmax_out, Tensor attn_dropout_mask_out, Tensor attn_dropout_out, Tensor fmha_out, Tensor out_linear_out, Tensor dropout_mask_out, int num_heads, bool transpose_qkv_wb, bool pre_layer_norm, float epsilon, float attn_dropout_rate, bool is_test, bool attn_dropout_fix_seed, int attn_dropout_seed, str attn_dropout_implementation, float dropout_rate, bool dropout_fix_seed, int dropout_seed, str dropout_implementation, float ln_epsilon, bool add_residual, int ring_id)
+  output : Tensor(qkv_bias_grad), Tensor(qkv_bias_out_grad), Tensor(src_mask_out_grad), Tensor(out_linear_bias_grad), Tensor(ln_scale_grad), Tensor(ln_bias_grad), Tensor(ln_scale_2_grad), Tensor(ln_bias_2_grad), Tensor(x_grad), Tensor(qkv_weight_grad), Tensor(out_linear_weight_grad), Tensor(ln_out_grad), Tensor(bias_dropout_residual_out_grad), Tensor(qkv_out_grad), Tensor(qktv_out_grad), Tensor(transpose_out_2_grad), Tensor(qk_out_grad), Tensor(softmax_out_grad), Tensor(attn_dropout_out_grad), Tensor(fmha_out_grad), Tensor(out_linear_out_grad)
+  infer_meta:
+    func: FusedAttentionGradInferMeta
+  kernel:
+    func: fused_attention_grad
+    data_type : x
+  optional: ln_scale, ln_bias, qkv_bias, src_mask, out_linear_bias, ln_scale_2, ln_bias_2, qkv_bias_grad, qkv_bias_out_grad, src_mask_out_grad, out_linear_bias_grad, ln_scale_grad, ln_bias_grad, ln_scale_2_grad, ln_bias_2_grad, ln_out_grad, bias_dropout_residual_out_grad, ln_out, ln_mean, ln_var,  ln_mean_2, ln_var_2, bias_dropout_residual_out, qkv_bias, qkv_bias_out, src_mask, src_mask_out, out_linear_bias
+  no_need_buffer: qkv_bias_out, qkv_out, qk_out, qktv_out, out_linear_out, src_mask
+
+- backward_op : fused_feedforward_grad
+  args : (Tensor out_grad, Tensor x, Tensor linear1_weight, Tensor linear1_bias, Tensor linear2_weight, Tensor dropout1_mask, Tensor dropout2_mask, Tensor linear1_out, Tensor dropout1_out, Tensor dropout2_out, Tensor ln1_scale, Tensor ln1_bias, Tensor ln1_out, Tensor ln1_mean, Tensor ln1_variance, Tensor ln2_scale, Tensor ln2_bias, Tensor ln2_mean, Tensor ln2_variance, Tensor linear2_bias, bool pre_layer_norm, float ln1_epsilon, float ln2_epsilon, str act_method, float dropout1_prob, float dropout2_prob, str dropout1_implementation, str dropout2_implementation, bool is_test, bool dropout1_fix_seed, bool dropout2_fix_seed, int dropout1_seed_val, int dropout2_seed_val, bool add_residual, int ring_id)
+  output : Tensor(x_grad), Tensor(ln1_scale_grad), Tensor(ln1_bias_grad), Tensor(ln2_scale_grad), Tensor(ln2_bias_grad), Tensor(linear1_weight_grad), Tensor(linear1_bias_grad), Tensor(linear2_weight_grad), Tensor(linear2_bias_grad)
+  infer_meta:
+    func: FusedFeedForwardGradInferMeta
+  kernel:
+    func: fused_feedforward_grad
+  optional: linear1_bias, linear2_bias, ln1_scale, ln1_bias, ln1_out, ln1_mean, ln1_variance, ln2_scale, ln2_bias, ln2_mean, ln2_variance, dropout2_out, ln1_scale_grad, ln1_bias_grad, ln2_scale_grad, ln2_bias_grad,  linear2_bias_grad
+
 - backward_op : set_value_grad
-  args : (Tensor out_grad, Tensor values, int64_t[] starts, int64_t[] ends, int64_t[] steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
+  args : (Tensor out_grad, Tensor values, IntArray starts, IntArray ends, IntArray steps, int64_t[] axes, int64_t[] decrease_axes, int64_t[] none_axes)
   output : Tensor(x_grad), Tensor(values_grad)
   infer_meta:
     func: SetValueGradInferMeta

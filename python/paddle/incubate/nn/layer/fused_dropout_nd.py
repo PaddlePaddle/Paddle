@@ -54,6 +54,7 @@ class FusedDropout(paddle.nn.Layer):
         .. code-block:: python
 
             >>> import paddle
+            >>> paddle.seed(2023)
 
             >>> x = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype="float32")
             >>> m = paddle.incubate.nn.FusedDropout(p=0.5)
@@ -61,15 +62,15 @@ class FusedDropout(paddle.nn.Layer):
             >>> y_train = m(x)
             >>> print(y_train)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[2., 0., 6.],
-                    [0., 0., 0.]])
+            [[0., 0., 6.],
+             [0., 0., 0.]])
 
             >>> m.eval()  # switch the model to test phase
             >>> y_test = m(x)
             >>> print(y_test)
             Tensor(shape=[2, 3], dtype=float32, place=Place(cpu), stop_gradient=True,
-                   [[1., 2., 3.],
-                    [4., 5., 6.]])
+            [[1., 2., 3.],
+             [4., 5., 6.]])
     """
 
     def __init__(self, p=0.5, axis=None, mode="upscale_in_train", name=None):

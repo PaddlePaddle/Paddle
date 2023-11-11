@@ -124,7 +124,6 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_MAKER(isinf, "isinf(X)");
 REGISTER_OP_MAKER(isnan, "isnan(X)");
-REGISTER_OP_MAKER(isfinite, "isfinite(X)");
 
 REGISTER_OP_CPU_KERNEL(
     isinf,
@@ -139,10 +138,3 @@ REGISTER_OP_CPU_KERNEL(
     ops::OverflowKernel<phi::CPUContext, int64_t, ops::NANFunctor>,
     ops::OverflowKernel<phi::CPUContext, float, ops::NANFunctor>,
     ops::OverflowKernel<phi::CPUContext, double, ops::NANFunctor>);
-
-REGISTER_OP_CPU_KERNEL(
-    isfinite,
-    ops::OverflowKernel<phi::CPUContext, int, ops::IsfiniteFunctor>,
-    ops::OverflowKernel<phi::CPUContext, int64_t, ops::IsfiniteFunctor>,
-    ops::OverflowKernel<phi::CPUContext, float, ops::IsfiniteFunctor>,
-    ops::OverflowKernel<phi::CPUContext, double, ops::IsfiniteFunctor>);

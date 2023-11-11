@@ -15,10 +15,10 @@
 import unittest
 
 import numpy as np
-from dygraph_to_static_util import (
-    ast_only_test,
-    dy2static_unittest,
-    test_and_compare_with_new_ir,
+from dygraph_to_static_utils_new import (
+    Dy2StTestBase,
+    compare_legacy_with_pir,
+    test_ast_only,
 )
 
 import paddle
@@ -235,8 +235,7 @@ def dyfunc_dict_assign_shape():
 
 
 # 1. Basic tests without control flow
-@dy2static_unittest
-class TestTensorShapeBasic(unittest.TestCase):
+class TestTensorShapeBasic(Dy2StTestBase):
     def setUp(self):
         self.input = np.ones(5).astype("int32")
         self.place = (
@@ -267,7 +266,7 @@ class TestTensorShapeBasic(unittest.TestCase):
     def get_dygraph_output(self):
         return self._run(to_static=False)
 
-    @test_and_compare_with_new_ir(True)
+    @compare_legacy_with_pir
     def get_static_output(self):
         return self._run(to_static=True)
 
@@ -294,7 +293,7 @@ class TestTensorShapeBasic(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -495,7 +494,7 @@ class TestTensorShapeInWhile4(TestTensorShapeBasic):
 
 
 # 5. Test op num for negative dim
-class TestOpNumBasicWithTensorShape(unittest.TestCase):
+class TestOpNumBasicWithTensorShape(Dy2StTestBase):
     def setUp(self):
         self._set_input_spec()
         self._set_test_func()
@@ -527,7 +526,7 @@ class TestOpNumBasicWithTensorShape(unittest.TestCase):
                 [op for op in block.ops if op.type == "slice"]
             )
 
-    @ast_only_test
+    @test_ast_only
     def test_op_num(self):
         static_layer = paddle.jit.to_static(self.dygraph_func, self.input_spec)
         program = static_layer.main_program
@@ -617,8 +616,8 @@ def dyfunc_with_static_convert_var_shape(x):
     return res
 
 
-class TestFindStatiConvertVarShapeSuffixVar(unittest.TestCase):
-    @ast_only_test
+class TestFindStatiConvertVarShapeSuffixVar(Dy2StTestBase):
+    @test_ast_only
     def test(self):
         x_spec = paddle.static.InputSpec(shape=[None, 10])
         func = paddle.jit.to_static(dyfunc_with_if_2, input_spec=[x_spec])

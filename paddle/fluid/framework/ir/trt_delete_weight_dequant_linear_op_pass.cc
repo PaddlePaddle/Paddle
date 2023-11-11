@@ -254,6 +254,7 @@ void TrtDeleteWeightQuantDequantLinearOpPass::ApplyImpl(
     float* weight_scale_data = weight_scale_tensor->data<float>();
 
     auto weight_scale_nums = weight_scale_tensor->numel();
+    weight_scale.reserve(weight_scale_nums);
     for (int i = 0; i < weight_scale_nums; i++) {
       weight_scale.push_back(weight_scale_data[i] / static_cast<float>(range));
     }

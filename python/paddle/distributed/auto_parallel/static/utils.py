@@ -42,6 +42,15 @@ __no_shape_var_type__ = [
 ]
 
 __not_naive_data_parallel_op__ = ["expand_v2"]
+_g_gradient_clip_ops = [
+    "sum",
+    "sqrt",
+    "fill_constant",
+    "elementwise_max",
+    "elementwise_div",
+    "stack",
+    "reduce_sum",
+]
 
 
 def get_logger(log_level, name="auto_parallel"):
@@ -1205,149 +1214,6 @@ def _get_split_indices(
     return split_indices_list
 
 
-def set_grad_var_shape(program, dist_context):
-    from paddle.distributed.fleet.meta_optimizers.common import OpRole
-
-    from .operators.common import infer_shape
-
-    block = program.global_block()
-    vars = block.vars
-    appended_grad_times = 0
-    grad_var_to_var = dist_context.dist_op_context.grad_var_to_var
-
-    for idx, op in enumerate(block.ops):
-        if int(op.attr('op_role')) != int(OpRole.Backward):
-            continue
-
-        if (
-            int(block.ops[idx - 1].attr('op_role')) == int(OpRole.Forward)
-            or int(block.ops[idx - 1].attr('op_role')) == 257
-        ):
-            appended_grad_times += 1
-
-        if op.type in ["check_finite_and_unscale", "update_loss_scaling"]:
-            break
-
-        if op.type in ["sum", "concat", "shape"]:
-            continue
-
-        op_dist_attr = dist_context.get_op_dist_attr_for_program(op)
-        assert op_dist_attr is not None
-
-        for var_name in op.output_arg_names:
-            if "@GRAD" not in var_name:
-                continue
-            if var_name in grad_var_to_var[appended_grad_times]:
-                forward_var_name = grad_var_to_var[appended_grad_times][
-                    var_name
-                ]
-            else:
-                forward_var_name = var_name[: var_name.find("@GRAD")]
-
-            if op.type in [
-                "c_allreduce_sum",
-                "c_identity",
-                "scale",
-                "cast",
-                "fill_any_like",
-            ]:
-                forward_var_name = op.input_arg_names[0]
-            elif (
-                op.type == "matmul_v2_grad"
-                or op.type == "matmul_grad"
-                or op.type == "mul_grad"
-            ):
-                forward_var_name = None
-                for output_name in op.output_names:
-                    if var_name in op.output(output_name):
-                        assert "@GRAD" in output_name
-                        input_name = output_name[: output_name.find("@GRAD")]
-                        assert len(op.input(input_name)) == 1
-                        forward_var_name = op.input(input_name)[0]
-                assert forward_var_name is not None
-
-            need_set_shape_list = [
-                "reshape2_grad",
-                "softmax_with_cross_entropy_grad",
-                "transpose2_grad",
-                "softmax_grad",
-                "cross_entropy_grad2",
-                "dropout_grad",
-                "tanh_grad",
-                "slice",
-                "assign",
-                "matmul_v2_triple_grad",
-                "elementwise_add_triple_grad",
-                "fill_constant",
-                "sqrt_grad",
-                "fused_softmax_mask_upper_triangle_grad",
-                "flatten_contiguous_range_grad",
-                "relu_grad",
-                "exp_grad",
-                "sigmoid_grad",
-                "unsqueeze2_grad",
-                "fused_dropout_add_grad",
-            ]
-            forward_list = [
-                "reshape2",
-                "softmax_with_cross_entropy",
-                "transpose2",
-                "softmax",
-                "cross_entropy2",
-                "dropout",
-                "tanh",
-                ["slice_grad", "c_allgather"],
-                "assign",
-                "matmul_v2_grad_grad",
-                "elementwise_add_grad_grad",
-                "shape",
-                "sqrt",
-                "fused_softmax_mask_upper_triangle",
-                "flatten_contiguous_range",
-                "relu",
-                "exp",
-                "sigmoid",
-                "unsqueeze2",
-                "fused_dropout_add",
-            ]
-            if op.type in need_set_shape_list:
-                for forward_op in block.ops:
-                    idx = need_set_shape_list.index(op.type)
-                    forward_op_name = forward_list[idx]
-                    if (
-                        forward_op.type in forward_op_name
-                        and forward_var_name in forward_op.input_arg_names
-                    ):
-                        op_dist_attr = (
-                            dist_context.get_op_dist_attr_for_program(
-                                forward_op
-                            )
-                        )
-                        break
-
-            forward_input_dist_attr = op_dist_attr.get_input_dist_attr(
-                forward_var_name
-            )
-            assert (
-                forward_input_dist_attr is not None
-            ), f"{forward_var_name, str(op)}"
-            forward_var = vars[forward_var_name]
-            forward_var_dist_attr = (
-                dist_context.get_tensor_dist_attr_for_program(forward_var)
-            )
-            assert forward_var_dist_attr is not None
-            grad_var = vars[var_name]
-            ref_shape = infer_shape(
-                block,
-                forward_var,
-                forward_var_dist_attr,
-                forward_input_dist_attr,
-            )
-
-            if list(grad_var.shape) != ref_shape:
-                grad_var.desc.set_shape(ref_shape)
-
-
 def is_forward_op(op):
     op_role = int(op.attr('op_role'))
     return OP_ROLE_KEY in op.attr_names and (
@@ -1966,7 +1832,15 @@ def initialize_pg_in_full_mode(all_process_groups, cur_rank):
 
 
 def is_recompute_op(op):
-    return op.has_attr('op_namescope') and "/auto_parallel/rc" in op.attr(
+    return (
+        op.has_attr('op_namescope')
+        and "/auto_parallel/rc" in op.attr('op_namescope')
+        and 'exclude_rc' not in op.attr('op_namescope')
+    )
+
+
+def is_recompute_exclude_op(op):
+    return op.has_attr('op_namescope') and 'exclude_rc' in op.attr(
         'op_namescope'
     )
 
@@ -2074,6 +1948,10 @@ def validate_opt(optimizer):
     if optimizer is not None:
         optimizer._parameter_list = None
         optimizer._param_groups = None
+        if optimizer._grad_clip and isinstance(
+            optimizer._grad_clip, paddle.nn.ClipGradByGlobalNorm
+        ):
+            optimizer._grad_clip._async_add_n = True
     return optimizer
 
 

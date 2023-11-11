@@ -68,6 +68,7 @@ def run_test(
     os.environ['MAX_GLOBAL_NORM'] = str(max_global_norm)
     os.environ['GRADIENT_MERGE_STEPS'] = str(gradient_merge_steps)
     os.environ['USE_MASTER_ACC_GRAD'] = str(1 if use_master_acc_grad else 0)
+    os.environ["FLAGS_dynamic_static_unified_comm"] = "0"
     os.environ.update(need_env)
 
     touch_file_env = 'SUCCESS_TOUCH_FILE'
@@ -95,14 +96,14 @@ class TestDistributedFusedLambWithClip(unittest.TestCase):
         run_test(
             clip_after_allreduce=True,
             max_global_norm=0.01,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
     def test_2_new_comm(self):
         run_test(
             clip_after_allreduce=False,
             max_global_norm=0.01,
-            need_env={"FLAGS_dynamic_static_unified_comm": "1"},
+            need_env={"FLAGS_dynamic_static_unified_comm": "true"},
         )
 
 
