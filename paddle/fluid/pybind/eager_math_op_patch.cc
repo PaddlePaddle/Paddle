@@ -1514,7 +1514,7 @@ static PyObject* tensor__pow__method(TensorObject* self,
         eager_gil_scoped_release guard;
         self_tensor = cast_ad_func(self_tensor, DataType::FLOAT32);
       }
-    } else if (PyCheckInteger(other_obj) || IsNumpyType(other_obj)) {
+    } else if (IsNumpyType(other_obj)) {
       other = CastPyArg2Double(other_obj, "__pow__", 0);
     }
     {
