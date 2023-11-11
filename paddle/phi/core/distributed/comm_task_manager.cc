@@ -97,9 +97,6 @@ void CommTaskManager::CommTaskLoop() {
         lock,
         std::chrono::milliseconds(loop_thread_sleep_millis),
         [&]() -> bool { return terminated_.load(); });
-    VLOG(0) << "dkebug size comm_task_list_: " << comm_task_list_.size()
-        << ", init_comm_task_map_: " << init_comm_task_map_.size()
-        << ", start_comm_task_map_: " << start_comm_task_map_.size();
 
     if (IsTimeout() && !logged_) {
         // case 1: all group is empty, has no task
@@ -198,8 +195,6 @@ void CommTaskManager::UpdateLastCommTask(std::shared_ptr<CommTask> task) {
       return;
   }
   group_last_comm_task_[task->GroupKey()] = task;
-  VLOG(0) << "debug group_last_comm_task_ size: " << group_last_comm_task_.size() << ", update task_key:" << task->GroupKey()
-      << ", task_msg: " << task->GetTraceMsg();
   last_update_time_ = std::chrono::steady_clock::now();
   task->SetUpdated(false);
 }
