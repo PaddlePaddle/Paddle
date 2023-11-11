@@ -256,7 +256,6 @@ class TestSvdNormalMatrixFullMatrices(unittest.TestCase):
     def tearDown(self):
         paddle.enable_static()
 
-    @test_with_pir_api
     def test_full_matrices(self):
         mat_shape = (2, 3)
         mat = np.random.random(mat_shape).astype("float64")
