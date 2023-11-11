@@ -226,12 +226,7 @@ std::string NCCLCommTask::GetTraceMsg() {
          ",op:" + CommTypeToString(comm_type_) +
          ",started:" + std::to_string(started_) +
          ",completed:" + std::to_string(completed_) +
-         ",size:" + std::to_string(size_) + ",numel:" + std::to_string(numel_) +
-         ",sync_op:" + std::to_string(sync_op_) +
-         ",use_calc_stream:" + std::to_string(use_calc_stream_) +
-         ",timeout:" + std::to_string(timeout_.count()) +
-         ",is_timeout:" + std::to_string(IsTimeout()) +
-         ",time_elapsed:" + std::to_string(time_elapsed.count());
+         ",size:" + std::to_string(size_);
 }
 
 }  // namespace distributed
