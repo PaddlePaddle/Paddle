@@ -235,7 +235,8 @@ void embedding_grad_impl(const Tensor& x,
   VLOG(6) << "embedding_grad API kernel key: [" << kernel_key.backend() << ", "
           << kernel_key.layout() << ", " << kernel_data_type << "]";
 
-  if (phi::DenseTensor::classof(weight.impl().get())) {
+  if (phi::DenseTensor::classof(weight.impl().get()) ||
+      phi::distributed::DistTensor::classof(weight.impl().get())) {
     std::string kernel_name =
         sparse ? "embedding_sparse_grad" : "embedding_grad";
     auto kernel_result =
