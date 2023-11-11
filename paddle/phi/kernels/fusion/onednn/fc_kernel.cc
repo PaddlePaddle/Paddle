@@ -549,7 +549,15 @@ void RunKernel(const phi::OneDNNContext& dev_ctx,
   const auto out_md =
       dst_memory_p->get_desc().reshape(phi::vectorize(out->dims()));
 
-  out->set_mem_desc(out_md);
+  if (dev_ctx.HasDnnAttr("fused_reshape2_shape")) {
+    phi::funcs::SetOutMemDescWithReshape2FuseSupport(
+        PADDLE_GET_CONST(std::vector<int>,
+                         dev_ctx.GetDnnAttr("fused_reshape2_shape")),
+        out,
+        out_md);
+  } else {
+    out->set_mem_desc(out_md);
+  }
 }
 
 template <typename T, typename Context>
